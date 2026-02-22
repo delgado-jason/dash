@@ -5,4 +5,11 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-export default pool;
+const query = (text, params) => {
+  return pool.query(text, params);
+};
+
+export const db = {
+  pool,
+  query,
+};

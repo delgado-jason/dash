@@ -1,7 +1,11 @@
 import express from "express";
 import "dotenv/config";
 
+import userRouter from "./routes/userRoutes.js";
+
 const app = express();
+
+app.use("/users", userRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");
