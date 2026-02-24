@@ -137,4 +137,27 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  const id = req.params.id;
+
+  // ---- DELETE USER ----
+  try {
+    await db.query(
+      `
+      DELETE
+      FROM users
+      WHERE user_id = $1
+      RETURNING user_id, email
+      `,
+      [id],
+    );
+    res.status(200).json({ message: "Deleted user successfully" });
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to delete user",
+      errMessage: err,
+    });
+  }
+});
+
 export default router;
