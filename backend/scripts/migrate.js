@@ -2,7 +2,7 @@ import "dotenv/config";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
-import pool from "../db/pool.js";
+import { db } from "../db/pool.js";
 
 // recreate dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -23,7 +23,7 @@ async function runMigrations() {
       const sql = fs.readFileSync(filePath, "utf8");
 
       console.log(`Running migration: ${file}`);
-      await pool.query(sql);
+      await db.pool.query(sql);
     }
 
     console.log("All migrations completed.");
