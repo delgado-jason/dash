@@ -7,7 +7,7 @@
   "scripts": {
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
-    "start": "node src/server.js"
+    "start": "node --watch src/server.js"
   },
   "author": "Jason Delgado",
   "license": "ISC",
