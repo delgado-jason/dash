@@ -1,6 +1,7 @@
 import express from "express";
 import { db } from "../../db/pool.js";
 import bcrypt from "bcrypt";
+import { createUser } from "../services/userServices.js";
 
 const router = express.Router();
 
@@ -18,43 +19,8 @@ router.get("/", async (req, res) => {
 
 // CREATE user
 router.post("/", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
-
-    if (!email.includes("@")) {
-      return res.status(400).json({ error: "Invalid email" });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const result = await db.query(
-      `
-      INSERT INTO users (email, password_hash)
-      VALUES ($1, $2)
-      RETURNING user_id, email, created_at
-      `,
-      [email, passwordHash],
-    );
-
-    return res.status(201).json({
-      message: "User created",
-      user: result.rows[0],
-    });
-  } catch (err) {
-    // if email is UNIQUE, this is a common error
-    if (err.code === "23505") {
-      return res.status(409).json({ message: "Email already exists" });
-    }
-
-    return res.status(500).json({
-      message: "Failed to create user",
-      error: err.message,
-    });
-  }
+  const { email, password } = req.body;
+  createUser(email, password);
 });
 
 // UPDATE email and/or password
