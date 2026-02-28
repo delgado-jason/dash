@@ -1,0 +1,55 @@
+*******************************************************************
+
+** Core Truck Table (Minimum Real-World Fields) **
+
+Here’s what a realistic trucks table usually includes:
+
+** Identification **
+
+truck_id (UUID, primary key)
+
+unit_number (internal company truck number — VERY important)
+
+vin (UNIQUE, required)
+
+plate_number
+
+plate_state
+
+** Specifications **
+
+make (Freightliner, Peterbilt, etc.)
+
+model
+
+year
+
+color
+
+fuel_type (diesel, etc.)
+
+** Operational Fields **
+
+current_odometer
+
+status (active, maintenance, out_of_service)
+
+in_service_date
+
+ownership_type (company-owned, leased, owner-op)
+
+** Administrative **
+
+insurance_policy_number
+
+registration_expiration
+
+inspection_due_date
+
+created_at
+
+updated_at
+
+*******************************************************************
+
+Also consider creating a truck_odometer_logs table to track lastest readings.
