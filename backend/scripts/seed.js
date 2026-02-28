@@ -21,7 +21,7 @@ async function seed() {
     for (const user of users) {
       const passwordHash = await bcrypt.hash(user.password, 10);
 
-      await pool.query(
+      await db.pool.query(
         `
                 INSERT INTO users (email, password_hash)
                 VALUES ($1, $2)
