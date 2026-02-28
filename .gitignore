@@ -17,3 +17,6 @@ frontend/build/
 
 # OS files
 .DS_Store
+
+# Misc
+backend/notes.txt
