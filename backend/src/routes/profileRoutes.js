@@ -1,6 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { getProfile } from "../services/profileServices.js";
+import { createProfile, getProfile } from "../services/profileServices.js";
 
 const router = express.Router();
 
@@ -20,6 +20,32 @@ router.get("/me", requireAuth, async (req, res) => {
     }
 
     return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ---- CREATE USER PROFILE ----
+router.post("/me", requireAuth, async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    const profile = await createProfile(user_id, req.body);
+    return res.status(201).json({
+      message: "Profile created",
+      profile,
+    });
+  } catch (err) {
+    if (err.message === "Profile not created") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.code === "23505") {
+      res.status(409).json({ error: "Profile already exists" });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      detail: err.message, // <-- temporarily expose
+      code: err.code, // <-- helpful for Postgres errors
+    });
   }
 });
 
