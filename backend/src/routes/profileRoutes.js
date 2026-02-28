@@ -1,20 +1,25 @@
 import express from "express";
-import { db } from "../../db/pool.js";
-import bcrypt from "bcrypt";
+import { requireAuth } from "../middleware/requireAuth.js";
+import { getProfile } from "../services/profileServices.js";
 
 const router = express.Router();
 
-// ---- GET ALL PROFILES ----
-router.get("/", async (req, res) => {
+// ---- GET USER PROFILE ----
+router.get("/me", requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`SELECT * FROM profiles`);
+    const user_id = req.user.user_id;
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Profiles not found" });
-    }
-    res.status(200).json(result.rows.map((profile) => profile));
+    const user_profile = await getProfile(user_id);
+    return res.status(200).json({
+      message: "Retrieved profile",
+      profile: user_profile,
+    });
   } catch (err) {
-    res.status(500).json({ errMessage: err });
+    if (err.message === "No profile found") {
+      return res.status(404).json({ error: err.message });
+    }
+
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
