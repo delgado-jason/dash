@@ -1,6 +1,10 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { createProfile, getProfile } from "../services/profileServices.js";
+import {
+  createProfile,
+  getProfile,
+  updateProfile,
+} from "../services/profileServices.js";
 
 const router = express.Router();
 
@@ -46,6 +50,45 @@ router.post("/me", requireAuth, async (req, res) => {
       detail: err.message, // <-- temporarily expose
       code: err.code, // <-- helpful for Postgres errors
     });
+  }
+});
+
+// ---- UPDATE USER PROFILE ----
+router.patch("/me", requireAuth, async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const updatedProfile = await updateProfile(user_id, req.body);
+    return res.status(201).json({
+      message: "Profile updated",
+      updatedProfile,
+    });
+  } catch (err) {
+    if (err.message === "Missing user_id") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "Invalid field") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "Invalid state") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "Invalid phone") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "No valid fields to update") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "Profile not found") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
