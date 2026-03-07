@@ -6,7 +6,7 @@ import authRouter from "./routes/authRoutes.js";
 import meRouter from "./routes/meRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import profileRouter from "./routes/profileRoutes.js";
-import truckRouter from "./routes/truckRoutes.js";
+// import truckRouter from "./routes/truckRoutes.js";
 
 const app = express();
 
@@ -20,7 +20,7 @@ app.use("/auth", authRouter);
 app.use("/", meRouter);
 app.use("/users", userRouter);
 app.use("/profiles", profileRouter);
-app.use("/trucks", truckRouter);
+// app.use("/trucks", truckRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");
