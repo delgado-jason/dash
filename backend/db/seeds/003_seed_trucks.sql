@@ -1,0 +1,53 @@
+INSERT INTO trucks (
+  user_id,
+  unit_number,
+  vin,
+  plate_number,
+  plate_state,
+  make,
+  model,
+  year,
+  current_odometer,
+  status,
+  in_service_date
+)
+VALUES
+(
+  '9b6ebe7b-01f0-4197-bf1f-90a5b260f5db',
+  '1001',
+  '1FUJGLDR9CSBF1234',
+  'TX9384J',
+  'TX',
+  'Freightliner',
+  'Cascadia',
+  2021,
+  245320,
+  'active',
+  '2021-06-15'
+),
+(
+  'be7933ab-87f2-4d05-98c9-99d592796b3f',
+  '1002',
+  '1XPBDP9X7KD256789',
+  'TX7741K',
+  'TX',
+  'Peterbilt',
+  '579',
+  2020,
+  389455,
+  'maintenance',
+  '2020-03-22'
+),
+(
+  '3f84fb1a-efb9-479a-ac0a-93c8fbe2a90e',
+  '1003',
+  '3HSDZAPR9LN889012',
+  'TX1129L',
+  'TX',
+  'International',
+  'LT',
+  2022,
+  112875,
+  'active',
+  '2022-01-10'
+);

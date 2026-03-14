@@ -1,39 +1,31 @@
+// scripts/seed.js
 import "dotenv/config";
-import bcrypt from "bcrypt";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { db } from "../db/pool.js";
 
-async function seed() {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function runSeeds() {
   try {
+    const seedsDir = path.join(__dirname, "../db/seeds");
+
+    const files = fs
+      .readdirSync(seedsDir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+
     console.log("Seeding database...");
 
-    const users = [
-      { email: "admin@example.com", password: "admin123" },
-      {
-        email: "alice@example.com",
-        password: "password123",
-      },
-      {
-        email: "bob@example.com",
-        password: "password123",
-      },
-    ];
-
-    for (const user of users) {
-      const passwordHash = await bcrypt.hash(user.password, 10);
-
-      await db.pool.query(
-        `
-                INSERT INTO users (email, password_hash)
-                VALUES ($1, $2)
-                ON CONFLICT (email) DO NOTHING
-                `,
-        [user.email, passwordHash],
-      );
-
-      console.log(`Inserted: ${user.email}`);
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(seedsDir, file), "utf8");
+      console.log(`Running seed: ${file}`);
+      await db.query(sql);
     }
 
-    console.log("Seeding complete.");
+    console.log("All seeds completed.");
     process.exit(0);
   } catch (err) {
     console.error("Seeding failed:", err);
@@ -41,4 +33,4 @@ async function seed() {
   }
 }
 
-seed();
+runSeeds();

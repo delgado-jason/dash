@@ -27,9 +27,9 @@ SELECT
   NOW()
 FROM users u
 JOIN (VALUES
-  ('admin@example.com',    'Jason',  'Delgado', '2145550199', 'Delgado Trucking Services', 'Owner Op',           TRUE,  '1800 Commerce St',     'Dallas',   'TX'),
-  ('alice@example.com', 'Alice',   'Reed',    '8175550142', 'Delgado Trucking Services', 'Company Lease',      FALSE, '410 W 7th St',         'Fort Worth','TX'),
-  ('bob@example.com',  'Bob', 'Vega',    '9725550188', 'Delgado Trucking Services', 'Leased Owner Op',    TRUE,  '9220 Skillman St',     'Dallas',   'TX')
+  ('admin@example.com',    'Jason',  'Delgado', '2145550199', 'Delgado Trucking Services', 'Owner Op'::carrier_type,           TRUE,  '1800 Commerce St',     'Dallas',   'TX'),
+  ('alice@example.com', 'Alice',   'Reed',    '8175550142', 'Delgado Trucking Services', 'Company Lease'::carrier_type,      FALSE, '410 W 7th St',         'Fort Worth','TX'),
+  ('bob@example.com',  'Bob', 'Vega',    '9725550188', 'Delgado Trucking Services', 'Leased Owner Op'::carrier_type,    TRUE,  '9220 Skillman St',     'Dallas',   'TX')
 ) AS p(email, first_name, last_name, phone_num, company_name, carrier_type, owns_trailer, home_address, home_city, home_state)
 ON u.email = p.email
 ON CONFLICT (user_id) DO NOTHING;
