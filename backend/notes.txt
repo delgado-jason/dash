@@ -53,3 +53,32 @@ updated_at
 *******************************************************************
 
 Also consider creating a truck_odometer_logs table to track lastest readings.
+
+*******************************************************************
+Core Drivers Minimum Table
+
+Use:
+
+UUID primary key
+
+user_id foreign key to users
+
+active BOOLEAN NOT NULL DEFAULT true
+
+created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+For name:
+
+make it required
+
+probably cap it with VARCHAR(100) or similar
+
+Good constraint to consider
+
+To prevent duplicate driver names per user, you may want:
+
+UNIQUE (user_id, name)
+
+That means one user cannot create two drivers both named exactly the same.
+
+*******************************************************************

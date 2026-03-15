@@ -50,4 +50,6 @@ VALUES
   112875,
   'active',
   '2022-01-10'
-);
+)
+ON CONFLICT (vin) DO NOTHING
+;
