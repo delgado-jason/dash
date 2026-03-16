@@ -4,6 +4,7 @@ const rules = {
   unit_number: (value, errors) => {
     if (typeof value !== "string") {
       errors.push("unit_number must be a string");
+      return;
     }
     if (value.length === 0) {
       errors.push("unit_number cannot be blank");
@@ -16,6 +17,7 @@ const rules = {
   vin: (value, errors) => {
     if (typeof value !== "string") {
       errors.push("vin must be a string");
+      return;
     }
     if (value.trim().length !== 17) {
       errors.push("vin must be exactly 17 characters");
@@ -25,6 +27,7 @@ const rules = {
   plate_number: (value, errors) => {
     if (typeof value !== "string") {
       errors.push("plate_number must be a string");
+      return;
     }
     // Plate numbers are 6-8 chars long (not including) a ' ' or '-'
     if (value.trim().length < 6 || value.trim().length > 9) {
@@ -34,6 +37,7 @@ const rules = {
   plate_state: (value, errors) => {
     if (typeof value !== "string") {
       errors.push("plate_state must be a string");
+      return;
     }
 
     if (value.trim().length !== 2) {
@@ -43,6 +47,7 @@ const rules = {
   make: (value, errors) => {
     if (typeof value !== "string") {
       errors.push("make must be a string");
+      return;
     }
 
     if (value.trim().length > 50) {
@@ -56,6 +61,7 @@ const rules = {
   model: (value, errors) => {
     if (typeof value !== "string") {
       errors.push("model must be a string");
+      return;
     }
 
     if (value.trim().length > 50) {
@@ -63,8 +69,8 @@ const rules = {
     }
   },
   year: (value, errors) => {
-    if (typeof value !== "number") {
-      errors.push("year must be a number");
+    if (!Number.isInteger(value)) {
+      errors.push("year must be an integer");
     }
 
     if (value < 1980) {
@@ -76,8 +82,8 @@ const rules = {
     }
   },
   current_odometer: (value, errors) => {
-    if (typeof value !== "number") {
-      errors.push("current_odometer must be a number");
+    if (!Number.isInteger(value)) {
+      errors.push("current_odometer must be an integer");
     }
 
     if (value < 0) {
@@ -97,6 +103,7 @@ const rules = {
 
     if (typeof value !== "string") {
       errors.push("status type must be a string");
+      return;
     }
 
     if (!allowedStatusTypes.includes(value)) {
@@ -117,6 +124,20 @@ const rules = {
       errors.push("in_service_date cannot be in the future");
     }
   },
+};
+
+export const validateTruckCreate = (data) => {
+  const errors = [];
+
+  if (!data.unit_number) errors.push("Missing unit_number");
+
+  for (const field in data) {
+    if (rules[field]) {
+      rules[field](data[field], errors);
+    }
+  }
+
+  return errors;
 };
 
 export const validateTruckPatch = (data) => {

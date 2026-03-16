@@ -1,5 +1,8 @@
 import { db } from "../../db/pool.js";
-import { validateTruckPatch } from "../utils/validation/truckValidation.js";
+import {
+  validateTruckCreate,
+  validateTruckPatch,
+} from "../utils/validation/truckValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
 
 // ---- GET ALL TRUCKS ----
@@ -14,6 +17,7 @@ export async function getTrucks(user_id) {
     SELECT
       truck_id,
       unit_number,
+      truck_name,
       vin,
       plate_number,
       plate_state,
@@ -54,6 +58,7 @@ export async function getTruck(user_id, truck_id) {
     `
     SELECT
       truck_id,
+      truck_name,
       unit_number,
       vin,
       plate_number,
@@ -81,6 +86,66 @@ export async function getTruck(user_id, truck_id) {
   return result.rows[0];
 }
 
+// ---- CREATE TRUCK ----
+
+export async function createTruck(user_id, data) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const allowedFields = [
+    "unit_number",
+    "vin",
+    "plate_number",
+    "plate_state",
+    "make",
+    "model",
+    "year",
+    "current_odometer",
+    "status",
+    "in_service_date",
+    "truck_name",
+  ];
+
+  // Filter for allowed fields only
+  for (const field in data) {
+    if (!allowedFields.includes(field)) {
+      throw new ValidationError(`${field} is not allowed`);
+    }
+  }
+
+  // ---- VALIDATION LOGIC ----
+
+  // Must pass validation checks before query request
+  const errors = validateTruckCreate(data);
+
+  // if errors, reject request
+  if (errors.length > 0) throw new ValidationError("Validation failed", errors);
+
+  const fields = ["user_id"];
+  let values = [user_id];
+  const placeholders = ["$1"];
+
+  let index = 2;
+
+  for (const field of allowedFields) {
+    if (data[field] !== undefined) {
+      fields.push(field);
+      values.push(data[field]);
+      placeholders.push(`$${index}`);
+      index++;
+    }
+  }
+
+  const query = `
+    INSERT INTO trucks (${fields.join(", ")})
+    VALUES (${placeholders.join(", ")})
+    RETURNING *;
+  `;
+
+  const result = await db.query(query, values);
+
+  return result.rows[0];
+}
+
 // ---- PATCH TRUCK ----
 
 export async function patchTruck(user_id, truck_id, data) {
@@ -98,6 +163,7 @@ export async function patchTruck(user_id, truck_id, data) {
     "current_odometer",
     "status",
     "in_service_date",
+    "truck_name",
   ];
 
   const updates = [];

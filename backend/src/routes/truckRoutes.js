@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getTrucks,
   getTruck,
+  createTruck,
   patchTruck,
   deleteTruck,
 } from "../services/truckServices.js";
@@ -51,6 +52,30 @@ router.get("/me/:id", requireAuth, async (req, res) => {
     }
 
     if (err.type === "not_found") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- CREATE TRUCK ----
+router.post("/me", requireAuth, async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+    const data = req.body;
+
+    const truck = await createTruck(user_id, data);
+
+    return res.status(200).json({
+      message: "Truck created successfully",
+      truck,
+    });
+  } catch (err) {
+    if (err.type === "validation") {
       return res.status(err.statusCode).json({ error: err.message });
     }
 
