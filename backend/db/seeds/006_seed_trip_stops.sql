@@ -7,7 +7,8 @@ INSERT INTO trip_stops (
   user_id,
   stop_order,
   stop_type,
-  location,
+  stop_city,
+  stop_state,
   scheduled_date
 )
 SELECT
@@ -15,7 +16,8 @@ SELECT
   u.user_id,
   1,
   'pickup',
-  'Dallas, TX',
+  'Dallas',
+  'TX',
   CURRENT_DATE - INTERVAL '2 days'
 FROM trips t
 JOIN users u ON t.user_id = u.user_id
@@ -27,7 +29,8 @@ INSERT INTO trip_stops (
   user_id,
   stop_order,
   stop_type,
-  location,
+  stop_city,
+  stop_state,
   scheduled_date
 )
 SELECT
@@ -35,7 +38,8 @@ SELECT
   u.user_id,
   2,
   'delivery',
-  'Houston, TX',
+  'Houston',
+  'TX',
   CURRENT_DATE - INTERVAL '1 day'
 FROM trips t
 JOIN users u ON t.user_id = u.user_id
@@ -49,7 +53,8 @@ INSERT INTO trip_stops (
   user_id,
   stop_order,
   stop_type,
-  location,
+  stop_city,
+  stop_state,
   scheduled_date
 )
 SELECT
@@ -57,7 +62,8 @@ SELECT
   u.user_id,
   1,
   'pickup',
-  'Atlanta, GA',
+  'Atlanta',
+  'GA',
   CURRENT_DATE - INTERVAL '1 day'
 FROM trips t
 JOIN users u ON t.user_id = u.user_id
@@ -69,7 +75,8 @@ INSERT INTO trip_stops (
   user_id,
   stop_order,
   stop_type,
-  location,
+  stop_city,
+  stop_state,
   scheduled_date
 )
 SELECT
@@ -77,7 +84,8 @@ SELECT
   u.user_id,
   2,
   'delivery',
-  'Nashville, TN',
+  'Nashville',
+  'TN',
   CURRENT_DATE
 FROM trips t
 JOIN users u ON t.user_id = u.user_id
@@ -91,7 +99,8 @@ INSERT INTO trip_stops (
   user_id,
   stop_order,
   stop_type,
-  location,
+  stop_city,
+  stop_state,
   scheduled_date
 )
 SELECT
@@ -99,7 +108,8 @@ SELECT
   u.user_id,
   1,
   'pickup',
-  'Chicago, IL',
+  'Chicago',
+  'IL',
   CURRENT_DATE
 FROM trips t
 JOIN users u ON t.user_id = u.user_id
@@ -111,7 +121,8 @@ INSERT INTO trip_stops (
   user_id,
   stop_order,
   stop_type,
-  location,
+  stop_city,
+  stop_state,
   scheduled_date
 )
 SELECT
@@ -119,7 +130,8 @@ SELECT
   u.user_id,
   2,
   'delivery',
-  'Indianapolis, IN',
+  'Indianapolis',
+  'IN',
   CURRENT_DATE + INTERVAL '1 day'
 FROM trips t
 JOIN users u ON t.user_id = u.user_id
