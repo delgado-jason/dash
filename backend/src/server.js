@@ -8,6 +8,7 @@ import userRouter from "./routes/userRoutes.js";
 import profileRouter from "./routes/profileRoutes.js";
 import truckRouter from "./routes/truckRoutes.js";
 import driverRouter from "./routes/driverRoutes.js";
+import tripRouter from "./routes/tripRoutes.js";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use("/users", userRouter);
 app.use("/profiles", profileRouter);
 app.use("/trucks", truckRouter);
 app.use("/drivers", driverRouter);
+app.use("/trips", tripRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");
