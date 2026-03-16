@@ -1,3 +1,5 @@
+TRUNCATE drivers CASCADE;
+
 INSERT INTO drivers (
   user_id,
   first_name,
