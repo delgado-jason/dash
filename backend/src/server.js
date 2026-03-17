@@ -10,6 +10,7 @@ import truckRouter from "./routes/truckRoutes.js";
 import driverRouter from "./routes/driverRoutes.js";
 import tripRouter from "./routes/tripRoutes.js";
 import tripStopRouter from "./routes/tripStopRoutes.js";
+import loadRouter from "./routes/loadRoutes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/trucks", truckRouter);
 app.use("/drivers", driverRouter);
 app.use("/trips", tripRouter);
 app.use("/stops", tripStopRouter);
+app.use("/loads", loadRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");
