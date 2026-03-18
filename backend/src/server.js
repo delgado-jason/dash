@@ -12,6 +12,7 @@ import tripRouter from "./routes/tripRoutes.js";
 import tripStopRouter from "./routes/tripStopRoutes.js";
 import loadRouter from "./routes/loadRoutes.js";
 import accessorialRouter from "./routes/accessorialRoutes.js";
+import fuelEntryRouter from "./routes/fuelEntryRoutes.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/trips", tripRouter);
 app.use("/stops", tripStopRouter);
 app.use("/loads", loadRouter);
 app.use("/accessorials", accessorialRouter);
+app.use("/fuel", fuelEntryRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");

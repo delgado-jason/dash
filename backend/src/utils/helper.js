@@ -1,8 +1,13 @@
 export function isValidType(type = "string", value) {
-  if (typeof value !== type) {
-    return false;
+  if (type === "integer") {
+    return Number.isInteger(value);
   }
-  return true;
+
+  if (type === "number") {
+    return typeof value === "number" && !Number.isNaN(value);
+  }
+
+  return typeof value === type;
 }
 
 // Validate Dates
