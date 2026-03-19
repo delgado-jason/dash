@@ -1,8 +1,10 @@
+import AppLayout from "@/layouts/AppLayout";
+
 const App = () => {
   return (
-    <div>
-      <h1>Hello world!</h1>
-    </div>
+    <AppLayout>
+      <div>Dashboard Page (placeholder)</div>
+    </AppLayout>
   );
 };
 
