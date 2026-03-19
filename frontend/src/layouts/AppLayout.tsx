@@ -1,21 +1,26 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
+import { Outlet } from "react-router";
 
-const AppLayout = ({ children }: { children: React.ReactNode }) => {
+const AppLayout = () => {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
+    <>
+      <SidebarProvider>
+        <div className="flex h-screen w-full">
+          <AppSidebar />
 
-        <main className="flex-1">
-          <div className="p-4 border-b">
-            <SidebarTrigger />
-          </div>
+          <main className="flex-1">
+            <div className="p-4 border-b">
+              <SidebarTrigger />
+            </div>
 
-          <div className="p-4">{children}</div>
-        </main>
-      </div>
-    </SidebarProvider>
+            <div className="p-4">
+              <Outlet />
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    </>
   );
 };
 
