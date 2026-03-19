@@ -1,29 +1,9 @@
-import { useState } from "react";
-import axios from "axios";
-
-import LoginForm from "./components/LoginForm";
-
-function App() {
-  const [data, setData] = useState(null);
-
-  const handleSubmit = (event, email, password) => {
-    event.preventDefault();
-    axios
-      .post("http://localhost:3000/auth/login", {
-        email,
-        password,
-      })
-      .then((response) => {
-        console.log(response.data);
-      });
-  };
-
+const App = () => {
   return (
     <div>
-      <LoginForm handler={handleSubmit} />
-      <p>{data}</p>
+      <h1>Hello world!</h1>
     </div>
   );
-}
+};
 
 export default App;
