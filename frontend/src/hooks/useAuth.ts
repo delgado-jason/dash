@@ -1,0 +1,27 @@
+import userLogin from "@/services/authService";
+import { useState } from "react";
+
+const useAuth = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  return {
+    login: async (credentials) => {
+      try {
+        const result = await userLogin(credentials);
+        if (result.success) {
+          setIsAuthenticated(true);
+          return { success: true, error: "" };
+        } else {
+          setIsAuthenticated(false);
+          return { success: false, error: "Failed to authenticate" };
+        }
+      } catch (er) {
+        setIsAuthenticated(false);
+        return { success: false, error: "Submission failed" };
+      }
+    },
+    isAuthenticated,
+  };
+};
+
+export default useAuth;
