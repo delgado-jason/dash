@@ -12,19 +12,24 @@ export async function getTrips(user_id) {
   const query = `
         SELECT
             trip_id,
-            truck_id,
-            driver_id,
+            trip_number,
+            trips.truck_id,
+            trucks.unit_number,
+            trips.driver_id,
+            drivers.first_name AS driver_name,
             trip_type,
             trip_source,
             trip_date,
-            status,
+            trips.status,
             odometer_start,
             odometer_end,
             is_estimated,
-            created_at,
-            updated_at
+            trips.created_at,
+            trips.updated_at
         FROM trips
-        WHERE user_id = $1
+        JOIN trucks ON trips.truck_id = trucks.truck_id
+        JOIN drivers ON trips.driver_id = drivers.driver_id
+        WHERE trips.user_id = $1
         ORDER BY trip_date DESC;
     `;
 
@@ -41,20 +46,25 @@ export async function getTrip(user_id, trip_id) {
   const query = `
         SELECT
             trip_id,
-            truck_id,
-            driver_id,
+            trip_number,
+            trips.truck_id,
+            trucks.unit_number,
+            trips.driver_id,
+            drivers.first_name AS driver_name,
             trip_type,
             trip_source,
             trip_date,
-            status,
+            trips.status,
             odometer_start,
             odometer_end,
             is_estimated,
-            created_at,
-            updated_at
+            trips.created_at,
+            trips.updated_at
         FROM trips
-        WHERE user_id = $1
-        AND trip_id = $2;
+        JOIN trucks ON trips.truck_id = trucks.truck_id
+        JOIN drivers ON trips.driver_id = drivers.driver_id
+        WHERE trips.user_id = $1
+        AND trips.trip_id = $2;
     `;
 
   const result = await db.query(query, [user_id, trip_id]);
