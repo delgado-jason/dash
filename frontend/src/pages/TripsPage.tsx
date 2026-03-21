@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router";
+
 import useTrips from "@/hooks/useTrips";
 
 import {
@@ -8,9 +10,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 
 const TripsPage = () => {
   const { trips, isLoading, error } = useTrips();
+  const navigate = useNavigate();
+
+  const handleEditClick = (tripId: string) => {
+    if (tripId) {
+      navigate(`/trips/${tripId}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -51,6 +61,7 @@ const TripsPage = () => {
             <TableHead>Status</TableHead>
             <TableHead>Odometer Start</TableHead>
             <TableHead>Odometer End</TableHead>
+            <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody className="text-xs">
@@ -63,6 +74,22 @@ const TripsPage = () => {
               <TableCell>{trip.trip_status}</TableCell>
               <TableCell>{trip.odometer_start}</TableCell>
               <TableCell>{trip.odometer_end}</TableCell>
+              <TableCell className="flex p-2">
+                <div className="border-r-2 pr-2">
+                  <Button
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => handleEditClick(trip.trip_id)}
+                  >
+                    Edit
+                  </Button>
+                </div>
+                <div className="pl-2">
+                  <Button size="xs" variant="destructive">
+                    Delete
+                  </Button>
+                </div>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
