@@ -54,26 +54,22 @@ const TripsPage = () => {
       <Table className="border-2 border-slate-300">
         <TableHeader className="rounded-t-md">
           <TableRow className="text-xs font-extrabold">
-            <TableHead className="w-[100px]">Trip ID</TableHead>
-            <TableHead>Truck ID</TableHead>
-            <TableHead>Driver ID</TableHead>
+            <TableHead className="w-[100px]">Trip #</TableHead>
             <TableHead>Trip Date</TableHead>
+            <TableHead>Driver Name</TableHead>
+            <TableHead>Unit #</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Odometer Start</TableHead>
-            <TableHead>Odometer End</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody className="text-xs">
           {trips.map((trip) => (
             <TableRow key={trip.trip_id}>
-              <TableCell className="font-medium">{trip.trip_id}</TableCell>
-              <TableCell>{trip.truck_id}</TableCell>
-              <TableCell>{trip.driver_id}</TableCell>
+              <TableCell className="font-medium">{trip.trip_number}</TableCell>
               <TableCell>{trip.trip_date}</TableCell>
+              <TableCell>{trip.driver_name}</TableCell>
+              <TableCell>{trip.unit_number}</TableCell>
               <TableCell>{trip.trip_status}</TableCell>
-              <TableCell>{trip.odometer_start}</TableCell>
-              <TableCell>{trip.odometer_end}</TableCell>
               <TableCell className="flex p-2">
                 <div className="border-r-2 pr-2">
                   <Button
