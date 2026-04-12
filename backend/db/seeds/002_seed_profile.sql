@@ -1,4 +1,6 @@
--- Seed profiles for existing users by matching email
+-- ============================================================
+-- 002_seed_profiles.sql
+-- ============================================================
 
 INSERT INTO profiles (
   user_id,
@@ -10,26 +12,42 @@ INSERT INTO profiles (
   owns_trailer,
   home_address,
   home_city,
-  home_state,
-  updated_at
+  home_state
 )
-SELECT
-  u.user_id,
-  p.first_name,
-  p.last_name,
-  p.phone_num,
-  p.company_name,
-  p.carrier_type,
-  p.owns_trailer,
-  p.home_address,
-  p.home_city,
-  p.home_state,
-  NOW()
-FROM users u
-JOIN (VALUES
-  ('admin@example.com',    'Jason',  'Delgado', '2145550199', 'Delgado Trucking Services', 'Owner Op'::carrier_type,           TRUE,  '1800 Commerce St',     'Dallas',   'TX'),
-  ('alice@example.com', 'Alice',   'Reed',    '8175550142', 'Delgado Trucking Services', 'Company Lease'::carrier_type,      FALSE, '410 W 7th St',         'Fort Worth','TX'),
-  ('bob@example.com',  'Bob', 'Vega',    '9725550188', 'Delgado Trucking Services', 'Leased Owner Op'::carrier_type,    TRUE,  '9220 Skillman St',     'Dallas',   'TX')
-) AS p(email, first_name, last_name, phone_num, company_name, carrier_type, owns_trailer, home_address, home_city, home_state)
-ON u.email = p.email
+VALUES
+  (
+    'a0000000-0000-0000-0000-000000000001',
+    'Jason', 'Delgado', '7277662762',
+    'Delgado Trucking Services',
+    'Leased Owner Op', TRUE,
+    '6205 County Line Rd', 'Leighton', 'AL'
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000002',
+    'Alice', 'Reed', '8175550142',
+    'Reed Transport LLC',
+    'Owner Op', TRUE,
+    '410 W 7th St', 'Fort Worth', 'TX'
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000003',
+    'Bob', 'Vega', '9725550188',
+    'Vega Freight LLC',
+    'Leased Owner Op', TRUE,
+    '9220 Skillman St', 'Dallas', 'TX'
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000004',
+    'Charlie', 'Moss', '6155550177',
+    'Moss Hauling',
+    'Owner Op', FALSE,
+    '300 Broadway', 'Nashville', 'TN'
+  ),
+  (
+    'a0000000-0000-0000-0000-000000000005',
+    'Brandie', 'Delgado', '7275550199',
+    'Delgado Trucking Services',
+    'Leased Owner Op', FALSE,
+    '6205 County Line Rd', 'Leighton', 'AL'
+  )
 ON CONFLICT (user_id) DO NOTHING;

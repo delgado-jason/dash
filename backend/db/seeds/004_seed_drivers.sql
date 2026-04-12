@@ -1,55 +1,27 @@
-TRUNCATE drivers CASCADE;
+-- ============================================================
+-- 004_seed_drivers.sql
+-- ============================================================
 
-INSERT INTO drivers (
-  user_id,
-  first_name,
-  last_name,
-  active
-)
-SELECT
-  user_id,
-  'Alice',
-  'Driver',
-  true
-FROM users
-WHERE email = 'alice@example.com'
-
-UNION ALL
-
-SELECT
-  user_id,
-  'Bob',
-  'Driver',
-  true
-FROM users
-WHERE email = 'bob@example.com'
-
-UNION ALL
-
-SELECT
-  user_id,
-  'Charlie',
-  'Driver',
-  true
-FROM users
-WHERE email = 'charlie@example.com'
-
-UNION ALL
-
-SELECT
-  user_id,
-  'Jules',
-  'Driver',
-  true
-FROM users
-WHERE email = 'jules@example.com'
-
-UNION ALL
-
-SELECT
-  user_id,
-  'Brandie',
-  'Driver',
-  true
-FROM users
-WHERE email = 'brandie@example.com';
+INSERT INTO drivers (driver_id, user_id, first_name, last_name, active)
+VALUES
+  (
+    'c0000000-0000-0000-0000-000000000001',
+    'a0000000-0000-0000-0000-000000000001',
+    'Jason', 'Delgado', TRUE
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000002',
+    'a0000000-0000-0000-0000-000000000002',
+    'Alice', 'Reed', TRUE
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000003',
+    'a0000000-0000-0000-0000-000000000003',
+    'Bob', 'Vega', TRUE
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000004',
+    'a0000000-0000-0000-0000-000000000004',
+    'Charlie', 'Moss', TRUE
+  )
+ON CONFLICT (driver_id) DO NOTHING;
