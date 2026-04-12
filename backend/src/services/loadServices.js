@@ -11,22 +11,42 @@ export async function getLoads(user_id) {
 
   const query = `
         SELECT
-            trip_id,
             load_id,
             load_number,
-            origin,
-            destination,
-            pickup_date,
-            delivery_date,
+            load_type,
             load_status,
+            brokers.broker_name AS broker,
+            agents.first_name || ' ' || agents.last_name AS agent,
+            shipper_name,
+            pickup_date,
+            origin_city,
+            origin_state,
+            origin_market.market_name AS origin_market,
+            receiver_name,
+            delivery_date,
+            destination_city,
+            destination_state,
+            destination_market.market_name AS delivery_market,
+            deadhead_miles,
+            loaded_miles,
             linehaul,
             fuel_surcharge,
-            loaded_miles,
-            mileage_source,
+            weight,
+            dimensions,
+            odometer_start,
+            odometer_end,
             payment_status,
             created_at,
             updated_at
         FROM loads
+        JOIN brokers
+        ON loads.broker_id = brokers.broker_id
+        JOIN agents
+        ON loads.agent_id = agents.agent_id
+        JOIN markets AS origin_market
+        ON loads.origin_market_id = origin_market.market_id
+        JOIN markets AS destination_market
+        ON loads.destination_market_id = destination_market.market_id
         WHERE user_id = $1
         ORDER BY pickup_date DESC;
     `;
@@ -43,22 +63,42 @@ export async function getLoad(user_id, load_id) {
 
   const query = `
         SELECT
-            trip_id,
             load_id,
             load_number,
-            origin,
-            destination,
-            pickup_date,
-            delivery_date,
+            load_type,
             load_status,
+            brokers.broker_name AS broker,
+            agents.first_name || ' ' || agents.last_name AS agent,
+            shipper_name,
+            pickup_date,
+            origin_city,
+            origin_state,
+            origin_market.market_name AS origin_market,
+            receiver_name,
+            delivery_date,
+            destination_city,
+            destination_state,
+            destination_market.market_name AS delivery_market,
+            deadhead_miles,
+            loaded_miles,
             linehaul,
             fuel_surcharge,
-            loaded_miles,
-            mileage_source,
+            weight,
+            dimensions,
+            odometer_start,
+            odometer_end,
             payment_status,
             created_at,
             updated_at
         FROM loads
+        JOIN brokers
+        ON loads.broker_id = brokers.broker_id
+        JOIN agents
+        ON loads.agent_id = agents.agent_id
+        JOIN markets AS origin_market
+        ON loads.origin_market_id = origin_market.market_id
+        JOIN markets AS destination_market
+        ON loads.destination_market_id = destination_market.market_id
         WHERE user_id = $1
         AND load_id = $2;
     `;
@@ -71,16 +111,13 @@ export async function getLoad(user_id, load_id) {
 }
 
 // ---- CREATE LOAD SERVICE ----
-export async function createLoad(user_id, trip_id, data) {
+export async function createLoad(user_id, data) {
   // Reject missing user_id
   if (!user_id) throw new ValidationError("Missing user_id");
-  if (!trip_id) throw new ValidationError("Missing trip_id");
 
   // Reject unknown fields
   const allowedFields = [
     "load_number",
-    "origin",
-    "destination",
     "pickup_date",
     "delivery_date",
     "load_status",
@@ -88,6 +125,23 @@ export async function createLoad(user_id, trip_id, data) {
     "fuel_surcharge",
     "loaded_miles",
     "payment_status",
+    "load_type",
+    "broker_id",
+    "agent_id",
+    "origin_city",
+    "origin_state",
+    "destination_city",
+    "destination_state",
+    "origin_market_id",
+    "destination_market_id",
+    "shipper_name",
+    "receiver_name",
+    "commodity",
+    "weight",
+    "dimensions",
+    "deadhead_miles",
+    "odometer_start",
+    "odometer_end",
   ];
 
   for (const field in data) {
@@ -101,34 +155,16 @@ export async function createLoad(user_id, trip_id, data) {
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
 
-  // Confirm trip exists and belongs to user
-  let result = await db.query(
-    `
-        SELECT 1
-        FROM trips
-        WHERE user_id = $1
-        AND trip_id = $2;
-    `,
-    [user_id, trip_id],
-  );
+  let fields = ["user_id"];
+  let values = [user_id];
+  let placeholders = ["$1"];
 
-  if (result.rowCount === 0) throw new NotFoundError("Trip not found");
+  let index = 2;
 
-  const sysData = {
-    ...data,
-    mileage_source: "broker_confirmed",
-  };
-
-  let fields = ["user_id", "trip_id"];
-  let values = [user_id, trip_id];
-  let placeholders = ["$1", "$2"];
-
-  let index = 3;
-
-  for (const field in sysData) {
-    if (sysData[field] !== undefined) {
+  for (const field in data) {
+    if (data[field] !== undefined) {
       fields.push(field);
-      values.push(sysData[field]);
+      values.push(data[field]);
       placeholders.push(`$${index}`);
       index++;
     }
@@ -140,7 +176,7 @@ export async function createLoad(user_id, trip_id, data) {
             RETURNING *;
         `;
 
-  result = await db.query(query, values);
+  const result = await db.query(query, values);
 
   // Return created row
   return result.rows[0];
@@ -154,8 +190,6 @@ export async function patchLoad(user_id, load_id, data) {
   // Reject unknown fields
   const allowedFields = [
     "load_number",
-    "origin",
-    "destination",
     "pickup_date",
     "delivery_date",
     "load_status",
@@ -163,6 +197,23 @@ export async function patchLoad(user_id, load_id, data) {
     "fuel_surcharge",
     "loaded_miles",
     "payment_status",
+    "load_type",
+    "broker_id",
+    "agent_id",
+    "origin_city",
+    "origin_state",
+    "destination_city",
+    "destination_state",
+    "origin_market_id",
+    "destination_market_id",
+    "shipper_name",
+    "receiver_name",
+    "commodity",
+    "weight",
+    "dimensions",
+    "deadhead_miles",
+    "odometer_start",
+    "odometer_end",
   ];
 
   // Throw error if data contains invalid field(s)

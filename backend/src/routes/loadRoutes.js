@@ -64,13 +64,12 @@ router.get("/:load_id", async (req, res) => {
 });
 
 // ---- CREATE LOAD ----
-router.post("/:trip_id", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const user_id = req.user.user_id;
-    const trip_id = req.params.trip_id;
     const data = req.body;
 
-    const load = await createLoad(user_id, trip_id, data);
+    const load = await createLoad(user_id, data);
 
     return res.status(201).json({
       message: "Load created successfully",

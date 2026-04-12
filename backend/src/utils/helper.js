@@ -14,3 +14,9 @@ export function isValidType(type = "string", value) {
 export function isDateValid(dateStr) {
   return !isNaN(new Date(dateStr));
 }
+
+export function isValidUUID(uuid) {
+  return !!uuid.match(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  );
+}

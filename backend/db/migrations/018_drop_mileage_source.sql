@@ -1,0 +1,2 @@
+ALTER TABLE loads
+DROP COLUMN mileage_source;
