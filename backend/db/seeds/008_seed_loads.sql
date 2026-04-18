@@ -24,7 +24,6 @@ INSERT INTO loads (
   deadhead_miles,
   odometer_start,
   odometer_end,
-  mileage_source,
   payment_status,
   shipper_name,
   receiver_name,
@@ -46,8 +45,7 @@ VALUES
     CURRENT_DATE - INTERVAL '14 days',
     CURRENT_DATE - INTERVAL '13 days',
     'delivered', 2100.00, 387.00, 480, 22,
-    311800, 312302,
-    'broker_confirmed', 'paid',
+    311800, 312302, 'paid',
     'ABC Manufacturing', 'Nashville Depot', 'Steel Coils', 42000
   ),
 
@@ -64,8 +62,7 @@ VALUES
     CURRENT_DATE - INTERVAL '10 days',
     CURRENT_DATE - INTERVAL '8 days',
     'delivered', 3400.00, 612.00, 1050, 45,
-    312302, 313397,
-    'broker_confirmed', 'paid',
+    312302, 313397, 'paid',
     'Crane Works', 'Philadelphia Port', 'Industrial Crane', 68000
   ),
 
@@ -82,8 +79,7 @@ VALUES
     CURRENT_DATE - INTERVAL '7 days',
     CURRENT_DATE - INTERVAL '6 days',
     'delivered', 2283.00, 411.00, 520, 18,
-    313397, 313935,
-    'broker_confirmed', 'paid',
+    313397, 313935, 'paid',
     'Roofing Supply Co', 'Carolina Dist Center', 'Roofing Materials', 36000
   ),
 
@@ -100,8 +96,7 @@ VALUES
     CURRENT_DATE - INTERVAL '4 days',
     CURRENT_DATE - INTERVAL '3 days',
     'delivered', 3014.00, 542.00, 610, 150,
-    313935, 314697,
-    'broker_confirmed', 'unpaid',
+    313935, 314697, 'unpaid',
     'Troutman Industries', 'Hebron Logistics', 'Equipment', 28000
   ),
 
@@ -118,8 +113,7 @@ VALUES
     CURRENT_DATE - INTERVAL '1 day',
     CURRENT_DATE + INTERVAL '1 day',
     'in_transit', 4000.00, 720.00, 440, 30,
-    314697, NULL,
-    'broker_confirmed', 'unpaid',
+    314697, NULL, 'unpaid',
     'Ohio Heavy Equipment', 'Brandywine Yard', 'Excavator', 78000
   ),
 
@@ -136,8 +130,7 @@ VALUES
     CURRENT_DATE + INTERVAL '3 days',
     CURRENT_DATE + INTERVAL '4 days',
     'booked', 2800.00, 504.00, 790, 55,
-    NULL, NULL,
-    'system_estimated', 'unpaid',
+    NULL, NULL, 'unpaid',
     NULL, NULL, 'Machinery', NULL
   ),
 
@@ -154,8 +147,7 @@ VALUES
     CURRENT_DATE - INTERVAL '5 days',
     NULL,
     'tonu', 350.00, 0.00, 0, 0,
-    NULL, NULL,
-    'user', 'unpaid',
+    NULL, NULL, 'unpaid',
     NULL, NULL, NULL, NULL
   ),
 
@@ -172,8 +164,7 @@ VALUES
     CURRENT_DATE - INTERVAL '3 days',
     CURRENT_DATE - INTERVAL '2 days',
     'delivered', 1500.00, 270.00, 240, 0,
-    389455, 389700,
-    'broker_confirmed', 'paid',
+    389455, 389700, 'paid',
     'Dallas Freight', 'Houston Yard', 'Pipe', 22000
   )
 

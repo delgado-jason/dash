@@ -18,12 +18,42 @@ async function runMigrations() {
       .filter((file) => file.endsWith(".sql"))
       .sort(); // ensures 001_, 002_, 003_ order
 
+    // Create the migrations table
+    await db.pool.query(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        filename TEXT PRIMARY KEY,
+        run_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );  
+    `);
+
     for (const file of files) {
       const filePath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(filePath, "utf8");
 
+      // Check if filename already exists in the migrations table
+      let result = await db.pool.query(
+        `
+        SELECT filename
+        FROM migrations
+        WHERE filename = $1;  
+      `,
+        [file],
+      );
+
+      // If it exists skip and log that it was already run
+      if (result.rowCount === 1) {
+        console.log(`${file} already ran - skipping`);
+        continue;
+      }
+
       console.log(`Running migration: ${file}`);
+
       await db.pool.query(sql);
+
+      // Add file to the migrations table
+      await db.pool.query(`INSERT INTO migrations(filename) VALUES($1);`, [
+        file,
+      ]);
     }
 
     console.log("All migrations completed.");

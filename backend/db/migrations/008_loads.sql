@@ -1,14 +1,4 @@
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mileage_source') THEN
-    CREATE TYPE mileage_source AS ENUM (
-      'user',
-      'system_estimated',
-      'broker_confirmed'
-    );
-  END IF;
-END
-$$;
+
 
 DO $$
 BEGIN
@@ -39,7 +29,7 @@ $$;
 CREATE TABLE IF NOT EXISTS loads (
     -- Core Identity
     load_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    trip_id UUID NOT NULL,
+    trip_id UUID NULL,
     user_id UUID NOT NULL,
 
     -- Freight Details
@@ -56,7 +46,6 @@ CREATE TABLE IF NOT EXISTS loads (
 
     -- Miles
     loaded_miles INTEGER NOT NULL CHECK(loaded_miles >= 0),
-    mileage_source MILEAGE_SOURCE NOT NULL DEFAULT 'broker_confirmed',
 
     -- Payment Tracking
     payment_status PAYMENT_STATUS NOT NULL DEFAULT 'unpaid',

@@ -1,2 +1,2 @@
-ALTER TABLE loads
-DROP COLUMN mileage_source;
+-- ALTER TABLE loads
+-- DROP COLUMN mileage_source;
