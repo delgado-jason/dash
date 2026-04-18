@@ -1,0 +1,26 @@
+### Login
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "jason@example.com",
+  "password": "password"
+}
+
+### Get All Loads
+GET http://localhost:3000/loads
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTI4ODgxLCJleHAiOjE3NzY1MzI0ODF9.UaZSJI5Q6CIf__XuFPvBxekzuAcKndKslUE5walNa2I
+
+###
+
+### Get All Brokers
+GET http://localhost:3000/brokers
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTI4ODgxLCJleHAiOjE3NzY1MzI0ODF9.UaZSJI5Q6CIf__XuFPvBxekzuAcKndKslUE5walNa2I
+
+### GET ALL AGENTS
+GET http://localhost:3000/agents
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTM0Njk0LCJleHAiOjE3NzY1MzgyOTR9.S2FcKBGFv3xiCyzjowgbMlnRy4vL4uB4EIqOyNiTaNk
+
+### GET ALL MARKETS
+GET http://localhost:3000/markets
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTM0Njk0LCJleHAiOjE3NzY1MzgyOTR9.S2FcKBGFv3xiCyzjowgbMlnRy4vL4uB4EIqOyNiTaNk

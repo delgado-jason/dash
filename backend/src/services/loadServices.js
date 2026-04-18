@@ -36,8 +36,8 @@ export async function getLoads(user_id) {
             odometer_start,
             odometer_end,
             payment_status,
-            created_at,
-            updated_at
+            loads.created_at AS created_at,
+            loads.updated_at AS updated_at
         FROM loads
         JOIN brokers
         ON loads.broker_id = brokers.broker_id
@@ -47,7 +47,7 @@ export async function getLoads(user_id) {
         ON loads.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
         ON loads.destination_market_id = destination_market.market_id
-        WHERE user_id = $1
+        WHERE loads.user_id = $1
         ORDER BY pickup_date DESC;
     `;
 
@@ -88,8 +88,8 @@ export async function getLoad(user_id, load_id) {
             odometer_start,
             odometer_end,
             payment_status,
-            created_at,
-            updated_at
+            loads.created_at AS created_at,
+            loads.updated_at AS updated_at
         FROM loads
         JOIN brokers
         ON loads.broker_id = brokers.broker_id
@@ -99,7 +99,7 @@ export async function getLoad(user_id, load_id) {
         ON loads.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
         ON loads.destination_market_id = destination_market.market_id
-        WHERE user_id = $1
+        WHERE loads.user_id = $1
         AND load_id = $2;
     `;
 
