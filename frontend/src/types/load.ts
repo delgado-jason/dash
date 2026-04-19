@@ -1,0 +1,29 @@
+export interface Load {
+  load_id: string;
+  load_number: string;
+  load_type: string;
+  load_status: string;
+  broker: string;
+  agent: string;
+  shipper_name?: string | null;
+  pickup_date: string;
+  origin_city: string;
+  origin_state: string;
+  origin_market: string;
+  receiver_name?: string | null;
+  delivery_date?: string | null;
+  destination_city: string;
+  destination_state: string;
+  delivery_market: string;
+  deadhead_miles: number;
+  loaded_miles: number;
+  linehaul: string;
+  fuel_surcharge: string;
+  weight?: number | null;
+  dimensions?: string | null;
+  odometer_start?: number | null;
+  odometer_end?: number | null;
+  payment_status: string;
+  created_at: string;
+  updated_at: string;
+}
