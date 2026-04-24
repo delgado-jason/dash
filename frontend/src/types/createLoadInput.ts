@@ -21,5 +21,6 @@ export interface CreateLoadInput {
   fuel_surcharge: number;
   deadhead_miles?: number | null;
   loaded_miles?: number | null;
+  odometer_start?: number | null;
   payment_status: string;
 }
