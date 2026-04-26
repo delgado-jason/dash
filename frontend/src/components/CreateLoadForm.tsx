@@ -3,6 +3,9 @@ import type { Broker } from "@/types/broker";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
 import type { CreateLoadInput } from "@/types/createLoadInput";
+import { QuickAddBroker } from "./QuickAddBroker";
+import { QuickAddAgent } from "./QuickAddAgent";
+import { QuickAddMarket } from "./QuickAddMarket";
 
 // UI Component Imports
 import {
@@ -39,6 +42,7 @@ const CreateLoadForm = ({
   markets,
   onSuccess,
 }: CreateLoadFormProps) => {
+  // --- STATE ---
   const [formData, setFormData] = useState<CreateLoadInput>({
     load_number: "",
     broker_id: "",
@@ -66,10 +70,33 @@ const CreateLoadForm = ({
     payment_status: "unpaid",
   });
 
+  const [brokerList, setBrokerList] = useState<Broker[]>(brokers);
+  const [agentList, setAgentList] = useState<Agent[]>(agents);
+  const [marketList, setMarketList] = useState<Market[]>(markets);
+
   // Filters agents to the broker
-  const filteredAgents = agents.filter(
+  const filteredAgents = agentList.filter(
     (agent) => agent.broker_id === formData.broker_id,
   );
+
+  // ---- HANDLERS ----
+  const handleBrokerCreated = (newBroker: Broker) => {
+    setBrokerList([...brokerList, newBroker]);
+    setFormData({ ...formData, broker_id: newBroker.broker_id, agent_id: "" });
+  };
+
+  const handleAgentCreated = (newAgent: Agent) => {
+    setAgentList([...agentList, newAgent]);
+    setFormData({ ...formData, agent_id: newAgent.agent_id });
+  };
+
+  const handleMarketCreated = (
+    newMarket: Market,
+    fieldName: "origin_market_id" | "destination_market_id",
+  ) => {
+    setMarketList([...marketList, newMarket]);
+    setFormData({ ...formData, [fieldName]: newMarket.market_id });
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -78,6 +105,7 @@ const CreateLoadForm = ({
     });
   };
 
+  // ---- JSX ----
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -91,9 +119,11 @@ const CreateLoadForm = ({
               Create a new load
             </DialogDescription>
           </DialogHeader>
+          {/* ---- IDENTIFICATION ---- */}
           <div className="mt-4">
             <h3 className="text-sm font-semibold mb-2">Identification</h3>
             <div className="grid grid-cols-2 gap-3">
+              {/* Load number field */}
               <div>
                 <Label htmlFor="load_number">Load Number</Label>
                 <Input
@@ -102,6 +132,7 @@ const CreateLoadForm = ({
                   onChange={handleChange}
                 ></Input>
               </div>
+              {/* Load type field */}
               <div>
                 <Label htmlFor="load_type">Load Type</Label>
                 <Select
@@ -127,64 +158,83 @@ const CreateLoadForm = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="broker">Broker</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      broker_id: value,
-                      agent_id: "",
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a broker" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {brokers.map((broker) => (
-                        <SelectItem
-                          key={broker.broker_id}
-                          value={broker.broker_id}
-                        >
-                          {broker.broker_name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              {/* Broker selects */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="broker">Broker</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        broker_id: value,
+                        agent_id: "",
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a broker" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {brokerList.map((broker) => (
+                          <SelectItem
+                            key={broker.broker_id}
+                            value={broker.broker_id}
+                          >
+                            {broker.broker_name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <QuickAddBroker
+                  onSuccess={handleBrokerCreated}
+                  onCancel={() => {}}
+                />
               </div>
-              <div>
-                <Label htmlFor="agent">Agent</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      agent_id: value,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an agent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {filteredAgents.map((agent) => (
-                        <SelectItem key={agent.agent_id} value={agent.agent_id}>
-                          {agent.first_name + " " + agent.last_name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              {/* Agent selects */}
+              <div className="flex flex-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="agent">Agent</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        agent_id: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {filteredAgents.map((agent) => (
+                          <SelectItem
+                            key={agent.agent_id}
+                            value={agent.agent_id}
+                          >
+                            {agent.first_name + " " + agent.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <QuickAddAgent
+                  brokers={brokers}
+                  onSuccess={handleAgentCreated}
+                  onCancel={() => {}}
+                />
               </div>
             </div>
           </div>
-
+          {/* ---- WHEN ---- */}
           <div className="mt-4">
             <h3 className="text-sm font-semibold mb-2">When</h3>
             <div className="grid grid-cols-2 gap-3">
+              {/* Pickup Date field */}
               <div>
                 <Label htmlFor="pickup_date">Pickup Date</Label>
                 <Input
@@ -194,6 +244,7 @@ const CreateLoadForm = ({
                   onChange={handleChange}
                 />
               </div>
+              {/* Delivery Date field */}
               <div>
                 <Label htmlFor="delivery_date">Delivery Date</Label>
                 <Input
@@ -205,10 +256,11 @@ const CreateLoadForm = ({
               </div>
             </div>
           </div>
-
+          {/* ---- WHERE ---- */}
           <div className="mt-4">
             <h3 className="text-sm font-semibold mb-2">Where</h3>
             <div className="grid grid-cols-3 gap-3">
+              {/* Origin City field */}
               <div>
                 <Label htmlFor="origin_city">Origin City</Label>
                 <Input
@@ -217,6 +269,7 @@ const CreateLoadForm = ({
                   onChange={handleChange}
                 ></Input>
               </div>
+              {/* Origin State field name */}
               <div>
                 <Label htmlFor="origin_state">Origin State</Label>
                 <Input
@@ -225,33 +278,43 @@ const CreateLoadForm = ({
                   onChange={handleChange}
                 ></Input>
               </div>
-              <div>
-                <Label htmlFor="origin_market">Origin Market</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      origin_market_id: value,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Origin market" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {markets.map((market) => (
-                        <SelectItem
-                          key={market.market_id}
-                          value={market.market_id}
-                        >
-                          {market.market_name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              {/* Origin Market selects */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="origin_market">Origin Market</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        origin_market_id: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Origin market" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {marketList.map((market) => (
+                          <SelectItem
+                            key={market.market_id}
+                            value={market.market_id}
+                          >
+                            {market.market_name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <QuickAddMarket
+                  fieldName="origin_market_id"
+                  onSuccess={handleMarketCreated}
+                  onCancel={() => {}}
+                />
               </div>
+              {/* end of origin fields */}
+              {/* Destination City field */}
               <div>
                 <Label htmlFor="destination_city">Destination City</Label>
                 <Input
@@ -260,6 +323,7 @@ const CreateLoadForm = ({
                   onChange={handleChange}
                 ></Input>
               </div>
+              {/* Destination State field */}
               <div>
                 <Label htmlFor="destination_state">Destination State</Label>
                 <Input
@@ -268,36 +332,44 @@ const CreateLoadForm = ({
                   onChange={handleChange}
                 ></Input>
               </div>
-              <div>
-                <Label htmlFor="destination_market">Destination Market</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      destination_market_id: value,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Destination market" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {markets.map((market) => (
-                        <SelectItem
-                          key={market.market_id}
-                          value={market.market_id}
-                        >
-                          {market.market_name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              {/* Destination Market selects */}
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="destination_market">Destination Market</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        destination_market_id: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Destination market" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {marketList.map((market) => (
+                          <SelectItem
+                            key={market.market_id}
+                            value={market.market_id}
+                          >
+                            {market.market_name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <QuickAddMarket
+                  fieldName="destination_market_id"
+                  onSuccess={handleMarketCreated}
+                  onCancel={() => {}}
+                />
               </div>
             </div>
           </div>
-
+          {/* ---- WHAT ---- */}
           <div className="mt-4">
             <h3 className="text-sm font-semibold mb-2">What</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -345,6 +417,7 @@ const CreateLoadForm = ({
               </div>
             </div>
           </div>
+          {/* ---- REVENUE ---- */}
           <div className="mt-4">
             <h3 className="text-sm font-semibold mb-2">Revenue</h3>
             <div className="grid grid-cols-3 gap-3">
@@ -388,6 +461,7 @@ const CreateLoadForm = ({
               </div>
             </div>
           </div>
+          {/* ---- MILEAGE ---- */}
           <div className="mt-4">
             <h3 className="text-sm font-semibold mb-2">Mileage</h3>
             <div className="grid grid-cols-3 gap-3">
