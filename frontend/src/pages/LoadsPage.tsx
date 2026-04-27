@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { useLoads } from "@/hooks/useLoads";
 import { useBrokers } from "@/hooks/useBrokers";
 import { useAgents } from "@/hooks/useAgents";
@@ -5,22 +7,42 @@ import { useMarkets } from "@/hooks/useMarkets";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import CreateLoadForm from "../components/CreateLoadForm";
+import { Button } from "@/components/ui/button";
 
 const LoadsPage = () => {
-  const { loads, isLoading, error } = useLoads();
-  const { brokers } = useBrokers();
-  const { agents } = useAgents();
-  const { markets } = useMarkets();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [brokerRefreshKey, setBrokerRefreshKey] = useState(0);
+  const [agentRefreshKey, setAgentRefreshKey] = useState(0);
+  const [marketRefreshKey, setMarketRefreshKey] = useState(0);
+  const { brokers } = useBrokers(brokerRefreshKey);
 
-  console.log(loads);
+  const { loads, isLoading, error } = useLoads(refreshKey);
+  const { agents } = useAgents(agentRefreshKey);
+  const { markets } = useMarkets(marketRefreshKey);
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const handleLoadCreated = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleBrokerRefresh = () => {
+    setBrokerRefreshKey((prev) => prev + 1);
+  };
+
+  const handleAgentRefresh = () => {
+    setAgentRefreshKey((prev) => prev + 1);
+  };
+
+  const handleMarketRefresh = () => {
+    setMarketRefreshKey((prev) => prev + 1);
+  };
 
   if (isLoading) {
     return (
@@ -39,14 +61,29 @@ const LoadsPage = () => {
   }
   return (
     <div>
-      <div>
-        <CreateLoadForm
-          brokers={brokers}
-          agents={agents}
-          markets={markets}
-          onSuccess={() => null}
-        />
-      </div>
+      {/* Overlay */}
+      {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowCreateForm(false)}
+          />
+          <div className="relative w-[750px] max-h-[90vh] bg-white overflow-y-auto shadow-xl rounded-lg p-6">
+            <CreateLoadForm
+              brokers={brokers}
+              agents={agents}
+              markets={markets}
+              onSuccess={handleLoadCreated}
+              onBrokerCreated={handleBrokerRefresh}
+              onAgentCreated={handleAgentRefresh}
+              onMarketCreated={handleMarketRefresh}
+              onClose={() => setShowCreateForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      <Button onClick={() => setShowCreateForm(true)}>Create Load</Button>
       <Table>
         <TableHeader>
           <TableRow>

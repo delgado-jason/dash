@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { Market } from "@/types/market";
 import { getMarkets } from "@/services/marketsService";
 
-export const useMarkets = () => {
+export const useMarkets = (refreshKey: number = 0) => {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export const useMarkets = () => {
     };
 
     fetchMarkets();
-  }, []);
+  }, [refreshKey]);
 
   return {
     markets,

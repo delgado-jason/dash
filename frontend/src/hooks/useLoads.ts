@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { Load } from "@/types/load";
 import { getLoads } from "@/services/loadsService";
 
-export const useLoads = () => {
+export const useLoads = (refreshKey: number) => {
   const [loads, setLoads] = useState<Load[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export const useLoads = () => {
     };
 
     fetchLoads();
-  }, []);
+  }, [refreshKey]);
 
   return {
     loads,

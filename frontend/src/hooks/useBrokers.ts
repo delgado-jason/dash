@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { Broker } from "@/types/broker";
 import { getBrokers } from "@/services/brokersService";
 
-export const useBrokers = () => {
+export const useBrokers = (refreshKey: number = 0) => {
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export const useBrokers = () => {
     };
 
     fetchBrokers();
-  }, []);
+  }, [refreshKey]);
 
   return {
     brokers,

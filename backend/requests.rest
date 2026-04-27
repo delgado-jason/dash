@@ -24,3 +24,19 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwM
 ### GET ALL MARKETS
 GET http://localhost:3000/markets
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTYzNTI1LCJleHAiOjE3NzY1NjcxMjV9.xyutv-WJePpyv5uPxjLSF_lW23idQrWv9YSkWxOkLjQ
+
+### Create Agent
+POST http://localhost:3000/agents
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc3MjQzNjc1LCJleHAiOjE3NzcyNDcyNzV9.EqCCaDCTRo-bF6Ep3yGFNLrix5ucGz7yxrxBwSCKJnM
+Content-Type: application/json
+
+{
+  "broker_id": "d0000000-0000-0000-0000-000000000001",
+  "first_name": "Test",
+  "last_name": "Agent",
+  "phone": null,
+  "email": "test@test.com",
+  "preferred_contact": "email",
+  "rating": null,
+  "notes": null
+}
