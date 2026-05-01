@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { useLoads } from "@/hooks/useLoads";
 import { useBrokers } from "@/hooks/useBrokers";
@@ -100,7 +101,9 @@ const LoadsPage = () => {
         <TableBody>
           {loads.map((load) => (
             <TableRow key={load.load_id}>
-              <TableCell>{load.load_number}</TableCell>
+              <TableCell className="text-blue-600 hover:underline cursor-pointer">
+                <Link to={`/loads/${load.load_id}`}>{load.load_number}</Link>
+              </TableCell>
               <TableCell>{load.load_status}</TableCell>
               <TableCell>{load.broker}</TableCell>
               <TableCell>

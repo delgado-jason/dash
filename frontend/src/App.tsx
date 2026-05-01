@@ -9,6 +9,7 @@ import LoadsPage from "@/pages/LoadsPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
 import TrucksPage from "@/pages/TrucksPage";
 import DriversPage from "@/pages/DriversPage";
+import { LoadDetailPage } from "@/pages/LoadDetailPage";
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/loads" element={<LoadsPage />} />
+          <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />
           <Route path="/trucks" element={<TrucksPage />} />
           <Route path="/drivers" element={<DriversPage />} />
