@@ -9,7 +9,7 @@ Content-Type: application/json
 
 ### Get All Loads
 GET http://localhost:3000/loads
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTU4OTIwLCJleHAiOjE3NzY1NjI1MjB9.9G79iOgDlTEjN2Z5APu1LhDXeU7lVe_1aQPdcDKQ8CQ
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc3NjkxNjA4LCJleHAiOjE3Nzc2OTUyMDh9.5uwvCdnNZwYS_K7U06CruxCu5hfTsK3AHMzmjGHN1cc
 
 ###
 
