@@ -5,6 +5,7 @@ import { useLoad } from "@/hooks/useLoad";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export const LoadDetailPage = () => {
   const [active, setActive] = useState("details");
@@ -43,23 +44,19 @@ export const LoadDetailPage = () => {
 
   return (
     // CONTAINER
-    <div className="m-2">
-      <div className="p-4 bg-gray-800 text-stone-50">
+    <div className="m-2 font-body">
+      <div className="p-4 bg-steel text-light">
         {/* LOAD IDENTIFIERS */}
         <div id="top-row" className="flex justify-between content-center">
-          <div id="primary-identifier" className="text-2xl">
+          <div id="primary-identifier" className="text-2xl font-display">
             <h3>{load.load_number}</h3>
           </div>
           <div id="subtitle" className="text-sm text-gray-300 self-center">
             <p>{`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}</p>
           </div>
           <div id="badges" className="self-center">
-            <Badge variant="default" className="bg-green-400">
-              {load.load_status}
-            </Badge>
-            <Badge variant="secondary" className="bg-yellow-400">
-              {load.payment_status}
-            </Badge>
+            <StatusBadge value={load.load_status} />
+            <StatusBadge value={load.payment_status} />
           </div>
           <div id="edit-delete-btns" className="cursor-pointer">
             <Button>Edit</Button>
@@ -69,8 +66,8 @@ export const LoadDetailPage = () => {
         {/* METRICS */}
         <div id="bottom-row" className="grid grid-cols-5 mt-4">
           <div>
-            <p className="text-xs">Total Revenue</p>
-            <h3>
+            <p className="text-sm font-condensed">Total Revenue</p>
+            <h3 className="text-lg">
               {(
                 Number(load.linehaul) + Number(load.fuel_surcharge)
               ).toLocaleString("en-US", {
@@ -80,8 +77,8 @@ export const LoadDetailPage = () => {
             </h3>
           </div>
           <div>
-            <p className="text-xs">Linehaul</p>
-            <h3>
+            <p className="text-sm font-condensed">Linehaul</p>
+            <h3 className="text-lg">
               {Number(load.linehaul).toLocaleString("en-US", {
                 style: "currency",
                 currency: "USD",
@@ -89,8 +86,8 @@ export const LoadDetailPage = () => {
             </h3>
           </div>
           <div>
-            <p className="text-xs">FSC</p>
-            <h3>
+            <p className="text-sm font-condensed">FSC</p>
+            <h3 className="text-lg">
               {Number(load.fuel_surcharge).toLocaleString("en-US", {
                 style: "currency",
                 currency: "USD",
@@ -98,8 +95,8 @@ export const LoadDetailPage = () => {
             </h3>
           </div>
           <div>
-            <p className="text-xs">RPM</p>
-            <h3>
+            <p className="text-sm font-condensed">RPM</p>
+            <h3 className="text-lg">
               {(
                 (Number(load.linehaul) + Number(load.fuel_surcharge)) /
                 Number(load.loaded_miles)
@@ -110,20 +107,43 @@ export const LoadDetailPage = () => {
             </h3>
           </div>
           <div>
-            <p className="text-xs">Loaded Miles</p>
-            <h3>{Number(load.loaded_miles)}</h3>
+            <p className="text-sm font-condensed">Loaded Miles</p>
+            <h3 className="text-lg">{Number(load.loaded_miles)}</h3>
           </div>
         </div>
       </div>
       <div className="grid grid-cols-4">
         {/* MAIN CONTENT */}
-        <div className="p-2 col-span-3 bg-gray-600 text-stone-50">
+        <div className="p-2 col-span-3 bg-iron text-light">
           <Tabs defaultValue="details">
-            <TabsList variant="line">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="accessorials">Accessorials</TabsTrigger>
-              <TabsTrigger value="fuel">Fuel</TabsTrigger>
-              <TabsTrigger value="notes">Notes</TabsTrigger>
+            <TabsList
+              variant="line"
+              className="w-full justify-start border-b border-plate"
+            >
+              <TabsTrigger
+                value="details"
+                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
+              >
+                Details
+              </TabsTrigger>
+              <TabsTrigger
+                value="accessorials"
+                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
+              >
+                Accessorials
+              </TabsTrigger>
+              <TabsTrigger
+                value="fuel"
+                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
+              >
+                Fuel
+              </TabsTrigger>
+              <TabsTrigger
+                value="notes"
+                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
+              >
+                Notes
+              </TabsTrigger>
             </TabsList>
             {/* DETAILS CONTENT */}
             <TabsContent value="details">
@@ -131,20 +151,22 @@ export const LoadDetailPage = () => {
                 {/* ROUTE CONTENT */}
                 <div>
                   <div>
-                    <p className="text-sm">Route</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+                      Route
+                    </p>
                   </div>
                   <div className="flex content-center">
                     <div className="w-[10px] self-center mr-6">
                       <div
                         id="circle"
-                        className="w-[8px] h-[8px] bg-stone-50 rounded-full"
+                        className="w-[8px] h-[8px] bg-light rounded-full"
                       ></div>
                     </div>
-                    <div className="ml-6">
+                    <div className="ml-6 text-sm text-light font-bold">
                       <p>
                         {load.origin_city}, {load.origin_state}
                       </p>
-                      <p className="text-xs">{load.origin_market}</p>
+                      <p className="text-xs text-light">{load.origin_market}</p>
                     </div>
                   </div>
                   <div className="border-l-2 border-blue-400 h-[15px] ml-[3px]"></div>
@@ -152,32 +174,36 @@ export const LoadDetailPage = () => {
                     <div className="w-[10px] self-center mr-6">
                       <div
                         id="circle"
-                        className="w-[8px] h-[8px] bg-stone-50 rounded-full"
+                        className="w-[8px] h-[8px] bg-light rounded-full"
                       ></div>
                     </div>
-                    <div className="ml-6">
+                    <div className="ml-6 text-sm text-light font-bold">
                       <p>
                         {load.destination_city}, {load.destination_state}
                       </p>
-                      <p className="text-xs">{load.delivery_market}</p>
+                      <p className="text-xs text-light">
+                        {load.delivery_market}
+                      </p>
                     </div>
                   </div>
                 </div>
                 {/* CARGO CONTENT */}
                 <div>
-                  <p className="text-sm">Cargo</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+                    Cargo
+                  </p>
                   <div className="flex gap-6">
-                    <div>
-                      <p>Shipper</p>
-                      <p>Receiver</p>
-                      <p>Commodity</p>
-                      <p>Weight</p>
+                    <div className="text-sm text-light">
+                      <p className="mb-1 font-bold">Shipper</p>
+                      <p className="mb-1 font-bold">Receiver</p>
+                      <p className="mb-1 font-bold">Commodity</p>
+                      <p className="mb-1 font-bold">Weight</p>
                     </div>
-                    <div>
-                      <p>{load.shipper_name}</p>
-                      <p>{load.receiver_name}</p>
-                      <p>{load.commodity}</p>
-                      <p>{load.weight}</p>
+                    <div className="text-sm text-light">
+                      <p className="mb-1">{load.shipper_name}</p>
+                      <p className="mb-1">{load.receiver_name}</p>
+                      <p className="mb-1">{load.commodity}</p>
+                      <p className="mb-1">{load.weight}</p>
                     </div>
                   </div>
                 </div>
