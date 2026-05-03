@@ -13,6 +13,14 @@ export const LoadDetailPage = () => {
   const { load, isLoading, error } = useLoad(0);
   console.log({ load });
 
+  // Date format options
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  };
+
   if (isLoading) {
     return (
       <div>
@@ -147,9 +155,9 @@ export const LoadDetailPage = () => {
             </TabsList>
             {/* DETAILS CONTENT */}
             <TabsContent value="details">
-              <div className="grid grid-cols-2 pl-4 mt-4">
+              <div className="grid grid-cols-2 pl-4 mt-4 mb-8 gap-y-8">
                 {/* ROUTE CONTENT */}
-                <div>
+                <div className="border-b-2 border-plate pb-4">
                   <div>
                     <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
                       Route
@@ -169,7 +177,7 @@ export const LoadDetailPage = () => {
                       <p className="text-xs text-light">{load.origin_market}</p>
                     </div>
                   </div>
-                  <div className="border-l-2 border-blue-400 h-[15px] ml-[3px]"></div>
+                  <div className="border-l-2 border-plate h-[15px] ml-[3px]"></div>
                   <div className="flex content-center">
                     <div className="w-[10px] self-center mr-6">
                       <div
@@ -188,7 +196,7 @@ export const LoadDetailPage = () => {
                   </div>
                 </div>
                 {/* CARGO CONTENT */}
-                <div>
+                <div className="border-b-2 border-plate">
                   <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
                     Cargo
                   </p>
@@ -204,6 +212,66 @@ export const LoadDetailPage = () => {
                       <p className="mb-1">{load.receiver_name}</p>
                       <p className="mb-1">{load.commodity}</p>
                       <p className="mb-1">{load.weight}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* DATES CONTENT */}
+                <div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+                      Dates
+                    </p>
+                    <div className="grid grid-cols-2">
+                      <div>
+                        <p className="text-muted-text mb-2 text-sm">Pickup</p>
+                        <p className="text-muted-text text-sm">Delivery</p>
+                      </div>
+                      <div>
+                        <p className="text-light mb-2 text-sm">
+                          {new Date(load.pickup_date).toLocaleDateString(
+                            "en-US",
+                            dateOptions,
+                          )}
+                        </p>
+                        <p className="text-light text-sm">
+                          {new Date(load.delivery_date).toLocaleDateString(
+                            "en-US",
+                            dateOptions,
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* MILEAGE CONTENT */}
+                <div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+                      Mileage
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2">
+                    <div>
+                      <p className="text-sm text-muted-text mb-2">Loaded</p>
+                      <p className="text-sm text-muted-text mb-2">Deadhead</p>
+                      <p className="text-sm text-muted-text mb-2">
+                        Odometer Start
+                      </p>
+                      <p className="text-sm text-muted-text">Odometer End</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-light mb-2">
+                        {load.loaded_miles} mi
+                      </p>
+                      <p className="text-sm text-light mb-2">
+                        {load.deadhead_miles} mi
+                      </p>
+                      <p className="text-sm text-light mb-2">
+                        {load.odometer_start?.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-light">
+                        {load.odometer_end?.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 </div>
