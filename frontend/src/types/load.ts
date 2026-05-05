@@ -19,6 +19,7 @@ export interface Load {
   loaded_miles: number;
   linehaul: string;
   fuel_surcharge: string;
+  total_accessorials: string;
   commodity: string | null;
   weight?: number | null;
   dimensions?: string | null;

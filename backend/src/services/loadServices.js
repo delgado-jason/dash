@@ -84,24 +84,28 @@ export async function getLoad(user_id, load_id) {
             loaded_miles,
             linehaul,
             fuel_surcharge,
+            (SELECT COALESCE(SUM(amount), 0)
+              FROM accessorials
+              WHERE load_id = l.load_id
+            ) AS total_accessorials,
             commodity,
             weight,
             dimensions,
             odometer_start,
             odometer_end,
             payment_status,
-            loads.created_at AS created_at,
-            loads.updated_at AS updated_at
-        FROM loads
+            l.created_at AS created_at,
+            l.updated_at AS updated_at
+        FROM loads AS l
         JOIN brokers
-        ON loads.broker_id = brokers.broker_id
+        ON l.broker_id = brokers.broker_id
         JOIN agents
-        ON loads.agent_id = agents.agent_id
+        ON l.agent_id = agents.agent_id
         JOIN markets AS origin_market
-        ON loads.origin_market_id = origin_market.market_id
+        ON l.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
-        ON loads.destination_market_id = destination_market.market_id
-        WHERE loads.user_id = $1
+        ON l.destination_market_id = destination_market.market_id
+        WHERE l.user_id = $1
         AND load_id = $2;
     `;
 

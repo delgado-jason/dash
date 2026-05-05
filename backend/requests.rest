@@ -9,7 +9,13 @@ Content-Type: application/json
 
 ### Get All Loads
 GET http://localhost:3000/loads
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc3NjkxNjA4LCJleHAiOjE3Nzc2OTUyMDh9.5uwvCdnNZwYS_K7U06CruxCu5hfTsK3AHMzmjGHN1cc
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc3OTUwOTkxLCJleHAiOjE3Nzc5NTQ1OTF9.9pFwfhZo-NmlO8WdjXJAuUYZZyo3OV2e53LcLDL_oVM
+
+###
+
+### Get Single Load
+GET http://localhost:3000/loads/a1d06215-1642-4931-9c0a-3f9925dc7a66
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc3OTUwOTkxLCJleHAiOjE3Nzc5NTQ1OTF9.9pFwfhZo-NmlO8WdjXJAuUYZZyo3OV2e53LcLDL_oVM
 
 ###
 
