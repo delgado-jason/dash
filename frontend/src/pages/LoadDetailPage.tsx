@@ -6,9 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const LoadDetailPage = () => {
   const [active, setActive] = useState("details");
+  const [loadStatusUpdate, setLoadStatusUpdate] = useState("");
+  const [paymentStatusUpdate, setPaymentStatusUpdate] = useState("");
 
   const { load, isLoading, error } = useLoad(0);
   console.log({ load });
@@ -289,9 +299,100 @@ export const LoadDetailPage = () => {
         </div>
         {/* SIDEBAR */}
         <div className="p-2 bg-iron border-l-1 border-plate text-light">
-          <div>
-            <p className="text-sm text-muted-text">Broker & Agent</p>
+          <div className="border-b-1 border-plate pl-2 pr-2 pb-4">
+            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
+              Broker & Agent
+            </p>
+            <p className="text-sm text-light">{load.broker}</p>
+            <p className="text-sm text-muted-text">{load.agent}</p>
+            <p className="text-sm text-muted-text">{load.agent_email}</p>
           </div>
+          <div className="border-b-1 border-plate pl-2 pr-2">
+            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
+              Load Status
+            </p>
+            <Select onValueChange={(value) => setLoadStatusUpdate(value)}>
+              <SelectTrigger className="mb-4">
+                <SelectValue placeholder="Update load status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="booked">Booked</SelectItem>
+                  <SelectItem value="in_transit">In Transit</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="tonu">Tonu</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
+              Payment Status
+            </p>
+            <Select onValueChange={(value) => setPaymentStatusUpdate(value)}>
+              <SelectTrigger className="mb-4">
+                <SelectValue placeholder="Update payment status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                  <SelectItem value="invoiced">Invoiced</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="border-b-1 border-plate pl-2 pr-2 pb-4">
+            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
+              Revenue
+            </p>
+            <div className="grid grid-cols-2">
+              <div>
+                <p className="text-sm text-muted-text">Linehaul</p>
+                <p className="text-sm text-muted-text">FSC</p>
+                <p className="text-sm text-muted-text">Accessorials</p>
+              </div>
+              <div>
+                <p className="text-sm text-light">
+                  {Number(load.linehaul).toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </p>
+                <p className="text-sm text-light">
+                  {Number(load.fuel_surcharge).toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </p>
+                <p className="text-sm text-light">
+                  {Number(load.total_accessorials).toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="pt-2 pl-2 pr-2 pb-4 grid grid-cols-2">
+            <div>
+              <p className="text-sm text-light">Total</p>
+            </div>
+            <div>
+              <p className="text-light">
+                {(
+                  Number(load.total_accessorials) +
+                  Number(load.linehaul) +
+                  Number(load.fuel_surcharge)
+                ).toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })}
+              </p>
+            </div>
+          </div>
+          <Button className="border-2 border-amber text-light">
+            Save Changes
+          </Button>
         </div>
       </div>
     </div>
