@@ -287,7 +287,12 @@ export const LoadDetailPage = () => {
             <TabsContent value="notes">Hello from notes</TabsContent>
           </Tabs>
         </div>
-        <div className="p-2 bg-gray-600 text-stone-50">Sidebar</div>
+        {/* SIDEBAR */}
+        <div className="p-2 bg-iron border-l-1 border-plate text-light">
+          <div>
+            <p className="text-sm text-muted-text">Broker & Agent</p>
+          </div>
+        </div>
       </div>
     </div>
   );

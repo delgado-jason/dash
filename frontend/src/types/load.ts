@@ -5,6 +5,7 @@ export interface Load {
   load_status: string;
   broker: string;
   agent: string;
+  agent_email: string | null;
   shipper_name?: string | null;
   pickup_date: string;
   origin_city: string;

@@ -70,6 +70,7 @@ export async function getLoad(user_id, load_id) {
             load_status,
             brokers.broker_name AS broker,
             agents.first_name || ' ' || agents.last_name AS agent,
+            agents.email AS agent_email,
             shipper_name,
             pickup_date,
             origin_city,
