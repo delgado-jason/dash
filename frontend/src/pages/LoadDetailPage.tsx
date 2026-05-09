@@ -6,7 +6,7 @@ import { useLoad } from "@/hooks/useLoad";
 import { patchLoad } from "@/services/patchLoadService";
 
 // UI Components
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -99,23 +99,14 @@ export const LoadDetailPage = () => {
     // CONTAINER
     <div className="m-2 font-body">
       <div className="p-4 bg-steel text-light">
-        {/* LOAD IDENTIFIERS */}
-        <div id="top-row" className="flex justify-between content-center">
-          <div id="primary-identifier" className="text-2xl font-display">
-            <h3>{load.load_number}</h3>
-          </div>
-          <div id="subtitle" className="text-sm text-gray-300 self-center">
-            <p>{`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}</p>
-          </div>
-          <div id="badges" className="self-center">
-            <StatusBadge value={load.load_status} />
-            <StatusBadge value={load.payment_status} />
-          </div>
-          <div id="edit-delete-btns" className="cursor-pointer">
-            <Button>Edit</Button>
-            <Button>Delete</Button>
-          </div>
-        </div>
+        <PageHeader
+          title={load.load_number}
+          subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
+          badges={[{ value: load.load_status }, { value: load.payment_status }]}
+        >
+          <Button>Edit</Button>
+          <Button>Delete</Button>
+        </PageHeader>
         {/* METRICS */}
         <div id="bottom-row" className="grid grid-cols-5 mt-4">
           <div>
