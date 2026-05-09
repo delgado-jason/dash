@@ -1,5 +1,9 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { useLoad } from "@/hooks/useLoad";
+
+// Services
+import { patchLoad } from "@/services/patchLoadService";
 
 // UI Components
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +20,19 @@ import {
 } from "@/components/ui/select";
 
 export const LoadDetailPage = () => {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { load, isLoading, error } = useLoad(refreshKey);
+  const [isSaving, setIsSaving] = useState(false);
   const [active, setActive] = useState("details");
-  const [loadStatusUpdate, setLoadStatusUpdate] = useState("");
-  const [paymentStatusUpdate, setPaymentStatusUpdate] = useState("");
+  const [selectedLoadStatus, setSelectedLoadStatus] = useState("");
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("");
 
-  const { load, isLoading, error } = useLoad(0);
-  console.log({ load });
+  useEffect(() => {
+    if (load) {
+      setSelectedLoadStatus(load.load_status);
+      setSelectedPaymentStatus(load.payment_status);
+    }
+  }, [load]);
 
   // Date format options
   const dateOptions: Intl.DateTimeFormatOptions = {
@@ -58,6 +69,30 @@ export const LoadDetailPage = () => {
     );
     newStr = newStr.join(" ");
     return newStr;
+  };
+
+  // HANDLERS
+  const handleSaveChanges = async () => {
+    const data = {
+      load_status: selectedLoadStatus,
+      payment_status: selectedPaymentStatus,
+    };
+
+    // Check if the state for the selects have changed
+    if (
+      data.load_status !== load.load_status ||
+      data.payment_status !== load.payment_status
+    ) {
+      try {
+        setIsSaving(true);
+        await patchLoad(load.load_id, data);
+        setRefreshKey((prev) => prev + 1);
+      } catch {
+        throw new Error("Unable to update status");
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   return (
@@ -311,9 +346,12 @@ export const LoadDetailPage = () => {
             <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
               Load Status
             </p>
-            <Select onValueChange={(value) => setLoadStatusUpdate(value)}>
+            <Select
+              value={selectedLoadStatus}
+              onValueChange={(value) => setSelectedLoadStatus(value)}
+            >
               <SelectTrigger className="mb-4">
-                <SelectValue placeholder="Update load status" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -328,9 +366,12 @@ export const LoadDetailPage = () => {
             <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
               Payment Status
             </p>
-            <Select onValueChange={(value) => setPaymentStatusUpdate(value)}>
+            <Select
+              value={selectedPaymentStatus}
+              onValueChange={(value) => setSelectedPaymentStatus(value)}
+            >
               <SelectTrigger className="mb-4">
-                <SelectValue placeholder="Update payment status" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -390,8 +431,12 @@ export const LoadDetailPage = () => {
               </p>
             </div>
           </div>
-          <Button className="border-2 border-amber text-light">
-            Save Changes
+          <Button
+            disabled={isSaving}
+            className="border-2 border-amber text-light hover:cursor-pointer hover:scale-105"
+            onClick={handleSaveChanges}
+          >
+            {isSaving ? "...Saving" : "Save Changes"}
           </Button>
         </div>
       </div>
