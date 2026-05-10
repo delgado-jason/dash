@@ -7,6 +7,8 @@ import { patchLoad } from "@/services/patchLoadService";
 
 // UI Components
 import { PageHeader } from "@/components/PageHeader";
+import { MetricStrip } from "@/components/MetricStrip";
+import { MetricCard } from "@/components/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -98,64 +100,51 @@ export const LoadDetailPage = () => {
   return (
     // CONTAINER
     <div className="m-2 font-body">
-      <div className="p-4 bg-steel text-light">
-        <PageHeader
-          title={load.load_number}
-          subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
-          badges={[{ value: load.load_status }, { value: load.payment_status }]}
-        >
-          <Button>Edit</Button>
-          <Button>Delete</Button>
-        </PageHeader>
-        {/* METRICS */}
-        <div id="bottom-row" className="grid grid-cols-5 mt-4">
-          <div>
-            <p className="text-sm font-condensed">Total Revenue</p>
-            <h3 className="text-lg">
-              {(
-                Number(load.linehaul) + Number(load.fuel_surcharge)
-              ).toLocaleString("en-US", {
-                style: "currency",
-                currency: "USD",
-              })}
-            </h3>
-          </div>
-          <div>
-            <p className="text-sm font-condensed">Linehaul</p>
-            <h3 className="text-lg">
-              {Number(load.linehaul).toLocaleString("en-US", {
-                style: "currency",
-                currency: "USD",
-              })}
-            </h3>
-          </div>
-          <div>
-            <p className="text-sm font-condensed">FSC</p>
-            <h3 className="text-lg">
-              {Number(load.fuel_surcharge).toLocaleString("en-US", {
-                style: "currency",
-                currency: "USD",
-              })}
-            </h3>
-          </div>
-          <div>
-            <p className="text-sm font-condensed">RPM</p>
-            <h3 className="text-lg">
-              {(
-                (Number(load.linehaul) + Number(load.fuel_surcharge)) /
-                Number(load.loaded_miles)
-              ).toLocaleString("en-US", {
-                style: "currency",
-                currency: "USD",
-              })}
-            </h3>
-          </div>
-          <div>
-            <p className="text-sm font-condensed">Loaded Miles</p>
-            <h3 className="text-lg">{Number(load.loaded_miles)}</h3>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={load.load_number}
+        subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
+        badges={[{ value: load.load_status }, { value: load.payment_status }]}
+        actions={
+          <>
+            <Button>Edit</Button>
+            <Button>Delete</Button>
+          </>
+        }
+        metrics={
+          <MetricStrip
+            className="pt-4"
+            cards={[
+              {
+                label: "Total Revenue",
+                value: Number(load.linehaul) + Number(load.fuel_surcharge),
+                format: "currency",
+              },
+              {
+                label: "Linehaul",
+                value: load.linehaul,
+                format: "currency",
+              },
+              {
+                label: "FSC",
+                value: load.fuel_surcharge,
+                format: "currency",
+              },
+              {
+                label: "RPM",
+                value:
+                  (Number(load.linehaul) + Number(load.fuel_surcharge)) /
+                  load.loaded_miles,
+                format: "currency",
+              },
+              {
+                label: "Loaded Miles",
+                value: load.loaded_miles,
+                format: "number",
+              },
+            ]}
+          />
+        }
+      />
       <div className="grid grid-cols-4">
         {/* MAIN CONTENT */}
         <div className="p-2 col-span-3 bg-iron text-light">

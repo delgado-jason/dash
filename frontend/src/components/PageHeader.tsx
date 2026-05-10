@@ -6,14 +6,16 @@ interface PageHeaderProps {
   title: string;
   subtitle: string;
   badges: Badge[];
-  children?: ReactNode;
+  actions?: ReactNode;
+  metrics?: ReactNode;
 }
 
 export const PageHeader = ({
   title,
   subtitle,
   badges,
-  children,
+  actions,
+  metrics,
 }: PageHeaderProps) => {
   return (
     <div className="p-4 bg-steel text-light">
@@ -31,9 +33,10 @@ export const PageHeader = ({
           ))}
         </div>
         <div id="edit-delete-btns" className="cursor-pointer">
-          {children}
+          {actions}
         </div>
       </div>
+      <div>{metrics}</div>
     </div>
   );
 };
