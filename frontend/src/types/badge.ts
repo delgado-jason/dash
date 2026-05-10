@@ -7,5 +7,6 @@ export interface Badge {
     | "booked"
     | "in_transit"
     | "unpaid"
-    | "invoiced";
+    | "invoiced"
+    | "est";
 }

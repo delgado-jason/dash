@@ -10,6 +10,7 @@ export const StatusBadge = ({ value }: { value: string }) => {
     in_transit: ["--color-status-neutral-bg", "--color-status-neutral-text"],
     unpaid: ["--color-status-aware-bg", "--color-status-aware-text"],
     invoiced: ["--color-status-aware-bg", "--color-status-aware-text"],
+    est: ["--color-status-aware-bg", "--color-status-aware-text"],
   };
 
   if (!(value in status)) {

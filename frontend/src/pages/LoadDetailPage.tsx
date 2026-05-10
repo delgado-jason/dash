@@ -8,7 +8,6 @@ import { patchLoad } from "@/services/patchLoadService";
 // UI Components
 import { PageHeader } from "@/components/PageHeader";
 import { MetricStrip } from "@/components/MetricStrip";
-import { MetricCard } from "@/components/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -112,7 +111,6 @@ export const LoadDetailPage = () => {
         }
         metrics={
           <MetricStrip
-            className="pt-4"
             cards={[
               {
                 label: "Total Revenue",
@@ -165,18 +163,6 @@ export const LoadDetailPage = () => {
               >
                 Accessorials
               </TabsTrigger>
-              <TabsTrigger
-                value="fuel"
-                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
-              >
-                Fuel
-              </TabsTrigger>
-              <TabsTrigger
-                value="notes"
-                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
-              >
-                Notes
-              </TabsTrigger>
             </TabsList>
             {/* DETAILS CONTENT */}
             <TabsContent value="details">
@@ -227,16 +213,16 @@ export const LoadDetailPage = () => {
                   </p>
                   <div className="flex gap-6">
                     <div className="text-sm text-light">
-                      <p className="mb-1 font-bold">Shipper</p>
-                      <p className="mb-1 font-bold">Receiver</p>
                       <p className="mb-1 font-bold">Commodity</p>
                       <p className="mb-1 font-bold">Weight</p>
+                      <p className="mb-1 font-bold">Dimensions</p>
                     </div>
                     <div className="text-sm text-light">
-                      <p className="mb-1">{load.shipper_name}</p>
-                      <p className="mb-1">{load.receiver_name}</p>
                       <p className="mb-1">{load.commodity}</p>
                       <p className="mb-1">{load.weight}</p>
+                      <p className="mb-1">
+                        {!load.dimensions ? "Legal" : load.dimensions}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -297,6 +283,58 @@ export const LoadDetailPage = () => {
                       <p className="text-sm text-light">
                         {load.odometer_end?.toLocaleString()}
                       </p>
+                    </div>
+                  </div>
+                </div>
+                {/* SHIPPER & RECEIVER CONTENT */}
+                <div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+                      Shipper & Receiver
+                    </p>
+                    <div className="grid grid-cols-2">
+                      <div>
+                        <p className="text-muted-text mb-2 text-sm">Shipper</p>
+                        <p className="text-muted-text text-sm">Receiver</p>
+                      </div>
+                      <div>
+                        <p className="text-light mb-2 text-sm">
+                          {load.shipper_name}
+                        </p>
+                        <p className="text-light text-sm">
+                          {load.receiver_name}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* FUEL CONTENT */}
+                <div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+                      Fuel <StatusBadge value="est" />
+                    </p>
+                    <div className="grid grid-cols-2">
+                      <div>
+                        <p className="text-muted-text mb-2 text-sm">
+                          Est. Cost
+                        </p>
+                        <p className="text-muted-text mb-2 text-sm">Avg MPG</p>
+                        <p className="text-muted-text text-sm">Fuel Price</p>
+                      </div>
+                      <div>
+                        <p className="text-light mb-2 text-sm">
+                          {(
+                            ((load.loaded_miles + load.deadhead_miles) / 6.5) *
+                            5.5
+                          ).toLocaleString("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                          })}
+                        </p>
+                        <p className="text-light text-sm mb-2">6.5</p>
+                        <p className="text-light text-sm mb-2">$5.50/gal</p>
+                      </div>
                     </div>
                   </div>
                 </div>
