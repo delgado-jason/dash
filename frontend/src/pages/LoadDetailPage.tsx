@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useEffect } from "react";
 import { useLoad } from "@/hooks/useLoad";
+import { useAccessorials } from "@/hooks/useAccessorials";
 
 // Services
 import { patchLoad } from "@/services/patchLoadService";
+import { createAccessorial } from "@/services/createAccessorialService";
 
 // UI Components
 import { PageHeader } from "@/components/PageHeader";
@@ -19,10 +21,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Pencil, Trash2 } from "lucide-react";
 
 export const LoadDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [accessorialsRefreshKey, setAccessorialsRefreshKey] = useState(0);
   const { load, isLoading, error } = useLoad(refreshKey);
+  const {
+    accessorials,
+    isLoading: accessorialsIsLoading,
+    error: accessorialsError,
+  } = useAccessorials(accessorialsRefreshKey);
+  const [newAccessorialType, setNewAccessorialType] = useState("");
+  const [newAccessorialAmount, setNewAccessorialAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [active, setActive] = useState("details");
   const [selectedLoadStatus, setSelectedLoadStatus] = useState("");
@@ -43,6 +62,10 @@ export const LoadDetailPage = () => {
     day: "numeric",
   };
 
+  let totalAccessorialCharges = 0;
+  accessorials.forEach((accessorial) => {
+    totalAccessorialCharges += Number(accessorial.amount);
+  });
   if (isLoading) {
     return (
       <div>
@@ -92,6 +115,26 @@ export const LoadDetailPage = () => {
         throw new Error("Unable to update status");
       } finally {
         setIsSaving(false);
+      }
+    }
+  };
+
+  const handleAddAccessorial = async () => {
+    const data = {
+      accessorial_type: capitalize(newAccessorialType),
+      amount: Number(newAccessorialAmount),
+    };
+
+    if (data.accessorial_type !== "" && data.amount !== null) {
+      try {
+        await createAccessorial(load.load_id, data);
+        setAccessorialsRefreshKey((prev) => prev + 1);
+        setRefreshKey((prev) => prev + 1);
+      } catch {
+        throw new Error("Unable to create new accessorial");
+      } finally {
+        setNewAccessorialType("");
+        setNewAccessorialAmount("");
       }
     }
   };
@@ -342,12 +385,106 @@ export const LoadDetailPage = () => {
             </TabsContent>
             {/* ACCESSORIALS CONTENT */}
             <TabsContent value="accessorials">
-              Hello from accessorials
+              {accessorials.length === 0 ? (
+                <p>No accessorials for current load</p>
+              ) : (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-text mb-3 mt-4 pl-4">
+                    Charges
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b-2 border-plate">
+                        <TableHead className="text-muted-text text-sm pl-4">
+                          Type
+                        </TableHead>
+                        <TableHead className="text-muted-text text-sm">
+                          Amount
+                        </TableHead>
+                        <TableHead className="text-muted-text text-sm text-center">
+                          Actions
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {accessorials.map((accessorial) => (
+                        <TableRow
+                          key={accessorial.accessorial_id}
+                          className="border-b-2 border-plate"
+                        >
+                          <TableCell className="text-sm text-light pl-4">
+                            {accessorial.accessorial_type}
+                          </TableCell>
+                          <TableCell>
+                            {Number(accessorial.amount).toLocaleString(
+                              "en-US",
+                              {
+                                style: "currency",
+                                currency: "USD",
+                              },
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-2">
+                              <Pencil
+                                size={14}
+                                className="text-muted-text hover:text-light cursor-pointer"
+                              />
+                              <Trash2
+                                size={14}
+                                className="text-red-400 hover:text-red-300 cursor-pointer"
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="grid grid-cols-3 border-t-2 border-plate">
+                    <p className="text-sm text-light pl-4 pt-2">
+                      Total Accessorials
+                    </p>
+                    <p className="text-sm text-light pt-2">
+                      {totalAccessorialCharges.toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-center mt-8">
+                <div className="bg-steel p-6 w-3/4 self-center rounded-md">
+                  <div className="grid grid-cols-3 gap-x-6 gap-y-2">
+                    <p className="text-xs text-muted-text">Type</p>
+                    <p className="text-xs text-muted-text">Amount</p>
+                    <div></div>
+                    <input
+                      id="new-accessorial-type"
+                      name="new-accessorial-type"
+                      placeholder="e.g. Layover"
+                      className="p-2 bg-plate rounded-md"
+                      value={newAccessorialType}
+                      onChange={(e) => setNewAccessorialType(e.target.value)}
+                    />
+                    <input
+                      id="new-accessorial-amount"
+                      name="new-accessorial-amount"
+                      placeholder="0.00"
+                      className="p-2 bg-plate rounded-md"
+                      value={newAccessorialAmount}
+                      onChange={(e) => setNewAccessorialAmount(e.target.value)}
+                    />
+                    <Button
+                      className="bg-steel border-1 border-light"
+                      onClick={handleAddAccessorial}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </TabsContent>
-            {/* FUEL CONTENT */}
-            <TabsContent value="fuel">Hello from fuel</TabsContent>
-            {/* NOTES CONTENT */}
-            <TabsContent value="notes">Hello from notes</TabsContent>
           </Tabs>
         </div>
         {/* SIDEBAR */}
