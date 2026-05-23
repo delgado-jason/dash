@@ -6,6 +6,7 @@ import { useAccessorials } from "@/hooks/useAccessorials";
 // Services
 import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
+import { deleteAccessorial } from "@/services/deleteAccessorialService";
 
 // UI Components
 import { PageHeader } from "@/components/PageHeader";
@@ -136,6 +137,16 @@ export const LoadDetailPage = () => {
         setNewAccessorialType("");
         setNewAccessorialAmount("");
       }
+    }
+  };
+
+  const handleDeleteAccessorial = async (accessorial_id: string) => {
+    try {
+      await deleteAccessorial(accessorial_id);
+      setAccessorialsRefreshKey((prev) => prev + 1);
+      setRefreshKey((prev) => prev + 1);
+    } catch {
+      throw new Error("Unable to delete accessorial");
     }
   };
 
@@ -433,6 +444,11 @@ export const LoadDetailPage = () => {
                               <Trash2
                                 size={14}
                                 className="text-red-400 hover:text-red-300 cursor-pointer"
+                                onClick={() =>
+                                  handleDeleteAccessorial(
+                                    accessorial.accessorial_id,
+                                  )
+                                }
                               />
                             </div>
                           </TableCell>
