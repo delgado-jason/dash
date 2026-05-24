@@ -7,6 +7,7 @@ import { useAccessorials } from "@/hooks/useAccessorials";
 import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
 import { deleteAccessorial } from "@/services/deleteAccessorialService";
+import { patchAccessorial } from "@/services/patchAccessorialService";
 
 // UI Components
 import { PageHeader } from "@/components/PageHeader";
@@ -44,9 +45,13 @@ export const LoadDetailPage = () => {
   const [newAccessorialType, setNewAccessorialType] = useState("");
   const [newAccessorialAmount, setNewAccessorialAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [active, setActive] = useState("details");
   const [selectedLoadStatus, setSelectedLoadStatus] = useState("");
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("");
+
+  // Edit Accessorial States
+  const [editingId, setEditingId] = useState<string>("");
+  const [editingType, setEditingType] = useState<string>("");
+  const [editingAmount, setEditingAmount] = useState<number>(0);
 
   useEffect(() => {
     if (load) {
@@ -148,6 +153,38 @@ export const LoadDetailPage = () => {
     } catch {
       throw new Error("Unable to delete accessorial");
     }
+  };
+
+  const handleEditAccessorial = (
+    accessorial_id: string,
+    accessorial_type: string,
+    amount: number,
+  ) => {
+    setEditingId(accessorial_id);
+    setEditingType(accessorial_type);
+    setEditingAmount(amount);
+  };
+
+  const handleSaveEditAccessorial = async () => {
+    const data = {
+      accessorial_type: editingType,
+      amount: editingAmount,
+    };
+    try {
+      await patchAccessorial(editingId, data);
+      setAccessorialsRefreshKey((prev) => prev + 1);
+      setRefreshKey((prev) => prev + 1);
+    } catch {
+      throw new Error("Unable to patch accessorial");
+    } finally {
+      setEditingId("");
+      setEditingType("");
+      setEditingAmount(0);
+    }
+  };
+
+  const handleCancelEditAccessorial = () => {
+    setEditingId("");
   };
 
   return (
@@ -424,32 +461,73 @@ export const LoadDetailPage = () => {
                           className="border-b-2 border-plate"
                         >
                           <TableCell className="text-sm text-light pl-4">
-                            {accessorial.accessorial_type}
+                            {editingId === accessorial.accessorial_id ? (
+                              <input
+                                id="edit-accessorial-type"
+                                name="edit-accessorial-type"
+                                value={editingType}
+                                onChange={(e) => setEditingType(e.target.value)}
+                              />
+                            ) : (
+                              <span>{accessorial.accessorial_type}</span>
+                            )}
                           </TableCell>
                           <TableCell>
-                            {Number(accessorial.amount).toLocaleString(
-                              "en-US",
-                              {
-                                style: "currency",
-                                currency: "USD",
-                              },
+                            {editingId === accessorial.accessorial_id ? (
+                              <input
+                                id="edit-accessorial-amount"
+                                name="edit-accessorial-amount"
+                                value={editingAmount}
+                                onChange={(e) =>
+                                  setEditingAmount(Number(e.target.value))
+                                }
+                              />
+                            ) : (
+                              <span>
+                                {Number(accessorial.amount).toLocaleString(
+                                  "en-US",
+                                  {
+                                    style: "currency",
+                                    currency: "USD",
+                                  },
+                                )}
+                              </span>
                             )}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-center gap-2">
-                              <Pencil
-                                size={14}
-                                className="text-muted-text hover:text-light cursor-pointer"
-                              />
-                              <Trash2
-                                size={14}
-                                className="text-red-400 hover:text-red-300 cursor-pointer"
-                                onClick={() =>
-                                  handleDeleteAccessorial(
-                                    accessorial.accessorial_id,
-                                  )
-                                }
-                              />
+                              {editingId === accessorial.accessorial_id ? (
+                                <Button onClick={handleSaveEditAccessorial}>
+                                  Save
+                                </Button>
+                              ) : (
+                                <Pencil
+                                  size={14}
+                                  className="text-muted-text hover:text-light cursor-pointer"
+                                  onClick={() =>
+                                    handleEditAccessorial(
+                                      accessorial.accessorial_id,
+                                      accessorial.accessorial_type,
+                                      accessorial.amount,
+                                    )
+                                  }
+                                />
+                              )}
+                              {editingId === accessorial.accessorial_id ? (
+                                <Button onClick={handleCancelEditAccessorial}>
+                                  Cancel
+                                </Button>
+                              ) : (
+                                <Trash2
+                                  size={14}
+                                  className="text-red-400 hover:text-red-300 cursor-pointer"
+                                  onClick={() =>
+                                    handleDeleteAccessorial(
+                                      accessorial.accessorial_id,
+                                    )
+                                  }
+                                />
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
