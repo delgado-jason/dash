@@ -3,6 +3,9 @@ import { useEffect } from "react";
 import { useLoad } from "@/hooks/useLoad";
 import { useAccessorials } from "@/hooks/useAccessorials";
 
+// Types
+import type { Badge } from "@/types/badge";
+
 // Services
 import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
@@ -37,11 +40,7 @@ export const LoadDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [accessorialsRefreshKey, setAccessorialsRefreshKey] = useState(0);
   const { load, isLoading, error } = useLoad(refreshKey);
-  const {
-    accessorials,
-    isLoading: accessorialsIsLoading,
-    error: accessorialsError,
-  } = useAccessorials(accessorialsRefreshKey);
+  const { accessorials } = useAccessorials(accessorialsRefreshKey);
   const [newAccessorialType, setNewAccessorialType] = useState("");
   const [newAccessorialAmount, setNewAccessorialAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -92,13 +91,12 @@ export const LoadDetailPage = () => {
     return null;
   }
 
-  const capitalize = (str: string) => {
-    let words = str.split(" ");
-    let newStr = words.map(
+  const capitalize = (str: string): string => {
+    const words = str.split(" ");
+    const capitalized = words.map(
       (word) => word.charAt(0).toUpperCase() + word.slice(1),
     );
-    newStr = newStr.join(" ");
-    return newStr;
+    return capitalized.join(" ");
   };
 
   // HANDLERS
@@ -193,7 +191,10 @@ export const LoadDetailPage = () => {
       <PageHeader
         title={load.load_number}
         subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
-        badges={[{ value: load.load_status }, { value: load.payment_status }]}
+        badges={[
+          { value: load.load_status as Badge["value"] },
+          { value: load.payment_status as Badge["value"] },
+        ]}
         actions={
           <>
             <Button>Edit</Button>
@@ -336,10 +337,12 @@ export const LoadDetailPage = () => {
                           )}
                         </p>
                         <p className="text-light text-sm">
-                          {new Date(load.delivery_date).toLocaleDateString(
-                            "en-US",
-                            dateOptions,
-                          )}
+                          {load.delivery_date
+                            ? new Date(load.delivery_date).toLocaleDateString(
+                                "en-US",
+                                dateOptions,
+                              )
+                            : "Not set"}
                         </p>
                       </div>
                     </div>

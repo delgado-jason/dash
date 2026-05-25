@@ -1,6 +1,11 @@
 import api from "./api";
 
-const userLogin = async (credentials) => {
+interface Credentials {
+  email: string;
+  password: string;
+}
+
+const userLogin = async (credentials: Credentials) => {
   const { email, password } = credentials;
 
   try {
@@ -21,8 +26,8 @@ const userLogin = async (credentials) => {
   } catch (err) {
     let errorMsg = "";
 
-    if (err.response) {
-      errorMsg = err.response.data.error;
+    if ((err as any).response) {
+      errorMsg = (err as any).response.data.error;
     } else {
       errorMsg = "No response from server";
     }

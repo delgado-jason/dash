@@ -25,7 +25,7 @@ const LoginPage = () => {
   // Access login
   const { login } = useAuth();
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
     setErrorMessage("");

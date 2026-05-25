@@ -37,17 +37,6 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
-                <Link to="/trips" className="text-slate-400">
-                  Trips
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
                 <Link to="/loads" className="text-slate-400">
                   Loads
                 </Link>

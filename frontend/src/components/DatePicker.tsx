@@ -12,11 +12,17 @@ import {
 import { format } from "date-fns";
 import { Input } from "./ui/input";
 
-const DatePicker = ({ label, id, name }) => {
+interface DatePickerProps {
+  label: string;
+  id: string;
+  name: string;
+}
+
+const DatePicker = ({ label, id, name }: DatePickerProps) => {
   const [date, setDate] = React.useState<Date>();
   const [inputValue, setInputValue] = React.useState("");
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
     console.log(inputValue);
   };

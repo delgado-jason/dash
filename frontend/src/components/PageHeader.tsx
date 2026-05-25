@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { Badge } from "@/types/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 

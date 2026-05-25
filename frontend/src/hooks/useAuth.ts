@@ -1,11 +1,16 @@
 import userLogin from "@/services/authService";
 import { useState } from "react";
 
+interface Credentials {
+  email: string;
+  password: string;
+}
+
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   return {
-    login: async (credentials) => {
+    login: async (credentials: Credentials) => {
       try {
         const result = await userLogin(credentials);
         if (result.success) {
