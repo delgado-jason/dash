@@ -8,7 +8,7 @@
     "migrate": "node scripts/migrate.js",
     "debug": "node src/utils/debug.js",
     "seed": "node scripts/seed.js",
-    "start": "node --watch src/server.js"
+    "start": "node src/server.js"
   },
   "author": "Jason Delgado",
   "license": "ISC",
