@@ -45,13 +45,15 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* DTS Brand Colors */
-  --color-steel: #1c2128;
-  --color-iron: #2d333b;
-  --color-plate: #373e47;
-  --color-amber: #e8941a;
-  --color-light: #cdd9e5;
-  --color-muted-text: #768390;
+  --color-steel: #0d1117;
+  --color-iron: #1c2333;
+  --color-plate: #2a3347;
+  --color-amber: #e8940a;
+  --color-light: #ebedf5;
+  --color-muted-text: #9daabb;
   --color-steel-blue: #8ba7c7;
+  --color-amber-dark: #b5700a;
+  --color-amber-light: #f5b03a;
 
   /* DTS Brand Fonts */
   --font-display: "Bebas Neue", sans-serif;
@@ -66,10 +68,10 @@
   --color-status-negative-text: #f87171;
 
   --color-status-aware-bg: #3a2a0a;
-  --color-status-aware-text: #e8941a;
+  --color-status-aware-text: var(--color-amber);
 
   --color-status-neutral-bg: #2d333b;
-  --color-status-neutral-text: #768390;
+  --color-status-neutral-text: var(--color-muted-text);
 
   /* Chart Colors */
   --color-chart-primary: #e8941a;
