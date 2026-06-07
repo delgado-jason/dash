@@ -5,6 +5,7 @@ backend/node_modules/
 
 # Environment variables
 .env
+.env.production
 backend/.env
 frontend/.env
 
