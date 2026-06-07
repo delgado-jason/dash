@@ -6,11 +6,19 @@ import { useAccessorials } from "@/hooks/useAccessorials";
 // Types
 import type { Badge } from "@/types/badge";
 
+// Hooks
+import { useBrokers } from "@/hooks/useBrokers";
+import { useAgents } from "@/hooks/useAgents";
+import { useMarkets } from "@/hooks/useMarkets";
+
 // Services
 import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
 import { deleteAccessorial } from "@/services/deleteAccessorialService";
 import { patchAccessorial } from "@/services/patchAccessorialService";
+
+// Components
+import LoadForm from "@/components/LoadForm";
 
 // UI Components
 import { PageHeader } from "@/components/PageHeader";
@@ -51,6 +59,12 @@ export const LoadDetailPage = () => {
   const [editingId, setEditingId] = useState<string>("");
   const [editingType, setEditingType] = useState<string>("");
   const [editingAmount, setEditingAmount] = useState<number>(0);
+
+  // Edit Load Button state
+  const [showEditForm, setShowEditForm] = useState(false);
+  const { brokers } = useBrokers(0);
+  const { agents } = useAgents(0);
+  const { markets } = useMarkets(0);
 
   useEffect(() => {
     if (load) {
@@ -188,6 +202,56 @@ export const LoadDetailPage = () => {
   return (
     // CONTAINER
     <div className="m-2 font-body">
+      {showEditForm && load && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowEditForm(false)}
+          />
+          <div className="relative w-[750px] max-h-[90vh] bg-white overflow-y-auto shadow-xl rounded-lg p-6">
+            <LoadForm
+              mode="edit"
+              initialData={{
+                load_number: load.load_number,
+                broker_id: load.broker_id,
+                agent_id: load.agent_id,
+                load_type: load.load_type,
+                load_status: load.load_status,
+                pickup_date: load.pickup_date.slice(0, 10),
+                delivery_date: load.delivery_date?.slice(0, 10) ?? null,
+                origin_city: load.origin_city,
+                origin_state: load.origin_state,
+                origin_market_id: load.origin_market_id,
+                destination_city: load.destination_city,
+                destination_state: load.destination_state,
+                destination_market_id: load.destination_market_id,
+                commodity: load.commodity,
+                weight: load.weight ?? null,
+                dimensions: load.dimensions ?? null,
+                shipper_name: load.shipper_name ?? null,
+                receiver_name: load.receiver_name ?? null,
+                linehaul: Number(load.linehaul),
+                fuel_surcharge: Number(load.fuel_surcharge),
+                deadhead_miles: load.deadhead_miles,
+                loaded_miles: load.loaded_miles,
+                odometer_start: load.odometer_start ?? null,
+                payment_status: load.payment_status,
+              }}
+              brokers={brokers}
+              agents={agents}
+              markets={markets}
+              onSubmit={async (data) => {
+                await patchLoad(load.load_id, data);
+              }}
+              onSuccess={() => setRefreshKey((prev) => prev + 1)}
+              onBrokerCreated={() => {}}
+              onAgentCreated={() => {}}
+              onMarketCreated={() => {}}
+              onClose={() => setShowEditForm(false)}
+            />
+          </div>
+        </div>
+      )}
       <PageHeader
         title={load.load_number}
         subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
@@ -197,7 +261,7 @@ export const LoadDetailPage = () => {
         ]}
         actions={
           <>
-            <Button>Edit</Button>
+            <Button onClick={() => setShowEditForm(true)}>Edit</Button>
             <Button>Delete</Button>
           </>
         }

@@ -1,4 +1,4 @@
-export interface CreateLoadInput {
+export interface LoadInput {
   load_number: string;
   broker_id: string;
   agent_id: string;

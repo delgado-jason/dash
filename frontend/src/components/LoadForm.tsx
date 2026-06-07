@@ -2,8 +2,7 @@ import { useState } from "react";
 import type { Broker } from "@/types/broker";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
-import type { CreateLoadInput } from "@/types/createLoadInput";
-import { createLoad } from "@/services/createLoadService";
+import type { LoadInput } from "@/types/LoadInput";
 import { QuickAddBroker } from "./QuickAddBroker";
 import { QuickAddAgent } from "./QuickAddAgent";
 import { QuickAddMarket } from "./QuickAddMarket";
@@ -30,8 +29,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Interface for the createLoadForm props
-interface CreateLoadFormProps {
+// Interface for LoadFormProps
+interface LoadFormProps {
+  initialData?: LoadInput;
+  mode: "create" | "edit";
   brokers: Broker[];
   agents: Agent[];
   markets: Market[];
@@ -40,45 +41,78 @@ interface CreateLoadFormProps {
   onAgentCreated: () => void;
   onMarketCreated: () => void;
   onClose: () => void;
+  onSubmit: (data: LoadInput) => Promise<void>;
 }
 
-const CreateLoadForm = ({
+const LoadForm = ({
+  initialData,
+  mode,
   brokers,
   agents,
   markets,
   onSuccess,
+  onSubmit,
   onBrokerCreated,
   onAgentCreated,
   onMarketCreated,
   onClose,
-}: CreateLoadFormProps) => {
+}: LoadFormProps) => {
   // --- STATE ---
-  const [formData, setFormData] = useState<CreateLoadInput>({
-    load_number: "",
-    broker_id: "",
-    agent_id: "",
-    load_type: "standard flatbed",
-    load_status: "booked",
-    pickup_date: "",
-    delivery_date: null,
-    origin_city: "",
-    origin_state: "",
-    origin_market_id: "",
-    destination_city: "",
-    destination_state: "",
-    destination_market_id: "",
-    commodity: null,
-    weight: null,
-    dimensions: null,
-    shipper_name: null,
-    receiver_name: null,
-    linehaul: 0,
-    fuel_surcharge: 0,
-    deadhead_miles: null,
-    loaded_miles: null,
-    odometer_start: null,
-    payment_status: "unpaid",
-  });
+  const [formData, setFormData] = useState<LoadInput>(
+    initialData
+      ? {
+          load_number: initialData.load_number,
+          broker_id: initialData.broker_id,
+          agent_id: initialData.agent_id,
+          load_type: initialData.load_type,
+          load_status: initialData.load_status,
+          pickup_date: initialData.pickup_date,
+          delivery_date: initialData.delivery_date ?? null,
+          origin_city: initialData.origin_city,
+          origin_state: initialData.origin_state,
+          origin_market_id: initialData.origin_market_id,
+          destination_city: initialData.destination_city,
+          destination_state: initialData.destination_state,
+          destination_market_id: initialData.destination_market_id,
+          commodity: initialData.commodity,
+          weight: initialData.weight ?? null,
+          dimensions: initialData.dimensions ?? null,
+          shipper_name: initialData.shipper_name ?? null,
+          receiver_name: initialData.receiver_name ?? null,
+          linehaul: Number(initialData.linehaul),
+          fuel_surcharge: Number(initialData.fuel_surcharge),
+          deadhead_miles: initialData.deadhead_miles,
+          loaded_miles: initialData.loaded_miles,
+          odometer_start: initialData.odometer_start ?? null,
+          payment_status: initialData.payment_status,
+        }
+      : {
+          load_number: "",
+          broker_id: "",
+          agent_id: "",
+          load_type: "standard flatbed",
+          load_status: "booked",
+          pickup_date: "",
+          delivery_date: null,
+          origin_city: "",
+          origin_state: "",
+          origin_market_id: "",
+          destination_city: "",
+          destination_state: "",
+          destination_market_id: "",
+          commodity: null,
+          weight: null,
+          dimensions: null,
+          shipper_name: null,
+          receiver_name: null,
+          linehaul: 0,
+          fuel_surcharge: 0,
+          deadhead_miles: null,
+          loaded_miles: null,
+          odometer_start: null,
+          payment_status: "unpaid",
+        },
+  );
 
   const [brokerList, setBrokerList] = useState<Broker[]>(brokers);
   const [agentList, setAgentList] = useState<Agent[]>(agents);
@@ -189,7 +223,7 @@ const CreateLoadForm = ({
 
   const handleSubmit = async () => {
     try {
-      await createLoad(formData);
+      await onSubmit(formData);
       onSuccess();
       onClose();
     } catch (e) {
@@ -201,7 +235,9 @@ const CreateLoadForm = ({
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Create Load</h2>
+        <h2 className="text-xl font-semibold">
+          {mode === "create" ? "Create Load" : "Edit Load"}
+        </h2>
         <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
           ✕
         </button>
@@ -218,6 +254,7 @@ const CreateLoadForm = ({
                 name="load_number"
                 id="load_number"
                 onChange={handleChange}
+                value={formData.load_number}
               ></Input>
             </div>
             {/* Load type field */}
@@ -230,6 +267,7 @@ const CreateLoadForm = ({
                     load_type: value,
                   })
                 }
+                value={formData.load_type}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select the load type" />
@@ -258,6 +296,7 @@ const CreateLoadForm = ({
                       agent_id: "",
                     })
                   }
+                  value={formData.broker_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a broker" />
@@ -287,6 +326,7 @@ const CreateLoadForm = ({
                   onValueChange={(value) =>
                     setFormData({ ...formData, agent_id: value })
                   }
+                  value={formData.agent_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select an agent" />
@@ -532,6 +572,7 @@ const CreateLoadForm = ({
                 name="pickup_date"
                 id="pickup_date"
                 onChange={handleChange}
+                value={formData.pickup_date}
               />
             </div>
             {/* Delivery Date field */}
@@ -542,6 +583,7 @@ const CreateLoadForm = ({
                 name="delivery_date"
                 id="delivery_date"
                 onChange={handleChange}
+                value={formData.delivery_date ?? ""}
               />
             </div>
           </div>
@@ -557,6 +599,7 @@ const CreateLoadForm = ({
                 name="origin_city"
                 id="origin_city"
                 onChange={handleChange}
+                value={formData.origin_city}
               ></Input>
             </div>
             {/* Origin State field name */}
@@ -566,6 +609,7 @@ const CreateLoadForm = ({
                 name="origin_state"
                 id="origin_state"
                 onChange={handleChange}
+                value={formData.origin_state}
               ></Input>
             </div>
             {/* Origin Market selects */}
@@ -579,6 +623,7 @@ const CreateLoadForm = ({
                       origin_market_id: value,
                     })
                   }
+                  value={formData.origin_market_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Origin market" />
@@ -613,6 +658,7 @@ const CreateLoadForm = ({
                 name="destination_city"
                 id="destination_city"
                 onChange={handleChange}
+                value={formData.destination_city}
               ></Input>
             </div>
             {/* Destination State field */}
@@ -622,6 +668,7 @@ const CreateLoadForm = ({
                 name="destination_state"
                 id="destination_state"
                 onChange={handleChange}
+                value={formData.destination_state}
               ></Input>
             </div>
             {/* Destination Market selects */}
@@ -635,6 +682,7 @@ const CreateLoadForm = ({
                       destination_market_id: value,
                     })
                   }
+                  value={formData.destination_market_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Destination market" />
@@ -713,6 +761,7 @@ const CreateLoadForm = ({
                 name="shipper_name"
                 id="shipper_name"
                 onChange={handleChange}
+                value={formData.shipper_name ?? ""}
               ></Input>
             </div>
             <div>
@@ -721,6 +770,7 @@ const CreateLoadForm = ({
                 name="receiver_name"
                 id="receiver_name"
                 onChange={handleChange}
+                value={formData.receiver_name ?? ""}
               ></Input>
             </div>
             <div>
@@ -729,6 +779,7 @@ const CreateLoadForm = ({
                 name="commodity"
                 id="commodity"
                 onChange={handleChange}
+                value={formData.commodity ?? ""}
               ></Input>
             </div>
             <div>
@@ -738,6 +789,7 @@ const CreateLoadForm = ({
                 name="weight"
                 id="weight"
                 onChange={handleChange}
+                value={formData.weight ?? ""}
               ></Input>
             </div>
             <div className="col-span-2">
@@ -747,6 +799,7 @@ const CreateLoadForm = ({
                 id="dimensions"
                 placeholder="8.5' x 13.5' x 73'"
                 onChange={handleChange}
+                value={formData.dimensions ?? ""}
               ></Input>
             </div>
           </div>
@@ -762,6 +815,7 @@ const CreateLoadForm = ({
                 name="linehaul"
                 id="linehaul"
                 onChange={handleChange}
+                value={formData.linehaul}
               ></Input>
             </div>
             <div>
@@ -771,6 +825,7 @@ const CreateLoadForm = ({
                 name="fuel_surcharge"
                 id="fuel_surcharge"
                 onChange={handleChange}
+                value={formData.fuel_surcharge}
               ></Input>
             </div>
             <div>
@@ -782,6 +837,7 @@ const CreateLoadForm = ({
                     payment_status: value,
                   })
                 }
+                value={formData.payment_status}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Payment Status" />
@@ -808,6 +864,7 @@ const CreateLoadForm = ({
                 name="loaded_miles"
                 id="loaded_miles"
                 onChange={handleChange}
+                value={formData.loaded_miles ?? ""}
               ></Input>
             </div>
             <div>
@@ -817,6 +874,7 @@ const CreateLoadForm = ({
                 name="deadhead_miles"
                 id="deadhead_miles"
                 onChange={handleChange}
+                value={formData.deadhead_miles ?? ""}
               ></Input>
             </div>
             <div>
@@ -826,15 +884,18 @@ const CreateLoadForm = ({
                 name="odometer_start"
                 id="odometer_start"
                 onChange={handleChange}
+                value={formData.odometer_start ?? ""}
               ></Input>
             </div>
           </div>
         </div>
         {error && <p>{error}</p>}
-        <Button onClick={handleSubmit}>Create Load</Button>
+        <Button onClick={handleSubmit}>
+          {mode === "create" ? "Create Load" : "Save Changes"}
+        </Button>
       </div>
     </div>
   );
 };
 
-export default CreateLoadForm;
+export default LoadForm;

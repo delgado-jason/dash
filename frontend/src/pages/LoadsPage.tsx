@@ -13,8 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import CreateLoadForm from "../components/CreateLoadForm";
+import LoadForm from "../components/LoadForm";
 import { Button } from "@/components/ui/button";
+import { createLoad } from "@/services/createLoadService";
 
 const LoadsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -70,10 +71,14 @@ const LoadsPage = () => {
             onClick={() => setShowCreateForm(false)}
           />
           <div className="relative w-[750px] max-h-[90vh] bg-white overflow-y-auto shadow-xl rounded-lg p-6">
-            <CreateLoadForm
+            <LoadForm
+              mode="create"
               brokers={brokers}
               agents={agents}
               markets={markets}
+              onSubmit={async (data) => {
+                await createLoad(data);
+              }}
               onSuccess={handleLoadCreated}
               onBrokerCreated={handleBrokerRefresh}
               onAgentCreated={handleAgentRefresh}

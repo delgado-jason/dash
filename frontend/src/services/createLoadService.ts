@@ -1,6 +1,6 @@
 import api from "./api";
 import type { Load } from "@/types/load";
-import type { CreateLoadInput } from "@/types/createLoadInput";
+import type { CreateLoadInput } from "@/types/LoadInput";
 
 export const createLoad = async (data: CreateLoadInput): Promise<Load> => {
   try {
