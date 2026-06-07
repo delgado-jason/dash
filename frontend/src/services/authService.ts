@@ -9,7 +9,7 @@ const userLogin = async (credentials: Credentials) => {
   const { email, password } = credentials;
 
   try {
-    const response = await api.post("http://localhost:3000/auth/login", {
+    const response = await api.post("/auth/login", {
       email: email,
       password: password,
     });
