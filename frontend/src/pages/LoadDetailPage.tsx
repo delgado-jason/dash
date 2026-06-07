@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useEffect } from "react";
 import { useLoad } from "@/hooks/useLoad";
 import { useAccessorials } from "@/hooks/useAccessorials";
+import { useNavigate } from "react-router-dom";
 
 // Types
 import type { Badge } from "@/types/badge";
@@ -16,6 +17,7 @@ import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
 import { deleteAccessorial } from "@/services/deleteAccessorialService";
 import { patchAccessorial } from "@/services/patchAccessorialService";
+import { deleteLoad } from "@/services/deleteLoadService";
 
 // Components
 import LoadForm from "@/components/LoadForm";
@@ -42,6 +44,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
 
 export const LoadDetailPage = () => {
@@ -65,6 +75,11 @@ export const LoadDetailPage = () => {
   const { brokers } = useBrokers(0);
   const { agents } = useAgents(0);
   const { markets } = useMarkets(0);
+
+  // Delete state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (load) {
@@ -199,6 +214,18 @@ export const LoadDetailPage = () => {
     setEditingId("");
   };
 
+  const handleDeleteLoad = async () => {
+    const loadToDelete = load.load_id;
+    try {
+      await deleteLoad(loadToDelete);
+      navigate("/loads");
+    } catch {
+      throw new Error("Unable to delete load");
+    } finally {
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
     // CONTAINER
     <div className="m-2 font-body">
@@ -252,6 +279,23 @@ export const LoadDetailPage = () => {
           </div>
         </div>
       )}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Load</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {load.load_number}? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleDeleteLoad}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <PageHeader
         title={load.load_number}
         subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
@@ -262,7 +306,7 @@ export const LoadDetailPage = () => {
         actions={
           <>
             <Button onClick={() => setShowEditForm(true)}>Edit</Button>
-            <Button>Delete</Button>
+            <Button onClick={() => setShowDeleteModal(true)}>Delete</Button>
           </>
         }
         metrics={
