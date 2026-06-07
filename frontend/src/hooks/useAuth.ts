@@ -1,4 +1,4 @@
-import userLogin from "@/services/authService";
+import { userLogin, userSignup } from "@/services/authService";
 import { useState } from "react";
 
 interface Credentials {
@@ -19,6 +19,21 @@ const useAuth = () => {
         } else {
           setIsAuthenticated(false);
           return { success: false, error: "Failed to authenticate" };
+        }
+      } catch (er) {
+        setIsAuthenticated(false);
+        return { success: false, error: "Submission failed" };
+      }
+    },
+    signup: async (credentials: Credentials) => {
+      try {
+        const result = await userSignup(credentials);
+        if (result.success) {
+          setIsAuthenticated(true);
+          return { success: true, error: "" };
+        } else {
+          setIsAuthenticated(false);
+          return { success: false, error: result.error };
         }
       } catch (er) {
         setIsAuthenticated(false);

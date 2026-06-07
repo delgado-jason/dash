@@ -5,7 +5,7 @@ interface Credentials {
   password: string;
 }
 
-const userLogin = async (credentials: Credentials) => {
+export const userLogin = async (credentials: Credentials) => {
   const { email, password } = credentials;
 
   try {
@@ -40,4 +40,37 @@ const userLogin = async (credentials: Credentials) => {
   }
 };
 
-export default userLogin;
+export const userSignup = async (credentials: Credentials) => {
+  const { email, password } = credentials;
+
+  try {
+    const response = await api.post("/auth/signup", {
+      email: email,
+      password: password,
+    });
+
+    // Store user_id and token in localStorage
+    localStorage.setItem("user_id", response.data.user.user_id);
+    localStorage.setItem("token", response.data.token);
+
+    const data = {
+      success: true,
+      error: null,
+    };
+    return data;
+  } catch (err) {
+    let errorMsg = "";
+
+    if ((err as any).response) {
+      errorMsg = (err as any).response.data.error;
+    } else {
+      errorMsg = "No response from server";
+    }
+
+    const data = {
+      success: false,
+      error: errorMsg,
+    };
+    return data;
+  }
+};

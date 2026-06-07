@@ -10,11 +10,13 @@ import FuelEntriesPage from "@/pages/FuelEntriesPage";
 import TrucksPage from "@/pages/TrucksPage";
 import DriversPage from "@/pages/DriversPage";
 import { LoadDetailPage } from "@/pages/LoadDetailPage";
+import SignupPage from "@/pages/SignupPage";
 
 const App = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
