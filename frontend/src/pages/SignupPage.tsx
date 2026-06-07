@@ -43,7 +43,7 @@ const SignupPage = () => {
       navigate("/dashboard");
     } else {
       setSubmitting(false);
-      setErrorMessage(result.error);
+      setErrorMessage(result.error ?? "Signup failed");
     }
   };
 
