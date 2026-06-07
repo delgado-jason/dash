@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "migrate": "node scripts/migrate.js",
+    "migrate:dev": "dotenv -e .env.development -- node scripts/migrate.js",
+    "seed:dev": "dotenv -e .env.development -- node scripts/seed.js",
     "debug": "node src/utils/debug.js",
     "seed": "node scripts/seed.js",
     "start": "node src/server.js"
