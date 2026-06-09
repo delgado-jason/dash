@@ -84,6 +84,7 @@ const LoadForm = ({
           deadhead_miles: initialData.deadhead_miles,
           loaded_miles: initialData.loaded_miles,
           odometer_start: initialData.odometer_start ?? null,
+          odometer_end: initialData.odometer_end ?? null,
           payment_status: initialData.payment_status,
         }
       : {
@@ -856,7 +857,7 @@ const LoadForm = ({
         {/* ---- MILEAGE ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Mileage</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="loaded_miles">Loaded Miles</Label>
               <Input
@@ -885,6 +886,16 @@ const LoadForm = ({
                 id="odometer_start"
                 onChange={handleChange}
                 value={formData.odometer_start ?? ""}
+              ></Input>
+            </div>
+            <div>
+              <Label htmlFor="odometer_end">Odometer End</Label>
+              <Input
+                type="number"
+                name="odometer_end"
+                id="odometer_end"
+                onChange={handleChange}
+                value={formData.odometer_end ?? ""}
               ></Input>
             </div>
           </div>

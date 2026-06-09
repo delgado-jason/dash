@@ -22,5 +22,6 @@ export interface LoadInput {
   deadhead_miles?: number | null;
   loaded_miles?: number | null;
   odometer_start?: number | null;
+  odometer_end?: number | null;
   payment_status: string;
 }
