@@ -94,6 +94,7 @@ export const LoadDetailPage = () => {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   };
 
   let totalAccessorialCharges = 0;
