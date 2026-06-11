@@ -44,6 +44,10 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  /* --------------------------------------------------------
+    DTS BRAND TOKENS
+  -----------------------------------------------------------*/
+
   /* DTS Brand Colors */
   --color-steel: #0d1117;
   --color-iron: #1c2333;
@@ -51,7 +55,6 @@
   --color-amber: #e8940a;
   --color-light: #ebedf5;
   --color-muted-text: #9daabb;
-  --color-steel-blue: #8ba7c7;
   --color-amber-dark: #b5700a;
   --color-amber-light: #f5b03a;
 
@@ -59,6 +62,10 @@
   --font-display: "Bebas Neue", sans-serif;
   --font-condensed: "Barlow Condensed", sans-serif;
   --font-body: "Barlow", sans-serif;
+
+  /* --------------------------------------------------------
+    SEMANTIC TOKENS
+  -----------------------------------------------------------*/
 
   /* Status Colors */
   --color-status-positive-bg: #1a3a2a;
@@ -72,13 +79,6 @@
 
   --color-status-neutral-bg: #2d333b;
   --color-status-neutral-text: var(--color-muted-text);
-
-  /* Chart Colors */
-  --color-chart-primary: #e8941a;
-  --color-chart-secondary: #4ade80;
-  --color-chart-tertiary: #60a5fa;
-  --color-chart-negative: #f87171;
-  --color-chart-neutral: #768390;
 }
 
 :root {
