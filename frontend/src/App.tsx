@@ -10,12 +10,14 @@ import FuelEntriesPage from "@/pages/FuelEntriesPage";
 import TrucksPage from "@/pages/TrucksPage";
 import DriversPage from "@/pages/DriversPage";
 import { LoadDetailPage } from "@/pages/LoadDetailPage";
+import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
 
 const App = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/dev/swatches" element={<SwatchesPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
       <Route element={<ProtectedRoute />}>
