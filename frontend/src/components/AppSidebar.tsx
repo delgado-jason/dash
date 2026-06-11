@@ -80,7 +80,9 @@ const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="p-4 text-sm text-muted-foreground">v0.1.0</div>
+        <div className="p-4 text-sm text-muted-foreground">
+          v{__APP_VERSION__}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

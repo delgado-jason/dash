@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/delgado-jason/dash/issues"
   },
-  "homepage": "https://github.com/delgado-jason/dash#readme"
+  "homepage": "https://github.com/delgado-jason/dash#readme",
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
+  }
 }
