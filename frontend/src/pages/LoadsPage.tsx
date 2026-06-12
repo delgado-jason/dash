@@ -70,7 +70,7 @@ const LoadsPage = () => {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowCreateForm(false)}
           />
-          <div className="relative w-[750px] max-h-[90vh] bg-white overflow-y-auto shadow-xl rounded-lg p-6">
+          <div className="relative w-[750px] max-h-[90vh] bg-card text-foreground overflow-y-auto shadow-xl rounded-lg p-6">
             <LoadForm
               mode="create"
               brokers={brokers}
@@ -90,52 +90,54 @@ const LoadsPage = () => {
       )}
 
       <Button onClick={() => setShowCreateForm(true)}>Create Load</Button>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Load #</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Broker</TableHead>
-            <TableHead>Origin</TableHead>
-            <TableHead>Destination</TableHead>
-            <TableHead>Pickup Date</TableHead>
-            <TableHead>Linehaul</TableHead>
-            <TableHead>Payment Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {loads.map((load) => (
-            <TableRow key={load.load_id}>
-              <TableCell className="text-blue-600 hover:underline cursor-pointer">
-                <Link to={`/loads/${load.load_id}`}>{load.load_number}</Link>
-              </TableCell>
-              <TableCell>{load.load_status}</TableCell>
-              <TableCell>{load.broker}</TableCell>
-              <TableCell>
-                {load.origin_city + ", " + load.origin_state}
-              </TableCell>
-              <TableCell>
-                {load.destination_city + ", " + load.destination_state}
-              </TableCell>
-              <TableCell>
-                {new Date(load.pickup_date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  timeZone: "UTC",
-                })}
-              </TableCell>
-              <TableCell>
-                {Number(load.linehaul).toLocaleString("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                })}
-              </TableCell>
-              <TableCell>{load.payment_status}</TableCell>
+      <div className="bg-iron mt-4 p-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Load #</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Broker</TableHead>
+              <TableHead>Origin</TableHead>
+              <TableHead>Destination</TableHead>
+              <TableHead>Pickup Date</TableHead>
+              <TableHead>Linehaul</TableHead>
+              <TableHead>Payment Status</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {loads.map((load) => (
+              <TableRow key={load.load_id}>
+                <TableCell className="text-accent hover:underline cursor-pointer">
+                  <Link to={`/loads/${load.load_id}`}>{load.load_number}</Link>
+                </TableCell>
+                <TableCell>{load.load_status}</TableCell>
+                <TableCell>{load.broker}</TableCell>
+                <TableCell>
+                  {load.origin_city + ", " + load.origin_state}
+                </TableCell>
+                <TableCell>
+                  {load.destination_city + ", " + load.destination_state}
+                </TableCell>
+                <TableCell>
+                  {new Date(load.pickup_date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
+                </TableCell>
+                <TableCell>
+                  {Number(load.linehaul).toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </TableCell>
+                <TableCell>{load.payment_status}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

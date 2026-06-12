@@ -18,7 +18,7 @@ export const PageHeader = ({
   metrics,
 }: PageHeaderProps) => {
   return (
-    <div className="p-4 bg-steel text-light">
+    <div className="p-4 bg-iron text-light">
       {/* LOAD IDENTIFIERS */}
       <div id="top-row" className="flex justify-between content-center">
         <div id="primary-identifier" className="text-2xl font-display">

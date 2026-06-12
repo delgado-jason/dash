@@ -236,7 +236,7 @@ export const LoadDetailPage = () => {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowEditForm(false)}
           />
-          <div className="relative w-[750px] max-h-[90vh] bg-white overflow-y-auto shadow-xl rounded-lg p-6">
+          <div className="relative w-[750px] max-h-[90vh] bg-card text-foreground overflow-y-auto shadow-xl rounded-lg p-6">
             <LoadForm
               mode="edit"
               initialData={{
@@ -306,8 +306,18 @@ export const LoadDetailPage = () => {
         ]}
         actions={
           <>
-            <Button onClick={() => setShowEditForm(true)}>Edit</Button>
-            <Button onClick={() => setShowDeleteModal(true)}>Delete</Button>
+            <Button
+              className="bg-amber-dark mr-2"
+              onClick={() => setShowEditForm(true)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              Delete
+            </Button>
           </>
         }
         metrics={
@@ -346,21 +356,21 @@ export const LoadDetailPage = () => {
       />
       <div className="grid grid-cols-4">
         {/* MAIN CONTENT */}
-        <div className="p-2 col-span-3 bg-iron text-light">
+        <div className="p-2 col-span-3 bg-plate text-foreground">
           <Tabs defaultValue="details">
             <TabsList
               variant="line"
-              className="w-full justify-start border-b border-plate"
+              className="w-full justify-start border-b border-iron"
             >
               <TabsTrigger
                 value="details"
-                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
+                className="text-muted-text hover:text-foreground data-[state=active]:text-amber [&_after]:bg-amber"
               >
                 Details
               </TabsTrigger>
               <TabsTrigger
                 value="accessorials"
-                className="text-muted-text hover:text-light data-[state=active]:text-amber [&_after]:bg-amber"
+                className="text-muted-text hover:text-foreground data-[state=active]:text-amber [&_after]:bg-amber"
               >
                 Accessorials
               </TabsTrigger>
@@ -369,7 +379,7 @@ export const LoadDetailPage = () => {
             <TabsContent value="details">
               <div className="grid grid-cols-2 pl-4 mt-4 mb-8 gap-y-8">
                 {/* ROUTE CONTENT */}
-                <div className="border-b-2 border-plate pb-4">
+                <div className="border-b-2 border-iron pb-4">
                   <div>
                     <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
                       Route
@@ -379,46 +389,48 @@ export const LoadDetailPage = () => {
                     <div className="w-[10px] self-center mr-6">
                       <div
                         id="circle"
-                        className="w-[8px] h-[8px] bg-light rounded-full"
+                        className="w-[8px] h-[8px] bg-steel rounded-full"
                       ></div>
                     </div>
-                    <div className="ml-6 text-sm text-light font-bold">
+                    <div className="ml-6 text-sm text-foreground font-bold">
                       <p>
                         {load.origin_city}, {load.origin_state}
                       </p>
-                      <p className="text-xs text-light">{load.origin_market}</p>
+                      <p className="text-xs text-foreground">
+                        {load.origin_market}
+                      </p>
                     </div>
                   </div>
-                  <div className="border-l-2 border-plate h-[15px] ml-[3px]"></div>
+                  <div className="border-l-2 border-iron h-[15px] ml-[3px]"></div>
                   <div className="flex content-center">
                     <div className="w-[10px] self-center mr-6">
                       <div
                         id="circle"
-                        className="w-[8px] h-[8px] bg-light rounded-full"
+                        className="w-[8px] h-[8px] bg-steel rounded-full"
                       ></div>
                     </div>
-                    <div className="ml-6 text-sm text-light font-bold">
+                    <div className="ml-6 text-sm text-foreground font-bold">
                       <p>
                         {load.destination_city}, {load.destination_state}
                       </p>
-                      <p className="text-xs text-light">
+                      <p className="text-xs text-foreground">
                         {load.delivery_market}
                       </p>
                     </div>
                   </div>
                 </div>
                 {/* CARGO CONTENT */}
-                <div className="border-b-2 border-plate">
+                <div className="border-b-2 border-iron">
                   <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
                     Cargo
                   </p>
                   <div className="flex gap-6">
-                    <div className="text-sm text-light">
+                    <div className="text-sm text-foreground">
                       <p className="mb-1 font-bold">Commodity</p>
                       <p className="mb-1 font-bold">Weight</p>
                       <p className="mb-1 font-bold">Dimensions</p>
                     </div>
-                    <div className="text-sm text-light">
+                    <div className="text-sm text-foreground">
                       <p className="mb-1">{load.commodity}</p>
                       <p className="mb-1">{load.weight}</p>
                       <p className="mb-1">
@@ -439,13 +451,13 @@ export const LoadDetailPage = () => {
                         <p className="text-muted-text text-sm">Delivery</p>
                       </div>
                       <div>
-                        <p className="text-light mb-2 text-sm">
+                        <p className="text-foreground mb-2 text-sm">
                           {new Date(load.pickup_date).toLocaleDateString(
                             "en-US",
                             dateOptions,
                           )}
                         </p>
-                        <p className="text-light text-sm">
+                        <p className="text-foreground text-sm">
                           {load.delivery_date
                             ? new Date(load.delivery_date).toLocaleDateString(
                                 "en-US",
@@ -474,16 +486,16 @@ export const LoadDetailPage = () => {
                       <p className="text-sm text-muted-text">Odometer End</p>
                     </div>
                     <div>
-                      <p className="text-sm text-light mb-2">
+                      <p className="text-sm text-foreground mb-2">
                         {load.loaded_miles} mi
                       </p>
-                      <p className="text-sm text-light mb-2">
+                      <p className="text-sm text-foreground mb-2">
                         {load.deadhead_miles} mi
                       </p>
-                      <p className="text-sm text-light mb-2">
+                      <p className="text-sm text-foreground mb-2">
                         {load.odometer_start?.toLocaleString()}
                       </p>
-                      <p className="text-sm text-light">
+                      <p className="text-sm text-foreground">
                         {load.odometer_end?.toLocaleString()}
                       </p>
                     </div>
@@ -501,10 +513,10 @@ export const LoadDetailPage = () => {
                         <p className="text-muted-text text-sm">Receiver</p>
                       </div>
                       <div>
-                        <p className="text-light mb-2 text-sm">
+                        <p className="text-foreground mb-2 text-sm">
                           {load.shipper_name}
                         </p>
-                        <p className="text-light text-sm">
+                        <p className="text-foreground text-sm">
                           {load.receiver_name}
                         </p>
                       </div>
@@ -526,7 +538,7 @@ export const LoadDetailPage = () => {
                         <p className="text-muted-text text-sm">Fuel Price</p>
                       </div>
                       <div>
-                        <p className="text-light mb-2 text-sm">
+                        <p className="text-foreground mb-2 text-sm">
                           {(
                             ((load.loaded_miles + load.deadhead_miles) / 6.5) *
                             5.5
@@ -535,8 +547,10 @@ export const LoadDetailPage = () => {
                             currency: "USD",
                           })}
                         </p>
-                        <p className="text-light text-sm mb-2">6.5</p>
-                        <p className="text-light text-sm mb-2">$5.50/gal</p>
+                        <p className="text-foreground text-sm mb-2">6.5</p>
+                        <p className="text-foreground text-sm mb-2">
+                          $5.50/gal
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -554,7 +568,7 @@ export const LoadDetailPage = () => {
                   </p>
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-b-2 border-plate">
+                      <TableRow className="border-b-2 border-iron">
                         <TableHead className="text-muted-text text-sm pl-4">
                           Type
                         </TableHead>
@@ -570,9 +584,9 @@ export const LoadDetailPage = () => {
                       {accessorials.map((accessorial) => (
                         <TableRow
                           key={accessorial.accessorial_id}
-                          className="border-b-2 border-plate"
+                          className="border-b-2 border-iron"
                         >
-                          <TableCell className="text-sm text-light pl-4">
+                          <TableCell className="text-sm text-foreground pl-4">
                             {editingId === accessorial.accessorial_id ? (
                               <input
                                 id="edit-accessorial-type"
@@ -615,7 +629,7 @@ export const LoadDetailPage = () => {
                               ) : (
                                 <Pencil
                                   size={14}
-                                  className="text-muted-text hover:text-light cursor-pointer"
+                                  className="text-muted-text hover:text-foreground cursor-pointer"
                                   onClick={() =>
                                     handleEditAccessorial(
                                       accessorial.accessorial_id,
@@ -632,7 +646,7 @@ export const LoadDetailPage = () => {
                               ) : (
                                 <Trash2
                                   size={14}
-                                  className="text-red-400 hover:text-red-300 cursor-pointer"
+                                  className="text-red-400 hover:text-destructive cursor-pointer"
                                   onClick={() =>
                                     handleDeleteAccessorial(
                                       accessorial.accessorial_id,
@@ -646,11 +660,11 @@ export const LoadDetailPage = () => {
                       ))}
                     </TableBody>
                   </Table>
-                  <div className="grid grid-cols-3 border-t-2 border-plate">
-                    <p className="text-sm text-light pl-4 pt-2">
+                  <div className="grid grid-cols-3 border-t-2 border-iron">
+                    <p className="text-sm text-foreground pl-4 pt-2">
                       Total Accessorials
                     </p>
-                    <p className="text-sm text-light pt-2">
+                    <p className="text-sm text-foreground pt-2">
                       {totalAccessorialCharges.toLocaleString("en-US", {
                         style: "currency",
                         currency: "USD",
@@ -660,7 +674,7 @@ export const LoadDetailPage = () => {
                 </div>
               )}
               <div className="flex justify-center mt-8">
-                <div className="bg-steel p-6 w-3/4 self-center rounded-md">
+                <div className="bg-iron p-6 w-3/4 self-center rounded-md">
                   <div className="grid grid-cols-3 gap-x-6 gap-y-2">
                     <p className="text-xs text-muted-text">Type</p>
                     <p className="text-xs text-muted-text">Amount</p>
@@ -682,7 +696,7 @@ export const LoadDetailPage = () => {
                       onChange={(e) => setNewAccessorialAmount(e.target.value)}
                     />
                     <Button
-                      className="bg-steel border-1 border-light"
+                      className="bg-primary border-1 border-iron"
                       onClick={handleAddAccessorial}
                     >
                       Add
@@ -694,16 +708,16 @@ export const LoadDetailPage = () => {
           </Tabs>
         </div>
         {/* SIDEBAR */}
-        <div className="p-2 bg-iron border-l-1 border-plate text-light">
-          <div className="border-b-1 border-plate pl-2 pr-2 pb-4">
+        <div className="p-2 bg-plate border-l-1 border-iron text-foreground">
+          <div className="border-b-1 border-iron pl-2 pr-2 pb-4">
             <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
               Broker & Agent
             </p>
-            <p className="text-sm text-light">{load.broker}</p>
+            <p className="text-sm text-foreground">{load.broker}</p>
             <p className="text-sm text-muted-text">{load.agent}</p>
             <p className="text-sm text-muted-text">{load.agent_email}</p>
           </div>
-          <div className="border-b-1 border-plate pl-2 pr-2">
+          <div className="border-b-1 border-iron pl-2 pr-2">
             <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
               Load Status
             </p>
@@ -743,7 +757,7 @@ export const LoadDetailPage = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="border-b-1 border-plate pl-2 pr-2 pb-4">
+          <div className="border-b-1 border-iron pl-2 pr-2 pb-4">
             <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
               Revenue
             </p>
@@ -754,19 +768,19 @@ export const LoadDetailPage = () => {
                 <p className="text-sm text-muted-text">Accessorials</p>
               </div>
               <div>
-                <p className="text-sm text-light">
+                <p className="text-sm text-foreground">
                   {Number(load.linehaul).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                   })}
                 </p>
-                <p className="text-sm text-light">
+                <p className="text-sm text-foreground">
                   {Number(load.fuel_surcharge).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                   })}
                 </p>
-                <p className="text-sm text-light">
+                <p className="text-sm text-foreground">
                   {Number(load.total_accessorials).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
@@ -777,10 +791,10 @@ export const LoadDetailPage = () => {
           </div>
           <div className="pt-2 pl-2 pr-2 pb-4 grid grid-cols-2">
             <div>
-              <p className="text-sm text-light">Total</p>
+              <p className="text-sm text-foreground">Total</p>
             </div>
             <div>
-              <p className="text-light">
+              <p className="text-foreground">
                 {(
                   Number(load.total_accessorials) +
                   Number(load.linehaul) +
@@ -794,7 +808,7 @@ export const LoadDetailPage = () => {
           </div>
           <Button
             disabled={isSaving}
-            className="border-2 border-amber text-light hover:cursor-pointer hover:scale-105"
+            className="border-2 border-amber bg-primary text-steel hover:cursor-pointer hover:scale-105"
             onClick={handleSaveChanges}
           >
             {isSaving ? "...Saving" : "Save Changes"}
