@@ -44,7 +44,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-slate-200">
+    <div className="flex justify-center items-center h-screen bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Login to your account</CardTitle>
@@ -82,7 +82,7 @@ const LoginPage = () => {
               </div>
               <Button
                 type="submit"
-                className="w-full bg-blue-500"
+                className="w-full bg-primary text-primary-foreground"
                 disabled={submitting ? true : false}
               >
                 {submitting ? "Submitting" : "Login"}

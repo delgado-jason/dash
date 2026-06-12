@@ -15,7 +15,9 @@ const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="p-4 font-bold text-blue-100 text-xl">Dash</div>
+        <div className="p-4 font-bold text-sidebar-foreground text-xl">
+          Dash
+        </div>
       </SidebarHeader>
 
       <SidebarContent>
@@ -26,7 +28,10 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
-                <Link to="/dashboard" className="text-blue-100 font-semibold">
+                <Link
+                  to="/dashboard"
+                  className="text-sidebar-primary font-semibold"
+                >
                   Dashboard
                 </Link>
               </SidebarMenuButton>
@@ -37,7 +42,7 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
-                <Link to="/loads" className="text-slate-400">
+                <Link to="/loads" className="text-sidebar-foreground">
                   Loads
                 </Link>
               </SidebarMenuButton>
@@ -48,7 +53,7 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
-                <Link to="/fuel-entries" className="text-slate-400">
+                <Link to="/fuel-entries" className="text-sidebar-foreground">
                   Fuel Entries
                 </Link>
               </SidebarMenuButton>
@@ -59,7 +64,7 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
-                <Link to="/trucks" className="text-slate-400">
+                <Link to="/trucks" className="text-sidebar-foreground">
                   Trucks
                 </Link>
               </SidebarMenuButton>
@@ -70,7 +75,7 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
-                <Link to="/drivers" className="text-slate-400">
+                <Link to="/drivers" className="text-sidebar-foreground">
                   Drivers
                 </Link>
               </SidebarMenuButton>
