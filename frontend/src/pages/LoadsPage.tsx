@@ -101,7 +101,7 @@ const LoadsPage = () => {
               <TableHead>Origin</TableHead>
               <TableHead>Destination</TableHead>
               <TableHead>Pickup Date</TableHead>
-              <TableHead>Linehaul</TableHead>
+              <TableHead>Gross Revenue</TableHead>
               <TableHead>Payment Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,7 +130,11 @@ const LoadsPage = () => {
                   })}
                 </TableCell>
                 <TableCell>
-                  {Number(load.linehaul).toLocaleString("en-US", {
+                  {(
+                    Number(load.linehaul) +
+                    Number(load.fuel_surcharge) +
+                    Number(load.total_accessorials)
+                  ).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                   })}
