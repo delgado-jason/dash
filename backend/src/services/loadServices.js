@@ -31,6 +31,10 @@ export async function getLoads(user_id) {
             loaded_miles,
             linehaul,
             fuel_surcharge,
+            (SELECT COALESCE(SUM(amount), 0)
+              FROM accessorials
+              WHERE load_id = loads.load_id
+            ) AS total_accessorials,
             commodity,
             weight,
             dimensions,
