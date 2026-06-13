@@ -1,0 +1,1 @@
+UPDATE loads SET payment_status = 'cancelled' WHERE load_status = 'cancelled';

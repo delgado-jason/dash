@@ -753,6 +753,7 @@ export const LoadDetailPage = () => {
                   <SelectItem value="unpaid">Unpaid</SelectItem>
                   <SelectItem value="invoiced">Invoiced</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
