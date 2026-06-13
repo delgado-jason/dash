@@ -124,7 +124,7 @@ const rules = {
     }
   },
   payment_status: (value, errors) => {
-    const paymentStatusValues = ["unpaid", "invoiced", "paid"];
+    const paymentStatusValues = ["unpaid", "invoiced", "paid", "cancelled"];
 
     if (!isValidType("string", value)) {
       errors.push("payment_status must be a string");
