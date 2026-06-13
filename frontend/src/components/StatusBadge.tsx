@@ -4,10 +4,10 @@ export const StatusBadge = ({ value }: { value: string }) => {
   const status = {
     delivered: ["--color-status-positive-bg", "--color-status-positive-text"],
     paid: ["--color-status-positive-bg", "--color-status-positive-text"],
-    cancelled: ["--color-status-negative-bg", "--color-status-negative-text"],
+    cancelled: ["--color-status-neutral-bg", "--color-status-neutral-text"],
     tonu: ["--color-status-negative-bg", "--color-status-negative-text"],
     booked: ["--color-status-neutral-bg", "--color-status-neutral-text"],
-    in_transit: ["--color-status-neutral-bg", "--color-status-neutral-text"],
+    in_transit: ["--color-status-aware-bg", "--color-amber-light"],
     unpaid: ["--color-status-aware-bg", "--color-status-aware-text"],
     invoiced: ["--color-status-aware-bg", "--color-status-aware-text"],
     est: ["--color-status-aware-bg", "--color-status-aware-text"],
@@ -22,9 +22,8 @@ export const StatusBadge = ({ value }: { value: string }) => {
 
   return (
     <Badge
-      variant="outline"
       style={{
-        borderColor: `var(${colors[0]})`,
+        backgroundColor: `var(${colors[0]})`,
         color: `var(${colors[1]})`,
       }}
     >

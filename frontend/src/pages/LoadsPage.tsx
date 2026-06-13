@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StatusBadge } from "@/components/StatusBadge";
 import LoadForm from "../components/LoadForm";
 import { Button } from "@/components/ui/button";
 import { createLoad } from "@/services/createLoadService";
@@ -107,10 +108,12 @@ const LoadsPage = () => {
           <TableBody>
             {loads.map((load) => (
               <TableRow key={load.load_id}>
-                <TableCell className="text-accent hover:underline cursor-pointer">
+                <TableCell className="text-foreground hover:text-primary hover:underline cursor-pointer">
                   <Link to={`/loads/${load.load_id}`}>{load.load_number}</Link>
                 </TableCell>
-                <TableCell>{load.load_status}</TableCell>
+                <TableCell>
+                  <StatusBadge value={load.load_status} />
+                </TableCell>
                 <TableCell>{load.broker}</TableCell>
                 <TableCell>
                   {load.origin_city + ", " + load.origin_state}
@@ -132,7 +135,9 @@ const LoadsPage = () => {
                     currency: "USD",
                   })}
                 </TableCell>
-                <TableCell>{load.payment_status}</TableCell>
+                <TableCell>
+                  <StatusBadge value={load.payment_status} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
