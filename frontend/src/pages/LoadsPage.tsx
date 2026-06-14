@@ -133,7 +133,14 @@ const LoadsPage = () => {
           </TableHeader>
           <TableBody>
             {loads.map((load) => (
-              <TableRow key={load.load_id}>
+              <TableRow
+                key={load.load_id}
+                className={
+                  load.load_status === "in_transit"
+                    ? "border-l-4 border-l-primary"
+                    : ""
+                }
+              >
                 <TableCell className="text-foreground hover:text-primary hover:underline cursor-pointer">
                   <Link to={`/loads/${load.load_id}`}>{load.load_number}</Link>
                 </TableCell>
