@@ -14,9 +14,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
+import { MetricStrip } from "@/components/MetricStrip";
 import LoadForm from "../components/LoadForm";
 import { Button } from "@/components/ui/button";
 import { createLoad } from "@/services/createLoadService";
+
+import {
+  getBookedCount,
+  getOutstandingTotal,
+  deliveredThisMonth,
+} from "@/lib/metrics/loads";
 
 const LoadsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -89,8 +96,27 @@ const LoadsPage = () => {
           </div>
         </div>
       )}
-
       <Button onClick={() => setShowCreateForm(true)}>Create Load</Button>
+      {/* METRIC STRIP */}
+      <MetricStrip
+        cards={[
+          {
+            label: "Delivered this month",
+            value: deliveredThisMonth(loads, new Date()).length,
+            format: "number",
+          },
+          {
+            label: "Booked",
+            value: getBookedCount(loads),
+            format: "number",
+          },
+          {
+            label: "Outstanding Revenue",
+            value: getOutstandingTotal(loads),
+            format: "currency",
+          },
+        ]}
+      />
       <div className="bg-iron mt-4 p-6">
         <Table>
           <TableHeader>
