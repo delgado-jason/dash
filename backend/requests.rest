@@ -25,7 +25,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwM
 
 ### GET ALL AGENTS
 GET http://localhost:3000/agents
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzc2NTYzNTI1LCJleHAiOjE3NzY1NjcxMjV9.xyutv-WJePpyv5uPxjLSF_lW23idQrWv9YSkWxOkLjQ
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxNDkyNTgzLCJleHAiOjE3ODE0OTYxODN9.ZOWU7Xa-pJY-GuXso1rl1K9AQ80exjAo9Yagh__ThDY
 
 ### GET ALL MARKETS
 GET http://localhost:3000/markets
@@ -45,4 +45,44 @@ Content-Type: application/json
   "preferred_contact": "email",
   "rating": null,
   "notes": null
+}
+
+### TEST 1 — rating change WITH reason+initials → should update agent AND create history row
+PATCH http://localhost:3000/agents/e0000000-0000-0000-0000-000000000003
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxNDkyNTgzLCJleHAiOjE3ODE0OTYxODN9.ZOWU7Xa-pJY-GuXso1rl1K9AQ80exjAo9Yagh__ThDY
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "reason": "great loads, pays fast",
+  "changed_by": "JD"
+}
+
+### TEST 2 — rating set to SAME value → updates, but NO history row
+PATCH http://localhost:3000/agents/e0000000-0000-0000-0000-000000000003
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxNDkyNTgzLCJleHAiOjE3ODE0OTYxODN9.ZOWU7Xa-pJY-GuXso1rl1K9AQ80exjAo9Yagh__ThDY
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "reason": "should not log",
+  "changed_by": "JD"
+}
+
+### TEST 3 — notes only, no rating → updates, no history, no reason required
+PATCH http://localhost:3000/agents/e0000000-0000-0000-0000-000000000003
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxNDkyNTgzLCJleHAiOjE3ODE0OTYxODN9.ZOWU7Xa-pJY-GuXso1rl1K9AQ80exjAo9Yagh__ThDY
+Content-Type: application/json
+
+{
+  "notes": "prefers email, slow to confirm"
+}
+
+### TEST 4 — rating change WITHOUT reason/initials → 400, transaction ROLLS BACK
+PATCH http://localhost:3000/agents/e0000000-0000-0000-0000-000000000003
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxNDkyNTgzLCJleHAiOjE3ODE0OTYxODN9.ZOWU7Xa-pJY-GuXso1rl1K9AQ80exjAo9Yagh__ThDY
+Content-Type: application/json
+
+{
+  "rating": 2
 }
