@@ -79,6 +79,9 @@
 
   --color-status-neutral-bg: #2d333b;
   --color-status-neutral-text: var(--color-muted-text);
+
+  --color-status-info-bg: #1a2a3a;
+  --color-status-info-text: #60a5fa;
 }
 
 /* --------------------------------------------------------

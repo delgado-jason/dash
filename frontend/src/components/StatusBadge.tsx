@@ -6,7 +6,7 @@ export const StatusBadge = ({ value }: { value: string }) => {
     paid: ["--color-status-positive-bg", "--color-status-positive-text"],
     cancelled: ["--color-status-neutral-bg", "--color-status-neutral-text"],
     tonu: ["--color-status-negative-bg", "--color-status-negative-text"],
-    booked: ["--color-status-neutral-bg", "--color-status-neutral-text"],
+    booked: ["--color-status-info-bg", "--color-status-info-text"],
     in_transit: ["--color-status-aware-bg", "--color-amber-light"],
     unpaid: ["--color-status-aware-bg", "--color-status-aware-text"],
     invoiced: ["--color-status-aware-bg", "--color-status-aware-text"],
