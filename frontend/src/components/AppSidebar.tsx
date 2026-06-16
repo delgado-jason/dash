@@ -9,9 +9,20 @@ import {
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
 
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+
+const navItems = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/loads", label: "Loads" },
+  { to: "/agents", label: "Agents" },
+  { to: "/fuel-entries", label: "Fuel Entries" },
+  // { to: "/trucks", label: "Trucks" },
+  // { to: "/drivers", label: "Drivers" },
+];
 
 const AppSidebar = () => {
+  const location = useLocation();
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -23,74 +34,31 @@ const AppSidebar = () => {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
-                <Link
-                  to="/dashboard"
-                  className="text-sidebar-primary font-semibold"
-                >
-                  Dashboard
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {navItems.map((item) => {
+              const isActive =
+                location.pathname === item.to ||
+                location.pathname.startsWith(item.to + "/");
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
-                <Link to="/loads" className="text-sidebar-foreground">
-                  Loads
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
-                <Link to="/agents" className="text-sidebar-foreground">
-                  Agents
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
-                <Link to="/fuel-entries" className="text-sidebar-foreground">
-                  Fuel Entries
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
-                <Link to="/trucks" className="text-sidebar-foreground">
-                  Trucks
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="!bg-transparent hover:!bg-transparent"
-              >
-                <Link to="/drivers" className="text-sidebar-foreground">
-                  Drivers
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+              return (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    asChild
+                    className="!bg-transparent hover:!bg-transparent"
+                  >
+                    <Link
+                      to={item.to}
+                      className={
+                        isActive
+                          ? "!text-sidebar-primary font-semibold"
+                          : "!text-sidebar-foreground"
+                      }
+                    >
+                      {item.label}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
