@@ -130,6 +130,9 @@ export async function patchAgent(user_id, agent_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!agent_id) throw new ValidationError("Missing agent_id");
 
+  // Pull audit fields off — they aren't agent columns
+  const { reason, changed_by, ...agentData } = data;
+
   // Reject unknown fields
   const allowedFields = [
     "broker_id",
@@ -143,14 +146,14 @@ export async function patchAgent(user_id, agent_id, data) {
   ];
 
   // Throw error if data contains invalid field(s)
-  for (const field in data) {
+  for (const field in agentData) {
     if (!allowedFields.includes(field))
       throw new ValidationError(`${field} not allowed`);
   }
   // ---- VALIDATION LOGIC ----
 
   // Must pass validation checks before query request
-  const errors = validateAgentPatch(data);
+  const errors = validateAgentPatch(agentData);
 
   // if errors, reject request
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
@@ -161,9 +164,9 @@ export async function patchAgent(user_id, agent_id, data) {
 
   // Filter allowed fields
   for (const field of allowedFields) {
-    if (data[field] !== undefined) {
+    if (agentData[field] !== undefined) {
       updates.push(`${field} = $${index}`);
-      values.push(data[field]);
+      values.push(agentData[field]);
       index++;
     }
   }
@@ -176,23 +179,61 @@ export async function patchAgent(user_id, agent_id, data) {
   // Always update timestamp
   updates.push(`updated_at = NOW()`);
 
-  const query = `
+  const ratingIsChanging = agentData.rating !== undefined;
+
+  // ---- Transaction ----
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // If rating is in the patch, read the old value FIRST (same client!)
+    let oldRating = null;
+    if (ratingIsChanging) {
+      const current = await client.query(
+        `SELECT rating FROM agents WHERE user_id=$1 AND agent_id=$2`,
+        [user_id, agent_id],
+      );
+      if (current.rowCount === 0) throw new NotFoundError("Agent not found");
+      oldRating = current.rows[0].rating;
+    }
+
+    // The agent UPDATE
+    const query = `
         UPDATE agents
         SET ${updates.join(", ")}
         WHERE user_id = $${index}
           AND agent_id = $${index + 1}
         RETURNING *;
       `;
+    const updateValues = [...values, user_id, agent_id];
+    const result = await client.query(query, updateValues);
+    if (result.rowCount === 0) throw new NotFoundError("Agent not found");
 
-  values.push(user_id, agent_id);
-
-  const result = await db.query(query, values);
-
-  if (result.rowCount === 0) {
-    throw new NotFoundError("Agent not found");
+    // Conditionally insert history — only if rating ACTUALLY changed
+    if (ratingIsChanging && agentData.rating !== oldRating) {
+      if (!reason || !changed_by) {
+        throw new ValidationError(
+          "Rating changes require a reason and initials",
+        );
+      }
+      const historyResult = await client.query(
+        `INSERT INTO agent_rating_history(agent_id, old_rating, new_rating, reason, changed_by)
+         VALUES($1, $2, $3, $4, $5)
+         RETURNING *;
+        `,
+        [agent_id, oldRating, agentData.rating, reason, changed_by],
+      );
+      if (historyResult.rowCount === 0)
+        throw new Error("Unable to record rating change");
+    }
+    await client.query("COMMIT");
+    return result.rows[0];
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
   }
-
-  return result.rows[0];
 }
 
 // ---- DELETE AGENT SERVICE ----

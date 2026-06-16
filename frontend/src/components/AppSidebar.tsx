@@ -53,6 +53,17 @@ const AppSidebar = () => {
                 asChild
                 className="!bg-transparent hover:!bg-transparent"
               >
+                <Link to="/agents" className="text-sidebar-foreground">
+                  Agents
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="!bg-transparent hover:!bg-transparent"
+              >
                 <Link to="/fuel-entries" className="text-sidebar-foreground">
                   Fuel Entries
                 </Link>
