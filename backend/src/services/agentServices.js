@@ -68,11 +68,51 @@ export async function getAgent(user_id, agent_id) {
   if (agentResult.rowCount === 0) throw new NotFoundError("Agent not found");
 
   const loadsQuery = `
-    SELECT *
-    FROM loads
-    WHERE loads.user_id = $1
-    AND loads.agent_id = $2
-    ORDER BY delivery_date DESC;
+    SELECT
+            load_id,
+            load_number,
+            load_type,
+            load_status,
+            brokers.broker_name AS broker,
+            agents.first_name || ' ' || agents.last_name AS agent,
+            shipper_name,
+            pickup_date,
+            origin_city,
+            origin_state,
+            origin_market.market_name AS origin_market,
+            receiver_name,
+            delivery_date,
+            destination_city,
+            destination_state,
+            destination_market.market_name AS delivery_market,
+            deadhead_miles,
+            loaded_miles,
+            linehaul,
+            fuel_surcharge,
+            (SELECT COALESCE(SUM(amount), 0)
+              FROM accessorials
+              WHERE load_id = loads.load_id
+            ) AS total_accessorials,
+            commodity,
+            weight,
+            dimensions,
+            odometer_start,
+            odometer_end,
+            payment_status,
+            loads.created_at AS created_at,
+            loads.updated_at AS updated_at
+        FROM loads
+        JOIN brokers
+        ON loads.broker_id = brokers.broker_id
+        JOIN agents
+        ON loads.agent_id = agents.agent_id
+        JOIN markets AS origin_market
+        ON loads.origin_market_id = origin_market.market_id
+        JOIN markets AS destination_market
+        ON loads.destination_market_id = destination_market.market_id
+        WHERE loads.user_id = $1
+        AND agents.agent_id = $2
+        ORDER BY delivery_date DESC;
   `;
 
   const loadsResult = await db.query(loadsQuery, [user_id, agent_id]);
