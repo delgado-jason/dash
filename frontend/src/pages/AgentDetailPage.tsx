@@ -14,7 +14,7 @@ const AgentDetailPage = () => {
   // ---- REACT STATE ----
   const [refreshKey, setRefreshKey] = useState(0);
   const [showRatingForm, setShowRatingForm] = useState(false);
-  const { agent, isLoading, error } = useAgent(refreshKey);
+  const { agent, loads, isLoading, error } = useAgent(refreshKey);
 
   if (!agent) {
     return (
@@ -91,7 +91,9 @@ const AgentDetailPage = () => {
       </div>
       <div className="grid grid-cols-4 bg-plate">
         {/* Main Content Area */}
-        <div className="col-span-3">Main content</div>
+        <div className="col-span-3">
+          <p>Loads: {loads.length}</p>
+        </div>
         {/* Sidebar Area */}
         <div className="col-span-1 bg-plate p-4 border-l-1 border-iron text-foreground">
           <h2 className="text-md mt-2 mb-2 uppercase text-muted-text tracking-wider">
