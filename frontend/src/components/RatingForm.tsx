@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Agent } from "@/types/agent";
 import type { AgentPatchPayload } from "@/types/agentPatchPayload";
 import { patchAgent } from "@/services/patchAgentService";
+import { RATING_OPTIONS } from "@/lib/metrics/ratingLabels";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,15 +22,6 @@ interface RatingFormProps {
   onSuccess: () => void;
   onClose: () => void;
 }
-
-// Semantic rating labels from the DTS rating system doc
-const RATING_OPTIONS = [
-  { value: 5, label: "5 — Call first" },
-  { value: 4, label: "4 — Good" },
-  { value: 3, label: "3 — Default" },
-  { value: 2, label: "2 — Avoid" },
-  { value: 1, label: "1 — Blacklist" },
-];
 
 const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
   // --- STATE ---

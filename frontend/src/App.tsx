@@ -7,6 +7,7 @@ import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
 import AgentsPage from "@/pages/AgentsPage";
+import AgentDetailPage from "./pages/AgentDetailPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
 import TrucksPage from "@/pages/TrucksPage";
 import DriversPage from "@/pages/DriversPage";
@@ -27,6 +28,7 @@ const App = () => {
           <Route path="/loads" element={<LoadsPage />} />
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />
           <Route path="/trucks" element={<TrucksPage />} />
           <Route path="/drivers" element={<DriversPage />} />

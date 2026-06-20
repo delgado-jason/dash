@@ -43,16 +43,16 @@ export async function getAgent(user_id, agent_id) {
 
   const query = `
         SELECT
-            agent_id,
+            agents.agent_id AS agent_id,
             brokers.broker_id AS broker_id,
             brokers.broker_name AS broker_name,
-            first_name,
-            last_name,
-            phone,
-            email,
-            preferred_contact,
-            rating,
-            notes,
+            agents.first_name AS first_name,
+            agents.last_name AS last_name,
+            agents.phone AS phone,
+            agents.email AS email,
+            agents.preferred_contact AS preferred_contact,
+            agents.rating AS rating,
+            agents.notes AS notes,
             agents.created_at AS created_at,
             agents.updated_at AS updated_at
         FROM
