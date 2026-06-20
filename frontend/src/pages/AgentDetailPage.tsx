@@ -6,6 +6,10 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import RatingForm from "@/components/RatingForm";
 import { Button } from "@/components/ui/button";
 
+// Icons
+import { Mail } from "lucide-react";
+import { Phone } from "lucide-react";
+
 const AgentDetailPage = () => {
   // ---- REACT STATE ----
   const [refreshKey, setRefreshKey] = useState(0);
@@ -83,6 +87,32 @@ const AgentDetailPage = () => {
           <div>
             <Button onClick={handleEditRating}>Edit Rating</Button>
           </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 bg-plate">
+        {/* Main Content Area */}
+        <div className="col-span-3">Main content</div>
+        {/* Sidebar Area */}
+        <div className="col-span-1 bg-plate p-4 border-l-1 border-iron text-foreground">
+          <h2 className="text-md mt-2 mb-2 uppercase text-muted-text tracking-wider">
+            Contact
+          </h2>
+          <p className="text-sm text-muted-text mb-4">
+            <Mail size="16px" />{" "}
+            <span className="text-foreground">
+              {agent.email ? agent.email : "No email provided"}
+            </span>
+          </p>
+          <p className="text-sm text-muted-text mb-4">
+            <Phone size="16px" />{" "}
+            <span className="text-foreground">
+              {agent.phone ? agent.phone : "No phone number provided"}
+            </span>
+          </p>
+          <p className="text-sm text-muted-text">Preferred Method</p>
+          <p className="text-sm text-foreground capitalize">
+            {agent.preferred_contact}
+          </p>
         </div>
       </div>
     </>
