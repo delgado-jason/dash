@@ -1,5 +1,3 @@
-import type { IndexRouteObject } from "react-router";
-
 // Semantic rating labels from the DTS rating system doc
 export const RATING_OPTIONS = [
   { value: 5, label: "5 - Call first" },
@@ -9,7 +7,7 @@ export const RATING_OPTIONS = [
   { value: 1, label: "1 - Blacklist" },
 ];
 
-export const getRatinglabel = (rating: number | null | undefined): string => {
+export const getRatingLabel = (rating: number | null | undefined): string => {
   if (!rating) return "Unrated";
   const option = RATING_OPTIONS.find((o) => o.value === rating);
   return option ? option.label : "Unrated";
