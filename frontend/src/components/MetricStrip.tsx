@@ -7,7 +7,7 @@ interface MetricStripProps {
 
 export const MetricStrip = ({ cards }: MetricStripProps) => {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-4 pt-4">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-4 p-2">
       {cards.map((card, index) => (
         <MetricCard
           key={index}

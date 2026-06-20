@@ -5,6 +5,26 @@ import { useAgent } from "@/hooks/useAgent";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import RatingForm from "@/components/RatingForm";
 import { Button } from "@/components/ui/button";
+import { MetricStrip } from "@/components/MetricStrip";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Link } from "react-router";
+
+// Helpers
+import {
+  getLoadCount,
+  getAverageRPM,
+  getCancelledCount,
+  getGrossRevenue,
+  getLastLoadDate,
+} from "@/lib/metrics/agent";
 
 // Icons
 import { Mail } from "lucide-react";
@@ -89,10 +109,135 @@ const AgentDetailPage = () => {
           </div>
         </div>
       </div>
+      <div className="bg-iron pl-4">
+        <MetricStrip
+          cards={[
+            {
+              label: "Loads",
+              value: getLoadCount(loads),
+              format: "number",
+            },
+            {
+              label: "Gross Revenue",
+              value: getGrossRevenue(loads),
+              format: "currency",
+            },
+            {
+              label: "Average RPM",
+              value: getAverageRPM(loads),
+              format: "currency",
+            },
+            {
+              label: "Cancelled",
+              value: getCancelledCount(loads),
+              format: "number",
+            },
+            {
+              label: "Last Worked",
+              value: getLastLoadDate(loads)
+                ? new Date(getLastLoadDate(loads)!).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    },
+                  )
+                : "Never",
+              format: "string",
+            },
+          ]}
+        />
+      </div>
       <div className="grid grid-cols-4 bg-plate">
         {/* Main Content Area */}
         <div className="col-span-3">
-          <p>Loads: {loads.length}</p>
+          <div className="bg-plate p-2 m-2 text-xs">
+            <h3 className="text-lg text-muted-text uppercase tracking-wider font-condensed bg-plate">
+              Loads Run with this agent
+            </h3>
+            <div className="bg-steel text-xs">
+              <Table className="text-xs">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Load #</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Origin</TableHead>
+                    <TableHead>Destination</TableHead>
+                    <TableHead>Pickup Date</TableHead>
+                    <TableHead>Delivery Date</TableHead>
+                    <TableHead>Gross Revenue</TableHead>
+                    <TableHead>Payment Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loads.map((load) => (
+                    <TableRow
+                      key={load.load_id}
+                      className={
+                        load.load_status === "in_transit"
+                          ? "border-l-4 border-l-primary"
+                          : ""
+                      }
+                    >
+                      <TableCell className="text-foreground hover:text-primary hover:underline cursor-pointer">
+                        <Link to={`/loads/${load.load_id}`}>
+                          {load.load_number}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge value={load.load_status} />
+                      </TableCell>
+                      <TableCell>
+                        {load.origin_city + ", " + load.origin_state}
+                      </TableCell>
+                      <TableCell>
+                        {load.destination_city + ", " + load.destination_state}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(load.pickup_date).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            timeZone: "UTC",
+                          },
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {load.delivery_date
+                          ? new Date(load.delivery_date).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                timeZone: "UTC",
+                              },
+                            )
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {(
+                          Number(load.linehaul) +
+                          Number(load.fuel_surcharge) +
+                          Number(load.total_accessorials)
+                        ).toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge value={load.payment_status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </div>
         {/* Sidebar Area */}
         <div className="col-span-1 bg-plate p-4 border-l-1 border-iron text-foreground">
