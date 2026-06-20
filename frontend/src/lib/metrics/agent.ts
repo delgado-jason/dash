@@ -82,6 +82,8 @@ export const getLastLoadDate = (loads: Load[] | null): string | null => {
     deliveryDates.push(date);
   });
 
+  if (deliveryDates.length === 0) return null;
+
   return deliveryDates.reduce((current, latest) => {
     return current > latest ? current : latest;
   });

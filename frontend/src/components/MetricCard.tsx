@@ -2,15 +2,16 @@ import type { MetricCardFormat } from "@/types/metric";
 
 interface MetricCardProps {
   label: string;
-  value: number | string;
+  value: number | string | null;
   format: MetricCardFormat;
 }
 
 const formatter = (
-  value: string | number,
+  value: string | number | null,
   formatOption: MetricCardFormat,
 ): string => {
   if (formatOption === "string") {
+    if (value === null || value === undefined) return "—";
     return value.toString();
   }
 
@@ -29,6 +30,8 @@ const formatter = (
     return `${Number(value).toFixed(1)}%`;
   }
 
+  if (value === null || value === undefined) return "—";
+
   return value.toString();
 };
 
@@ -37,10 +40,10 @@ export const MetricCard = ({ label, value, format }: MetricCardProps) => {
 
   return (
     <div className="font-body">
-      <p className="text-xs font-condensed text-light uppercase tracking-wider">
+      <p className="text-lg font-condensed text-foreground uppercase tracking-wider">
         {label}
       </p>
-      <p className="text-lg text-light">{formattedValue}</p>
+      <p className="text-lg text-foreground">{formattedValue}</p>
     </div>
   );
 };
