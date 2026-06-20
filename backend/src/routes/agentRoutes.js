@@ -41,11 +41,12 @@ router.get("/:agent_id", async (req, res) => {
     const user_id = req.user.user_id;
     const agent_id = req.params.agent_id;
 
-    const agent = await getAgent(user_id, agent_id);
+    const { agent, loads } = await getAgent(user_id, agent_id);
 
     return res.status(200).json({
       message: "Agent retrieved successfully",
       agent,
+      loads,
     });
   } catch (err) {
     if (err.type === "validation") {

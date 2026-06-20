@@ -41,7 +41,7 @@ export async function getAgent(user_id, agent_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!agent_id) throw new ValidationError("Missing agent_id");
 
-  const query = `
+  const agentQuery = `
         SELECT
             agents.agent_id AS agent_id,
             brokers.broker_id AS broker_id,
@@ -63,11 +63,24 @@ export async function getAgent(user_id, agent_id) {
         AND agents.agent_id = $2;
     `;
 
-  const result = await db.query(query, [user_id, agent_id]);
+  const agentResult = await db.query(agentQuery, [user_id, agent_id]);
 
-  if (result.rowCount === 0) throw new NotFoundError("Agent not found");
+  if (agentResult.rowCount === 0) throw new NotFoundError("Agent not found");
 
-  return result.rows[0];
+  const loadsQuery = `
+    SELECT *
+    FROM loads
+    WHERE loads.user_id = $1
+    AND loads.agent_id = $2
+    ORDER BY delivery_date DESC;
+  `;
+
+  const loadsResult = await db.query(loadsQuery, [user_id, agent_id]);
+
+  return {
+    agent: agentResult.rows[0],
+    loads: loadsResult.rows,
+  };
 }
 
 // ---- CREATE AGENT SERVICE ----

@@ -25,7 +25,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwM
 
 ### GET ALL AGENTS
 GET http://localhost:3000/agents
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxNDkyNTgzLCJleHAiOjE3ODE0OTYxODN9.ZOWU7Xa-pJY-GuXso1rl1K9AQ80exjAo9Yagh__ThDY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxOTU4MjU2LCJleHAiOjE3ODE5NjE4NTZ9.SNT-JaW94baLTu6MD9uvFAbbDxUJm4zycmzsB0DWPok
 
 ### GET ALL MARKETS
 GET http://localhost:3000/markets
@@ -86,3 +86,13 @@ Content-Type: application/json
 {
   "rating": 2
 }
+
+### Get single agent with loads (should return agent plus populated loads array)
+GET http://localhost:3000/agents/e0000000-0000-0000-0000-000000000004
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxOTU4MjU2LCJleHAiOjE3ODE5NjE4NTZ9.SNT-JaW94baLTu6MD9uvFAbbDxUJm4zycmzsB0DWPok
+Content-Type: application/json
+
+### Get single agent with loads (should return agent plus empty loads array)
+GET http://localhost:3000/agents/e0000000-0000-0000-0000-000000000005
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxOTU4MjU2LCJleHAiOjE3ODE5NjE4NTZ9.SNT-JaW94baLTu6MD9uvFAbbDxUJm4zycmzsB0DWPok
+Content-Type: application/json
