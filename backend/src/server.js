@@ -16,6 +16,7 @@ import fuelEntryRouter from "./routes/fuelEntryRoutes.js";
 import brokerRouter from "./routes/brokerRoutes.js";
 import agentRouter from "./routes/agentRoutes.js";
 import marketRouter from "./routes/marketRoutes.js";
+import agentNoteRoutes from "./routes/agentNoteRoutes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/fuel", fuelEntryRouter);
 app.use("/brokers", brokerRouter);
 app.use("/agents", agentRouter);
 app.use("/markets", marketRouter);
+app.use("/agents/:agent_id/notes", agentNoteRoutes);
 
 app.get("/", (req, res) => {
   res.send("Home Page");

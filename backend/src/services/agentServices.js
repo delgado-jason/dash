@@ -117,9 +117,19 @@ export async function getAgent(user_id, agent_id) {
 
   const loadsResult = await db.query(loadsQuery, [user_id, agent_id]);
 
+  const notesQuery = `
+    SELECT * 
+    FROM agent_notes
+    WHERE agent_id = $1
+    ORDER BY created_at DESC;
+  `;
+
+  const notesResult = await db.query(notesQuery, [agent_id]);
+
   return {
     agent: agentResult.rows[0],
     loads: loadsResult.rows,
+    notes: notesResult.rows,
   };
 }
 
