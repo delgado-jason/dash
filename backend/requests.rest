@@ -88,11 +88,26 @@ Content-Type: application/json
 }
 
 ### Get single agent with loads (should return agent plus populated loads array)
-GET http://localhost:3000/agents/e0000000-0000-0000-0000-000000000003
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxOTY4NTcwLCJleHAiOjE3ODE5NzIxNzB9.PNk78w4wyyEOgfNcdcC2vuh6b8TTNbBVIhYqkuQjkcU
+GET http://localhost:3000/agents/e0000000-0000-0000-0000-000000000004
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgyMDgxMjMzLCJleHAiOjE3ODIwODQ4MzN9.GqdlkwJPnTc6XNCHXNjm1AEMWxB3ZEnCdrrcDOZg0bc
 Content-Type: application/json
 
 ### Get single agent with loads (should return agent plus empty loads array)
 GET http://localhost:3000/agents/e0000000-0000-0000-0000-000000000005
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgxOTY4NTcwLCJleHAiOjE3ODE5NzIxNzB9.PNk78w4wyyEOgfNcdcC2vuh6b8TTNbBVIhYqkuQjkcU
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgyMDYyMTgzLCJleHAiOjE3ODIwNjU3ODN9.prMU9_XD6X5H1tvlmte5ypb9jX4p2sLgMSrVGG9Ayg4
+Content-Type: application/json
+
+### Post a note for an agent
+POST http://localhost:3000/agents/e0000000-0000-0000-0000-000000000004/notes
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgyMDgxMjMzLCJleHAiOjE3ODIwODQ4MzN9.GqdlkwJPnTc6XNCHXNjm1AEMWxB3ZEnCdrrcDOZg0bc
+Content-Type: application/json
+
+{
+  "note": "Test 2",
+  "created_by": "JD"
+}
+
+### Delete a note for an agent
+DELETE  http://localhost:3000/agents/e0000000-0000-0000-0000-000000000005/notes/97251e37-7cc1-43fa-b15d-91d6ef5d8d4d
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgyMDYyMTgzLCJleHAiOjE3ODIwNjU3ODN9.prMU9_XD6X5H1tvlmte5ypb9jX4p2sLgMSrVGG9Ayg4
 Content-Type: application/json
