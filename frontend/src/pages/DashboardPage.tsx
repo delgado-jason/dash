@@ -13,6 +13,8 @@ import { RevenueChart } from "@/components/RevenueChart";
 import { getMonthlyRevenue } from "@/lib/metrics/dashboard";
 import { RpmChart } from "@/components/RpmChart";
 import { getMonthlyRPM } from "@/lib/metrics/dashboard";
+import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
+import { getOutstandingLoads } from "@/lib/metrics/dashboard";
 
 // helpers
 const formatCurrency = (n: number | null): string =>
@@ -63,6 +65,7 @@ const DashboardPage = () => {
   const mtdDelta = computeDelta(revenueMTD, revenueLastMonth);
   const monthlyRevenue = getMonthlyRevenue(loads);
   const monthlyRpm = getMonthlyRPM(loads);
+  const outstanding = getOutstandingLoads(loads);
 
   // ---- threshold-based status ----
   const rpmStatus =
@@ -110,6 +113,9 @@ const DashboardPage = () => {
       </div>
       <div className="mt-6">
         <RpmChart data={monthlyRpm} breakEven={BREAK_EVEN_RPM} />
+      </div>
+      <div className="mt-6">
+        <OutstandingLoadsList loads={outstanding} />
       </div>
     </div>
   );
