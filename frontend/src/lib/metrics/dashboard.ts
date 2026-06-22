@@ -87,3 +87,78 @@ export const getDeadheadPercent = (loads: Load[]) => {
 
   return (totalOdometer - totalLoaded) / totalOdometer;
 };
+
+// ---- MONTH KEY HELPER ---- (UTC, "YYYY-MM")
+const getMonthKey = (isoDate: string): string => {
+  const d = new Date(isoDate);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+};
+
+// ---- BUILD CONTINUOUS MONTH RANGE ---- (ending at current month, going back N months)
+const buildMonthRange = (monthsBack: number): string[] => {
+  const now = new Date();
+  const keys: string[] = [];
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    // step back i months from the current UTC month
+    const d = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1),
+    );
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    keys.push(`${year}-${month}`);
+  }
+  return keys;
+};
+
+// ---- GET MONTHLY REVENUE ---- (continuous: every month in range, zeros filled)
+export const getMonthlyRevenue = (
+  loads: Load[],
+  monthsBack: number = 12,
+): { month: string; revenue: number }[] => {
+  const delivered = loads.filter(
+    (load) => load.load_status === "delivered" && load.delivery_date,
+  );
+
+  // Bucket delivered loads by month key
+  const buckets: Record<string, Load[]> = {};
+  for (const load of delivered) {
+    const key = getMonthKey(load.delivery_date as string);
+    (buckets[key] ??= []).push(load);
+  }
+
+  // Walk the continuous range; months with no loads → 0
+  return buildMonthRange(monthsBack).map((month) => ({
+    month,
+    revenue: buckets[month] ? (getLoadRevenue(buckets[month]) ?? 0) : 0,
+  }));
+};
+
+// ---- GET MONTHLY RPM ---- (continuous: blended per month, no-data months → null)
+export const getMonthlyRPM = (
+  loads: Load[],
+  monthsBack: number = 12,
+): { month: string; rpm: number | null }[] => {
+  const delivered = loads.filter(
+    (load) => load.load_status === "delivered" && load.delivery_date,
+  );
+
+  const buckets: Record<string, Load[]> = {};
+  for (const load of delivered) {
+    const key = getMonthKey(load.delivery_date as string);
+    (buckets[key] ??= []).push(load);
+  }
+
+  return buildMonthRange(monthsBack).map((month) => {
+    const monthLoads = buckets[month];
+    if (!monthLoads) return { month, rpm: null }; // no data → null (gap in line)
+
+    const revenue = getLoadRevenue(monthLoads) ?? 0;
+    const miles = monthLoads.reduce(
+      (sum, load) => sum + Number(load.loaded_miles),
+      0,
+    );
+    return { month, rpm: miles > 0 ? revenue / miles : null };
+  });
+};
