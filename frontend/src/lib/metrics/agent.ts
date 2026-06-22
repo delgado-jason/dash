@@ -1,4 +1,7 @@
 import type { Load } from "@/types/load";
+import type { AgentNote } from "@/types/agentNote";
+import type { AgentRatingHistory } from "@/types/agentRatingHistory";
+import type { TimelineEvent } from "@/types/timelineEvent";
 
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
@@ -94,4 +97,29 @@ export const getTotalLoads = (loads: Load[] | null): number | null => {
   if (!loads) return null;
 
   return getLoadCount(loads) + getCancelledCount(loads);
+};
+
+// ---- BUILD A TIMELINE ---- builds a timeline with two different data shapes
+export const buildTimeline = (
+  notes: AgentNote[],
+  ratings: AgentRatingHistory[],
+): TimelineEvent[] => {
+  const noteEvent: TimelineEvent[] = notes.map((note) => ({
+    type: "note",
+    timestamp: note.created_at,
+    data: note,
+  }));
+
+  const ratingEvent: TimelineEvent[] = ratings.map((rating) => ({
+    type: "rating",
+    timestamp: rating.changed_at,
+    data: rating,
+  }));
+
+  const events = [...noteEvent, ...ratingEvent];
+
+  // Sort the array by timestamp. Most recent first
+  events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+  return events;
 };

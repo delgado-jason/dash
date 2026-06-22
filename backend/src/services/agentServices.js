@@ -126,10 +126,20 @@ export async function getAgent(user_id, agent_id) {
 
   const notesResult = await db.query(notesQuery, [agent_id]);
 
+  const ratingHistoryQuery = `
+    SELECT *
+    FROM agent_rating_history
+    WHERE agent_id = $1
+    ORDER BY changed_at DESC;
+  `;
+
+  const ratingHistoryResult = await db.query(ratingHistoryQuery, [agent_id]);
+
   return {
     agent: agentResult.rows[0],
     loads: loadsResult.rows,
     notes: notesResult.rows,
+    ratingHistory: ratingHistoryResult.rows,
   };
 }
 
