@@ -9,6 +9,8 @@ import {
 } from "@/lib/metrics/dashboard";
 import { getAverageRPM } from "@/lib/metrics/agent";
 import { useState } from "react";
+import { RevenueChart } from "@/components/RevenueChart";
+import { getMonthlyRevenue } from "@/lib/metrics/dashboard";
 
 // helpers
 const formatCurrency = (n: number | null): string =>
@@ -57,6 +59,7 @@ const DashboardPage = () => {
   const deadhead = getDeadheadPercent(loads);
 
   const mtdDelta = computeDelta(revenueMTD, revenueLastMonth);
+  const monthlyRevenue = getMonthlyRevenue(loads);
 
   // ---- threshold-based status ----
   const rpmStatus =
@@ -99,6 +102,9 @@ const DashboardPage = () => {
       </div>
 
       {/* Charts (#138, #139) and Outstanding list (#140) go below, later */}
+      <div className="mt-6">
+        <RevenueChart data={monthlyRevenue} />
+      </div>
     </div>
   );
 };
