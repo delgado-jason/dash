@@ -4,6 +4,8 @@ import {
   getRevenueLastMonth,
   getRevenueYTD,
   getDeadheadPercent,
+  getMonthlyRevenue,
+  getMonthlyRPM,
 } from "./dashboard";
 
 // Freeze the clock before each test, restore the real clock after each
@@ -1053,5 +1055,103 @@ describe("getDeadheadPercent", () => {
     const result = getDeadheadPercent(loads as any);
 
     expect(result).toBeCloseTo(0.2343, 4);
+  });
+});
+
+// ---- GET MONTHLY REVENUE TEST ----
+describe("getMonthlyRevenue", () => {
+  it("returns continuous months with zeros for empty months", () => {
+    const loads = [
+      {
+        load_status: "delivered",
+        delivery_date: "2026-05-30T04:00:00.000Z",
+        linehaul: "3400.00",
+        fuel_surcharge: "612.00",
+        total_accessorials: "625.00",
+        loaded_miles: 1050,
+      },
+      {
+        load_status: "delivered",
+        delivery_date: "2026-05-25T04:00:00.000Z",
+        linehaul: "2100.00",
+        fuel_surcharge: "387.00",
+        total_accessorials: "0",
+        loaded_miles: 480,
+      },
+      {
+        load_status: "delivered",
+        delivery_date: "2026-06-04T04:00:00.000Z",
+        linehaul: "3014.00",
+        fuel_surcharge: "542.00",
+        total_accessorials: "200.00",
+        loaded_miles: 610,
+      },
+      {
+        load_status: "in_transit",
+        delivery_date: "2026-06-09T04:00:00.000Z",
+        linehaul: "1000.00",
+        fuel_surcharge: "300.00",
+        total_accessorials: "0",
+        loaded_miles: 1000,
+      },
+    ];
+
+    const result = getMonthlyRevenue(loads as any, 12);
+
+    // 12 months, Jul 2025 → Jun 2026 (frozen "now" = 2026-06-22)
+    expect(result).toHaveLength(12);
+    expect(result[0].month).toBe("2025-07");
+    expect(result[11].month).toBe("2026-06");
+
+    // May and June populated, everything else 0
+    const may = result.find((r) => r.month === "2026-05");
+    const june = result.find((r) => r.month === "2026-06");
+    const april = result.find((r) => r.month === "2026-04");
+    expect(may?.revenue).toBe(7124);
+    expect(june?.revenue).toBe(3756);
+    expect(april?.revenue).toBe(0); // empty month filled with zero
+  });
+});
+
+// ---- GET MONTHLY RPM TEST ----
+describe("getMonthlyRPM", () => {
+  it("returns continuous months with null RPM for empty months", () => {
+    const loads = [
+      {
+        load_status: "delivered",
+        delivery_date: "2026-05-30T04:00:00.000Z",
+        linehaul: "3400.00",
+        fuel_surcharge: "612.00",
+        total_accessorials: "625.00",
+        loaded_miles: 1050,
+      },
+      {
+        load_status: "delivered",
+        delivery_date: "2026-05-25T04:00:00.000Z",
+        linehaul: "2100.00",
+        fuel_surcharge: "387.00",
+        total_accessorials: "0",
+        loaded_miles: 480,
+      },
+      {
+        load_status: "delivered",
+        delivery_date: "2026-06-04T04:00:00.000Z",
+        linehaul: "3014.00",
+        fuel_surcharge: "542.00",
+        total_accessorials: "200.00",
+        loaded_miles: 610,
+      },
+    ];
+
+    const result = getMonthlyRPM(loads as any, 12);
+
+    expect(result).toHaveLength(12);
+
+    const may = result.find((r) => r.month === "2026-05");
+    const june = result.find((r) => r.month === "2026-06");
+    const april = result.find((r) => r.month === "2026-04");
+    expect(may?.rpm).toBeCloseTo(7124 / 1530, 4);
+    expect(june?.rpm).toBeCloseTo(3756 / 610, 4);
+    expect(april?.rpm).toBeNull(); // empty month → null (line gap)
   });
 });
