@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useAgent } from "@/hooks/useAgent";
 
+import { createAgentNote } from "@/services/createAgentNoteService";
+
 // Components
 import { RatingDisplay } from "@/components/RatingDisplay";
 import RatingForm from "@/components/RatingForm";
@@ -16,6 +18,10 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Link } from "react-router";
+import { StickyNote } from "lucide-react";
+import { Star } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 // Helpers
 import {
@@ -25,6 +31,7 @@ import {
   getGrossRevenue,
   getLastLoadDate,
 } from "@/lib/metrics/agent";
+import { buildTimeline } from "@/lib/metrics/agent";
 
 // Icons
 import { Mail } from "lucide-react";
@@ -34,7 +41,16 @@ const AgentDetailPage = () => {
   // ---- REACT STATE ----
   const [refreshKey, setRefreshKey] = useState(0);
   const [showRatingForm, setShowRatingForm] = useState(false);
-  const { agent, loads, isLoading, error } = useAgent(refreshKey);
+  const { agent, loads, notes, ratingHistory, isLoading, error } =
+    useAgent(refreshKey);
+
+  // ---- NOTE COMPOSER STATE ----
+  const [noteText, setNoteText] = useState("");
+  const [noteInitials, setNoteInitials] = useState("");
+  const [noteError, setNoteError] = useState<string | null>(null);
+  const [savingNote, setSavingNote] = useState(false);
+
+  const logs = buildTimeline(notes, ratingHistory);
 
   if (!agent) {
     return (
@@ -66,6 +82,32 @@ const AgentDetailPage = () => {
   const handleSuccess = () => {
     setRefreshKey((prev) => prev + 1);
     setShowRatingForm(false);
+  };
+
+  const handleAddNote = async () => {
+    setNoteError(null);
+
+    if (!noteText.trim() || !noteInitials.trim()) {
+      setNoteError("A note and your initials are required");
+      return;
+    }
+
+    if (!agent) return; // agent is in scope; guard for TS
+
+    try {
+      setSavingNote(true);
+      await createAgentNote(agent.agent_id, {
+        note: noteText.trim(),
+        created_by: noteInitials.trim(),
+      });
+      setNoteText("");
+      setNoteInitials("");
+      setRefreshKey((prev) => prev + 1); // refetch → new note appears in timeline
+    } catch (e) {
+      setNoteError(e instanceof Error ? e.message : "Failed to add note");
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   return (
@@ -236,6 +278,108 @@ const AgentDetailPage = () => {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+            {/* ACTIVITY TIMELINE */}
+            <div className="bg-plate p-2 m-2">
+              <h3 className="text-lg text-muted-text uppercase tracking-wider font-condensed mb-3">
+                Activity
+              </h3>
+              {/* Note composer */}
+              <div className="bg-steel/30 rounded-sm p-3 mb-4 flex flex-col gap-2">
+                <Textarea
+                  placeholder="Add a note about this agent..."
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  className="text-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Initials"
+                    maxLength={5}
+                    value={noteInitials}
+                    onChange={(e) => setNoteInitials(e.target.value)}
+                    className="w-24 text-sm"
+                  />
+                  <Button
+                    onClick={handleAddNote}
+                    disabled={savingNote}
+                    className="ml-auto"
+                  >
+                    {savingNote ? "Saving..." : "Add Note"}
+                  </Button>
+                </div>
+                {noteError && (
+                  <p className="text-destructive text-sm">{noteError}</p>
+                )}
+              </div>
+              {logs.length === 0 ? (
+                <p className="text-sm text-muted-text italic px-2 py-4">
+                  No activity yet
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {logs.map((log) => {
+                    const date = new Date(log.timestamp).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        timeZone: "UTC",
+                      },
+                    );
+
+                    if (log.type === "rating") {
+                      return (
+                        <div
+                          key={log.data.id}
+                          className="flex gap-3 items-start border-l-2 border-l-primary bg-steel/40 px-3 py-2 rounded-sm"
+                        >
+                          <Star
+                            size={14}
+                            className="text-primary mt-1 shrink-0"
+                            fill="var(--color-primary)"
+                          />
+                          <div className="text-sm">
+                            <p className="text-foreground">
+                              Rating changed{" "}
+                              <span className="text-muted-text">
+                                {log.data.old_rating ?? "—"}
+                              </span>{" "}
+                              →{" "}
+                              <span className="text-primary font-semibold">
+                                {log.data.new_rating}
+                              </span>
+                            </p>
+                            <p className="text-muted-text">{log.data.reason}</p>
+                            <p className="text-xs text-muted-text mt-1">
+                              {date} · {log.data.changed_by}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={log.data.id}
+                        className="flex gap-3 items-start border-l-2 border-l-iron bg-steel/20 px-3 py-2 rounded-sm"
+                      >
+                        <StickyNote
+                          size={14}
+                          className="text-muted-text mt-1 shrink-0"
+                        />
+                        <div className="text-sm">
+                          <p className="text-foreground">{log.data.note}</p>
+                          <p className="text-xs text-muted-text mt-1">
+                            {date} · {log.data.created_by}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

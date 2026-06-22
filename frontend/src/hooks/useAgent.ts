@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
+import type { AgentNote } from "@/types/agentNote";
+import type { AgentRatingHistory } from "@/types/agentRatingHistory";
 import { getAgent } from "@/services/agentService";
 import { useParams } from "react-router";
 
 export const useAgent = (refreshKey: number = 0) => {
   const [agent, setAgent] = useState<Agent>();
   const [loads, setLoads] = useState<Load[]>([]);
+  const [notes, setNotes] = useState<AgentNote[]>([]);
+  const [ratingHistory, setRatingHistory] = useState<AgentRatingHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +28,8 @@ export const useAgent = (refreshKey: number = 0) => {
         const data = await getAgent(agent_id);
         setAgent(data.agent);
         setLoads(data.loads);
+        setNotes(data.notes);
+        setRatingHistory(data.ratingHistory);
       } catch {
         setError("Failed to load agent");
       } finally {
@@ -37,6 +43,8 @@ export const useAgent = (refreshKey: number = 0) => {
   return {
     agent,
     loads,
+    notes,
+    ratingHistory,
     isLoading,
     error,
   };

@@ -6,6 +6,7 @@ import {
   getAverageRPM,
   getLastLoadDate,
   getTotalLoads,
+  buildTimeline,
 } from "./agent";
 
 // ---- LOAD COUNT TEST ----
@@ -229,5 +230,119 @@ describe("getTotalLoads", () => {
 
     const result = getTotalLoads(loads as any);
     expect(result).toBe(5);
+  });
+});
+
+// ---- BUILD A TIMELINE ---- builds a timeline with two different data shapes
+describe("buildTimeline", () => {
+  it("builds a timeline with two different data shapes", () => {
+    const notes = [
+      {
+        id: "0dce4633-e8c2-4b64-99b9-3edd4068d806",
+        agent_id: "e0000000-0000-0000-0000-000000000004",
+        note: "Agent is difficult to work with",
+        created_at: "2026-06-21T22:35:07.444Z",
+        created_by: "JD",
+      },
+      {
+        id: "0dce4633-e8c2-4b64-99b9-3edd4068d806",
+        agent_id: "e0000000-0000-0000-0000-000000000004",
+        note: "Lied about the rate",
+        created_at: "2026-06-21T20:35:07.444Z",
+        created_by: "BD",
+      },
+      {
+        id: "0dce4633-e8c2-4b64-99b9-3edd4068d806",
+        agent_id: "e0000000-0000-0000-0000-000000000004",
+        note: "Absolutely no communication",
+        created_at: "2026-05-10T22:35:07.444Z",
+        created_by: "JD",
+      },
+    ];
+
+    const ratings = [
+      {
+        id: "3b75a745-8d04-43d2-902f-64ad5ab2c6b5",
+        agent_id: "e0000000-0000-0000-0000-000000000003",
+        old_rating: 1,
+        new_rating: 2,
+        reason: "Not blacklisted just yet",
+        changed_by: "JD",
+        changed_at: "2026-06-20T09:49:00.516Z",
+      },
+      {
+        id: "51a22c7e-b668-4209-898f-151479903a33",
+        agent_id: "e0000000-0000-0000-0000-000000000003",
+        old_rating: 2,
+        new_rating: 1,
+        reason: "Blacklisted for bad communication",
+        changed_by: "BD",
+        changed_at: "2026-06-19T03:05:03.596Z",
+      },
+    ];
+
+    const result = buildTimeline(notes, ratings);
+
+    expect(result).toStrictEqual([
+      {
+        data: {
+          agent_id: "e0000000-0000-0000-0000-000000000004",
+          created_at: "2026-06-21T22:35:07.444Z",
+          created_by: "JD",
+          id: "0dce4633-e8c2-4b64-99b9-3edd4068d806",
+          note: "Agent is difficult to work with",
+        },
+        timestamp: "2026-06-21T22:35:07.444Z",
+        type: "note",
+      },
+      {
+        data: {
+          agent_id: "e0000000-0000-0000-0000-000000000004",
+          created_at: "2026-06-21T20:35:07.444Z",
+          created_by: "BD",
+          id: "0dce4633-e8c2-4b64-99b9-3edd4068d806",
+          note: "Lied about the rate",
+        },
+        timestamp: "2026-06-21T20:35:07.444Z",
+        type: "note",
+      },
+      {
+        data: {
+          agent_id: "e0000000-0000-0000-0000-000000000003",
+          changed_at: "2026-06-20T09:49:00.516Z",
+          changed_by: "JD",
+          id: "3b75a745-8d04-43d2-902f-64ad5ab2c6b5",
+          new_rating: 2,
+          old_rating: 1,
+          reason: "Not blacklisted just yet",
+        },
+        timestamp: "2026-06-20T09:49:00.516Z",
+        type: "rating",
+      },
+      {
+        data: {
+          agent_id: "e0000000-0000-0000-0000-000000000003",
+          changed_at: "2026-06-19T03:05:03.596Z",
+          changed_by: "BD",
+          id: "51a22c7e-b668-4209-898f-151479903a33",
+          new_rating: 1,
+          old_rating: 2,
+          reason: "Blacklisted for bad communication",
+        },
+        timestamp: "2026-06-19T03:05:03.596Z",
+        type: "rating",
+      },
+      {
+        data: {
+          agent_id: "e0000000-0000-0000-0000-000000000004",
+          created_at: "2026-05-10T22:35:07.444Z",
+          created_by: "JD",
+          id: "0dce4633-e8c2-4b64-99b9-3edd4068d806",
+          note: "Absolutely no communication",
+        },
+        timestamp: "2026-05-10T22:35:07.444Z",
+        type: "note",
+      },
+    ]);
   });
 });
