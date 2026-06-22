@@ -6,6 +6,7 @@ import {
   getDeadheadPercent,
   getMonthlyRevenue,
   getMonthlyRPM,
+  getOutstandingLoads,
 } from "./dashboard";
 
 // Freeze the clock before each test, restore the real clock after each
@@ -1153,5 +1154,74 @@ describe("getMonthlyRPM", () => {
     expect(may?.rpm).toBeCloseTo(7124 / 1530, 4);
     expect(june?.rpm).toBeCloseTo(3756 / 610, 4);
     expect(april?.rpm).toBeNull(); // empty month → null (line gap)
+  });
+});
+
+// ---- GET OUTSTANDING LOADS TEST ----
+describe("getOutstandingLoads", () => {
+  it("returns delivered unpaid/invoiced loads, aged from delivery, oldest first", () => {
+    const loads = [
+      // delivered + unpaid, delivered 2026-06-01 → 21 days ago (from 06-22)
+      {
+        load_number: "BMA-5359618",
+        broker: "BMA",
+        load_status: "delivered",
+        payment_status: "unpaid",
+        delivery_date: "2026-06-01T04:00:00.000Z",
+        linehaul: "2283.00",
+        fuel_surcharge: "411.00",
+        total_accessorials: "150.00",
+      },
+      // delivered + invoiced, delivered 2026-05-30 → 23 days ago (oldest → should be first)
+      {
+        load_number: "AGJ-9012345",
+        broker: "AGJ",
+        load_status: "delivered",
+        payment_status: "invoiced",
+        delivery_date: "2026-05-30T04:00:00.000Z",
+        linehaul: "3400.00",
+        fuel_surcharge: "612.00",
+        total_accessorials: "625.00",
+      },
+      // delivered + PAID → excluded
+      {
+        load_number: "LLL-2881760",
+        broker: "LLL",
+        load_status: "delivered",
+        payment_status: "paid",
+        delivery_date: "2026-05-25T04:00:00.000Z",
+        linehaul: "2100.00",
+        fuel_surcharge: "387.00",
+        total_accessorials: "0",
+      },
+      // unpaid but NOT delivered (booked) → excluded
+      {
+        load_number: "KJK-1100234",
+        broker: "KJK",
+        load_status: "booked",
+        payment_status: "unpaid",
+        delivery_date: "2026-06-11T04:00:00.000Z",
+        linehaul: "2800.00",
+        fuel_surcharge: "504.00",
+        total_accessorials: "0",
+      },
+    ];
+
+    const result = getOutstandingLoads(loads as any);
+
+    // Only the two delivered + unpaid/invoiced loads
+    expect(result).toHaveLength(2);
+
+    // Oldest first: AGJ (May 30) before BMA (Jun 1)
+    expect(result[0].load_number).toBe("AGJ-9012345");
+    expect(result[1].load_number).toBe("BMA-5359618");
+
+    // Aging from delivery (frozen now = 2026-06-22)
+    expect(result[0].daysOutstanding).toBe(23); // Jun 22 − May 30
+    expect(result[1].daysOutstanding).toBe(21); // Jun 22 − Jun 1
+
+    // Revenue computed
+    expect(result[0].revenue).toBe(4637); // 3400 + 612 + 625
+    expect(result[1].revenue).toBe(2844); // 2283 + 411 + 150
   });
 });
