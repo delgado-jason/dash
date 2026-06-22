@@ -162,3 +162,38 @@ export const getMonthlyRPM = (
     return { month, rpm: miles > 0 ? revenue / miles : null };
   });
 };
+
+// ---- OUTSTANDING LOAD SHAPE ----
+export interface OutstandingLoad {
+  load_number: string;
+  broker: string;
+  revenue: number;
+  daysOutstanding: number;
+}
+
+// ---- GET OUTSTANDING LOADS ---- (delivered + unpaid/invoiced, aged from delivery, oldest first)
+export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const now = Date.now();
+
+  const outstanding = loads.filter(
+    (load) =>
+      load.load_status === "delivered" &&
+      (load.payment_status === "unpaid" ||
+        load.payment_status === "invoiced") &&
+      load.delivery_date,
+  );
+
+  return outstanding
+    .map((load) => {
+      const deliveredTime = new Date(load.delivery_date as string).getTime();
+      const daysOutstanding = Math.floor((now - deliveredTime) / MS_PER_DAY);
+      return {
+        load_number: load.load_number,
+        broker: load.broker,
+        revenue: getLoadRevenue([load]) ?? 0,
+        daysOutstanding,
+      };
+    })
+    .sort((a, b) => b.daysOutstanding - a.daysOutstanding); // oldest (most days) first
+};
