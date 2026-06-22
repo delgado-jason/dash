@@ -1,94 +1,65 @@
-import { useState } from "react";
-import { useAgents } from "@/hooks/useAgents";
+import { useMemo } from "react";
 import { Link } from "react-router";
-
-// Types
-import type { Agent } from "@/types/agent";
-
-// UI Components
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-
-// App Components
-import RatingForm from "@/components/RatingForm";
+import { useAgents } from "@/hooks/useAgents";
+import { RatingDisplay } from "@/components/RatingDisplay";
 
 const AgentsPage = () => {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [showRatingForm, setShowRatingForm] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const { agents, isLoading, error } = useAgents();
 
-  const { agents, isLoading, error } = useAgents(refreshKey);
+  // Sort by rating desc; unrated (null) sinks to the bottom
+  const sortedAgents = useMemo(() => {
+    return [...agents].sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+  }, [agents]);
 
-  if (isLoading) return <div>Loading agents...</div>;
+  if (isLoading)
+    return (
+      <div className="p-6 bg-iron text-light font-body">
+        <p className="text-muted-text">Loading agents...</p>
+      </div>
+    );
 
-  if (error) return <div>{error}</div>;
-
-  // ---- HANDLERS ----
-
-  const handleRatingSuccess = () => {
-    setRefreshKey((prev) => prev + 1);
-  };
+  if (error)
+    return (
+      <div className="p-6 bg-iron text-light font-body">
+        <p className="text-destructive">{error}</p>
+      </div>
+    );
 
   return (
-    <>
-      {showRatingForm && selectedAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowRatingForm(false)}
-          />
-          <div className="relative w-[750px] max-h-[90vh] bg-card text-foreground overflow-y-auto shadow-xl rounded-lg p-6">
-            <RatingForm
-              agent={selectedAgent}
-              onSuccess={handleRatingSuccess}
-              onClose={() => setShowRatingForm(false)}
-            />
-          </div>
-        </div>
-      )}
-      <div>
-        <div className="bg-iron mt-4 p-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Edit Rating</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agents.map((agent) => (
-                <TableRow key={agent.agent_id}>
-                  <TableCell className="text-foreground hover:text-primary hover:underline cursor-pointer">
-                    <Link to={`/agents/${agent.agent_id}`}>
-                      {agent.first_name + " " + agent.last_name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{agent.rating}</TableCell>
-                  <TableCell>
-                    <Button
-                      onClick={() => {
-                        setSelectedAgent(agent);
-                        setShowRatingForm(true);
-                      }}
-                    >
-                      Edit Rating
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+    <div className="p-6 bg-iron text-light font-body min-h-screen">
+      <h1 className="text-3xl font-condensed text-light mb-6">Agents</h1>
+
+      <div className="flex flex-col gap-2">
+        {sortedAgents.map((agent) => (
+          <Link
+            key={agent.agent_id}
+            to={`/agents/${agent.agent_id}`}
+            className="flex items-center gap-4 bg-plate hover:bg-steel border border-iron rounded-lg p-3 transition-colors"
+          >
+            {/* Monogram */}
+            <div className="flex rounded-full items-center bg-steel justify-center size-12 text-lg font-display text-light shrink-0">
+              {agent.first_name.charAt(0)}
+              {agent.last_name.charAt(0)}
+            </div>
+
+            {/* Name + broker */}
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-light">
+                {agent.first_name + " " + agent.last_name}
+              </p>
+              <p className="text-sm text-muted-text">
+                {agent.broker_name} · Landstar Agent
+              </p>
+            </div>
+
+            {/* Rating pinned right */}
+            <div className="shrink-0">
+              <RatingDisplay rating={agent.rating} />
+            </div>
+          </Link>
+        ))}
       </div>
-    </>
+    </div>
   );
 };
 
