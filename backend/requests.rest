@@ -111,3 +111,20 @@ Content-Type: application/json
 DELETE  http://localhost:3000/agents/e0000000-0000-0000-0000-000000000005/notes/97251e37-7cc1-43fa-b15d-91d6ef5d8d4d
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgyMDYyMTgzLCJleHAiOjE3ODIwNjU3ODN9.prMU9_XD6X5H1tvlmte5ypb9jX4p2sLgMSrVGG9Ayg4
 Content-Type: application/json
+
+### Get all trips
+GET http://localhost:3000/trips
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgzMjMxOTkwLCJleHAiOjE3ODMyMzU1OTB9.Ro7-ANw43WDWwlhuDmOLEExghlC1JHDHrklOS8MCOZk
+Content-Type: application/json
+
+### Create a trip
+POST http://localhost:3000/trips
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgzMjMxOTkwLCJleHAiOjE3ODMyMzU1OTB9.Ro7-ANw43WDWwlhuDmOLEExghlC1JHDHrklOS8MCOZk
+Content-Type: application/json
+
+{
+  "trip_date": "2026-07-04",
+  "odometer_start": 560000,
+  "odometer_end": 560910,
+  "is_estimated": true
+}

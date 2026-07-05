@@ -27,8 +27,8 @@ export async function getTrips(user_id) {
             trips.created_at,
             trips.updated_at
         FROM trips
-        JOIN trucks ON trips.truck_id = trucks.truck_id
-        JOIN drivers ON trips.driver_id = drivers.driver_id
+        LEFT JOIN trucks ON trips.truck_id = trucks.truck_id
+        LEFT JOIN drivers ON trips.driver_id = drivers.driver_id
         WHERE trips.user_id = $1
         ORDER BY trip_date DESC;
     `;
@@ -61,8 +61,8 @@ export async function getTrip(user_id, trip_id) {
             trips.created_at,
             trips.updated_at
         FROM trips
-        JOIN trucks ON trips.truck_id = trucks.truck_id
-        JOIN drivers ON trips.driver_id = drivers.driver_id
+        LEFT JOIN trucks ON trips.truck_id = trucks.truck_id
+        LEFT JOIN drivers ON trips.driver_id = drivers.driver_id
         WHERE trips.user_id = $1
         AND trips.trip_id = $2;
     `;
@@ -86,6 +86,7 @@ export async function createTrip(user_id, data) {
     "trip_date",
     "odometer_start",
     "odometer_end",
+    "is_estimated",
   ];
 
   for (const field in data) {
@@ -102,9 +103,9 @@ export async function createTrip(user_id, data) {
   // Add system fields
   const tripData = {
     ...data,
-    trip_type: "revenue",
+    trip_type: "deadhead",
     trip_source: "user",
-    status: "planned",
+    status: "completed",
   };
 
   let fields = ["user_id"];
