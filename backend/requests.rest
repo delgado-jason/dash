@@ -114,16 +114,17 @@ Content-Type: application/json
 
 ### Get all trips
 GET http://localhost:3000/trips
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgzMjMxOTkwLCJleHAiOjE3ODMyMzU1OTB9.Ro7-ANw43WDWwlhuDmOLEExghlC1JHDHrklOS8MCOZk
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgzNDQ5MTg2LCJleHAiOjE3ODM0NTI3ODZ9.HaPTP45Q_RalPwLGwx8AL_MoLTsI2WuWycXjslTeoOY
 Content-Type: application/json
 
 ### Create a trip
 POST http://localhost:3000/trips
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgzMjMxOTkwLCJleHAiOjE3ODMyMzU1OTB9.Ro7-ANw43WDWwlhuDmOLEExghlC1JHDHrklOS8MCOZk
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAxIiwiaWF0IjoxNzgzNDQ5MTg2LCJleHAiOjE3ODM0NTI3ODZ9.HaPTP45Q_RalPwLGwx8AL_MoLTsI2WuWycXjslTeoOY
 Content-Type: application/json
 
 {
-  "trip_date": "2026-07-04",
+  "trip_date": "2026-07-10",
+  "trip_purpose": "bogus",
   "odometer_start": 560000,
   "odometer_end": 560910,
   "is_estimated": true
