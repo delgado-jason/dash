@@ -1,6 +1,7 @@
 export interface Trip {
   trip_id: string;
   trip_number: number;
+  trip_purpose: "repositioning" | "home" | "shop" | "personal";
   truck_id: string | null;
   unit_number: string | null;
   driver_id: string | null;

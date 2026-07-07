@@ -25,6 +25,20 @@ const rules = {
       errors.push("trip_date cannot be blank");
     }
   },
+  trip_purpose: (value, errors) => {
+    const validPurposes = ["repositioning", "home", "shop", "personal"];
+
+    if (typeof value !== "string") {
+      errors.push("trip_purpose must be a string");
+      return;
+    }
+
+    if (!validPurposes.includes(value)) {
+      errors.push(
+        "trip_purpose must be one of: repositioning, home, shop, personal",
+      );
+    }
+  },
   odometer_start: (value, errors) => {
     // Check if it's a integer
     if (!Number.isInteger(value)) {
@@ -57,6 +71,10 @@ export const validateTripCreate = (data) => {
 
   if (!data.trip_date) {
     errors.push("Missing trip_date");
+  }
+
+  if (!data.trip_purpose) {
+    errors.push("Missing trip_purpose");
   }
 
   for (const field in data) {
