@@ -10,6 +10,9 @@ backend/node_modules/
 backend/.env
 frontend/.env
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Build outputs
 frontend/dist/
 frontend/build/
