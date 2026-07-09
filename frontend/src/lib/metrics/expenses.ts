@@ -74,3 +74,26 @@ export const getCashMetrics = (
     trueBreakEvenRpm: loadedMiles > 0 ? trueMonthlyCost / loadedMiles : null,
   };
 };
+
+// This-month dollar figures on a TRUE-cost basis (operating + obligations).
+// Per-mile figures use the trailing blend (getCashMetrics); these dollar/margin
+// figures use this month so they reconcile with the month's P&L.
+export interface TrueMonthly {
+  trueMonthlyCost: number; // operating + obligations
+  trueWeeklyCost: number;
+  trueNetMargin: number | null; // (income − true cost) / income
+}
+
+export const getTrueMonthly = (
+  operatingMonthlyCost: number,
+  obligationsTotal: number,
+  income: number | null,
+): TrueMonthly => {
+  const trueMonthlyCost = operatingMonthlyCost + obligationsTotal;
+  const inc = income ?? 0;
+  return {
+    trueMonthlyCost,
+    trueWeeklyCost: trueMonthlyCost / WEEKS_PER_MONTH,
+    trueNetMargin: inc > 0 ? (inc - trueMonthlyCost) / inc : null,
+  };
+};

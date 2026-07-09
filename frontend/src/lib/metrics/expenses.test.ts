@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { ExpensePeriod, ExpenseLine } from "@/types/expense";
-import { getExpenseMetrics, pctOfRevenue, getCashMetrics } from "./expenses";
+import {
+  getExpenseMetrics,
+  pctOfRevenue,
+  getCashMetrics,
+  getTrueMonthly,
+} from "./expenses";
 
 const line = (over: Partial<ExpenseLine>): ExpenseLine => ({
   line_id: "x",
@@ -83,5 +88,21 @@ describe("getCashMetrics", () => {
     expect(m.trueMonthlyCost).toBe(8000);
     expect(m.trueCpm).toBeNull();
     expect(m.trueBreakEvenRpm).toBeNull();
+  });
+});
+
+describe("getTrueMonthly", () => {
+  it("folds obligations into the month's cost, weekly, and margin", () => {
+    // operating 8000 + obligations 2000 = 10000 true; income 15000
+    const t = getTrueMonthly(8000, 2000, 15000);
+    expect(t.trueMonthlyCost).toBe(10000);
+    expect(t.trueWeeklyCost).toBeCloseTo(10000 / (52 / 12), 5);
+    expect(t.trueNetMargin).toBeCloseTo((15000 - 10000) / 15000, 5); // ≈0.333
+  });
+
+  it("no obligations = operating cost; null margin when income is missing", () => {
+    const t = getTrueMonthly(8000, 0, 0);
+    expect(t.trueMonthlyCost).toBe(8000);
+    expect(t.trueNetMargin).toBeNull();
   });
 });

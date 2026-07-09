@@ -1,25 +1,25 @@
-import { useEffect, useState } from "react";
-import { Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import { useState } from "react";
+import { Pencil, Trash2, Check, X, Plus, Eye, EyeOff } from "lucide-react";
 import type { Obligation } from "@/types/obligation";
 import {
-  getObligations,
   createObligation,
   patchObligation,
   deleteObligation,
 } from "@/services/obligationsService";
-import { getCashMetrics } from "@/lib/metrics/expenses";
 
 interface Props {
-  operatingCost: number;
-  totalMiles: number;
-  loadedMiles: number;
+  items: Obligation[];
+  onChange: () => void; // refetch at the page level after a mutation
 }
 
 const money = (n: number): string =>
   `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
-export const ObligationsCard = ({ operatingCost, totalMiles, loadedMiles }: Props) => {
-  const [items, setItems] = useState<Obligation[]>([]);
+// Manages the obligations list. Their dollar/break-even impact now shows in the
+// page's headline KPIs (obligations are folded into true cost); this card is
+// where the list is edited, with a running monthly total. Toggle an obligation
+// inactive (the eye) to drop it from the numbers without deleting it.
+export const ObligationsCard = ({ items, onChange }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -29,17 +29,12 @@ export const ObligationsCard = ({ operatingCost, totalMiles, loadedMiles }: Prop
   const [newLabel, setNewLabel] = useState("");
   const [newAmt, setNewAmt] = useState("");
 
-  const load = () => getObligations().then(setItems).catch(() => {});
-  useEffect(() => {
-    load();
-  }, []);
-
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     setError(null);
     try {
       await fn();
-      await load();
+      onChange();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -50,38 +45,24 @@ export const ObligationsCard = ({ operatingCost, totalMiles, loadedMiles }: Prop
   const activeTotal = items
     .filter((o) => o.active)
     .reduce((s, o) => s + o.amount, 0);
-  const cash = getCashMetrics(operatingCost, activeTotal, totalMiles, loadedMiles);
 
   return (
     <div className="bg-plate rounded-lg p-4 mb-6">
-      <p className="text-xs text-muted-text mb-1">
-        Monthly obligations · cash out that's not on your P&amp;L
-      </p>
+      <div className="flex justify-between items-start mb-1">
+        <p className="text-xs text-muted-text">
+          Monthly obligations · cash out that's not on your P&amp;L
+        </p>
+        <p className="text-sm">
+          <span className="text-muted-text">Obligations / mo </span>
+          <span className="font-condensed">{money(activeTotal)}</span>
+        </p>
+      </div>
       <p className="text-[11px] text-muted-text mb-3">
         Loan <span className="text-light">principal only</span> (not the full
         payment — interest is already counted on your P&amp;L), plus owner draws.
+        These fold into the true cost in the KPIs above; toggle one inactive to
+        see the numbers without it.
       </p>
-
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div>
-          <p className="text-xs text-muted-text">Obligations / mo</p>
-          <p className="text-xl font-condensed mt-1">{money(activeTotal)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-text">True cash out / mo</p>
-          <p className="text-xl font-condensed mt-1">
-            {money(cash.trueMonthlyCost)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-text">True break-even RPM</p>
-          <p className="text-xl font-condensed mt-1 text-amber">
-            {cash.trueBreakEvenRpm == null
-              ? "—"
-              : `$${cash.trueBreakEvenRpm.toFixed(2)}`}
-          </p>
-        </div>
-      </div>
 
       <table className="w-full text-sm">
         <tbody>
@@ -108,10 +89,12 @@ export const ObligationsCard = ({ operatingCost, totalMiles, loadedMiles }: Prop
                     onChange={(e) => setEditAmt(e.target.value)}
                   />
                 ) : (
-                  money(o.amount)
+                  <span className={o.active ? "" : "opacity-40"}>
+                    {money(o.amount)}
+                  </span>
                 )}
               </td>
-              <td className="py-2 text-right w-20">
+              <td className="py-2 text-right w-28">
                 <div className="flex gap-3 justify-end text-muted-text">
                   {editing === o.obligation_id ? (
                     <Check
@@ -129,16 +112,43 @@ export const ObligationsCard = ({ operatingCost, totalMiles, loadedMiles }: Prop
                       }
                     />
                   ) : (
-                    <Pencil
-                      size={16}
-                      className="cursor-pointer hover:text-light"
-                      aria-label="Edit"
-                      onClick={() => {
-                        setEditing(o.obligation_id);
-                        setEditLabel(o.label);
-                        setEditAmt(String(o.amount));
-                      }}
-                    />
+                    <>
+                      {o.active ? (
+                        <Eye
+                          size={16}
+                          className="cursor-pointer hover:text-light"
+                          aria-label="Counted — click to exclude"
+                          onClick={() =>
+                            !busy &&
+                            run(() =>
+                              patchObligation(o.obligation_id, { active: false }),
+                            )
+                          }
+                        />
+                      ) : (
+                        <EyeOff
+                          size={16}
+                          className="cursor-pointer hover:text-light opacity-50"
+                          aria-label="Excluded — click to count"
+                          onClick={() =>
+                            !busy &&
+                            run(() =>
+                              patchObligation(o.obligation_id, { active: true }),
+                            )
+                          }
+                        />
+                      )}
+                      <Pencil
+                        size={16}
+                        className="cursor-pointer hover:text-light"
+                        aria-label="Edit"
+                        onClick={() => {
+                          setEditing(o.obligation_id);
+                          setEditLabel(o.label);
+                          setEditAmt(String(o.amount));
+                        }}
+                      />
+                    </>
                   )}
                   <Trash2
                     size={16}
@@ -156,7 +166,7 @@ export const ObligationsCard = ({ operatingCost, totalMiles, loadedMiles }: Prop
             <tr className="border-t border-steel">
               <td className="py-2">
                 <input
-                  placeholder="e.g. Truck lease"
+                  placeholder="e.g. Truck loan principal"
                   className="bg-steel rounded px-2 py-1 w-full"
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
