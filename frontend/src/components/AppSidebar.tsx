@@ -15,6 +15,7 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/loads", label: "Loads" },
   { to: "/trips", label: "Trips" },
+  { to: "/lanes", label: "Lanes" },
   { to: "/agents", label: "Agents" },
   { to: "/fuel-entries", label: "Fuel Entries" },
   // { to: "/trucks", label: "Trucks" },

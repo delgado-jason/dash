@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import AppLayout from "@/layouts/AppLayout";
@@ -16,6 +17,10 @@ import { LoadDetailPage } from "@/pages/LoadDetailPage";
 import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
 
+// Code-split Lanes — it bundles the US map topology (~600KB), so it should only
+// load when the page is actually visited, not on every app start.
+const LanesPage = lazy(() => import("@/pages/LanesPage"));
+
 const App = () => {
   return (
     <Routes>
@@ -29,6 +34,20 @@ const App = () => {
           <Route path="/loads" element={<LoadsPage />} />
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/trips" element={<TripsPage />} />
+          <Route
+            path="/lanes"
+            element={
+              <Suspense
+                fallback={
+                  <div className="p-6 bg-iron text-light font-body">
+                    <p className="text-muted-text">Loading lanes...</p>
+                  </div>
+                }
+              >
+                <LanesPage />
+              </Suspense>
+            }
+          />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />
