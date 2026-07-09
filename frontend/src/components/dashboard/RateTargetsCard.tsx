@@ -68,7 +68,9 @@ export const RateTargetsCard = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr] gap-6">
           <div>
-            <p className="text-xs text-muted-text mb-3">Rate per loaded mile</p>
+            <p className="text-xs text-muted-text mb-3">
+              Rate per loaded mile · marker = this week
+            </p>
             <RateLadder ladder={ladder} rpm={markerRpm} />
           </div>
 

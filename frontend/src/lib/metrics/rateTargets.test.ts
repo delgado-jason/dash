@@ -8,6 +8,8 @@ import {
   getGrossTargets,
   payWeekRange,
   getWeekBookedGross,
+  getWeekRpm,
+  getWindowRpm,
 } from "./rateTargets";
 
 const load = (over: Partial<Load>): Load =>
@@ -166,5 +168,41 @@ describe("getWeekBookedGross", () => {
       load({ delivery_date: "2026-07-01", load_status: "delivered", linehaul: "9999" }), // before range
     ];
     expect(getWeekBookedGross(loads, start, end)).toBeCloseTo(6000, 5);
+  });
+});
+
+describe("getWeekRpm", () => {
+  const start = new Date("2026-07-08T00:00:00Z");
+  const end = new Date("2026-07-15T00:00:00Z");
+
+  it("blends this week's revenue over this week's loaded miles", () => {
+    const loads = [
+      load({ delivery_date: "2026-07-09", load_status: "booked", linehaul: "4000", loaded_miles: 1000 }),
+      load({ delivery_date: "2026-07-11", load_status: "delivered", linehaul: "6000", loaded_miles: 1000 }),
+      load({ delivery_date: "2026-07-20", load_status: "delivered", linehaul: "9999", loaded_miles: 1000 }), // out of range
+    ];
+    expect(getWeekRpm(loads, start, end)).toBeCloseTo(5.0, 5); // 10000 / 2000
+  });
+
+  it("null when there are no loaded miles this week", () => {
+    expect(getWeekRpm([], start, end)).toBeNull();
+  });
+});
+
+describe("getWindowRpm", () => {
+  const now = new Date("2026-07-09T00:00:00Z");
+
+  it("blends revenue over loaded miles for the last 3 complete months, loads only", () => {
+    const loads = [
+      load({ delivery_date: "2026-04-15", linehaul: "8000", loaded_miles: 2000 }),
+      load({ delivery_date: "2026-05-15", linehaul: "8000", loaded_miles: 2000 }),
+      load({ delivery_date: "2026-06-15", linehaul: "8000", loaded_miles: 2000 }),
+      load({ delivery_date: "2026-07-15", linehaul: "9999", loaded_miles: 2000 }), // current month excluded
+    ];
+    expect(getWindowRpm(loads, now)).toBeCloseTo(4.0, 5); // 24000 / 6000
+  });
+
+  it("null when there are no loaded miles in the window", () => {
+    expect(getWindowRpm([], now)).toBeNull();
   });
 });
