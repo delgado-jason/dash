@@ -1,4 +1,8 @@
-import type { OutstandingLoad } from "@/lib/metrics/dashboard";
+import { Link } from "react-router-dom";
+import {
+  getOutstandingSummary,
+  type OutstandingLoad,
+} from "@/lib/metrics/dashboard";
 
 interface Props {
   loads: OutstandingLoad[];
@@ -19,7 +23,7 @@ const ageColor = (days: number): string => {
 };
 
 export const OutstandingLoadsList = ({ loads }: Props) => {
-  const total = loads.reduce((sum, l) => sum + l.revenue, 0);
+  const { total, avgDaysOutstanding } = getOutstandingSummary(loads);
 
   return (
     <div className="bg-plate rounded-lg p-4">
@@ -27,6 +31,12 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
         <h3 className="text-sm font-medium text-light">Outstanding loads</h3>
         <span className="text-sm text-status-aware-text font-medium">
           {formatCurrency(total)} owed
+          {avgDaysOutstanding !== null && (
+            <span className="text-muted-text font-normal">
+              {" "}
+              · avg {Math.round(avgDaysOutstanding)}d out
+            </span>
+          )}
         </span>
       </div>
 
@@ -37,9 +47,10 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
       ) : (
         <div className="flex flex-col gap-2">
           {loads.map((load) => (
-            <div
-              key={load.load_number}
-              className="flex items-center justify-between py-2 border-b border-iron last:border-b-0"
+            <Link
+              key={load.load_id}
+              to={`/loads/${load.load_id}`}
+              className="flex items-center justify-between py-2 border-b border-iron last:border-b-0 hover:opacity-80"
             >
               <div>
                 <p className="text-sm text-foreground">{load.load_number}</p>
@@ -50,7 +61,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
               <span className="text-sm text-status-aware-text font-medium">
                 {formatCurrency(load.revenue)}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       )}

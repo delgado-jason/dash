@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
 import { KpiCard } from "@/components/KpiCard";
@@ -7,15 +8,23 @@ import {
   getRevenueLastMonth,
   getRevenueYTD,
   getMonthlyDeadhead,
+  getMonthlyRevenue,
+  getMonthlyRPM,
+  getOutstandingLoads,
+  getLoadsMonthly,
+  getTopAgentsByRevenue,
+  getUpcomingLoads,
+  getRecentDeliveredLoads,
 } from "@/lib/metrics/dashboard";
 import { getAverageRPM } from "@/lib/metrics/agent";
-import { useState } from "react";
 import { RevenueChart } from "@/components/RevenueChart";
-import { getMonthlyRevenue } from "@/lib/metrics/dashboard";
 import { RpmChart } from "@/components/RpmChart";
-import { getMonthlyRPM } from "@/lib/metrics/dashboard";
 import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
-import { getOutstandingLoads } from "@/lib/metrics/dashboard";
+import { AlertBanners } from "@/components/dashboard/AlertBanners";
+import { TopAgents } from "@/components/dashboard/TopAgents";
+import { WhatsNext } from "@/components/dashboard/WhatsNext";
+import { RecentLoads } from "@/components/dashboard/RecentLoads";
+import type { Alert } from "@/types/alert";
 
 // helpers
 const formatCurrency = (n: number | null): string =>
@@ -74,11 +83,19 @@ const DashboardPage = () => {
   const revenueYTD = getRevenueYTD(loads);
   const avgRpm = getAverageRPM(loads);
   const deadhead = getMonthlyDeadhead(loads, trips);
+  const loadsMonthly = getLoadsMonthly(loads);
 
   const mtdDelta = computeDelta(revenueMTD, revenueLastMonth);
+  const loadsDelta = computeDelta(loadsMonthly.thisMonth, loadsMonthly.lastMonth);
   const monthlyRevenue = getMonthlyRevenue(loads);
   const monthlyRpm = getMonthlyRPM(loads);
   const outstanding = getOutstandingLoads(loads);
+  const topAgents = getTopAgentsByRevenue(loads);
+  const upcoming = getUpcomingLoads(loads);
+  const recentLoads = getRecentDeliveredLoads(loads);
+
+  // Reserved for the future alert engine (maintenance / compliance).
+  const alerts: Alert[] = [];
 
   // ---- threshold-based status ----
   const rpmStatus =
@@ -94,8 +111,10 @@ const DashboardPage = () => {
     <div className="p-6 bg-iron text-light min-h-screen font-body">
       <h1 className="text-3xl font-condensed mb-6">Dashboard</h1>
 
+      <AlertBanners alerts={alerts} />
+
       {/* KPI STRIP */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard
           label="Revenue · MTD"
           value={formatCurrency(revenueMTD)}
@@ -118,16 +137,43 @@ const DashboardPage = () => {
           status={deadheadStatus}
           subtext={`Last month: ${formatPercent(deadhead.lastMonth)}`}
         />
+        <KpiCard
+          label="Loads · MTD"
+          value={String(loadsMonthly.thisMonth)}
+          delta={loadsDelta}
+        />
       </div>
 
-      {/* Charts (#138, #139) and Outstanding list (#140) go below, later */}
-      <div className="mt-6">
-        <RevenueChart data={monthlyRevenue} />
+      {/* Revenue chart + top agents */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+        <div className="lg:col-span-2">
+          <RevenueChart data={monthlyRevenue} />
+        </div>
+        <div className="bg-plate rounded-lg p-4">
+          <p className="text-xs text-muted-text mb-2">
+            Top 5 agents · last 90 days
+          </p>
+          <TopAgents agents={topAgents} />
+        </div>
       </div>
-      <div className="mt-6">
-        <RpmChart data={monthlyRpm} breakEven={BREAK_EVEN_RPM} />
+
+      {/* RPM chart + what's next */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+        <div className="lg:col-span-2">
+          <RpmChart data={monthlyRpm} breakEven={BREAK_EVEN_RPM} />
+        </div>
+        <div className="bg-plate rounded-lg p-4">
+          <p className="text-xs text-muted-text mb-2">What's next · booked</p>
+          <WhatsNext loads={upcoming} />
+        </div>
       </div>
-      <div className="mt-6">
+
+      {/* Recent loads + outstanding */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+        <div className="bg-plate rounded-lg p-4">
+          <p className="text-xs text-muted-text mb-2">Recent loads</p>
+          <RecentLoads loads={recentLoads} />
+        </div>
         <OutstandingLoadsList loads={outstanding} />
       </div>
     </div>
