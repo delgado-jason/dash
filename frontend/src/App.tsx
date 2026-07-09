@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
+import TripsPage from "@/pages/TripsPage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
@@ -27,6 +28,7 @@ const App = () => {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/loads" element={<LoadsPage />} />
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
+          <Route path="/trips" element={<TripsPage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />

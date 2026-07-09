@@ -14,6 +14,7 @@ import { Link, useLocation } from "react-router-dom";
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/loads", label: "Loads" },
+  { to: "/trips", label: "Trips" },
   { to: "/agents", label: "Agents" },
   { to: "/fuel-entries", label: "Fuel Entries" },
   // { to: "/trucks", label: "Trucks" },

@@ -77,6 +77,16 @@ export const validateTripCreate = (data) => {
     errors.push("Missing trip_purpose");
   }
 
+  // Cross-field: an odometer window must not run backwards (protects the
+  // tiling invariant). Only checked when both readings are provided.
+  if (
+    data.odometer_start != null &&
+    data.odometer_end != null &&
+    data.odometer_end < data.odometer_start
+  ) {
+    errors.push("odometer_end must be greater than or equal to odometer_start");
+  }
+
   for (const field in data) {
     if (rules[field]) {
       rules[field](data[field], errors);
