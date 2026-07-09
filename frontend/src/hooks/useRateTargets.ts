@@ -10,6 +10,8 @@ import {
   getGrossTargets,
   payWeekRange,
   getWeekBookedGross,
+  getWeekRpm,
+  getWindowRpm,
 } from "@/lib/metrics/rateTargets";
 import {
   RATE_TIERS,
@@ -55,11 +57,15 @@ export const useRateTargets = (loads: Load[]) => {
     );
     const { start, end } = payWeekRange(now, PAY_WEEK_START_DOW);
     const weekBooked = getWeekBookedGross(loads, start, end);
+    const weekRpm = getWeekRpm(loads, start, end);
+    const rollingRpm = getWindowRpm(loads, now);
     return {
       basis,
       ladder,
       gross,
       weekBooked,
+      weekRpm, // this week's blended rate — the ladder marker
+      rollingRpm, // rolling 3-complete-month RPM — the Avg RPM KPI
       weekStart: start,
       weekEnd: end,
       ready: basis.breakEvenRpm != null,

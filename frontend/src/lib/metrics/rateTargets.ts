@@ -174,21 +174,49 @@ export const payWeekRange = (
   return { start, end };
 };
 
-// Gross of every non-cancelled load delivering in [start, end) — booked,
-// in-transit, and delivered all count, so mid-week shows committed + earned.
-export const getWeekBookedGross = (
-  loads: Load[],
-  start: Date,
-  end: Date,
-): number => {
-  let sum = 0;
-  for (const l of loads) {
-    if (l.load_status === "cancelled" || !l.delivery_date) continue;
+// Non-cancelled loads delivering in [start, end) — booked, in-transit, and
+// delivered all count, so mid-week reflects committed + earned freight.
+const loadsInWeek = (loads: Load[], start: Date, end: Date): Load[] =>
+  loads.filter((l) => {
+    if (l.load_status === "cancelled" || !l.delivery_date) return false;
     const dd = new Date(l.delivery_date);
     const day = new Date(
       Date.UTC(dd.getUTCFullYear(), dd.getUTCMonth(), dd.getUTCDate()),
     );
-    if (day >= start && day < end) sum += loadRevenue(l);
+    return day >= start && day < end;
+  });
+
+export const getWeekBookedGross = (
+  loads: Load[],
+  start: Date,
+  end: Date,
+): number => loadsInWeek(loads, start, end).reduce((s, l) => s + loadRevenue(l), 0);
+
+// This week's blended rate per loaded mile — where you're landing right now.
+export const getWeekRpm = (
+  loads: Load[],
+  start: Date,
+  end: Date,
+): number | null => {
+  const wk = loadsInWeek(loads, start, end);
+  const revenue = wk.reduce((s, l) => s + loadRevenue(l), 0);
+  const loaded = wk.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
+  return loaded > 0 ? revenue / loaded : null;
+};
+
+// Rolling blended RPM over the last `monthsBack` complete months — loads only,
+// so it stands on its own (doesn't need a P&L like the break-even does).
+export const getWindowRpm = (
+  loads: Load[],
+  now: Date,
+  monthsBack = 3,
+): number | null => {
+  let revenue = 0;
+  let loaded = 0;
+  for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
+    const m = monthMiles(loads, year, month);
+    revenue += m.revenue;
+    loaded += m.loaded;
   }
-  return sum;
+  return loaded > 0 ? revenue / loaded : null;
 };

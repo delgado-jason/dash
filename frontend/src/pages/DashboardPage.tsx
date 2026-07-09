@@ -16,7 +16,6 @@ import {
   getUpcomingLoads,
   getRecentDeliveredLoads,
 } from "@/lib/metrics/dashboard";
-import { getAverageRPM } from "@/lib/metrics/agent";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { RevenueChart } from "@/components/RevenueChart";
@@ -84,7 +83,7 @@ const DashboardPage = () => {
   const revenueMTD = getRevenueMTD(loads);
   const revenueLastMonth = getRevenueLastMonth(loads);
   const revenueYTD = getRevenueYTD(loads);
-  const avgRpm = getAverageRPM(loads);
+  const avgRpm = targets.rollingRpm; // rolling 3-complete-month blended RPM
   const deadhead = getMonthlyDeadhead(loads, trips);
   const loadsMonthly = getLoadsMonthly(loads);
 
@@ -128,7 +127,7 @@ const DashboardPage = () => {
         />
         <KpiCard label="Revenue · YTD" value={formatCurrency(revenueYTD)} />
         <KpiCard
-          label="Avg RPM"
+          label="Avg RPM · 3mo"
           value={formatRpm(avgRpm)}
           status={rpmStatus}
           subtext={
@@ -152,7 +151,7 @@ const DashboardPage = () => {
 
       {/* Rate & pace targets */}
       <div className="mt-6">
-        <RateTargetsCard targets={targets} rpm={avgRpm} />
+        <RateTargetsCard targets={targets} rpm={targets.weekRpm} />
       </div>
 
       {/* Revenue chart + top agents */}
