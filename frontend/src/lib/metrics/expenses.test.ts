@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ExpensePeriod, ExpenseLine } from "@/types/expense";
-import { getExpenseMetrics, pctOfRevenue } from "./expenses";
+import { getExpenseMetrics, pctOfRevenue, getCashMetrics } from "./expenses";
 
 const line = (over: Partial<ExpenseLine>): ExpenseLine => ({
   line_id: "x",
@@ -65,5 +65,23 @@ describe("pctOfRevenue", () => {
     expect(pctOfRevenue(2500, 10000)).toBeCloseTo(0.25, 5);
     expect(pctOfRevenue(2500, 0)).toBeNull();
     expect(pctOfRevenue(2500, null)).toBeNull();
+  });
+});
+
+describe("getCashMetrics", () => {
+  it("adds obligations to operating cost for the true cash break-even", () => {
+    // operating cost 8000, obligations 2000 → true cash cost 10000
+    const m = getCashMetrics(8000, 2000, 10000, 8000);
+    expect(m.obligationsTotal).toBe(2000);
+    expect(m.trueMonthlyCost).toBe(10000);
+    expect(m.trueCpm).toBeCloseTo(1.0, 5); // 10000 / 10000 total miles
+    expect(m.trueBreakEvenRpm).toBeCloseTo(1.25, 5); // 10000 / 8000 loaded
+  });
+
+  it("null ratios when miles are zero; no obligations = operating cost", () => {
+    const m = getCashMetrics(8000, 0, 0, 0);
+    expect(m.trueMonthlyCost).toBe(8000);
+    expect(m.trueCpm).toBeNull();
+    expect(m.trueBreakEvenRpm).toBeNull();
   });
 });
