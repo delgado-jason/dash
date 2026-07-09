@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getTrips,
   getTrip,
+  getLatestOdometer,
   createTrip,
   patchTrip,
   deleteTrip,
@@ -23,6 +24,31 @@ router.get("/", async (req, res) => {
       message: "Trips retrieved successfully",
       count: trips.length,
       trips,
+    });
+  } catch (err) {
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- GET LATEST ODOMETER ----
+// MUST be declared before "/:id" or Express matches "latest-odometer" as an id.
+
+router.get("/latest-odometer", async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const latest_odometer = await getLatestOdometer(user_id);
+
+    return res.status(200).json({
+      message: "Latest odometer retrieved successfully",
+      latest_odometer,
     });
   } catch (err) {
     if (err.type === "validation") {

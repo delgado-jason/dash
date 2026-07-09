@@ -76,6 +76,28 @@ export async function getTrip(user_id, trip_id) {
   return result.rows[0];
 }
 
+// ---- GET LATEST ODOMETER SERVICE ----
+// Highest odometer_end across BOTH loads and trips = the truck's furthest
+// recorded point. Used to prefill a new trip's odometer_start so segments tile
+// (each trip starts where the last load/trip ended). GREATEST ignores NULLs
+// unless every source is NULL (brand-new account) → returns null.
+// NOTE: global across all trucks — correct while the operation runs ONE truck;
+// scope these subqueries by truck_id if a second truck is ever added.
+export async function getLatestOdometer(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const query = `
+        SELECT GREATEST(
+            (SELECT MAX(odometer_end) FROM loads WHERE user_id = $1),
+            (SELECT MAX(odometer_end) FROM trips WHERE user_id = $1)
+        ) AS latest_odometer;
+    `;
+
+  const result = await db.query(query, [user_id]);
+
+  return result.rows[0].latest_odometer; // number | null
+}
+
 // ---- CREATE TRIP SERVICE ----
 export async function createTrip(user_id, data) {
   // Reject missing user_id
