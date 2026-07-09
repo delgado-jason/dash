@@ -13,6 +13,9 @@ import {
   getCashMetrics,
   getTrueMonthly,
 } from "@/lib/metrics/expenses";
+import { getCostBasis, getRateLadder } from "@/lib/metrics/rateTargets";
+import { RATE_TIERS } from "@/lib/constants/targets";
+import { RateLadder } from "@/components/dashboard/RateLadder";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
@@ -165,6 +168,14 @@ const ExpensesPage = () => {
     trailing.avgLoadedMiles,
   );
 
+  // Rate targets anchored to today (last 3 complete months, NOT the selected
+  // month) — forward pricing guidance, same basis as the dashboard card.
+  const rateBasis = useMemo(
+    () => getCostBasis(periods, obligationsTotal, loads, new Date()),
+    [periods, obligationsTotal, loads],
+  );
+  const rateLadder = getRateLadder(rateBasis.breakEvenRpm, RATE_TIERS);
+
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -248,6 +259,16 @@ const ExpensesPage = () => {
               + draws). Dollar figures are this month; per-mile figures blend the
               last {trailing.months} month{trailing.months > 1 ? "s" : ""}.
             </p>
+          )}
+
+          {rateLadder.walkAway != null && (
+            <div className="bg-plate rounded-lg p-4 mb-6">
+              <p className="text-xs text-muted-text mb-3">
+                Rate targets · per loaded mile · last {rateBasis.months} complete
+                month{rateBasis.months > 1 ? "s" : ""}
+              </p>
+              <RateLadder ladder={rateLadder} rpm={rateBasis.windowRpm} />
+            </div>
           )}
 
           {periods.length > 1 && (
