@@ -8,6 +8,7 @@ import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
 import TripsPage from "@/pages/TripsPage";
+import ExpensesPage from "@/pages/ExpensesPage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
@@ -48,6 +49,7 @@ const App = () => {
               </Suspense>
             }
           />
+          <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />

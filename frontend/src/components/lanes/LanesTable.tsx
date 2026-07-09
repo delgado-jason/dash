@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { RegionStat } from "@/lib/metrics/lanes";
 import { MIN_KPI_LOADS } from "@/lib/metrics/lanes";
 import { fmtRpm, rpmTextClass } from "./rpmStyle";
@@ -44,10 +45,11 @@ export const LanesTable = ({ rollup }: Props) => {
                 onClick={() => setOpenRegions((s) => toggle(s, region.region))}
               >
                 <td className="py-2 px-2">
-                  <i
-                    className={`ti ti-chevron-${rOpen ? "down" : "right"}`}
-                    aria-hidden="true"
-                  />{" "}
+                  {rOpen ? (
+                    <ChevronDown size={14} className="inline" aria-hidden="true" />
+                  ) : (
+                    <ChevronRight size={14} className="inline" aria-hidden="true" />
+                  )}{" "}
                   {region.region}
                 </td>
                 <td className="py-2 px-2 text-right">{region.loadCount}</td>
@@ -66,10 +68,11 @@ export const LanesTable = ({ rollup }: Props) => {
                         onClick={() => setOpenMarkets((s) => toggle(s, mKey))}
                       >
                         <td className="py-2 pl-7 pr-2">
-                          <i
-                            className={`ti ti-chevron-${mOpen ? "down" : "right"}`}
-                            aria-hidden="true"
-                          />{" "}
+                          {mOpen ? (
+                            <ChevronDown size={13} className="inline" aria-hidden="true" />
+                          ) : (
+                            <ChevronRight size={13} className="inline" aria-hidden="true" />
+                          )}{" "}
                           {market.market}
                         </td>
                         <td className="py-2 px-2 text-right">
