@@ -49,3 +49,28 @@ export const pctOfRevenue = (
   amount: number,
   income: number | null,
 ): number | null => (income && income > 0 ? amount / income : null);
+
+// Cash view: operating cost (from the P&L) PLUS recurring obligations the P&L
+// doesn't show (loan principal, owner draws). This is what he must actually
+// gross to cover, so break-even here uses true cash-out over loaded miles.
+export interface CashMetrics {
+  obligationsTotal: number;
+  trueMonthlyCost: number; // operating cost + obligations
+  trueCpm: number | null; // trueMonthlyCost / total miles
+  trueBreakEvenRpm: number | null; // trueMonthlyCost / loaded miles
+}
+
+export const getCashMetrics = (
+  operatingMonthlyCost: number,
+  obligationsTotal: number,
+  totalMiles: number,
+  loadedMiles: number,
+): CashMetrics => {
+  const trueMonthlyCost = operatingMonthlyCost + obligationsTotal;
+  return {
+    obligationsTotal,
+    trueMonthlyCost,
+    trueCpm: totalMiles > 0 ? trueMonthlyCost / totalMiles : null,
+    trueBreakEvenRpm: loadedMiles > 0 ? trueMonthlyCost / loadedMiles : null,
+  };
+};

@@ -10,6 +10,7 @@ import { getExpenseMetrics } from "@/lib/metrics/expenses";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
+import { ObligationsCard } from "@/components/expenses/ObligationsCard";
 
 const money = (n: number): string =>
   `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -107,6 +108,33 @@ const ExpensesPage = () => {
     ? getExpenseMetrics(selected, miles.totalMiles, miles.loadedMiles)
     : null;
 
+  // Blended trailing window: sum cost + miles over the selected month and up to
+  // 2 prior, so cost/mile + break-even aren't whipped around by one noisy month.
+  // Numerator and denominator cover the same window (variable cost moves with
+  // miles, so they must). Also expose per-month averages for the cash view.
+  const trailing = useMemo(() => {
+    const idx = periods.findIndex((p) => p.period_id === selectedId);
+    const windowPeriods = idx >= 0 ? periods.slice(idx, idx + 3) : [];
+    const n = windowPeriods.length;
+    let cost = 0;
+    let total = 0;
+    let loaded = 0;
+    for (const p of windowPeriods) {
+      cost += (p.cogs_total ?? 0) + (p.expense_total ?? 0);
+      const m = monthMiles(loads, p.period_month);
+      total += m.totalMiles;
+      loaded += m.loadedMiles;
+    }
+    return {
+      months: n || 1,
+      cpm: total > 0 ? cost / total : null,
+      breakEvenRpm: loaded > 0 ? cost / loaded : null,
+      avgCost: n > 0 ? cost / n : 0,
+      avgTotalMiles: n > 0 ? total / n : 0,
+      avgLoadedMiles: n > 0 ? loaded / n : 0,
+    };
+  }, [periods, selectedId, loads]);
+
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -144,7 +172,7 @@ const ExpensesPage = () => {
         <>
           {periods.length > 1 && (
             <div className="flex gap-1 mb-4 flex-wrap">
-              {periods.map((p) => (
+              {[...periods].reverse().map((p) => (
                 <button
                   key={p.period_id}
                   onClick={() => setSelectedId(p.period_id)}
@@ -164,15 +192,15 @@ const ExpensesPage = () => {
             <Kpi label="Monthly cost" value={money(metrics.monthlyCost)} />
             <Kpi label="Weekly cost" value={money(metrics.weeklyCost)} />
             <Kpi
-              label="Cost / mile"
-              value={metrics.cpm == null ? "—" : `$${metrics.cpm.toFixed(2)}`}
+              label={`Cost / mile · ${trailing.months}mo`}
+              value={trailing.cpm == null ? "—" : `$${trailing.cpm.toFixed(2)}`}
             />
             <Kpi
-              label="Break-even RPM"
+              label={`Break-even RPM · ${trailing.months}mo`}
               value={
-                metrics.breakEvenRpm == null
+                trailing.breakEvenRpm == null
                   ? "—"
-                  : `$${metrics.breakEvenRpm.toFixed(2)}`
+                  : `$${trailing.breakEvenRpm.toFixed(2)}`
               }
             />
             <Kpi
@@ -211,6 +239,12 @@ const ExpensesPage = () => {
               </span>
             </div>
           </div>
+
+          <ObligationsCard
+            operatingCost={trailing.avgCost}
+            totalMiles={trailing.avgTotalMiles}
+            loadedMiles={trailing.avgLoadedMiles}
+          />
 
           <div className="bg-plate rounded-lg p-4 mb-6">
             <p className="text-xs text-muted-text mb-2">
