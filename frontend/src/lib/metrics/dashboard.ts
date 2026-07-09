@@ -1,4 +1,5 @@
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
@@ -86,6 +87,89 @@ export const getDeadheadPercent = (loads: Load[]) => {
   if (totalOdometer === 0) return null;
 
   return (totalOdometer - totalLoaded) / totalOdometer;
+};
+
+// ---- MONTHLY DEADHEAD ---- (this month vs last month, trips included)
+
+export interface MonthlyDeadhead {
+  thisMonth: number | null;
+  lastMonth: number | null;
+}
+
+// Deadhead % for a single UTC month. Empty miles = delivered loads' odometer
+// windows minus their loaded miles, PLUS every qualifying trip's full odometer
+// window (trips are 100% non-revenue). Payment status is irrelevant — only
+// load_status "delivered" ran (cancelled/tonu did not); all trip purposes count.
+// Both loads and trips need both odometer readings. Returns null when the month
+// has no qualifying miles at all.
+const deadheadForMonth = (
+  loads: Load[],
+  trips: Trip[],
+  year: number,
+  month: number,
+): number | null => {
+  const monthLoads = loads.filter(
+    (load) =>
+      load.load_status === "delivered" &&
+      load.odometer_start != null &&
+      load.odometer_end != null &&
+      load.delivery_date &&
+      new Date(load.delivery_date).getUTCFullYear() === year &&
+      new Date(load.delivery_date).getUTCMonth() === month,
+  );
+
+  const monthTrips = trips.filter(
+    (trip) =>
+      trip.odometer_start != null &&
+      trip.odometer_end != null &&
+      trip.trip_date &&
+      new Date(trip.trip_date).getUTCFullYear() === year &&
+      new Date(trip.trip_date).getUTCMonth() === month,
+  );
+
+  const loadWindow = monthLoads.reduce(
+    (sum, load) =>
+      sum + (Number(load.odometer_end) - Number(load.odometer_start)),
+    0,
+  );
+  const tripWindow = monthTrips.reduce(
+    (sum, trip) =>
+      sum + (Number(trip.odometer_end) - Number(trip.odometer_start)),
+    0,
+  );
+  const totalMiles = loadWindow + tripWindow;
+
+  const loadedMiles = monthLoads.reduce(
+    (sum, load) => sum + Number(load.loaded_miles),
+    0,
+  );
+
+  if (totalMiles === 0) return null;
+
+  return (totalMiles - loadedMiles) / totalMiles;
+};
+
+// This month's deadhead % and last month's, for the KPI comparison.
+export const getMonthlyDeadhead = (
+  loads: Load[],
+  trips: Trip[],
+): MonthlyDeadhead => {
+  const now = new Date(Date.now());
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+
+  // First-of-previous-month in UTC — handles the Jan → Dec year rollover.
+  const prev = new Date(Date.UTC(year, month - 1, 1));
+
+  return {
+    thisMonth: deadheadForMonth(loads, trips, year, month),
+    lastMonth: deadheadForMonth(
+      loads,
+      trips,
+      prev.getUTCFullYear(),
+      prev.getUTCMonth(),
+    ),
+  };
 };
 
 // ---- MONTH KEY HELPER ---- (UTC, "YYYY-MM")

@@ -1,13 +1,72 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import {
   getRevenueMTD,
   getRevenueLastMonth,
   getRevenueYTD,
   getDeadheadPercent,
+  getMonthlyDeadhead,
   getMonthlyRevenue,
   getMonthlyRPM,
   getOutstandingLoads,
 } from "./dashboard";
+
+// ---- typed factories: override only the fields a test cares about ----
+const baseLoad: Load = {
+  load_id: "L",
+  load_number: "1",
+  load_type: "standard flatbed",
+  load_status: "delivered",
+  broker_id: "b",
+  broker: "B",
+  agent_id: "a",
+  agent: "A",
+  agent_email: null,
+  pickup_date: "2026-06-01T04:00:00.000Z",
+  origin_market_id: "m",
+  origin_city: "X",
+  origin_state: "TX",
+  origin_market: "M",
+  destination_market_id: "m2",
+  destination_city: "Y",
+  destination_state: "TN",
+  delivery_market: "M2",
+  delivery_date: "2026-06-10T04:00:00.000Z",
+  deadhead_miles: 0,
+  loaded_miles: 0,
+  linehaul: "0",
+  fuel_surcharge: "0",
+  total_accessorials: "0",
+  commodity: null,
+  odometer_start: null,
+  odometer_end: null,
+  payment_status: "unpaid",
+  created_at: "",
+  updated_at: "",
+};
+
+const baseTrip: Trip = {
+  trip_id: "T",
+  trip_number: 1,
+  trip_purpose: "repositioning",
+  truck_id: null,
+  unit_number: null,
+  driver_id: null,
+  driver_name: null,
+  trip_type: "deadhead",
+  trip_source: "user",
+  trip_date: "2026-06-10",
+  status: "completed",
+  odometer_start: null,
+  odometer_end: null,
+  is_estimated: true,
+  created_at: "",
+  updated_at: "",
+};
+
+const makeLoad = (over: Partial<Load>): Load => ({ ...baseLoad, ...over });
+const makeTrip = (over: Partial<Trip>): Trip => ({ ...baseTrip, ...over });
 
 // Freeze the clock before each test, restore the real clock after each
 beforeEach(() => {
@@ -17,6 +76,126 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+// ---- GET MONTHLY DEADHEAD TEST ---- (clock frozen to 2026-06-22 → June vs May)
+describe("getMonthlyDeadhead", () => {
+  it("computes this month and last month, counting loads AND trips", () => {
+    const loads = [
+      // June: window 500, loaded 400 → 100 empty
+      makeLoad({
+        delivery_date: "2026-06-10T04:00:00.000Z",
+        odometer_start: 100000,
+        odometer_end: 100500,
+        loaded_miles: 400,
+      }),
+      // May: window 400, loaded 400 → 0 empty
+      makeLoad({
+        delivery_date: "2026-05-12T04:00:00.000Z",
+        odometer_start: 90000,
+        odometer_end: 90400,
+        loaded_miles: 400,
+      }),
+    ];
+    const trips = [
+      // June trip: window 100, all empty
+      makeTrip({
+        trip_date: "2026-06-15",
+        odometer_start: 100500,
+        odometer_end: 100600,
+      }),
+      // May trip: window 100, all empty
+      makeTrip({
+        trip_date: "2026-05-20",
+        odometer_start: 90400,
+        odometer_end: 90500,
+      }),
+    ];
+
+    const result = getMonthlyDeadhead(loads, trips);
+    // June: total 600, loaded 400 → 200/600
+    expect(result.thisMonth).toBeCloseTo(200 / 600, 5);
+    // May: total 500, loaded 400 → 0.2
+    expect(result.lastMonth).toBeCloseTo(0.2, 5);
+  });
+
+  it("returns null for months with no qualifying miles", () => {
+    const result = getMonthlyDeadhead([], []);
+    expect(result.thisMonth).toBeNull();
+    expect(result.lastMonth).toBeNull();
+  });
+
+  it("counts trips with no loads at all as 100% empty", () => {
+    const trips = [
+      makeTrip({
+        trip_date: "2026-06-15",
+        odometer_start: 100000,
+        odometer_end: 100200,
+      }),
+    ];
+    const result = getMonthlyDeadhead([], trips);
+    expect(result.thisMonth).toBe(1);
+  });
+
+  it("includes delivered-but-unpaid loads; excludes cancelled and tonu", () => {
+    const loads = [
+      makeLoad({
+        payment_status: "unpaid",
+        odometer_start: 100000,
+        odometer_end: 100500,
+        loaded_miles: 400,
+      }),
+      makeLoad({
+        load_status: "cancelled",
+        odometer_start: 100500,
+        odometer_end: 101000,
+      }),
+      makeLoad({
+        load_status: "tonu",
+        odometer_start: 101000,
+        odometer_end: 101500,
+      }),
+    ];
+    // Only the unpaid delivered load counts: 500 window, 400 loaded → 0.2
+    const result = getMonthlyDeadhead(loads, []);
+    expect(result.thisMonth).toBeCloseTo(0.2, 5);
+  });
+
+  it("excludes trips missing an odometer reading", () => {
+    const loads = [
+      makeLoad({
+        odometer_start: 100000,
+        odometer_end: 100500,
+        loaded_miles: 400,
+      }),
+    ];
+    const trips = [
+      makeTrip({
+        trip_date: "2026-06-15",
+        odometer_start: 100500,
+        odometer_end: null, // incomplete → ignored
+      }),
+    ];
+    const result = getMonthlyDeadhead(loads, trips);
+    // trip ignored → load-only: 100/500 = 0.2
+    expect(result.thisMonth).toBeCloseTo(0.2, 5);
+  });
+
+  it("handles the January → December year rollover for last month", () => {
+    vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
+    const loads = [
+      // Dec 2025: window 300, loaded 200 → 100/300
+      makeLoad({
+        delivery_date: "2025-12-20T05:00:00.000Z",
+        odometer_start: 80000,
+        odometer_end: 80300,
+        loaded_miles: 200,
+      }),
+    ];
+    const result = getMonthlyDeadhead(loads, []);
+    expect(result.thisMonth).toBeNull(); // nothing in Jan 2026
+    expect(result.lastMonth).toBeCloseTo(100 / 300, 5); // Dec 2025 found
+  });
 });
 
 // ---- GET REVENUE MTD TEST ----

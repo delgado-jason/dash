@@ -1,11 +1,12 @@
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { KpiCard } from "@/components/KpiCard";
 import { BREAK_EVEN_RPM, DEADHEAD_TARGET } from "@/lib/constants/targets";
 import {
   getRevenueMTD,
   getRevenueLastMonth,
   getRevenueYTD,
-  getDeadheadPercent,
+  getMonthlyDeadhead,
 } from "@/lib/metrics/dashboard";
 import { getAverageRPM } from "@/lib/metrics/agent";
 import { useState } from "react";
@@ -39,7 +40,19 @@ const computeDelta = (current: number | null, previous: number | null) => {
 
 const DashboardPage = () => {
   const [refreshKey] = useState(0);
-  const { loads, isLoading, error } = useLoads(refreshKey);
+  const {
+    loads,
+    isLoading: loadsLoading,
+    error: loadsError,
+  } = useLoads(refreshKey);
+  const {
+    trips,
+    isLoading: tripsLoading,
+    error: tripsError,
+  } = useTrips(refreshKey);
+
+  const isLoading = loadsLoading || tripsLoading;
+  const error = loadsError || tripsError;
 
   if (isLoading)
     return (
@@ -60,7 +73,7 @@ const DashboardPage = () => {
   const revenueLastMonth = getRevenueLastMonth(loads);
   const revenueYTD = getRevenueYTD(loads);
   const avgRpm = getAverageRPM(loads);
-  const deadhead = getDeadheadPercent(loads);
+  const deadhead = getMonthlyDeadhead(loads, trips);
 
   const mtdDelta = computeDelta(revenueMTD, revenueLastMonth);
   const monthlyRevenue = getMonthlyRevenue(loads);
@@ -71,9 +84,9 @@ const DashboardPage = () => {
   const rpmStatus =
     avgRpm === null ? "neutral" : avgRpm >= BREAK_EVEN_RPM ? "good" : "bad";
   const deadheadStatus =
-    deadhead === null
+    deadhead.thisMonth === null
       ? "neutral"
-      : deadhead <= DEADHEAD_TARGET
+      : deadhead.thisMonth <= DEADHEAD_TARGET
         ? "good"
         : "bad"; // inverted: low is good
 
@@ -100,10 +113,10 @@ const DashboardPage = () => {
           }
         />
         <KpiCard
-          label="Deadhead"
-          value={formatPercent(deadhead)}
+          label="Deadhead · MTD"
+          value={formatPercent(deadhead.thisMonth)}
           status={deadheadStatus}
-          subtext={`target ${(DEADHEAD_TARGET * 100).toFixed(0)}%`}
+          subtext={`Last month: ${formatPercent(deadhead.lastMonth)}`}
         />
       </div>
 

@@ -17,16 +17,16 @@
 
 ## CURRENT FOCUS
 
-**Active arc:** `dash` — **Trips (non-revenue miles) feature, Option B.**
-Recording non-revenue "deadhead" miles. Building it lightweight: trips used ONLY for non-revenue movements (childless trips). Loads stay untouched. The full "trip-as-parent-of-loads" model stays deferred/dormant scaffolding.
+**Active arc:** `dash` — **Wire trips into the deadhead metric + make it month-over-month.** (Trips feature SHIPPED as v1.23.0 on 2026-07-08.) The deadhead % must now (a) include trip miles in total miles, and (b) display THIS month vs LAST month for tracking. FIRST feature under the new issue-driven build workflow. (Trips model recap: childless non-revenue trips, Option B; loads untouched.)
+  - **STATUS (2026-07-08): BUILT + tested, awaiting Jason's verify + dev render-check + ship.** GitHub issue **#157**. `getMonthlyDeadhead(loads, trips)` in `dashboard.ts` → `{thisMonth, lastMonth}`; per-month: loads (delivered, both odos, delivery_date in month) + ALL trips (both odos, trip_date in month); `total = Σ load+trip windows`, `loaded = Σ load.loaded_miles`, `deadhead% = (total−loaded)/total` or null. Display (per Jason 2026-07-08): raw percentages, NOT a relative delta — KpiCard `label="Deadhead · MTD"`, value = this month %, subtext = `Last month: X%` (value colored green/red by 20% target). `invertDelta` idea was reverted (unused). DashboardPage fetches trips via `useTrips`. 13 tests pass (6 new: math, null, trips-only, cancelled/tonu excluded, delivered-unpaid included, Jan→Dec rollover). Strict build green. NOT committed. Old `getDeadheadPercent` now unused by app (still exported/tested) — prune candidate. Ship will be a `feat` → **1.24.0**.
 
-**Teaching mode:** Build-it-yourself (concept → Jason writes → review). Resumed after a deliberate "dashboard rush" where Jason temporarily asked for direct code.
+**Working mode — dash (CHANGED 2026-07-08, durable):** Issue-driven **build mode**. Loop: (1) Jason creates a GitHub issue = the spec → (2) align on scope + design/formula decisions (instructor still surfaces these one at a time, doesn't railroad) → (3) **instructor builds it** → (4) verify together: matches intent AND formulas/calcs are provably correct (instructor brings the rigor — dates, numeric-string coercion, null-for-no-data, empty/edge cases, tests with a frozen clock) → (5) test on dev → (6) ship (PR→merge) + version bump only if warranted (semver additive-vs-corrective; not every change bumps). GitHub access: `gh` CLI authed as `delgado-jason` (repo scope). **NOTE:** this overrides CLAUDE.md §2's teaching default FOR dash only. **dts-tools / Track B stays TEACHING mode** (concept → Jason writes → review) — it's a learning course, not build-for-him.
 
 ---
 
 ## PROJECT STATE SNAPSHOT
 
-### dash — current version ~1.22.0 (dashboard arc complete)
+### dash — current version 1.23.0 (trips feature shipped 2026-07-08)
 
 Shipped recently:
 
@@ -67,22 +67,26 @@ Side Course B (Python). Backend recon phase. Next queued task: `notes/comdata-re
 
 **Trip categories contract — DONE on dev (2026-07-07), NOT yet on prod.** Migration `023_add_trip_purpose.sql` (CREATE TYPE trip_purpose enum + DELETE test rows + ADD COLUMN NOT NULL) ran clean on dev. Types (`Trip`, `TripInput`) carry `trip_purpose` required/non-null. Backend: `createTrip` allowedFields + two-part validation (presence check in `validateTripCreate` + value-check rule in shared `rules`) done & `.http`-tested. **PROD MIGRATION STILL PENDING — apply at ship time alongside the code deploy; re-run `SELECT count(*) FROM loads WHERE trip_id IS NOT NULL` on PROD (must be 0) before the DELETE runs there.** NOTE: `getDeadheadPercent` NOT yet wired to trips (still backlog).
 
-**Issue #3 — Trips page: NOT STARTED (categories now defined — UNBLOCKED, ready to build).** Route + "Trips" nav item, trips list, create form WITH: category selector (`trip_purpose`, required), odometer_start + odometer_end capture, and **odometer_start auto-prefill** (must-have this version — see below). Deadhead-wiring into dashboard stays backlog.
+**Issue #3 — Trips page: BUILT on dev, awaiting Jason's manual test (2026-07-08).** ✅ Slice 1+2 (route/nav/read-path list). ✅ Slice 3 built by instructor at Jason's explicit "build it for me" request:
+- Backend: `getLatestOdometer(user_id)` service (GREATEST of MAX(odometer_end) over loads+trips) + `GET /trips/latest-odometer` route (declared BEFORE `/:id`). Added cross-field validation: `odometer_end >= odometer_start` when both present.
+- Frontend: `createTrip` + `getLatestOdometer` added to `tripsService.ts` (createTrip surfaces backend error message). New `TripForm.tsx` (date, purpose select, odo start [prefilled], odo end, is_estimated Estimated/Actual select). Wired into `TripsPage.tsx` with a "Log Trip" toggle + list refresh on success.
+- Instructor judgment calls (Jason can veto): omitted truck/driver from the form (single-truck, nullable); added is_estimated select; added the cross-field odometer rule; prefill endpoint is GLOBAL across trucks (commented for future per-truck).
+- **Dev-tested by Jason (passed). SHIPPED 2026-07-08:** commit `2cf60ef`, `feat: add trips page with create form and odometer prefill - closes #150`, PR merged, tagged **v1.23.0**, prod migration `023` completed successfully, deployed. Trips feature DONE. Next: wire trips into the deadhead metric (now the active arc). **Trips was a CONFIRMED must-have for v1. Jason opted out of coding THIS feature (instructor builds it — teaching-mode exception, like the dashboard rush). Plan: build → test on dev → ship. No keep/cut question.**
 
 **ODOMETER MODEL (clarified 2026-07-07 — corrects a prior misread by the instructor):** `getDeadheadPercent` (`frontend/src/lib/metrics/dashboard.ts:70`) is computed PER LOAD: `Σ(odometer_end − odometer_start) − Σ(loaded_miles)` over delivered loads that have both odometers. It is NOT gap-inferred between consecutive loads. Consequence: empty miles NOT tied to fetching a load (home/shop/personal/repositioning) currently FALL THROUGH — a real, uncounted gap. Trips fill that gap by carrying their OWN `odometer_start/end`. Loads + trips must TILE the odometer line (each segment's start = prior segment's end; no gaps, no overlaps) or deadhead double-counts. Wiring trips INTO the deadhead metric stays deferred (backlog), but capture odometers now so that wiring is later a pure calc change (no migration/backfill).
 
 **DEADHEAD vs REPOSITIONING (Jason's vocabulary — governs, do NOT conflate):** *deadhead* = per-load empty miles to reach the next load's pickup (the odo-delta-minus-loaded above); automatic, lives on the load, NEVER a trip — cost forced by the load taken. *repositioning* = empty miles driven to a BETTER MARKET with NO booked load being fetched; speculative; REQUIRES a logged trip to capture the odo gap; is one of the four categories.
 
-**ODOMETER PREFILL (must-have this version — data protection; Brandie also inputs):** create-trip form auto-prefills `odometer_start` from the truck's LATEST recorded odometer = `MAX(odometer_end)` across BOTH loads AND trips (NOT just the last load's drop — else back-to-back repositioning trips overlap). Open build sub-decision (settle when building the form): source it via a small backend endpoint vs. frontend-derived from already-loaded data.
+**ODOMETER PREFILL (must-have this version — data protection; Brandie also inputs):** create-trip form auto-prefills `odometer_start` from the truck's LATEST recorded odometer = `MAX(odometer_end)` across BOTH loads AND trips (NOT just the last load's drop — else back-to-back repositioning trips overlap). RESOLVED (2026-07-08): sourced via a small backend endpoint `GET /trips/latest-odometer` (authoritative in SQL; the trips page has no loads client-side to derive from).
 
 ---
 
 ## OPEN DECISIONS (resolve at next session start)
 
 1. **TRIP CATEGORIES — RESOLVED 2026-07-07.** Final list: `repositioning | home | shop | personal`, **required**, as a new `trip_purpose` ENUM + column on trips. No "Other" bucket (add ENUM values later if a real one appears; near-empty table = trivial migration). "bobtail" rejected — it's a truck *configuration* (no trailer), not a purpose; would be a separate boolean if ever needed. Vocabulary: see DEADHEAD vs REPOSITIONING in the Trips Arc section.
-   - **Build touches:** (a) migration — `trip_purpose` ENUM + column (table ~empty, no backfill); (b) backend — add to `createTrip` allowedFields + validation (required); (c) types — add to `Trip` and `TripInput`; (d) Issue #3 page WITH the category selector from the start. **NEXT STEP: Jason writes the migration.**
+   - **Build touches:** (a) migration ✅ (`023` on dev); (b) backend ✅ (allowedFields + validation, tested); (c) types ✅; (d) Issue #3 page WITH the category selector from the start — **THIS IS THE ONLY REMAINING PIECE.**
 
-2. **Version cleanup:** Jason accidentally ran `npm version minor` (without `--no-git-tag-version`) and intended to undo it. CONFIRM version is at the correct number before the next bump.
+2. **Version cleanup — RESOLVED 2026-07-08.** Verified clean: `package.json` = `1.22.0` == tag `v1.22.0` (at PR #147 outstanding-loads); no stray bump. HEAD is 7 commits past v1.22.0 (trips backend/data/purpose, untagged). Trips page ships as a `feat` → **1.23.0**.
 
 ---
 
@@ -126,6 +130,8 @@ Side Course B (Python). Backend recon phase. Next queued task: `notes/comdata-re
 
 _Append a dated entry whenever Jason requests new behavior or functionality from me. Newest at top._
 
+- **2026-07-08** — **WORKFLOW CHANGE (dash).** Jason installed + authed `gh` (repo scope) and set a new durable working method for dash: issue-driven build mode — he creates a GitHub issue, instructor builds it, they verify intent + formula correctness together, test on dev, then ship + bump version if warranted. This replaces teaching-mode-default FOR dash (see CURRENT FOCUS). Track B (dts-tools) stays teaching mode. Amended CLAUDE.md §2 (done 2026-07-08) to scope build-mode to dash (Track A) while keeping dts-tools (Track B) in teaching mode.
+- **2026-07-08** — Jason clarified: he's not interested in CODING the trips feature (not lukewarm on it — it's a MUST-HAVE). Instructor-built slice 3 per his "build it for me": `latest-odometer` endpoint + prefill, `TripForm.tsx`, page wiring, `createTrip`/`getLatestOdometer` services, cross-field odometer validation. Strict build green, not committed. Next: Jason tests on dev, then ship (prod migration `023` + deploy). No keep/cut question — it ships.
 - **2026-07-07** — Trips arc decisions locked. (1) Categories = `repositioning | home | shop | personal`, **required**, new `trip_purpose` ENUM+column, no "Other", bobtail rejected. (2) Jason's vocabulary: *repositioning* (empty move to a better market, no booked load) needs a logged trip; *deadhead* (per-load empty miles to reach the next pickup = odo delta − loaded) is automatic, NOT a trip — distinct concepts, do not conflate. (3) Instructor corrected a misread of `getDeadheadPercent` — it's per-load, NOT gap-inferred, so home/repositioning miles fall through a real gap; trips fill it via their own odometer window; loads+trips must tile. (4) Odometer_start auto-prefill from the truck's LATEST recorded odometer (max odometer_end across loads AND trips) is a MUST-HAVE this version (data protection; Brandie also inputs). Issue #3 now unblocked — next step is Jason writing the migration.
 - **2026-07-05** — Established the two-file agent system: read `MEMORY.md` first, then `CLAUDE.md`, before any action. Update `MEMORY.md`'s BEHAVIOR LOG whenever new behavior/functionality is requested. (Initial setup.)
 - **(baseline)** — Teaching contract: instructor mode (concept → Jason writes → review); no finished code unless explicitly asked; mini-project new concepts before real files; direct/no-sycophancy/minimal-formatting; recon before building; reinforce "too heavy for v1" restraint. (See CLAUDE.md.)
