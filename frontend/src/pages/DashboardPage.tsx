@@ -17,6 +17,8 @@ import {
   getRecentDeliveredLoads,
 } from "@/lib/metrics/dashboard";
 import { getAverageRPM } from "@/lib/metrics/agent";
+import { useRateTargets } from "@/hooks/useRateTargets";
+import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { RpmChart } from "@/components/RpmChart";
 import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
@@ -59,6 +61,7 @@ const DashboardPage = () => {
     isLoading: tripsLoading,
     error: tripsError,
   } = useTrips(refreshKey);
+  const targets = useRateTargets(loads);
 
   const isLoading = loadsLoading || tripsLoading;
   const error = loadsError || tripsError;
@@ -98,8 +101,11 @@ const DashboardPage = () => {
   const alerts: Alert[] = [];
 
   // ---- threshold-based status ----
+  // Live break-even (true cost ÷ loaded miles, last 3 complete months); falls
+  // back to the constant until there's enough P&L history.
+  const liveBreakEven = targets.ladder.walkAway ?? BREAK_EVEN_RPM;
   const rpmStatus =
-    avgRpm === null ? "neutral" : avgRpm >= BREAK_EVEN_RPM ? "good" : "bad";
+    avgRpm === null ? "neutral" : avgRpm >= liveBreakEven ? "good" : "bad";
   const deadheadStatus =
     deadhead.thisMonth === null
       ? "neutral"
@@ -128,7 +134,7 @@ const DashboardPage = () => {
           subtext={
             avgRpm === null
               ? undefined
-              : `${avgRpm >= BREAK_EVEN_RPM ? "above" : "below"} $${BREAK_EVEN_RPM.toFixed(2)} break-even`
+              : `${avgRpm >= liveBreakEven ? "above" : "below"} $${liveBreakEven.toFixed(2)} break-even`
           }
         />
         <KpiCard
@@ -142,6 +148,11 @@ const DashboardPage = () => {
           value={String(loadsMonthly.thisMonth)}
           delta={loadsDelta}
         />
+      </div>
+
+      {/* Rate & pace targets */}
+      <div className="mt-6">
+        <RateTargetsCard targets={targets} rpm={avgRpm} />
       </div>
 
       {/* Revenue chart + top agents */}
@@ -160,7 +171,7 @@ const DashboardPage = () => {
       {/* RPM chart + what's next */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <div className="lg:col-span-2">
-          <RpmChart data={monthlyRpm} breakEven={BREAK_EVEN_RPM} />
+          <RpmChart data={monthlyRpm} breakEven={liveBreakEven} />
         </div>
         <div className="bg-plate rounded-lg p-4">
           <p className="text-xs text-muted-text mb-2">What's next · booked</p>
