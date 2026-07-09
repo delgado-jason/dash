@@ -15,6 +15,7 @@ export async function getLoads(user_id) {
             load_number,
             load_type,
             load_status,
+            loads.agent_id,
             brokers.broker_name AS broker,
             agents.first_name || ' ' || agents.last_name AS agent,
             shipper_name,

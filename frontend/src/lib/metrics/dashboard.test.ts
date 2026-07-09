@@ -10,6 +10,11 @@ import {
   getMonthlyRevenue,
   getMonthlyRPM,
   getOutstandingLoads,
+  getLoadsMonthly,
+  getTopAgentsByRevenue,
+  getUpcomingLoads,
+  getRecentDeliveredLoads,
+  getOutstandingSummary,
 } from "./dashboard";
 
 // ---- typed factories: override only the fields a test cares about ----
@@ -195,6 +200,103 @@ describe("getMonthlyDeadhead", () => {
     const result = getMonthlyDeadhead(loads, []);
     expect(result.thisMonth).toBeNull(); // nothing in Jan 2026
     expect(result.lastMonth).toBeCloseTo(100 / 300, 5); // Dec 2025 found
+  });
+});
+
+// ---- DASHBOARD REDESIGN METRICS ---- (clock frozen to 2026-06-22 → June/May)
+describe("getLoadsMonthly", () => {
+  it("counts delivered loads this month vs last", () => {
+    const loads = [
+      makeLoad({
+        load_status: "delivered",
+        delivery_date: "2026-06-10T04:00:00.000Z",
+      }),
+      makeLoad({
+        load_status: "delivered",
+        delivery_date: "2026-06-20T04:00:00.000Z",
+      }),
+      makeLoad({
+        load_status: "delivered",
+        delivery_date: "2026-05-15T04:00:00.000Z",
+      }),
+      makeLoad({
+        load_status: "booked", // not delivered → excluded
+        delivery_date: "2026-06-05T04:00:00.000Z",
+      }),
+    ];
+    expect(getLoadsMonthly(loads)).toEqual({ thisMonth: 2, lastMonth: 1 });
+  });
+});
+
+describe("getTopAgentsByRevenue", () => {
+  it("ranks by recent revenue; drops one-offs (floor) and stale agents (window)", () => {
+    const loads = [
+      // Ann: 2 recent loads → qualifies, revenue 1500
+      makeLoad({ agent_id: "a1", agent: "Ann", linehaul: "1000", delivery_date: "2026-06-10T04:00:00.000Z" }),
+      makeLoad({ agent_id: "a1", agent: "Ann", linehaul: "500", delivery_date: "2026-06-12T04:00:00.000Z" }),
+      // Bob: 3 recent loads → qualifies, revenue 1200
+      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-01T04:00:00.000Z" }),
+      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-05T04:00:00.000Z" }),
+      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-08T04:00:00.000Z" }),
+      // Cid: one big recent load → excluded by the ≥2 floor
+      makeLoad({ agent_id: "a3", agent: "Cid", linehaul: "9999", delivery_date: "2026-06-15T04:00:00.000Z" }),
+      // Dot: two loads but ~6 months ago → excluded by the 90-day window
+      makeLoad({ agent_id: "a4", agent: "Dot", linehaul: "5000", delivery_date: "2025-12-15T04:00:00.000Z" }),
+      makeLoad({ agent_id: "a4", agent: "Dot", linehaul: "5000", delivery_date: "2025-12-20T04:00:00.000Z" }),
+    ];
+    const top = getTopAgentsByRevenue(loads, 90, 2, 5);
+    expect(top.map((a) => a.agent)).toEqual(["Ann", "Bob"]);
+    expect(top[0].revenue).toBe(1500);
+    expect(top[0].loadCount).toBe(2);
+  });
+
+  it("respects the limit", () => {
+    const loads = ["a", "b", "c"].flatMap((id) => [
+      makeLoad({ agent_id: id, agent: id, delivery_date: "2026-06-10T04:00:00.000Z" }),
+      makeLoad({ agent_id: id, agent: id, delivery_date: "2026-06-11T04:00:00.000Z" }),
+    ]);
+    expect(getTopAgentsByRevenue(loads, 90, 2, 2)).toHaveLength(2);
+  });
+});
+
+describe("getRecentDeliveredLoads", () => {
+  it("returns delivered loads newest first with lane and revenue", () => {
+    const loads = [
+      makeLoad({ load_number: "OLD", delivery_date: "2026-05-01T04:00:00.000Z", linehaul: "100" }),
+      makeLoad({ load_number: "NEW", delivery_date: "2026-06-20T04:00:00.000Z", linehaul: "200" }),
+      makeLoad({ load_number: "BOOKED", load_status: "booked", delivery_date: "2026-06-25T04:00:00.000Z" }),
+    ];
+    const recent = getRecentDeliveredLoads(loads, 5);
+    expect(recent.map((r) => r.load_number)).toEqual(["NEW", "OLD"]);
+    expect(recent[0].revenue).toBe(200);
+  });
+});
+
+describe("getOutstandingSummary", () => {
+  it("totals revenue and averages aging", () => {
+    const summary = getOutstandingSummary([
+      { load_id: "1", load_number: "1", broker: "B", revenue: 1000, daysOutstanding: 10 },
+      { load_id: "2", load_number: "2", broker: "B", revenue: 500, daysOutstanding: 20 },
+    ]);
+    expect(summary.total).toBe(1500);
+    expect(summary.avgDaysOutstanding).toBe(15);
+  });
+
+  it("returns null aging when there is nothing outstanding", () => {
+    expect(getOutstandingSummary([])).toEqual({ total: 0, avgDaysOutstanding: null });
+  });
+});
+
+describe("getUpcomingLoads", () => {
+  it("returns booked/in-transit soonest pickup first, delivered excluded", () => {
+    const loads = [
+      makeLoad({ load_number: "B", load_status: "booked", pickup_date: "2026-07-12" }),
+      makeLoad({ load_number: "A", load_status: "in_transit", pickup_date: "2026-07-05" }),
+      makeLoad({ load_number: "D", load_status: "delivered", pickup_date: "2026-07-01" }),
+    ];
+    const up = getUpcomingLoads(loads, 5);
+    expect(up.map((u) => u.load_number)).toEqual(["A", "B"]);
+    expect(up[0].pickup_date).toBe("2026-07-05");
   });
 });
 

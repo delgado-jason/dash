@@ -249,11 +249,31 @@ export const getMonthlyRPM = (
 
 // ---- OUTSTANDING LOAD SHAPE ----
 export interface OutstandingLoad {
+  load_id: string;
   load_number: string;
   broker: string;
   revenue: number;
   daysOutstanding: number;
 }
+
+export interface OutstandingSummary {
+  total: number;
+  avgDaysOutstanding: number | null;
+}
+
+// Total unpaid $ and average aging across the outstanding loads. NOTE: this is
+// aging of currently-unpaid loads, not true days-to-pay (that needs a payment
+// date we don't track yet).
+export const getOutstandingSummary = (
+  outstanding: OutstandingLoad[],
+): OutstandingSummary => {
+  if (outstanding.length === 0) return { total: 0, avgDaysOutstanding: null };
+  const total = outstanding.reduce((sum, o) => sum + o.revenue, 0);
+  const avg =
+    outstanding.reduce((sum, o) => sum + o.daysOutstanding, 0) /
+    outstanding.length;
+  return { total, avgDaysOutstanding: avg };
+};
 
 // ---- GET OUTSTANDING LOADS ---- (delivered + unpaid/invoiced, aged from delivery, oldest first)
 export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
@@ -273,6 +293,7 @@ export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
       const deliveredTime = new Date(load.delivery_date as string).getTime();
       const daysOutstanding = Math.floor((now - deliveredTime) / MS_PER_DAY);
       return {
+        load_id: load.load_id,
         load_number: load.load_number,
         broker: load.broker,
         revenue: getLoadRevenue([load]) ?? 0,
@@ -280,4 +301,133 @@ export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
       };
     })
     .sort((a, b) => b.daysOutstanding - a.daysOutstanding); // oldest (most days) first
+};
+
+// ---- LOADS DELIVERED: THIS MONTH vs LAST ----
+export interface MonthlyLoadCount {
+  thisMonth: number;
+  lastMonth: number;
+}
+
+export const getLoadsMonthly = (loads: Load[]): MonthlyLoadCount => {
+  const now = new Date(Date.now());
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const prev = new Date(Date.UTC(year, month - 1, 1)); // handles Jan → Dec
+
+  const countIn = (y: number, m: number): number =>
+    loads.filter(
+      (load) =>
+        load.load_status === "delivered" &&
+        load.delivery_date &&
+        new Date(load.delivery_date).getUTCFullYear() === y &&
+        new Date(load.delivery_date).getUTCMonth() === m,
+    ).length;
+
+  return {
+    thisMonth: countIn(year, month),
+    lastMonth: countIn(prev.getUTCFullYear(), prev.getUTCMonth()),
+  };
+};
+
+// ---- TOP AGENTS BY REVENUE ---- (delivered loads, grouped by agent)
+export interface AgentRevenue {
+  agentId: string;
+  agent: string;
+  revenue: number;
+  loadCount: number;
+}
+
+// Two guards, two failure modes: `windowDays` drops stale agents (a great load
+// six months ago falls out of the window); `minLoads` drops one-offs (a single
+// lucky run doesn't rank). loadCount is returned so the ranking self-explains.
+export const getTopAgentsByRevenue = (
+  loads: Load[],
+  windowDays = 90,
+  minLoads = 2,
+  limit = 5,
+): AgentRevenue[] => {
+  const cutoff = Date.now() - windowDays * 86_400_000;
+  const recent = loads.filter(
+    (load) =>
+      load.load_status === "delivered" &&
+      load.delivery_date &&
+      new Date(load.delivery_date).getTime() >= cutoff,
+  );
+
+  const byAgent = new Map<string, Load[]>();
+  for (const load of recent) {
+    const bucket = byAgent.get(load.agent_id);
+    if (bucket) bucket.push(load);
+    else byAgent.set(load.agent_id, [load]);
+  }
+
+  const ranked: AgentRevenue[] = [];
+  for (const [agentId, agentLoads] of byAgent) {
+    if (agentLoads.length < minLoads) continue; // volume floor
+    ranked.push({
+      agentId,
+      agent: agentLoads[0].agent,
+      revenue: getLoadRevenue(agentLoads) ?? 0,
+      loadCount: agentLoads.length,
+    });
+  }
+
+  ranked.sort((a, b) => b.revenue - a.revenue);
+  return ranked.slice(0, limit);
+};
+
+// ---- UPCOMING LOADS ---- (booked / in-transit, soonest pickup first)
+export interface UpcomingLoad {
+  load_id: string;
+  load_number: string;
+  lane: string;
+  pickup_date: string;
+}
+
+export const getUpcomingLoads = (loads: Load[], limit = 5): UpcomingLoad[] => {
+  const upcoming = loads.filter(
+    (load) =>
+      (load.load_status === "booked" || load.load_status === "in_transit") &&
+      load.pickup_date,
+  );
+
+  upcoming.sort((a, b) => a.pickup_date.localeCompare(b.pickup_date));
+
+  return upcoming.slice(0, limit).map((load) => ({
+    load_id: load.load_id,
+    load_number: load.load_number,
+    lane: `${load.origin_market} → ${load.delivery_market}`,
+    pickup_date: load.pickup_date,
+  }));
+};
+
+// ---- RECENT DELIVERED LOADS ---- (newest first, for the "just happened" feed)
+export interface RecentLoad {
+  load_id: string;
+  load_number: string;
+  lane: string;
+  delivery_date: string;
+  revenue: number;
+}
+
+export const getRecentDeliveredLoads = (
+  loads: Load[],
+  limit = 5,
+): RecentLoad[] => {
+  const delivered = loads.filter(
+    (load) => load.load_status === "delivered" && load.delivery_date,
+  );
+
+  delivered.sort((a, b) =>
+    (b.delivery_date as string).localeCompare(a.delivery_date as string),
+  );
+
+  return delivered.slice(0, limit).map((load) => ({
+    load_id: load.load_id,
+    load_number: load.load_number,
+    lane: `${load.origin_market} → ${load.delivery_market}`,
+    delivery_date: load.delivery_date as string,
+    revenue: getLoadRevenue([load]) ?? 0,
+  }));
 };
