@@ -2,11 +2,17 @@ import { useState, useEffect, useMemo } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
+import type { Obligation } from "@/types/obligation";
 import {
   getExpensePeriods,
   getExpensePeriod,
 } from "@/services/expensesService";
-import { getExpenseMetrics } from "@/lib/metrics/expenses";
+import { getObligations } from "@/services/obligationsService";
+import {
+  getExpenseMetrics,
+  getCashMetrics,
+  getTrueMonthly,
+} from "@/lib/metrics/expenses";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
@@ -54,6 +60,15 @@ const ExpensesPage = () => {
   const [selected, setSelected] = useState<ExpensePeriod | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
+
+  // Obligations live at the page level so the headline KPIs + chart can fold
+  // them into true cost; the card just edits the list and calls this back.
+  const reloadObligations = () =>
+    getObligations().then(setObligations).catch(() => {});
+  useEffect(() => {
+    reloadObligations();
+  }, []);
 
   // Load the period list; keep the current selection if it still exists.
   useEffect(() => {
@@ -108,10 +123,9 @@ const ExpensesPage = () => {
     ? getExpenseMetrics(selected, miles.totalMiles, miles.loadedMiles)
     : null;
 
-  // Blended trailing window: sum cost + miles over the selected month and up to
-  // 2 prior, so cost/mile + break-even aren't whipped around by one noisy month.
-  // Numerator and denominator cover the same window (variable cost moves with
-  // miles, so they must). Also expose per-month averages for the cash view.
+  // Blended trailing window: average cost + miles over the selected month and
+  // up to 2 prior, so the per-mile figures aren't whipped around by one noisy
+  // month. Exposes per-month averages that the cash view divides.
   const trailing = useMemo(() => {
     const idx = periods.findIndex((p) => p.period_id === selectedId);
     const windowPeriods = idx >= 0 ? periods.slice(idx, idx + 3) : [];
@@ -127,13 +141,29 @@ const ExpensesPage = () => {
     }
     return {
       months: n || 1,
-      cpm: total > 0 ? cost / total : null,
-      breakEvenRpm: loaded > 0 ? cost / loaded : null,
       avgCost: n > 0 ? cost / n : 0,
       avgTotalMiles: n > 0 ? total / n : 0,
       avgLoadedMiles: n > 0 ? loaded / n : 0,
     };
   }, [periods, selectedId, loads]);
+
+  // Obligations folded into every headline number. Dollar figures use this
+  // month (reconcile with the month's P&L); per-mile figures use the trailing
+  // blend. obligationsTotal = 0 → these equal the operating-only numbers.
+  const obligationsTotal = useMemo(
+    () => obligations.filter((o) => o.active).reduce((s, o) => s + o.amount, 0),
+    [obligations],
+  );
+  const trueMonthly =
+    metrics && selected
+      ? getTrueMonthly(metrics.monthlyCost, obligationsTotal, selected.income_total)
+      : null;
+  const cash = getCashMetrics(
+    trailing.avgCost,
+    obligationsTotal,
+    trailing.avgTotalMiles,
+    trailing.avgLoadedMiles,
+  );
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -168,7 +198,7 @@ const ExpensesPage = () => {
         <p className="text-muted-text">
           No P&amp;L uploaded yet. Upload one to get started.
         </p>
-      ) : selected && metrics ? (
+      ) : selected && metrics && trueMonthly ? (
         <>
           {periods.length > 1 && (
             <div className="flex gap-1 mb-4 flex-wrap">
@@ -189,35 +219,44 @@ const ExpensesPage = () => {
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <Kpi label="Monthly cost" value={money(metrics.monthlyCost)} />
-            <Kpi label="Weekly cost" value={money(metrics.weeklyCost)} />
+            <Kpi label="Monthly cost" value={money(trueMonthly.trueMonthlyCost)} />
+            <Kpi label="Weekly cost" value={money(trueMonthly.trueWeeklyCost)} />
             <Kpi
               label={`Cost / mile · ${trailing.months}mo`}
-              value={trailing.cpm == null ? "—" : `$${trailing.cpm.toFixed(2)}`}
+              value={cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`}
             />
             <Kpi
               label={`Break-even RPM · ${trailing.months}mo`}
               value={
-                trailing.breakEvenRpm == null
+                cash.trueBreakEvenRpm == null
                   ? "—"
-                  : `$${trailing.breakEvenRpm.toFixed(2)}`
+                  : `$${cash.trueBreakEvenRpm.toFixed(2)}`
               }
             />
             <Kpi
               label="Net margin"
               value={
-                metrics.netMargin == null
+                trueMonthly.trueNetMargin == null
                   ? "—"
-                  : `${(metrics.netMargin * 100).toFixed(1)}%`
+                  : `${(trueMonthly.trueNetMargin * 100).toFixed(1)}%`
               }
             />
           </div>
+          {obligationsTotal > 0 && (
+            <p className="text-[11px] text-muted-text -mt-4 mb-6">
+              Includes {money(obligationsTotal)}/mo of obligations (loan principal
+              + draws). Dollar figures are this month; per-mile figures blend the
+              last {trailing.months} month{trailing.months > 1 ? "s" : ""}.
+            </p>
+          )}
 
-          {periods.length > 1 && <ExpenseYtdChart periods={periods} />}
+          {periods.length > 1 && (
+            <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
+          )}
 
           <div className="bg-plate rounded-lg p-4 mb-6 mt-6">
             <p className="text-xs text-muted-text mb-2">
-              Fixed vs variable · {money(metrics.monthlyCost)}
+              Fixed vs variable · P&amp;L operating · {money(metrics.monthlyCost)}
             </p>
             <div className="flex h-3 rounded overflow-hidden mb-2">
               <div
@@ -238,13 +277,19 @@ const ExpensesPage = () => {
                 {money(metrics.variableTotal)}
               </span>
             </div>
+            {obligationsTotal > 0 && (
+              <p className="text-[11px] text-muted-text mt-2">
+                Operating {money(metrics.monthlyCost)} + obligations{" "}
+                {money(obligationsTotal)} ={" "}
+                <span className="text-light">
+                  {money(trueMonthly.trueMonthlyCost)}
+                </span>{" "}
+                true monthly cost
+              </p>
+            )}
           </div>
 
-          <ObligationsCard
-            operatingCost={trailing.avgCost}
-            totalMiles={trailing.avgTotalMiles}
-            loadedMiles={trailing.avgLoadedMiles}
-          />
+          <ObligationsCard items={obligations} onChange={reloadObligations} />
 
           <div className="bg-plate rounded-lg p-4 mb-6">
             <p className="text-xs text-muted-text mb-2">

@@ -53,10 +53,18 @@ const ChartTooltip = ({
   );
 };
 
-export const ExpenseYtdChart = ({ periods }: { periods: ExpensePeriod[] }) => {
+export const ExpenseYtdChart = ({
+  periods,
+  obligationsTotal = 0,
+}: {
+  periods: ExpensePeriod[];
+  obligationsTotal?: number;
+}) => {
+  // Obligations are a single current figure (not stored per month), so we add
+  // the same monthly total to every month — the cost line is "true cash out."
   const data: Datum[] = [...periods].reverse().map((p) => {
     const income = p.income_total ?? 0;
-    const cost = (p.cogs_total ?? 0) + (p.expense_total ?? 0);
+    const cost = (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsTotal;
     return {
       month: p.period_label ?? p.period_month,
       income,
@@ -69,7 +77,9 @@ export const ExpenseYtdChart = ({ periods }: { periods: ExpensePeriod[] }) => {
 
   return (
     <div className="bg-plate rounded-lg p-4" style={{ height: 280 }}>
-      <p className="text-xs text-muted-text mb-2">Revenue vs cost · year to date</p>
+      <p className="text-xs text-muted-text mb-2">
+        Revenue vs {obligationsTotal > 0 ? "true cost" : "cost"} · year to date
+      </p>
       <ResponsiveContainer width="100%" height="88%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a3347" vertical={false} />
