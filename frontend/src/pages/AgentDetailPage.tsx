@@ -58,11 +58,14 @@ const AgentDetailPage = () => {
 
   const agentId = agent?.agent_id;
   const honors = useMemo(
-    () => (agentId ? computeHonors(allLoads ?? []).get(agentId) : undefined),
+    () =>
+      agentId
+        ? computeHonors(allLoads ?? [], new Date()).get(agentId)
+        : undefined,
     [allLoads, agentId],
   );
   const season = useMemo(
-    () => (agentId ? agentSeasonLog(allLoads ?? [], agentId) : []),
+    () => (agentId ? agentSeasonLog(allLoads ?? [], agentId, new Date()) : []),
     [allLoads, agentId],
   );
 
