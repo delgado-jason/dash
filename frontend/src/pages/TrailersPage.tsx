@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import type { Truck } from "@/types/truck";
-import { getTrucks, createTruck } from "@/services/trucksService";
+import type { Trailer } from "@/types/trailer";
+import { getTrailers, createTrailer } from "@/services/trailersService";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 
 const FIELDS: FormField[] = [
-  { name: "unit_number", label: "Unit #", required: true, placeholder: "580991" },
-  { name: "make", label: "Make", placeholder: "International" },
-  { name: "model", label: "Model", placeholder: "LT625" },
+  { name: "unit_number", label: "Unit #", required: true, placeholder: "780991" },
+  {
+    name: "trailer_type",
+    label: "Type",
+    type: "select",
+    options: ["flatbed", "step deck", "RGN", "lowboy", "double drop", "conestoga"],
+  },
+  { name: "length_ft", label: "Length (ft)", type: "number", placeholder: "48" },
+  { name: "make", label: "Make", placeholder: "Utility" },
+  { name: "model", label: "Model" },
   { name: "year", label: "Year", type: "number", placeholder: "2019" },
-  { name: "vin", label: "VIN (17 chars)", placeholder: "3HSDZAPR…" },
-  { name: "plate_number", label: "Plate", placeholder: "DTS625" },
+  { name: "vin", label: "VIN" },
+  { name: "plate_number", label: "Plate", placeholder: "DTS780" },
   { name: "plate_state", label: "State", placeholder: "AL" },
-  { name: "current_odometer", label: "Odometer", type: "number", placeholder: "568737" },
+  { name: "current_hub", label: "Hubodometer", type: "number", placeholder: "456123" },
   {
     name: "status",
     label: "Status",
@@ -24,16 +31,16 @@ const FIELDS: FormField[] = [
   { name: "in_service_date", label: "In service", type: "date" },
 ];
 
-const TrucksPage = () => {
-  const [trucks, setTrucks] = useState<Truck[]>([]);
+const TrailersPage = () => {
+  const [trailers, setTrailers] = useState<Trailer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
-    getTrucks()
-      .then(setTrucks)
+    getTrailers()
+      .then(setTrailers)
       .catch(() => {})
       .finally(() => setLoading(false));
 
@@ -45,13 +52,13 @@ const TrucksPage = () => {
     setBusy(true);
     setError(null);
     try {
-      await createTruck(data);
+      await createTrailer(data);
       setShowForm(false);
       await load();
     } catch (e) {
       const msg =
         (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        "Could not create the truck";
+        "Could not create the trailer";
       setError(msg);
     } finally {
       setBusy(false);
@@ -61,20 +68,20 @@ const TrucksPage = () => {
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-condensed">Trucks</h1>
+        <h1 className="text-3xl font-condensed">Trailers</h1>
         {!showForm && (
           <button
             className="bg-amber text-steel px-3 py-1 rounded text-sm font-semibold flex items-center gap-1"
             onClick={() => setShowForm(true)}
           >
-            <Plus size={15} /> Add truck
+            <Plus size={15} /> Add trailer
           </button>
         )}
       </div>
 
       {showForm && (
         <EntityForm
-          title="New truck"
+          title="New trailer"
           fields={FIELDS}
           onSave={save}
           onCancel={() => setShowForm(false)}
@@ -85,30 +92,31 @@ const TrucksPage = () => {
 
       {loading ? (
         <p className="text-muted-text">Loading…</p>
-      ) : trucks.length === 0 ? (
-        <p className="text-muted-text">No trucks yet. Add one to get started.</p>
+      ) : trailers.length === 0 ? (
+        <p className="text-muted-text">No trailers yet. Add one to get started.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {trucks.map((t) => (
+          {trailers.map((t) => (
             <Link
-              key={t.truck_id}
-              to={`/trucks/${t.truck_id}`}
+              key={t.trailer_id}
+              to={`/trailers/${t.trailer_id}`}
               className="bg-plate rounded-lg p-4 flex gap-3 items-center hover:bg-steel transition-colors"
             >
               <div className="w-16 h-16 rounded-lg overflow-hidden bg-steel shrink-0">
                 {t.avatar_url ? (
                   <img src={t.avatar_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <AvatarFallback kind="truck" />
+                  <AvatarFallback kind="trailer" />
                 )}
               </div>
               <div className="min-w-0">
                 <p className="font-medium truncate">Unit {t.unit_number}</p>
-                <p className="text-xs text-muted-text truncate">
-                  {[t.year, t.make, t.model].filter(Boolean).join(" ") || "—"}
+                <p className="text-xs text-muted-text truncate capitalize">
+                  {t.trailer_type}
+                  {t.length_ft ? ` · ${t.length_ft}'` : ""}
                 </p>
                 <p className="text-xs text-muted-text">
-                  {t.current_odometer.toLocaleString("en-US")} mi · {t.status}
+                  {t.current_hub.toLocaleString("en-US")} mi · {t.status}
                 </p>
               </div>
             </Link>
@@ -119,4 +127,4 @@ const TrucksPage = () => {
   );
 };
 
-export default TrucksPage;
+export default TrailersPage;

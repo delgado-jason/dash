@@ -10,7 +10,8 @@ export async function getMaintenanceItems(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT item_id, unit, name, category, interval_miles, interval_months,
-            interval_hours, last_done_miles, last_done_date, active, notes, warn_lead_days
+            interval_hours, last_done_miles, last_done_date, active, notes,
+            warn_lead_days, truck_id, trailer_id
      FROM maintenance_items
      WHERE user_id = $1
      ORDER BY category, name`,

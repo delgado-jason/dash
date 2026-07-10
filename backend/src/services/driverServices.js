@@ -12,7 +12,20 @@ export async function createDriver(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
 
   // Reject unknown fields
-  const allowedFields = ["first_name", "last_name", "active"];
+  const allowedFields = [
+    "first_name",
+    "last_name",
+    "phone",
+    "email",
+    "cdl_number",
+    "cdl_state",
+    "cdl_expiration",
+    "endorsements",
+    "hire_date",
+    "avatar_url",
+    "notes",
+    "active",
+  ];
 
   for (const field in data) {
     if (!allowedFields.includes(field)) {
@@ -64,6 +77,15 @@ export async function getDrivers(user_id) {
         driver_id,
         first_name,
         last_name,
+        phone,
+        email,
+        cdl_number,
+        cdl_state,
+        cdl_expiration,
+        endorsements,
+        hire_date,
+        avatar_url,
+        notes,
         active,
         created_at,
         updated_at
@@ -90,6 +112,15 @@ export async function getDriver(user_id, driver_id) {
         driver_id,
         first_name,
         last_name,
+        phone,
+        email,
+        cdl_number,
+        cdl_state,
+        cdl_expiration,
+        endorsements,
+        hire_date,
+        avatar_url,
+        notes,
         active,
         created_at,
         updated_at
@@ -110,7 +141,20 @@ export async function patchDriver(user_id, driver_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!driver_id) throw new ValidationError("Missing driver_id");
 
-  const allowedFields = ["first_name", "last_name", "active"];
+  const allowedFields = [
+    "first_name",
+    "last_name",
+    "phone",
+    "email",
+    "cdl_number",
+    "cdl_state",
+    "cdl_expiration",
+    "endorsements",
+    "hire_date",
+    "avatar_url",
+    "notes",
+    "active",
+  ];
 
   // Throw error if data contains invalid field(s)
   for (const field in data) {

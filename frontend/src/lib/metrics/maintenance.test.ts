@@ -21,6 +21,8 @@ const item = (over: Partial<MaintenanceItem>): MaintenanceItem => ({
   last_done_miles: null,
   last_done_date: null,
   warn_lead_days: 30,
+  truck_id: null,
+  trailer_id: null,
   active: true,
   notes: null,
   ...over,

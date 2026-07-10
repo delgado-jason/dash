@@ -42,6 +42,9 @@ export async function getLoads(user_id) {
             odometer_start,
             odometer_end,
             payment_status,
+            loads.truck_id,
+            loads.driver_id,
+            loads.trailer_id,
             loads.created_at AS created_at,
             loads.updated_at AS updated_at
         FROM loads
