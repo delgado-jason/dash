@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import type { MaintenanceItem, MaintenanceService, MaintenanceUnit } from "@/types/maintenance";
+import type { FuelEntry } from "@/types/fuelEntry";
 import {
   getMaintenanceItems,
   getMaintenanceServices,
 } from "@/services/maintenanceService";
+import { getFuelEntries } from "@/services/fuelService";
 import {
   currentTractorMiles,
   avgMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
+import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { ScheduleTab } from "@/components/maintenance/ScheduleTab";
 import { ServicesTab } from "@/components/maintenance/ServicesTab";
 
@@ -17,6 +20,7 @@ const MaintenancePage = () => {
   const { loads } = useLoads(0);
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [tab, setTab] = useState<"schedule" | "services">("schedule");
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -24,11 +28,16 @@ const MaintenancePage = () => {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    Promise.all([getMaintenanceItems(), getMaintenanceServices()])
-      .then(([its, svcs]) => {
+    Promise.all([
+      getMaintenanceItems(),
+      getMaintenanceServices(),
+      getFuelEntries(),
+    ])
+      .then(([its, svcs, fuel]) => {
         if (!active) return;
         setItems(its);
         setServices(svcs);
+        setFuelEntries(fuel);
       })
       .catch(() => {})
       .finally(() => {
@@ -56,13 +65,17 @@ const MaintenancePage = () => {
           return max == null || v > max ? v : max;
         }, null);
     };
-    // When the fuel page carries odometer, add its latest reading here — it'll
-    // usually be the freshest.
+    // The fuel log usually carries the freshest tractor odometer, so fold its
+    // latest reading in alongside loads and services.
     return {
-      tractor: maxOdometer(currentTractorMiles(loads), maxServiceOdo("tractor")),
+      tractor: maxOdometer(
+        currentTractorMiles(loads),
+        maxServiceOdo("tractor"),
+        maxFuelOdometer(fuelEntries),
+      ),
       trailer: maxOdometer(maxServiceOdo("trailer")),
     };
-  }, [loads, services]);
+  }, [loads, services, fuelEntries]);
 
   const milesPerMonth = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
 

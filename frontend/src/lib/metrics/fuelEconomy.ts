@@ -152,3 +152,14 @@ export const weeklyCostSeries = (entries: FuelLike[]): WeekCost[] => {
     .map(([weekStart, cost]) => ({ weekStart, cost }))
     .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
 };
+
+// Highest odometer reading across fill-ups (or null if none) — the fuel log is
+// usually the freshest odometer source, so it folds into the truck's derived
+// "latest odometer" alongside loads and service readings.
+export const maxFuelOdometer = (
+  entries: { odometer_reading: number }[],
+): number | null =>
+  entries.reduce<number | null>(
+    (m, e) => (m == null || e.odometer_reading > m ? e.odometer_reading : m),
+    null,
+  );

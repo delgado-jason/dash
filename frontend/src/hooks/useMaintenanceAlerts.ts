@@ -6,30 +6,39 @@ import type {
   MaintenanceService,
   MaintenanceUnit,
 } from "@/types/maintenance";
+import type { FuelEntry } from "@/types/fuelEntry";
 import {
   getMaintenanceItems,
   getMaintenanceServices,
 } from "@/services/maintenanceService";
+import { getFuelEntries } from "@/services/fuelService";
 import {
   maintenanceAlerts,
   currentTractorMiles,
   avgMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
+import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 
 // Overdue / due-soon maintenance items as dashboard alerts. Empty (renders no
 // banners) until items exist and something is actually due.
 export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
 
   useEffect(() => {
     let active = true;
-    Promise.all([getMaintenanceItems(), getMaintenanceServices()])
-      .then(([its, svcs]) => {
+    Promise.all([
+      getMaintenanceItems(),
+      getMaintenanceServices(),
+      getFuelEntries(),
+    ])
+      .then(([its, svcs, fuel]) => {
         if (!active) return;
         setItems(its);
         setServices(svcs);
+        setFuelEntries(fuel);
       })
       .catch(() => {});
     return () => {
@@ -52,9 +61,13 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
         }, null);
     };
     const currentMiles: Record<MaintenanceUnit, number | null> = {
-      tractor: maxOdometer(currentTractorMiles(loads), svcOdo("tractor")),
+      tractor: maxOdometer(
+        currentTractorMiles(loads),
+        svcOdo("tractor"),
+        maxFuelOdometer(fuelEntries),
+      ),
       trailer: maxOdometer(svcOdo("trailer")),
     };
     return maintenanceAlerts(items, currentMiles, now, avgMilesPerMonth(loads, now));
-  }, [items, services, loads]);
+  }, [items, services, fuelEntries, loads]);
 };
