@@ -13,6 +13,13 @@ export interface FuelEntry {
   updated_at: string;
 }
 
+export interface NationalDiesel {
+  value: number; // $/gal
+  period: string; // 'YYYY-MM-DD' — the week the price is for
+  units: string;
+  seriesDescription: string | null;
+}
+
 export interface FuelEntryInput {
   truck_id: string;
   fuel_date: string;

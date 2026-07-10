@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import type { FuelEntry } from "@/types/fuelEntry";
+import type { FuelEntry, NationalDiesel } from "@/types/fuelEntry";
 import type { Truck } from "@/types/truck";
 import {
   getFuelEntries,
   createFuelEntry,
   deleteFuelEntry,
+  getNationalDiesel,
 } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
 import {
@@ -17,6 +18,7 @@ import {
 import { Kpi } from "@/components/Kpi";
 import { MpgChart } from "@/components/fuel/MpgChart";
 import { WeeklyCostChart } from "@/components/fuel/WeeklyCostChart";
+import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
 
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const money2 = (n: number) =>
@@ -35,6 +37,7 @@ const lbl = "text-xs text-muted-text mb-1 block";
 const FuelEntriesPage = () => {
   const [entries, setEntries] = useState<FuelEntry[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [national, setNational] = useState<NationalDiesel | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,7 +47,7 @@ const FuelEntriesPage = () => {
   const [date, setDate] = useState("");
   const [odometer, setOdometer] = useState("");
   const [gallons, setGallons] = useState("");
-  const [price, setPrice] = useState("");
+  const [total, setTotal] = useState("");
   const [company, setCompany] = useState("");
   const [city, setCity] = useState("");
   const [stateCode, setStateCode] = useState("");
@@ -58,6 +61,13 @@ const FuelEntriesPage = () => {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+  // National diesel is best-effort — never let it block or break the page.
+  useEffect(() => {
+    getNationalDiesel()
+      .then(setNational)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     load();
@@ -78,14 +88,25 @@ const FuelEntriesPage = () => {
     [entries],
   );
 
+  // Price/gallon is derived from the total paid ÷ gallons — the numbers on the
+  // receipt — rounded to the 3-decimal cents diesel is quoted in.
+  const g = parseFloat(gallons);
+  const t = parseFloat(total);
+  const computedPpg =
+    g > 0 && t > 0 && isFinite(g) && isFinite(t) ? t / g : null;
+
   const save = async () => {
     setError(null);
     if (!truckId) {
       setError("Add a truck first (Fleet → Trucks).");
       return;
     }
-    if (!date || !odometer || !gallons || !price || !stateCode.trim()) {
-      setError("Date, odometer, gallons, price, and state are required.");
+    if (!date || !odometer || !gallons || !total || !stateCode.trim()) {
+      setError("Date, odometer, gallons, total, and state are required.");
+      return;
+    }
+    if (computedPpg == null) {
+      setError("Enter gallons and total so price/gallon can be calculated.");
       return;
     }
     setBusy(true);
@@ -94,7 +115,7 @@ const FuelEntriesPage = () => {
         truck_id: truckId,
         fuel_date: date,
         gallons: parseFloat(gallons),
-        price_per_gallon: parseFloat(price),
+        price_per_gallon: Number(computedPpg.toFixed(3)),
         odometer_reading: parseInt(odometer, 10),
         company_name: company.trim() || null,
         fuel_city: city.trim() || null,
@@ -103,7 +124,7 @@ const FuelEntriesPage = () => {
       setDate("");
       setOdometer("");
       setGallons("");
-      setPrice("");
+      setTotal("");
       setCompany("");
       setCity("");
       setStateCode("");
@@ -188,6 +209,11 @@ const FuelEntriesPage = () => {
         <Kpi label="Total spend" value={money0(stats.totalSpend)} />
       </div>
 
+      <DieselCompareCard
+        national={national}
+        yourCostPerGallon={stats.avgCostPerGallon}
+      />
+
       {showForm && (
         <div className="bg-plate rounded-lg p-4 mt-4">
           <p className="text-sm font-medium mb-3">Add fill-up</p>
@@ -222,14 +248,19 @@ const FuelEntriesPage = () => {
               />
             </div>
             <div>
-              <label className={lbl}>Price / gal</label>
+              <label className={lbl}>Total $</label>
               <input
                 className={inputCls}
-                value={price}
+                value={total}
                 inputMode="decimal"
-                placeholder="4.033"
-                onChange={(e) => setPrice(e.target.value)}
+                placeholder="555.90"
+                onChange={(e) => setTotal(e.target.value)}
               />
+              <p className="text-[11px] mt-1 text-amber-light">
+                {computedPpg == null
+                  ? "= —/gal"
+                  : `= $${computedPpg.toFixed(3)}/gal`}
+              </p>
             </div>
             <div>
               <label className={lbl}>Vendor</label>
