@@ -1,5 +1,9 @@
 import api from "./api";
-import type { FuelEntry, FuelEntryInput } from "@/types/fuelEntry";
+import type {
+  FuelEntry,
+  FuelEntryInput,
+  NationalDiesel,
+} from "@/types/fuelEntry";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Postgres numerics arrive as strings — coerce the money/volume fields.
@@ -25,4 +29,10 @@ export const createFuelEntry = async (
 
 export const deleteFuelEntry = async (id: string): Promise<void> => {
   await api.delete(`/fuel/${id}`);
+};
+
+// National retail diesel price (weekly, from EIA via our backend proxy).
+export const getNationalDiesel = async (): Promise<NationalDiesel | null> => {
+  const res = await api.get("/fuel/national-diesel");
+  return res.data.diesel ?? null;
 };
