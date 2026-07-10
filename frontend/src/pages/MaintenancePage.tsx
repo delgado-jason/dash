@@ -44,13 +44,18 @@ const MaintenancePage = () => {
   // Current mileage = the highest reading we've seen, from either loads or the
   // service log (services often carry a fresher odometer than entered loads).
   const currentMiles: Record<MaintenanceUnit, number | null> = useMemo(() => {
-    const maxServiceOdo = (unit: MaintenanceUnit): number | null =>
-      services
-        .filter((s) => s.unit === unit && s.odometer != null)
-        .reduce<number | null>(
-          (max, s) => (max == null || s.odometer! > max ? s.odometer! : max),
-          null,
-        );
+    // A "both" service covers this unit too; the trailer reads its hub, the
+    // truck its odometer.
+    const maxServiceOdo = (unit: MaintenanceUnit): number | null => {
+      const read = (s: (typeof services)[number]) =>
+        unit === "trailer" ? s.trailer_hub : s.odometer;
+      return services
+        .filter((s) => (s.unit === unit || s.unit === "both") && read(s) != null)
+        .reduce<number | null>((max, s) => {
+          const v = read(s)!;
+          return max == null || v > max ? v : max;
+        }, null);
+    };
     // When the fuel page carries odometer, add its latest reading here — it'll
     // usually be the freshest.
     return {

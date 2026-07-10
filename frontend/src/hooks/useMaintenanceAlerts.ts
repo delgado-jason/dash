@@ -39,13 +39,18 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
 
   return useMemo(() => {
     const now = new Date();
-    const svcOdo = (unit: MaintenanceUnit): number | null =>
-      services
-        .filter((s) => s.unit === unit && s.odometer != null)
-        .reduce<number | null>(
-          (m, s) => (m == null || s.odometer! > m ? s.odometer! : m),
-          null,
-        );
+    // A "both" service covers this unit too; the trailer reads its hub, the
+    // truck its odometer.
+    const svcOdo = (unit: MaintenanceUnit): number | null => {
+      const read = (s: (typeof services)[number]) =>
+        unit === "trailer" ? s.trailer_hub : s.odometer;
+      return services
+        .filter((s) => (s.unit === unit || s.unit === "both") && read(s) != null)
+        .reduce<number | null>((m, s) => {
+          const v = read(s)!;
+          return m == null || v > m ? v : m;
+        }, null);
+    };
     const currentMiles: Record<MaintenanceUnit, number | null> = {
       tractor: maxOdometer(currentTractorMiles(loads), svcOdo("tractor")),
       trailer: maxOdometer(svcOdo("trailer")),

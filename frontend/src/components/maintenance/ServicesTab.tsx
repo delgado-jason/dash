@@ -19,6 +19,23 @@ const money = (n: number | null): string =>
     ? "—"
     : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const num = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
+
+// The reading cell: truck odometer, trailer hub, or both stacked for a
+// combined service.
+const reading = (s: MaintenanceService) => {
+  if (s.unit === "both")
+    return (
+      <>
+        {num(s.odometer)}
+        {s.trailer_hub != null && (
+          <span className="text-xs block">{num(s.trailer_hub)} hub</span>
+        )}
+      </>
+    );
+  return num(s.unit === "trailer" ? s.trailer_hub : s.odometer);
+};
+
 const fmtDate = (iso: string) =>
   new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
@@ -280,7 +297,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
                     )}
                   </td>
                   <td className="py-2 text-right text-muted-text whitespace-nowrap">
-                    {s.odometer != null ? s.odometer.toLocaleString("en-US") : "—"}
+                    {reading(s)}
                   </td>
                   <td className="py-2">
                     {s.description}

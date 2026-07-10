@@ -29,6 +29,7 @@ const coerceService = (s: any): MaintenanceService => ({
   unit: s.unit,
   service_date: dateOrNull(s.service_date) as string,
   odometer: numOrNull(s.odometer),
+  trailer_hub: numOrNull(s.trailer_hub),
   vendor: s.vendor ?? null,
   location: s.location ?? null,
   description: s.description,
@@ -80,7 +81,8 @@ export const getMaintenanceServices = async (): Promise<MaintenanceService[]> =>
 export interface ServiceInput {
   unit: string;
   service_date: string;
-  odometer?: number | null;
+  odometer?: number | null; // truck reading (tractor / both)
+  trailer_hub?: number | null; // trailer reading (trailer / both)
   vendor?: string | null;
   location?: string | null;
   description: string;
