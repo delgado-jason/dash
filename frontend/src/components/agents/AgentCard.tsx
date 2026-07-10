@@ -1,9 +1,22 @@
 import { Link } from "react-router";
 import type { Agent } from "@/types/agent";
-import type { AgentHonors, AgentStat } from "@/lib/metrics/agentLeaderboard";
+import type {
+  AgentHonors,
+  AgentStat,
+  LiveStanding,
+} from "@/lib/metrics/agentLeaderboard";
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
 import { RatingMedallion } from "./RatingMedallion";
 import { PrestigeBadge, PRESTIGE_META } from "./PrestigeBadge";
+
+// Short live blurb — only shown on the card when the agent is currently on the
+// board this quarter, so it stays a highlight rather than clutter.
+const liveBlurb = (live: LiveStanding): string | null => {
+  if (live.result === "gold") return "leading this quarter";
+  if (live.result === "silver") return "running 2nd this quarter";
+  if (live.result === "board") return `#${live.boardRank} this quarter`;
+  return null;
+};
 
 const money0 = (n: number) =>
   n.toLocaleString("en-US", {
@@ -26,13 +39,16 @@ export const AgentCard = ({
   agent,
   stats,
   honors,
+  live,
 }: {
   agent: Agent;
   stats?: AgentStat;
   honors?: AgentHonors;
+  live?: LiveStanding | null;
 }) => {
   const tier = agentPrestige(honors);
   const prestige = PRESTIGE_META[tier];
+  const blurb = live ? liveBlurb(live) : null;
 
   return (
     <Link
@@ -67,6 +83,14 @@ export const AgentCard = ({
           </span>
         )}
       </div>
+
+      {blurb && (
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulse" />
+          <span className="text-amber font-medium">LIVE</span>
+          <span className="text-muted-text">{blurb}</span>
+        </div>
+      )}
 
       <div className="mt-2.5 pt-2 border-t border-[#3b4660] text-xs text-muted-text">
         {stats?.loadCount ?? 0} loads · {money0(stats?.revenue ?? 0)} ·{" "}

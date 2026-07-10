@@ -1,5 +1,9 @@
 import { Trophy, Star, Minus } from "lucide-react";
-import type { AgentHonors, SeasonEntry } from "@/lib/metrics/agentLeaderboard";
+import type {
+  AgentHonors,
+  SeasonEntry,
+  LiveStanding,
+} from "@/lib/metrics/agentLeaderboard";
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
 import { PrestigeBurst, PRESTIGE_META } from "./PrestigeBadge";
 
@@ -7,6 +11,39 @@ const qLabel = (q: string) => {
   const [year, n] = q.split("-Q");
   return `Q${n} '${year.slice(2)}`;
 };
+
+// Provisional standing this quarter — visible but NOT part of the official
+// record until the quarter closes.
+const liveText = (s: LiveStanding) => {
+  if (s.result === "gold") return "leading — provisional gold";
+  if (s.result === "silver") return "running 2nd — provisional silver";
+  if (s.result === "board") return `currently #${s.boardRank} — on the board`;
+  if (s.boardRank == null) return `${s.loads} load${s.loads === 1 ? "" : "s"} — needs 2+ to make the board`;
+  return `currently #${s.boardRank} — outside the top 5`;
+};
+
+const Live = ({ standing }: { standing: LiveStanding }) => (
+  <div className="mt-4 flex items-center gap-3 rounded-lg border border-dashed border-amber/50 px-3 py-2">
+    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-amber shrink-0">
+      <span className="w-2 h-2 rounded-full bg-amber animate-pulse" /> LIVE
+    </span>
+    {standing.result === "gold" || standing.result === "silver" ? (
+      <Trophy
+        size={16}
+        style={{
+          color: standing.result === "gold" ? "#f5b03a" : "#c3cad6",
+          opacity: 0.7,
+        }}
+      />
+    ) : standing.result === "board" ? (
+      <Star size={16} style={{ color: "#e8940a", opacity: 0.7 }} />
+    ) : null}
+    <p className="text-sm text-muted-text">
+      <span className="text-light">{qLabel(standing.quarter)} in progress</span>{" "}
+      · {liveText(standing)}
+    </p>
+  </div>
+);
 
 const resultIcon = (r: SeasonEntry["result"]) => {
   if (r === "gold") return <Trophy size={18} style={{ color: "#f5b03a" }} />;
@@ -18,9 +55,11 @@ const resultIcon = (r: SeasonEntry["result"]) => {
 export const TrophyCase = ({
   honors,
   log,
+  live,
 }: {
   honors?: AgentHonors;
   log: SeasonEntry[];
+  live?: LiveStanding | null;
 }) => {
   const tier = agentPrestige(honors);
   const meta = PRESTIGE_META[tier];
@@ -76,6 +115,8 @@ export const TrophyCase = ({
           </div>
         </>
       )}
+
+      {live && <Live standing={live} />}
     </div>
   );
 };

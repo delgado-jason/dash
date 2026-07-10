@@ -18,6 +18,7 @@ import {
   agentPrestige,
   computeHonors,
   agentSeasonLog,
+  currentQuarterStanding,
 } from "@/lib/metrics/agentLeaderboard";
 import {
   getLoadCount,
@@ -66,6 +67,11 @@ const AgentDetailPage = () => {
   );
   const season = useMemo(
     () => (agentId ? agentSeasonLog(allLoads ?? [], agentId, new Date()) : []),
+    [allLoads, agentId],
+  );
+  const live = useMemo(
+    () =>
+      agentId ? currentQuarterStanding(allLoads ?? [], agentId, new Date()) : null,
     [allLoads, agentId],
   );
 
@@ -194,7 +200,7 @@ const AgentDetailPage = () => {
       </div>
 
       <div className="mt-4">
-        <TrophyCase honors={honors} log={season} />
+        <TrophyCase honors={honors} log={season} live={live} />
       </div>
 
       <div className="bg-plate rounded-lg p-4 mt-4">

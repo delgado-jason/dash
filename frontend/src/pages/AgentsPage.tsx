@@ -8,6 +8,7 @@ import {
   computeHonors,
   perAgentStats,
   rosterKpis,
+  currentQuarterStandings,
 } from "@/lib/metrics/agentLeaderboard";
 
 const money0 = (n: number) =>
@@ -35,6 +36,10 @@ const AgentsPage = () => {
 
   const honors = useMemo(() => computeHonors(loads ?? [], new Date()), [loads]);
   const stats = useMemo(() => perAgentStats(loads ?? []), [loads]);
+  const standings = useMemo(
+    () => currentQuarterStandings(loads ?? [], new Date()),
+    [loads],
+  );
   const kpis = useMemo(
     () => rosterKpis(agents ?? [], loads ?? [], new Date()),
     [agents, loads],
@@ -167,6 +172,7 @@ const AgentsPage = () => {
               agent={agent}
               stats={stats.get(agent.agent_id)}
               honors={honors.get(agent.agent_id)}
+              live={standings.get(agent.agent_id)}
             />
           ))}
         </div>

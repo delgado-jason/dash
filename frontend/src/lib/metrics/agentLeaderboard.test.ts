@@ -6,6 +6,7 @@ import {
   rosterKpis,
   agentPrestige,
   agentSeasonLog,
+  currentQuarterStanding,
 } from "./agentLeaderboard";
 
 // Minimal delivered-load factory. Revenue = linehaul (fsc/accessorials 0).
@@ -142,6 +143,31 @@ describe("agentSeasonLog", () => {
     expect(agentSeasonLog(loads, "C", now)).toEqual([
       { quarter: "2026-Q1", result: "board", revenue: 25000, loads: 2 },
     ]);
+  });
+});
+
+describe("currentQuarterStanding", () => {
+  const now = new Date("2026-08-15T00:00:00.000Z"); // 2026-Q3 in progress
+  const loads = [
+    mk("A", "2026-07-01", 10000),
+    mk("A", "2026-07-02", 10000),
+    mk("A", "2026-07-03", 10000), // 3 loads → provisional gold
+    mk("B", "2026-07-04", 5000),
+    mk("B", "2026-07-05", 5000), // 2 loads → board #2
+  ];
+
+  it("reports provisional gold for the current quarter leader", () => {
+    expect(currentQuarterStanding(loads, "A", now)?.result).toBe("gold");
+  });
+
+  it("reports a board position for a 2-load agent", () => {
+    const b = currentQuarterStanding(loads, "B", now);
+    expect(b?.result).toBe("board");
+    expect(b?.boardRank).toBe(2);
+  });
+
+  it("returns null for an agent with no loads this quarter", () => {
+    expect(currentQuarterStanding(loads, "Z", now)).toBeNull();
   });
 });
 

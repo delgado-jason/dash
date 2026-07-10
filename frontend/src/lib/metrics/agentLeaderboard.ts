@@ -131,6 +131,55 @@ export const agentSeasonLog = (
   return out;
 };
 
+// The agent's provisional standing in the CURRENT (in-progress) quarter — shown
+// as a live, not-yet-official figure. null when they've run nothing this
+// quarter. `boardRank` is their position in the 2+-load board race.
+export interface LiveStanding {
+  quarter: string;
+  result: "gold" | "silver" | "board" | "ran";
+  boardRank: number | null;
+  loads: number;
+  revenue: number;
+}
+
+// Every agent's provisional standing this quarter, in one pass (for the roster).
+export const currentQuarterStandings = (
+  loads: Load[],
+  now: Date,
+): Map<string, LiveStanding> => {
+  const currentQ = quarterKey(now.toISOString());
+  const out = new Map<string, LiveStanding>();
+  const agents = byQuarterAgent(loads).get(currentQ);
+  if (!agents) return out;
+
+  const entries = [...agents.entries()];
+  const boardRanked = rankByRevenue(entries.filter(([, a]) => a.loads >= 2));
+  const podium = rankByRevenue(entries.filter(([, a]) => a.loads >= 3));
+
+  for (const [agentId, agg] of entries) {
+    const idx = boardRanked.findIndex(([id]) => id === agentId);
+    let result: LiveStanding["result"] = "ran";
+    if (podium[0]?.[0] === agentId) result = "gold";
+    else if (podium[1]?.[0] === agentId) result = "silver";
+    else if (idx >= 0 && idx < 5) result = "board";
+    out.set(agentId, {
+      quarter: currentQ,
+      result,
+      boardRank: idx >= 0 ? idx + 1 : null,
+      loads: agg.loads,
+      revenue: agg.revenue,
+    });
+  }
+  return out;
+};
+
+export const currentQuarterStanding = (
+  loads: Load[],
+  agentId: string,
+  now: Date,
+): LiveStanding | null =>
+  currentQuarterStandings(loads, now).get(agentId) ?? null;
+
 // ---- per-agent card stats ----
 
 export interface AgentStat {
