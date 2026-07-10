@@ -1,49 +1,23 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Pencil, Trash2, Truck, User, Container } from "lucide-react";
+
 import { useLoad } from "@/hooks/useLoad";
 import { useAccessorials } from "@/hooks/useAccessorials";
-import { useNavigate } from "react-router-dom";
-
-// Types
-import type { Badge } from "@/types/badge";
-
-// Hooks
 import { useBrokers } from "@/hooks/useBrokers";
 import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
 
-// Services
 import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
 import { deleteAccessorial } from "@/services/deleteAccessorialService";
 import { patchAccessorial } from "@/services/patchAccessorialService";
 import { deleteLoad } from "@/services/deleteLoadService";
 
-// Components
 import LoadForm from "@/components/LoadForm";
-
-// UI Components
-import { PageHeader } from "@/components/PageHeader";
-import { MetricStrip } from "@/components/MetricStrip";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Kpi } from "@/components/Kpi";
 import {
   Dialog,
   DialogContent,
@@ -52,191 +26,179 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
+import {
+  estimateLoadFuel,
+  ASSUMED_MPG,
+  ASSUMED_FUEL_PRICE,
+} from "@/lib/metrics/fuel";
+import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
+
+const money0 = (n: number) =>
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+const money2 = (n: number) =>
+  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+const fmtDate = (d?: string | null) =>
+  d
+    ? new Date(String(d).slice(0, 10) + "T00:00:00Z").toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+      )
+    : "Not set";
+
+const cardLbl = "text-xs text-muted-text uppercase tracking-wider mb-2";
+
+const Row = ({ label, value }: { label: ReactNode; value: ReactNode }) => (
+  <div className="flex justify-between gap-3 py-0.5 text-sm">
+    <span className="text-muted-text">{label}</span>
+    <span className="text-right">{value}</span>
+  </div>
+);
+
+const LOAD_STATUSES = ["booked", "in_transit", "delivered", "cancelled", "tonu"];
+const PAYMENT_STATUSES = ["unpaid", "invoiced", "paid", "cancelled"];
 
 export const LoadDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
-  const [accessorialsRefreshKey, setAccessorialsRefreshKey] = useState(0);
+  const [accRefreshKey, setAccRefreshKey] = useState(0);
   const { load, isLoading, error } = useLoad(refreshKey);
-  const { accessorials } = useAccessorials(accessorialsRefreshKey);
-  const [newAccessorialType, setNewAccessorialType] = useState("");
-  const [newAccessorialAmount, setNewAccessorialAmount] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedLoadStatus, setSelectedLoadStatus] = useState("");
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("");
+  const { accessorials } = useAccessorials(accRefreshKey);
 
-  // Edit Accessorial States
-  const [editingId, setEditingId] = useState<string>("");
-  const [editingType, setEditingType] = useState<string>("");
+  const [newType, setNewType] = useState("");
+  const [newAmount, setNewAmount] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusSel, setStatusSel] = useState("");
+  const [paymentSel, setPaymentSel] = useState("");
+
+  const [editingId, setEditingId] = useState("");
+  const [editingType, setEditingType] = useState("");
   const [editingAmount, setEditingAmount] = useState<number>(0);
 
-  // Edit Load Button state
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { brokers } = useBrokers(0);
   const { agents } = useAgents(0);
   const { markets } = useMarkets(0);
-
-  // Delete state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (load) {
-      setSelectedLoadStatus(load.load_status);
-      setSelectedPaymentStatus(load.payment_status);
+      setStatusSel(load.load_status);
+      setPaymentSel(load.payment_status);
     }
   }, [load]);
 
-  // Date format options
-  const dateOptions: Intl.DateTimeFormatOptions = {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  };
-
-  let totalAccessorialCharges = 0;
-  accessorials.forEach((accessorial) => {
-    totalAccessorialCharges += Number(accessorial.amount);
-  });
-  if (isLoading) {
+  if (isLoading)
     return (
-      <div>
-        <p>Loading</p>
+      <div className="p-6 bg-iron text-light min-h-screen font-body">
+        <p className="text-muted-text">Loading…</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
-      <div>
-        <p>{error}</p>
+      <div className="p-6 bg-iron text-light min-h-screen font-body">
+        <p className="text-destructive">{error}</p>
       </div>
     );
-  }
+  if (!load) return null;
 
-  if (!load) {
-    return null;
-  }
+  const capitalize = (str: string) =>
+    str
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
 
-  const capitalize = (str: string): string => {
-    const words = str.split(" ");
-    const capitalized = words.map(
-      (word) => word.charAt(0).toUpperCase() + word.slice(1),
-    );
-    return capitalized.join(" ");
-  };
+  const revenue = loadRevenue(load);
+  const rpm = loadRpm(load);
+  const dh = deadheadShare(load);
+  const fuel = estimateLoadFuel(load);
+  const accTotal = accessorials.reduce((s, a) => s + Number(a.amount), 0);
 
-  // HANDLERS
   const handleSaveChanges = async () => {
-    const data = {
-      load_status: selectedLoadStatus,
-      payment_status: selectedPaymentStatus,
-    };
-
-    // Check if the state for the selects have changed
-    if (
-      data.load_status !== load.load_status ||
-      data.payment_status !== load.payment_status
-    ) {
-      try {
-        setIsSaving(true);
-        await patchLoad(load.load_id, data);
-        setRefreshKey((prev) => prev + 1);
-      } catch {
-        throw new Error("Unable to update status");
-      } finally {
-        setIsSaving(false);
-      }
+    if (statusSel === load.load_status && paymentSel === load.payment_status)
+      return;
+    try {
+      setIsSaving(true);
+      await patchLoad(load.load_id, {
+        load_status: statusSel,
+        payment_status: paymentSel,
+      });
+      setRefreshKey((p) => p + 1);
+    } catch {
+      // surfaced by the row's own state; nothing to do here
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleAddAccessorial = async () => {
-    const data = {
-      accessorial_type: capitalize(newAccessorialType),
-      amount: Number(newAccessorialAmount),
-    };
-
-    if (data.accessorial_type !== "" && data.amount !== null) {
-      try {
-        await createAccessorial(load.load_id, data);
-        setAccessorialsRefreshKey((prev) => prev + 1);
-        setRefreshKey((prev) => prev + 1);
-      } catch {
-        throw new Error("Unable to create new accessorial");
-      } finally {
-        setNewAccessorialType("");
-        setNewAccessorialAmount("");
-      }
-    }
-  };
-
-  const handleDeleteAccessorial = async (accessorial_id: string) => {
+    if (!newType.trim() || newAmount.trim() === "") return;
     try {
-      await deleteAccessorial(accessorial_id);
-      setAccessorialsRefreshKey((prev) => prev + 1);
-      setRefreshKey((prev) => prev + 1);
-    } catch {
-      throw new Error("Unable to delete accessorial");
+      await createAccessorial(load.load_id, {
+        accessorial_type: capitalize(newType.trim()),
+        amount: Number(newAmount),
+      });
+      setAccRefreshKey((p) => p + 1);
+      setRefreshKey((p) => p + 1);
+    } finally {
+      setNewType("");
+      setNewAmount("");
     }
   };
 
-  const handleEditAccessorial = (
-    accessorial_id: string,
-    accessorial_type: string,
-    amount: number,
-  ) => {
-    setEditingId(accessorial_id);
-    setEditingType(accessorial_type);
+  const handleDeleteAccessorial = async (id: string) => {
+    await deleteAccessorial(id);
+    setAccRefreshKey((p) => p + 1);
+    setRefreshKey((p) => p + 1);
+  };
+
+  const startEdit = (id: string, type: string, amount: number) => {
+    setEditingId(id);
+    setEditingType(type);
     setEditingAmount(amount);
   };
 
-  const handleSaveEditAccessorial = async () => {
-    const data = {
-      accessorial_type: editingType,
-      amount: editingAmount,
-    };
+  const handleSaveEdit = async () => {
     try {
-      await patchAccessorial(editingId, data);
-      setAccessorialsRefreshKey((prev) => prev + 1);
-      setRefreshKey((prev) => prev + 1);
-    } catch {
-      throw new Error("Unable to patch accessorial");
+      await patchAccessorial(editingId, {
+        accessorial_type: editingType,
+        amount: editingAmount,
+      });
+      setAccRefreshKey((p) => p + 1);
+      setRefreshKey((p) => p + 1);
     } finally {
       setEditingId("");
-      setEditingType("");
-      setEditingAmount(0);
     }
   };
 
-  const handleCancelEditAccessorial = () => {
-    setEditingId("");
-  };
-
   const handleDeleteLoad = async () => {
-    const loadToDelete = load.load_id;
     try {
-      await deleteLoad(loadToDelete);
+      await deleteLoad(load.load_id);
       navigate("/loads");
-    } catch {
-      throw new Error("Unable to delete load");
     } finally {
       setShowDeleteModal(false);
     }
   };
 
+  const fleetChip = (n?: string | null) => (n ? n : "—");
+
   return (
-    // CONTAINER
-    <div className="m-2 font-body">
-      {showEditForm && load && (
+    <div className="p-6 bg-iron text-light font-body min-h-screen">
+      {showEditForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowEditForm(false)}
           />
-          <div className="relative w-[750px] max-h-[90vh] bg-card text-foreground overflow-y-auto shadow-xl rounded-lg p-6">
+          <div className="relative w-[750px] max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-6 border border-plate">
             <LoadForm
               mode="edit"
               initialData={{
@@ -263,7 +225,11 @@ export const LoadDetailPage = () => {
                 deadhead_miles: load.deadhead_miles,
                 loaded_miles: load.loaded_miles,
                 odometer_start: load.odometer_start ?? null,
+                odometer_end: load.odometer_end ?? null,
                 payment_status: load.payment_status,
+                truck_id: load.truck_id ?? null,
+                driver_id: load.driver_id ?? null,
+                trailer_id: load.trailer_id ?? null,
               }}
               brokers={brokers}
               agents={agents}
@@ -271,7 +237,7 @@ export const LoadDetailPage = () => {
               onSubmit={async (data) => {
                 await patchLoad(load.load_id, data);
               }}
-              onSuccess={() => setRefreshKey((prev) => prev + 1)}
+              onSuccess={() => setRefreshKey((p) => p + 1)}
               onBrokerCreated={() => {}}
               onAgentCreated={() => {}}
               onMarketCreated={() => {}}
@@ -280,540 +246,436 @@ export const LoadDetailPage = () => {
           </div>
         </div>
       )}
+
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Load</DialogTitle>
+            <DialogTitle>Delete load</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {load.load_number}? This action
-              cannot be undone.
+              Are you sure you want to delete {load.load_number}? This can't be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleDeleteLoad}>Delete</Button>
+            <Button variant="destructive" onClick={handleDeleteLoad}>
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <PageHeader
-        title={load.load_number}
-        subtitle={`${load.broker} · ${load.agent} · ${capitalize(load.load_type)}`}
-        badges={[
-          { value: load.load_status as Badge["value"] },
-          { value: load.payment_status as Badge["value"] },
-        ]}
-        actions={
-          <>
-            <Button
-              className="bg-amber-dark mr-2"
-              onClick={() => setShowEditForm(true)}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteModal(true)}
-            >
-              Delete
-            </Button>
-          </>
-        }
-        metrics={
-          <MetricStrip
-            cards={[
-              {
-                label: "Total Revenue",
-                value: Number(load.linehaul) + Number(load.fuel_surcharge),
-                format: "currency",
-              },
-              {
-                label: "Linehaul",
-                value: load.linehaul,
-                format: "currency",
-              },
-              {
-                label: "FSC",
-                value: load.fuel_surcharge,
-                format: "currency",
-              },
-              {
-                label: "RPM",
-                value:
-                  (Number(load.linehaul) + Number(load.fuel_surcharge)) /
-                  load.loaded_miles,
-                format: "currency",
-              },
-              {
-                label: "Loaded Miles",
-                value: load.loaded_miles,
-                format: "number",
-              },
-            ]}
-          />
-        }
-      />
-      <div className="grid grid-cols-4">
-        {/* MAIN CONTENT */}
-        <div className="p-2 col-span-3 bg-plate text-foreground">
-          <Tabs defaultValue="details">
-            <TabsList
-              variant="line"
-              className="w-full justify-start border-b border-iron"
-            >
-              <TabsTrigger
-                value="details"
-                className="text-muted-text hover:text-foreground data-[state=active]:text-amber [&_after]:bg-amber"
-              >
-                Details
-              </TabsTrigger>
-              <TabsTrigger
-                value="accessorials"
-                className="text-muted-text hover:text-foreground data-[state=active]:text-amber [&_after]:bg-amber"
-              >
-                Accessorials
-              </TabsTrigger>
-            </TabsList>
-            {/* DETAILS CONTENT */}
-            <TabsContent value="details">
-              <div className="grid grid-cols-2 pl-4 mt-4 mb-8 gap-y-8">
-                {/* ROUTE CONTENT */}
-                <div className="border-b-2 border-iron pb-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
-                      Route
-                    </p>
-                  </div>
-                  <div className="flex content-center">
-                    <div className="w-[10px] self-center mr-6">
-                      <div
-                        id="circle"
-                        className="w-[8px] h-[8px] bg-steel rounded-full"
-                      ></div>
-                    </div>
-                    <div className="ml-6 text-sm text-foreground font-bold">
-                      <p>
-                        {load.origin_city}, {load.origin_state}
-                      </p>
-                      <p className="text-xs text-foreground">
-                        {load.origin_market}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="border-l-2 border-iron h-[15px] ml-[3px]"></div>
-                  <div className="flex content-center">
-                    <div className="w-[10px] self-center mr-6">
-                      <div
-                        id="circle"
-                        className="w-[8px] h-[8px] bg-steel rounded-full"
-                      ></div>
-                    </div>
-                    <div className="ml-6 text-sm text-foreground font-bold">
-                      <p>
-                        {load.destination_city}, {load.destination_state}
-                      </p>
-                      <p className="text-xs text-foreground">
-                        {load.delivery_market}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {/* CARGO CONTENT */}
-                <div className="border-b-2 border-iron">
-                  <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
-                    Cargo
-                  </p>
-                  <div className="flex gap-6">
-                    <div className="text-sm text-foreground">
-                      <p className="mb-1 font-bold">Commodity</p>
-                      <p className="mb-1 font-bold">Weight</p>
-                      <p className="mb-1 font-bold">Dimensions</p>
-                    </div>
-                    <div className="text-sm text-foreground">
-                      <p className="mb-1">{load.commodity}</p>
-                      <p className="mb-1">{load.weight}</p>
-                      <p className="mb-1">
-                        {!load.dimensions ? "Legal" : load.dimensions}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {/* DATES CONTENT */}
-                <div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
-                      Dates
-                    </p>
-                    <div className="grid grid-cols-2">
-                      <div>
-                        <p className="text-muted-text mb-2 text-sm">Pickup</p>
-                        <p className="text-muted-text text-sm">Delivery</p>
-                      </div>
-                      <div>
-                        <p className="text-foreground mb-2 text-sm">
-                          {new Date(load.pickup_date).toLocaleDateString(
-                            "en-US",
-                            dateOptions,
-                          )}
-                        </p>
-                        <p className="text-foreground text-sm">
-                          {load.delivery_date
-                            ? new Date(load.delivery_date).toLocaleDateString(
-                                "en-US",
-                                dateOptions,
-                              )
-                            : "Not set"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* MILEAGE CONTENT */}
-                <div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
-                      Mileage
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <div>
-                      <p className="text-sm text-muted-text mb-2">Loaded</p>
-                      <p className="text-sm text-muted-text mb-2">Deadhead</p>
-                      <p className="text-sm text-muted-text mb-2">
-                        Odometer Start
-                      </p>
-                      <p className="text-sm text-muted-text">Odometer End</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-foreground mb-2">
-                        {load.loaded_miles} mi
-                      </p>
-                      <p className="text-sm text-foreground mb-2">
-                        {load.deadhead_miles} mi
-                      </p>
-                      <p className="text-sm text-foreground mb-2">
-                        {load.odometer_start?.toLocaleString()}
-                      </p>
-                      <p className="text-sm text-foreground">
-                        {load.odometer_end?.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {/* SHIPPER & RECEIVER CONTENT */}
-                <div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
-                      Shipper & Receiver
-                    </p>
-                    <div className="grid grid-cols-2">
-                      <div>
-                        <p className="text-muted-text mb-2 text-sm">Shipper</p>
-                        <p className="text-muted-text text-sm">Receiver</p>
-                      </div>
-                      <div>
-                        <p className="text-foreground mb-2 text-sm">
-                          {load.shipper_name}
-                        </p>
-                        <p className="text-foreground text-sm">
-                          {load.receiver_name}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* FUEL CONTENT */}
-                <div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
-                      Fuel <StatusBadge value="est" />
-                    </p>
-                    <div className="grid grid-cols-2">
-                      <div>
-                        <p className="text-muted-text mb-2 text-sm">
-                          Est. Cost
-                        </p>
-                        <p className="text-muted-text mb-2 text-sm">Avg MPG</p>
-                        <p className="text-muted-text text-sm">Fuel Price</p>
-                      </div>
-                      <div>
-                        <p className="text-foreground mb-2 text-sm">
-                          {(
-                            ((load.loaded_miles + load.deadhead_miles) / 6.5) *
-                            5.5
-                          ).toLocaleString("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          })}
-                        </p>
-                        <p className="text-foreground text-sm mb-2">6.5</p>
-                        <p className="text-foreground text-sm mb-2">
-                          $5.50/gal
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-            {/* ACCESSORIALS CONTENT */}
-            <TabsContent value="accessorials">
-              {accessorials.length === 0 ? (
-                <p>No accessorials for current load</p>
-              ) : (
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-text mb-3 mt-4 pl-4">
-                    Charges
-                  </p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b-2 border-iron">
-                        <TableHead className="text-muted-text text-sm pl-4">
-                          Type
-                        </TableHead>
-                        <TableHead className="text-muted-text text-sm">
-                          Amount
-                        </TableHead>
-                        <TableHead className="text-muted-text text-sm text-center">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {accessorials.map((accessorial) => (
-                        <TableRow
-                          key={accessorial.accessorial_id}
-                          className="border-b-2 border-iron"
-                        >
-                          <TableCell className="text-sm text-foreground pl-4">
-                            {editingId === accessorial.accessorial_id ? (
-                              <input
-                                id="edit-accessorial-type"
-                                name="edit-accessorial-type"
-                                value={editingType}
-                                onChange={(e) => setEditingType(e.target.value)}
-                              />
-                            ) : (
-                              <span>{accessorial.accessorial_type}</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {editingId === accessorial.accessorial_id ? (
-                              <input
-                                id="edit-accessorial-amount"
-                                name="edit-accessorial-amount"
-                                value={editingAmount}
-                                onChange={(e) =>
-                                  setEditingAmount(Number(e.target.value))
-                                }
-                              />
-                            ) : (
-                              <span>
-                                {Number(accessorial.amount).toLocaleString(
-                                  "en-US",
-                                  {
-                                    style: "currency",
-                                    currency: "USD",
-                                  },
-                                )}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-center gap-2">
-                              {editingId === accessorial.accessorial_id ? (
-                                <Button onClick={handleSaveEditAccessorial}>
-                                  Save
-                                </Button>
-                              ) : (
-                                <Pencil
-                                  size={14}
-                                  className="text-muted-text hover:text-foreground cursor-pointer"
-                                  onClick={() =>
-                                    handleEditAccessorial(
-                                      accessorial.accessorial_id,
-                                      accessorial.accessorial_type,
-                                      accessorial.amount,
-                                    )
-                                  }
-                                />
-                              )}
-                              {editingId === accessorial.accessorial_id ? (
-                                <Button onClick={handleCancelEditAccessorial}>
-                                  Cancel
-                                </Button>
-                              ) : (
-                                <Trash2
-                                  size={14}
-                                  className="text-red-400 hover:text-destructive cursor-pointer"
-                                  onClick={() =>
-                                    handleDeleteAccessorial(
-                                      accessorial.accessorial_id,
-                                    )
-                                  }
-                                />
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div className="grid grid-cols-3 border-t-2 border-iron">
-                    <p className="text-sm text-foreground pl-4 pt-2">
-                      Total Accessorials
-                    </p>
-                    <p className="text-sm text-foreground pt-2">
-                      {totalAccessorialCharges.toLocaleString("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-center mt-8">
-                <div className="bg-iron p-6 w-3/4 self-center rounded-md">
-                  <div className="grid grid-cols-3 gap-x-6 gap-y-2">
-                    <p className="text-xs text-muted-text">Type</p>
-                    <p className="text-xs text-muted-text">Amount</p>
-                    <div></div>
-                    <input
-                      id="new-accessorial-type"
-                      name="new-accessorial-type"
-                      placeholder="e.g. Layover"
-                      className="p-2 bg-plate rounded-md"
-                      value={newAccessorialType}
-                      onChange={(e) => setNewAccessorialType(e.target.value)}
-                    />
-                    <input
-                      id="new-accessorial-amount"
-                      name="new-accessorial-amount"
-                      placeholder="0.00"
-                      className="p-2 bg-plate rounded-md"
-                      value={newAccessorialAmount}
-                      onChange={(e) => setNewAccessorialAmount(e.target.value)}
-                    />
-                    <Button
-                      className="bg-primary border-1 border-iron"
-                      onClick={handleAddAccessorial}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+
+      <Link to="/loads" className="text-xs text-muted-text hover:text-light">
+        ← Loads
+      </Link>
+
+      <div className="flex justify-between items-start mt-3 mb-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-condensed">{load.load_number}</h1>
+            <StatusBadge value={load.load_status} />
+            <StatusBadge value={load.payment_status} />
+          </div>
+          <p className="text-muted-text text-sm mt-1">
+            {load.broker} · {load.agent} · {capitalize(load.load_type)}
+          </p>
         </div>
-        {/* SIDEBAR */}
-        <div className="p-2 bg-plate border-l-1 border-iron text-foreground">
-          <div className="border-b-1 border-iron pl-2 pr-2 pb-4">
-            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
-              Broker & Agent
-            </p>
-            <p className="text-sm text-foreground">{load.broker}</p>
-            <p className="text-sm text-muted-text">{load.agent}</p>
-            <p className="text-sm text-muted-text">{load.agent_email}</p>
-          </div>
-          <div className="border-b-1 border-iron pl-2 pr-2">
-            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
-              Load Status
-            </p>
-            <Select
-              value={selectedLoadStatus}
-              onValueChange={(value) => setSelectedLoadStatus(value)}
-            >
-              <SelectTrigger className="mb-4">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="booked">Booked</SelectItem>
-                  <SelectItem value="in_transit">In Transit</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="tonu">Tonu</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
-              Payment Status
-            </p>
-            <Select
-              value={selectedPaymentStatus}
-              onValueChange={(value) => setSelectedPaymentStatus(value)}
-            >
-              <SelectTrigger className="mb-4">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="invoiced">Invoiced</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="border-b-1 border-iron pl-2 pr-2 pb-4">
-            <p className="text-xs text-muted-text mt-2 mb-2 uppercase tracking-wider">
-              Revenue
-            </p>
-            <div className="grid grid-cols-2">
-              <div>
-                <p className="text-sm text-muted-text">Linehaul</p>
-                <p className="text-sm text-muted-text">FSC</p>
-                <p className="text-sm text-muted-text">Accessorials</p>
-              </div>
-              <div>
-                <p className="text-sm text-foreground">
-                  {Number(load.linehaul).toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  })}
-                </p>
-                <p className="text-sm text-foreground">
-                  {Number(load.fuel_surcharge).toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  })}
-                </p>
-                <p className="text-sm text-foreground">
-                  {Number(load.total_accessorials).toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="pt-2 pl-2 pr-2 pb-4 grid grid-cols-2">
-            <div>
-              <p className="text-sm text-foreground">Total</p>
-            </div>
-            <div>
-              <p className="text-foreground">
-                {(
-                  Number(load.total_accessorials) +
-                  Number(load.linehaul) +
-                  Number(load.fuel_surcharge)
-                ).toLocaleString("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                })}
-              </p>
-            </div>
-          </div>
-          <Button
-            disabled={isSaving}
-            className="border-2 border-amber bg-primary text-steel hover:cursor-pointer hover:scale-105"
-            onClick={handleSaveChanges}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowEditForm(true)}
+            className="bg-steel text-light px-3 py-1.5 rounded text-sm flex items-center gap-1"
           >
-            {isSaving ? "...Saving" : "Save Changes"}
-          </Button>
+            <Pencil size={14} /> Edit
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="bg-steel text-destructive px-3 py-1.5 rounded text-sm flex items-center gap-1"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Kpi label="Total revenue" value={money0(revenue)} />
+        <Kpi
+          label="Rate / mile"
+          value={fmtRpm(rpm)}
+          valueClass={rpmTextClass(rpm)}
+          sub={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} loaded mi`}
+        />
+        <Kpi
+          label="Loaded miles"
+          value={(Number(load.loaded_miles) || 0).toLocaleString("en-US")}
+        />
+        <Kpi
+          label="Deadhead"
+          value={dh == null ? "—" : `${Math.round(dh * 100)}%`}
+          sub={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="bg-plate rounded-lg p-4">
+          <p className={cardLbl}>Route</p>
+          <div className="flex gap-3">
+            <div className="flex flex-col items-center pt-1.5">
+              <div className="w-2 h-2 rounded-full bg-muted-text" />
+              <div className="w-px flex-1 bg-steel min-h-[24px] my-1" />
+              <div className="w-2 h-2 rounded-full bg-amber" />
+            </div>
+            <div className="text-sm flex-1">
+              <p className="font-medium">
+                {load.origin_city}, {load.origin_state}
+              </p>
+              <p className="text-xs text-muted-text mb-3">
+                {load.origin_market}
+              </p>
+              <p className="font-medium">
+                {load.destination_city}, {load.destination_state}
+              </p>
+              <p className="text-xs text-muted-text">{load.delivery_market}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-plate rounded-lg p-4 border border-amber">
+          <p className={`${cardLbl} text-amber-light`}>Fleet</p>
+          <Row
+            label={
+              <span className="flex items-center gap-1.5">
+                <Truck size={15} /> Truck
+              </span>
+            }
+            value={
+              load.truck_id ? (
+                <Link
+                  to={`/trucks/${load.truck_id}`}
+                  className="text-amber-light hover:underline"
+                >
+                  Unit {fleetChip(load.truck_unit)}
+                </Link>
+              ) : (
+                "—"
+              )
+            }
+          />
+          <Row
+            label={
+              <span className="flex items-center gap-1.5">
+                <User size={15} /> Driver
+              </span>
+            }
+            value={
+              load.driver_id ? (
+                <Link
+                  to={`/drivers/${load.driver_id}`}
+                  className="text-amber-light hover:underline"
+                >
+                  {fleetChip(load.driver_name)}
+                </Link>
+              ) : (
+                "—"
+              )
+            }
+          />
+          <Row
+            label={
+              <span className="flex items-center gap-1.5">
+                <Container size={15} /> Trailer
+              </span>
+            }
+            value={
+              load.trailer_id ? (
+                <Link
+                  to={`/trailers/${load.trailer_id}`}
+                  className="text-amber-light hover:underline"
+                >
+                  Unit {fleetChip(load.trailer_unit)}
+                </Link>
+              ) : (
+                "—"
+              )
+            }
+          />
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <p className={cardLbl}>Revenue</p>
+          <Row label="Linehaul" value={money2(Number(load.linehaul))} />
+          <Row
+            label="Fuel surcharge"
+            value={money2(Number(load.fuel_surcharge))}
+          />
+          <Row
+            label="Accessorials"
+            value={money2(Number(load.total_accessorials))}
+          />
+          <div className="flex justify-between border-t border-steel mt-1.5 pt-1.5 text-sm">
+            <span>Total</span>
+            <span className="font-condensed text-base">{money2(revenue)}</span>
+          </div>
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <p className={cardLbl}>Mileage</p>
+          <Row
+            label="Loaded"
+            value={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} mi`}
+          />
+          <Row
+            label="Deadhead"
+            value={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
+          />
+          <Row
+            label="Odometer"
+            value={
+              load.odometer_start && load.odometer_end
+                ? `${load.odometer_start.toLocaleString("en-US")} → ${load.odometer_end.toLocaleString("en-US")}`
+                : "Not recorded"
+            }
+          />
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <p className={cardLbl}>Cargo</p>
+          <Row label="Commodity" value={load.commodity || "—"} />
+          <Row
+            label="Weight"
+            value={load.weight ? `${load.weight.toLocaleString("en-US")} lb` : "—"}
+          />
+          <Row label="Dimensions" value={load.dimensions || "Legal"} />
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <p className={cardLbl}>Dates</p>
+          <Row label="Pickup" value={fmtDate(load.pickup_date)} />
+          <Row label="Delivery" value={fmtDate(load.delivery_date)} />
+          <Row
+            label="Shipper → receiver"
+            value={`${load.shipper_name || "—"} → ${load.receiver_name || "—"}`}
+          />
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <p className={`${cardLbl} mb-0`}>Fuel</p>
+            <span
+              className="text-[11px] px-2 py-0.5 rounded"
+              style={{
+                backgroundColor:
+                  fuel?.basis === "actual"
+                    ? "var(--color-status-positive-bg)"
+                    : "var(--color-status-aware-bg)",
+                color:
+                  fuel?.basis === "actual"
+                    ? "var(--color-status-positive-text)"
+                    : "var(--color-status-aware-text)",
+              }}
+            >
+              {fuel?.basis === "actual" ? "actual" : "est."}
+            </span>
+          </div>
+          {fuel ? (
+            <>
+              <Row label="Fuel cost" value={money2(fuel.cost)} />
+              <Row
+                label="Miles"
+                value={`${fuel.miles.toLocaleString("en-US")} mi`}
+              />
+              <Row
+                label="Gallons"
+                value={`${Math.round(fuel.gallons).toLocaleString("en-US")} gal`}
+              />
+              <Row
+                label="Assumed"
+                value={`${ASSUMED_MPG} mpg · $${ASSUMED_FUEL_PRICE.toFixed(2)}/gal`}
+              />
+              <p className="text-xs text-muted-text mt-2">
+                {fuel.basis === "actual"
+                  ? "Based on the odometer readings entered for this load."
+                  : "Estimated from loaded + deadhead miles. Enter odometer start and end to reflect actual miles."}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-text">
+              Add loaded miles to estimate fuel.
+            </p>
+          )}
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <p className={cardLbl}>Broker · agent</p>
+          <p className="text-sm">{load.broker}</p>
+          <p className="text-sm text-muted-text">
+            <Link
+              to={`/agents/${load.agent_id}`}
+              className="text-amber-light hover:underline"
+            >
+              {load.agent}
+            </Link>
+            {load.agent_email ? ` · ${load.agent_email}` : ""}
+          </p>
+        </div>
+
+        <div className="bg-plate rounded-lg p-4 md:col-span-2">
+          <p className={cardLbl}>Update status</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            <select
+              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-light"
+              value={statusSel}
+              onChange={(e) => setStatusSel(e.target.value)}
+            >
+              {LOAD_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {capitalize(s.replace("_", " "))}
+                </option>
+              ))}
+            </select>
+            <select
+              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-light"
+              value={paymentSel}
+              onChange={(e) => setPaymentSel(e.target.value)}
+            >
+              {PAYMENT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {capitalize(s)}
+                </option>
+              ))}
+            </select>
+            <button
+              disabled={isSaving}
+              onClick={handleSaveChanges}
+              className="bg-amber text-steel px-4 py-1.5 rounded text-sm font-semibold disabled:opacity-50"
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-plate rounded-lg p-4 mt-4">
+        <div className="flex justify-between items-center mb-2">
+          <p className={`${cardLbl} mb-0`}>Accessorials</p>
+          <span className="text-xs text-muted-text">
+            Total {money2(accTotal)}
+          </span>
+        </div>
+
+        {accessorials.length === 0 ? (
+          <p className="text-sm text-muted-text">No accessorials logged.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-muted-text text-left">
+                <th className="font-normal pb-1">Type</th>
+                <th className="font-normal pb-1 text-right">Amount</th>
+                <th className="font-normal pb-1 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accessorials.map((a) => {
+                const editing = editingId === a.accessorial_id;
+                return (
+                  <tr
+                    key={a.accessorial_id}
+                    className="border-t border-steel"
+                  >
+                    <td className="py-2">
+                      {editing ? (
+                        <input
+                          className="bg-steel rounded px-2 py-1 text-sm w-full"
+                          value={editingType}
+                          onChange={(e) => setEditingType(e.target.value)}
+                        />
+                      ) : (
+                        a.accessorial_type
+                      )}
+                    </td>
+                    <td className="py-2 text-right whitespace-nowrap">
+                      {editing ? (
+                        <input
+                          className="bg-steel rounded px-2 py-1 text-sm w-24 text-right"
+                          value={editingAmount}
+                          inputMode="decimal"
+                          onChange={(e) =>
+                            setEditingAmount(Number(e.target.value))
+                          }
+                        />
+                      ) : (
+                        money2(Number(a.amount))
+                      )}
+                    </td>
+                    <td className="py-2">
+                      <div className="flex items-center justify-end gap-3">
+                        {editing ? (
+                          <>
+                            <button
+                              onClick={handleSaveEdit}
+                              className="text-amber text-xs font-semibold"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingId("")}
+                              className="text-muted-text text-xs"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <Pencil
+                              size={14}
+                              className="text-muted-text hover:text-light cursor-pointer"
+                              onClick={() =>
+                                startEdit(
+                                  a.accessorial_id,
+                                  a.accessorial_type,
+                                  a.amount,
+                                )
+                              }
+                            />
+                            <Trash2
+                              size={14}
+                              className="text-muted-text hover:text-destructive cursor-pointer"
+                              onClick={() =>
+                                handleDeleteAccessorial(a.accessorial_id)
+                              }
+                            />
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        <div className="flex flex-wrap gap-2 mt-3">
+          <input
+            className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-light placeholder:text-muted-text"
+            placeholder="Type — e.g. Layover"
+            value={newType}
+            onChange={(e) => setNewType(e.target.value)}
+          />
+          <input
+            className="bg-steel rounded px-2 py-1.5 text-sm w-28 text-light placeholder:text-muted-text"
+            placeholder="0.00"
+            inputMode="decimal"
+            value={newAmount}
+            onChange={(e) => setNewAmount(e.target.value)}
+          />
+          <button
+            onClick={handleAddAccessorial}
+            className="bg-steel text-light px-4 py-1.5 rounded text-sm border border-plate"
+          >
+            Add
+          </button>
         </div>
       </div>
     </div>

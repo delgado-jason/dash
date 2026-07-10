@@ -107,6 +107,12 @@ export async function getLoad(user_id, load_id) {
             odometer_start,
             odometer_end,
             payment_status,
+            l.truck_id,
+            l.driver_id,
+            l.trailer_id,
+            trk.unit_number AS truck_unit,
+            drv.first_name || ' ' || drv.last_name AS driver_name,
+            trl.unit_number AS trailer_unit,
             l.created_at AS created_at,
             l.updated_at AS updated_at
         FROM loads AS l
@@ -118,6 +124,12 @@ export async function getLoad(user_id, load_id) {
         ON l.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
         ON l.destination_market_id = destination_market.market_id
+        LEFT JOIN trucks AS trk
+        ON l.truck_id = trk.truck_id
+        LEFT JOIN drivers AS drv
+        ON l.driver_id = drv.driver_id
+        LEFT JOIN trailers AS trl
+        ON l.trailer_id = trl.trailer_id
         WHERE l.user_id = $1
         AND load_id = $2;
     `;
@@ -161,6 +173,9 @@ export async function createLoad(user_id, data) {
     "deadhead_miles",
     "odometer_start",
     "odometer_end",
+    "truck_id",
+    "driver_id",
+    "trailer_id",
   ];
 
   for (const field in data) {
@@ -233,6 +248,9 @@ export async function patchLoad(user_id, load_id, data) {
     "deadhead_miles",
     "odometer_start",
     "odometer_end",
+    "truck_id",
+    "driver_id",
+    "trailer_id",
   ];
 
   // Throw error if data contains invalid field(s)

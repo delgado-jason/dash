@@ -34,6 +34,10 @@ export interface Load {
   truck_id?: string | null;
   driver_id?: string | null;
   trailer_id?: string | null;
+  // Joined labels, present on the single-load fetch (getLoad) only.
+  truck_unit?: string | null;
+  driver_name?: string | null;
+  trailer_unit?: string | null;
   created_at: string;
   updated_at: string;
 }
