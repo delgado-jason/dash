@@ -17,13 +17,22 @@ interface Props {
   onCancel: () => void;
   busy: boolean;
   error: string | null;
+  initial?: Record<string, string>; // prefill for editing
 }
 
 const field = "bg-steel rounded px-2 py-1 text-sm w-full";
 const lbl = "text-xs text-muted-text mb-1 block";
 
-export const EntityForm = ({ title, fields, onSave, onCancel, busy, error }: Props) => {
-  const [values, setValues] = useState<Record<string, string>>({});
+export const EntityForm = ({
+  title,
+  fields,
+  onSave,
+  onCancel,
+  busy,
+  error,
+  initial,
+}: Props) => {
+  const [values, setValues] = useState<Record<string, string>>(initial ?? {});
   const set = (name: string, v: string) =>
     setValues((p) => ({ ...p, [name]: v }));
 

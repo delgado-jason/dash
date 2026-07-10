@@ -17,3 +17,11 @@ export const createTruck = async (
   const res = await api.post("/trucks/me", data);
   return res.data.truck;
 };
+
+export const patchTruck = async (
+  id: string,
+  data: Record<string, unknown>,
+): Promise<Truck> => {
+  const res = await api.patch(`/trucks/me/${id}`, data);
+  return res.data.truck;
+};

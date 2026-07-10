@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Pencil } from "lucide-react";
 import type { Truck } from "@/types/truck";
 import type { Load } from "@/types/load";
-import type { MaintenanceItem } from "@/types/maintenance";
-import { getTruck } from "@/services/trucksService";
-import { getMaintenanceItems } from "@/services/maintenanceService";
+import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
+import { getTruck, patchTruck } from "@/services/trucksService";
+import {
+  getMaintenanceItems,
+  getMaintenanceServices,
+} from "@/services/maintenanceService";
 import { useLoads } from "@/hooks/useLoads";
-import { computeDue, avgMilesPerMonth } from "@/lib/metrics/maintenance";
+import { computeDue, avgMilesPerMonth, maxOdometer } from "@/lib/metrics/maintenance";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
+import { EntityForm } from "@/components/fleet/EntityForm";
+import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
+import { formatDate } from "@/lib/format";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const loadRev = (l: Load) =>
@@ -31,30 +38,64 @@ const TruckDetailPage = () => {
   const { loads } = useLoads(0);
   const [truck, setTruck] = useState<Truck | null>(null);
   const [items, setItems] = useState<MaintenanceItem[]>([]);
+  const [services, setServices] = useState<MaintenanceService[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     getTruck(id).then(setTruck).catch(() => {});
     getMaintenanceItems().then(setItems).catch(() => {});
+    getMaintenanceServices().then(setServices).catch(() => {});
   }, [id]);
 
   const truckLoads = useMemo(
     () => loads.filter((l) => l.truck_id === id),
     [loads, id],
   );
+
+  // Latest odometer, derived from the app: stored value + newest load + newest
+  // service reading (fuel will fold in once it carries an odometer).
+  const odometer = useMemo(() => {
+    if (!truck) return 0;
+    const loadOdos = truckLoads.map((l) => l.odometer_end ?? null);
+    const svcOdos = services.filter((s) => s.unit === "tractor").map((s) => s.odometer);
+    return (
+      maxOdometer(truck.current_odometer, ...loadOdos, ...svcOdos) ??
+      truck.current_odometer
+    );
+  }, [truck, truckLoads, services]);
+
   const mpm = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
   const due = useMemo(() => {
     let overdue = 0;
     let soon = 0;
-    if (truck) {
-      for (const it of items.filter((i) => i.truck_id === id)) {
-        const d = computeDue(it, truck.current_odometer, new Date(), mpm);
-        if (d.level === "overdue") overdue++;
-        else if (d.level === "soon") soon++;
-      }
+    for (const it of items.filter((i) => i.truck_id === id)) {
+      const d = computeDue(it, odometer, new Date(), mpm);
+      if (d.level === "overdue") overdue++;
+      else if (d.level === "soon") soon++;
     }
     return { overdue, soon };
-  }, [items, truck, id, mpm]);
+  }, [items, id, odometer, mpm]);
+
+  const saveEdit = async (data: Record<string, unknown>) => {
+    if (!truck) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await patchTruck(truck.truck_id, data);
+      setTruck(updated);
+      setEditing(false);
+    } catch (e) {
+      setError(
+        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+          "Could not save",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (!truck)
     return (
@@ -80,21 +121,46 @@ const TruckDetailPage = () => {
           onUpdated={(u) => setTruck({ ...truck, avatar_url: u })}
         />
         <div className="flex-1">
-          <h1 className="text-3xl font-condensed">Unit {truck.unit_number}</h1>
-          <p className="text-muted-text text-sm mb-4">
-            {[truck.year, truck.make, truck.model].filter(Boolean).join(" ")} ·{" "}
-            {truck.status}
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Spec label="Unit #" value={truck.unit_number} />
-            <Spec label="Odometer" value={`${truck.current_odometer.toLocaleString("en-US")} mi`} />
-            <Spec label="VIN" value={truck.vin} />
-            <Spec
-              label="Plate"
-              value={truck.plate_number ? `${truck.plate_number} ${truck.plate_state || ""}` : null}
-            />
-            <Spec label="In service" value={truck.in_service_date} />
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-condensed">Unit {truck.unit_number}</h1>
+              <p className="text-muted-text text-sm mb-4">
+                {[truck.year, truck.make, truck.model].filter(Boolean).join(" ")} ·{" "}
+                {truck.status}
+              </p>
+            </div>
+            {!editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+            )}
           </div>
+
+          {editing ? (
+            <EntityForm
+              title="Edit truck"
+              fields={TRUCK_FIELDS}
+              initial={toFormValues(truck as unknown as Record<string, unknown>, TRUCK_FIELDS)}
+              onSave={saveEdit}
+              onCancel={() => setEditing(false)}
+              busy={busy}
+              error={error}
+            />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Spec label="Unit #" value={truck.unit_number} />
+              <Spec label="Odometer · latest" value={`${odometer.toLocaleString("en-US")} mi`} />
+              <Spec label="VIN" value={truck.vin} />
+              <Spec
+                label="Plate"
+                value={truck.plate_number ? `${truck.plate_number} ${truck.plate_state || ""}` : null}
+              />
+              <Spec label="In service" value={formatDate(truck.in_service_date)} />
+            </div>
+          )}
         </div>
       </div>
 
