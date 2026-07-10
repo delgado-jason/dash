@@ -7,6 +7,7 @@ import { getDriver, patchDriver } from "@/services/driversService";
 import { useLoads } from "@/hooks/useLoads";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
+import { MileClub } from "@/components/fleet/MileClub";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
 
@@ -37,7 +38,9 @@ const DriverDetailPage = () => {
 
   useEffect(() => {
     if (!id) return;
-    getDriver(id).then(setDriver).catch(() => {});
+    getDriver(id)
+      .then(setDriver)
+      .catch(() => {});
   }, [id]);
 
   const driverLoads = useMemo(
@@ -55,8 +58,8 @@ const DriverDetailPage = () => {
       setEditing(false);
     } catch (e) {
       setError(
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          "Could not save",
+        (e as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || "Could not save",
       );
     } finally {
       setBusy(false);
@@ -71,6 +74,11 @@ const DriverDetailPage = () => {
     );
 
   const revenue = driverLoads.reduce((s, l) => s + loadRev(l), 0);
+  const milesHauled = driverLoads.reduce(
+    (s, l) =>
+      l.load_status === "delivered" ? s + (Number(l.loaded_miles) || 0) : s,
+    0,
+  );
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -111,24 +119,37 @@ const DriverDetailPage = () => {
             <EntityForm
               title="Edit driver"
               fields={DRIVER_FIELDS}
-              initial={toFormValues(driver as unknown as Record<string, unknown>, DRIVER_FIELDS)}
+              initial={toFormValues(
+                driver as unknown as Record<string, unknown>,
+                DRIVER_FIELDS,
+              )}
               onSave={saveEdit}
               onCancel={() => setEditing(false)}
               busy={busy}
               error={error}
             />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Spec label="Phone" value={driver.phone} />
-              <Spec label="Email" value={driver.email} />
-              <Spec
-                label="CDL"
-                value={driver.cdl_number ? `${driver.cdl_number} ${driver.cdl_state || ""}` : null}
-              />
-              <Spec label="CDL expires" value={formatDate(driver.cdl_expiration)} />
-              <Spec label="Endorsements" value={driver.endorsements} />
-              <Spec label="Hired" value={formatDate(driver.hire_date)} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Spec label="Phone" value={driver.phone} />
+                <Spec label="Email" value={driver.email} />
+                <Spec
+                  label="CDL"
+                  value={
+                    driver.cdl_number
+                      ? `${driver.cdl_number} ${driver.cdl_state || ""}`
+                      : null
+                  }
+                />
+                <Spec
+                  label="CDL expires"
+                  value={formatDate(driver.cdl_expiration)}
+                />
+                <Spec label="Endorsements" value={driver.endorsements} />
+                <Spec label="Hired" value={formatDate(driver.hire_date)} />
+              </div>
+              <MileClub miles={milesHauled} />
+            </>
           )}
         </div>
       </div>
@@ -141,6 +162,12 @@ const DriverDetailPage = () => {
         <div className="bg-plate rounded-lg p-4">
           <p className="text-xs text-muted-text mb-1">Revenue · all time</p>
           <p className="text-2xl font-condensed">{money(revenue)}</p>
+        </div>
+        <div className="bg-plate rounded-lg p-4">
+          <p className="text-xs text-muted-text mb-1">Miles hauled</p>
+          <p className="text-2xl font-condensed">
+            {milesHauled.toLocaleString("en-US")}
+          </p>
         </div>
       </div>
 

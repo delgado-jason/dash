@@ -10,9 +10,14 @@ import {
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { useLoads } from "@/hooks/useLoads";
-import { computeDue, avgMilesPerMonth, maxOdometer } from "@/lib/metrics/maintenance";
+import {
+  computeDue,
+  avgMilesPerMonth,
+  maxOdometer,
+} from "@/lib/metrics/maintenance";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
+import { MileClub } from "@/components/fleet/MileClub";
 import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
 
@@ -29,7 +34,9 @@ const Spec = ({
 }) => (
   <div>
     <p className="text-xs text-muted-text">{label}</p>
-    <p className="text-sm">{value === null || value === undefined || value === "" ? "—" : value}</p>
+    <p className="text-sm">
+      {value === null || value === undefined || value === "" ? "—" : value}
+    </p>
   </div>
 );
 
@@ -45,9 +52,15 @@ const TruckDetailPage = () => {
 
   useEffect(() => {
     if (!id) return;
-    getTruck(id).then(setTruck).catch(() => {});
-    getMaintenanceItems().then(setItems).catch(() => {});
-    getMaintenanceServices().then(setServices).catch(() => {});
+    getTruck(id)
+      .then(setTruck)
+      .catch(() => {});
+    getMaintenanceItems()
+      .then(setItems)
+      .catch(() => {});
+    getMaintenanceServices()
+      .then(setServices)
+      .catch(() => {});
   }, [id]);
 
   const truckLoads = useMemo(
@@ -91,8 +104,8 @@ const TruckDetailPage = () => {
       setEditing(false);
     } catch (e) {
       setError(
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          "Could not save",
+        (e as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || "Could not save",
       );
     } finally {
       setBusy(false);
@@ -125,10 +138,14 @@ const TruckDetailPage = () => {
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-condensed">Unit {truck.unit_number}</h1>
+              <h1 className="text-3xl font-condensed">
+                Unit {truck.unit_number}
+              </h1>
               <p className="text-muted-text text-sm mb-4">
-                {[truck.year, truck.make, truck.model].filter(Boolean).join(" ")} ·{" "}
-                {truck.status}
+                {[truck.year, truck.make, truck.model]
+                  .filter(Boolean)
+                  .join(" ")}{" "}
+                · {truck.status}
               </p>
             </div>
             {!editing && (
@@ -145,29 +162,48 @@ const TruckDetailPage = () => {
             <EntityForm
               title="Edit truck"
               fields={TRUCK_FIELDS}
-              initial={toFormValues(truck as unknown as Record<string, unknown>, TRUCK_FIELDS)}
+              initial={toFormValues(
+                truck as unknown as Record<string, unknown>,
+                TRUCK_FIELDS,
+              )}
               onSave={saveEdit}
               onCancel={() => setEditing(false)}
               busy={busy}
               error={error}
             />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Spec label="Unit #" value={truck.unit_number} />
-              <Spec label="Odometer · latest" value={`${odometer.toLocaleString("en-US")} mi`} />
-              <Spec label="VIN" value={truck.vin} />
-              <Spec
-                label="Plate"
-                value={truck.plate_number ? `${truck.plate_number} ${truck.plate_state || ""}` : null}
-              />
-              <Spec label="In service" value={formatDate(truck.in_service_date)} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Spec label="Unit #" value={truck.unit_number} />
+                <Spec
+                  label="Odometer · latest"
+                  value={`${odometer.toLocaleString("en-US")} mi`}
+                />
+                <Spec label="VIN" value={truck.vin} />
+                <Spec
+                  label="Plate"
+                  value={
+                    truck.plate_number
+                      ? `${truck.plate_number} ${truck.plate_state || ""}`
+                      : null
+                  }
+                />
+                <Spec
+                  label="In service"
+                  value={formatDate(truck.in_service_date)}
+                />
+              </div>
+              <MileClub miles={odometer} />
+            </>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link to="/maintenance" className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors">
+        <Link
+          to="/maintenance"
+          className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors"
+        >
           <p className="text-xs text-muted-text mb-2">Maintenance</p>
           <div className="flex gap-3 text-sm">
             <span style={{ color: "#e24b4a" }}>{due.overdue} overdue</span>
