@@ -339,7 +339,7 @@ const LoadForm = ({
         {/* ---- IDENTIFICATION ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Identification</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Load number field */}
             <div>
               <Label htmlFor="load_number">Load Number</Label>
@@ -442,7 +442,7 @@ const LoadForm = ({
           {showBrokerForm && (
             <div className="col-span-2 border rounded p-4 mt-2">
               <h4 className="text-sm font-semibold mb-3">New Broker</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="new_broker_name">Broker Name</Label>
                   <Input
@@ -526,7 +526,7 @@ const LoadForm = ({
           {showAgentForm && (
             <div className="col-span-2 border rounded p-4 mt-2">
               <h4 className="text-sm font-semibold mb-3">New Agent</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Broker</Label>
                   <Select
@@ -656,7 +656,7 @@ const LoadForm = ({
         {/* ---- WHEN ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">When</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Pickup Date field */}
             <div>
               <Label htmlFor="pickup_date">Pickup Date</Label>
@@ -684,7 +684,7 @@ const LoadForm = ({
         {/* ---- WHERE ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Where</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Origin City field */}
             <div>
               <Label htmlFor="origin_city">Origin City</Label>
@@ -806,7 +806,7 @@ const LoadForm = ({
           {showMarketForm && (
             <div className="border rounded p-4 mt-2">
               <h4 className="text-sm font-semibold mb-3">New Market</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <Label htmlFor="new_market_name">Market Name</Label>
                   <Input
@@ -847,7 +847,7 @@ const LoadForm = ({
         {/* ---- WHAT ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">What</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="shipper_name">Shipper Name</Label>
               <Input
@@ -900,7 +900,7 @@ const LoadForm = ({
         {/* ---- REVENUE ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Revenue</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <Label htmlFor="linehaul">Linehaul</Label>
               <Input
@@ -950,7 +950,7 @@ const LoadForm = ({
         {/* ---- MILEAGE ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Mileage</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="loaded_miles">Loaded Miles</Label>
               <Input
@@ -996,7 +996,7 @@ const LoadForm = ({
         {/* ---- FLEET ---- */}
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">Fleet</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {fleetField(
               "Truck",
               formData.truck_id ?? null,

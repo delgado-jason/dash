@@ -134,7 +134,7 @@ const AgentDetailPage = () => {
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowRatingForm(false)}
           />
-          <div className="relative w-[450px] max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-6 border border-plate">
+          <div className="relative w-full max-w-[450px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
             <RatingForm
               agent={agent}
               onSuccess={handleSuccess}

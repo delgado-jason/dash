@@ -53,7 +53,7 @@ export const MaintenanceItemForm = ({
       <p className="text-sm font-medium mb-3">
         {initial ? "Edit item" : "New maintenance item"}
       </p>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         <div className="col-span-2 md:col-span-1">
           <label className={lbl}>Name</label>
           <input
