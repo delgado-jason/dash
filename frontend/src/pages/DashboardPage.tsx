@@ -16,6 +16,10 @@ import {
   getUpcomingLoads,
   getRecentDeliveredLoads,
 } from "@/lib/metrics/dashboard";
+import {
+  computeHonors,
+  currentQuarterStandings,
+} from "@/lib/metrics/agentLeaderboard";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
@@ -94,6 +98,9 @@ const DashboardPage = () => {
   const monthlyRpm = getMonthlyRPM(loads);
   const outstanding = getOutstandingLoads(loads);
   const topAgents = getTopAgentsByRevenue(loads);
+  const now = new Date();
+  const agentHonors = computeHonors(loads, now);
+  const agentStandings = currentQuarterStandings(loads, now);
   const upcoming = getUpcomingLoads(loads);
   const recentLoads = getRecentDeliveredLoads(loads);
 
@@ -161,7 +168,11 @@ const DashboardPage = () => {
           <p className="text-xs text-muted-text mb-2">
             Top 5 agents · last 90 days
           </p>
-          <TopAgents agents={topAgents} />
+          <TopAgents
+            agents={topAgents}
+            honors={agentHonors}
+            standings={agentStandings}
+          />
         </div>
       </div>
 

@@ -39,6 +39,40 @@ const PaceBar = ({
   );
 };
 
+const BURST =
+  "57,30 47.39,34.66 53.38,43.5 42.73,42.73 43.5,53.38 34.66,47.39 30,57 " +
+  "25.34,47.39 16.5,53.38 17.27,42.73 6.62,43.5 12.61,34.66 3,30 12.61,25.34 " +
+  "6.62,16.5 17.27,17.27 16.5,6.62 25.34,12.61 30,3 34.66,12.61 43.5,6.62 " +
+  "42.73,17.27 53.38,16.5 47.39,25.34";
+
+// Pops when this week's booked gross clears the weekly target — a genuine win.
+const TargetBurst = () => (
+  <span
+    style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}
+    aria-hidden="true"
+  >
+    <svg
+      viewBox="0 0 60 60"
+      width={52}
+      height={52}
+      style={{ transform: "rotate(-8deg)" }}
+    >
+      <polygon points={BURST} fill={GREEN} stroke="#0d1117" strokeWidth={1.5} />
+      <text
+        x={30}
+        y={34}
+        textAnchor="middle"
+        className="font-condensed"
+        fontWeight={600}
+        fontSize={11}
+        fill="#04241a"
+      >
+        TARGET!
+      </text>
+    </svg>
+  </span>
+);
+
 export const RateTargetsCard = ({
   targets,
   rpm,
@@ -48,6 +82,10 @@ export const RateTargetsCard = ({
 }) => {
   const { ladder, gross, weekBooked, basis, ready } = targets;
   const markerRpm = rpm !== undefined ? rpm : basis.windowRpm;
+  const beatTarget =
+    gross.weeklyTarget != null &&
+    gross.weeklyTarget > 0 &&
+    weekBooked >= gross.weeklyTarget;
 
   return (
     <div className="bg-plate rounded-lg p-4">
@@ -76,7 +114,10 @@ export const RateTargetsCard = ({
 
           <div>
             <p className="text-xs text-muted-text">This week · booked</p>
-            <p className="text-xl font-condensed mt-1">{money(weekBooked)}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xl font-condensed mt-1">{money(weekBooked)}</p>
+              {beatTarget && <TargetBurst />}
+            </div>
             <PaceBar
               booked={weekBooked}
               floor={gross.weeklyBreakEven ?? 0}
@@ -86,6 +127,11 @@ export const RateTargetsCard = ({
               floor {money(gross.weeklyBreakEven)} · target{" "}
               {money(gross.weeklyTarget)}
             </p>
+            {beatTarget && (
+              <p className="text-xs mt-1" style={{ color: GREEN }}>
+                Beat target by {money(weekBooked - (gross.weeklyTarget ?? 0))}
+              </p>
+            )}
           </div>
 
           <div>
