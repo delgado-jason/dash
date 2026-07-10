@@ -9,9 +9,14 @@ import {
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { useLoads } from "@/hooks/useLoads";
-import { computeDue, avgMilesPerMonth, maxOdometer } from "@/lib/metrics/maintenance";
+import {
+  computeDue,
+  avgMilesPerMonth,
+  maxOdometer,
+} from "@/lib/metrics/maintenance";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
+import { MileClub } from "@/components/fleet/MileClub";
 import { TRAILER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
 
@@ -24,7 +29,9 @@ const Spec = ({
 }) => (
   <div>
     <p className="text-xs text-muted-text">{label}</p>
-    <p className="text-sm">{value === null || value === undefined || value === "" ? "—" : value}</p>
+    <p className="text-sm">
+      {value === null || value === undefined || value === "" ? "—" : value}
+    </p>
   </div>
 );
 
@@ -40,9 +47,15 @@ const TrailerDetailPage = () => {
 
   useEffect(() => {
     if (!id) return;
-    getTrailer(id).then(setTrailer).catch(() => {});
-    getMaintenanceItems().then(setItems).catch(() => {});
-    getMaintenanceServices().then(setServices).catch(() => {});
+    getTrailer(id)
+      .then(setTrailer)
+      .catch(() => {});
+    getMaintenanceItems()
+      .then(setItems)
+      .catch(() => {});
+    getMaintenanceServices()
+      .then(setServices)
+      .catch(() => {});
   }, [id]);
 
   // Latest hub reading, derived from the app: stored + newest trailer service.
@@ -76,8 +89,8 @@ const TrailerDetailPage = () => {
       setEditing(false);
     } catch (e) {
       setError(
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-          "Could not save",
+        (e as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || "Could not save",
       );
     } finally {
       setBusy(false);
@@ -108,10 +121,13 @@ const TrailerDetailPage = () => {
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-condensed">Unit {trailer.unit_number}</h1>
+              <h1 className="text-3xl font-condensed">
+                Unit {trailer.unit_number}
+              </h1>
               <p className="text-muted-text text-sm mb-4 capitalize">
                 {trailer.trailer_type}
-                {trailer.length_ft ? ` · ${trailer.length_ft}'` : ""} · {trailer.status}
+                {trailer.length_ft ? ` · ${trailer.length_ft}'` : ""} ·{" "}
+                {trailer.status}
               </p>
             </div>
             {!editing && (
@@ -128,23 +144,44 @@ const TrailerDetailPage = () => {
             <EntityForm
               title="Edit trailer"
               fields={TRAILER_FIELDS}
-              initial={toFormValues(trailer as unknown as Record<string, unknown>, TRAILER_FIELDS)}
+              initial={toFormValues(
+                trailer as unknown as Record<string, unknown>,
+                TRAILER_FIELDS,
+              )}
               onSave={saveEdit}
               onCancel={() => setEditing(false)}
               busy={busy}
               error={error}
             />
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Spec label="Hubodometer · latest" value={`${hub.toLocaleString("en-US")} mi`} />
-              <Spec label="VIN" value={trailer.vin} />
-              <Spec
-                label="Plate"
-                value={trailer.plate_number ? `${trailer.plate_number} ${trailer.plate_state || ""}` : null}
-              />
-              <Spec label="Make" value={[trailer.year, trailer.make, trailer.model].filter(Boolean).join(" ")} />
-              <Spec label="In service" value={formatDate(trailer.in_service_date)} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Spec
+                  label="Hubodometer · latest"
+                  value={`${hub.toLocaleString("en-US")} mi`}
+                />
+                <Spec label="VIN" value={trailer.vin} />
+                <Spec
+                  label="Plate"
+                  value={
+                    trailer.plate_number
+                      ? `${trailer.plate_number} ${trailer.plate_state || ""}`
+                      : null
+                  }
+                />
+                <Spec
+                  label="Make"
+                  value={[trailer.year, trailer.make, trailer.model]
+                    .filter(Boolean)
+                    .join(" ")}
+                />
+                <Spec
+                  label="In service"
+                  value={formatDate(trailer.in_service_date)}
+                />
+              </div>
+              <MileClub miles={hub} unit="hub" />
+            </>
           )}
         </div>
       </div>
