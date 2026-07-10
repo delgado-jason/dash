@@ -215,17 +215,22 @@ export async function createMaintenanceService(user_id, data) {
     const service_id = svc.rows[0].service_id;
 
     for (const item_id of itemIds) {
-      // Only reset items that belong to this user; skip unknown ids.
-      const linked = await client.query(
-        `INSERT INTO maintenance_service_items (service_id, item_id)
-         SELECT $1, item_id FROM maintenance_items
-         WHERE item_id = $2 AND user_id = $3
-         RETURNING item_id, unit`,
-        [service_id, item_id, user_id],
+      // Only reset items that belong to this user; skip unknown ids. The item's
+      // unit decides which reading resets it (trailer items use the hub). The
+      // join table has no `unit`, so read it from maintenance_items directly.
+      const owned = await client.query(
+        `SELECT unit FROM maintenance_items WHERE item_id = $1 AND user_id = $2`,
+        [item_id, user_id],
       );
-      if (linked.rowCount === 0) continue;
-      // Reset with the reading for the item's unit (trailer items use the hub).
-      const reading = linked.rows[0].unit === "trailer" ? trailerHub : truckOdo;
+      if (owned.rowCount === 0) continue;
+
+      await client.query(
+        `INSERT INTO maintenance_service_items (service_id, item_id)
+         VALUES ($1, $2)`,
+        [service_id, item_id],
+      );
+
+      const reading = owned.rows[0].unit === "trailer" ? trailerHub : truckOdo;
       // Don't let a back-dated entry clobber a newer completion.
       await client.query(
         `UPDATE maintenance_items
