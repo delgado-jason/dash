@@ -48,8 +48,10 @@ const TrailerDetailPage = () => {
   // Latest hub reading, derived from the app: stored + newest trailer service.
   const hub = useMemo(() => {
     if (!trailer) return 0;
-    const svcOdos = services.filter((s) => s.unit === "trailer").map((s) => s.odometer);
-    return maxOdometer(trailer.current_hub, ...svcOdos) ?? trailer.current_hub;
+    const svcHubs = services
+      .filter((s) => s.unit === "trailer" || s.unit === "both")
+      .map((s) => s.trailer_hub);
+    return maxOdometer(trailer.current_hub, ...svcHubs) ?? trailer.current_hub;
   }, [trailer, services]);
 
   const mpm = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);

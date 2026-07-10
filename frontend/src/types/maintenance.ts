@@ -1,4 +1,6 @@
 export type MaintenanceUnit = "tractor" | "trailer";
+// A schedule item belongs to one unit; a service (shop visit) can cover both.
+export type ServiceUnit = "tractor" | "trailer" | "both";
 
 export interface MaintenanceItem {
   item_id: string;
@@ -21,9 +23,10 @@ export interface MaintenanceItem {
 // in QuickBooks, so there's no receipt field here.
 export interface MaintenanceService {
   service_id: string;
-  unit: MaintenanceUnit;
+  unit: ServiceUnit;
   service_date: string; // 'YYYY-MM-DD'
-  odometer: number | null;
+  odometer: number | null; // truck reading (tractor / both)
+  trailer_hub: number | null; // trailer reading (trailer / both)
   vendor: string | null;
   location: string | null;
   description: string;

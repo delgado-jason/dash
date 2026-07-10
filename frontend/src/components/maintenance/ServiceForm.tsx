@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
-import type { MaintenanceItem, MaintenanceUnit } from "@/types/maintenance";
+import type { MaintenanceItem, ServiceUnit } from "@/types/maintenance";
 import type { ServiceInput } from "@/services/maintenanceService";
 
 const field = "bg-steel rounded px-2 py-1 text-sm w-full";
@@ -17,9 +17,10 @@ export const ServiceForm = ({
   onCancel: () => void;
   busy: boolean;
 }) => {
-  const [unit, setUnit] = useState<MaintenanceUnit>("tractor");
+  const [unit, setUnit] = useState<ServiceUnit>("tractor");
   const [date, setDate] = useState("");
-  const [odometer, setOdometer] = useState("");
+  const [odometer, setOdometer] = useState(""); // truck reading
+  const [trailerHub, setTrailerHub] = useState(""); // trailer reading
   const [vendor, setVendor] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
@@ -36,12 +37,17 @@ export const ServiceForm = ({
       return next;
     });
 
+  const toInt = (v: string) => (v.trim() === "" ? null : parseInt(v, 10));
+
   const submit = () => {
     if (!date || !description.trim()) return;
     onSave({
       unit,
       service_date: date,
-      odometer: odometer.trim() === "" ? null : parseInt(odometer, 10),
+      // odometer = truck reading, trailer_hub = trailer reading; a service only
+      // sends the reading(s) for the unit(s) it covers.
+      odometer: unit === "trailer" ? null : toInt(odometer),
+      trailer_hub: unit === "tractor" ? null : toInt(trailerHub),
       vendor: vendor.trim() || null,
       location: location.trim() || null,
       description: description.trim(),
@@ -52,7 +58,10 @@ export const ServiceForm = ({
     });
   };
 
-  const unitItems = items.filter((i) => i.unit === unit && i.active);
+  // "both" services can complete items on either unit.
+  const unitItems = items.filter(
+    (i) => i.active && (unit === "both" || i.unit === unit),
+  );
 
   return (
     <div className="bg-plate rounded-lg p-4 mb-4">
@@ -64,12 +73,13 @@ export const ServiceForm = ({
             className={field}
             value={unit}
             onChange={(e) => {
-              setUnit(e.target.value as MaintenanceUnit);
+              setUnit(e.target.value as ServiceUnit);
               setCompleted(new Set());
             }}
           >
             <option value="tractor">Tractor</option>
             <option value="trailer">Trailer</option>
+            <option value="both">Both (truck + trailer)</option>
           </select>
         </div>
         <div>
@@ -81,16 +91,34 @@ export const ServiceForm = ({
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
-        <div>
-          <label className={lbl}>{unit === "trailer" ? "Hubodometer" : "Odometer"}</label>
-          <input
-            className={field}
-            value={odometer}
-            onChange={(e) => setOdometer(e.target.value)}
-            placeholder="568737"
-            inputMode="numeric"
-          />
-        </div>
+        {unit !== "trailer" && (
+          <div>
+            <label className={lbl}>
+              {unit === "both" ? "Truck odometer" : "Odometer"}
+            </label>
+            <input
+              className={field}
+              value={odometer}
+              onChange={(e) => setOdometer(e.target.value)}
+              placeholder="568737"
+              inputMode="numeric"
+            />
+          </div>
+        )}
+        {unit !== "tractor" && (
+          <div>
+            <label className={lbl}>
+              {unit === "both" ? "Trailer hub" : "Hubodometer"}
+            </label>
+            <input
+              className={field}
+              value={trailerHub}
+              onChange={(e) => setTrailerHub(e.target.value)}
+              placeholder="445000"
+              inputMode="numeric"
+            />
+          </div>
+        )}
         <div>
           <label className={lbl}>Cost</label>
           <input

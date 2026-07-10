@@ -3,6 +3,9 @@ import { ValidationError, NotFoundError } from "../utils/error.js";
 
 const UNITS = ["tractor", "trailer"];
 const isUnit = (u) => UNITS.includes(u);
+// A schedule item belongs to one unit; a service (shop visit) can cover both.
+const SERVICE_UNITS = ["tractor", "trailer", "both"];
+const isServiceUnit = (u) => SERVICE_UNITS.includes(u);
 
 // Resolve the user's single active truck/trailer so maintenance auto-links to
 // the right entity when there's only one — no picker needed. Returns null when
@@ -22,8 +25,14 @@ async function resolveFleet(runner, user_id) {
   };
 }
 const linkFor = (unit, ids, data) => ({
-  truck_id: unit === "tractor" ? (data.truck_id ?? ids.truckId) : null,
-  trailer_id: unit === "trailer" ? (data.trailer_id ?? ids.trailerId) : null,
+  truck_id:
+    unit === "tractor" || unit === "both"
+      ? (data.truck_id ?? ids.truckId)
+      : null,
+  trailer_id:
+    unit === "trailer" || unit === "both"
+      ? (data.trailer_id ?? ids.trailerId)
+      : null,
 });
 
 // ---- SCHEDULE ITEMS ----
@@ -140,9 +149,9 @@ export async function deleteMaintenanceItem(user_id, item_id) {
 export async function getMaintenanceServices(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT s.service_id, s.unit, s.service_date, s.odometer, s.vendor,
-            s.location, s.description, s.cost, s.invoice_number, s.receipt_ref,
-            s.notes,
+    `SELECT s.service_id, s.unit, s.service_date, s.odometer, s.trailer_hub,
+            s.vendor, s.location, s.description, s.cost, s.invoice_number,
+            s.receipt_ref, s.notes,
             COALESCE(
               array_agg(si.item_id) FILTER (WHERE si.item_id IS NOT NULL), '{}'
             ) AS item_ids
@@ -162,9 +171,15 @@ export async function createMaintenanceService(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!data.service_date) throw new ValidationError("service_date is required");
   if (!data.description) throw new ValidationError("description is required");
-  if (!isUnit(data.unit)) throw new ValidationError("unit must be tractor or trailer");
+  if (!isServiceUnit(data.unit))
+    throw new ValidationError("unit must be tractor, trailer, or both");
 
   const itemIds = Array.isArray(data.item_ids) ? data.item_ids : [];
+  // `odometer` is the truck reading, `trailer_hub` the trailer reading. A
+  // combined ("both") service carries both; each completed item is reset with
+  // the reading for its own unit.
+  const truckOdo = data.odometer ?? null;
+  const trailerHub = data.trailer_hub ?? null;
 
   const client = await db.pool.connect();
   try {
@@ -174,16 +189,18 @@ export async function createMaintenanceService(user_id, data) {
 
     const svc = await client.query(
       `INSERT INTO maintenance_services
-         (user_id, unit, service_date, odometer, vendor, location, description,
-          cost, invoice_number, receipt_ref, notes, truck_id, trailer_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-       RETURNING service_id, unit, service_date, odometer, vendor, location,
-                 description, cost, invoice_number, receipt_ref, notes`,
+         (user_id, unit, service_date, odometer, trailer_hub, vendor, location,
+          description, cost, invoice_number, receipt_ref, notes, truck_id,
+          trailer_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       RETURNING service_id, unit, service_date, odometer, trailer_hub, vendor,
+                 location, description, cost, invoice_number, receipt_ref, notes`,
       [
         user_id,
         data.unit,
         data.service_date,
-        data.odometer ?? null,
+        truckOdo,
+        trailerHub,
         data.vendor ?? null,
         data.location ?? null,
         data.description,
@@ -199,21 +216,23 @@ export async function createMaintenanceService(user_id, data) {
 
     for (const item_id of itemIds) {
       // Only reset items that belong to this user; skip unknown ids.
-      const link = await client.query(
+      const linked = await client.query(
         `INSERT INTO maintenance_service_items (service_id, item_id)
          SELECT $1, item_id FROM maintenance_items
          WHERE item_id = $2 AND user_id = $3
-         RETURNING item_id`,
+         RETURNING item_id, unit`,
         [service_id, item_id, user_id],
       );
-      if (link.rowCount === 0) continue;
+      if (linked.rowCount === 0) continue;
+      // Reset with the reading for the item's unit (trailer items use the hub).
+      const reading = linked.rows[0].unit === "trailer" ? trailerHub : truckOdo;
       // Don't let a back-dated entry clobber a newer completion.
       await client.query(
         `UPDATE maintenance_items
            SET last_done_miles = $1, last_done_date = $2, updated_at = NOW()
          WHERE item_id = $3 AND user_id = $4
            AND (last_done_date IS NULL OR last_done_date <= $2)`,
-        [data.odometer ?? null, data.service_date, item_id, user_id],
+        [reading, data.service_date, item_id, user_id],
       );
     }
 
@@ -231,6 +250,7 @@ const SERVICE_FIELDS = [
   "unit",
   "service_date",
   "odometer",
+  "trailer_hub",
   "vendor",
   "location",
   "description",
@@ -245,8 +265,8 @@ const SERVICE_FIELDS = [
 export async function patchMaintenanceService(user_id, service_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!service_id) throw new ValidationError("Missing service_id");
-  if (data.unit !== undefined && !isUnit(data.unit))
-    throw new ValidationError("unit must be tractor or trailer");
+  if (data.unit !== undefined && !isServiceUnit(data.unit))
+    throw new ValidationError("unit must be tractor, trailer, or both");
 
   const updates = [];
   const values = [];
@@ -266,8 +286,8 @@ export async function patchMaintenanceService(user_id, service_id, data) {
   const result = await db.query(
     `UPDATE maintenance_services SET ${updates.join(", ")}
      WHERE service_id = $${i} AND user_id = $${i + 1}
-     RETURNING service_id, unit, service_date, odometer, vendor, location,
-               description, cost, invoice_number, receipt_ref, notes`,
+     RETURNING service_id, unit, service_date, odometer, trailer_hub, vendor,
+               location, description, cost, invoice_number, receipt_ref, notes`,
     values,
   );
   if (result.rowCount === 0) throw new NotFoundError("Service not found");

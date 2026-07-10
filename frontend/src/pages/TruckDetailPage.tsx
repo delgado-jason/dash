@@ -60,7 +60,9 @@ const TruckDetailPage = () => {
   const odometer = useMemo(() => {
     if (!truck) return 0;
     const loadOdos = truckLoads.map((l) => l.odometer_end ?? null);
-    const svcOdos = services.filter((s) => s.unit === "tractor").map((s) => s.odometer);
+    const svcOdos = services
+      .filter((s) => s.unit === "tractor" || s.unit === "both")
+      .map((s) => s.odometer);
     return (
       maxOdometer(truck.current_odometer, ...loadOdos, ...svcOdos) ??
       truck.current_odometer
