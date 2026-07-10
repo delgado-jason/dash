@@ -1,3 +1,5 @@
+import { Wrench, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { Alert } from "@/types/alert";
 
 interface Props {
@@ -9,11 +11,15 @@ const styleFor = (severity: Alert["severity"]): string =>
     ? "bg-status-negative-bg text-status-negative-text"
     : "bg-status-aware-bg text-status-aware-text";
 
-const iconFor = (kind: Alert["kind"]): string =>
-  kind === "maintenance" ? "ti-tool" : "ti-alert-circle";
+const IconFor = ({ kind }: { kind: Alert["kind"] }) =>
+  kind === "maintenance" ? (
+    <Wrench size={16} className="shrink-0" aria-hidden="true" />
+  ) : (
+    <ShieldAlert size={16} className="shrink-0" aria-hidden="true" />
+  );
 
 // Reserved dashboard region. Renders nothing when there are no alerts, so it
-// costs no space until the future alert engine feeds it.
+// costs no space until something (maintenance, compliance) feeds it.
 export const AlertBanners = ({ alerts }: Props) => {
   if (alerts.length === 0) return null;
 
@@ -24,12 +30,12 @@ export const AlertBanners = ({ alerts }: Props) => {
           key={alert.id}
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${styleFor(alert.severity)}`}
         >
-          <i className={`ti ${iconFor(alert.kind)}`} aria-hidden="true" />
+          <IconFor kind={alert.kind} />
           <span className="flex-1">{alert.message}</span>
           {alert.actionHref && (
-            <a href={alert.actionHref} className="underline whitespace-nowrap">
+            <Link to={alert.actionHref} className="underline whitespace-nowrap">
               View
-            </a>
+            </Link>
           )}
         </div>
       ))}
