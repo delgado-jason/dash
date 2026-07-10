@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Flame } from "lucide-react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
@@ -23,6 +24,12 @@ const pathGen = geoPath(projection);
 const RAMP = ["#6b4e12", "#9a6c0e", "#c8890a", "#e8940a", "#f5b03a"];
 const NO_DATA = "#2a3347";
 
+// lucide "flame" path, filled solid for a comic pin on your best-paying states.
+const FLAME_PATH =
+  "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 " +
+  ".5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 " +
+  "1-3a2.5 2.5 0 0 0 2.5 2.5z";
+
 interface HoverState {
   x: number;
   y: number;
@@ -38,6 +45,22 @@ export const LanesMap = ({ data, windowDays }: Props) => {
     [data],
   );
 
+  // Top-paying states (by windowed RPM) get a flame pin at their centroid.
+  const hotStates = useMemo(
+    () =>
+      usStates.features
+        .map((f) => ({ f, d: data[f.properties.name] }))
+        .filter((s) => s.d && s.d.avgRpm != null && s.d.loadCount >= 3)
+        .sort((a, b) => (b.d!.avgRpm ?? 0) - (a.d!.avgRpm ?? 0))
+        .slice(0, 3)
+        .map((s) => {
+          const [cx, cy] = pathGen.centroid(s.f);
+          return { name: s.f.properties.name, cx, cy };
+        })
+        .filter((h) => Number.isFinite(h.cx) && Number.isFinite(h.cy)),
+    [data],
+  );
+
   const colorFor = (name: string): string => {
     const datum = data[name];
     if (!datum) return NO_DATA;
@@ -50,9 +73,10 @@ export const LanesMap = ({ data, windowDays }: Props) => {
 
   return (
     <div ref={containerRef} className="bg-plate rounded-lg p-4 relative">
-      <p className="text-xs text-muted-text mb-2">
-        Footprint · shaded by loads (past year) · hover for RPM (last{" "}
-        {windowDays} days)
+      <p className="text-xs text-muted-text mb-2 flex items-center gap-1 flex-wrap">
+        Footprint · shaded by loads ·
+        <Flame size={12} style={{ color: "#e8621e" }} /> best-paying states ·
+        hover for RPM ({windowDays}d)
       </p>
       <svg viewBox="0 0 900 560" className="w-full">
         {usStates.features.map((f, i) => {
@@ -80,6 +104,21 @@ export const LanesMap = ({ data, windowDays }: Props) => {
             />
           );
         })}
+        {hotStates.map((h) => (
+          <g
+            key={h.name}
+            transform={`translate(${h.cx},${h.cy}) scale(0.95) translate(-12,-12)`}
+            style={{ pointerEvents: "none" }}
+          >
+            <path
+              d={FLAME_PATH}
+              fill="#e8621e"
+              stroke="#0d1117"
+              strokeWidth={1.2}
+              strokeLinejoin="round"
+            />
+          </g>
+        ))}
       </svg>
       {hover && (
         <div
