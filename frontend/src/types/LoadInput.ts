@@ -24,4 +24,7 @@ export interface LoadInput {
   odometer_start?: number | null;
   odometer_end?: number | null;
   payment_status: string;
+  truck_id?: string | null;
+  driver_id?: string | null;
+  trailer_id?: string | null;
 }

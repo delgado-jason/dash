@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Broker } from "@/types/broker";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
 import type { LoadInput } from "@/types/LoadInput";
+import type { Truck } from "@/types/truck";
+import type { Driver } from "@/types/driver";
+import type { Trailer } from "@/types/trailer";
+import { getTrucks } from "@/services/trucksService";
+import { getDrivers } from "@/services/driversService";
+import { getTrailers } from "@/services/trailersService";
 import { QuickAddBroker } from "./QuickAddBroker";
 import { QuickAddAgent } from "./QuickAddAgent";
 import { QuickAddMarket } from "./QuickAddMarket";
@@ -86,6 +92,9 @@ const LoadForm = ({
           odometer_start: initialData.odometer_start ?? null,
           odometer_end: initialData.odometer_end ?? null,
           payment_status: initialData.payment_status,
+          truck_id: initialData.truck_id ?? null,
+          driver_id: initialData.driver_id ?? null,
+          trailer_id: initialData.trailer_id ?? null,
         }
       : {
           load_number: "",
@@ -111,7 +120,11 @@ const LoadForm = ({
           deadhead_miles: null,
           loaded_miles: null,
           odometer_start: null,
+          odometer_end: null,
           payment_status: "unpaid",
+          truck_id: null,
+          driver_id: null,
+          trailer_id: null,
         },
   );
 
@@ -119,7 +132,35 @@ const LoadForm = ({
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
 
+  const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [trailers, setTrailers] = useState<Trailer[]>([]);
+
   const [error, setError] = useState<string | null>(null);
+
+  // Load the fleet and auto-assign the sole rig when there's only one — no
+  // picker needed. Anything already chosen (edit mode) is left untouched.
+  useEffect(() => {
+    let active = true;
+    Promise.all([getTrucks(), getDrivers(), getTrailers()])
+      .then(([t, d, tr]) => {
+        if (!active) return;
+        setTrucks(t);
+        setDrivers(d);
+        setTrailers(tr);
+        setFormData((prev) => ({
+          ...prev,
+          truck_id: prev.truck_id || (t.length === 1 ? t[0].truck_id : null),
+          driver_id: prev.driver_id || (d.length === 1 ? d[0].driver_id : null),
+          trailer_id:
+            prev.trailer_id || (tr.length === 1 ? tr[0].trailer_id : null),
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Form controll states for brokers, agents, and markets
   const [showBrokerForm, setShowBrokerForm] = useState(false);
@@ -179,7 +220,6 @@ const LoadForm = ({
 
   const handleCreateAgent = async () => {
     try {
-      console.log(newAgent);
       const created = await createAgent(newAgent);
       handleAgentCreated(created);
       setShowAgentForm(false);
@@ -232,6 +272,54 @@ const LoadForm = ({
     }
   };
 
+  const truckOptions = trucks.map((t) => ({
+    id: t.truck_id,
+    name: `Unit ${t.unit_number}`,
+  }));
+  const driverOptions = drivers.map((d) => ({
+    id: d.driver_id,
+    name: `${d.first_name} ${d.last_name}`,
+  }));
+  const trailerOptions = trailers.map((t) => ({
+    id: t.trailer_id,
+    name: `Unit ${t.unit_number}`,
+  }));
+
+  // Single rig → read-only auto-assigned line; multiple → a picker; none → hint.
+  const fleetField = (
+    label: string,
+    value: string | null,
+    options: { id: string; name: string }[],
+    onChange: (id: string) => void,
+  ) => (
+    <div>
+      <Label>{label}</Label>
+      {options.length === 0 ? (
+        <p className="text-sm text-muted-text mt-2">None added yet</p>
+      ) : options.length === 1 ? (
+        <p className="text-sm mt-2">
+          {options[0].name}
+          <span className="text-muted-text text-xs"> · auto-assigned</span>
+        </p>
+      ) : (
+        <Select value={value ?? ""} onValueChange={onChange}>
+          <SelectTrigger>
+            <SelectValue placeholder={`Select a ${label.toLowerCase()}`} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {options.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+
   // ---- JSX ----
   return (
     <div>
@@ -239,7 +327,11 @@ const LoadForm = ({
         <h2 className="text-xl font-semibold">
           {mode === "create" ? "Create Load" : "Edit Load"}
         </h2>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+        <button
+          onClick={onClose}
+          className="text-muted-text hover:text-light"
+          aria-label="Close"
+        >
           ✕
         </button>
       </div>
@@ -417,7 +509,7 @@ const LoadForm = ({
                 </div>
               </div>
               {brokerFormError && (
-                <p className="text-red-500 text-sm mt-2">{brokerFormError}</p>
+                <p className="text-destructive text-sm mt-2">{brokerFormError}</p>
               )}
               <div className="flex gap-2 mt-3">
                 <Button onClick={handleCreateBroker}>Create Broker</Button>
@@ -547,7 +639,7 @@ const LoadForm = ({
                 </div>
               </div>
               {agentFormError && (
-                <p className="text-red-500 text-sm mt-2">{agentFormError}</p>
+                <p className="text-destructive text-sm mt-2">{agentFormError}</p>
               )}
               <div className="flex gap-2 mt-3">
                 <Button onClick={handleCreateAgent}>Create Agent</Button>
@@ -738,7 +830,7 @@ const LoadForm = ({
                 </div>
               </div>
               {marketFormError && (
-                <p className="text-red-500 text-sm mt-2">{marketFormError}</p>
+                <p className="text-destructive text-sm mt-2">{marketFormError}</p>
               )}
               <div className="flex gap-2 mt-3">
                 <Button onClick={handleCreateMarket}>Create Market</Button>
@@ -901,8 +993,32 @@ const LoadForm = ({
             </div>
           </div>
         </div>
-        {error && <p>{error}</p>}
-        <Button onClick={handleSubmit}>
+        {/* ---- FLEET ---- */}
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold mb-2">Fleet</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {fleetField(
+              "Truck",
+              formData.truck_id ?? null,
+              truckOptions,
+              (id) => setFormData({ ...formData, truck_id: id }),
+            )}
+            {fleetField(
+              "Driver",
+              formData.driver_id ?? null,
+              driverOptions,
+              (id) => setFormData({ ...formData, driver_id: id }),
+            )}
+            {fleetField(
+              "Trailer",
+              formData.trailer_id ?? null,
+              trailerOptions,
+              (id) => setFormData({ ...formData, trailer_id: id }),
+            )}
+          </div>
+        </div>
+        {error && <p className="text-destructive text-sm mt-3">{error}</p>}
+        <Button className="mt-4" onClick={handleSubmit}>
           {mode === "create" ? "Create Load" : "Save Changes"}
         </Button>
       </div>

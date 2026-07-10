@@ -301,6 +301,20 @@ const rules = {
       errors.push("odometer_end must be greater than 0");
     }
   },
+  // Fleet links are optional; null/absent means unassigned. When present they
+  // must be a UUID.
+  truck_id: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (!isValidUUID(value)) errors.push("truck_id must be a valid UUID");
+  },
+  driver_id: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (!isValidUUID(value)) errors.push("driver_id must be a valid UUID");
+  },
+  trailer_id: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (!isValidUUID(value)) errors.push("trailer_id must be a valid UUID");
+  },
 };
 
 // ---- CREATE LOAD VALIDATION ----
