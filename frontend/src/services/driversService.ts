@@ -17,3 +17,11 @@ export const createDriver = async (
   const res = await api.post("/drivers", data);
   return res.data.driver;
 };
+
+export const patchDriver = async (
+  id: string,
+  data: Record<string, unknown>,
+): Promise<Driver> => {
+  const res = await api.patch(`/drivers/${id}`, data);
+  return res.data.driver;
+};

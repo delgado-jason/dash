@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Pencil } from "lucide-react";
 import type { Driver } from "@/types/driver";
 import type { Load } from "@/types/load";
-import { getDriver } from "@/services/driversService";
+import { getDriver, patchDriver } from "@/services/driversService";
 import { useLoads } from "@/hooks/useLoads";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
+import { EntityForm } from "@/components/fleet/EntityForm";
+import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
+import { formatDate } from "@/lib/format";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const loadRev = (l: Load) =>
@@ -27,6 +31,9 @@ const DriverDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { loads } = useLoads(0);
   const [driver, setDriver] = useState<Driver | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -37,6 +44,24 @@ const DriverDetailPage = () => {
     () => loads.filter((l) => l.driver_id === id),
     [loads, id],
   );
+
+  const saveEdit = async (data: Record<string, unknown>) => {
+    if (!driver) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await patchDriver(driver.driver_id, data);
+      setDriver(updated);
+      setEditing(false);
+    } catch (e) {
+      setError(
+        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+          "Could not save",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (!driver)
     return (
@@ -63,23 +88,48 @@ const DriverDetailPage = () => {
           onUpdated={(u) => setDriver({ ...driver, avatar_url: u })}
         />
         <div className="flex-1">
-          <h1 className="text-3xl font-condensed">
-            {driver.first_name} {driver.last_name}
-          </h1>
-          <p className="text-muted-text text-sm mb-4">
-            {driver.active ? "Active driver" : "Inactive"}
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Spec label="Phone" value={driver.phone} />
-            <Spec label="Email" value={driver.email} />
-            <Spec
-              label="CDL"
-              value={driver.cdl_number ? `${driver.cdl_number} ${driver.cdl_state || ""}` : null}
-            />
-            <Spec label="CDL expires" value={driver.cdl_expiration} />
-            <Spec label="Endorsements" value={driver.endorsements} />
-            <Spec label="Hired" value={driver.hire_date} />
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-condensed">
+                {driver.first_name} {driver.last_name}
+              </h1>
+              <p className="text-muted-text text-sm mb-4">
+                {driver.active ? "Active driver" : "Inactive"}
+              </p>
+            </div>
+            {!editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+            )}
           </div>
+
+          {editing ? (
+            <EntityForm
+              title="Edit driver"
+              fields={DRIVER_FIELDS}
+              initial={toFormValues(driver as unknown as Record<string, unknown>, DRIVER_FIELDS)}
+              onSave={saveEdit}
+              onCancel={() => setEditing(false)}
+              busy={busy}
+              error={error}
+            />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Spec label="Phone" value={driver.phone} />
+              <Spec label="Email" value={driver.email} />
+              <Spec
+                label="CDL"
+                value={driver.cdl_number ? `${driver.cdl_number} ${driver.cdl_state || ""}` : null}
+              />
+              <Spec label="CDL expires" value={formatDate(driver.cdl_expiration)} />
+              <Spec label="Endorsements" value={driver.endorsements} />
+              <Spec label="Hired" value={formatDate(driver.hire_date)} />
+            </div>
+          )}
         </div>
       </div>
 

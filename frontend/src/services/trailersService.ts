@@ -17,3 +17,11 @@ export const createTrailer = async (
   const res = await api.post("/trailers/me", data);
   return res.data.trailer;
 };
+
+export const patchTrailer = async (
+  id: string,
+  data: Record<string, unknown>,
+): Promise<Trailer> => {
+  const res = await api.patch(`/trailers/me/${id}`, data);
+  return res.data.trailer;
+};
