@@ -31,6 +31,9 @@ export interface Load {
   odometer_start?: number | null;
   odometer_end?: number | null;
   payment_status: string;
+  truck_id?: string | null;
+  driver_id?: string | null;
+  trailer_id?: string | null;
   created_at: string;
   updated_at: string;
 }

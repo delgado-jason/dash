@@ -14,7 +14,11 @@ import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
 import TrucksPage from "@/pages/TrucksPage";
+import TruckDetailPage from "@/pages/TruckDetailPage";
 import DriversPage from "@/pages/DriversPage";
+import DriverDetailPage from "@/pages/DriverDetailPage";
+import TrailersPage from "@/pages/TrailersPage";
+import TrailerDetailPage from "@/pages/TrailerDetailPage";
 import { LoadDetailPage } from "@/pages/LoadDetailPage";
 import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
@@ -56,7 +60,11 @@ const App = () => {
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />
           <Route path="/trucks" element={<TrucksPage />} />
+          <Route path="/trucks/:id" element={<TruckDetailPage />} />
           <Route path="/drivers" element={<DriversPage />} />
+          <Route path="/drivers/:id" element={<DriverDetailPage />} />
+          <Route path="/trailers" element={<TrailersPage />} />
+          <Route path="/trailers/:id" element={<TrailerDetailPage />} />
         </Route>
       </Route>
 

@@ -11,6 +11,8 @@ export interface MaintenanceItem {
   last_done_miles: number | null;
   last_done_date: string | null; // 'YYYY-MM-DD'
   warn_lead_days: number; // start flagging "due soon" this many days before due
+  truck_id: string | null;
+  trailer_id: string | null;
   active: boolean;
   notes: string | null;
 }

@@ -17,7 +17,6 @@ export async function getTrucks(user_id) {
     SELECT
       truck_id,
       unit_number,
-      truck_name,
       vin,
       plate_number,
       plate_state,
@@ -27,6 +26,7 @@ export async function getTrucks(user_id) {
       current_odometer,
       status,
       in_service_date,
+      avatar_url,
       is_deleted,
       created_at,
       updated_at,
@@ -58,7 +58,6 @@ export async function getTruck(user_id, truck_id) {
     `
     SELECT
       truck_id,
-      truck_name,
       unit_number,
       vin,
       plate_number,
@@ -69,6 +68,7 @@ export async function getTruck(user_id, truck_id) {
       current_odometer,
       status,
       in_service_date,
+      avatar_url,
       is_deleted,
       created_at,
       updated_at,
@@ -102,7 +102,7 @@ export async function createTruck(user_id, data) {
     "current_odometer",
     "status",
     "in_service_date",
-    "truck_name",
+    "avatar_url",
   ];
 
   // Filter for allowed fields only
@@ -163,7 +163,7 @@ export async function patchTruck(user_id, truck_id, data) {
     "current_odometer",
     "status",
     "in_service_date",
-    "truck_name",
+    "avatar_url",
   ];
 
   const updates = [];

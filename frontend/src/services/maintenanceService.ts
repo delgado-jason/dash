@@ -18,6 +18,8 @@ const coerceItem = (i: any): MaintenanceItem => ({
   last_done_miles: numOrNull(i.last_done_miles),
   last_done_date: dateOrNull(i.last_done_date),
   warn_lead_days: numOrNull(i.warn_lead_days) ?? 14,
+  truck_id: i.truck_id ?? null,
+  trailer_id: i.trailer_id ?? null,
   active: i.active,
   notes: i.notes ?? null,
 });

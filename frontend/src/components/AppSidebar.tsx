@@ -18,10 +18,11 @@ const navItems = [
   { to: "/lanes", label: "Lanes" },
   { to: "/expenses", label: "Expenses" },
   { to: "/maintenance", label: "Maintenance" },
+  { to: "/trucks", label: "Trucks" },
+  { to: "/trailers", label: "Trailers" },
+  { to: "/drivers", label: "Drivers" },
   { to: "/agents", label: "Agents" },
   { to: "/fuel-entries", label: "Fuel Entries" },
-  // { to: "/trucks", label: "Trucks" },
-  // { to: "/drivers", label: "Drivers" },
 ];
 
 const AppSidebar = () => {
