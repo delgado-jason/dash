@@ -42,6 +42,7 @@ const nav: Entry[] = [
     ],
   },
   { to: "/expenses", label: "Expenses" },
+  { to: "/guide", label: "Guide" },
 ];
 
 const AppSidebar = () => {
