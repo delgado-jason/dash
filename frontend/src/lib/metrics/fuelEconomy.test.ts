@@ -6,6 +6,7 @@ import {
   fuelStats,
   avgWeeklyCost,
   weeklyCostSeries,
+  maxFuelOdometer,
 } from "./fuelEconomy";
 
 const e = (
@@ -85,5 +86,14 @@ describe("weeklyCostSeries", () => {
     const s = weeklyCostSeries(first4);
     expect(s.length).toBeGreaterThan(0);
     expect(s[0].weekStart <= s[s.length - 1].weekStart).toBe(true);
+  });
+});
+
+describe("maxFuelOdometer", () => {
+  it("returns the highest reading regardless of order", () => {
+    expect(maxFuelOdometer(first4)).toBe(572503);
+  });
+  it("returns null with no fill-ups", () => {
+    expect(maxFuelOdometer([])).toBeNull();
   });
 });

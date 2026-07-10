@@ -3,18 +3,21 @@ import { useParams, Link } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import type { Truck } from "@/types/truck";
 import type { Load } from "@/types/load";
+import type { FuelEntry } from "@/types/fuelEntry";
 import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
 import { getTruck, patchTruck } from "@/services/trucksService";
 import {
   getMaintenanceItems,
   getMaintenanceServices,
 } from "@/services/maintenanceService";
+import { getFuelEntries } from "@/services/fuelService";
 import { useLoads } from "@/hooks/useLoads";
 import {
   computeDue,
   avgMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
+import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
@@ -46,6 +49,7 @@ const TruckDetailPage = () => {
   const [truck, setTruck] = useState<Truck | null>(null);
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +65,9 @@ const TruckDetailPage = () => {
     getMaintenanceServices()
       .then(setServices)
       .catch(() => {});
+    getFuelEntries()
+      .then(setFuelEntries)
+      .catch(() => {});
   }, [id]);
 
   const truckLoads = useMemo(
@@ -69,18 +76,21 @@ const TruckDetailPage = () => {
   );
 
   // Latest odometer, derived from the app: stored value + newest load + newest
-  // service reading (fuel will fold in once it carries an odometer).
+  // service reading + newest fuel fill-up (fuel is usually the freshest).
   const odometer = useMemo(() => {
     if (!truck) return 0;
     const loadOdos = truckLoads.map((l) => l.odometer_end ?? null);
     const svcOdos = services
       .filter((s) => s.unit === "tractor" || s.unit === "both")
       .map((s) => s.odometer);
+    const fuelOdo = maxFuelOdometer(
+      fuelEntries.filter((f) => f.truck_id === id),
+    );
     return (
-      maxOdometer(truck.current_odometer, ...loadOdos, ...svcOdos) ??
+      maxOdometer(truck.current_odometer, ...loadOdos, ...svcOdos, fuelOdo) ??
       truck.current_odometer
     );
-  }, [truck, truckLoads, services]);
+  }, [truck, truckLoads, services, fuelEntries, id]);
 
   const mpm = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
   const due = useMemo(() => {
