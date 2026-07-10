@@ -9,6 +9,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
 import TripsPage from "@/pages/TripsPage";
 import ExpensesPage from "@/pages/ExpensesPage";
+import MaintenancePage from "@/pages/MaintenancePage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
@@ -50,6 +51,7 @@ const App = () => {
             }
           />
           <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />

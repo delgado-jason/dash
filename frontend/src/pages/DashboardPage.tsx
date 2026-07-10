@@ -17,6 +17,7 @@ import {
   getRecentDeliveredLoads,
 } from "@/lib/metrics/dashboard";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { RpmChart } from "@/components/RpmChart";
@@ -25,7 +26,6 @@ import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { TopAgents } from "@/components/dashboard/TopAgents";
 import { WhatsNext } from "@/components/dashboard/WhatsNext";
 import { RecentLoads } from "@/components/dashboard/RecentLoads";
-import type { Alert } from "@/types/alert";
 
 // helpers
 const formatCurrency = (n: number | null): string =>
@@ -61,6 +61,7 @@ const DashboardPage = () => {
     error: tripsError,
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
+  const alerts = useMaintenanceAlerts(loads);
 
   const isLoading = loadsLoading || tripsLoading;
   const error = loadsError || tripsError;
@@ -95,9 +96,6 @@ const DashboardPage = () => {
   const topAgents = getTopAgentsByRevenue(loads);
   const upcoming = getUpcomingLoads(loads);
   const recentLoads = getRecentDeliveredLoads(loads);
-
-  // Reserved for the future alert engine (maintenance / compliance).
-  const alerts: Alert[] = [];
 
   // ---- threshold-based status ----
   // Live break-even (true cost ÷ loaded miles, last 3 complete months); falls

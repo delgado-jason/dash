@@ -19,6 +19,7 @@ import marketRouter from "./routes/marketRoutes.js";
 import agentNoteRoutes from "./routes/agentNoteRoutes.js";
 import expenseRouter from "./routes/expenseRoutes.js";
 import obligationRouter from "./routes/obligationRoutes.js";
+import maintenanceRouter from "./routes/maintenanceRoutes.js";
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/markets", marketRouter);
 app.use("/agents/:agent_id/notes", agentNoteRoutes);
 app.use("/expenses", expenseRouter);
 app.use("/obligations", obligationRouter);
+app.use("/maintenance", maintenanceRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");
