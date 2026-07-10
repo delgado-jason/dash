@@ -9,14 +9,14 @@ const AppLayout = () => {
         <div className="flex h-screen w-full bg-background">
           <AppSidebar />
 
-          <main className="flex-1 bg-background text-foreground">
-            <div className="p-4 border-b">
+          {/* min-w-0 lets wide tables scroll inside their card instead of
+              forcing the whole page to scroll sideways on a phone. */}
+          <main className="flex-1 min-w-0 overflow-y-auto bg-background text-foreground">
+            <div className="p-3 border-b border-border">
               <SidebarTrigger />
             </div>
 
-            <div className="p-4">
-              <Outlet />
-            </div>
+            <Outlet />
           </main>
         </div>
       </SidebarProvider>

@@ -96,7 +96,7 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Trip date */}
         <div>
           <Label htmlFor="trip_date">Trip Date</Label>
