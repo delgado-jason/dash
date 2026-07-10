@@ -54,7 +54,8 @@ describe("computeHonors", () => {
     mk("B", "2026-05-01", 8000),
     mk("B", "2026-05-02", 7000),
   ];
-  const h = computeHonors(loads);
+  // Well after Q2 2026, so both quarters are completed and count.
+  const h = computeHonors(loads, new Date("2026-10-01T00:00:00.000Z"));
 
   it("board: 2+ loads, top 5 — counts A,B,C in Q1 and A,B in Q2", () => {
     expect(h.get("A")?.board).toBe(2);
@@ -76,6 +77,27 @@ describe("computeHonors", () => {
   it("C is on the board but never on the podium (only 2 loads)", () => {
     expect(h.get("C")?.gold).toBe(0);
     expect(h.get("C")?.silver).toBe(0);
+  });
+});
+
+describe("computeHonors — only completed quarters count", () => {
+  it("ignores the in-progress current quarter", () => {
+    const now = new Date("2026-05-15T00:00:00.000Z"); // 2026-Q2 still in progress
+    const loads = [
+      // Q1 (completed): A wins gold, B makes the board
+      mk("A", "2026-02-01", 10000),
+      mk("A", "2026-02-02", 10000),
+      mk("A", "2026-02-03", 10000),
+      mk("B", "2026-02-04", 5000),
+      mk("B", "2026-02-05", 5000),
+      // Q2 (current, in progress): A leads big — must NOT count yet
+      mk("A", "2026-05-01", 99999),
+      mk("A", "2026-05-02", 99999),
+      mk("A", "2026-05-03", 99999),
+    ];
+    const h = computeHonors(loads, now);
+    expect(h.get("A")).toEqual({ board: 1, gold: 1, silver: 0 }); // Q1 only
+    expect(h.get("B")?.board).toBe(1);
   });
 });
 
@@ -105,17 +127,19 @@ describe("agentSeasonLog", () => {
     mk("A", "2026-05-02", 6000),
   ];
 
+  const now = new Date("2026-10-01T00:00:00.000Z"); // both quarters completed
+
   it("returns an agent's quarter-by-quarter finish, oldest first", () => {
-    expect(agentSeasonLog(loads, "A").map((e) => [e.quarter, e.result])).toEqual(
-      [
-        ["2026-Q1", "gold"],
-        ["2026-Q2", "board"],
-      ],
-    );
+    expect(
+      agentSeasonLog(loads, "A", now).map((e) => [e.quarter, e.result]),
+    ).toEqual([
+      ["2026-Q1", "gold"],
+      ["2026-Q2", "board"],
+    ]);
   });
 
   it("marks a board finish that never reached the podium", () => {
-    expect(agentSeasonLog(loads, "C")).toEqual([
+    expect(agentSeasonLog(loads, "C", now)).toEqual([
       { quarter: "2026-Q1", result: "board", revenue: 25000, loads: 2 },
     ]);
   });

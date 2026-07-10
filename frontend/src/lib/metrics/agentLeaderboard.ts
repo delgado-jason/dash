@@ -48,15 +48,22 @@ const rankByRevenue = (entries: [string, QAgg][]): [string, QAgg][] =>
     (a, b) => b[1].revenue - a[1].revenue || a[0].localeCompare(b[0]),
   );
 
-export const computeHonors = (loads: Load[]): Map<string, AgentHonors> => {
+export const computeHonors = (
+  loads: Load[],
+  now: Date,
+): Map<string, AgentHonors> => {
   const honors = new Map<string, AgentHonors>();
+  const currentQ = quarterKey(now.toISOString());
   const bump = (agentId: string, key: keyof AgentHonors) => {
     const h = honors.get(agentId) ?? { board: 0, gold: 0, silver: 0 };
     h[key] += 1;
     honors.set(agentId, h);
   };
 
-  for (const [, agents] of byQuarterAgent(loads)) {
+  for (const [quarter, agents] of byQuarterAgent(loads)) {
+    // A quarter is only official once it has ended — the in-progress quarter
+    // (and any future-dated data) doesn't count toward awards.
+    if (quarter >= currentQ) continue;
     const entries = [...agents.entries()];
     // Board: 2+ loads, top 5 by revenue.
     const board = rankByRevenue(entries.filter(([, a]) => a.loads >= 2)).slice(
@@ -101,9 +108,12 @@ export interface SeasonEntry {
 export const agentSeasonLog = (
   loads: Load[],
   agentId: string,
+  now: Date,
 ): SeasonEntry[] => {
   const out: SeasonEntry[] = [];
+  const currentQ = quarterKey(now.toISOString());
   for (const [quarter, agents] of byQuarterAgent(loads)) {
+    if (quarter >= currentQ) continue; // completed quarters only
     const mine = agents.get(agentId);
     if (!mine) continue;
     const entries = [...agents.entries()];

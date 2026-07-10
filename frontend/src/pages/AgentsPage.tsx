@@ -33,7 +33,7 @@ const AgentsPage = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("rating");
 
-  const honors = useMemo(() => computeHonors(loads ?? []), [loads]);
+  const honors = useMemo(() => computeHonors(loads ?? [], new Date()), [loads]);
   const stats = useMemo(() => perAgentStats(loads ?? []), [loads]);
   const kpis = useMemo(
     () => rosterKpis(agents ?? [], loads ?? [], new Date()),
