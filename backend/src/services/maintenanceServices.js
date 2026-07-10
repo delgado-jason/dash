@@ -4,6 +4,28 @@ import { ValidationError, NotFoundError } from "../utils/error.js";
 const UNITS = ["tractor", "trailer"];
 const isUnit = (u) => UNITS.includes(u);
 
+// Resolve the user's single active truck/trailer so maintenance auto-links to
+// the right entity when there's only one — no picker needed. Returns null when
+// there are 0 or (to stay unambiguous) more than 1; the multi case is handled
+// by an explicit selector. `runner` is db or a transaction client.
+async function singleEntity(runner, table, idCol, user_id) {
+  const r = await runner.query(
+    `SELECT ${idCol} FROM ${table} WHERE user_id = $1 AND is_deleted = false`,
+    [user_id],
+  );
+  return r.rowCount === 1 ? r.rows[0][idCol] : null;
+}
+async function resolveFleet(runner, user_id) {
+  return {
+    truckId: await singleEntity(runner, "trucks", "truck_id", user_id),
+    trailerId: await singleEntity(runner, "trailers", "trailer_id", user_id),
+  };
+}
+const linkFor = (unit, ids, data) => ({
+  truck_id: unit === "tractor" ? (data.truck_id ?? ids.truckId) : null,
+  trailer_id: unit === "trailer" ? (data.trailer_id ?? ids.trailerId) : null,
+});
+
 // ---- SCHEDULE ITEMS ----
 
 export async function getMaintenanceItems(user_id) {
@@ -39,13 +61,17 @@ export async function createMaintenanceItem(user_id, data) {
   if (!data.name) throw new ValidationError("name is required");
   if (!isUnit(data.unit)) throw new ValidationError("unit must be tractor or trailer");
 
+  const link = linkFor(data.unit, await resolveFleet(db, user_id), data);
+
   const result = await db.query(
     `INSERT INTO maintenance_items
        (user_id, unit, name, category, interval_miles, interval_months,
-        interval_hours, last_done_miles, last_done_date, notes, warn_lead_days)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        interval_hours, last_done_miles, last_done_date, notes, warn_lead_days,
+        truck_id, trailer_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      RETURNING item_id, unit, name, category, interval_miles, interval_months,
-               interval_hours, last_done_miles, last_done_date, active, notes, warn_lead_days`,
+               interval_hours, last_done_miles, last_done_date, active, notes,
+               warn_lead_days, truck_id, trailer_id`,
     [
       user_id,
       data.unit,
@@ -58,6 +84,8 @@ export async function createMaintenanceItem(user_id, data) {
       data.last_done_date ?? null,
       data.notes ?? null,
       data.warn_lead_days ?? 14,
+      link.truck_id,
+      link.trailer_id,
     ],
   );
   return result.rows[0];
@@ -142,11 +170,13 @@ export async function createMaintenanceService(user_id, data) {
   try {
     await client.query("BEGIN");
 
+    const link = linkFor(data.unit, await resolveFleet(client, user_id), data);
+
     const svc = await client.query(
       `INSERT INTO maintenance_services
          (user_id, unit, service_date, odometer, vendor, location, description,
-          cost, invoice_number, receipt_ref, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          cost, invoice_number, receipt_ref, notes, truck_id, trailer_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING service_id, unit, service_date, odometer, vendor, location,
                  description, cost, invoice_number, receipt_ref, notes`,
       [
@@ -161,6 +191,8 @@ export async function createMaintenanceService(user_id, data) {
         data.invoice_number ?? null,
         data.receipt_ref ?? null,
         data.notes ?? null,
+        link.truck_id,
+        link.trailer_id,
       ],
     );
     const service_id = svc.rows[0].service_id;
@@ -296,12 +328,14 @@ export async function seedMaintenanceItems(user_id) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    const ids = await resolveFleet(client, user_id);
     for (const [unit, name, category, miles, months, hours, warn] of STARTER_ITEMS) {
+      const l = linkFor(unit, ids, {});
       await client.query(
         `INSERT INTO maintenance_items
-           (user_id, unit, name, category, interval_miles, interval_months, interval_hours, warn_lead_days)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [user_id, unit, name, category, miles, months, hours, warn],
+           (user_id, unit, name, category, interval_miles, interval_months, interval_hours, warn_lead_days, truck_id, trailer_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [user_id, unit, name, category, miles, months, hours, warn, l.truck_id, l.trailer_id],
       );
     }
     await client.query("COMMIT");
