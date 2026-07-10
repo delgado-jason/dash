@@ -8,6 +8,7 @@ import {
   avgMilesPerMonth,
   maxOdometer,
   maintenanceAlerts,
+  fleetHealth,
 } from "./maintenance";
 
 const item = (over: Partial<MaintenanceItem>): MaintenanceItem => ({
@@ -239,5 +240,26 @@ describe("maxOdometer", () => {
     expect(maxOdometer(314697, 568387, null)).toBe(568387); // fuel-style fresh read wins
     expect(maxOdometer(null, undefined)).toBeNull();
     expect(maxOdometer(560000)).toBe(560000);
+  });
+});
+
+describe("fleetHealth", () => {
+  it("returns null when nothing is assessable", () => {
+    expect(fleetHealth({ overdue: 0, soon: 0, ok: 0 }).score).toBeNull();
+  });
+  it("is Healthy when all items are ok", () => {
+    const h = fleetHealth({ overdue: 0, soon: 0, ok: 10 });
+    expect(h.score).toBe(100);
+    expect(h.label).toBe("Healthy");
+  });
+  it("half-credits due-soon and zero-credits overdue", () => {
+    const h = fleetHealth({ overdue: 4, soon: 2, ok: 12 }); // (12 + 1) / 18
+    expect(h.score).toBe(72);
+    expect(h.label).toBe("Needs attention");
+  });
+  it("is Rough shape when everything is overdue", () => {
+    const h = fleetHealth({ overdue: 10, soon: 0, ok: 0 });
+    expect(h.score).toBe(0);
+    expect(h.label).toBe("Rough shape");
   });
 });

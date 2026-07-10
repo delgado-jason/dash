@@ -166,3 +166,25 @@ export const maintenanceAlerts = (
   }
   return ranked.sort((a, b) => a.rank - b.rank).map((r) => r.alert);
 };
+
+// Overall fleet-upkeep score (0–100) from the schedule's due counts. Overdue
+// items count for nothing, due-soon for half; "no baseline" items sit out.
+export interface FleetHealth {
+  score: number | null; // null when there's nothing to assess
+  label: string;
+  color: string;
+}
+
+export const fleetHealth = (counts: {
+  overdue: number;
+  soon: number;
+  ok: number;
+}): FleetHealth => {
+  const assessable = counts.overdue + counts.soon + counts.ok;
+  if (assessable === 0)
+    return { score: null, label: "No data", color: "#9daabb" };
+  const score = Math.round(((counts.ok + 0.5 * counts.soon) / assessable) * 100);
+  if (score >= 85) return { score, label: "Healthy", color: "#1d9e75" };
+  if (score >= 60) return { score, label: "Needs attention", color: "#e8940a" };
+  return { score, label: "Rough shape", color: "#e24b4a" };
+};

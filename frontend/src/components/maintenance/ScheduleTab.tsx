@@ -10,6 +10,8 @@ import {
 } from "@/services/maintenanceService";
 import { computeDue, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import { MaintenanceItemForm } from "./MaintenanceItemForm";
+import { HealthGauge } from "./HealthGauge";
+import { Stamp } from "@/components/Stamp";
 
 interface Props {
   items: MaintenanceItem[];
@@ -118,15 +120,6 @@ export const ScheduleTab = ({
       setEditing(null);
     });
 
-  const chip = (label: string, n: number, color: string) => (
-    <span
-      className="text-xs px-2.5 py-1 rounded"
-      style={{ background: "#1c2333", color }}
-    >
-      {n} {label}
-    </span>
-  );
-
   if (items.length === 0 && !showForm) {
     return (
       <div className="bg-plate rounded-lg p-6 text-center">
@@ -175,6 +168,11 @@ export const ScheduleTab = ({
         </div>
       </div>
       <div className="text-right w-40 shrink-0">
+        {due.level === "overdue" && (
+          <div className="mb-1">
+            <Stamp label="Overdue" color="#e24b4a" size="sm" />
+          </div>
+        )}
         <p className="text-xs" style={{ color: META[due.level].color }}>
           {dueLabel(due)}
         </p>
@@ -204,12 +202,8 @@ export const ScheduleTab = ({
 
   return (
     <div>
+      <HealthGauge counts={counts} />
       <div className="flex flex-wrap gap-2 items-center mb-4">
-        {chip("overdue", counts.overdue, META.overdue.color)}
-        {chip("due soon", counts.soon, META.soon.color)}
-        {chip("ok", counts.ok, META.ok.color)}
-        {counts.unknown > 0 &&
-          chip("no baseline", counts.unknown, META.unknown.color)}
         <div className="ml-auto flex gap-2">
           <button
             className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1"

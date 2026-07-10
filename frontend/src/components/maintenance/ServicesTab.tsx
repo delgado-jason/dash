@@ -7,6 +7,7 @@ import {
   type ServiceInput,
 } from "@/services/maintenanceService";
 import { ServiceForm } from "./ServiceForm";
+import { Stamp } from "@/components/Stamp";
 
 interface Props {
   services: MaintenanceService[];
@@ -72,6 +73,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justLogged, setJustLogged] = useState(false);
   // Month range for pulling a window of services (e.g. to re-enter into
   // Landstar's app). Presets cover the common cases; "Custom" reveals dropdowns.
   const [mode, setMode] = useState<RangeMode>("3m");
@@ -151,6 +153,8 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
     run(async () => {
       await createMaintenanceService(data);
       setShowForm(false);
+      setJustLogged(true);
+      window.setTimeout(() => setJustLogged(false), 2600);
     });
 
   return (
@@ -169,6 +173,13 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
           </button>
         )}
       </div>
+
+      {justLogged && (
+        <div className="flex items-center gap-3 bg-plate rounded-lg p-3 mb-3">
+          <Stamp label="Done!" color="#1d9e75" />
+          <span className="text-sm text-muted-text">Service logged.</span>
+        </div>
+      )}
 
       {error && <p className="text-destructive text-sm mb-3">{error}</p>}
 
