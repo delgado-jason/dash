@@ -22,6 +22,7 @@ import TrailerDetailPage from "@/pages/TrailerDetailPage";
 import { LoadDetailPage } from "@/pages/LoadDetailPage";
 import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
+import GuidePage from "@/pages/GuidePage";
 
 // Code-split Lanes — it bundles the US map topology (~600KB), so it should only
 // load when the page is actually visited, not on every app start.
@@ -65,6 +66,7 @@ const App = () => {
           <Route path="/drivers/:id" element={<DriverDetailPage />} />
           <Route path="/trailers" element={<TrailersPage />} />
           <Route path="/trailers/:id" element={<TrailerDetailPage />} />
+          <Route path="/guide" element={<GuidePage />} />
         </Route>
       </Route>
 
