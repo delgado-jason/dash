@@ -22,6 +22,7 @@ import obligationRouter from "./routes/obligationRoutes.js";
 import maintenanceRouter from "./routes/maintenanceRoutes.js";
 import trailerRouter from "./routes/trailerRoutes.js";
 import avatarRouter from "./routes/avatarRoutes.js";
+import complianceRouter from "./routes/complianceRoutes.js";
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/agents/:agent_id/notes", agentNoteRoutes);
 app.use("/expenses", expenseRouter);
 app.use("/obligations", obligationRouter);
 app.use("/maintenance", maintenanceRouter);
+app.use("/compliance", complianceRouter);
 app.use("/trailers", trailerRouter);
 app.use("/avatars", avatarRouter);
 

@@ -148,6 +148,13 @@ const DriverDetailPage = () => {
                 <Spec label="Endorsements" value={driver.endorsements} />
                 <Spec label="Hired" value={formatDate(driver.hire_date)} />
               </div>
+              <p className="text-xs text-muted-text mt-2">
+                CDL is managed on the{" "}
+                <Link to="/compliance" className="text-status-info-text hover:underline">
+                  Compliance page
+                </Link>
+                .
+              </p>
               <MileClub miles={milesHauled} />
             </>
           )}

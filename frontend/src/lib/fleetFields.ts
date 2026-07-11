@@ -35,15 +35,13 @@ export const TRUCK_FIELDS: FormField[] = [
   { name: "in_service_date", label: "In service", type: "date" },
 ];
 
+// CDL (number, state, expiration, endorsements) is intentionally absent here —
+// it's managed on the Compliance page and shown read-only on the driver page.
 export const DRIVER_FIELDS: FormField[] = [
   { name: "first_name", label: "First name", required: true },
   { name: "last_name", label: "Last name", required: true },
   { name: "phone", label: "Phone" },
   { name: "email", label: "Email" },
-  { name: "cdl_number", label: "CDL #" },
-  { name: "cdl_state", label: "CDL state", placeholder: "AL" },
-  { name: "cdl_expiration", label: "CDL expires", type: "date" },
-  { name: "endorsements", label: "Endorsements", placeholder: "H, N, T" },
   { name: "hire_date", label: "Hire date", type: "date" },
 ];
 
