@@ -81,8 +81,10 @@ export const rpmGrade = (rpm: number | null, ladder: RateLadder): Grade | null =
 export interface SeasonStats {
   label: string; // e.g. "Apr–Jun 2026"
   netRevenue: number; // P&L income (net of Landstar) over the window
-  netProfit: number; // income − COGS − expenses
-  netMargin: number | null;
+  netProfit: number; // operating profit: income − COGS − expenses
+  netMargin: number | null; // operating margin — the graded number
+  trueNet: number; // operating profit − debt obligations (draws excluded)
+  trueNetMargin: number | null;
   loads: number;
   totalMiles: number;
   loadedMiles: number;
@@ -108,6 +110,9 @@ export const getSeasonStats = (
   loads: Load[],
   now: Date,
   monthsBack = 3,
+  // Monthly DEBT obligations (owner draws excluded) — subtracted from operating
+  // profit to get True Net over the same months the P&L covers.
+  obligationsDebtMonthly = 0,
 ): SeasonStats => {
   const months = completeMonthsBefore(now, monthsBack);
 
@@ -121,6 +126,7 @@ export const getSeasonStats = (
     n++;
   }
   const netProfit = income - cost;
+  const trueNet = netProfit - obligationsDebtMonthly * n;
 
   const seasonLoads = loads.filter(
     (l) => l.load_status === "delivered" && inWindow(l.delivery_date, months),
@@ -157,6 +163,8 @@ export const getSeasonStats = (
     netRevenue: income,
     netProfit,
     netMargin: income > 0 ? netProfit / income : null,
+    trueNet,
+    trueNetMargin: income > 0 ? trueNet / income : null,
     loads: seasonLoads.length,
     totalMiles: total,
     loadedMiles: loaded,

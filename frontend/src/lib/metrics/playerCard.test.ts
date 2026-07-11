@@ -122,6 +122,12 @@ describe("getSeasonStats", () => {
     expect(s.loads).toBe(2);
     expect(s.label).toBe("Apr–Jun 2026");
   });
+  it("subtracts only debt obligations for True Net (draws excluded upstream)", () => {
+    const s = getSeasonStats(periods, loads, NOW, 3, 2411); // $2,411/mo debt
+    expect(s.netProfit).toBeCloseTo(18774.33, 2); // operating unchanged
+    expect(s.trueNet).toBeCloseTo(18774.33 - 2411 * 3, 2); // − 3 months of debt
+    expect(s.trueNetMargin).toBeCloseTo((18774.33 - 7233) / 79346.84, 4);
+  });
   it("computes deadhead, avg rpm, and best lane over the window", () => {
     const s = getSeasonStats(periods, loads, NOW);
     expect(s.avgRpm).toBeCloseTo((3200 + 2600) / 1800, 3);

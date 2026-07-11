@@ -19,10 +19,24 @@ import type {
 } from "@/lib/metrics/playerCard";
 import { fmtMiles } from "@/lib/metrics/mileClub";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
+import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { MiniTrophyCard } from "@/components/comic/MiniTrophyCard";
 
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const pct1 = (n: number) => `${(n * 100).toFixed(1)}%`;
+
+const GREEN = "#4ade80";
+const RED = "#f87171";
+const AMBER = "#e8940a";
+
+// Colour a metric by where it actually stands — earned, not decorative.
+const profitColor = (n: number) => (n < 0 ? RED : GREEN);
+const deadheadColor = (pct: number | null): string | undefined => {
+  if (pct == null) return undefined;
+  if (pct <= DEADHEAD_TARGET) return GREEN;
+  if (pct <= DEADHEAD_TARGET * 1.5) return AMBER;
+  return RED;
+};
 
 const GRADE_META: Record<Grade, { label: string; fg: string; bg: string }> = {
   below: { label: "BELOW", fg: "#f87171", bg: "#3a1a1a" },
@@ -54,22 +68,28 @@ const GradeChip = ({ grade, value }: { grade: Grade | null; value?: string }) =>
   );
 };
 
+const gradeColor = (g: Grade | null): string | undefined =>
+  g ? GRADE_META[g].fg : undefined;
+
 const Stat = ({
   label,
   value,
   color,
   span2,
+  sub,
 }: {
   label: string;
   value: string;
   color?: string;
   span2?: boolean;
+  sub?: string;
 }) => (
   <div className={`bg-plate rounded-lg px-3 py-2 ${span2 ? "col-span-2" : ""}`}>
     <p className="text-[11px] text-muted-text">{label}</p>
     <p className="text-lg font-condensed truncate" style={color ? { color } : undefined}>
       {value}
     </p>
+    {sub && <p className="text-[10px] text-muted-text truncate">{sub}</p>}
   </div>
 );
 
@@ -89,7 +109,9 @@ const Record = ({
       <Icon size={13} style={{ color }} />
       {label}
     </p>
-    <p className="text-lg font-condensed mt-0.5">{value}</p>
+    <p className="text-lg font-condensed mt-0.5" style={{ color: value === "—" ? undefined : "#4ade80" }}>
+      {value}
+    </p>
   </div>
 );
 
@@ -183,7 +205,7 @@ export const PlayerCard = ({
           </span>
           <span className="text-[11px] text-muted-text">Rate</span>
           <GradeChip grade={rpmGrade} value={windowRpm != null ? `$${windowRpm.toFixed(2)}` : undefined} />
-          <span className="text-[11px] text-muted-text">Margin</span>
+          <span className="text-[11px] text-muted-text">Op margin</span>
           <GradeChip grade={marginGrade} value={season.netMargin != null ? pct1(season.netMargin) : undefined} />
           <span className="flex-1" />
           <span className="text-[11px] text-muted-text">Form</span>
@@ -210,13 +232,31 @@ export const PlayerCard = ({
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat label="Net revenue" value={money0(season.netRevenue)} />
-        <Stat label="Net profit" value={money0(season.netProfit)} color="#4ade80" />
-        <Stat label="Net margin" value={season.netMargin != null ? pct1(season.netMargin) : "—"} />
+        <Stat label="Net revenue" value={money0(season.netRevenue)} sub="net of Landstar" />
+        <Stat
+          label="Operating profit"
+          value={money0(season.netProfit)}
+          color={profitColor(season.netProfit)}
+          sub="before obligations"
+        />
+        <Stat
+          label="True net"
+          value={money0(season.trueNet)}
+          color={profitColor(season.trueNet)}
+          sub="what you keep, before draw"
+        />
         <Stat label="Loads" value={String(season.loads)} />
         <Stat label="Miles" value={Math.round(season.totalMiles).toLocaleString("en-US")} />
-        <Stat label="Deadhead" value={season.deadheadPct != null ? pct1(season.deadheadPct) : "—"} />
-        <Stat label="Avg RPM" value={season.avgRpm != null ? `$${season.avgRpm.toFixed(2)}` : "—"} />
+        <Stat
+          label="Deadhead"
+          value={season.deadheadPct != null ? pct1(season.deadheadPct) : "—"}
+          color={deadheadColor(season.deadheadPct)}
+        />
+        <Stat
+          label="Avg RPM"
+          value={season.avgRpm != null ? `$${season.avgRpm.toFixed(2)}` : "—"}
+          color={gradeColor(rpmGrade)}
+        />
         <Stat label="Best lane" value={season.bestLane?.lane ?? "—"} span2 />
       </div>
 

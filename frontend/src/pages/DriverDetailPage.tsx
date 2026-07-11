@@ -85,8 +85,13 @@ const DriverDetailPage = () => {
   const card = useMemo(() => {
     if (driverLoads.length === 0) return null;
     const now = new Date();
+    // All active obligations (incl. the owner draw) drive break-even/rate; only
+    // the debt ones (draws excluded) subtract from True Net.
     const obligationsTotal = obligations
       .filter((o) => o.active)
+      .reduce((s, o) => s + Number(o.amount), 0);
+    const obligationsDebt = obligations
+      .filter((o) => o.active && !o.is_draw)
       .reduce((s, o) => s + Number(o.amount), 0);
     const lifetimeMiles = Math.max(
       0,
@@ -96,7 +101,7 @@ const DriverDetailPage = () => {
     );
     const basis = getCostBasis(periods, obligationsTotal, driverLoads, now);
     const ladder = getRateLadder(basis.breakEvenRpm, RATE_TIERS);
-    const season = getSeasonStats(periods, driverLoads, now);
+    const season = getSeasonStats(periods, driverLoads, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
     const bests = personalBests(driverLoads, fuel, now);
