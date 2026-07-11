@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
+import { Link } from "react-router-dom";
 import { KpiCard } from "@/components/KpiCard";
 import { BREAK_EVEN_RPM, DEADHEAD_TARGET } from "@/lib/constants/targets";
 import {
@@ -129,7 +130,15 @@ const DashboardPage = () => {
     <div className="p-6 bg-iron text-light min-h-screen font-body">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} />
 
-      <h1 className="text-3xl font-condensed mb-6">Dashboard</h1>
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <h1 className="text-3xl font-condensed">Dashboard</h1>
+        <Link
+          to="/recap"
+          className="text-sm text-status-info-text hover:underline whitespace-nowrap"
+        >
+          Your {new Date().getUTCFullYear()} recap →
+        </Link>
+      </div>
 
       <AlertBanners alerts={alerts} />
 
