@@ -38,8 +38,8 @@ export const PrestigeBurst = ({
         <polygon
           points={POINTS}
           fill={m.fill}
-          stroke="#0d1117"
-          strokeWidth={1.5}
+          stroke="#0a0d13"
+          strokeWidth={2.4}
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center">

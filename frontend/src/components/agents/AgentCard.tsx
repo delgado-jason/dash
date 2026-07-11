@@ -76,8 +76,8 @@ export const AgentCard = ({
         <RatingMedallion rating={agent.rating} />
         {prestige.label && (
           <span
-            className="text-[11px] font-medium uppercase tracking-wide shrink-0"
-            style={{ color: prestige.fill }}
+            className="text-[13px] font-comic uppercase shrink-0"
+            style={{ color: prestige.fill, letterSpacing: "1px" }}
           >
             {prestige.label}
           </span>

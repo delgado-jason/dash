@@ -66,12 +66,27 @@ export const TrophyCase = ({
   const boarded = (honors?.board ?? 0) > 0;
 
   return (
-    <div className="bg-plate rounded-lg p-4">
-      <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
-        Trophy case
-      </p>
+    <div
+      className="relative overflow-hidden rounded-lg p-4 border-2"
+      style={{ background: "#10151f", borderColor: "#e8940a" }}
+    >
+      <div
+        className="absolute top-0 right-0 w-28 h-28 pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(#e8940a 1.3px, transparent 1.4px)",
+          backgroundSize: "7px 7px",
+          opacity: 0.12,
+        }}
+      />
+      <div className="relative">
+        <p
+          className="font-comic text-base mb-3"
+          style={{ color: "#f5b03a", letterSpacing: "1px" }}
+        >
+          TROPHY CASE
+        </p>
 
-      {!boarded ? (
+        {!boarded ? (
         <p className="text-sm text-muted-text">
           No quarterly top-5 finishes yet — takes 2+ delivered loads in a quarter
           to make the board.
@@ -81,7 +96,7 @@ export const TrophyCase = ({
           <div className="flex items-center gap-4 flex-wrap">
             <PrestigeBurst tier={tier} size={56} />
             <div>
-              <p className="font-condensed text-xl" style={{ color: meta.fill }}>
+              <p className="font-comic text-2xl leading-none" style={{ color: meta.fill }}>
                 {meta.label}
               </p>
               <div className="flex gap-4 text-sm mt-1">
@@ -116,7 +131,8 @@ export const TrophyCase = ({
         </>
       )}
 
-      {live && <Live standing={live} />}
+        {live && <Live standing={live} />}
+      </div>
     </div>
   );
 };
