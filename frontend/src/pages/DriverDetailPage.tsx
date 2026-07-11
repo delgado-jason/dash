@@ -3,13 +3,33 @@ import { useParams, Link } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import type { Driver } from "@/types/driver";
 import type { Load } from "@/types/load";
+import type { ExpensePeriod } from "@/types/expense";
+import type { FuelEntry } from "@/types/fuelEntry";
+import type { Truck } from "@/types/truck";
+import type { Obligation } from "@/types/obligation";
 import { getDriver, patchDriver } from "@/services/driversService";
+import { getExpensePeriods } from "@/services/expensesService";
+import { getObligations } from "@/services/obligationsService";
+import { getFuelEntries } from "@/services/fuelService";
+import { getTrucks } from "@/services/trucksService";
 import { useLoads } from "@/hooks/useLoads";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
-import { MileClub } from "@/components/fleet/MileClub";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
+import { getCostBasis, getRateLadder } from "@/lib/metrics/rateTargets";
+import { RATE_TIERS } from "@/lib/constants/targets";
+import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
+import {
+  careerRank,
+  getSeasonStats,
+  marginGrade,
+  rpmGrade,
+  worseGrade,
+  personalBests,
+  earnedTrophies,
+} from "@/lib/metrics/playerCard";
+import { PlayerCard } from "@/components/playercard/PlayerCard";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const loadRev = (l: Load) =>
@@ -32,6 +52,10 @@ const DriverDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { loads } = useLoads(0);
   const [driver, setDriver] = useState<Driver | null>(null);
+  const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [fuel, setFuel] = useState<FuelEntry[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +67,56 @@ const DriverDetailPage = () => {
       .catch(() => {});
   }, [id]);
 
+  // Business-level inputs for the card (P&L, obligations, fuel, odometer).
+  useEffect(() => {
+    getExpensePeriods().then(setPeriods).catch(() => {});
+    getObligations().then(setObligations).catch(() => {});
+    getFuelEntries().then(setFuel).catch(() => {});
+    getTrucks().then(setTrucks).catch(() => {});
+  }, []);
+
   const driverLoads = useMemo(
     () => loads.filter((l) => l.driver_id === id),
     [loads, id],
   );
+
+  // The player card only makes sense for a driver who actually hauls; a
+  // dispatch-only driver (e.g. Brandie) keeps the plain page.
+  const card = useMemo(() => {
+    if (driverLoads.length === 0) return null;
+    const now = new Date();
+    const obligationsTotal = obligations
+      .filter((o) => o.active)
+      .reduce((s, o) => s + Number(o.amount), 0);
+    const lifetimeMiles = Math.max(
+      0,
+      ...trucks.map((t) => Number(t.current_odometer) || 0),
+      maxFuelOdometer(fuel) ?? 0,
+      ...driverLoads.map((l) => Number(l.odometer_end) || 0),
+    );
+    const basis = getCostBasis(periods, obligationsTotal, driverLoads, now);
+    const ladder = getRateLadder(basis.breakEvenRpm, RATE_TIERS);
+    const season = getSeasonStats(periods, driverLoads, now);
+    const rpmG = rpmGrade(basis.windowRpm, ladder);
+    const marginG = marginGrade(season.netMargin);
+    const bests = personalBests(driverLoads, fuel, now);
+    const trophies = earnedTrophies({
+      lifetimeMiles,
+      loads: driverLoads,
+      bestMpg: bests.bestMpg,
+      seasonMargin: marginG,
+    });
+    return {
+      rank: careerRank(lifetimeMiles),
+      season,
+      rpmGrade: rpmG,
+      marginGrade: marginG,
+      form: worseGrade(rpmG, marginG),
+      windowRpm: basis.windowRpm,
+      bests,
+      trophies,
+    };
+  }, [driverLoads, periods, obligations, fuel, trucks]);
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!driver) return;
@@ -79,6 +149,18 @@ const DriverDetailPage = () => {
       l.load_status === "delivered" ? s + (Number(l.loaded_miles) || 0) : s,
     0,
   );
+  const name = `${driver.first_name} ${driver.last_name}`;
+
+  const avatar = (
+    <EntityAvatar
+      kind="driver"
+      id={driver.driver_id}
+      avatarUrl={driver.avatar_url}
+      size={118}
+      allowVariant
+      onUpdated={(u) => setDriver({ ...driver, avatar_url: u })}
+    />
+  );
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -86,51 +168,53 @@ const DriverDetailPage = () => {
         ← Drivers
       </Link>
 
-      <div className="flex flex-col md:flex-row gap-6 mt-3 mb-6">
-        <EntityAvatar
-          kind="driver"
-          id={driver.driver_id}
-          avatarUrl={driver.avatar_url}
-          size={180}
-          allowVariant
-          onUpdated={(u) => setDriver({ ...driver, avatar_url: u })}
-        />
-        <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-condensed">
-                {driver.first_name} {driver.last_name}
-              </h1>
-              <p className="text-muted-text text-sm mb-4">
-                {driver.active ? "Active driver" : "Inactive"}
-              </p>
-            </div>
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1"
-              >
-                <Pencil size={13} /> Edit
-              </button>
-            )}
+      {card ? (
+        <div className="mt-3">
+          <PlayerCard
+            name={name}
+            business="Delgado Trucking Services · Owner-Operator"
+            avatar={avatar}
+            rank={card.rank}
+            season={card.season}
+            rpmGrade={card.rpmGrade}
+            marginGrade={card.marginGrade}
+            form={card.form}
+            windowRpm={card.windowRpm}
+            bests={card.bests}
+            trophies={card.trophies}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col md:flex-row gap-6 mt-3 mb-2 items-start">
+          {avatar}
+          <div>
+            <h1 className="text-3xl font-condensed">{name}</h1>
+            <p className="text-muted-text text-sm">
+              {driver.active ? "Active driver" : "Inactive"}
+            </p>
           </div>
+        </div>
+      )}
 
-          {editing ? (
-            <EntityForm
-              title="Edit driver"
-              fields={DRIVER_FIELDS}
-              initial={toFormValues(
-                driver as unknown as Record<string, unknown>,
-                DRIVER_FIELDS,
-              )}
-              onSave={saveEdit}
-              onCancel={() => setEditing(false)}
-              busy={busy}
-              error={error}
-            />
-          ) : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* driver details — demoted below the card, still fully editable */}
+      <div className="bg-plate rounded-lg p-4 mt-4">
+        {editing ? (
+          <EntityForm
+            title="Edit driver"
+            fields={DRIVER_FIELDS}
+            initial={toFormValues(
+              driver as unknown as Record<string, unknown>,
+              DRIVER_FIELDS,
+            )}
+            onSave={saveEdit}
+            onCancel={() => setEditing(false)}
+            busy={busy}
+            error={error}
+          />
+        ) : (
+          <>
+            <div className="flex justify-between items-start gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
                 <Spec label="Phone" value={driver.phone} />
                 <Spec label="Email" value={driver.email} />
                 <Spec
@@ -141,44 +225,49 @@ const DriverDetailPage = () => {
                       : null
                   }
                 />
-                <Spec
-                  label="CDL expires"
-                  value={formatDate(driver.cdl_expiration)}
-                />
+                <Spec label="CDL expires" value={formatDate(driver.cdl_expiration)} />
                 <Spec label="Endorsements" value={driver.endorsements} />
                 <Spec label="Hired" value={formatDate(driver.hire_date)} />
               </div>
-              <p className="text-xs text-muted-text mt-2">
-                CDL is managed on the{" "}
-                <Link to="/compliance" className="text-status-info-text hover:underline">
-                  Compliance page
-                </Link>
-                .
-              </p>
-              <MileClub miles={milesHauled} />
-            </>
-          )}
-        </div>
+              <button
+                onClick={() => setEditing(true)}
+                className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1 shrink-0"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+            </div>
+            <p className="text-xs text-muted-text mt-2">
+              CDL is managed on the{" "}
+              <Link to="/compliance" className="text-status-info-text hover:underline">
+                Compliance page
+              </Link>
+              .
+            </p>
+          </>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-        <div className="bg-plate rounded-lg p-4">
-          <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-          <p className="text-2xl font-condensed">{driverLoads.length}</p>
+      {/* plain-page stats for a non-hauling driver (hauling stats live in the card) */}
+      {!card && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+          <div className="bg-plate rounded-lg p-4">
+            <p className="text-xs text-muted-text mb-1">Loads hauled</p>
+            <p className="text-2xl font-condensed">{driverLoads.length}</p>
+          </div>
+          <div className="bg-plate rounded-lg p-4">
+            <p className="text-xs text-muted-text mb-1">Revenue · all time</p>
+            <p className="text-2xl font-condensed">{money(revenue)}</p>
+          </div>
+          <div className="bg-plate rounded-lg p-4">
+            <p className="text-xs text-muted-text mb-1">Miles hauled</p>
+            <p className="text-2xl font-condensed">
+              {milesHauled.toLocaleString("en-US")}
+            </p>
+          </div>
         </div>
-        <div className="bg-plate rounded-lg p-4">
-          <p className="text-xs text-muted-text mb-1">Revenue · all time</p>
-          <p className="text-2xl font-condensed">{money(revenue)}</p>
-        </div>
-        <div className="bg-plate rounded-lg p-4">
-          <p className="text-xs text-muted-text mb-1">Miles hauled</p>
-          <p className="text-2xl font-condensed">
-            {milesHauled.toLocaleString("en-US")}
-          </p>
-        </div>
-      </div>
+      )}
 
-      <div className="bg-plate rounded-lg p-4">
+      <div className="bg-plate rounded-lg p-4 mt-4">
         <p className="text-xs text-muted-text mb-2">Recent loads</p>
         {driverLoads.length === 0 ? (
           <p className="text-sm text-muted-text">None for this driver yet.</p>
