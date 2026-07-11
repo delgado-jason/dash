@@ -18,13 +18,16 @@ export const TROPHY_STYLE =
 
 export const trophyPrompt = (subject: string): string => `${subject} — ${TROPHY_STYLE}`;
 
-// The hall background — includes the two empty forward-facing frames that the
-// page composites the driver (left) and truck (right) avatars into.
+// The hall background is just the ROOM — the trophies stand on pedestals the page
+// places over the open foreground floor, so all of them stay visible at full size.
+// A wide, front-on view (not a deep receding corridor) keeps that floor open. It
+// includes the two empty forward-facing frames the page composites the driver
+// (left) and truck (right) avatars into.
 export const HALL_PROMPT =
-  "A grand trucking hall of fame interior, symmetric one-point perspective down a " +
-  "long corridor, a row of stone-and-steel pedestals receding toward a back wall " +
-  "crowned with a large emblem, warm amber spotlights pooling from above, deep " +
+  "An empty grand trucking hall of fame gallery, wide eye-level frontal view with a " +
+  "low horizon and a broad open polished stone floor across the foreground, deep " +
   "steel-blue walls with subtle oversize-freight motifs (chains, flatbed silhouettes), " +
-  "two large ornate empty gold picture frames mounted flat and facing forward — one " +
-  `on the left wall, one on the right wall, at eye level — ${CORE}, moody cinematic ` +
-  "rim lighting, no people, no text";
+  "warm amber spotlights washing down the walls, a large emblem centered on the back " +
+  "wall, two large ornate empty gold picture frames mounted flat and facing forward — " +
+  `one on the left wall, one on the right wall, at eye level — ${CORE}, moody cinematic ` +
+  "rim lighting, no pedestals, no people, no text";
