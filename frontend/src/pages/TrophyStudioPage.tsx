@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Sparkles, Check, RefreshCw, X } from "lucide-react";
 import type { Trophy } from "@/types/trophy";
 import {
@@ -112,7 +113,7 @@ const StudioItem = ({
   );
 };
 
-const TrophyRoomPage = () => {
+const TrophyStudioPage = () => {
   const [byKey, setByKey] = useState<Record<string, Trophy>>({});
   const [preview, setPreview] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -186,7 +187,10 @@ const TrophyRoomPage = () => {
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <h1 className="text-3xl font-condensed">Trophy Studio</h1>
+      <Link to="/trophy-room" className="text-xs text-muted-text hover:text-light">
+        ← Trophy Room
+      </Link>
+      <h1 className="text-3xl font-condensed mt-2">Trophy Studio</h1>
       <p className="text-sm text-muted-text mb-5">
         Generate each trophy and the hall background, regenerate until it's worthy,
         then approve — only approved art gets hung in the hall.
@@ -275,4 +279,4 @@ const TrophyRoomPage = () => {
   );
 };
 
-export default TrophyRoomPage;
+export default TrophyStudioPage;
