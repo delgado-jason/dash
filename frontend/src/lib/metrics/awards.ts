@@ -32,11 +32,13 @@ export interface AwardInputs {
   fuel: FuelEntry[];
   lifetimeMiles: number;
   obligationsDebtMonthly: number;
+  streak?: number; // current grind streak (weeks beating target)
   now: Date;
 }
 
 const RELATIONSHIP_MARKS = [5, 10, 25, 50, 100];
 const CENTURY_MARKS = [500, 250, 100];
+const STREAK_MARKS = [12, 8, 4];
 
 export const earnedAwards = (i: AwardInputs): Award[] => {
   const out: Award[] = [];
@@ -105,6 +107,13 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   const century = CENTURY_MARKS.find((x) => delivered >= x);
   if (century)
     out.push({ id: `century:${century}`, tier: "burst", name: `${century} Loads`, detail: "Career milestone", icon: "stack" });
+
+  // ---- Burst: grind streak milestones ----
+  if (i.streak) {
+    const mark = STREAK_MARKS.find((x) => i.streak! >= x);
+    if (mark)
+      out.push({ id: `on-a-roll:${mark}`, tier: "burst", name: "On a Roll", detail: `${i.streak}-week target streak`, icon: "flame" });
+  }
 
   return out;
 };

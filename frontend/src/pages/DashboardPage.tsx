@@ -27,6 +27,7 @@ import { useAwardPops } from "@/hooks/useAwardPops";
 import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
+import { GrindMeter } from "@/components/dashboard/GrindMeter";
 import { RevenueChart } from "@/components/RevenueChart";
 import { RpmChart } from "@/components/RpmChart";
 import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
@@ -166,6 +167,11 @@ const DashboardPage = () => {
       {/* Rate & pace targets */}
       <div className="mt-6">
         <RateTargetsCard targets={targets} rpm={targets.weekRpm} />
+      </div>
+
+      {/* The grind — weekly target-beating streak */}
+      <div className="mt-6">
+        <GrindMeter loads={loads} />
       </div>
 
       {/* Revenue chart + top agents */}
