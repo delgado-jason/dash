@@ -43,6 +43,7 @@ const nav: Entry[] = [
   },
   { to: "/compliance", label: "Compliance" },
   { to: "/expenses", label: "Expenses" },
+  { to: "/recap", label: "Recap" },
   { to: "/guide", label: "Guide" },
 ];
 

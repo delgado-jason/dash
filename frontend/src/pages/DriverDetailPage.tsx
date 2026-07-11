@@ -188,6 +188,11 @@ const DriverDetailPage = () => {
             bests={card.bests}
             trophies={card.trophies}
           />
+          <div className="text-center mt-3">
+            <Link to="/recap" className="text-sm text-status-info-text hover:underline">
+              See your full recap →
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col md:flex-row gap-6 mt-3 mb-2 items-start">

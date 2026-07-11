@@ -24,6 +24,7 @@ import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
 import GuidePage from "@/pages/GuidePage";
 import CompliancePage from "@/pages/CompliancePage";
+import RecapPage from "@/pages/RecapPage";
 
 // Code-split Lanes — it bundles the US map topology (~600KB), so it should only
 // load when the page is actually visited, not on every app start.
@@ -59,6 +60,7 @@ const App = () => {
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/compliance" element={<CompliancePage />} />
+          <Route path="/recap" element={<RecapPage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route path="/fuel-entries" element={<FuelEntriesPage />} />
