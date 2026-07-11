@@ -5,7 +5,7 @@ import { ValidationError, NotFoundError } from "../utils/error.js";
 export async function getObligations(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT obligation_id, label, amount, active
+    `SELECT obligation_id, label, amount, active, is_draw
      FROM obligations
      WHERE user_id = $1
      ORDER BY created_at`,
@@ -17,15 +17,15 @@ export async function getObligations(user_id) {
 // ---- CREATE ----
 export async function createObligation(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const { label, amount } = data;
+  const { label, amount, is_draw } = data;
   if (!label || amount == null)
     throw new ValidationError("label and amount are required");
 
   const result = await db.query(
-    `INSERT INTO obligations (user_id, label, amount)
-     VALUES ($1, $2, $3)
-     RETURNING obligation_id, label, amount, active`,
-    [user_id, label, amount],
+    `INSERT INTO obligations (user_id, label, amount, is_draw)
+     VALUES ($1, $2, $3, $4)
+     RETURNING obligation_id, label, amount, active, is_draw`,
+    [user_id, label, amount, is_draw === true],
   );
   return result.rows[0];
 }
@@ -35,7 +35,7 @@ export async function patchObligation(user_id, obligation_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!obligation_id) throw new ValidationError("Missing obligation_id");
 
-  const allowedFields = ["label", "amount", "active"];
+  const allowedFields = ["label", "amount", "active", "is_draw"];
   const updates = [];
   const values = [];
   let index = 1;
@@ -56,7 +56,7 @@ export async function patchObligation(user_id, obligation_id, data) {
     `UPDATE obligations
        SET ${updates.join(", ")}
      WHERE obligation_id = $${index} AND user_id = $${index + 1}
-     RETURNING obligation_id, label, amount, active`,
+     RETURNING obligation_id, label, amount, active, is_draw`,
     values,
   );
   if (result.rowCount === 0) throw new NotFoundError("Obligation not found");

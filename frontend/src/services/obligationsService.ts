@@ -7,6 +7,7 @@ const coerce = (o: any): Obligation => ({
   label: o.label,
   amount: Number(o.amount),
   active: o.active,
+  is_draw: o.is_draw ?? false,
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -22,6 +23,7 @@ export const getObligations = async (): Promise<Obligation[]> => {
 export const createObligation = async (data: {
   label: string;
   amount: number;
+  is_draw?: boolean;
 }): Promise<Obligation> => {
   try {
     const res = await api.post("/obligations", data);
@@ -33,7 +35,7 @@ export const createObligation = async (data: {
 
 export const patchObligation = async (
   id: string,
-  data: Partial<{ label: string; amount: number; active: boolean }>,
+  data: Partial<{ label: string; amount: number; active: boolean; is_draw: boolean }>,
 ): Promise<void> => {
   try {
     await api.patch(`/obligations/${id}`, data);

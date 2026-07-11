@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Trash2, Check, X, Plus, Eye, EyeOff } from "lucide-react";
+import { Pencil, Trash2, Check, X, Plus, Eye, EyeOff, HandCoins } from "lucide-react";
 import type { Obligation } from "@/types/obligation";
 import {
   createObligation,
@@ -61,7 +61,8 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
         Loan <span className="text-light">principal only</span> (not the full
         payment — interest is already counted on your P&amp;L), plus owner draws.
         These fold into the true cost in the KPIs above; toggle one inactive to
-        see the numbers without it.
+        see the numbers without it. Mark an owner draw (hand icon) to keep it out
+        of your card's True Net — it still counts toward break-even here.
       </p>
 
       <table className="w-full text-sm">
@@ -78,6 +79,11 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                 ) : (
                   <span className={o.active ? "" : "opacity-40 line-through"}>
                     {o.label}
+                    {o.is_draw && (
+                      <span className="text-[10px] text-amber ml-1.5 align-middle">
+                        draw
+                      </span>
+                    )}
                   </span>
                 )}
               </td>
@@ -138,6 +144,23 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                           }
                         />
                       )}
+                      <HandCoins
+                        size={16}
+                        className={`cursor-pointer ${o.is_draw ? "text-amber" : "hover:text-light opacity-50"}`}
+                        aria-label={
+                          o.is_draw
+                            ? "Owner draw — kept out of True Net (click to unmark)"
+                            : "Mark as owner draw (excluded from True Net)"
+                        }
+                        onClick={() =>
+                          !busy &&
+                          run(() =>
+                            patchObligation(o.obligation_id, {
+                              is_draw: !o.is_draw,
+                            }),
+                          )
+                        }
+                      />
                       <Pencil
                         size={16}
                         className="cursor-pointer hover:text-light"
