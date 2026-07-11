@@ -62,6 +62,8 @@
   --font-display: "Bebas Neue", sans-serif;
   --font-condensed: "Barlow Condensed", sans-serif;
   --font-body: "Barlow", sans-serif;
+  /* Adult-comic accent face — used only on the player card / awards / prestige */
+  --font-comic: "Bangers", system-ui, sans-serif;
 
   /* --------------------------------------------------------
     SEMANTIC TOKENS

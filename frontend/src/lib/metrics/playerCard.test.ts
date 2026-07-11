@@ -1,0 +1,170 @@
+import { describe, it, expect } from "vitest";
+import type { Load } from "@/types/load";
+import type { ExpensePeriod } from "@/types/expense";
+import type { FuelEntry } from "@/types/fuelEntry";
+import {
+  careerRank,
+  marginGrade,
+  rpmGrade,
+  worseGrade,
+  getSeasonStats,
+  personalBests,
+  earnedTrophies,
+} from "./playerCard";
+
+const NOW = new Date("2026-07-10T12:00:00Z");
+
+const mkLoad = (o: Partial<Load>): Load => ({
+  load_id: "l",
+  load_number: "L1",
+  load_type: "flatbed",
+  load_status: "delivered",
+  broker_id: "b",
+  broker: "Broker",
+  agent_id: "ag1",
+  agent: "Redwood",
+  agent_email: null,
+  pickup_date: "2026-05-01",
+  origin_market_id: "o",
+  origin_city: "Dallas",
+  origin_state: "TX",
+  origin_market: "Dallas",
+  destination_market_id: "d",
+  destination_city: "Atlanta",
+  destination_state: "GA",
+  delivery_market: "Atlanta",
+  deadhead_miles: 0,
+  loaded_miles: 1000,
+  linehaul: "3000",
+  fuel_surcharge: "0",
+  total_accessorials: "0",
+  commodity: null,
+  payment_status: "paid",
+  created_at: "2026-05-01",
+  updated_at: "2026-05-01",
+  ...o,
+});
+
+const mkPeriod = (
+  month: string,
+  income: number,
+  cogs: number,
+  expense: number,
+): ExpensePeriod =>
+  ({
+    period_month: month,
+    income_total: income,
+    cogs_total: cogs,
+    expense_total: expense,
+  }) as ExpensePeriod;
+
+describe("careerRank", () => {
+  it("places 582k as Road Captain climbing to Highway Legend", () => {
+    const r = careerRank(582450);
+    expect(r.name).toBe("Road Captain");
+    expect(r.next?.name).toBe("Highway Legend");
+    expect(r.pct).toBeCloseTo(0.165, 2);
+  });
+  it("a newcomer is a Rookie", () => {
+    expect(careerRank(40000).name).toBe("Rookie");
+  });
+  it("tops out at Highway Legend with no next", () => {
+    const r = careerRank(1_200_000);
+    expect(r.name).toBe("Highway Legend");
+    expect(r.next).toBeNull();
+    expect(r.pct).toBe(1);
+  });
+});
+
+describe("grades", () => {
+  it("marginGrade bands at 8/17/27", () => {
+    expect(marginGrade(0.3)).toBe("strong");
+    expect(marginGrade(0.27)).toBe("strong");
+    expect(marginGrade(0.2)).toBe("target");
+    expect(marginGrade(0.1)).toBe("minimum");
+    expect(marginGrade(0.05)).toBe("below");
+    expect(marginGrade(null)).toBeNull();
+  });
+  it("rpmGrade rides the rate ladder", () => {
+    const ladder = { walkAway: 4, minimum: 4.6, target: 5.4, strong: 6.4 };
+    expect(rpmGrade(6.5, ladder)).toBe("strong");
+    expect(rpmGrade(5.5, ladder)).toBe("target");
+    expect(rpmGrade(4.2, ladder)).toBe("minimum");
+    expect(rpmGrade(3.5, ladder)).toBe("below");
+    expect(rpmGrade(null, ladder)).toBeNull();
+  });
+  it("worseGrade takes the lower, tolerating nulls", () => {
+    expect(worseGrade("strong", "target")).toBe("target");
+    expect(worseGrade("below", "strong")).toBe("below");
+    expect(worseGrade(null, "target")).toBe("target");
+    expect(worseGrade(null, null)).toBeNull();
+  });
+});
+
+describe("getSeasonStats", () => {
+  const periods = [
+    mkPeriod("2026-04-01", 22698.78, 6896.44, 12337.67),
+    mkPeriod("2026-05-01", 28833.36, 5776.47, 13258.66),
+    mkPeriod("2026-06-01", 27814.70, 4127.62, 18175.65),
+    mkPeriod("2026-07-01", 9999, 0, 0), // in-progress month — excluded
+  ];
+  const loads = [
+    mkLoad({ load_id: "a", delivery_date: "2026-05-12", loaded_miles: 1000, deadhead_miles: 100, linehaul: "3200", odometer_start: 570000, odometer_end: 571200, origin_market: "Dallas", delivery_market: "Atlanta" }),
+    mkLoad({ load_id: "b", delivery_date: "2026-06-15", loaded_miles: 800, deadhead_miles: 200, linehaul: "2600", odometer_start: 572000, odometer_end: 573100, origin_market: "Houston", delivery_market: "Memphis" }),
+    mkLoad({ load_id: "c", delivery_date: "2026-07-05", loaded_miles: 500, linehaul: "9999" }), // in-progress month — excluded
+  ];
+
+  it("blends the 3 complete months, excludes the in-progress one", () => {
+    const s = getSeasonStats(periods, loads, NOW);
+    expect(s.months).toBe(3);
+    expect(s.netRevenue).toBeCloseTo(79346.84, 2);
+    expect(s.netMargin).toBeCloseTo(0.2366, 3);
+    expect(s.loads).toBe(2);
+    expect(s.label).toBe("Apr–Jun 2026");
+  });
+  it("computes deadhead, avg rpm, and best lane over the window", () => {
+    const s = getSeasonStats(periods, loads, NOW);
+    expect(s.avgRpm).toBeCloseTo((3200 + 2600) / 1800, 3);
+    expect(s.deadheadPct).toBeCloseTo(300 / 2100, 3);
+    expect(s.bestLane?.lane).toBe("Dallas → Atlanta");
+  });
+});
+
+describe("personalBests", () => {
+  const fuel = [
+    { odometer_reading: 570368, gallons: 131.91, price_per_gallon: 4.639, fuel_date: "2026-05-24" },
+    { odometer_reading: 570967, gallons: 79.78, price_per_gallon: 4.589, fuel_date: "2026-05-26" },
+    { odometer_reading: 571651, gallons: 114.425, price_per_gallon: 4.462, fuel_date: "2026-05-28" },
+    { odometer_reading: 572503, gallons: 135.1, price_per_gallon: 4.322, fuel_date: "2026-05-30" },
+  ] as unknown as FuelEntry[];
+
+  it("finds best week, biggest load, most loads/week, lowest deadhead", () => {
+    const loads = [
+      mkLoad({ load_id: "a", delivery_date: "2026-05-12", linehaul: "3200", loaded_miles: 1000, deadhead_miles: 100 }),
+      mkLoad({ load_id: "c", delivery_date: "2026-05-13", linehaul: "1000", loaded_miles: 500, deadhead_miles: 50 }),
+      mkLoad({ load_id: "b", delivery_date: "2026-06-15", linehaul: "2600", loaded_miles: 800, deadhead_miles: 200 }),
+    ];
+    const pb = personalBests(loads, fuel, NOW);
+    expect(pb.bestWeekRevenue).toBeCloseTo(4200, 2);
+    expect(pb.mostLoadsInWeek).toBe(2);
+    expect(pb.biggestLoad).toBeCloseTo(3200, 2);
+    expect(pb.lowestDeadheadPct).toBeCloseTo(150 / 1650, 3);
+    expect(pb.bestMpg).toBeCloseTo(6.483, 2);
+  });
+});
+
+describe("earnedTrophies", () => {
+  it("awards mile club, relationship, century, strong season, feather foot", () => {
+    const loads = Array.from({ length: 100 }, (_, i) =>
+      mkLoad({ load_id: `x${i}`, agent_id: "ag1", agent: "Redwood" }),
+    );
+    const t = earnedTrophies({ lifetimeMiles: 582450, loads, bestMpg: 6.5, seasonMargin: "strong" });
+    const keys = t.map((x) => x.key);
+    expect(keys).toContain("mileclub");
+    expect(keys).toContain("relationship");
+    expect(keys).toContain("century");
+    expect(keys).toContain("strong-season");
+    expect(keys).toContain("feather-foot");
+    expect(t.find((x) => x.key === "mileclub")?.name).toBe("500K Club");
+  });
+});
