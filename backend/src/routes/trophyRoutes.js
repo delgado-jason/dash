@@ -5,6 +5,7 @@ import {
   upsertTrophy,
   deleteTrophy,
 } from "../services/trophyServices.js";
+import { generateTrophyImage } from "../services/trophyImageService.js";
 
 const router = express.Router();
 router.use(requireAuth);
@@ -32,6 +33,21 @@ router.put("/:trophy_key", async (req, res) => {
   try {
     const trophy = await upsertTrophy(req.user.user_id, req.params.trophy_key, req.body);
     return res.status(200).json({ message: "Trophy saved", trophy });
+  } catch (err) {
+    return handle(err, res);
+  }
+});
+
+// ---- GENERATE a preview image (fal) ----
+router.post("/:trophy_key/generate", async (req, res) => {
+  try {
+    const result = await generateTrophyImage(
+      req.user.user_id,
+      req.params.trophy_key,
+      req.body.prompt,
+      req.body.wide === true,
+    );
+    return res.status(200).json({ message: "Generated", ...result });
   } catch (err) {
     return handle(err, res);
   }

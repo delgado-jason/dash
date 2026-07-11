@@ -13,6 +13,7 @@ export const TROPHY_KEYS = [
   "second-truck",
   "five-truck-fleet",
   "one-million-hauled",
+  "hall-background", // not a trophy — stores the generated hall backdrop
 ];
 
 export const isTrophyKey = (k) => TROPHY_KEYS.includes(k);
