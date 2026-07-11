@@ -41,6 +41,7 @@ const nav: Entry[] = [
       { to: "/fuel-entries", label: "Fuel" },
     ],
   },
+  { to: "/compliance", label: "Compliance" },
   { to: "/expenses", label: "Expenses" },
   { to: "/guide", label: "Guide" },
 ];

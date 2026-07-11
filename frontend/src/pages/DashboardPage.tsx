@@ -22,6 +22,7 @@ import {
 } from "@/lib/metrics/agentLeaderboard";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
+import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { RpmChart } from "@/components/RpmChart";
@@ -65,7 +66,7 @@ const DashboardPage = () => {
     error: tripsError,
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
-  const alerts = useMaintenanceAlerts(loads);
+  const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
 
   const isLoading = loadsLoading || tripsLoading;
   const error = loadsError || tripsError;
