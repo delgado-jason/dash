@@ -16,13 +16,13 @@ const thisWeekLine = (
 ): { text: string; color: string } => {
   switch (s) {
     case "target":
-      return { text: "On pace — you're beating target this week.", color: "#4ade80" };
+      return { text: "You've beaten your weekly target — nice run.", color: "#4ade80" };
     case "breakeven":
-      return { text: "Covering costs — a stronger load beats target.", color: "#e8940a" };
+      return { text: "Covering the floor — a bit more freight beats target.", color: "#e8940a" };
     case "below":
-      return { text: "Below break-even this week.", color: "#f87171" };
+      return { text: "Below your weekly floor so far.", color: "#f87171" };
     default:
-      return { text: "No loads logged this week yet.", color: "#9daabb" };
+      return { text: "No freight booked this week yet.", color: "#9daabb" };
   }
 };
 
