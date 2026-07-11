@@ -181,3 +181,24 @@
   border: none !important;
   box-shadow: none !important;
 }
+
+/* --- Award pop animations (player card celebration layer) --- */
+@keyframes award-pop {
+  from { transform: scale(0.82) translateY(10px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes award-shine {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
+}
+@keyframes award-spin { to { transform: rotate(360deg); } }
+@keyframes award-fall { to { transform: translateY(240px) rotate(320deg); opacity: 0.2; } }
+@keyframes award-press {
+  0% { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+  60% { transform: scale(1.06) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes award-toast-in {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
