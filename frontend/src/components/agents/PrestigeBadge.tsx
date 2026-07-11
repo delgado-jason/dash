@@ -10,9 +10,11 @@ export const PRESTIGE_META: Record<
 > = {
   rookie: { label: "", fill: "", ink: "", icon: null },
   contender: { label: "Contender", fill: "#c77b3e", ink: "#2a1a0a", icon: ChevronUp },
-  "all-star": { label: "All-Star", fill: "#c3cad6", ink: "#1a2030", icon: Star },
+  "all-star": { label: "All-Star", fill: "#aeb8c7", ink: "#141a26", icon: Star },
   champion: { label: "Champion", fill: "#f5b03a", ink: "#3a2400", icon: Crown },
-  legend: { label: "Legend", fill: "#dbe3f0", ink: "#1a2030", icon: Flame },
+  // Legend renders as a holographic foil (below) — this fill is only its label
+  // colour. Foil + a slightly larger emblem mark it unmistakably as the top tier.
+  legend: { label: "Legend", fill: "#cbb6ff", ink: "#241a36", icon: Flame },
 };
 
 const POINTS =
@@ -32,12 +34,26 @@ export const PrestigeBurst = ({
   const m = PRESTIGE_META[tier];
   if (!m.icon) return null;
   const Icon = m.icon;
+  const isLegend = tier === "legend";
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size, transform: isLegend ? "scale(1.06)" : undefined }}
+    >
       <svg viewBox="0 0 60 60" width={size} height={size} className="block">
+        {isLegend && (
+          <defs>
+            <linearGradient id="prestige-foil" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#f7d774" />
+              <stop offset="34%" stopColor="#ef7ea4" />
+              <stop offset="67%" stopColor="#9b8cf0" />
+              <stop offset="100%" stopColor="#5ecbe0" />
+            </linearGradient>
+          </defs>
+        )}
         <polygon
           points={POINTS}
-          fill={m.fill}
+          fill={isLegend ? "url(#prestige-foil)" : m.fill}
           stroke="#0a0d13"
           strokeWidth={2.4}
         />
