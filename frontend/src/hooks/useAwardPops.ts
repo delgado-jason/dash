@@ -9,6 +9,7 @@ import { getFuelEntries } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
 import { getObligations } from "@/services/obligationsService";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
+import { computeGrind } from "@/lib/metrics/grind";
 import { earnedAwards, newAwards, type Award } from "@/lib/metrics/awards";
 
 // Per-device "seen" store. Earned-award facts are objective (computed from data);
@@ -72,6 +73,10 @@ export const useAwardPops = (loads: Load[]): { pops: Award[] } => {
     const obligationsDebtMonthly = data.obligations
       .filter((o) => o.active && !o.is_draw)
       .reduce((s, o) => s + Number(o.amount), 0);
+    const obligationsAllActive = data.obligations
+      .filter((o) => o.active)
+      .reduce((s, o) => s + Number(o.amount), 0);
+    const grind = computeGrind(loads, data.periods, obligationsAllActive, now);
 
     const earned = earnedAwards({
       loads,
@@ -79,6 +84,7 @@ export const useAwardPops = (loads: Load[]): { pops: Award[] } => {
       fuel: data.fuel,
       lifetimeMiles,
       obligationsDebtMonthly,
+      streak: grind.currentStreak,
       now,
     });
     const currentIds = earned.map((a) => a.id);
