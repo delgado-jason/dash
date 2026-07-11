@@ -12,7 +12,7 @@ export const RatingStamp = ({ rating }: { rating?: number | null }) => {
   const s = rating ? STAMP[rating] : { label: "Unrated", color: "#9daabb" };
   return (
     <div
-      className="inline-block px-3.5 py-1 rotate-[-6deg] font-condensed font-semibold uppercase text-xl rounded"
+      className="inline-block px-4 py-1 rotate-[-6deg] font-comic uppercase text-2xl rounded"
       style={{
         border: `3px double ${s.color}`,
         color: s.color,
