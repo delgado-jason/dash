@@ -201,9 +201,18 @@ export const PlayerCard = ({
       </div>
 
       {/* ---- season stat line ---- */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+      <div className="flex items-baseline gap-2 mt-5 mb-2">
+        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+          THIS SEASON
+        </span>
+        <span className="text-[11px] text-muted-text">
+          · {season.label} · your last 3 complete months
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Stat label="Net revenue" value={money0(season.netRevenue)} />
         <Stat label="Net profit" value={money0(season.netProfit)} color="#4ade80" />
+        <Stat label="Net margin" value={season.netMargin != null ? pct1(season.netMargin) : "—"} />
         <Stat label="Loads" value={String(season.loads)} />
         <Stat label="Miles" value={Math.round(season.totalMiles).toLocaleString("en-US")} />
         <Stat label="Deadhead" value={season.deadheadPct != null ? pct1(season.deadheadPct) : "—"} />
