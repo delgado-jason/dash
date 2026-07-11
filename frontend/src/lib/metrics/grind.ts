@@ -1,19 +1,23 @@
 // The grind meter — a week-over-week motivation layer. Each pay-week is graded
-// on the SAME rate ladder the dashboard uses: did your rate per loaded mile beat
-// target (green), just cover break-even (amber), or slip below (red)? A week you
-// delivered nothing is a home/neutral week (grey) — it doesn't count, but it
-// doesn't break your streak either. The streak is consecutive target-beating
-// weeks; home weeks are skipped.
+// on your WEEKLY GROSS PACE, the same lens the dashboard's "this week · booked"
+// card uses: did your booked/delivered freight beat your weekly target (green),
+// clear the break-even floor (amber), or fall short (red)? A week you moved no
+// freight is a home/neutral week (grey) — it doesn't count, but it doesn't break
+// your streak either. The streak is consecutive target-beating weeks.
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import {
   payWeekRange,
-  getWeekRpm,
-  getRateLadder,
+  getWeekBookedGross,
+  getGrossTargets,
   getCostBasis,
-  type RateLadder,
+  type GrossTargets,
 } from "./rateTargets";
-import { PAY_WEEK_START_DOW, RATE_TIERS } from "@/lib/constants/targets";
+import {
+  PAY_WEEK_START_DOW,
+  RATE_TIERS,
+  WORKING_DAYS_PER_MONTH,
+} from "@/lib/constants/targets";
 
 const WEEK_MS = 7 * 86400000;
 
@@ -22,7 +26,7 @@ export type WeekStatus = "target" | "breakeven" | "below" | "home";
 export interface GrindWeek {
   start: string; // 'YYYY-MM-DD'
   status: WeekStatus;
-  rpm: number | null;
+  gross: number;
 }
 
 export interface Grind {
@@ -30,14 +34,15 @@ export interface Grind {
   currentStreak: number; // consecutive target weeks (home skips, else breaks)
   bestStreak: number;
   thisWeek: WeekStatus; // the in-progress week
-  thisWeekRpm: number | null;
-  hasLadder: boolean; // false when there's no P&L to grade against
+  thisWeekGross: number;
+  hasLadder: boolean; // false when there's no P&L to build gross targets from
 }
 
-export const classify = (rpm: number | null, ladder: RateLadder): WeekStatus => {
-  if (rpm == null) return "home";
-  if (ladder.target != null && rpm >= ladder.target) return "target";
-  if (ladder.walkAway != null && rpm >= ladder.walkAway) return "breakeven";
+// Grade a week's gross against the weekly pace targets. Zero freight = home.
+export const classify = (gross: number, targets: GrossTargets): WeekStatus => {
+  if (gross <= 0) return "home";
+  if (targets.weeklyTarget != null && gross >= targets.weeklyTarget) return "target";
+  if (targets.weeklyBreakEven != null && gross >= targets.weeklyBreakEven) return "breakeven";
   return "below";
 };
 
@@ -75,18 +80,22 @@ export const computeGrind = (
   weeksToShow = 14,
 ): Grind => {
   const basis = getCostBasis(periods, obligationsMonthly, loads, now);
-  const ladder = getRateLadder(basis.breakEvenRpm, RATE_TIERS);
-  const hasLadder = ladder.walkAway != null && ladder.target != null;
+  const targets = getGrossTargets(
+    basis.trueMonthlyCost,
+    RATE_TIERS.target,
+    WORKING_DAYS_PER_MONTH,
+  );
+  const hasLadder = targets.weeklyTarget != null;
 
   const current = payWeekRange(now, PAY_WEEK_START_DOW);
-  const thisWeekRpm = getWeekRpm(loads, current.start, current.end);
-  const thisWeek: WeekStatus = hasLadder ? classify(thisWeekRpm, ladder) : "home";
+  const thisWeekGross = getWeekBookedGross(loads, current.start, current.end);
+  const thisWeek: WeekStatus = hasLadder ? classify(thisWeekGross, targets) : "home";
 
   const delivered = loads.filter(
     (l) => l.load_status === "delivered" && l.delivery_date,
   );
   if (!hasLadder || delivered.length === 0)
-    return { weeks: [], currentStreak: 0, bestStreak: 0, thisWeek, thisWeekRpm, hasLadder };
+    return { weeks: [], currentStreak: 0, bestStreak: 0, thisWeek, thisWeekGross, hasLadder };
 
   let earliest = delivered[0].delivery_date!;
   for (const l of delivered)
@@ -99,8 +108,8 @@ export const computeGrind = (
   const weeks: GrindWeek[] = [];
   for (let t = firstStart.getTime(); t < current.start.getTime(); t += WEEK_MS) {
     const ws = new Date(t);
-    const rpm = getWeekRpm(loads, ws, new Date(t + WEEK_MS));
-    weeks.push({ start: ws.toISOString().slice(0, 10), status: classify(rpm, ladder), rpm });
+    const gross = getWeekBookedGross(loads, ws, new Date(t + WEEK_MS));
+    weeks.push({ start: ws.toISOString().slice(0, 10), status: classify(gross, targets), gross });
     if (weeks.length > 200) break; // safety cap
   }
 
@@ -112,7 +121,7 @@ export const computeGrind = (
     currentStreak,
     bestStreak: Math.max(bestStreakOf(statuses), currentStreak),
     thisWeek,
-    thisWeekRpm,
+    thisWeekGross,
     hasLadder,
   };
 };

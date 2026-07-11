@@ -6,15 +6,20 @@ import {
   type WeekStatus,
 } from "./grind";
 
-const ladder = { walkAway: 4, minimum: 4.6, target: 6, strong: 6.4 };
+const targets = {
+  weeklyBreakEven: 5447,
+  weeklyTarget: 7353,
+  dailyBreakEven: null,
+  dailyTarget: null,
+};
 
 describe("classify", () => {
-  it("grades a week's rpm against the ladder", () => {
-    expect(classify(null, ladder)).toBe("home");
-    expect(classify(6.5, ladder)).toBe("target");
-    expect(classify(6, ladder)).toBe("target");
-    expect(classify(5, ladder)).toBe("breakeven");
-    expect(classify(3.5, ladder)).toBe("below");
+  it("grades a week's gross against the weekly pace targets", () => {
+    expect(classify(0, targets)).toBe("home");
+    expect(classify(9404, targets)).toBe("target"); // beat target
+    expect(classify(7353, targets)).toBe("target");
+    expect(classify(6000, targets)).toBe("breakeven"); // covered the floor
+    expect(classify(2600, targets)).toBe("below");
   });
 });
 
