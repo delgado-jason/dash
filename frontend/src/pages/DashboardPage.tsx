@@ -23,6 +23,9 @@ import {
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
+import { useAwardPops } from "@/hooks/useAwardPops";
+import { AwardPopHost } from "@/components/comic/AwardPopHost";
+import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { RevenueChart } from "@/components/RevenueChart";
 import { RpmChart } from "@/components/RpmChart";
@@ -67,6 +70,9 @@ const DashboardPage = () => {
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
+  const { pops } = useAwardPops(loads);
+  // `?awarddemo` on the dashboard previews the celebration UI on demand.
+  const awardDemo = window.location.search.includes("awarddemo");
 
   const isLoading = loadsLoading || tripsLoading;
   const error = loadsError || tripsError;
@@ -120,6 +126,8 @@ const DashboardPage = () => {
 
   return (
     <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} />
+
       <h1 className="text-3xl font-condensed mb-6">Dashboard</h1>
 
       <AlertBanners alerts={alerts} />
