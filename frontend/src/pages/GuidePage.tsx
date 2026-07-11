@@ -96,7 +96,9 @@ const GuidePage = () => (
       <Section title="Career rank">
         <p className="text-sm text-muted-text mb-4">
           Boards and trophies roll up into a single rank — the starburst in the
-          corner of the agent's card. It never clutters and only ever levels up.
+          corner of the agent's card. It never clutters and only ever levels up,
+          climbing bronze → silver → gold → the holographic{" "}
+          <span className="text-light">Legend</span> foil at the very top.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {TIERS.map(([tier, desc]) => (
@@ -104,7 +106,7 @@ const GuidePage = () => (
               <PrestigeBurst tier={tier} size={54} />
               <div>
                 <p
-                  className="font-condensed text-lg"
+                  className="font-comic text-lg"
                   style={{ color: PRESTIGE_META[tier].fill }}
                 >
                   {PRESTIGE_META[tier].label}
