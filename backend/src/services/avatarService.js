@@ -49,7 +49,7 @@ const buildPrompt = (kind, row, variant) => {
   );
 };
 
-const falGenerate = async (prompt) => {
+export const falGenerate = async (prompt, image_size = "square_hd") => {
   if (!FAL_API_KEY) throw new ValidationError("FAL_API_KEY is not configured");
   const res = await fetch(`https://fal.run/${FAL_MODEL}`, {
     method: "POST",
@@ -57,7 +57,7 @@ const falGenerate = async (prompt) => {
       Authorization: `Key ${FAL_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ prompt, image_size: "square_hd", num_images: 1 }),
+    body: JSON.stringify({ prompt, image_size, num_images: 1 }),
   });
   if (!res.ok)
     throw new Error(`Image generation failed (${res.status})`);
@@ -67,7 +67,7 @@ const falGenerate = async (prompt) => {
   return url;
 };
 
-const uploadToStorage = async (path, buffer, contentType) => {
+export const uploadToStorage = async (path, buffer, contentType) => {
   if (!SUPABASE_URL || !SERVICE_KEY)
     throw new ValidationError(
       "Avatar storage is not configured (set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)",

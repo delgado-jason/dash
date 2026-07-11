@@ -18,3 +18,14 @@ export const upsertTrophy = async (
 export const deleteTrophy = async (key: string): Promise<void> => {
   await api.delete(`/trophies/${key}`);
 };
+
+// Generate a preview image (fal) for a trophy or the hall background. Returns the
+// stored preview URL — not attached until you approve it via upsertTrophy.
+export const generateTrophyImage = async (
+  key: string,
+  prompt: string,
+  wide = false,
+): Promise<string> => {
+  const res = await api.post(`/trophies/${key}/generate`, { prompt, wide });
+  return res.data.image_url;
+};
