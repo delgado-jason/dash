@@ -4,6 +4,8 @@ import type { ExpensePeriod } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import {
   getCostBasis,
   getRateLadder,
@@ -26,16 +28,19 @@ import {
 export const useRateTargets = (loads: Load[]) => {
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
 
   useEffect(() => {
     let active = true;
     Promise.all([
       getExpensePeriods().catch(() => [] as ExpensePeriod[]),
       getObligations().catch(() => [] as Obligation[]),
-    ]).then(([ps, obs]) => {
+      getSettlementSchedule().catch(() => null),
+    ]).then(([ps, obs, sch]) => {
       if (!active) return;
       setPeriods(ps);
       setObligations(obs);
+      setSchedule(sch);
     });
     return () => {
       active = false;
@@ -61,6 +66,11 @@ export const useRateTargets = (loads: Load[]) => {
     const weekEarned = getWeekEarnedGross(loads, start, end); // delivered only
     const weekRpm = getWeekRpm(loads, start, end);
     const rollingRpm = getWindowRpm(loads, now);
+    // Your linehaul take (linehaul % + trailer %) grosses a net rate up to the
+    // full rate you must BOOK to clear it. 1 = no cut (own authority / unconfigured).
+    const linehaulTake = schedule
+      ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
+      : 1;
     return {
       basis,
       ladder,
@@ -69,9 +79,10 @@ export const useRateTargets = (loads: Load[]) => {
       weekEarned, // earned this week — delivered only; drives the "hit target" win
       weekRpm, // this week's blended rate — the ladder marker
       rollingRpm, // rolling 3-complete-month RPM — the Avg RPM KPI
+      linehaulTake, // net-rate → booked-rate gross-up factor
       weekStart: start,
       weekEnd: end,
       ready: basis.breakEvenRpm != null,
     };
-  }, [periods, obligationsMonthly, loads]);
+  }, [periods, obligationsMonthly, loads, schedule]);
 };

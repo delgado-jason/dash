@@ -142,6 +142,13 @@ export const getRateLadder = (
   };
 };
 
+// The full rate per loaded mile you must BOOK to net a given (net) rate, given
+// your linehaul take = linehaul % + trailer % (e.g. 0.73). Fuel surcharge and
+// accessorials come on top, so this is the conservative linehaul price to quote.
+// take >= 1 (own authority / unconfigured) → returns the net rate unchanged.
+export const bookedRate = (net: number | null, take: number): number | null =>
+  net == null || take <= 0 ? null : take >= 1 ? net : net / take;
+
 const WEEKS_PER_MONTH = 52 / 12;
 
 export interface GrossTargets {

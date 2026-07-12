@@ -89,7 +89,8 @@ export const RateTargetsCard = ({
   targets: Targets;
   rpm?: number | null; // "your rate" marker; defaults to the recent-window rate
 }) => {
-  const { ladder, gross, weekBooked, weekEarned, basis, ready } = targets;
+  const { ladder, gross, weekBooked, weekEarned, basis, ready, linehaulTake } =
+    targets;
   const markerRpm = rpm !== undefined ? rpm : basis.windowRpm;
   const committedAhead = Math.max(0, weekBooked - weekEarned);
   const beatTarget =
@@ -119,7 +120,15 @@ export const RateTargetsCard = ({
             <p className="text-xs text-muted-text mb-3">
               Net rate per loaded mile · marker = this week
             </p>
-            <RateLadder ladder={ladder} rpm={markerRpm} />
+            <RateLadder ladder={ladder} rpm={markerRpm} take={linehaulTake} />
+            {linehaulTake < 1 && (
+              <p className="text-[11px] text-muted-text mt-2">
+                <span style={{ color: "#e8940a" }}>book</span> = full linehaul
+                rate to quote to clear each tier (you keep{" "}
+                {Math.round(linehaulTake * 100)}% of the linehaul; fuel surcharge
+                is on top)
+              </p>
+            )}
           </div>
 
           <div>

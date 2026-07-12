@@ -7,6 +7,7 @@ import {
   completeMonthsBefore,
   getCostBasis,
   getRateLadder,
+  bookedRate,
   getGrossTargets,
   payWeekRange,
   getWeekBookedGross,
@@ -140,6 +141,18 @@ describe("getRateLadder", () => {
     const l = getRateLadder(null, { minimum: 0.15, target: 0.35, strong: 0.6 });
     expect(l.walkAway).toBeNull();
     expect(l.target).toBeNull();
+  });
+});
+
+describe("bookedRate", () => {
+  it("grosses a net rate up to the full booking rate by the linehaul take", () => {
+    expect(bookedRate(5.4, 0.73)).toBeCloseTo(7.397, 2); // 5.40 / 0.73
+    expect(bookedRate(4.1, 0.73)).toBeCloseTo(5.616, 2);
+  });
+  it("no gross-up at 100% take (own authority); null when net absent or take 0", () => {
+    expect(bookedRate(5, 1)).toBe(5);
+    expect(bookedRate(null, 0.73)).toBeNull();
+    expect(bookedRate(5, 0)).toBeNull();
   });
 });
 
