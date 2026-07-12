@@ -16,6 +16,8 @@ import {
 import { getCostBasis, getRateLadder } from "@/lib/metrics/rateTargets";
 import { RATE_TIERS } from "@/lib/constants/targets";
 import { RateLadder } from "@/components/dashboard/RateLadder";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
@@ -64,11 +66,16 @@ const ExpensesPage = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
 
   // Obligations live at the page level so the headline KPIs + chart can fold
   // them into true cost; the card just edits the list and calls this back.
   const reloadObligations = () =>
     getObligations().then(setObligations).catch(() => {});
+
+  useEffect(() => {
+    getSettlementSchedule().then(setSchedule).catch(() => {});
+  }, []);
   useEffect(() => {
     reloadObligations();
   }, []);
@@ -175,6 +182,9 @@ const ExpensesPage = () => {
     [periods, obligationsTotal, loads],
   );
   const rateLadder = getRateLadder(rateBasis.breakEvenRpm, RATE_TIERS);
+  const linehaulTake = schedule
+    ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
+    : 1;
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -264,10 +274,21 @@ const ExpensesPage = () => {
           {rateLadder.walkAway != null && (
             <div className="bg-plate rounded-lg p-4 mb-6">
               <p className="text-xs text-muted-text mb-3">
-                Rate targets · per loaded mile · last {rateBasis.months} complete
-                month{rateBasis.months > 1 ? "s" : ""}
+                Net rate per loaded mile · last {rateBasis.months} complete month
+                {rateBasis.months > 1 ? "s" : ""}
               </p>
-              <RateLadder ladder={rateLadder} rpm={rateBasis.windowRpm} />
+              <RateLadder
+                ladder={rateLadder}
+                rpm={rateBasis.windowRpm}
+                take={linehaulTake}
+              />
+              {linehaulTake < 1 && (
+                <p className="text-[11px] text-muted-text mt-2">
+                  <span style={{ color: "#e8940a" }}>book</span> = full linehaul
+                  rate to quote to clear each tier (you keep{" "}
+                  {Math.round(linehaulTake * 100)}% of the linehaul)
+                </p>
+              )}
             </div>
           )}
 
