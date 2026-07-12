@@ -1,0 +1,187 @@
+import { useEffect, useState } from "react";
+import {
+  getSettlementSchedule,
+  updateSettlementSchedule,
+} from "@/services/settlementScheduleService";
+
+const money = (n: number) =>
+  `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+// A sample load for the live preview, so the effect of the percentages is visible.
+const SAMPLE_LINEHAUL = 2000;
+const SAMPLE_FSC = 300;
+
+type Pcts = {
+  linehaul: number;
+  trailer: number;
+  fsc: number;
+  accessorial: number;
+};
+
+const Field = ({
+  label,
+  help,
+  value,
+  onChange,
+}: {
+  label: string;
+  help: string;
+  value: number;
+  onChange: (v: number) => void;
+}) => (
+  <label className="block">
+    <span className="text-sm text-light">{label}</span>
+    <div className="flex items-center gap-2 mt-1">
+      <input
+        type="number"
+        min={0}
+        max={200}
+        step={0.5}
+        value={Number.isFinite(value) ? value : ""}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+      />
+      <span className="text-muted-text">%</span>
+    </div>
+    <span className="text-xs text-muted-text mt-1 block">{help}</span>
+  </label>
+);
+
+const SettingsPage = () => {
+  const [pcts, setPcts] = useState<Pcts | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    getSettlementSchedule()
+      .then((s) =>
+        setPcts({
+          linehaul: s.linehaul_pct * 100,
+          trailer: s.trailer_pct * 100,
+          fsc: s.fuel_surcharge_pct * 100,
+          accessorial: s.accessorial_pct * 100,
+        }),
+      )
+      .catch(() => setErr("Couldn't load your settlement schedule."));
+  }, []);
+
+  const set = (k: keyof Pcts) => (v: number) => {
+    setMsg(null);
+    setPcts((p) => (p ? { ...p, [k]: v } : p));
+  };
+
+  const save = async () => {
+    if (!pcts) return;
+    setSaving(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      await updateSettlementSchedule({
+        linehaul_pct: pcts.linehaul / 100,
+        trailer_pct: pcts.trailer / 100,
+        fuel_surcharge_pct: pcts.fsc / 100,
+        accessorial_pct: pcts.accessorial / 100,
+      });
+      setMsg("Saved. Your revenue and targets now use this split.");
+    } catch (e) {
+      setErr(
+        (e as { response?: { data?: { error?: string } } })?.response?.data
+          ?.error || "Couldn't save — check the values and try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const gross = SAMPLE_LINEHAUL + SAMPLE_FSC;
+  const net = pcts
+    ? SAMPLE_LINEHAUL * ((pcts.linehaul + pcts.trailer) / 100) +
+      SAMPLE_FSC * (pcts.fsc / 100)
+    : gross;
+  const effLinehaul = pcts ? pcts.linehaul + pcts.trailer : 100;
+
+  return (
+    <div className="p-6 bg-iron text-light font-body min-h-screen">
+      <h1 className="text-3xl font-condensed">Settings</h1>
+
+      <div className="mt-6 max-w-[680px] bg-plate rounded-lg p-5">
+        <h2 className="text-lg font-medium text-light">Settlement schedule</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Your carrier's pay split. You keep entering each load's full customer
+          rate — this turns it into what your company actually grosses after the
+          carrier's cut. Revenue, RPM, and your rate targets all use it. Leave
+          everything at 100% if you run under your own authority.
+        </p>
+
+        {!pcts ? (
+          <p className="text-muted-text mt-5">Loading…</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
+              <Field
+                label="Linehaul"
+                help="Your base cut of the linehaul (Landstar BCO: 65%)."
+                value={pcts.linehaul}
+                onChange={set("linehaul")}
+              />
+              <Field
+                label="Trailer"
+                help="Extra % of linehaul for furnishing your trailer (flatbed: 8%)."
+                value={pcts.trailer}
+                onChange={set("trailer")}
+              />
+              <Field
+                label="Fuel surcharge"
+                help="Share of the fuel surcharge you keep (usually 100%)."
+                value={pcts.fsc}
+                onChange={set("fsc")}
+              />
+              <Field
+                label="Accessorials"
+                help="Default share of accessorial charges (tarp, detention, etc.)."
+                value={pcts.accessorial}
+                onChange={set("accessorial")}
+              />
+            </div>
+
+            <div
+              className="mt-5 rounded-lg p-4 flex flex-wrap items-center gap-x-6 gap-y-2"
+              style={{ background: "#0d1119" }}
+            >
+              <div className="text-sm text-muted-text">
+                Effective linehaul take{" "}
+                <span className="text-amber font-semibold">
+                  {effLinehaul.toFixed(0)}%
+                </span>
+              </div>
+              <div className="text-sm text-muted-text">
+                Sample: {money(SAMPLE_LINEHAUL)} linehaul + {money(SAMPLE_FSC)}{" "}
+                FSC ={" "}
+                <span className="line-through">{money(gross)}</span>{" "}
+                <span className="text-status-positive-text font-semibold">
+                  {money(net)} net
+                </span>
+              </div>
+            </div>
+
+            {msg && (
+              <p className="text-status-positive-text text-sm mt-4">{msg}</p>
+            )}
+            {err && <p className="text-destructive text-sm mt-4">{err}</p>}
+
+            <button
+              onClick={save}
+              disabled={saving}
+              className="mt-4 bg-amber text-steel px-4 py-2 rounded font-semibold disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save schedule"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SettingsPage;

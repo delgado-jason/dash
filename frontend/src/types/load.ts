@@ -25,6 +25,12 @@ export interface Load {
   linehaul: string;
   fuel_surcharge: string;
   total_accessorials: string;
+  // Full customer rate (gross) and the owner-op's take after the settlement
+  // schedule (net = their company gross). Both computed server-side; numeric →
+  // string. Optional: absent on locally-built loads / fixtures, where the metrics
+  // fall back to the linehaul+FSC+accessorials sum.
+  gross_revenue?: string;
+  net_revenue?: string;
   commodity: string | null;
   weight?: number | null;
   dimensions?: string | null;

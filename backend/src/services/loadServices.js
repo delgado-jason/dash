@@ -36,6 +36,15 @@ export async function getLoads(user_id) {
               FROM accessorials
               WHERE load_id = loads.load_id
             ) AS total_accessorials,
+            linehaul + fuel_surcharge
+              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = loads.load_id)
+              AS gross_revenue,
+            ROUND(
+              linehaul * (COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
+              + fuel_surcharge * COALESCE(ss.fuel_surcharge_pct, 1)
+              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = loads.load_id)
+                * COALESCE(ss.accessorial_pct, 1)
+            , 2) AS net_revenue,
             commodity,
             weight,
             dimensions,
@@ -56,6 +65,8 @@ export async function getLoads(user_id) {
         ON loads.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
         ON loads.destination_market_id = destination_market.market_id
+        LEFT JOIN settlement_schedules AS ss
+        ON ss.user_id = loads.user_id
         WHERE loads.user_id = $1
         ORDER BY pickup_date DESC;
     `;
@@ -101,6 +112,15 @@ export async function getLoad(user_id, load_id) {
               FROM accessorials
               WHERE load_id = l.load_id
             ) AS total_accessorials,
+            linehaul + fuel_surcharge
+              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
+              AS gross_revenue,
+            ROUND(
+              linehaul * (COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
+              + fuel_surcharge * COALESCE(ss.fuel_surcharge_pct, 1)
+              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
+                * COALESCE(ss.accessorial_pct, 1)
+            , 2) AS net_revenue,
             commodity,
             weight,
             dimensions,
@@ -130,6 +150,8 @@ export async function getLoad(user_id, load_id) {
         ON l.driver_id = drv.driver_id
         LEFT JOIN trailers AS trl
         ON l.trailer_id = trl.trailer_id
+        LEFT JOIN settlement_schedules AS ss
+        ON ss.user_id = l.user_id
         WHERE l.user_id = $1
         AND load_id = $2;
     `;
