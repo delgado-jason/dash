@@ -82,16 +82,17 @@ const TargetBurst = () => (
   </span>
 );
 
-export const RateTargetsCard = ({
-  targets,
-  rpm,
-}: {
-  targets: Targets;
-  rpm?: number | null; // "your rate" marker; defaults to the recent-window rate
-}) => {
-  const { ladder, gross, weekBooked, weekEarned, basis, ready, linehaulTake } =
-    targets;
-  const markerRpm = rpm !== undefined ? rpm : basis.windowRpm;
+export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
+  const {
+    bookingLadder,
+    grossRate,
+    gross,
+    weekBooked,
+    weekEarned,
+    basis,
+    ready,
+    linehaulTake,
+  } = targets;
   const committedAhead = Math.max(0, weekBooked - weekEarned);
   const beatTarget =
     gross.weeklyTarget != null &&
@@ -118,17 +119,14 @@ export const RateTargetsCard = ({
         <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr_1fr] gap-6">
           <div>
             <p className="text-xs text-muted-text mb-3">
-              Net rate per loaded mile · marker = this week
+              Rate to book · gross $/mile driven · marker = your rate
             </p>
-            <RateLadder ladder={ladder} rpm={markerRpm} take={linehaulTake} />
-            {linehaulTake < 1 && (
-              <p className="text-[11px] text-muted-text mt-2">
-                <span style={{ color: "#e8940a" }}>book</span> = full linehaul
-                rate to quote to clear each tier (you keep{" "}
-                {Math.round(linehaulTake * 100)}% of the linehaul; fuel surcharge
-                is on top)
-              </p>
-            )}
+            <RateLadder ladder={bookingLadder} rpm={grossRate} />
+            <p className="text-[11px] text-muted-text mt-2">
+              walk-away = your cost/mile ÷ your{" "}
+              {Math.round(linehaulTake * 100)}% keep. Book above it — with your
+              deadhead in the miles — and you clear cost.
+            </p>
           </div>
 
           <div>

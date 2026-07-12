@@ -71,15 +71,25 @@ export const useRateTargets = (loads: Load[]) => {
     const linehaulTake = schedule
       ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
       : 1;
+    // The booking ladder is in Jason's terms: GROSS rate to book, per mile DRIVEN
+    // (deadhead already folded into total miles) = cost-per-total-mile ÷ your keep,
+    // then scaled by the tiers. The marker is your actual gross rate per mile.
+    const bookingBase =
+      basis.costPerTotalMile != null && linehaulTake > 0
+        ? basis.costPerTotalMile / linehaulTake
+        : null;
+    const bookingLadder = getRateLadder(bookingBase, RATE_TIERS);
     return {
       basis,
       ladder,
       gross,
       weekBooked, // committed this week — booked + in-transit + delivered
       weekEarned, // earned this week — delivered only; drives the "hit target" win
-      weekRpm, // this week's blended rate — the ladder marker
+      weekRpm, // this week's blended rate
       rollingRpm, // rolling 3-complete-month RPM — the Avg RPM KPI
-      linehaulTake, // net-rate → booked-rate gross-up factor
+      linehaulTake,
+      bookingLadder, // gross rate to book per mile driven (walk-away/target/strong)
+      grossRate: basis.grossPerTotalMile, // your actual gross rate/mile — the marker
       weekStart: start,
       weekEnd: end,
       ready: basis.breakEvenRpm != null,
