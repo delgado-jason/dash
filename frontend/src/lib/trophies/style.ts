@@ -12,22 +12,24 @@ const CORE =
   "tone (noir, not cartoonish)";
 
 // Per-trophy suffix — prefix each catalog subject with this for the full prompt.
+// Image models can't spell, so every subject is a wordless SYMBOL and this style
+// hard-forbids lettering — the app renders all text (names, numbers) over the art.
 export const TROPHY_STYLE =
-  `${CORE}, gleaming gold, brass and amber, a single heroic trophy centered and ` +
-  "isolated on a plain near-black background, museum trophy product shot, no text, no watermark";
+  `${CORE}, gleaming gold, brass, chrome and amber, a bold emblematic hero symbol ` +
+  "centered and isolated on a plain near-black background, dramatic single-spotlight " +
+  "insignia, rich and iconic — absolutely no text, no words, no letters, no numbers, " +
+  "no lettering, no typography, no signage, no watermark, no captions";
 
 export const trophyPrompt = (subject: string): string => `${subject} — ${TROPHY_STYLE}`;
 
-// The hall background is just the ROOM — the trophies stand on pedestals the page
-// places over the open foreground floor, so all of them stay visible at full size.
-// A wide, front-on view (not a deep receding corridor) keeps that floor open. It
-// includes the two empty forward-facing frames the page composites the driver
-// (left) and truck (right) avatars into.
+// The hall background is just the empty ROOM. The page hangs the driver + truck
+// portraits in its own gold frames on the walls (always aligned), and stands the
+// trophies over the floor — so the AI must NOT draw its own frames or pedestals.
+// A wide, front-on view with a low horizon keeps the walls and floor open.
 export const HALL_PROMPT =
   "An empty grand trucking hall of fame gallery, wide eye-level frontal view with a " +
-  "low horizon and a broad open polished stone floor across the foreground, deep " +
+  "low horizon and a broad open polished stone floor across the foreground, tall deep " +
   "steel-blue walls with subtle oversize-freight motifs (chains, flatbed silhouettes), " +
-  "warm amber spotlights washing down the walls, a large emblem centered on the back " +
-  "wall, two large ornate empty gold picture frames mounted flat and facing forward — " +
-  `one on the left wall, one on the right wall, at eye level — ${CORE}, moody cinematic ` +
-  "rim lighting, no pedestals, no people, no text";
+  "warm amber spotlights washing down the walls, a large emblem centered high on the " +
+  `back wall — ${CORE}, moody cinematic rim lighting, no picture frames, no pedestals, ` +
+  "no people, no text";

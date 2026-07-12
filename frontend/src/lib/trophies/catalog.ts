@@ -1,7 +1,8 @@
 // The locked catalog of the Trophy Room — the major, once-in-a-career milestones.
 // `kind` = how it's earned: manual (you mark it — the app can't detect it),
 // auto (computed from data), capstone (Highway Legend, derived from the others).
-// `promptIdea` seeds the AI art we generate + sign off on per trophy.
+// `promptIdea` seeds the AI art we generate + sign off on per trophy — kept as a
+// wordless SYMBOL (no text/numbers, which image models mangle); the app draws all text.
 export type TrophyForm = "medallion" | "plaque" | "cup" | "belt" | "star";
 export type TrophyKind = "manual" | "auto" | "capstone";
 
@@ -21,7 +22,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "medallion",
     kind: "manual",
     blurb: "The origin — you went out on your own.",
-    promptIdea: "keys to your first rig; a lone flatbed pulling out of the yard at dawn",
+    promptIdea:
+      "a lone flatbed semi truck pulling out of an empty yard at first light, the long open road ahead",
   },
   {
     key: "own-authority",
@@ -29,7 +31,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "star",
     kind: "manual",
     blurb: "Your own MC/DOT — off the lease.",
-    promptIdea: "your name on the door; an MC certificate sealed in gold",
+    promptIdea:
+      "a bold heraldic eagle spreading its wings over a gleaming shield badge, forged in gold and steel",
   },
   {
     key: "free-and-clear",
@@ -37,7 +40,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "belt",
     kind: "manual",
     blurb: "The truck note, paid off.",
-    promptIdea: "a semi with a snapped chain; PAID stamped across the title",
+    promptIdea:
+      "a heavy iron chain snapping apart in a shower of sparks across the grille of a proud semi truck",
   },
   {
     key: "trailer-paid-off",
@@ -45,7 +49,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "belt",
     kind: "manual",
     blurb: "The trailer, paid off.",
-    promptIdea: "a flatbed trailer wrapped in a gold 'paid' ribbon",
+    promptIdea:
+      "a massive golden padlock bursting open with a broken shackle, resting on a flatbed trailer in warm light",
   },
   {
     key: "second-driver",
@@ -53,7 +58,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "plaque",
     kind: "auto",
     blurb: "A second driver joins the outfit.",
-    promptIdea: "two drivers shoulder to shoulder at the truck",
+    promptIdea:
+      "two rugged truck drivers clasping hands shoulder to shoulder in front of a rig, headlights glowing behind them",
   },
   {
     key: "second-truck",
@@ -61,7 +67,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "plaque",
     kind: "auto",
     blurb: "A second truck in the fleet.",
-    promptIdea: "two rigs parked side by side under the lights",
+    promptIdea:
+      "two heavy flatbed rigs parked nose to nose under the lot lights at night, chrome gleaming",
   },
   {
     key: "five-truck-fleet",
@@ -69,7 +76,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "plaque",
     kind: "auto",
     blurb: "Five trucks rolling.",
-    promptIdea: "a lineup of five rigs, headlights on",
+    promptIdea:
+      "a heroic low-angle lineup of five heavy rigs in a row, headlights blazing into the dark",
   },
   {
     key: "million-mile-club",
@@ -77,7 +85,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "plaque",
     kind: "auto",
     blurb: "1,000,000 lifetime miles.",
-    promptIdea: "an odometer rolling past 1,000,000 on a brass plaque",
+    promptIdea:
+      "a lone highway stretching straight to a fiery sunset horizon, endless worn asphalt and centerline",
   },
   {
     key: "one-million-hauled",
@@ -85,7 +94,8 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "cup",
     kind: "auto",
     blurb: "$1,000,000 gross hauled.",
-    promptIdea: "a gold vault door with $1,000,000 across it",
+    promptIdea:
+      "a towering golden mountain of stacked freight crates and cargo on a flatbed, gleaming like treasure",
   },
   {
     key: "highway-legend",
