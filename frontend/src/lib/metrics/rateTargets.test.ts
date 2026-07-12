@@ -106,6 +106,10 @@ describe("getCostBasis", () => {
     expect(b.breakEvenRpm).toBeCloseTo(6.0, 5);
     // your rate = revenue (24k) / loaded (6000) = 4.00
     expect(b.windowRpm).toBeCloseTo(4.0, 5);
+    // cost per TOTAL mile (deadhead included) = 36k / 7500 = 4.80
+    expect(b.costPerTotalMile).toBeCloseTo(4.8, 5);
+    // your gross rate per total mile = gross (24k) / 7500 = 3.20
+    expect(b.grossPerTotalMile).toBeCloseTo(3.2, 5);
   });
 
   it("skips months with no P&L, keeping cost and miles aligned", () => {
@@ -125,6 +129,17 @@ describe("getCostBasis", () => {
     expect(b.months).toBe(0);
     expect(b.trueMonthlyCost).toBeNull();
     expect(b.breakEvenRpm).toBeNull();
+  });
+});
+
+describe("booking ladder (gross rate to book per mile driven)", () => {
+  it("walk-away = cost per total mile ÷ keep; tiers scale from there", () => {
+    // Jason: $3.17 cost/total mile ÷ 0.73 keep = $4.34 gross to book
+    const walkAway = 3.165 / 0.73;
+    const l = getRateLadder(walkAway, { minimum: 0.15, target: 0.35, strong: 0.6 });
+    expect(l.walkAway).toBeCloseTo(4.34, 2);
+    expect(l.target).toBeCloseTo(4.34 * 1.35, 1);
+    expect(l.strong).toBeCloseTo(4.34 * 1.6, 1);
   });
 });
 

@@ -175,7 +175,7 @@ const DashboardPage = () => {
 
       {/* Rate & pace targets */}
       <div className="mt-6">
-        <RateTargetsCard targets={targets} rpm={targets.weekRpm} />
+        <RateTargetsCard targets={targets} />
       </div>
 
       {/* The grind — weekly target-beating streak */}

@@ -59,16 +59,19 @@ const monthMiles = (loads: Load[], year: number, month: number) => {
     0,
   );
   const loaded = inMonth.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
-  const revenue = inMonth.reduce((s, l) => s + loadRevenue(l), 0);
-  return { total, loaded, revenue };
+  const revenue = inMonth.reduce((s, l) => s + loadRevenue(l), 0); // net
+  const gross = inMonth.reduce((s, l) => s + loadGross(l), 0); // full customer rate
+  return { total, loaded, revenue, gross };
 };
 
 export interface CostBasis {
   trueMonthlyCost: number | null; // avg monthly true cost over included months
   loadedMiles: number; // summed over included months
   totalMiles: number;
-  breakEvenRpm: number | null; // true cost ÷ loaded miles = the walk-away rate
-  windowRpm: number | null; // revenue ÷ loaded miles over the window (your rate)
+  breakEvenRpm: number | null; // true cost ÷ LOADED miles (net break-even/mile)
+  windowRpm: number | null; // net revenue ÷ loaded miles over the window
+  costPerTotalMile: number | null; // true cost ÷ TOTAL miles — cost per mile driven
+  grossPerTotalMile: number | null; // full gross ÷ TOTAL miles — your booked rate/mile
   months: number; // months with a P&L that were actually included
 }
 
@@ -92,6 +95,7 @@ export const getCostBasis = (
   let loaded = 0;
   let total = 0;
   let revenue = 0;
+  let grossRev = 0;
   let n = 0;
   for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
     const p = byKey.get(`${year}-${month}`);
@@ -102,6 +106,7 @@ export const getCostBasis = (
     loaded += m.loaded;
     total += m.total;
     revenue += m.revenue;
+    grossRev += m.gross;
   }
 
   return {
@@ -110,6 +115,8 @@ export const getCostBasis = (
     totalMiles: total,
     breakEvenRpm: loaded > 0 ? cost / loaded : null,
     windowRpm: loaded > 0 ? revenue / loaded : null,
+    costPerTotalMile: total > 0 ? cost / total : null,
+    grossPerTotalMile: total > 0 ? grossRev / total : null,
     months: n,
   };
 };

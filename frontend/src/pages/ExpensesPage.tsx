@@ -181,10 +181,16 @@ const ExpensesPage = () => {
     () => getCostBasis(periods, obligationsTotal, loads, new Date()),
     [periods, obligationsTotal, loads],
   );
-  const rateLadder = getRateLadder(rateBasis.breakEvenRpm, RATE_TIERS);
   const linehaulTake = schedule
     ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
     : 1;
+  // Booking ladder in Jason's terms: gross rate to book per mile driven =
+  // cost-per-total-mile ÷ keep, scaled by tiers. Marker = actual gross rate/mile.
+  const bookingBase =
+    rateBasis.costPerTotalMile != null && linehaulTake > 0
+      ? rateBasis.costPerTotalMile / linehaulTake
+      : null;
+  const rateLadder = getRateLadder(bookingBase, RATE_TIERS);
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -274,21 +280,15 @@ const ExpensesPage = () => {
           {rateLadder.walkAway != null && (
             <div className="bg-plate rounded-lg p-4 mb-6">
               <p className="text-xs text-muted-text mb-3">
-                Net rate per loaded mile · last {rateBasis.months} complete month
-                {rateBasis.months > 1 ? "s" : ""}
+                Rate to book · gross $/mile driven · last {rateBasis.months}{" "}
+                complete month{rateBasis.months > 1 ? "s" : ""}
               </p>
-              <RateLadder
-                ladder={rateLadder}
-                rpm={rateBasis.windowRpm}
-                take={linehaulTake}
-              />
-              {linehaulTake < 1 && (
-                <p className="text-[11px] text-muted-text mt-2">
-                  <span style={{ color: "#e8940a" }}>book</span> = full linehaul
-                  rate to quote to clear each tier (you keep{" "}
-                  {Math.round(linehaulTake * 100)}% of the linehaul)
-                </p>
-              )}
+              <RateLadder ladder={rateLadder} rpm={rateBasis.grossPerTotalMile} />
+              <p className="text-[11px] text-muted-text mt-2">
+                walk-away = your cost/mile ÷ your{" "}
+                {Math.round(linehaulTake * 100)}% keep. Book above it with your
+                deadhead folded into the miles and you clear cost.
+              </p>
             </div>
           )}
 
