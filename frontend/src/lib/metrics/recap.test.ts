@@ -47,6 +47,7 @@ describe("computeRecap", () => {
     const r = computeRecap(loads, [] as FuelEntry[], periods, 0, rangeFor("year", 2026, 0), "year", NOW);
     expect(r.gross).toBe(5800);
     expect(r.loadedMiles).toBe(1800);
+    expect(r.totalMiles).toBe(1800); // no odometers → falls back to loaded miles
     expect(r.states).toBe(3); // TX, GA, TN — prior-year CA/NV excluded
     expect(r.loads).toBe(2);
     expect(r.biggestLoad).toBe(3200);
@@ -54,6 +55,19 @@ describe("computeRecap", () => {
     expect(r.avgRpm).toBeCloseTo(5800 / 1800, 3);
     expect(r.topLane).toBe("Dallas → Atlanta");
     expect(r.topAgent).toBe("Redwood");
+  });
+
+  it("counts total (odometer) miles incl. deadhead, loaded only for RPM", () => {
+    const withOdo = [
+      // 700 driven (200 deadhead) on 500 loaded
+      L({ load_id: "x", delivery_date: "2026-06-05", linehaul: "1000", loaded_miles: 500, odometer_start: 1000, odometer_end: 1700 }),
+      // no odometer readings → total falls back to its 400 loaded miles
+      L({ load_id: "y", delivery_date: "2026-06-20", linehaul: "1200", loaded_miles: 400 }),
+    ];
+    const r = computeRecap(withOdo, [] as FuelEntry[], [], 0, rangeFor("year", 2026, 0), "year", NOW);
+    expect(r.totalMiles).toBe(1100); // 700 + 400
+    expect(r.loadedMiles).toBe(900); // 500 + 400
+    expect(r.avgRpm).toBeCloseTo(2200 / 900, 3); // RPM stays on loaded miles
   });
 
   it("rolls up P&L with best / hardest month", () => {

@@ -10,6 +10,7 @@ import {
   getGrossTargets,
   payWeekRange,
   getWeekBookedGross,
+  getWeekEarnedGross,
   getWeekRpm,
   getWindowRpm,
 } from "@/lib/metrics/rateTargets";
@@ -56,14 +57,16 @@ export const useRateTargets = (loads: Load[]) => {
       WORKING_DAYS_PER_MONTH,
     );
     const { start, end } = payWeekRange(now, PAY_WEEK_START_DOW);
-    const weekBooked = getWeekBookedGross(loads, start, end);
+    const weekBooked = getWeekBookedGross(loads, start, end); // committed (all non-cancelled)
+    const weekEarned = getWeekEarnedGross(loads, start, end); // delivered only
     const weekRpm = getWeekRpm(loads, start, end);
     const rollingRpm = getWindowRpm(loads, now);
     return {
       basis,
       ladder,
       gross,
-      weekBooked,
+      weekBooked, // committed this week — booked + in-transit + delivered
+      weekEarned, // earned this week — delivered only; drives the "hit target" win
       weekRpm, // this week's blended rate — the ladder marker
       rollingRpm, // rolling 3-complete-month RPM — the Avg RPM KPI
       weekStart: start,
