@@ -106,7 +106,7 @@ export const RecapPoster = ({
 
         <div className="flex gap-2 mb-2.5">
           <Hero value={kMoney(stats.gross)} label="HAULED" color="#4ade80" />
-          <Hero value={num(stats.loadedMiles)} label="MILES" color="#f5b03a" />
+          <Hero value={num(stats.totalMiles)} label="MILES" color="#f5b03a" />
           <Hero value={String(stats.states)} label="STATES" color="#60a5fa" />
         </div>
 

@@ -22,7 +22,7 @@ const thisWeekLine = (
     case "below":
       return { text: "Below your weekly floor so far.", color: "#f87171" };
     default:
-      return { text: "No freight booked this week yet.", color: "#9daabb" };
+      return { text: "Nothing delivered yet this week.", color: "#9daabb" };
   }
 };
 

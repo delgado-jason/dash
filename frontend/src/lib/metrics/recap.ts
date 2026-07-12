@@ -80,7 +80,8 @@ export interface RecapStats {
   scope: RecapScope;
   label: string;
   gross: number;
-  loadedMiles: number;
+  totalMiles: number; // odometer miles (loaded + deadhead) — the headline "miles"
+  loadedMiles: number; // paid miles only — kept for RPM (revenue ÷ loaded)
   states: number;
   loads: number;
   bestWeek: number | null;
@@ -109,6 +110,14 @@ export const computeRecap = (
 
   const gross = mine.reduce((s, l) => s + loadRevenue(l), 0);
   const loadedMiles = mine.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
+  // Total (driven) miles = the load's odometer window (captures deadhead between
+  // loads); fall back to its loaded miles when a load has no odometer readings,
+  // so total can never read lower than loaded.
+  const totalMiles = mine.reduce((s, l) => {
+    const hasOdo = l.odometer_start != null && l.odometer_end != null;
+    const delta = hasOdo ? Number(l.odometer_end) - Number(l.odometer_start) : 0;
+    return s + (delta > 0 ? delta : Number(l.loaded_miles || 0));
+  }, 0);
 
   const stateSet = new Set<string>();
   for (const l of mine) {
@@ -180,6 +189,7 @@ export const computeRecap = (
     scope,
     label: range.label,
     gross,
+    totalMiles,
     loadedMiles,
     states: stateSet.size,
     loads: mine.length,

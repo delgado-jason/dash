@@ -1,14 +1,15 @@
 // The grind meter — a week-over-week motivation layer. Each pay-week is graded
-// on your WEEKLY GROSS PACE, the same lens the dashboard's "this week · booked"
-// card uses: did your booked/delivered freight beat your weekly target (green),
-// clear the break-even floor (amber), or fall short (red)? A week you moved no
-// freight is a home/neutral week (grey) — it doesn't count, but it doesn't break
-// your streak either. The streak is consecutive target-beating weeks.
+// on your WEEKLY GROSS PACE from freight actually HAULED (delivered/earned): did
+// it beat your weekly target (green), clear the break-even floor (amber), or fall
+// short (red)? A week you delivered no freight is a home/neutral week (grey) — it
+// doesn't count, but it doesn't break your streak either. The streak is
+// consecutive target-beating weeks. Booked-but-unhauled freight is committed
+// pipeline (shown on the rate-targets card), not a win here until it's delivered.
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import {
   payWeekRange,
-  getWeekBookedGross,
+  getWeekEarnedGross,
   getGrossTargets,
   getCostBasis,
   type GrossTargets,
@@ -88,7 +89,7 @@ export const computeGrind = (
   const hasLadder = targets.weeklyTarget != null;
 
   const current = payWeekRange(now, PAY_WEEK_START_DOW);
-  const thisWeekGross = getWeekBookedGross(loads, current.start, current.end);
+  const thisWeekGross = getWeekEarnedGross(loads, current.start, current.end);
   const thisWeek: WeekStatus = hasLadder ? classify(thisWeekGross, targets) : "home";
 
   const delivered = loads.filter(
@@ -108,7 +109,7 @@ export const computeGrind = (
   const weeks: GrindWeek[] = [];
   for (let t = firstStart.getTime(); t < current.start.getTime(); t += WEEK_MS) {
     const ws = new Date(t);
-    const gross = getWeekBookedGross(loads, ws, new Date(t + WEEK_MS));
+    const gross = getWeekEarnedGross(loads, ws, new Date(t + WEEK_MS));
     weeks.push({ start: ws.toISOString().slice(0, 10), status: classify(gross, targets), gross });
     if (weeks.length > 200) break; // safety cap
   }

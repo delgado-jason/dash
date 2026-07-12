@@ -8,6 +8,7 @@ import {
   getGrossTargets,
   payWeekRange,
   getWeekBookedGross,
+  getWeekEarnedGross,
   getWeekRpm,
   getWindowRpm,
 } from "./rateTargets";
@@ -167,6 +168,23 @@ describe("getWeekBookedGross", () => {
       load({ delivery_date: "2026-07-10", load_status: "cancelled", linehaul: "9999" }),
       load({ delivery_date: "2026-07-01", load_status: "delivered", linehaul: "9999" }), // before range
     ];
+    expect(getWeekBookedGross(loads, start, end)).toBeCloseTo(6000, 5);
+  });
+});
+
+describe("getWeekEarnedGross", () => {
+  const start = new Date("2026-07-08T00:00:00Z");
+  const end = new Date("2026-07-15T00:00:00Z");
+
+  it("counts only DELIVERED freight in range — booked/in-transit are committed, not earned", () => {
+    const loads = [
+      load({ delivery_date: "2026-07-08", load_status: "delivered", linehaul: "1000" }),
+      load({ delivery_date: "2026-07-10", load_status: "booked", linehaul: "2000" }), // committed, not earned
+      load({ delivery_date: "2026-07-14", load_status: "in_transit", linehaul: "3000" }), // committed, not earned
+      load({ delivery_date: "2026-07-01", load_status: "delivered", linehaul: "9999" }), // before range
+    ];
+    expect(getWeekEarnedGross(loads, start, end)).toBeCloseTo(1000, 5);
+    // committed still sees all three in range
     expect(getWeekBookedGross(loads, start, end)).toBeCloseTo(6000, 5);
   });
 });

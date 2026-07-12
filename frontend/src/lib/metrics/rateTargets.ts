@@ -192,6 +192,18 @@ export const getWeekBookedGross = (
   end: Date,
 ): number => loadsInWeek(loads, start, end).reduce((s, l) => s + loadRevenue(l), 0);
 
+// Delivered-only gross for the week — freight actually HAULED (earned). Booked
+// and in-transit are committed pipeline, not yet earned, so this is the honest
+// basis for "did I hit target this week" (committed minus this = still to haul).
+export const getWeekEarnedGross = (
+  loads: Load[],
+  start: Date,
+  end: Date,
+): number =>
+  loadsInWeek(loads, start, end)
+    .filter((l) => l.load_status === "delivered")
+    .reduce((s, l) => s + loadRevenue(l), 0);
+
 // This week's blended rate per loaded mile — where you're landing right now.
 export const getWeekRpm = (
   loads: Load[],
