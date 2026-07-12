@@ -145,13 +145,13 @@ const DashboardPage = () => {
       {/* KPI STRIP */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard
-          label="Revenue · MTD"
+          label="Net revenue · MTD"
           value={formatCurrency(revenueMTD)}
           delta={mtdDelta}
         />
-        <KpiCard label="Revenue · YTD" value={formatCurrency(revenueYTD)} />
+        <KpiCard label="Net revenue · YTD" value={formatCurrency(revenueYTD)} />
         <KpiCard
-          label="Avg RPM · 3mo"
+          label="Net RPM · 3mo"
           value={formatRpm(avgRpm)}
           status={rpmStatus}
           subtext={

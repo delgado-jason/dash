@@ -1,17 +1,12 @@
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
+import { loadRevenue } from "./rateTargets";
 
+// Revenue = the owner-op's NET take (their company gross), via loadRevenue —
+// so every dashboard tile reflects money kept, not the full pre-cut rate.
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
-
-  return loads.reduce((total, load) => {
-    return (
-      total +
-      Number(load.linehaul) +
-      Number(load.fuel_surcharge) +
-      Number(load.total_accessorials)
-    );
-  }, 0);
+  return loads.reduce((total, load) => total + loadRevenue(load), 0);
 };
 
 // ---- GET REVENUE MTD ----

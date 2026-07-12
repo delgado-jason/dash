@@ -4,9 +4,24 @@ import type { ExpensePeriod } from "@/types/expense";
 // Rate & pace targets, all derived live from the P&L + loads. Pure functions
 // take `now` explicitly so they're testable without touching the clock.
 
-// Load gross revenue = linehaul + fuel surcharge + accessorials (NUMERIC strings).
-export const loadRevenue = (l: Load): number =>
-  Number(l.linehaul) + Number(l.fuel_surcharge) + Number(l.total_accessorials);
+// The full customer rate (gross) = linehaul + fuel surcharge + accessorials. Used
+// for pricing guidance, where the rate you actually book is what matters.
+export const loadGross = (l: Load): number => {
+  const gross = Number(l.gross_revenue);
+  return Number.isFinite(gross)
+    ? gross
+    : Number(l.linehaul) + Number(l.fuel_surcharge) + Number(l.total_accessorials);
+};
+
+// A load's revenue = the owner-op's NET (their company gross after the carrier's
+// settlement cut), computed server-side from the settlement schedule. Falls back
+// to gross when net_revenue is absent (a user with no schedule, or a test fixture).
+// This is THE revenue used everywhere — reporting, RPM, pace, and targets — so
+// every number reflects what the company actually keeps.
+export const loadRevenue = (l: Load): number => {
+  const net = Number(l.net_revenue);
+  return Number.isFinite(net) ? net : loadGross(l);
+};
 
 // The `count` COMPLETE calendar months before now's month (excludes the
 // in-progress current month — its miles lag its cost and would inflate $/mile).

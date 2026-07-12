@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import {
+  loadRevenue,
+  loadGross,
   completeMonthsBefore,
   getCostBasis,
   getRateLadder,
@@ -35,6 +37,26 @@ const period = (month: string, cogs: number, expense: number): ExpensePeriod => 
   income_total: null,
   cogs_total: cogs,
   expense_total: expense,
+});
+
+describe("loadRevenue / loadGross", () => {
+  it("revenue = net_revenue (the owner-op's take); gross = gross_revenue (full rate)", () => {
+    const l = load({
+      linehaul: "5000",
+      fuel_surcharge: "500",
+      total_accessorials: "0",
+      gross_revenue: "5500",
+      net_revenue: "4150", // 5000*0.73 + 500
+    });
+    expect(loadRevenue(l)).toBe(4150);
+    expect(loadGross(l)).toBe(5500);
+  });
+
+  it("falls back to the component sum when net/gross are absent (no schedule)", () => {
+    const l = load({ linehaul: "5000", fuel_surcharge: "500", total_accessorials: "0" });
+    expect(loadRevenue(l)).toBe(5500);
+    expect(loadGross(l)).toBe(5500);
+  });
 });
 
 describe("completeMonthsBefore", () => {

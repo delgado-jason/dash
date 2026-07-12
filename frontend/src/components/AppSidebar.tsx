@@ -134,7 +134,14 @@ const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="p-4 text-sm text-muted-foreground">v{__APP_VERSION__}</div>
+        <div className="px-4 pt-2">
+          <Link to="/settings" className={`text-sm ${linkCls("/settings")}`}>
+            Settings
+          </Link>
+        </div>
+        <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground">
+          v{__APP_VERSION__}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
