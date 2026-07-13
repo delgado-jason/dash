@@ -14,6 +14,7 @@ import { createAccessorial } from "@/services/createAccessorialService";
 import { deleteAccessorial } from "@/services/deleteAccessorialService";
 import { patchAccessorial } from "@/services/patchAccessorialService";
 import { deleteLoad } from "@/services/deleteLoadService";
+import { getAccessorialRates } from "@/services/accessorialRateService";
 
 import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -73,6 +74,8 @@ export const LoadDetailPage = () => {
 
   const [newType, setNewType] = useState("");
   const [newAmount, setNewAmount] = useState("");
+  const [accTypes, setAccTypes] = useState<string[]>([]);
+  const [otherMode, setOtherMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusSel, setStatusSel] = useState("");
   const [paymentSel, setPaymentSel] = useState("");
@@ -95,6 +98,12 @@ export const LoadDetailPage = () => {
       setPaymentSel(load.payment_status);
     }
   }, [load]);
+
+  useEffect(() => {
+    getAccessorialRates()
+      .then((rs) => setAccTypes(rs.map((r) => r.accessorial_type)))
+      .catch(() => {});
+  }, []);
 
   if (isLoading)
     return (
@@ -151,6 +160,7 @@ export const LoadDetailPage = () => {
     } finally {
       setNewType("");
       setNewAmount("");
+      setOtherMode(false);
     }
   };
 
@@ -657,12 +667,36 @@ export const LoadDetailPage = () => {
         )}
 
         <div className="flex flex-wrap gap-2 mt-3">
-          <input
-            className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-light placeholder:text-muted-text"
-            placeholder="Type — e.g. Layover"
-            value={newType}
-            onChange={(e) => setNewType(e.target.value)}
-          />
+          {otherMode ? (
+            <input
+              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-light placeholder:text-muted-text"
+              placeholder="New accessorial type"
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              autoFocus
+            />
+          ) : (
+            <select
+              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-light"
+              value={newType}
+              onChange={(e) => {
+                if (e.target.value === "__other__") {
+                  setOtherMode(true);
+                  setNewType("");
+                } else {
+                  setNewType(e.target.value);
+                }
+              }}
+            >
+              <option value="">Accessorial type…</option>
+              {accTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+              <option value="__other__">Other…</option>
+            </select>
+          )}
           <input
             className="bg-steel rounded px-2 py-1.5 text-sm w-28 text-light placeholder:text-muted-text"
             placeholder="0.00"
