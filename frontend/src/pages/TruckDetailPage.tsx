@@ -20,8 +20,18 @@ import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
 import { getObligations } from "@/services/obligationsService";
 import type { Obligation } from "@/types/obligation";
-import { isPayoffTracked } from "@/lib/metrics/payoff";
+import { isPayoffTracked, assetLoanStatus } from "@/lib/metrics/payoff";
 import { PayoffTracker } from "@/components/fleet/PayoffTracker";
+import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
+import {
+  computeTruckPatches,
+  computeTruckMedals,
+  truckRecords,
+} from "@/lib/awards/truckAwards";
+import { earnedMedals } from "@/lib/awards/medals";
+import { MedalBadge } from "@/components/awards/MedalBadge";
+import { RecordBook, type RecordChip } from "@/components/awards/RecordBook";
+import { PatchBoard } from "@/components/awards/PatchBoard";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
@@ -29,6 +39,28 @@ import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const num = (n: number) => Math.round(n).toLocaleString("en-US");
+
+// One tile in the truck-metrics strip.
+const Kpi = ({
+  value,
+  label,
+  sub,
+  green,
+}: {
+  value: string;
+  label: string;
+  sub?: string;
+  green?: boolean;
+}) => (
+  <div className="flex-1 min-w-[92px] rounded-[10px] px-2 py-2.5 text-center" style={{ background: "#1c2333" }}>
+    <div className="font-comic text-[20px] leading-none" style={{ color: green ? "#4ade80" : "#f5e6c8" }}>
+      {value}
+    </div>
+    <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
+    {sub && <div className="text-[8px] text-muted-text">{sub}</div>}
+  </div>
+);
 
 const Spec = ({
   label,
@@ -153,6 +185,25 @@ const TruckDetailPage = () => {
     );
 
   const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
+  const now = new Date();
+  const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
+  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now);
+  const truckMedals = earnedMedals(
+    computeTruckMedals({
+      odometer,
+      avgMpg: metrics.avgMpg,
+      deliveredCount: earnedLoads.length,
+      loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
+    }),
+  );
+  const patches = computeTruckPatches(truckLoads, truckFuel);
+  const recs = truckRecords(truckLoads, truckFuel);
+  const recordChips: RecordChip[] = [
+    { icon: "flame", color: "#e8940a", value: recs.bestTank != null ? recs.bestTank.toFixed(1) : "—", label: "BEST TANK" },
+    { icon: "road", color: "#f5b03a", value: recs.bigMonthMiles != null ? num(recs.bigMonthMiles) : "—", label: "BIG MONTH (MI)" },
+    { icon: "cash", color: "#4ade80", value: recs.bestRevPerMile != null ? `$${recs.bestRevPerMile.toFixed(2)}` : "—", label: "BEST REV/MI" },
+    { icon: "arrows-horizontal", color: "#60a5fa", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
+  ];
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -180,6 +231,13 @@ const TruckDetailPage = () => {
                   .join(" ")}{" "}
                 · {truck.status}
               </p>
+              {!editing && truckMedals.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {truckMedals.map((m) => (
+                    <MedalBadge key={m.key} medal={m} />
+                  ))}
+                </div>
+              )}
             </div>
             {!editing && (
               <button
@@ -232,9 +290,39 @@ const TruckDetailPage = () => {
         </div>
       </div>
 
+      <div className="mt-1">
+        <p className="text-xs text-muted-text mb-2">Truck metrics</p>
+        <div className="flex gap-2 flex-wrap">
+          <div
+            className="flex-[1.4] min-w-[130px] rounded-[10px] px-3 py-2.5 text-center"
+            style={{ background: "#0f2419", border: "1px solid #2f6f52" }}
+          >
+            <div className="font-comic text-2xl leading-none" style={{ color: "#4ade80" }}>
+              {metrics.utilization != null ? `${Math.round(metrics.utilization * 100)}%` : "—"}
+            </div>
+            <div className="text-[9px] mt-1 tracking-wide" style={{ color: "#8fd6a8" }}>
+              UTILIZATION · ACTIVE WEEKS
+            </div>
+          </div>
+          <Kpi value={metrics.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"} label="AVG MPG" />
+          <Kpi value={metrics.bestTank != null ? metrics.bestTank.toFixed(1) : "—"} label="BEST TANK" />
+          <Kpi value={metrics.fuelPerMile != null ? `$${metrics.fuelPerMile.toFixed(2)}` : "—"} label="FUEL / MI" />
+          <Kpi value={metrics.revPerMile != null ? `$${metrics.revPerMile.toFixed(2)}` : "—"} label="REVENUE / MI" green />
+          <Kpi
+            value={metrics.costToRunPerMile != null ? `$${metrics.costToRunPerMile.toFixed(2)}` : "—"}
+            label="COST TO RUN / MI"
+            sub="fuel + maintenance"
+          />
+          <Kpi value={metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—"} label="MI / MONTH" />
+        </div>
+      </div>
+
       {truckLoan && <PayoffTracker obligation={truckLoan} kind="truck" />}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <RecordBook records={recordChips} />
+      <PatchBoard patches={patches} />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         <Link
           to="/maintenance"
           className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors"

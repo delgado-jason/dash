@@ -16,6 +16,9 @@ import {
   Truck,
   Package,
   Users,
+  Feather,
+  Flag,
+  Droplet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +43,9 @@ const MAP: Record<string, LucideIcon> = {
   package: Package,
   stack: Layers,
   users: Users,
+  feather: Feather,
+  flag: Flag,
+  droplet: Droplet,
 };
 
 export const awardIcon = (name: string): LucideIcon => MAP[name] ?? Trophy;

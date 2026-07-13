@@ -27,7 +27,7 @@ const clamp = (n: number) => Math.max(0, Math.min(1, n));
 const kMi = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(0)}M` : `${Math.round(n / 1000)}k`);
 const kMoney = (n: number) => (n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(0)}M` : `$${Math.round(n / 1000)}k`);
 
-const tiered = (
+export const tiered = (
   key: string,
   name: string,
   icon: string,
