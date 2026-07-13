@@ -249,11 +249,11 @@ const ExpensesPage = () => {
             <Kpi label="Monthly cost" value={money(trueMonthly.trueMonthlyCost)} />
             <Kpi label="Weekly cost" value={money(trueMonthly.trueWeeklyCost)} />
             <Kpi
-              label={`Cost / mile · ${trailing.months}mo`}
+              label={`Cost / total mile · ${trailing.months}mo`}
               value={cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`}
             />
             <Kpi
-              label={`Break-even RPM · ${trailing.months}mo`}
+              label={`Break-even / loaded mi · ${trailing.months}mo`}
               value={
                 cash.trueBreakEvenRpm == null
                   ? "—"
@@ -269,13 +269,15 @@ const ExpensesPage = () => {
               }
             />
           </div>
-          {obligationsTotal > 0 && (
-            <p className="text-[11px] text-muted-text -mt-4 mb-6">
-              Includes {money(obligationsTotal)}/mo of obligations (loan principal
-              + draws). Dollar figures are this month; per-mile figures blend the
-              last {trailing.months} month{trailing.months > 1 ? "s" : ""}.
-            </p>
-          )}
+          <p className="text-[11px] text-muted-text -mt-4 mb-6">
+            <span className="text-light">Cost / total mile</span> is over every mile
+            you drive; <span className="text-light">break-even / loaded mile</span>{" "}
+            spreads that same cost over only the paid miles — the gap is your
+            deadhead. Per-mile figures blend the last {trailing.months} month
+            {trailing.months > 1 ? "s" : ""}.
+            {obligationsTotal > 0 &&
+              ` Cost includes ${money(obligationsTotal)}/mo of obligations (loan principal + draws).`}
+          </p>
 
           {rateLadder.walkAway != null && (
             <div className="bg-plate rounded-lg p-4 mb-6">
@@ -283,6 +285,34 @@ const ExpensesPage = () => {
                 Rate to book · gross $/mile driven · last {rateBasis.months}{" "}
                 complete month{rateBasis.months > 1 ? "s" : ""}
               </p>
+              <div className="flex items-center gap-2 flex-wrap mb-3 text-[11px]">
+                <span
+                  className="rounded px-2 py-1"
+                  style={{ background: "#0d1119", border: "1px solid #22304a" }}
+                >
+                  <span className="text-light font-condensed">
+                    {`$${rateBasis.costPerTotalMile?.toFixed(2)}`}
+                  </span>{" "}
+                  <span className="text-muted-text">/ total mi</span>
+                </span>
+                <span className="text-muted-text">→</span>
+                <span
+                  className="rounded px-2 py-1 text-muted-text"
+                  style={{ background: "#0d1119", border: "1px solid #22304a" }}
+                >
+                  ÷ {Math.round(linehaulTake * 100)}% keep
+                </span>
+                <span className="text-muted-text">→</span>
+                <span
+                  className="rounded px-2 py-1"
+                  style={{ background: "#0d1119", border: "1px solid #22304a" }}
+                >
+                  <span className="font-condensed" style={{ color: "#f5b03a" }}>
+                    {`$${rateLadder.walkAway?.toFixed(2)}`}
+                  </span>{" "}
+                  <span className="text-muted-text">to book</span>
+                </span>
+              </div>
               <RateLadder ladder={rateLadder} rpm={rateBasis.grossPerTotalMile} />
               <p className="text-[11px] text-muted-text mt-2">
                 walk-away = your cost/mile ÷ your{" "}
