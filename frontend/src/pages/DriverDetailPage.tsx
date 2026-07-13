@@ -29,10 +29,15 @@ import {
   marginGrade,
   rpmGrade,
   worseGrade,
+  personalBests,
 } from "@/lib/metrics/playerCard";
-import { earnedAwards } from "@/lib/metrics/awards";
 import { computeGrind } from "@/lib/metrics/grind";
+import { computePatches } from "@/lib/awards/patches";
+import { computeMedals, earnedMedals } from "@/lib/awards/medals";
+import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { PlayerCard } from "@/components/playercard/PlayerCard";
+import { RecordBook } from "@/components/awards/RecordBook";
+import { PatchBoard } from "@/components/awards/PatchBoard";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
@@ -114,18 +119,22 @@ const DriverDetailPage = () => {
     const season = getSeasonStats(periods, driverLoads, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
-    // One award engine drives both the pops and the card, so a badge here matches
-    // the pop that announced it. Split by tier: burst = badges, marquee = shelf
-    // (rank lives in the header, so it's kept off the shelf).
     const grind = computeGrind(driverLoads, periods, obligationsTotal, now);
-    const awards = earnedAwards({
-      loads: driverLoads,
-      periods,
-      fuel,
+    // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
+    const del = driverLoads.filter((l) => l.load_status === "delivered");
+    const paidPcts = [
+      assetLoanStatus(obligations, "truck", now),
+      assetLoanStatus(obligations, "trailer", now),
+    ]
+      .map((s) => s?.ownedPct)
+      .filter((x): x is number => x != null);
+    const medals = computeMedals({
       lifetimeMiles,
-      obligationsDebtMonthly: obligationsDebt,
+      deliveredCount: del.length,
+      cumulativeNet: del.reduce((s, l) => s + loadRevenue(l), 0),
       streak: grind.currentStreak,
-      now,
+      loanPaidPct: paidPcts.length ? Math.max(...paidPcts) : null,
+      seasonStrong: marginG === "strong",
     });
     return {
       rank: careerRank(lifetimeMiles),
@@ -134,8 +143,9 @@ const DriverDetailPage = () => {
       marginGrade: marginG,
       form: worseGrade(rpmG, marginG),
       windowRpm: basis.windowRpm,
-      badges: awards.filter((a) => a.tier === "burst"),
-      shelf: awards.filter((a) => a.tier === "marquee" && !a.id.startsWith("rank:")),
+      medals: earnedMedals(medals),
+      bests: personalBests(driverLoads, fuel, now),
+      patches: computePatches(driverLoads, fuel),
     };
   }, [driverLoads, periods, obligations, fuel, trucks]);
 
@@ -201,10 +211,11 @@ const DriverDetailPage = () => {
             marginGrade={card.marginGrade}
             form={card.form}
             windowRpm={card.windowRpm}
-            badges={card.badges}
-            shelf={card.shelf}
+            medals={card.medals}
           />
-          <div className="flex justify-center gap-4 mt-3">
+          <RecordBook bests={card.bests} />
+          <PatchBoard patches={card.patches} />
+          <div className="flex justify-center gap-4 mt-6">
             <Link to="/trophy-room" className="text-sm text-status-info-text hover:underline">
               Trophy Room →
             </Link>
