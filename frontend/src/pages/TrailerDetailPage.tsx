@@ -15,9 +15,19 @@ import {
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
+import { computeTrailerMetrics } from "@/lib/metrics/trailerMetrics";
+import {
+  computeTrailerPatches,
+  computeTrailerMedals,
+  trailerRecords,
+} from "@/lib/awards/trailerAwards";
+import { earnedMedals } from "@/lib/awards/medals";
+import { MedalBadge } from "@/components/awards/MedalBadge";
+import { RecordBook, type RecordChip } from "@/components/awards/RecordBook";
+import { PatchBoard } from "@/components/awards/PatchBoard";
 import { getObligations } from "@/services/obligationsService";
 import type { Obligation } from "@/types/obligation";
-import { isPayoffTracked } from "@/lib/metrics/payoff";
+import { isPayoffTracked, assetLoanStatus } from "@/lib/metrics/payoff";
 import { PayoffTracker } from "@/components/fleet/PayoffTracker";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
@@ -26,6 +36,28 @@ import { TRAILER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const num = (n: number) => Math.round(n).toLocaleString("en-US");
+
+// One tile in the trailer-metrics strip.
+const Kpi = ({
+  value,
+  label,
+  sub,
+  green,
+}: {
+  value: string;
+  label: string;
+  sub?: string;
+  green?: boolean;
+}) => (
+  <div className="flex-1 min-w-[92px] rounded-[10px] px-2 py-2.5 text-center" style={{ background: "#1c2333" }}>
+    <div className="font-comic text-[20px] leading-none" style={{ color: green ? "#4ade80" : "#f5e6c8" }}>
+      {value}
+    </div>
+    <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
+    {sub && <div className="text-[8px] text-muted-text">{sub}</div>}
+  </div>
+);
 
 const Spec = ({
   label,
@@ -141,6 +173,25 @@ const TrailerDetailPage = () => {
       </div>
     );
 
+  const now = new Date();
+  const metrics = computeTrailerMetrics(trailer, trailerLoads, services, now);
+  const trailerMedals = earnedMedals(
+    computeTrailerMedals({
+      hubMiles: hub,
+      earnings: revenue,
+      deliveredCount: earnedLoads.length,
+      loanPaidPct: assetLoanStatus(obligations, "trailer", now)?.ownedPct ?? null,
+    }),
+  );
+  const patches = computeTrailerPatches(trailerLoads);
+  const recs = trailerRecords(trailerLoads);
+  const recordChips: RecordChip[] = [
+    { icon: "cash", color: "#4ade80", value: recs.bestPayday != null ? money(recs.bestPayday) : "—", label: "BEST PAYDAY (MO)" },
+    { icon: "flag", color: "#f5b03a", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
+    { icon: "weight", color: "#60a5fa", value: recs.heaviestLoad != null ? num(recs.heaviestLoad) : "—", label: "HEAVIEST LOAD (LB)" },
+    { icon: "road", color: "#f5b03a", value: recs.bigMonthMiles != null ? num(recs.bigMonthMiles) : "—", label: "BIG MONTH (MI)" },
+  ];
+
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <Link to="/trailers" className="text-xs text-muted-text hover:text-light">
@@ -166,6 +217,13 @@ const TrailerDetailPage = () => {
                 {trailer.length_ft ? ` · ${trailer.length_ft}'` : ""} ·{" "}
                 {trailer.status}
               </p>
+              {!editing && trailerMedals.length > 0 && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {trailerMedals.map((m) => (
+                    <MedalBadge key={m.key} medal={m} />
+                  ))}
+                </div>
+              )}
             </div>
             {!editing && (
               <button
@@ -223,7 +281,44 @@ const TrailerDetailPage = () => {
         </div>
       </div>
 
+      <div className="mt-1">
+        <p className="text-xs text-muted-text mb-2">
+          Trailer metrics{" "}
+          <span className="text-[11px]" style={{ color: "#5b6b82" }}>
+            · no fuel line — a trailer has no engine
+          </span>
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <div
+            className="flex-[1.4] min-w-[130px] rounded-[10px] px-3 py-2.5 text-center"
+            style={{ background: "#0f2419", border: "1px solid #2f6f52" }}
+          >
+            <div className="font-comic text-2xl leading-none" style={{ color: "#4ade80" }}>
+              {metrics.utilization != null ? `${Math.round(metrics.utilization * 100)}%` : "—"}
+            </div>
+            <div className="text-[9px] mt-1 tracking-wide" style={{ color: "#8fd6a8" }}>
+              UTILIZATION · ACTIVE WEEKS
+            </div>
+          </div>
+          <Kpi
+            value={metrics.earningsPerMile != null ? `$${metrics.earningsPerMile.toFixed(2)}` : "—"}
+            label="EARNINGS / MI"
+            sub="its 8% share"
+            green
+          />
+          <Kpi
+            value={metrics.costToRunPerMile != null ? `$${metrics.costToRunPerMile.toFixed(2)}` : "—"}
+            label="COST TO RUN / MI"
+            sub="maintenance only"
+          />
+          <Kpi value={metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—"} label="MI / MONTH" />
+        </div>
+      </div>
+
       {trailerLoan && <PayoffTracker obligation={trailerLoan} kind="trailer" />}
+
+      <RecordBook records={recordChips} />
+      <PatchBoard patches={patches} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
         <Link
