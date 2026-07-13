@@ -50,20 +50,22 @@ const Field = ({
 
 const SettingsPage = () => {
   const [pcts, setPcts] = useState<Pcts | null>(null);
+  const [carrier, setCarrier] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     getSettlementSchedule()
-      .then((s) =>
+      .then((s) => {
         setPcts({
           linehaul: s.linehaul_pct * 100,
           trailer: s.trailer_pct * 100,
           fsc: s.fuel_surcharge_pct * 100,
           accessorial: s.accessorial_pct * 100,
-        }),
-      )
+        });
+        setCarrier(s.carrier_name ?? "");
+      })
       .catch(() => setErr("Couldn't load your settlement schedule."));
   }, []);
 
@@ -83,6 +85,7 @@ const SettingsPage = () => {
         trailer_pct: pcts.trailer / 100,
         fuel_surcharge_pct: pcts.fsc / 100,
         accessorial_pct: pcts.accessorial / 100,
+        carrier_name: carrier.trim() || null,
       });
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
@@ -114,6 +117,23 @@ const SettingsPage = () => {
           carrier's cut. Revenue, RPM, and your rate targets all use it. Leave
           everything at 100% if you run under your own authority.
         </p>
+
+        <label className="block mt-4">
+          <span className="text-sm text-light">Carrier name</span>
+          <input
+            type="text"
+            placeholder="e.g. Landstar"
+            value={carrier}
+            onChange={(e) => {
+              setMsg(null);
+              setCarrier(e.target.value);
+            }}
+            className="w-full max-w-xs mt-1 bg-steel rounded px-2 py-1.5 text-light text-sm block"
+          />
+          <span className="text-xs text-muted-text mt-1 block">
+            Shown on your agents. Leave blank if you run on your own authority.
+          </span>
+        </label>
 
         {!pcts ? (
           <p className="text-muted-text mt-5">Loading…</p>

@@ -4,6 +4,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { useLoads } from "@/hooks/useLoads";
 import { Kpi } from "@/components/Kpi";
 import { AgentCard } from "@/components/agents/AgentCard";
+import { useCarrierName } from "@/hooks/useCarrierName";
 import {
   computeHonors,
   perAgentStats,
@@ -33,6 +34,7 @@ const AgentsPage = () => {
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("rating");
+  const carrierName = useCarrierName();
 
   const honors = useMemo(() => computeHonors(loads ?? [], new Date()), [loads]);
   const stats = useMemo(() => perAgentStats(loads ?? []), [loads]);
@@ -173,6 +175,7 @@ const AgentsPage = () => {
               stats={stats.get(agent.agent_id)}
               honors={honors.get(agent.agent_id)}
               live={standings.get(agent.agent_id)}
+              carrierName={carrierName}
             />
           ))}
         </div>

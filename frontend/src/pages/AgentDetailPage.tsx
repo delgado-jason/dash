@@ -4,6 +4,7 @@ import { Mail, Phone, StickyNote, Star } from "lucide-react";
 
 import { useAgent } from "@/hooks/useAgent";
 import { useLoads } from "@/hooks/useLoads";
+import { useCarrierName } from "@/hooks/useCarrierName";
 import { createAgentNote } from "@/services/createAgentNoteService";
 
 import RatingForm from "@/components/RatingForm";
@@ -48,6 +49,7 @@ const fmtDate = (d?: string | null) =>
 const AgentDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showRatingForm, setShowRatingForm] = useState(false);
+  const carrierName = useCarrierName();
   const { agent, loads, notes, ratingHistory, isLoading, error } =
     useAgent(refreshKey);
   const { loads: allLoads } = useLoads(0);
@@ -159,7 +161,8 @@ const AgentDetailPage = () => {
               {agent.first_name} {agent.last_name}
             </h1>
             <p className="text-sm text-muted-text mt-1">
-              {agent.broker_name} · Landstar Agent
+              {agent.broker_name}
+              {carrierName ? ` · ${carrierName} Agent` : ""}
             </p>
             {prestige.label && (
               <p

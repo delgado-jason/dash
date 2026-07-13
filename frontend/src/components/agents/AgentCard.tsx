@@ -40,11 +40,13 @@ export const AgentCard = ({
   stats,
   honors,
   live,
+  carrierName,
 }: {
   agent: Agent;
   stats?: AgentStat;
   honors?: AgentHonors;
   live?: LiveStanding | null;
+  carrierName?: string;
 }) => {
   const tier = agentPrestige(honors);
   const prestige = PRESTIGE_META[tier];
@@ -67,7 +69,8 @@ export const AgentCard = ({
             {agent.first_name} {agent.last_name}
           </p>
           <p className="text-xs text-muted-text truncate">
-            {agent.broker_name} · Landstar
+            {agent.broker_name}
+            {carrierName ? ` · ${carrierName}` : ""}
           </p>
         </div>
       </div>
