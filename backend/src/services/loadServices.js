@@ -42,8 +42,14 @@ export async function getLoads(user_id) {
             ROUND(
               linehaul * (COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
               + fuel_surcharge * COALESCE(ss.fuel_surcharge_pct, 1)
-              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = loads.load_id)
-                * COALESCE(ss.accessorial_pct, 1)
+              + (SELECT COALESCE(SUM(
+                     a.amount * COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
+                   ), 0)
+                 FROM accessorials a
+                 LEFT JOIN accessorial_pay_rates apr
+                   ON apr.user_id = loads.user_id
+                   AND apr.accessorial_type = a.accessorial_type
+                 WHERE a.load_id = loads.load_id)
             , 2) AS net_revenue,
             commodity,
             weight,
@@ -118,8 +124,14 @@ export async function getLoad(user_id, load_id) {
             ROUND(
               linehaul * (COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
               + fuel_surcharge * COALESCE(ss.fuel_surcharge_pct, 1)
-              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
-                * COALESCE(ss.accessorial_pct, 1)
+              + (SELECT COALESCE(SUM(
+                     a.amount * COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
+                   ), 0)
+                 FROM accessorials a
+                 LEFT JOIN accessorial_pay_rates apr
+                   ON apr.user_id = l.user_id
+                   AND apr.accessorial_type = a.accessorial_type
+                 WHERE a.load_id = l.load_id)
             , 2) AS net_revenue,
             commodity,
             weight,
