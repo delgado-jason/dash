@@ -48,11 +48,24 @@ const STREAK_MARKS = [12, 8, 4];
 export const earnedAwards = (i: AwardInputs): Award[] => {
   const out: Award[] = [];
 
-  // ---- Recap ceremony: each COMPLETED period (month/quarter/year) that has
-  // earned freight. The id carries the period label, so a given month only ever
-  // fires once; the next month's recap is a new id. Prestige rises by scope.
-  for (const scope of ["month", "quarter", "year"] as RecapScope[]) {
-    const r = resolvePeriod(scope, 0, i.now);
+  // ---- Recap ceremony: each COMPLETED period (month/quarter/year) with earned
+  // freight. A smaller period that closes on the SAME day as a larger one is
+  // SUBSUMED — only the grandest ceremony fires (the last month of a quarter
+  // hands the moment to the quarter; the last quarter of a year, to the year).
+  // The subsumed period is still fully browsable on the recap page. The id carries
+  // the label so each period only ever fires once.
+  const monthR = resolvePeriod("month", 0, i.now);
+  const quarterR = resolvePeriod("quarter", 0, i.now);
+  const yearR = resolvePeriod("year", 0, i.now);
+  const sameClose = (a: typeof monthR, b: typeof monthR) =>
+    a.end.getTime() === b.end.getTime();
+  const recapPeriods = [
+    { scope: "month" as RecapScope, r: monthR, subsumed: sameClose(monthR, quarterR) },
+    { scope: "quarter" as RecapScope, r: quarterR, subsumed: sameClose(quarterR, yearR) },
+    { scope: "year" as RecapScope, r: yearR, subsumed: false },
+  ];
+  for (const { scope, r, subsumed } of recapPeriods) {
+    if (subsumed) continue;
     const inR = loadsInRange(i.loads, r);
     if (inR.length === 0) continue;
     const gross = inR.reduce((s, l) => s + loadRevenue(l), 0);
@@ -145,9 +158,9 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
 // since a real device silently baselines on first load, this is how you see the
 // pop without waiting to earn one.
 export const DEMO_AWARDS: Award[] = [
-  { id: "demo:recap-month", tier: "recap", scope: "month", name: "Jun 2026", detail: "$24.1k hauled · 8 loads", icon: "trophy" },
-  { id: "demo:recap-quarter", tier: "recap", scope: "quarter", name: "Q2 2026", detail: "$70.4k hauled · 23 loads", icon: "trophy" },
   { id: "demo:recap-year", tier: "recap", scope: "year", name: "2026", detail: "$141k hauled · 47 loads", icon: "trophy" },
+  { id: "demo:recap-quarter", tier: "recap", scope: "quarter", name: "Q2 2026", detail: "$70.4k hauled · 23 loads", icon: "trophy" },
+  { id: "demo:recap-month", tier: "recap", scope: "month", name: "Jun 2026", detail: "$24.1k hauled · 8 loads", icon: "trophy" },
   { id: "demo:rank", tier: "marquee", name: "Rank up — Road Captain", detail: "582,450 lifetime miles and climbing.", icon: "truck" },
   { id: "demo:tightlines", tier: "burst", name: "Tight Lines", detail: "Deadhead down to 7.2%", icon: "gauge" },
   { id: "demo:feather", tier: "burst", name: "Feather Foot", detail: "New best tank — 6.9 mpg", icon: "flame" },
@@ -157,9 +170,10 @@ export const DEMO_AWARDS: Award[] = [
 // the screen), then bursts.
 export const newAwards = (earned: Award[], seen: Set<string>): Award[] => {
   const fresh = earned.filter((a) => !seen.has(a.id));
-  const scopeRank: Record<string, number> = { month: 0, quarter: 1, year: 2 };
-  // Recap ceremonies lead, played smallest → grandest (month → quarter → year)
-  // so a period-boundary crescendos; then any marquee, then bursts.
+  const scopeRank: Record<string, number> = { year: 0, quarter: 1, month: 2 };
+  // Recap ceremonies lead, grandest first (year → quarter → month) so the biggest
+  // milestone is the primary pop and smaller ones queue behind it; then any
+  // marquee, then bursts.
   const recaps = fresh
     .filter((a) => a.tier === "recap")
     .sort((a, b) => (scopeRank[a.scope ?? "month"] ?? 0) - (scopeRank[b.scope ?? "month"] ?? 0));
