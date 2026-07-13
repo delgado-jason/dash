@@ -9,12 +9,18 @@ export interface Load {
   agent: string;
   agent_email: string | null;
   shipper_name?: string | null;
+  // Stop times as bare "HH:MM:SS" (Postgres `time`), paired with pickup/delivery
+  // date. Null when not recorded.
+  shipper_in?: string | null;
+  shipper_out?: string | null;
   pickup_date: string;
   origin_market_id: string;
   origin_city: string;
   origin_state: string;
   origin_market: string;
   receiver_name?: string | null;
+  receiver_in?: string | null;
+  receiver_out?: string | null;
   delivery_date?: string | null;
   destination_market_id: string;
   destination_city: string;

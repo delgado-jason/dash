@@ -84,7 +84,11 @@ const LoadForm = ({
           weight: initialData.weight ?? null,
           dimensions: initialData.dimensions ?? null,
           shipper_name: initialData.shipper_name ?? null,
+          shipper_in: initialData.shipper_in ?? null,
+          shipper_out: initialData.shipper_out ?? null,
           receiver_name: initialData.receiver_name ?? null,
+          receiver_in: initialData.receiver_in ?? null,
+          receiver_out: initialData.receiver_out ?? null,
           linehaul: Number(initialData.linehaul),
           fuel_surcharge: Number(initialData.fuel_surcharge),
           deadhead_miles: initialData.deadhead_miles,
@@ -114,7 +118,11 @@ const LoadForm = ({
           weight: null,
           dimensions: null,
           shipper_name: null,
+          shipper_in: null,
+          shipper_out: null,
           receiver_name: null,
+          receiver_in: null,
+          receiver_out: null,
           linehaul: 0,
           fuel_surcharge: 0,
           deadhead_miles: null,
@@ -856,6 +864,32 @@ const LoadForm = ({
                 onChange={handleChange}
                 value={formData.shipper_name ?? ""}
               ></Input>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <Label htmlFor="shipper_in">Shipper In</Label>
+                  <Input
+                    type="time"
+                    name="shipper_in"
+                    id="shipper_in"
+                    value={(formData.shipper_in ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, shipper_in: e.target.value || null })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="shipper_out">Shipper Out</Label>
+                  <Input
+                    type="time"
+                    name="shipper_out"
+                    id="shipper_out"
+                    value={(formData.shipper_out ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, shipper_out: e.target.value || null })
+                    }
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <Label htmlFor="receiver_name">Receiver Name</Label>
@@ -865,6 +899,32 @@ const LoadForm = ({
                 onChange={handleChange}
                 value={formData.receiver_name ?? ""}
               ></Input>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <Label htmlFor="receiver_in">Receiver In</Label>
+                  <Input
+                    type="time"
+                    name="receiver_in"
+                    id="receiver_in"
+                    value={(formData.receiver_in ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, receiver_in: e.target.value || null })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="receiver_out">Receiver Out</Label>
+                  <Input
+                    type="time"
+                    name="receiver_out"
+                    id="receiver_out"
+                    value={(formData.receiver_out ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, receiver_out: e.target.value || null })
+                    }
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <Label htmlFor="commodity">Commodity</Label>
