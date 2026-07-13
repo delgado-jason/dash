@@ -19,6 +19,7 @@ import {
   Feather,
   Flag,
   Droplet,
+  Weight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ const MAP: Record<string, LucideIcon> = {
   feather: Feather,
   flag: Flag,
   droplet: Droplet,
+  weight: Weight,
 };
 
 export const awardIcon = (name: string): LucideIcon => MAP[name] ?? Trophy;

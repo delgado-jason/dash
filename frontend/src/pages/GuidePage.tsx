@@ -7,6 +7,10 @@ import { awardIcon } from "@/components/awards/awardIcons";
 import { PATCH_GUIDE } from "@/lib/awards/patches";
 import { MEDAL_GUIDE } from "@/lib/awards/medals";
 import { TRUCK_PATCH_GUIDE, TRUCK_MEDAL_GUIDE } from "@/lib/awards/truckAwards";
+import {
+  TRAILER_PATCH_GUIDE,
+  TRAILER_MEDAL_GUIDE,
+} from "@/lib/awards/trailerAwards";
 
 const AMBER = "#e8940a";
 const AMBER_HI = "#f5b03a";
@@ -423,6 +427,21 @@ const GuidePage = () => (
             <AwardLine key={m.name} icon={m.icon} name={m.name} sub={m.tiers} />
           ))}
           {TRUCK_PATCH_GUIDE.map((p) => (
+            <AwardLine key={p.name} icon={p.icon} name={p.name} sub={p.how} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Trailer medals & patches — its own set">
+        <p className="text-sm text-muted-text mb-3">
+          The trailer has no engine, so it earns on the loads it carried: its 8%
+          slice of net, the weight it hauled, and hub miles.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-x-6">
+          {TRAILER_MEDAL_GUIDE.map((m) => (
+            <AwardLine key={m.name} icon={m.icon} name={m.name} sub={m.tiers} />
+          ))}
+          {TRAILER_PATCH_GUIDE.map((p) => (
             <AwardLine key={p.name} icon={p.icon} name={p.name} sub={p.how} />
           ))}
         </div>
