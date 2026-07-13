@@ -54,6 +54,8 @@ export const rangeFor = (scope: RecapScope, year: number, unit: number): RecapRa
 };
 
 // The period `periodsAgo` complete periods before now (0 = most recent complete).
+// Every scope looks BACKWARD at finished periods — you never recap the current,
+// in-progress month/quarter/year. So year 0 = last year, not this one.
 export const resolvePeriod = (
   scope: RecapScope,
   periodsAgo: number,
@@ -61,7 +63,7 @@ export const resolvePeriod = (
 ): RecapRange => {
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth();
-  if (scope === "year") return rangeFor("year", y - periodsAgo, 0);
+  if (scope === "year") return rangeFor("year", y - 1 - periodsAgo, 0);
   if (scope === "quarter") {
     const totalQ = y * 4 + Math.floor(m / 3) - 1 - periodsAgo;
     return rangeFor("quarter", Math.floor(totalQ / 4), ((totalQ % 4) + 4) % 4);
@@ -74,6 +76,29 @@ const inRange = (d: string | null | undefined, r: RecapRange): boolean => {
   if (!d) return false;
   const t = new Date(d.slice(0, 10) + "T00:00:00Z").getTime();
   return t >= r.start.getTime() && t < r.end.getTime();
+};
+
+// The delivered loads that fall inside a range.
+export const loadsInRange = (loads: Load[], r: RecapRange): Load[] =>
+  loads.filter((l) => l.load_status === "delivered" && inRange(l.delivery_date, r));
+
+// Does the range contain any earned (delivered) freight? Drives both the recap
+// page's empty state and which completed periods are worth celebrating.
+export const rangeHasData = (loads: Load[], r: RecapRange): boolean =>
+  loadsInRange(loads, r).length > 0;
+
+// The grandest completed period that actually has data — year, else quarter, else
+// month. Used to land the recap page (and the dashboard link) on a real, finished
+// recap instead of an empty in-progress one. null when there's no history yet.
+export const latestRecapWithData = (
+  loads: Load[],
+  now: Date,
+): { scope: RecapScope; label: string } | null => {
+  for (const scope of ["year", "quarter", "month"] as RecapScope[]) {
+    const r = resolvePeriod(scope, 0, now);
+    if (rangeHasData(loads, r)) return { scope, label: r.label };
+  }
+  return null;
 };
 
 export interface RecapStats {
@@ -95,6 +120,7 @@ export interface RecapStats {
   bestMonth: { label: string; profit: number } | null;
   hardestMonth: { label: string; profit: number } | null;
   bestStreak: number;
+  monthlyGross: { label: string; gross: number }[]; // 1/3/12 bars for the strip
 }
 
 export const computeRecap = (
@@ -185,6 +211,28 @@ export const computeRecap = (
     statuses.push(classify(wg, targets));
   }
 
+  // Gross per month across the range (1 for a month, 3 for a quarter, 12 for a
+  // year) — feeds the recap's monthly bar strip. Empty months read as 0.
+  const monthGrossMap = new Map<number, number>();
+  for (const l of mine) {
+    if (!l.delivery_date) continue;
+    const d = new Date(l.delivery_date.slice(0, 10) + "T00:00:00Z");
+    const key = d.getUTCFullYear() * 12 + d.getUTCMonth();
+    monthGrossMap.set(key, (monthGrossMap.get(key) ?? 0) + loadRevenue(l));
+  }
+  const monthlyGross: { label: string; gross: number }[] = [];
+  for (
+    let d = new Date(range.start);
+    d.getTime() < range.end.getTime();
+    d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))
+  ) {
+    const key = d.getUTCFullYear() * 12 + d.getUTCMonth();
+    monthlyGross.push({
+      label: MONTHS[d.getUTCMonth()],
+      gross: monthGrossMap.get(key) ?? 0,
+    });
+  }
+
   return {
     scope,
     label: range.label,
@@ -204,5 +252,6 @@ export const computeRecap = (
     bestMonth,
     hardestMonth,
     bestStreak: bestStreakOf(statuses),
+    monthlyGross,
   };
 };

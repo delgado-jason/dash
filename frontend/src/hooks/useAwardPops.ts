@@ -41,7 +41,9 @@ const write = (s: Store) => {
 // Computes the awards newly earned since this device last looked. On a device's
 // first-ever load it silently baselines the current set (no day-one flood), so
 // only things earned AFTER that fire a celebration.
-export const useAwardPops = (loads: Load[]): { pops: Award[] } => {
+export const useAwardPops = (
+  loads: Load[],
+): { pops: Award[]; truckAvatarUrl: string | null } => {
   const [pops, setPops] = useState<Award[]>([]);
   const [data, setData] = useState<{
     periods: ExpensePeriod[];
@@ -101,5 +103,6 @@ export const useAwardPops = (loads: Load[]): { pops: Award[] } => {
     }
   }, [data, loads, done]);
 
-  return { pops };
+  const truckAvatarUrl = data?.trucks.find((t) => t.avatar_url)?.avatar_url ?? null;
+  return { pops, truckAvatarUrl };
 };

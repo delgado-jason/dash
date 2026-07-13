@@ -13,8 +13,10 @@ import {
   personalBests,
 } from "./playerCard";
 import { mileMilestone } from "./mileClub";
+import { resolvePeriod, loadsInRange, type RecapScope } from "./recap";
+import { loadRevenue } from "./rateTargets";
 
-export type AwardTier = "marquee" | "burst";
+export type AwardTier = "recap" | "marquee" | "burst";
 
 export interface Award {
   id: string;
@@ -22,9 +24,12 @@ export interface Award {
   name: string;
   detail: string;
   icon: string; // mapped to a lucide icon in the UI
+  scope?: RecapScope; // recap tier only — drives the prestige of the ceremony
 }
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const kMoney = (n: number) =>
+  n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`;
 
 export interface AwardInputs {
   loads: Load[];
@@ -42,6 +47,24 @@ const STREAK_MARKS = [12, 8, 4];
 
 export const earnedAwards = (i: AwardInputs): Award[] => {
   const out: Award[] = [];
+
+  // ---- Recap ceremony: each COMPLETED period (month/quarter/year) that has
+  // earned freight. The id carries the period label, so a given month only ever
+  // fires once; the next month's recap is a new id. Prestige rises by scope.
+  for (const scope of ["month", "quarter", "year"] as RecapScope[]) {
+    const r = resolvePeriod(scope, 0, i.now);
+    const inR = loadsInRange(i.loads, r);
+    if (inR.length === 0) continue;
+    const gross = inR.reduce((s, l) => s + loadRevenue(l), 0);
+    out.push({
+      id: `recap:${scope}:${r.label}`,
+      tier: "recap",
+      scope,
+      name: r.label,
+      detail: `${kMoney(gross)} hauled · ${inR.length} load${inR.length === 1 ? "" : "s"}`,
+      icon: "trophy",
+    });
+  }
 
   // ---- Marquee: career rank ----
   const rank = careerRank(i.lifetimeMiles);
@@ -122,6 +145,9 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
 // since a real device silently baselines on first load, this is how you see the
 // pop without waiting to earn one.
 export const DEMO_AWARDS: Award[] = [
+  { id: "demo:recap-month", tier: "recap", scope: "month", name: "Jun 2026", detail: "$24.1k hauled · 8 loads", icon: "trophy" },
+  { id: "demo:recap-quarter", tier: "recap", scope: "quarter", name: "Q2 2026", detail: "$70.4k hauled · 23 loads", icon: "trophy" },
+  { id: "demo:recap-year", tier: "recap", scope: "year", name: "2026", detail: "$141k hauled · 47 loads", icon: "trophy" },
   { id: "demo:rank", tier: "marquee", name: "Rank up — Road Captain", detail: "582,450 lifetime miles and climbing.", icon: "truck" },
   { id: "demo:tightlines", tier: "burst", name: "Tight Lines", detail: "Deadhead down to 7.2%", icon: "gauge" },
   { id: "demo:feather", tier: "burst", name: "Feather Foot", detail: "New best tank — 6.9 mpg", icon: "flame" },
@@ -131,7 +157,14 @@ export const DEMO_AWARDS: Award[] = [
 // the screen), then bursts.
 export const newAwards = (earned: Award[], seen: Set<string>): Award[] => {
   const fresh = earned.filter((a) => !seen.has(a.id));
+  const scopeRank: Record<string, number> = { month: 0, quarter: 1, year: 2 };
+  // Recap ceremonies lead, played smallest → grandest (month → quarter → year)
+  // so a period-boundary crescendos; then any marquee, then bursts.
+  const recaps = fresh
+    .filter((a) => a.tier === "recap")
+    .sort((a, b) => (scopeRank[a.scope ?? "month"] ?? 0) - (scopeRank[b.scope ?? "month"] ?? 0));
   return [
+    ...recaps,
     ...fresh.filter((a) => a.tier === "marquee"),
     ...fresh.filter((a) => a.tier === "burst"),
   ];
