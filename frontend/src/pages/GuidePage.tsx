@@ -6,6 +6,7 @@ import type { PrestigeTier } from "@/lib/metrics/agentLeaderboard";
 import { awardIcon } from "@/components/awards/awardIcons";
 import { PATCH_GUIDE } from "@/lib/awards/patches";
 import { MEDAL_GUIDE } from "@/lib/awards/medals";
+import { TRUCK_PATCH_GUIDE, TRUCK_MEDAL_GUIDE } from "@/lib/awards/truckAwards";
 
 const AMBER = "#e8940a";
 const AMBER_HI = "#f5b03a";
@@ -117,6 +118,19 @@ const ChainBox = ({ top, bottom }: { top: string; bottom: string }) => (
       {top}
     </div>
     <div className="text-[11px] text-muted-text">{bottom}</div>
+  </div>
+);
+
+// Weeks the truck ran (filled) vs idle — the utilization illustration.
+const UtilBar = ({ active, total }: { active: number; total: number }) => (
+  <div className="flex gap-1 flex-wrap">
+    {Array.from({ length: total }, (_, i) => (
+      <div
+        key={i}
+        className="w-4 h-4 rounded-sm"
+        style={{ background: i < active ? GREEN : TRACK }}
+      />
+    ))}
   </div>
 );
 
@@ -294,6 +308,66 @@ const GuidePage = () => (
       </Metric>
 
       <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
+        The truck
+      </h2>
+
+      <Metric
+        title="Utilization — how often the truck earns"
+        answers="The share of the weeks it's been in service that it actually ran a load. Idle weeks pull it down."
+      >
+        <Formula>active weeks ÷ weeks in service</Formula>
+        <div className="mt-3">
+          <UtilBar active={23} total={26} />
+        </div>
+        <Eg>
+          In service 26 weeks, ran a load in 23 →{" "}
+          <span className="text-light">88%</span>.
+        </Eg>
+        <Why>
+          Across a fleet, this is the number that exposes a truck sitting idle
+          while the others run.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Fuel economy — miles per gallon"
+        answers="Computed the honest way — only across full tank-to-full-tank windows, so a partial fill never skews a tank's rate."
+      >
+        <Formula>miles between full tanks ÷ gallons burned</Formula>
+        <Eg>
+          1,400 mi on 200 gal = <span className="text-light">7.0 mpg</span>. Best
+          tank is your record; the rolling average is what the Fuel Miser medal
+          climbs.
+        </Eg>
+      </Metric>
+
+      <Metric
+        title="Cost to run per mile — what the truck costs you"
+        answers="The truck's own operating cost per mile — fuel plus maintenance. The truck note isn't here; it lives on the payoff tracker, so it's never double-counted."
+      >
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <ChainBox top="$0.58" bottom="fuel / mi" />
+          <span className="text-muted-text">+</span>
+          <ChainBox top="$0.14" bottom="maintenance / mi" />
+          <span className="text-muted-text">=</span>
+          <ChainBox top="$0.72" bottom="cost to run / mi" />
+        </div>
+        <Formula>(fuel spend + maintenance spend) ÷ miles driven</Formula>
+        <Why>The real cost of keeping this truck rolling, kept separate from financing.</Why>
+      </Metric>
+
+      <Metric
+        title="Revenue per mile — what each mile earns"
+        answers="The truck's net revenue spread over every mile it drove — its earning efficiency."
+      >
+        <Formula>truck net revenue ÷ total miles driven</Formula>
+        <Eg>
+          $141k ÷ 55,000 mi = <span className="text-light">$2.57 / mi</span>.
+          Miles/month rounds it out — how hard the truck runs.
+        </Eg>
+      </Metric>
+
+      <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
         The award system
       </h2>
 
@@ -323,7 +397,7 @@ const GuidePage = () => (
         </ul>
       </Section>
 
-      <Section title="Medals — climb the tiers">
+      <Section title="Driver medals — climb the tiers">
         <div className="grid sm:grid-cols-2 gap-x-6">
           {MEDAL_GUIDE.map((m) => (
             <AwardLine key={m.name} icon={m.icon} name={m.name} sub={m.tiers} />
@@ -331,9 +405,24 @@ const GuidePage = () => (
         </div>
       </Section>
 
-      <Section title="Patches — hard, and they stack">
+      <Section title="Driver patches — hard, and they stack">
         <div className="grid sm:grid-cols-2 gap-x-6">
           {PATCH_GUIDE.map((p) => (
+            <AwardLine key={p.name} icon={p.icon} name={p.name} sub={p.how} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Truck medals & patches — its own set">
+        <p className="text-sm text-muted-text mb-3">
+          Each asset earns its own awards, on its own stats. The truck runs on fuel
+          economy and mileage.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-x-6">
+          {TRUCK_MEDAL_GUIDE.map((m) => (
+            <AwardLine key={m.name} icon={m.icon} name={m.name} sub={m.tiers} />
+          ))}
+          {TRUCK_PATCH_GUIDE.map((p) => (
             <AwardLine key={p.name} icon={p.icon} name={p.name} sub={p.how} />
           ))}
         </div>
