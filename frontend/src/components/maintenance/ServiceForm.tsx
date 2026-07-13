@@ -161,7 +161,7 @@ export const ServiceForm = ({
             className={field}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Landstar Ultimate PM: oil, fuel filter, separator, grease all points"
+            placeholder="Full PM: oil, fuel filter, separator, grease all points"
           />
         </div>
         <div className="col-span-2 md:col-span-4">

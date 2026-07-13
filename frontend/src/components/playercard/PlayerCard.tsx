@@ -232,7 +232,7 @@ export const PlayerCard = ({
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat label="Net revenue" value={money0(season.netRevenue)} sub="net of Landstar" />
+        <Stat label="Net revenue" value={money0(season.netRevenue)} sub="net of carrier cut" />
         <Stat
           label="Operating profit"
           value={money0(season.netProfit)}

@@ -122,7 +122,7 @@ const SettingsPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
               <Field
                 label="Linehaul"
-                help="Your base cut of the linehaul (Landstar BCO: 65%)."
+                help="Your base % of the linehaul (leased on ~65%; own authority 100%)."
                 value={pcts.linehaul}
                 onChange={set("linehaul")}
               />
