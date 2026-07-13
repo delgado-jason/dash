@@ -4,13 +4,25 @@ import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { Truck } from "@/types/truck";
 import type { Obligation } from "@/types/obligation";
+import type { Driver } from "@/types/driver";
+import type { Trophy } from "@/types/trophy";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getFuelEntries } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
 import { getObligations } from "@/services/obligationsService";
+import { getDrivers } from "@/services/driversService";
+import { getTrophies } from "@/services/trophyService";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { computeGrind } from "@/lib/metrics/grind";
-import { earnedAwards, newAwards, type Award } from "@/lib/metrics/awards";
+import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { computeAllStatuses } from "@/lib/trophies/status";
+import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
+import {
+  earnedAwards,
+  earnedTrophyAwards,
+  newAwards,
+  type Award,
+} from "@/lib/metrics/awards";
 
 // Per-device "seen" store. Earned-award facts are objective (computed from data);
 // which ones a device has already celebrated is per-device — that's what lets
@@ -50,13 +62,22 @@ export const useAwardPops = (
     fuel: FuelEntry[];
     trucks: Truck[];
     obligations: Obligation[];
+    trophies: Trophy[];
+    drivers: Driver[];
   } | null>(null);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    Promise.all([getExpensePeriods(), getFuelEntries(), getTrucks(), getObligations()])
-      .then(([periods, fuel, trucks, obligations]) =>
-        setData({ periods, fuel, trucks, obligations }),
+    Promise.all([
+      getExpensePeriods(),
+      getFuelEntries(),
+      getTrucks(),
+      getObligations(),
+      getTrophies(),
+      getDrivers(),
+    ])
+      .then(([periods, fuel, trucks, obligations, trophies, drivers]) =>
+        setData({ periods, fuel, trucks, obligations, trophies, drivers }),
       )
       .catch(() => {});
   }, []);
@@ -80,7 +101,7 @@ export const useAwardPops = (
       .reduce((s, o) => s + Number(o.amount), 0);
     const grind = computeGrind(loads, data.periods, obligationsAllActive, now);
 
-    const earned = earnedAwards({
+    const baseAwards = earnedAwards({
       loads,
       periods: data.periods,
       fuel: data.fuel,
@@ -89,6 +110,23 @@ export const useAwardPops = (
       streak: grind.currentStreak,
       now,
     });
+
+    // Trophy Hall earns, from the same status engine the Hall renders.
+    const byKey: Record<string, Trophy> = {};
+    for (const t of data.trophies) byKey[t.trophy_key] = t;
+    const cumulativeGross = loads
+      .filter((l) => l.load_status === "delivered")
+      .reduce((s, l) => s + loadRevenue(l), 0);
+    const statuses = computeAllStatuses(TROPHY_CATALOG, byKey, {
+      lifetimeMiles,
+      driverCount: data.drivers.filter((d) => d.active).length,
+      truckCount: data.trucks.length,
+      cumulativeGross,
+    });
+    const earned = [
+      ...earnedTrophyAwards(TROPHY_CATALOG, statuses, byKey),
+      ...baseAwards,
+    ];
     const currentIds = earned.map((a) => a.id);
     const store = read();
 
