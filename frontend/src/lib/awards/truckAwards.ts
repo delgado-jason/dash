@@ -106,3 +106,18 @@ export const truckRecords = (truckLoads: Load[], truckFuel: FuelEntry[]): TruckR
     longestHaul: max(dl.map((l) => Number(l.loaded_miles) || 0)),
   };
 };
+
+// Static catalog for the Guide's award-system reference.
+export const TRUCK_PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
+  { name: "Feather Foot", icon: "feather", how: "A tank clearing your top MPG bar — light-footed and climbing." },
+  { name: "Iron Horse", icon: "road", how: "A workhorse month — one of your highest for miles driven." },
+  { name: "Marathon", icon: "flag", how: "One of your longest single hauls." },
+  { name: "Thrifty", icon: "coins", how: "A tank under your best fuel cost per mile." },
+];
+
+export const TRUCK_MEDAL_GUIDE: { name: string; icon: string; tiers: string }[] = [
+  { name: "Mile Club", icon: "medal", tiers: "100k · 250k · 500k · 1M odometer mi" },
+  { name: "Fuel Miser", icon: "droplet", tiers: "6.5 · 7.0 · 7.5 avg mpg" },
+  { name: "Workhorse", icon: "stack-2", tiers: "100 · 250 · 500 loads hauled" },
+  { name: "Debt Crusher", icon: "lock-open", tiers: "25% · 50% · 75% paid off" },
+];
