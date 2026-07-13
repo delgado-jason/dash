@@ -2,11 +2,19 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import type { Truck } from "@/types/truck";
+import type { FuelEntry } from "@/types/fuelEntry";
+import type { MaintenanceService } from "@/types/maintenance";
 import { getTrucks, createTruck } from "@/services/trucksService";
+import { getFuelEntries } from "@/services/fuelService";
+import { getMaintenanceServices } from "@/services/maintenanceService";
+import { useLoads } from "@/hooks/useLoads";
+import { fleetSummary } from "@/lib/metrics/truckMetrics";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { MilestoneBurst } from "@/components/fleet/MilestoneBurst";
 import { mileMilestone } from "@/lib/metrics/mileClub";
+
+const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
 const FIELDS: FormField[] = [
   {
@@ -37,7 +45,10 @@ const FIELDS: FormField[] = [
 ];
 
 const TrucksPage = () => {
+  const { loads } = useLoads(0);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [fuel, setFuel] = useState<FuelEntry[]>([]);
+  const [services, setServices] = useState<MaintenanceService[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,7 +62,19 @@ const TrucksPage = () => {
 
   useEffect(() => {
     load();
+    getFuelEntries().then(setFuel).catch(() => {});
+    getMaintenanceServices().then(setServices).catch(() => {});
   }, []);
+
+  // Fleet comparison only earns its keep with more than one truck.
+  const fleet =
+    trucks.length > 1 ? fleetSummary(trucks, loads, fuel, services, new Date()) : [];
+  const best = {
+    util: Math.max(0, ...fleet.map((r) => r.utilization ?? 0)),
+    mpg: Math.max(0, ...fleet.map((r) => r.avgMpg ?? 0)),
+    rev: Math.max(0, ...fleet.map((r) => r.revPerMile ?? 0)),
+    mi: Math.max(0, ...fleet.map((r) => r.milesPerMonth ?? 0)),
+  };
 
   const save = async (data: Record<string, unknown>) => {
     setBusy(true);
@@ -93,6 +116,45 @@ const TrucksPage = () => {
           busy={busy}
           error={error}
         />
+      )}
+
+      {fleet.length > 1 && (
+        <div className="bg-plate rounded-lg p-4 mb-4 overflow-x-auto">
+          <p className="text-xs text-muted-text mb-2">
+            Fleet comparison{" "}
+            <span className="text-[11px]">· best per column highlighted</span>
+          </p>
+          <table className="w-full text-sm" style={{ minWidth: 380 }}>
+            <thead>
+              <tr className="text-muted-text text-right">
+                <th className="text-left font-normal pb-2">Truck</th>
+                <th className="font-normal pb-2">Util</th>
+                <th className="font-normal pb-2">MPG</th>
+                <th className="font-normal pb-2">Rev/mi</th>
+                <th className="font-normal pb-2">Mi/mo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fleet.map((r) => (
+                <tr key={r.truckId} className="border-t border-steel text-right">
+                  <td className="text-left py-1.5">Unit {r.unit}</td>
+                  <td style={r.utilization != null && r.utilization === best.util ? { color: "#4ade80" } : undefined}>
+                    {r.utilization != null ? `${Math.round(r.utilization * 100)}%` : "—"}
+                  </td>
+                  <td style={r.avgMpg != null && r.avgMpg === best.mpg ? { color: "#4ade80" } : undefined}>
+                    {r.avgMpg != null ? r.avgMpg.toFixed(1) : "—"}
+                  </td>
+                  <td style={r.revPerMile != null && r.revPerMile === best.rev ? { color: "#4ade80" } : undefined}>
+                    {r.revPerMile != null ? `$${r.revPerMile.toFixed(2)}` : "—"}
+                  </td>
+                  <td style={r.milesPerMonth != null && r.milesPerMonth === best.mi ? { color: "#4ade80" } : undefined}>
+                    {r.milesPerMonth != null ? num(r.milesPerMonth) : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {loading ? (

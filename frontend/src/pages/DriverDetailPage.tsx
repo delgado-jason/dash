@@ -36,7 +36,7 @@ import { computePatches } from "@/lib/awards/patches";
 import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { PlayerCard } from "@/components/playercard/PlayerCard";
-import { RecordBook } from "@/components/awards/RecordBook";
+import { RecordBook, driverRecordChips } from "@/components/awards/RecordBook";
 import { PatchBoard } from "@/components/awards/PatchBoard";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -213,7 +213,7 @@ const DriverDetailPage = () => {
             windowRpm={card.windowRpm}
             medals={card.medals}
           />
-          <RecordBook bests={card.bests} />
+          <RecordBook records={driverRecordChips(card.bests)} />
           <PatchBoard patches={card.patches} />
           <div className="flex justify-center gap-4 mt-6">
             <Link to="/trophy-room" className="text-sm text-status-info-text hover:underline">
