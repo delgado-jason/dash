@@ -3,6 +3,7 @@ import {
   getSettlementSchedule,
   updateSettlementSchedule,
 } from "@/services/settlementScheduleService";
+import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 
 const money = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -180,6 +181,8 @@ const SettingsPage = () => {
           </>
         )}
       </div>
+
+      <AccessorialRatesCard />
     </div>
   );
 };
