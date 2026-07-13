@@ -7,16 +7,11 @@ import {
   Layers,
   Users,
   Medal,
-  TrendingDown,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
-import type {
-  Grade,
-  CareerRank,
-  SeasonStats,
-  PersonalBests,
-  Trophy as TrophyData,
-} from "@/lib/metrics/playerCard";
+import type { Grade, CareerRank, SeasonStats } from "@/lib/metrics/playerCard";
+import type { Award } from "@/lib/metrics/awards";
 import { fmtMiles } from "@/lib/metrics/mileClub";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
@@ -45,13 +40,19 @@ const GRADE_META: Record<Grade, { label: string; fg: string; bg: string }> = {
   strong: { label: "STRONG", fg: "#fbbf24", bg: "#3a300a" },
 };
 
-const TROPHY_ICON: Record<string, LucideIcon> = {
-  medal: Medal,
-  users: Users,
-  stack: Layers,
+// The award engine's icon strings → lucide. Shared vocabulary with the pop host,
+// so a badge here wears the same icon as the pop that announced it.
+const AWARD_ICON: Record<string, LucideIcon> = {
   trophy: Trophy,
   flame: Flame,
+  package: Package,
+  stack: Layers,
+  users: Users,
+  gauge: Gauge,
+  medal: Medal,
+  truck: Truck,
 };
+const iconFor = (n: string): LucideIcon => AWARD_ICON[n] ?? Trophy;
 
 const GradeChip = ({ grade, value }: { grade: Grade | null; value?: string }) => {
   if (!grade)
@@ -93,25 +94,31 @@ const Stat = ({
   </div>
 );
 
-const Record = ({
+// A small earned emblem — the persistent home for a `burst` pop. Name + the
+// record value it carries, so the achievement and its number live together.
+const Badge = ({
   Icon,
-  label,
-  value,
-  color,
+  name,
+  detail,
 }: {
   Icon: LucideIcon;
-  label: string;
-  value: string;
-  color: string;
+  name: string;
+  detail: string;
 }) => (
-  <div className="rounded-[11px] border border-plate px-3 py-2.5" style={{ background: "#10151f" }}>
-    <p className="text-[11px] text-muted-text flex items-center gap-1.5">
-      <Icon size={13} style={{ color }} />
-      {label}
-    </p>
-    <p className="text-lg font-condensed mt-0.5" style={{ color: value === "—" ? undefined : "#4ade80" }}>
-      {value}
-    </p>
+  <div
+    className="flex items-center gap-2 rounded-[11px] px-2.5 py-2"
+    style={{ background: "#10151f", border: "1px solid #2a3347" }}
+  >
+    <div
+      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: "#3a2a0a", color: "#f5b03a" }}
+    >
+      <Icon size={16} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-[12px] font-semibold leading-tight truncate">{name}</p>
+      <p className="text-[10px] text-muted-text leading-tight truncate">{detail}</p>
+    </div>
   </div>
 );
 
@@ -125,8 +132,8 @@ export interface PlayerCardProps {
   marginGrade: Grade | null;
   form: Grade | null;
   windowRpm: number | null;
-  bests: PersonalBests;
-  trophies: TrophyData[];
+  badges: Award[]; // frequent wins (burst tier)
+  shelf: Award[]; // rarer wins (marquee tier — mile club, strong season)
 }
 
 export const PlayerCard = ({
@@ -139,8 +146,8 @@ export const PlayerCard = ({
   marginGrade,
   form,
   windowRpm,
-  bests,
-  trophies,
+  badges,
+  shelf,
 }: PlayerCardProps) => {
   const stars =
     "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
@@ -225,7 +232,7 @@ export const PlayerCard = ({
       {/* ---- season stat line ---- */}
       <div className="flex items-baseline gap-2 mt-5 mb-2">
         <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
-          THIS SEASON
+          LAST SEASON
         </span>
         <span className="text-[11px] text-muted-text">
           · {season.label} · your last 3 complete months
@@ -260,35 +267,42 @@ export const PlayerCard = ({
         <Stat label="Best lane" value={season.bestLane?.lane ?? "—"} span2 />
       </div>
 
-      {/* ---- personal bests ---- */}
+      {/* ---- badges (frequent wins) ---- */}
       <div className="flex items-baseline gap-2 mt-6">
         <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
-          PERSONAL BESTS
+          BADGES
         </span>
-        <span className="text-[11px] text-muted-text">— top one and it re-earns</span>
+        <span className="text-[11px] text-muted-text">— earned as you run</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-        <Record Icon={Trophy} label="Top week" color="#f5b03a" value={bests.bestWeekRevenue != null ? money0(bests.bestWeekRevenue) : "—"} />
-        <Record Icon={TrendingDown} label="Best deadhead" color="#4ade80" value={bests.lowestDeadheadPct != null ? pct1(bests.lowestDeadheadPct) : "—"} />
-        <Record Icon={Flame} label="Best tank" color="#e8940a" value={bests.bestMpg != null ? `${bests.bestMpg.toFixed(1)} mpg` : "—"} />
-        <Record Icon={Package} label="Biggest load" color="#f5b03a" value={bests.biggestLoad != null ? money0(bests.biggestLoad) : "—"} />
-        <Record Icon={Layers} label="Most loads / wk" color="#60a5fa" value={bests.mostLoadsInWeek != null ? String(bests.mostLoadsInWeek) : "—"} />
-      </div>
+      {badges.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {badges.map((b) => (
+            <Badge key={b.id} Icon={iconFor(b.icon)} name={b.name} detail={b.detail} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-text mt-2">
+          Rack up best weeks, tight deadhead, and fuel records to earn badges.
+        </p>
+      )}
 
-      {/* ---- trophy shelf ---- */}
-      {trophies.length > 0 && (
+      {/* ---- trophy shelf (rarer wins) ---- */}
+      {shelf.length > 0 && (
         <>
-          <div className="font-comic text-lg mt-6" style={{ color: "#f5b03a" }}>
-            TROPHY SHELF
+          <div className="flex items-baseline gap-2 mt-6">
+            <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+              TROPHY SHELF
+            </span>
+            <span className="text-[11px] text-muted-text">— the bigger hauls</span>
           </div>
           <div className="flex flex-wrap gap-2.5 mt-2">
-            {trophies.map((t) => (
+            {shelf.map((t) => (
               <MiniTrophyCard
-                key={t.key}
+                key={t.id}
                 name={t.name}
                 detail={t.detail}
-                Icon={TROPHY_ICON[t.icon] ?? Trophy}
-                gold={t.key === "mileclub" || t.key === "strong-season"}
+                Icon={iconFor(t.icon)}
+                gold={t.id.startsWith("mileclub") || t.id.startsWith("strong-season")}
               />
             ))}
           </div>

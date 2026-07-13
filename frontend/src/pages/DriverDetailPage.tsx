@@ -29,9 +29,9 @@ import {
   marginGrade,
   rpmGrade,
   worseGrade,
-  personalBests,
-  earnedTrophies,
 } from "@/lib/metrics/playerCard";
+import { earnedAwards } from "@/lib/metrics/awards";
+import { computeGrind } from "@/lib/metrics/grind";
 import { PlayerCard } from "@/components/playercard/PlayerCard";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -114,12 +114,18 @@ const DriverDetailPage = () => {
     const season = getSeasonStats(periods, driverLoads, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
-    const bests = personalBests(driverLoads, fuel, now);
-    const trophies = earnedTrophies({
-      lifetimeMiles,
+    // One award engine drives both the pops and the card, so a badge here matches
+    // the pop that announced it. Split by tier: burst = badges, marquee = shelf
+    // (rank lives in the header, so it's kept off the shelf).
+    const grind = computeGrind(driverLoads, periods, obligationsTotal, now);
+    const awards = earnedAwards({
       loads: driverLoads,
-      bestMpg: bests.bestMpg,
-      seasonMargin: marginG,
+      periods,
+      fuel,
+      lifetimeMiles,
+      obligationsDebtMonthly: obligationsDebt,
+      streak: grind.currentStreak,
+      now,
     });
     return {
       rank: careerRank(lifetimeMiles),
@@ -128,8 +134,8 @@ const DriverDetailPage = () => {
       marginGrade: marginG,
       form: worseGrade(rpmG, marginG),
       windowRpm: basis.windowRpm,
-      bests,
-      trophies,
+      badges: awards.filter((a) => a.tier === "burst"),
+      shelf: awards.filter((a) => a.tier === "marquee" && !a.id.startsWith("rank:")),
     };
   }, [driverLoads, periods, obligations, fuel, trucks]);
 
@@ -171,7 +177,7 @@ const DriverDetailPage = () => {
       kind="driver"
       id={driver.driver_id}
       avatarUrl={driver.avatar_url}
-      size={118}
+      size={150}
       allowVariant
       onUpdated={(u) => setDriver({ ...driver, avatar_url: u })}
     />
@@ -195,12 +201,15 @@ const DriverDetailPage = () => {
             marginGrade={card.marginGrade}
             form={card.form}
             windowRpm={card.windowRpm}
-            bests={card.bests}
-            trophies={card.trophies}
+            badges={card.badges}
+            shelf={card.shelf}
           />
-          <div className="text-center mt-3">
+          <div className="flex justify-center gap-4 mt-3">
+            <Link to="/trophy-room" className="text-sm text-status-info-text hover:underline">
+              Trophy Room →
+            </Link>
             <Link to="/recap" className="text-sm text-status-info-text hover:underline">
-              See your full recap →
+              Full recap →
             </Link>
           </div>
         </div>
