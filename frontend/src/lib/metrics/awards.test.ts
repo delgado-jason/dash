@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
-import { earnedAwards, newAwards, type Award } from "./awards";
+import { earnedAwards, earnedTrophyAwards, newAwards, type Award } from "./awards";
+import type { TrophyDef } from "@/lib/trophies/catalog";
+import type { TrophyStatus } from "@/lib/trophies/status";
+import type { Trophy } from "@/types/trophy";
 
 const NOW = new Date("2026-07-10T12:00:00Z");
 
@@ -64,6 +67,25 @@ describe("earnedAwards", () => {
   });
 });
 
+describe("earnedTrophyAwards", () => {
+  it("emits only earned trophies, carrying the approved art", () => {
+    const catalog = [
+      { key: "owner-operator", name: "Owner Operator", form: "medallion", kind: "manual", blurb: "The origin.", promptIdea: "" },
+      { key: "second-truck", name: "Second Truck", form: "plaque", kind: "auto", blurb: "Two trucks.", promptIdea: "" },
+    ] as TrophyDef[];
+    const statuses: Record<string, TrophyStatus> = {
+      "owner-operator": { earned: true, progress: null, progressLabel: null },
+      "second-truck": { earned: false, progress: 0.5, progressLabel: "1 of 2" },
+    };
+    const records: Record<string, Trophy> = {
+      "owner-operator": { trophy_key: "owner-operator", earned: true, earned_on: null, image_url: "art.jpg", notes: null },
+    };
+    const awards = earnedTrophyAwards(catalog, statuses, records);
+    expect(awards.map((a) => a.id)).toEqual(["trophy:owner-operator"]);
+    expect(awards[0]).toMatchObject({ tier: "trophy", name: "Owner Operator", image: "art.jpg" });
+  });
+});
+
 describe("newAwards", () => {
   it("drops seen ids and orders marquee before burst", () => {
     const earned: Award[] = [
@@ -75,19 +97,23 @@ describe("newAwards", () => {
     expect(fresh.map((a) => a.id)).toEqual(["rank:road-captain", "best-week:5000"]);
   });
 
-  it("orders recap ceremonies grandest first, ahead of marquees", () => {
+  it("orders trophy → recap (grandest) → marquee → burst", () => {
     const earned: Award[] = [
+      { id: "best-week:5000", tier: "burst", name: "", detail: "", icon: "" },
       { id: "recap:month:Jun 2026", tier: "recap", scope: "month", name: "", detail: "", icon: "" },
       { id: "rank:road-captain", tier: "marquee", name: "", detail: "", icon: "" },
       { id: "recap:year:2026", tier: "recap", scope: "year", name: "", detail: "", icon: "" },
+      { id: "trophy:owner-operator", tier: "trophy", name: "", detail: "", icon: "" },
       { id: "recap:quarter:Q2 2026", tier: "recap", scope: "quarter", name: "", detail: "", icon: "" },
     ];
     const fresh = newAwards(earned, new Set());
     expect(fresh.map((a) => a.id)).toEqual([
+      "trophy:owner-operator",
       "recap:year:2026",
       "recap:quarter:Q2 2026",
       "recap:month:Jun 2026",
       "rank:road-captain",
+      "best-week:5000",
     ]);
   });
 });

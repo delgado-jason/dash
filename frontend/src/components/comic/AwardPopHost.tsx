@@ -14,6 +14,7 @@ import type { Award } from "@/lib/metrics/awards";
 import { MarqueeAward } from "./MarqueeAward";
 import { BurstAward } from "./BurstAward";
 import { RecapCeremony } from "./RecapCeremony";
+import { TrophyCeremony } from "./TrophyCeremony";
 
 const ICONS: Record<string, LucideIcon> = {
   truck: Truck,
@@ -47,6 +48,7 @@ export const AwardPopHost = ({
 
   const visible = pops.filter((p) => !dismissed.has(p.id));
   const takeover =
+    visible.find((p) => p.tier === "trophy") ??
     visible.find((p) => p.tier === "recap") ??
     visible.find((p) => p.tier === "marquee");
   const bursts = takeover ? [] : visible.filter((p) => p.tier === "burst").slice(0, 4);
@@ -69,6 +71,9 @@ export const AwardPopHost = ({
             <BurstAward key={b.id} award={b} Icon={iconFor(b.icon)} onDismiss={() => dismiss(b.id)} />
           ))}
         </div>
+      )}
+      {takeover && takeover.tier === "trophy" && (
+        <TrophyCeremony award={takeover} onDismiss={() => dismiss(takeover.id)} />
       )}
       {takeover && takeover.tier === "recap" && (
         <RecapCeremony award={takeover} truckAvatarUrl={truckAvatarUrl} onDismiss={() => dismiss(takeover.id)} />

@@ -15,8 +15,13 @@ import {
 import { mileMilestone } from "./mileClub";
 import { resolvePeriod, loadsInRange, type RecapScope } from "./recap";
 import { loadRevenue } from "./rateTargets";
+import type { TrophyDef } from "@/lib/trophies/catalog";
+import type { TrophyStatus } from "@/lib/trophies/status";
+import type { Trophy } from "@/types/trophy";
 
-export type AwardTier = "recap" | "marquee" | "burst";
+// Grandest → smallest. trophy = once-in-a-career Hall milestone; recap = a period
+// close; marquee = a big win; burst = a frequent badge.
+export type AwardTier = "trophy" | "recap" | "marquee" | "burst";
 
 export interface Award {
   id: string;
@@ -25,6 +30,7 @@ export interface Award {
   detail: string;
   icon: string; // mapped to a lucide icon in the UI
   scope?: RecapScope; // recap tier only — drives the prestige of the ceremony
+  image?: string; // trophy tier only — the approved AI art
 }
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -154,10 +160,30 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   return out;
 };
 
+// The earned Hall trophies as awards — the grandest tier. Same earn-detection the
+// Trophy Room uses (computeAllStatuses), so a trophy pops the instant it's earned
+// and never disagrees with the Hall. Carries the approved AI art for the pop.
+export const earnedTrophyAwards = (
+  catalog: TrophyDef[],
+  statuses: Record<string, TrophyStatus>,
+  recordsByKey: Record<string, Trophy>,
+): Award[] =>
+  catalog
+    .filter((d) => statuses[d.key]?.earned)
+    .map((d) => ({
+      id: `trophy:${d.key}`,
+      tier: "trophy" as const,
+      name: d.name,
+      detail: d.blurb,
+      icon: "trophy",
+      image: recordsByKey[d.key]?.image_url ?? undefined,
+    }));
+
 // Sample awards for previewing the celebration UI (dashboard `?awarddemo`) —
 // since a real device silently baselines on first load, this is how you see the
 // pop without waiting to earn one.
 export const DEMO_AWARDS: Award[] = [
+  { id: "demo:trophy", tier: "trophy", name: "Owner Operator", detail: "The origin — you went out on your own.", icon: "trophy" },
   { id: "demo:recap-year", tier: "recap", scope: "year", name: "2026", detail: "$141k hauled · 47 loads", icon: "trophy" },
   { id: "demo:recap-quarter", tier: "recap", scope: "quarter", name: "Q2 2026", detail: "$70.4k hauled · 23 loads", icon: "trophy" },
   { id: "demo:recap-month", tier: "recap", scope: "month", name: "Jun 2026", detail: "$24.1k hauled · 8 loads", icon: "trophy" },
@@ -177,7 +203,9 @@ export const newAwards = (earned: Award[], seen: Set<string>): Award[] => {
   const recaps = fresh
     .filter((a) => a.tier === "recap")
     .sort((a, b) => (scopeRank[a.scope ?? "month"] ?? 0) - (scopeRank[b.scope ?? "month"] ?? 0));
+  // Trophies (career milestones) lead everything, then recaps, marquees, bursts.
   return [
+    ...fresh.filter((a) => a.tier === "trophy"),
     ...recaps,
     ...fresh.filter((a) => a.tier === "marquee"),
     ...fresh.filter((a) => a.tier === "burst"),
