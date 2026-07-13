@@ -116,7 +116,7 @@ const DashboardPage = () => {
   // ---- threshold-based status ----
   // Live break-even (true cost ÷ loaded miles, last 3 complete months); falls
   // back to the constant until there's enough P&L history.
-  const liveBreakEven = targets.ladder.walkAway ?? BREAK_EVEN_RPM;
+  const liveBreakEven = targets.basis.breakEvenRpm ?? BREAK_EVEN_RPM;
   const rpmStatus =
     avgRpm === null ? "neutral" : avgRpm >= liveBreakEven ? "good" : "bad";
   const deadheadStatus =

@@ -11,24 +11,35 @@ const TRACK = "#232c3f";
 const money = (n: number | null): string =>
   n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
 
-// This week's gross vs floor (break-even) + target. The solid bar is EARNED
-// (delivered) freight — what actually counts; the faded extension is COMMITTED
-// (booked/in-transit) pipeline still to haul. Color grades off earned.
+// This week's gross vs floor (break-even), target, and strong. The bar spans to
+// STRONG; solid fill is EARNED (delivered), the faded extension is COMMITTED
+// (booked/in-transit) still to haul. Floor + target are ticks. Color grades off
+// earned vs the floor/target thresholds.
 const PaceBar = ({
   earned,
   committed,
   floor,
+  minimum,
   target,
+  strong,
 }: {
   earned: number;
   committed: number;
   floor: number;
+  minimum: number;
   target: number;
+  strong: number;
 }) => {
-  const frac = (v: number) =>
-    target > 0 ? Math.max(0, Math.min(1, v / target)) : 0;
-  const floorPos = target > 0 ? Math.min(1, floor / target) : 0;
+  const max = strong > 0 ? strong : target;
+  const frac = (v: number) => (max > 0 ? Math.max(0, Math.min(1, v / max)) : 0);
   const color = earned >= target ? GREEN : earned >= floor ? AMBER : RED;
+  const tick = (v: number, title: string) => (
+    <div
+      className="absolute top-0 h-2"
+      style={{ left: `${frac(v) * 100}%`, width: 2, background: "#ebedf5" }}
+      title={title}
+    />
+  );
   return (
     <div className="relative h-2 rounded mt-2 mb-1" style={{ background: TRACK }}>
       <div
@@ -39,11 +50,9 @@ const PaceBar = ({
         className="absolute left-0 top-0 h-2 rounded"
         style={{ width: `${frac(earned) * 100}%`, background: color }}
       />
-      <div
-        className="absolute top-0 h-2"
-        style={{ left: `${floorPos * 100}%`, width: 2, background: "#ebedf5" }}
-        title="break-even floor"
-      />
+      {tick(floor, "break-even floor")}
+      {tick(minimum, "minimum")}
+      {tick(target, "target")}
     </div>
   );
 };
@@ -87,6 +96,8 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
     bookingLadder,
     grossRate,
     gross,
+    weeklyMinimum,
+    weeklyStrong,
     weekBooked,
     weekEarned,
     basis,
@@ -105,7 +116,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
         <p className="text-sm font-medium text-light">Rate &amp; pace targets</p>
         <p className="text-xs text-muted-text">
           {ready
-            ? `live · last ${basis.months} complete month${basis.months > 1 ? "s" : ""}`
+            ? `live · gross $ · last ${basis.months} complete month${basis.months > 1 ? "s" : ""}`
             : "needs P&L history"}
         </p>
       </div>
@@ -130,7 +141,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
           </div>
 
           <div>
-            <p className="text-xs text-muted-text">This week · earned</p>
+            <p className="text-xs text-muted-text">This week · earned (gross)</p>
             <div className="flex items-center gap-2">
               <p className="text-xl font-condensed mt-1">{money(weekEarned)}</p>
               {beatTarget && <TargetBurst />}
@@ -139,11 +150,13 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
               earned={weekEarned}
               committed={weekBooked}
               floor={gross.weeklyBreakEven ?? 0}
+              minimum={weeklyMinimum ?? 0}
               target={gross.weeklyTarget ?? 0}
+              strong={weeklyStrong ?? 0}
             />
             <p className="text-xs text-muted-text">
-              floor {money(gross.weeklyBreakEven)} · target{" "}
-              {money(gross.weeklyTarget)}
+              floor {money(gross.weeklyBreakEven)} · min {money(weeklyMinimum)} ·
+              target {money(gross.weeklyTarget)} · strong {money(weeklyStrong)}
             </p>
             {committedAhead > 0 && (
               <p className="text-xs mt-1 text-muted-text">
