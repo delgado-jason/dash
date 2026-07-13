@@ -126,6 +126,11 @@ export const LoadDetailPage = () => {
       .join(" ");
 
   const revenue = loadRevenue(load);
+  // What the company actually keeps after the carrier's cut. Falls back to the
+  // full rate for own-authority users (no settlement schedule → net == gross).
+  const net = Number.isFinite(Number(load.net_revenue))
+    ? Number(load.net_revenue)
+    : revenue;
   const rpm = loadRpm(load);
   const dh = deadheadShare(load);
   const fuel = estimateLoadFuel(load);
@@ -424,9 +429,22 @@ export const LoadDetailPage = () => {
             value={money2(Number(load.total_accessorials))}
           />
           <div className="flex justify-between border-t border-steel mt-1.5 pt-1.5 text-sm">
-            <span>Total</span>
+            <span>Total rate</span>
             <span className="font-condensed text-base">{money2(revenue)}</span>
           </div>
+          {Math.abs(net - revenue) > 0.005 && (
+            <>
+              <div className="flex justify-between mt-1 text-sm">
+                <span className="text-status-positive-text">Your net</span>
+                <span className="font-condensed text-base text-status-positive-text">
+                  {money2(net)}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-text mt-1">
+                After your carrier's cut — what your company keeps.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="bg-plate rounded-lg p-4">

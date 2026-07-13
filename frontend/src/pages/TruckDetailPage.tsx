@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import type { Truck } from "@/types/truck";
-import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
 import { getTruck, patchTruck } from "@/services/trucksService";
@@ -18,6 +17,7 @@ import {
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
+import { loadRevenue } from "@/lib/metrics/rateTargets";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
@@ -25,8 +25,6 @@ import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const loadRev = (l: Load) =>
-  Number(l.linehaul) + Number(l.fuel_surcharge) + Number(l.total_accessorials);
 
 const Spec = ({
   label,
@@ -129,7 +127,7 @@ const TruckDetailPage = () => {
       </div>
     );
 
-  const revenue = truckLoads.reduce((s, l) => s + loadRev(l), 0);
+  const revenue = truckLoads.reduce((s, l) => s + loadRevenue(l), 0);
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -225,7 +223,7 @@ const TruckDetailPage = () => {
           <p className="text-2xl font-condensed">{truckLoads.length}</p>
         </div>
         <div className="bg-plate rounded-lg p-4">
-          <p className="text-xs text-muted-text mb-1">Revenue · all time</p>
+          <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
           <p className="text-2xl font-condensed">{money(revenue)}</p>
         </div>
       </div>
@@ -241,7 +239,7 @@ const TruckDetailPage = () => {
                 <span>
                   {l.origin_market} → {l.delivery_market}
                 </span>
-                <span className="text-muted-text">{money(loadRev(l))}</span>
+                <span className="text-muted-text">{money(loadRevenue(l))}</span>
               </div>
             ))}
           </div>

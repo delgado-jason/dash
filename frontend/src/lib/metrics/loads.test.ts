@@ -115,7 +115,7 @@ describe("outstandingLoads", () => {
 describe("loadsKpis", () => {
   const now = new Date("2026-06-15T00:00:00.000Z");
 
-  it("aggregates delivered gross, RPM, AR, and pipeline", () => {
+  it("aggregates delivered net, RPM, AR, and pipeline", () => {
     const loads = [
       {
         load_status: "delivered",
@@ -141,13 +141,33 @@ describe("loadsKpis", () => {
 
     const k = loadsKpis(loads as any, now);
     expect(k.deliveredCount).toBe(2);
-    expect(k.deliveredGross).toBe(3000);
+    expect(k.deliveredNet).toBe(3000);
     expect(k.loadedMiles).toBe(1500);
     expect(k.rpm).toBeCloseTo(2); // 3000 / 1500
     expect(k.arTotal).toBe(1000); // the delivered+unpaid one
     expect(k.arCount).toBe(1);
     expect(k.bookedCount).toBe(1);
     expect(k.inTransitCount).toBe(1);
+  });
+
+  it("reports net dollars but a gross rate/mile", () => {
+    const loads = [
+      {
+        load_status: "delivered",
+        delivery_date: "2026-06-05T04:00:00.000Z",
+        payment_status: "unpaid", // also counts toward AR
+        linehaul: "2000",
+        fuel_surcharge: "0",
+        total_accessorials: "0",
+        gross_revenue: "2000",
+        net_revenue: "1460", // 73% carrier take
+        loaded_miles: 1000,
+      },
+    ];
+    const k = loadsKpis(loads as any, now);
+    expect(k.deliveredNet).toBe(1460); // dollars kept = net
+    expect(k.arTotal).toBe(1460); // owed = net
+    expect(k.rpm).toBeCloseTo(2); // rate/mile = gross (2000 / 1000)
   });
 
   it("returns null RPM when there are no loaded miles", () => {

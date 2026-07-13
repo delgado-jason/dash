@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import type { Driver } from "@/types/driver";
-import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { Truck } from "@/types/truck";
@@ -17,7 +16,11 @@ import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
-import { getCostBasis, getRateLadder } from "@/lib/metrics/rateTargets";
+import {
+  getCostBasis,
+  getRateLadder,
+  loadRevenue,
+} from "@/lib/metrics/rateTargets";
 import { RATE_TIERS } from "@/lib/constants/targets";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import {
@@ -32,8 +35,6 @@ import {
 import { PlayerCard } from "@/components/playercard/PlayerCard";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const loadRev = (l: Load) =>
-  Number(l.linehaul) + Number(l.fuel_surcharge) + Number(l.total_accessorials);
 
 const Spec = ({
   label,
@@ -148,7 +149,7 @@ const DriverDetailPage = () => {
       </div>
     );
 
-  const revenue = driverLoads.reduce((s, l) => s + loadRev(l), 0);
+  const revenue = driverLoads.reduce((s, l) => s + loadRevenue(l), 0);
   const milesHauled = driverLoads.reduce(
     (s, l) =>
       l.load_status === "delivered" ? s + (Number(l.loaded_miles) || 0) : s,
@@ -265,7 +266,7 @@ const DriverDetailPage = () => {
             <p className="text-2xl font-condensed">{driverLoads.length}</p>
           </div>
           <div className="bg-plate rounded-lg p-4">
-            <p className="text-xs text-muted-text mb-1">Revenue · all time</p>
+            <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
             <p className="text-2xl font-condensed">{money(revenue)}</p>
           </div>
           <div className="bg-plate rounded-lg p-4">
@@ -288,7 +289,7 @@ const DriverDetailPage = () => {
                 <span>
                   {l.origin_market} → {l.delivery_market}
                 </span>
-                <span className="text-muted-text">{money(loadRev(l))}</span>
+                <span className="text-muted-text">{money(loadRevenue(l))}</span>
               </div>
             ))}
           </div>
