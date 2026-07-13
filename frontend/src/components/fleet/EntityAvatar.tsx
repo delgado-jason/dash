@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Sparkles, Upload } from "lucide-react";
+import { Sparkles, Upload, Pencil } from "lucide-react";
 import {
   generateAvatar,
   uploadAvatar,
@@ -28,7 +28,11 @@ export const EntityAvatar = ({
   const [busy, setBusy] = useState<null | "gen" | "up">(null);
   const [variant, setVariant] = useState("male");
   const [err, setErr] = useState<string | null>(null);
+  // Once an avatar exists the generation controls collapse behind a "Change"
+  // affordance — a finished avatar shouldn't carry a toolbar. Editing reopens them.
+  const [editing, setEditing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const showControls = !url || editing;
 
   // Storage path is fixed per entity, so a fresh image reuses the URL — bust
   // the browser cache so the new one shows.
@@ -81,47 +85,67 @@ export const EntityAvatar = ({
             {busy === "gen" ? "Generating…" : "Uploading…"}
           </div>
         )}
+        {url && !editing && !busy && (
+          <button
+            onClick={() => setEditing(true)}
+            aria-label="Change avatar"
+            className="absolute top-1.5 right-1.5 bg-black/55 hover:bg-black/75 text-light rounded-md p-1"
+          >
+            <Pencil size={13} />
+          </button>
+        )}
       </div>
 
-      {allowVariant && (
-        <div className="flex gap-1 text-xs">
-          {["male", "female"].map((v) => (
+      {showControls && (
+        <>
+          {allowVariant && (
+            <div className="flex gap-1 text-xs">
+              {["male", "female"].map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setVariant(v)}
+                  className={`px-2 py-0.5 rounded capitalize ${
+                    variant === v ? "bg-amber text-steel" : "bg-steel text-muted-text"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
             <button
-              key={v}
-              onClick={() => setVariant(v)}
-              className={`px-2 py-0.5 rounded capitalize ${
-                variant === v ? "bg-amber text-steel" : "bg-steel text-muted-text"
-              }`}
+              onClick={gen}
+              disabled={!!busy}
+              className="bg-amber text-steel px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
             >
-              {v}
+              <Sparkles size={13} /> Generate
             </button>
-          ))}
-        </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={!!busy}
+              className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50"
+            >
+              <Upload size={13} /> Upload
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={onFile}
+            />
+          </div>
+          {url && (
+            <button
+              onClick={() => setEditing(false)}
+              className="text-[11px] text-muted-text hover:text-light"
+            >
+              Done
+            </button>
+          )}
+        </>
       )}
-
-      <div className="flex gap-2">
-        <button
-          onClick={gen}
-          disabled={!!busy}
-          className="bg-amber text-steel px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
-        >
-          <Sparkles size={13} /> Generate
-        </button>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={!!busy}
-          className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50"
-        >
-          <Upload size={13} /> Upload
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={onFile}
-        />
-      </div>
       {err && <p className="text-destructive text-xs">{err}</p>}
     </div>
   );
