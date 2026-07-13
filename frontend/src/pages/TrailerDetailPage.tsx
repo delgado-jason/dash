@@ -14,7 +14,7 @@ import {
   avgMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
-import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
@@ -75,9 +75,19 @@ const TrailerDetailPage = () => {
     () => loads.filter((l) => l.trailer_id === id),
     [loads, id],
   );
-  const revenue = useMemo(
-    () => trailerLoads.reduce((s, l) => s + loadRevenue(l), 0),
+  // Only earned freight — delivered AND paid. The trailer earns its share of
+  // each load (loadTrailerNet: its % of linehaul + base-rate accessorials), not
+  // the full net — the tractor earns the rest.
+  const earnedLoads = useMemo(
+    () =>
+      trailerLoads.filter(
+        (l) => l.load_status === "delivered" && l.payment_status === "paid",
+      ),
     [trailerLoads],
+  );
+  const revenue = useMemo(
+    () => earnedLoads.reduce((s, l) => s + loadTrailerNet(l), 0),
+    [earnedLoads],
   );
   const due = useMemo(() => {
     let overdue = 0;
@@ -210,11 +220,14 @@ const TrailerDetailPage = () => {
         </Link>
         <div className="bg-plate rounded-lg p-4">
           <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-          <p className="text-2xl font-condensed">{trailerLoads.length}</p>
+          <p className="text-2xl font-condensed">{earnedLoads.length}</p>
         </div>
         <div className="bg-plate rounded-lg p-4">
-          <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
+          <p className="text-xs text-muted-text mb-1">Trailer earnings · all time</p>
           <p className="text-2xl font-condensed">{money(revenue)}</p>
+          <p className="text-[11px] text-muted-text mt-1">
+            its cut of every load it carried
+          </p>
         </div>
       </div>
     </div>

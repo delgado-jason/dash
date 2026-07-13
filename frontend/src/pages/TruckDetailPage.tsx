@@ -72,6 +72,15 @@ const TruckDetailPage = () => {
     () => loads.filter((l) => l.truck_id === id),
     [loads, id],
   );
+  // Revenue/count use only earned freight — delivered AND paid — matching the
+  // dashboard. Cancelled/booked/in-transit loads haven't earned anything yet.
+  const earnedLoads = useMemo(
+    () =>
+      truckLoads.filter(
+        (l) => l.load_status === "delivered" && l.payment_status === "paid",
+      ),
+    [truckLoads],
+  );
 
   // Latest odometer, derived from the app: stored value + newest load + newest
   // service reading + newest fuel fill-up (fuel is usually the freshest).
@@ -127,7 +136,7 @@ const TruckDetailPage = () => {
       </div>
     );
 
-  const revenue = truckLoads.reduce((s, l) => s + loadRevenue(l), 0);
+  const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -220,7 +229,7 @@ const TruckDetailPage = () => {
         </Link>
         <div className="bg-plate rounded-lg p-4">
           <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-          <p className="text-2xl font-condensed">{truckLoads.length}</p>
+          <p className="text-2xl font-condensed">{earnedLoads.length}</p>
         </div>
         <div className="bg-plate rounded-lg p-4">
           <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
@@ -230,11 +239,11 @@ const TruckDetailPage = () => {
 
       <div className="bg-plate rounded-lg p-4 mt-4">
         <p className="text-xs text-muted-text mb-2">Recent loads</p>
-        {truckLoads.length === 0 ? (
+        {earnedLoads.length === 0 ? (
           <p className="text-sm text-muted-text">None on this truck yet.</p>
         ) : (
           <div className="text-sm divide-y divide-steel">
-            {truckLoads.slice(0, 6).map((l) => (
+            {earnedLoads.slice(0, 6).map((l) => (
               <div key={l.load_id} className="py-2 flex justify-between">
                 <span>
                   {l.origin_market} → {l.delivery_market}

@@ -23,6 +23,15 @@ export const loadRevenue = (l: Load): number => {
   return Number.isFinite(net) ? net : loadGross(l);
 };
 
+// The TRAILER's slice of a load's net — its % of linehaul plus its % of the
+// base-rate accessorials it rides on (server-computed). The truck/driver earn
+// the full load net; the trailer earns only this. Absent (no schedule / fixture)
+// → 0, so a trailer with no settlement split simply shows nothing attributed.
+export const loadTrailerNet = (l: Load): number => {
+  const t = Number(l.trailer_net);
+  return Number.isFinite(t) ? t : 0;
+};
+
 // The `count` COMPLETE calendar months before now's month (excludes the
 // in-progress current month — its miles lag its cost and would inflate $/mile).
 // now = 2026-07-xx, count = 3 → [Apr, May, Jun] 2026.

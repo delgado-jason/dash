@@ -31,6 +31,9 @@ export interface Load {
   // fall back to the linehaul+FSC+accessorials sum.
   gross_revenue?: string;
   net_revenue?: string;
+  // The trailer's slice of net (its % of linehaul + its % of base-rate
+  // accessorials). Server-side; numeric → string. Absent → 0 trailer share.
+  trailer_net?: string;
   commodity: string | null;
   weight?: number | null;
   dimensions?: string | null;
