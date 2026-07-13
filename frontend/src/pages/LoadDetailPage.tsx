@@ -19,6 +19,7 @@ import { getAccessorialRates } from "@/services/accessorialRateService";
 import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Kpi } from "@/components/Kpi";
+import { fmtTime, dwell } from "@/lib/stopTimes";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,37 @@ const Row = ({ label, value }: { label: ReactNode; value: ReactNode }) => (
     <span className="text-right">{value}</span>
   </div>
 );
+
+// The in → out time line for one stop, with a dwell chip when both are set.
+const StopTimes = ({
+  inTime,
+  outTime,
+}: {
+  inTime?: string | null;
+  outTime?: string | null;
+}) => {
+  const d = dwell(inTime, outTime);
+  return (
+    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-iron">
+      <span className="text-xs text-muted-text">In</span>
+      <span className="text-sm">{fmtTime(inTime)}</span>
+      <span className="text-muted-text">→</span>
+      <span className="text-xs text-muted-text">Out</span>
+      <span className="text-sm">{fmtTime(outTime)}</span>
+      {d && (
+        <span
+          className="ml-auto text-[11px] px-2 py-0.5 rounded-full"
+          style={{
+            backgroundColor: "var(--color-status-positive-bg)",
+            color: "var(--color-status-positive-text)",
+          }}
+        >
+          {d}
+        </span>
+      )}
+    </div>
+  );
+};
 
 const LOAD_STATUSES = ["booked", "in_transit", "delivered", "cancelled", "tonu"];
 const PAYMENT_STATUSES = ["unpaid", "invoiced", "paid", "cancelled"];
@@ -234,7 +266,11 @@ export const LoadDetailPage = () => {
                 weight: load.weight ?? null,
                 dimensions: load.dimensions ?? null,
                 shipper_name: load.shipper_name ?? null,
+                shipper_in: load.shipper_in ?? null,
+                shipper_out: load.shipper_out ?? null,
                 receiver_name: load.receiver_name ?? null,
+                receiver_in: load.receiver_in ?? null,
+                receiver_out: load.receiver_out ?? null,
                 linehaul: Number(load.linehaul),
                 fuel_surcharge: Number(load.fuel_surcharge),
                 deadhead_miles: load.deadhead_miles,
@@ -478,13 +514,35 @@ export const LoadDetailPage = () => {
         </div>
 
         <div className="bg-plate rounded-lg p-4">
-          <p className={cardLbl}>Dates</p>
-          <Row label="Pickup" value={fmtDate(load.pickup_date)} />
-          <Row label="Delivery" value={fmtDate(load.delivery_date)} />
-          <Row
-            label="Shipper → receiver"
-            value={`${load.shipper_name || "—"} → ${load.receiver_name || "—"}`}
-          />
+          <div className="flex items-baseline justify-between">
+            <p className={`${cardLbl} mb-0`}>Shipper</p>
+            <span className="text-[11px] text-muted-text">
+              Pickup · {fmtDate(load.pickup_date)}
+            </span>
+          </div>
+          <p className="text-base font-condensed mt-1">
+            {load.shipper_name || "—"}
+          </p>
+          <p className="text-xs text-muted-text">
+            {load.origin_city}, {load.origin_state}
+          </p>
+          <StopTimes inTime={load.shipper_in} outTime={load.shipper_out} />
+        </div>
+
+        <div className="bg-plate rounded-lg p-4">
+          <div className="flex items-baseline justify-between">
+            <p className={`${cardLbl} mb-0`}>Receiver</p>
+            <span className="text-[11px] text-muted-text">
+              Delivery · {fmtDate(load.delivery_date)}
+            </span>
+          </div>
+          <p className="text-base font-condensed mt-1">
+            {load.receiver_name || "—"}
+          </p>
+          <p className="text-xs text-muted-text">
+            {load.destination_city}, {load.destination_state}
+          </p>
+          <StopTimes inTime={load.receiver_in} outTime={load.receiver_out} />
         </div>
 
         <div className="bg-plate rounded-lg p-4">
