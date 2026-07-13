@@ -101,6 +101,12 @@ export const useAwardPops = (
       .filter((o) => o.active)
       .reduce((s, o) => s + Number(o.amount), 0);
     const grind = computeGrind(loads, data.periods, obligationsAllActive, now);
+    const truckLoan = assetLoanStatus(data.obligations, "truck", now);
+    const trailerLoan = assetLoanStatus(data.obligations, "trailer", now);
+    const paidPcts = [truckLoan?.ownedPct, trailerLoan?.ownedPct].filter(
+      (x): x is number => x != null,
+    );
+    const loanPaidPct = paidPcts.length ? Math.max(...paidPcts) : null;
 
     const baseAwards = earnedAwards({
       loads,
@@ -109,6 +115,7 @@ export const useAwardPops = (
       lifetimeMiles,
       obligationsDebtMonthly,
       streak: grind.currentStreak,
+      loanPaidPct,
       now,
     });
 
@@ -123,8 +130,8 @@ export const useAwardPops = (
       driverCount: data.drivers.filter((d) => d.active).length,
       truckCount: data.trucks.length,
       cumulativeGross,
-      truckLoan: assetLoanStatus(data.obligations, "truck", now),
-      trailerLoan: assetLoanStatus(data.obligations, "trailer", now),
+      truckLoan,
+      trailerLoan,
     });
     const earned = [
       ...earnedTrophyAwards(TROPHY_CATALOG, statuses, byKey),

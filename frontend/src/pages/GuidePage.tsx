@@ -3,6 +3,9 @@ import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
 import { PrestigeBurst, PRESTIGE_META } from "@/components/agents/PrestigeBadge";
 import type { PrestigeTier } from "@/lib/metrics/agentLeaderboard";
+import { awardIcon } from "@/components/awards/awardIcons";
+import { PATCH_GUIDE } from "@/lib/awards/patches";
+import { MEDAL_GUIDE } from "@/lib/awards/medals";
 
 const AMBER = "#e8940a";
 const AMBER_HI = "#f5b03a";
@@ -30,6 +33,25 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
     {children}
   </section>
 );
+
+// One row in the award catalog: emblem + name + how to earn it.
+const AwardLine = ({ icon, name, sub }: { icon: string; name: string; sub: string }) => {
+  const Icon = awardIcon(icon);
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      <span
+        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+        style={{ background: "#3a2a0a", color: AMBER_HI }}
+      >
+        <Icon size={16} />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted-text">{sub}</p>
+      </div>
+    </div>
+  );
+};
 
 // ---- building blocks for the money metrics ----
 
@@ -270,6 +292,52 @@ const GuidePage = () => (
           it's honest — actual pump gallons against actual odometer miles.
         </Why>
       </Metric>
+
+      <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
+        The award system
+      </h2>
+
+      <Section title="Four ways to win">
+        <p className="text-sm text-muted-text">
+          Everything you earn stacks into four tiers, smallest to grandest:
+        </p>
+        <ul className="text-sm text-muted-text mt-2 space-y-1.5 list-none">
+          <li>
+            <span className="text-light">Records</span> — your personal bests. They
+            climb every time you beat your own number.
+          </li>
+          <li>
+            <span className="text-light">Patches</span> — hard feats that{" "}
+            <span className="text-light">stack a ×count</span> each time you re-earn
+            them. The "impressive" ones set their bar from your own top-5 history —
+            it ratchets up as you improve and never eases in a downturn.
+          </li>
+          <li>
+            <span className="text-light">Medals</span> — fixed milestone ladders you
+            climb I → II → III, worn on your card.
+          </li>
+          <li>
+            <span className="text-light">Trophies</span> — once-in-a-career monuments
+            in the Trophy Room.
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="Medals — climb the tiers">
+        <div className="grid sm:grid-cols-2 gap-x-6">
+          {MEDAL_GUIDE.map((m) => (
+            <AwardLine key={m.name} icon={m.icon} name={m.name} sub={m.tiers} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Patches — hard, and they stack">
+        <div className="grid sm:grid-cols-2 gap-x-6">
+          {PATCH_GUIDE.map((p) => (
+            <AwardLine key={p.name} icon={p.icon} name={p.name} sub={p.how} />
+          ))}
+        </div>
+      </Section>
 
       <div
         className="my-6 border-t"
