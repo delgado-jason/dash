@@ -11,7 +11,7 @@ import {
 import { useLoads } from "@/hooks/useLoads";
 import {
   computeDue,
-  avgMilesPerMonth,
+  recentMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
@@ -118,7 +118,7 @@ const TrailerDetailPage = () => {
     return maxOdometer(trailer.current_hub, ...svcHubs) ?? trailer.current_hub;
   }, [trailer, services]);
 
-  const mpm = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
+  const mpm = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
   const trailerLoads = useMemo(
     () => loads.filter((l) => l.trailer_id === id),
     [loads, id],

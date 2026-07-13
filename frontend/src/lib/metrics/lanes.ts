@@ -1,22 +1,28 @@
 import type { Load } from "@/types/load";
 import { getRegion, getStateName } from "@/lib/constants/states";
+import { median } from "./stats";
 
 // Minimum loads before a lane/market can win an RPM-based KPI — keeps a single
 // lucky run from crowning a corridor. Volume KPIs ignore this.
 export const MIN_KPI_LOADS = 3;
 
+// avgRpm = blended (revenue ÷ miles), what you actually earned per mile.
+// medianRpm = the typical single load's $/mile — robust to one high-accessorial
+// fluke, and what the RPM KPIs rank on.
 export interface LaneStat {
   lane: string; // "Origin Market → Destination Market"
   origin: string;
   destination: string;
   loadCount: number;
   avgRpm: number | null;
+  medianRpm: number | null;
 }
 
 export interface MarketStat {
   market: string;
   loadCount: number;
   avgRpm: number | null;
+  medianRpm: number | null;
   lanes: LaneStat[];
 }
 
@@ -24,6 +30,7 @@ export interface RegionStat {
   region: string;
   loadCount: number;
   avgRpm: number | null;
+  medianRpm: number | null;
   markets: MarketStat[];
 }
 
@@ -62,6 +69,24 @@ const avgRpm = (loads: Load[]): number | null => {
   if (miles <= 0) return null;
   return grossRevenue(loads) / miles;
 };
+
+// A single load's all-in $/loaded-mile (null when it has no loaded miles).
+const loadRpm = (load: Load): number | null => {
+  const miles = Number(load.loaded_miles);
+  if (miles <= 0) return null;
+  return (
+    (Number(load.linehaul) +
+      Number(load.fuel_surcharge) +
+      Number(load.total_accessorials)) /
+    miles
+  );
+};
+
+// Typical RPM = median of the per-load rates. Robust to a single oversize load
+// with sky-high accessorials that would inflate the blended number — this is
+// what "expect on the next load" looks like, so it ranks the KPIs.
+const medianRpm = (loads: Load[]): number | null =>
+  median(loads.map(loadRpm).filter((r): r is number => r !== null));
 
 const groupBy = <T>(items: T[], key: (item: T) => string): Map<string, T[]> => {
   const map = new Map<string, T[]>();
@@ -120,14 +145,16 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
           destination: first.delivery_market,
           loadCount: laneLoads.length,
           avgRpm: avgRpm(laneLoads),
+          medianRpm: medianRpm(laneLoads),
         });
       }
 
-      lanes.sort((a, b) => (b.avgRpm ?? -1) - (a.avgRpm ?? -1));
+      lanes.sort((a, b) => (b.medianRpm ?? -1) - (a.medianRpm ?? -1));
       markets.push({
         market,
         loadCount: marketLoads.length,
         avgRpm: avgRpm(marketLoads),
+        medianRpm: medianRpm(marketLoads),
         lanes,
       });
     }
@@ -137,6 +164,7 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
       region,
       loadCount: regionLoads.length,
       avgRpm: avgRpm(regionLoads),
+      medianRpm: medianRpm(regionLoads),
       markets,
     });
   }
@@ -206,15 +234,17 @@ export const getLanesSummary = (loads: Load[]): LanesSummary => {
   const markets = rollup.flatMap((r) => r.markets);
 
   const rpmEligibleLanes = lanes.filter(
-    (l) => l.loadCount >= MIN_KPI_LOADS && l.avgRpm !== null,
+    (l) => l.loadCount >= MIN_KPI_LOADS && l.medianRpm !== null,
   );
   const rpmEligibleMarkets = markets.filter(
-    (m) => m.loadCount >= MIN_KPI_LOADS && m.avgRpm !== null,
+    (m) => m.loadCount >= MIN_KPI_LOADS && m.medianRpm !== null,
   );
 
+  // Rank on the typical (median) rate — the fluke oversize load doesn't crown a
+  // corridor it can't repeat.
   const topRpmLane = rpmEligibleLanes.length
     ? rpmEligibleLanes.reduce((best, l) =>
-        (l.avgRpm as number) > (best.avgRpm as number) ? l : best,
+        (l.medianRpm as number) > (best.medianRpm as number) ? l : best,
       )
     : null;
 
@@ -224,7 +254,7 @@ export const getLanesSummary = (loads: Load[]): LanesSummary => {
 
   const bestOriginMarket = rpmEligibleMarkets.length
     ? rpmEligibleMarkets.reduce((best, m) =>
-        (m.avgRpm as number) > (best.avgRpm as number) ? m : best,
+        (m.medianRpm as number) > (best.medianRpm as number) ? m : best,
       )
     : null;
 

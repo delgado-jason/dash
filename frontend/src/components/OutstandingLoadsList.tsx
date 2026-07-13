@@ -23,7 +23,8 @@ const ageColor = (days: number): string => {
 };
 
 export const OutstandingLoadsList = ({ loads }: Props) => {
-  const { total, avgDaysOutstanding } = getOutstandingSummary(loads);
+  const { total, medianDaysOutstanding, oldestDaysOutstanding } =
+    getOutstandingSummary(loads);
 
   return (
     <div className="bg-plate rounded-lg p-4">
@@ -31,12 +32,20 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
         <h3 className="text-sm font-medium text-light">Outstanding loads</h3>
         <span className="text-sm text-status-aware-text font-medium">
           {formatCurrency(total)} owed
-          {avgDaysOutstanding !== null && (
+          {medianDaysOutstanding !== null && (
             <span className="text-muted-text font-normal">
               {" "}
-              · avg {Math.round(avgDaysOutstanding)}d out
+              · median {Math.round(medianDaysOutstanding)}d
             </span>
           )}
+          {oldestDaysOutstanding !== null &&
+            medianDaysOutstanding !== null &&
+            oldestDaysOutstanding > Math.round(medianDaysOutstanding) && (
+              <span className={`font-normal ${ageColor(oldestDaysOutstanding)}`}>
+                {" "}
+                · oldest {oldestDaysOutstanding}d
+              </span>
+            )}
         </span>
       </div>
 

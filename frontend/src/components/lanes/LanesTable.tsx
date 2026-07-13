@@ -32,7 +32,7 @@ export const LanesTable = ({ rollup }: Props) => {
         <tr className="text-muted-text text-xs text-left">
           <th className="py-2 px-2 font-normal">Region / market / lane</th>
           <th className="py-2 px-2 font-normal text-right w-20">Loads</th>
-          <th className="py-2 px-2 font-normal text-right w-24">Avg RPM</th>
+          <th className="py-2 px-2 font-normal text-right w-24">Typical $/mi</th>
         </tr>
       </thead>
       <tbody>
@@ -53,8 +53,8 @@ export const LanesTable = ({ rollup }: Props) => {
                   {region.region}
                 </td>
                 <td className="py-2 px-2 text-right">{region.loadCount}</td>
-                <td className={`py-2 px-2 text-right ${rpmTextClass(region.avgRpm)}`}>
-                  {fmtRpm(region.avgRpm)}
+                <td className={`py-2 px-2 text-right ${rpmTextClass(region.medianRpm)}`}>
+                  {fmtRpm(region.medianRpm)}
                 </td>
               </tr>
               {rOpen &&
@@ -79,9 +79,9 @@ export const LanesTable = ({ rollup }: Props) => {
                           {market.loadCount}
                         </td>
                         <td
-                          className={`py-2 px-2 text-right ${rpmTextClass(market.avgRpm)}`}
+                          className={`py-2 px-2 text-right ${rpmTextClass(market.medianRpm)}`}
                         >
-                          {fmtRpm(market.avgRpm)}
+                          {fmtRpm(market.medianRpm)}
                         </td>
                       </tr>
                       {mOpen &&
@@ -99,9 +99,17 @@ export const LanesTable = ({ rollup }: Props) => {
                               {lane.loadCount}
                             </td>
                             <td
-                              className={`py-1.5 px-2 text-right text-xs bg-iron ${rpmTextClass(lane.avgRpm)}`}
+                              className={`py-1.5 px-2 text-right text-xs bg-iron ${rpmTextClass(lane.medianRpm)}`}
                             >
-                              {fmtRpm(lane.avgRpm)}
+                              {fmtRpm(lane.medianRpm)}
+                              {lane.avgRpm !== null && (
+                                <span
+                                  className="block text-[10px]"
+                                  style={{ color: "#5b6b82" }}
+                                >
+                                  blended {fmtRpm(lane.avgRpm)}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))}

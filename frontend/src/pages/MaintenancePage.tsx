@@ -9,7 +9,7 @@ import {
 import { getFuelEntries } from "@/services/fuelService";
 import {
   currentTractorMiles,
-  avgMilesPerMonth,
+  recentMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
@@ -77,7 +77,7 @@ const MaintenancePage = () => {
     };
   }, [loads, services, fuelEntries]);
 
-  const milesPerMonth = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
+  const milesPerMonth = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
 
   const tabBtn = (key: "schedule" | "services", label: string) => (
     <button

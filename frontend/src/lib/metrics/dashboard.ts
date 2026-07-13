@@ -1,6 +1,7 @@
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import { loadRevenue } from "./rateTargets";
+import { median } from "./stats";
 
 // Revenue = the owner-op's NET take (their company gross), via loadRevenue —
 // so every dashboard tile reflects money kept, not the full pre-cut rate.
@@ -253,21 +254,27 @@ export interface OutstandingLoad {
 
 export interface OutstandingSummary {
   total: number;
-  avgDaysOutstanding: number | null;
+  medianDaysOutstanding: number | null; // typical aging — robust to one stuck invoice
+  oldestDaysOutstanding: number | null; // the tail, surfaced rather than hidden
 }
 
-// Total unpaid $ and average aging across the outstanding loads. NOTE: this is
-// aging of currently-unpaid loads, not true days-to-pay (that needs a payment
-// date we don't track yet).
+// Total unpaid $ and aging across the outstanding loads. We headline the MEDIAN
+// aging (one disputed invoice sitting for months shouldn't drag the typical
+// number) and expose the oldest as the tail. NOTE: this is aging of currently-
+// unpaid loads, not true days-to-pay (that needs a payment date we don't track
+// yet).
 export const getOutstandingSummary = (
   outstanding: OutstandingLoad[],
 ): OutstandingSummary => {
-  if (outstanding.length === 0) return { total: 0, avgDaysOutstanding: null };
+  if (outstanding.length === 0)
+    return { total: 0, medianDaysOutstanding: null, oldestDaysOutstanding: null };
   const total = outstanding.reduce((sum, o) => sum + o.revenue, 0);
-  const avg =
-    outstanding.reduce((sum, o) => sum + o.daysOutstanding, 0) /
-    outstanding.length;
-  return { total, avgDaysOutstanding: avg };
+  const days = outstanding.map((o) => o.daysOutstanding);
+  return {
+    total,
+    medianDaysOutstanding: median(days),
+    oldestDaysOutstanding: Math.max(...days),
+  };
 };
 
 // ---- GET OUTSTANDING LOADS ---- (delivered + unpaid/invoiced, aged from delivery, oldest first)

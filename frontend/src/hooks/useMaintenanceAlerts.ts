@@ -15,7 +15,7 @@ import { getFuelEntries } from "@/services/fuelService";
 import {
   maintenanceAlerts,
   currentTractorMiles,
-  avgMilesPerMonth,
+  recentMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
@@ -68,6 +68,6 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
       ),
       trailer: maxOdometer(svcOdo("trailer")),
     };
-    return maintenanceAlerts(items, currentMiles, now, avgMilesPerMonth(loads, now));
+    return maintenanceAlerts(items, currentMiles, now, recentMilesPerMonth(loads, now));
   }, [items, services, fuelEntries, loads]);
 };
