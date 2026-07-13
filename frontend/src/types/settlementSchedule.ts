@@ -6,4 +6,5 @@ export interface SettlementSchedule {
   trailer_pct: number;
   fuel_surcharge_pct: number;
   accessorial_pct: number;
+  carrier_name: string | null; // e.g. "Landstar"; null on own authority
 }
