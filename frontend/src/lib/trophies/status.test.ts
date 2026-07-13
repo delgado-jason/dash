@@ -38,6 +38,41 @@ describe("computeAllStatuses", () => {
     expect(s["own-authority"].earned).toBe(false);
   });
 
+  it("free-and-clear auto-earns when the truck loan hits $0, and cascades to the capstone", () => {
+    const base = {
+      lifetimeMiles: 1_000_000,
+      driverCount: 1,
+      truckCount: 1,
+      cumulativeGross: 0,
+    };
+    const open = computeAllStatuses(
+      TROPHY_CATALOG,
+      { "own-authority": rec("own-authority", true) },
+      { ...base, truckLoan: { paidOff: false, ownedPct: 0.36, owed: 44100 } },
+    );
+    expect(open["free-and-clear"].earned).toBe(false);
+    expect(open["free-and-clear"].progress).toBeCloseTo(0.36, 2);
+
+    const paid = computeAllStatuses(
+      TROPHY_CATALOG,
+      { "own-authority": rec("own-authority", true) },
+      { ...base, truckLoan: { paidOff: true, ownedPct: 1, owed: 0 } },
+    );
+    expect(paid["free-and-clear"].earned).toBe(true);
+    expect(paid["highway-legend"].earned).toBe(true); // authority + free&clear + 1M mi
+  });
+
+  it("trailer-paid-off auto-earns from the trailer loan", () => {
+    const s = computeAllStatuses(TROPHY_CATALOG, {}, {
+      lifetimeMiles: 0,
+      driverCount: 1,
+      truckCount: 1,
+      cumulativeGross: 0,
+      trailerLoan: { paidOff: true, ownedPct: 1, owed: 0 },
+    });
+    expect(s["trailer-paid-off"].earned).toBe(true);
+  });
+
   it("Highway Legend is the capstone of authority + free-and-clear + million miles", () => {
     const base = {
       "own-authority": rec("own-authority", true),

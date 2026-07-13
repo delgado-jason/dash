@@ -18,6 +18,10 @@ import {
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { getObligations } from "@/services/obligationsService";
+import type { Obligation } from "@/types/obligation";
+import { isPayoffTracked } from "@/lib/metrics/payoff";
+import { PayoffTracker } from "@/components/fleet/PayoffTracker";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
@@ -48,6 +52,7 @@ const TruckDetailPage = () => {
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +71,18 @@ const TruckDetailPage = () => {
     getFuelEntries()
       .then(setFuelEntries)
       .catch(() => {});
+    getObligations()
+      .then(setObligations)
+      .catch(() => {});
   }, [id]);
+
+  // The loan/lease tracked against this truck, if any.
+  const truckLoan = obligations.find(
+    (o) =>
+      o.asset_type === "truck" &&
+      (o.asset_id === id || o.asset_id == null) &&
+      isPayoffTracked(o),
+  );
 
   const truckLoads = useMemo(
     () => loads.filter((l) => l.truck_id === id),
@@ -216,7 +232,9 @@ const TruckDetailPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {truckLoan && <PayoffTracker obligation={truckLoan} kind="truck" />}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <Link
           to="/maintenance"
           className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors"

@@ -12,16 +12,41 @@ export interface TrophyStatus {
   progressLabel: string | null;
 }
 
+// A tracked loan/lease against an asset — drives the paid-off trophies.
+export interface LoanStatus {
+  paidOff: boolean;
+  ownedPct: number | null; // 0..1 owned so far
+  owed: number;
+}
+
 export interface TrophyStatusData {
   lifetimeMiles: number;
   driverCount: number;
   truckCount: number;
   cumulativeGross: number;
+  truckLoan?: LoanStatus | null; // null/absent = no truck loan tracked
+  trailerLoan?: LoanStatus | null;
 }
 
 const MI = (n: number) => `${Math.round(n / 1000)}K`;
 const K = (n: number) => `$${Math.round(n / 1000)}k`;
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
+
+// Paid-off trophies earn either manually (owned outright, no loan tracked) OR the
+// moment the tracked loan balance reaches $0. When a loan IS tracked, its balance
+// drives the progress bar toward free-and-clear.
+const loanTrophy = (
+  record: Trophy | undefined,
+  loan: LoanStatus | null | undefined,
+): TrophyStatus => {
+  if (record?.earned) return { earned: true, progress: null, progressLabel: null };
+  if (!loan) return { earned: false, progress: null, progressLabel: null };
+  return {
+    earned: loan.paidOff,
+    progress: loan.ownedPct,
+    progressLabel: loan.paidOff ? "Paid off" : `${K(loan.owed)} to go`,
+  };
+};
 
 const one = (
   def: TrophyDef,
@@ -48,6 +73,10 @@ const one = (
         progress: clamp(d.cumulativeGross / 1_000_000),
         progressLabel: `${K(d.cumulativeGross)} / $1M`,
       };
+    case "free-and-clear":
+      return loanTrophy(record, d.truckLoan);
+    case "trailer-paid-off":
+      return loanTrophy(record, d.trailerLoan);
     case "highway-legend": {
       const done = [
         earnedByKey["own-authority"],

@@ -5,7 +5,9 @@ import { ValidationError, NotFoundError } from "../utils/error.js";
 export async function getObligations(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT obligation_id, label, amount, active, is_draw
+    `SELECT obligation_id, label, amount, active, is_draw,
+            original_balance, current_balance, balance_as_of, payoff_date,
+            asset_type, asset_id
      FROM obligations
      WHERE user_id = $1
      ORDER BY created_at`,
@@ -17,15 +19,40 @@ export async function getObligations(user_id) {
 // ---- CREATE ----
 export async function createObligation(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const { label, amount, is_draw } = data;
+  const {
+    label,
+    amount,
+    is_draw,
+    original_balance,
+    current_balance,
+    balance_as_of,
+    payoff_date,
+    asset_type,
+    asset_id,
+  } = data;
   if (!label || amount == null)
     throw new ValidationError("label and amount are required");
 
   const result = await db.query(
-    `INSERT INTO obligations (user_id, label, amount, is_draw)
-     VALUES ($1, $2, $3, $4)
-     RETURNING obligation_id, label, amount, active, is_draw`,
-    [user_id, label, amount, is_draw === true],
+    `INSERT INTO obligations
+       (user_id, label, amount, is_draw, original_balance, current_balance,
+        balance_as_of, payoff_date, asset_type, asset_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING obligation_id, label, amount, active, is_draw,
+               original_balance, current_balance, balance_as_of, payoff_date,
+               asset_type, asset_id`,
+    [
+      user_id,
+      label,
+      amount,
+      is_draw === true,
+      original_balance ?? null,
+      current_balance ?? null,
+      balance_as_of || null,
+      payoff_date || null,
+      asset_type || null,
+      asset_id || null,
+    ],
   );
   return result.rows[0];
 }
@@ -35,7 +62,18 @@ export async function patchObligation(user_id, obligation_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!obligation_id) throw new ValidationError("Missing obligation_id");
 
-  const allowedFields = ["label", "amount", "active", "is_draw"];
+  const allowedFields = [
+    "label",
+    "amount",
+    "active",
+    "is_draw",
+    "original_balance",
+    "current_balance",
+    "balance_as_of",
+    "payoff_date",
+    "asset_type",
+    "asset_id",
+  ];
   const updates = [];
   const values = [];
   let index = 1;
@@ -56,7 +94,9 @@ export async function patchObligation(user_id, obligation_id, data) {
     `UPDATE obligations
        SET ${updates.join(", ")}
      WHERE obligation_id = $${index} AND user_id = $${index + 1}
-     RETURNING obligation_id, label, amount, active, is_draw`,
+     RETURNING obligation_id, label, amount, active, is_draw,
+               original_balance, current_balance, balance_as_of, payoff_date,
+               asset_type, asset_id`,
     values,
   );
   if (result.rowCount === 0) throw new NotFoundError("Obligation not found");

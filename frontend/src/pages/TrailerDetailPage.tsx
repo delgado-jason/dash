@@ -15,6 +15,10 @@ import {
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
+import { getObligations } from "@/services/obligationsService";
+import type { Obligation } from "@/types/obligation";
+import { isPayoffTracked } from "@/lib/metrics/payoff";
+import { PayoffTracker } from "@/components/fleet/PayoffTracker";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
@@ -44,6 +48,7 @@ const TrailerDetailPage = () => {
   const [trailer, setTrailer] = useState<Trailer | null>(null);
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +64,18 @@ const TrailerDetailPage = () => {
     getMaintenanceServices()
       .then(setServices)
       .catch(() => {});
+    getObligations()
+      .then(setObligations)
+      .catch(() => {});
   }, [id]);
+
+  // The loan tracked against this trailer, if any.
+  const trailerLoan = obligations.find(
+    (o) =>
+      o.asset_type === "trailer" &&
+      (o.asset_id === id || o.asset_id == null) &&
+      isPayoffTracked(o),
+  );
 
   // Latest hub reading, derived from the app: stored + newest trailer service.
   const hub = useMemo(() => {
@@ -207,7 +223,9 @@ const TrailerDetailPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {trailerLoan && <PayoffTracker obligation={trailerLoan} kind="trailer" />}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
         <Link
           to="/maintenance"
           className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors block"
