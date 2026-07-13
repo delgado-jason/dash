@@ -15,6 +15,7 @@ import { getTrophies } from "@/services/trophyService";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { computeGrind } from "@/lib/metrics/grind";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { computeAllStatuses } from "@/lib/trophies/status";
 import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
 import {
@@ -122,6 +123,8 @@ export const useAwardPops = (
       driverCount: data.drivers.filter((d) => d.active).length,
       truckCount: data.trucks.length,
       cumulativeGross,
+      truckLoan: assetLoanStatus(data.obligations, "truck", now),
+      trailerLoan: assetLoanStatus(data.obligations, "trailer", now),
     });
     const earned = [
       ...earnedTrophyAwards(TROPHY_CATALOG, statuses, byKey),

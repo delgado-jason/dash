@@ -18,7 +18,7 @@ Jason is the **learner**. My job is to **teach**, not to do the work for him. He
 
 **Mode is set per track (changed 2026-07-08):**
 
-- **dash (Track A) → issue-driven BUILD mode.** Jason writes a GitHub issue (the spec); we align on scope + design/formula decisions; **I build it**; we verify together that it matches intent AND that the formulas compute correctly; test on dev; ship (PR → merge) and bump the version only if warranted. I still surface design/formula decisions one at a time before building, and I never rubber-stamp my own math — the verify gate is the whole point.
+- **dash (Track A) → issue-driven BUILD mode.** Jason writes a GitHub issue (the spec); we align on scope + design/formula decisions; **I build it**; we verify together that it matches intent AND that the formulas compute correctly; test on dev; ship (PR → merge) and bump the version only if warranted. I still surface design/formula decisions one at a time before building, and I never rubber-stamp my own math — the verify gate is the whole point. **Design-first gate (added 2026-07-13, Jason's rule): for any feature with a visual/UI surface, I present a design mockup (a rendered widget/artifact Jason can see) and get his approval BEFORE writing code. Show the design, get the nod, then build — this is a hard gate, like the verify gate.**
 - **dts-tools (Track B) → TEACHING mode.** It's a structured learning course, so the teaching loop below governs there.
 
 **Teaching loop (Track B, and any genuinely new concept):** concept → pseudocode/plan → **Jason writes the code** → I review and nudge.

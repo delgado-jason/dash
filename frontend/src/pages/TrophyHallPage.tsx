@@ -5,12 +5,15 @@ import type { Trophy as TrophyRecord } from "@/types/trophy";
 import type { Driver } from "@/types/driver";
 import type { Truck } from "@/types/truck";
 import type { FuelEntry } from "@/types/fuelEntry";
+import type { Obligation } from "@/types/obligation";
 import { useLoads } from "@/hooks/useLoads";
 import { getTrophies } from "@/services/trophyService";
 import { getDrivers } from "@/services/driversService";
 import { getTrucks } from "@/services/trucksService";
 import { getFuelEntries } from "@/services/fuelService";
+import { getObligations } from "@/services/obligationsService";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
 import { computeAllStatuses, type TrophyStatus } from "@/lib/trophies/status";
@@ -195,15 +198,23 @@ const TrophyHallPage = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getTrophies(), getDrivers(), getTrucks(), getFuelEntries()])
-      .then(([tr, dr, tk, fu]) => {
+    Promise.all([
+      getTrophies(),
+      getDrivers(),
+      getTrucks(),
+      getFuelEntries(),
+      getObligations(),
+    ])
+      .then(([tr, dr, tk, fu, ob]) => {
         setRecords(tr);
         setDrivers(dr);
         setTrucks(tk);
         setFuel(fu);
+        setObligations(ob);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -225,13 +236,16 @@ const TrophyHallPage = () => {
     const cumulativeGross = loads
       .filter((l) => l.load_status === "delivered")
       .reduce((s, l) => s + loadRevenue(l), 0);
+    const now = new Date();
     return computeAllStatuses(TROPHY_CATALOG, byKey, {
       lifetimeMiles,
       driverCount: drivers.filter((d) => d.active).length,
       truckCount: trucks.length,
       cumulativeGross,
+      truckLoan: assetLoanStatus(obligations, "truck", now),
+      trailerLoan: assetLoanStatus(obligations, "trailer", now),
     });
-  }, [byKey, drivers, trucks, fuel, loads]);
+  }, [byKey, drivers, trucks, fuel, loads, obligations]);
 
   const hallBg = byKey["hall-background"]?.image_url ?? null;
   const driver = drivers.find((d) => d.avatar_url) ?? drivers[0];

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Pencil, Trash2, Check, X, Plus, Eye, EyeOff, HandCoins } from "lucide-react";
 import type { Obligation } from "@/types/obligation";
 import {
@@ -25,6 +25,11 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
   const [editing, setEditing] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editAmt, setEditAmt] = useState("");
+  // Payoff / loan tracking on the obligation being edited.
+  const [editOrig, setEditOrig] = useState("");
+  const [editBal, setEditBal] = useState("");
+  const [editPayoff, setEditPayoff] = useState("");
+  const [editAsset, setEditAsset] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newAmt, setNewAmt] = useState("");
@@ -68,7 +73,8 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
       <table className="w-full text-sm">
         <tbody>
           {items.map((o) => (
-            <tr key={o.obligation_id} className="border-t border-steel">
+            <Fragment key={o.obligation_id}>
+            <tr className="border-t border-steel">
               <td className="py-2">
                 {editing === o.obligation_id ? (
                   <input
@@ -112,6 +118,10 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                           await patchObligation(o.obligation_id, {
                             label: editLabel,
                             amount: Number(editAmt),
+                            original_balance: editOrig ? Number(editOrig) : null,
+                            current_balance: editBal ? Number(editBal) : null,
+                            payoff_date: editPayoff || null,
+                            asset_type: editAsset || null,
                           });
                           setEditing(null);
                         })
@@ -169,6 +179,14 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                           setEditing(o.obligation_id);
                           setEditLabel(o.label);
                           setEditAmt(String(o.amount));
+                          setEditOrig(
+                            o.original_balance != null ? String(o.original_balance) : "",
+                          );
+                          setEditBal(
+                            o.current_balance != null ? String(o.current_balance) : "",
+                          );
+                          setEditPayoff(o.payoff_date ? o.payoff_date.slice(0, 10) : "");
+                          setEditAsset(o.asset_type ?? "");
                         }}
                       />
                     </>
@@ -184,6 +202,58 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                 </div>
               </td>
             </tr>
+            {editing === o.obligation_id && !o.is_draw && (
+              <tr>
+                <td colSpan={3} className="pb-3">
+                  <div className="rounded bg-steel/50 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <label className="text-[11px] text-muted-text">
+                      Original $
+                      <input
+                        className="bg-steel rounded px-2 py-1 w-full mt-0.5 text-light"
+                        value={editOrig}
+                        onChange={(e) => setEditOrig(e.target.value)}
+                        placeholder="0"
+                      />
+                    </label>
+                    <label className="text-[11px] text-muted-text">
+                      Current balance $
+                      <input
+                        className="bg-steel rounded px-2 py-1 w-full mt-0.5 text-light"
+                        value={editBal}
+                        onChange={(e) => setEditBal(e.target.value)}
+                        placeholder="0"
+                      />
+                    </label>
+                    <label className="text-[11px] text-muted-text">
+                      Payoff / end date
+                      <input
+                        type="date"
+                        className="bg-steel rounded px-2 py-1 w-full mt-0.5 text-light"
+                        value={editPayoff}
+                        onChange={(e) => setEditPayoff(e.target.value)}
+                      />
+                    </label>
+                    <label className="text-[11px] text-muted-text">
+                      Tracks asset
+                      <select
+                        className="bg-steel rounded px-2 py-1 w-full mt-0.5 text-light"
+                        value={editAsset}
+                        onChange={(e) => setEditAsset(e.target.value)}
+                      >
+                        <option value="">Not tracked</option>
+                        <option value="truck">Truck</option>
+                        <option value="trailer">Trailer</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-muted-text mt-1.5">
+                    Fill these to show a payoff tracker on the asset's page. Leave the
+                    date blank to estimate at your payment pace; $0 auto-earns the trophy.
+                  </p>
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
           {showAdd ? (
             <tr className="border-t border-steel">
