@@ -11,9 +11,8 @@ import {
   getRateLadder,
   getGrossTargets,
   payWeekRange,
-  getWeekBookedGross,
-  getWeekEarnedGross,
-  getWeekRpm,
+  getWeekGrossCommitted,
+  getWeekGrossEarned,
   getWindowRpm,
 } from "@/lib/metrics/rateTargets";
 import {
@@ -55,41 +54,61 @@ export const useRateTargets = (loads: Load[]) => {
   return useMemo(() => {
     const now = new Date();
     const basis = getCostBasis(periods, obligationsMonthly, loads, now);
-    const ladder = getRateLadder(basis.breakEvenRpm, RATE_TIERS);
-    const gross = getGrossTargets(
-      basis.trueMonthlyCost,
-      RATE_TIERS.target,
-      WORKING_DAYS_PER_MONTH,
-    );
-    const { start, end } = payWeekRange(now, PAY_WEEK_START_DOW);
-    const weekBooked = getWeekBookedGross(loads, start, end); // committed (all non-cancelled)
-    const weekEarned = getWeekEarnedGross(loads, start, end); // delivered only
-    const weekRpm = getWeekRpm(loads, start, end);
-    const rollingRpm = getWindowRpm(loads, now);
-    // Your linehaul take (linehaul % + trailer %) grosses a net rate up to the
-    // full rate you must BOOK to clear it. 1 = no cut (own authority / unconfigured).
+    // Your linehaul take (linehaul % + trailer %). 1 = own authority / unconfigured.
     const linehaulTake = schedule
       ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
       : 1;
-    // The booking ladder is in Jason's terms: GROSS rate to book, per mile DRIVEN
-    // (deadhead already folded into total miles) = cost-per-total-mile ÷ your keep,
-    // then scaled by the tiers. The marker is your actual gross rate per mile.
+    const { start, end } = payWeekRange(now, PAY_WEEK_START_DOW);
+
+    // ---- The whole rate & pace card is in GROSS (booking) dollars — that's the
+    // number loads are booked at. Everything below grosses cost up by your keep. ----
+
+    // Ladder: gross rate to book per mile DRIVEN (deadhead folded into total miles)
+    // = cost-per-total-mile ÷ keep, scaled by tiers; marker = your gross rate/mile.
     const bookingBase =
       basis.costPerTotalMile != null && linehaulTake > 0
         ? basis.costPerTotalMile / linehaulTake
         : null;
     const bookingLadder = getRateLadder(bookingBase, RATE_TIERS);
+
+    // Weekly/daily GROSS to book = monthly cost grossed up by your keep, spread over
+    // the pay-week / working day, plus the target markup.
+    const bookingCost =
+      basis.trueMonthlyCost != null && linehaulTake > 0
+        ? basis.trueMonthlyCost / linehaulTake
+        : null;
+    const gross = getGrossTargets(
+      bookingCost,
+      RATE_TIERS.target,
+      WORKING_DAYS_PER_MONTH,
+    );
+    // Weekly MINIMUM (+15%) and STRONG (+60%) tiers — the extra ticks on the pace
+    // bar (floor · min · target · strong).
+    const weeklyMinimum =
+      gross.weeklyBreakEven != null
+        ? gross.weeklyBreakEven * (1 + RATE_TIERS.minimum)
+        : null;
+    const weeklyStrong =
+      gross.weeklyBreakEven != null
+        ? gross.weeklyBreakEven * (1 + RATE_TIERS.strong)
+        : null;
+
+    // This week's gross booked (committed) + gross delivered (earned).
+    const weekBooked = getWeekGrossCommitted(loads, start, end);
+    const weekEarned = getWeekGrossEarned(loads, start, end);
+
+    const rollingRpm = getWindowRpm(loads, now); // net RPM — the Avg RPM KPI
     return {
       basis,
-      ladder,
-      gross,
-      weekBooked, // committed this week — booked + in-transit + delivered
-      weekEarned, // earned this week — delivered only; drives the "hit target" win
-      weekRpm, // this week's blended rate
-      rollingRpm, // rolling 3-complete-month RPM — the Avg RPM KPI
+      gross, // weekly/daily GROSS dollars to book (break-even + target)
+      weeklyMinimum, // weekly +15% tier (gross)
+      weeklyStrong, // weekly +60% stretch tier (gross)
+      weekBooked, // this week's gross committed (booked + in-transit + delivered)
+      weekEarned, // this week's gross earned (delivered only)
+      rollingRpm,
       linehaulTake,
       bookingLadder, // gross rate to book per mile driven (walk-away/target/strong)
-      grossRate: basis.grossPerTotalMile, // your actual gross rate/mile — the marker
+      grossRate: basis.grossPerTotalMile, // your gross rate/mile — the ladder marker
       weekStart: start,
       weekEnd: end,
       ready: basis.breakEvenRpm != null,

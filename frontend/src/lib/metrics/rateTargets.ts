@@ -233,6 +233,25 @@ export const getWeekEarnedGross = (
     .filter((l) => l.load_status === "delivered")
     .reduce((s, l) => s + loadRevenue(l), 0);
 
+// This week's GROSS dollars (full customer rate) — for the rate & pace card, which
+// tracks in gross because that's the number loads are booked at. Committed = all
+// non-cancelled in the week; earned = delivered only. (Distinct from the two above,
+// which sum NET revenue for the grind streak.)
+export const getWeekGrossCommitted = (
+  loads: Load[],
+  start: Date,
+  end: Date,
+): number => loadsInWeek(loads, start, end).reduce((s, l) => s + loadGross(l), 0);
+
+export const getWeekGrossEarned = (
+  loads: Load[],
+  start: Date,
+  end: Date,
+): number =>
+  loadsInWeek(loads, start, end)
+    .filter((l) => l.load_status === "delivered")
+    .reduce((s, l) => s + loadGross(l), 0);
+
 // This week's blended rate per loaded mile — where you're landing right now.
 export const getWeekRpm = (
   loads: Load[],
