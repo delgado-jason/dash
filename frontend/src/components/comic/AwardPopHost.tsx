@@ -13,6 +13,7 @@ import {
 import type { Award } from "@/lib/metrics/awards";
 import { MarqueeAward } from "./MarqueeAward";
 import { BurstAward } from "./BurstAward";
+import { RecapCeremony } from "./RecapCeremony";
 
 const ICONS: Record<string, LucideIcon> = {
   truck: Truck,
@@ -26,9 +27,16 @@ const ICONS: Record<string, LucideIcon> = {
 };
 const iconFor = (n: string): LucideIcon => ICONS[n] ?? Trophy;
 
-// Orchestrates the celebration: a marquee takes over the screen (one at a time);
-// bursts stack in the corner and auto-fade. Marquees block bursts until dismissed.
-export const AwardPopHost = ({ pops }: { pops: Award[] }) => {
+// Orchestrates the celebration: a takeover (recap ceremony or marquee) owns the
+// screen one at a time; bursts stack in the corner and auto-fade. A takeover
+// blocks bursts until dismissed. Recap ceremonies outrank marquees.
+export const AwardPopHost = ({
+  pops,
+  truckAvatarUrl,
+}: {
+  pops: Award[];
+  truckAvatarUrl?: string | null;
+}) => {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const dismiss = (id: string) =>
     setDismissed((d) => {
@@ -38,8 +46,10 @@ export const AwardPopHost = ({ pops }: { pops: Award[] }) => {
     });
 
   const visible = pops.filter((p) => !dismissed.has(p.id));
-  const marquee = visible.find((p) => p.tier === "marquee");
-  const bursts = marquee ? [] : visible.filter((p) => p.tier === "burst").slice(0, 4);
+  const takeover =
+    visible.find((p) => p.tier === "recap") ??
+    visible.find((p) => p.tier === "marquee");
+  const bursts = takeover ? [] : visible.filter((p) => p.tier === "burst").slice(0, 4);
 
   const burstKey = bursts.map((b) => b.id).join(",");
   useEffect(() => {
@@ -49,7 +59,7 @@ export const AwardPopHost = ({ pops }: { pops: Award[] }) => {
     return () => timers.forEach(clearTimeout);
   }, [burstKey]);
 
-  if (!marquee && bursts.length === 0) return null;
+  if (!takeover && bursts.length === 0) return null;
 
   return (
     <>
@@ -60,8 +70,11 @@ export const AwardPopHost = ({ pops }: { pops: Award[] }) => {
           ))}
         </div>
       )}
-      {marquee && (
-        <MarqueeAward award={marquee} Icon={iconFor(marquee.icon)} onDismiss={() => dismiss(marquee.id)} />
+      {takeover && takeover.tier === "recap" && (
+        <RecapCeremony award={takeover} truckAvatarUrl={truckAvatarUrl} onDismiss={() => dismiss(takeover.id)} />
+      )}
+      {takeover && takeover.tier === "marquee" && (
+        <MarqueeAward award={takeover} Icon={iconFor(takeover.icon)} onDismiss={() => dismiss(takeover.id)} />
       )}
     </>
   );

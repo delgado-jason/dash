@@ -27,6 +27,7 @@ import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useAwardPops } from "@/hooks/useAwardPops";
 import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
+import { latestRecapWithData } from "@/lib/metrics/recap";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { GrindMeter } from "@/components/dashboard/GrindMeter";
 import { RevenueChart } from "@/components/RevenueChart";
@@ -72,7 +73,9 @@ const DashboardPage = () => {
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
-  const { pops } = useAwardPops(loads);
+  const { pops, truckAvatarUrl } = useAwardPops(loads);
+  // The latest FINISHED recap that actually has data — never the in-progress one.
+  const latestRecap = latestRecapWithData(loads, new Date());
   // `?awarddemo` on the dashboard previews the celebration UI on demand.
   const awardDemo = window.location.search.includes("awarddemo");
 
@@ -128,7 +131,7 @@ const DashboardPage = () => {
 
   return (
     <div className="p-6 bg-iron text-light min-h-screen font-body">
-      <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} />
+      <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
 
       <div className="flex items-center justify-between mb-6 gap-3">
         <h1 className="text-3xl font-condensed">Dashboard</h1>
@@ -136,7 +139,7 @@ const DashboardPage = () => {
           to="/recap"
           className="text-sm text-status-info-text hover:underline whitespace-nowrap"
         >
-          Your {new Date().getUTCFullYear()} recap →
+          Your {latestRecap ? `${latestRecap.label} ` : ""}recap →
         </Link>
       </div>
 

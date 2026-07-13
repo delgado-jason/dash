@@ -10,9 +10,11 @@ import { getFuelEntries } from "@/services/fuelService";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getTrucks } from "@/services/trucksService";
+import { useLocation } from "react-router-dom";
 import {
   computeRecap,
   resolvePeriod,
+  latestRecapWithData,
   type RecapScope,
   type RecapRange,
 } from "@/lib/metrics/recap";
@@ -39,8 +41,14 @@ const RecapPage = () => {
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [scope, setScope] = useState<RecapScope>("year");
+  const location = useLocation();
+  const navScope = (location.state as { scope?: RecapScope } | null)?.scope;
+  const [scope, setScope] = useState<RecapScope>(navScope ?? "month");
   const [ago, setAgo] = useState(0);
+  // Once loads arrive, land on the grandest FINISHED period that has data (unless
+  // a ceremony pop already told us which scope to open). Set-once, then the user
+  // is free to switch scopes.
+  const [autoScoped, setAutoScoped] = useState(!!navScope);
 
   useEffect(() => {
     getFuelEntries().then(setFuel).catch(() => {});
@@ -48,6 +56,13 @@ const RecapPage = () => {
     getObligations().then(setObligations).catch(() => {});
     getTrucks().then(setTrucks).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (autoScoped || loads.length === 0) return;
+    const latest = latestRecapWithData(loads, new Date());
+    if (latest) setScope(latest.scope);
+    setAutoScoped(true);
+  }, [loads, autoScoped]);
 
   const now = new Date();
   const range = resolvePeriod(scope, ago, now);

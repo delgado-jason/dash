@@ -2,7 +2,12 @@ import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { rangeFor, resolvePeriod, computeRecap } from "./recap";
+import {
+  rangeFor,
+  resolvePeriod,
+  computeRecap,
+  latestRecapWithData,
+} from "./recap";
 
 const NOW = new Date("2026-07-11T12:00:00Z");
 
@@ -24,11 +29,29 @@ describe("rangeFor / resolvePeriod", () => {
     expect(rangeFor("quarter", 2026, 1).label).toBe("Q2 2026");
     expect(rangeFor("month", 2026, 5).label).toBe("Jun 2026");
   });
-  it("resolves the most recent complete period", () => {
+  it("resolves the most recent complete period — never the in-progress one", () => {
     expect(resolvePeriod("month", 0, NOW).label).toBe("Jun 2026");
     expect(resolvePeriod("quarter", 0, NOW).label).toBe("Q2 2026");
-    expect(resolvePeriod("year", 0, NOW).label).toBe("2026");
+    expect(resolvePeriod("year", 0, NOW).label).toBe("2025"); // NOT 2026 — it isn't done
     expect(resolvePeriod("month", 1, NOW).label).toBe("May 2026");
+    expect(resolvePeriod("year", 1, NOW).label).toBe("2024");
+  });
+});
+
+describe("latestRecapWithData", () => {
+  it("prefers the grandest finished period that has data", () => {
+    // A June-2026 delivery: the last complete year (2025) is empty, so it falls
+    // back to the quarter (Q2 2026), which has the load.
+    const loads = [
+      { load_status: "delivered", delivery_date: "2026-06-15" },
+    ] as unknown as Load[];
+    expect(latestRecapWithData(loads, NOW)).toEqual({ scope: "quarter", label: "Q2 2026" });
+  });
+  it("returns null when nothing is finished yet", () => {
+    const loads = [
+      { load_status: "delivered", delivery_date: "2026-07-05" }, // current month only
+    ] as unknown as Load[];
+    expect(latestRecapWithData(loads, NOW)).toBeNull();
   });
 });
 
@@ -55,6 +78,10 @@ describe("computeRecap", () => {
     expect(r.avgRpm).toBeCloseTo(5800 / 1800, 3);
     expect(r.topLane).toBe("Dallas → Atlanta");
     expect(r.topAgent).toBe("Redwood");
+    // 12 months for a year, with only May + Jun carrying gross
+    expect(r.monthlyGross).toHaveLength(12);
+    expect(r.monthlyGross[4]).toEqual({ label: "May", gross: 3200 });
+    expect(r.monthlyGross[5]).toEqual({ label: "Jun", gross: 2600 });
   });
 
   it("counts total (odometer) miles incl. deadhead, loaded only for RPM", () => {
