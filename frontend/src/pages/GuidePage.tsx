@@ -1,7 +1,13 @@
-import { Trophy } from "lucide-react";
+import type { ReactNode } from "react";
+import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
 import { PrestigeBurst, PRESTIGE_META } from "@/components/agents/PrestigeBadge";
 import type { PrestigeTier } from "@/lib/metrics/agentLeaderboard";
+
+const AMBER = "#e8940a";
+const AMBER_HI = "#f5b03a";
+const GREEN = "#1d9e75";
+const TRACK = "#232c3f";
 
 const RATINGS: [number, string][] = [
   [5, "Your go-to. Call these agents before anyone else."],
@@ -18,17 +24,105 @@ const TIERS: [PrestigeTier, string][] = [
   ["legend", "Took gold in 8 or more quarters."],
 ];
 
-const Section = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) => (
+const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="bg-plate rounded-lg p-5 mb-4">
     <h2 className="font-condensed text-xl mb-3">{title}</h2>
     {children}
   </section>
+);
+
+// ---- building blocks for the money metrics ----
+
+// A metric card: what it answers, the formula, and the reasoning.
+const Metric = ({
+  title,
+  answers,
+  children,
+}: {
+  title: string;
+  answers: string;
+  children: ReactNode;
+}) => (
+  <section className="bg-plate rounded-lg p-5 mb-4">
+    <h3 className="font-condensed text-lg" style={{ color: AMBER_HI }}>
+      {title}
+    </h3>
+    <p className="text-sm text-muted-text mt-0.5 mb-3">{answers}</p>
+    {children}
+  </section>
+);
+
+// The formula, set apart so it reads as "the math."
+const Formula = ({ children }: { children: ReactNode }) => (
+  <div
+    className="rounded-md px-3 py-2.5 text-sm font-condensed leading-relaxed"
+    style={{ background: "#0d1119", border: "1px solid #22304a", color: "#f5e6c8" }}
+  >
+    {children}
+  </div>
+);
+
+const Eg = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs text-muted-text mt-2">
+    <span style={{ color: AMBER }}>e.g.</span> {children}
+  </p>
+);
+
+const Why = ({ children }: { children: ReactNode }) => (
+  <p className="text-sm text-muted-text mt-3">{children}</p>
+);
+
+// How much of each component of a load's rate you keep.
+const KeepBar = ({ label, pct, note }: { label: string; pct: number; note?: string }) => (
+  <div className="flex items-center gap-3">
+    <span className="w-28 shrink-0 text-sm">{label}</span>
+    <div className="flex-1 h-3 rounded overflow-hidden" style={{ background: TRACK }}>
+      <div className="h-full" style={{ width: `${pct}%`, background: GREEN }} />
+    </div>
+    <span className="w-24 shrink-0 text-xs text-right text-muted-text">
+      {note ?? `${pct}% to you`}
+    </span>
+  </div>
+);
+
+// The cost → book-rate chain, left to right.
+const ChainBox = ({ top, bottom }: { top: string; bottom: string }) => (
+  <div
+    className="rounded-md px-3 py-2 text-center min-w-[120px]"
+    style={{ background: "#0d1119", border: "1px solid #22304a" }}
+  >
+    <div className="font-condensed text-base" style={{ color: AMBER_HI }}>
+      {top}
+    </div>
+    <div className="text-[11px] text-muted-text">{bottom}</div>
+  </div>
+);
+
+// A static rate ladder for illustration.
+const MiniLadder = () => (
+  <div>
+    <div className="flex h-3 rounded overflow-hidden" style={{ background: TRACK }}>
+      <div style={{ width: "58%", background: AMBER, opacity: 0.55 }} />
+      <div style={{ flex: 1, background: GREEN, opacity: 0.55 }} />
+    </div>
+    <div className="relative h-9 mt-1 text-xs text-muted-text">
+      <span className="absolute left-0">
+        walk-away
+        <br />
+        <span className="text-light">$4.34</span>
+      </span>
+      <span className="absolute left-[58%] -translate-x-1/2 text-center">
+        target
+        <br />
+        <span className="text-light">$5.86</span>
+      </span>
+      <span className="absolute right-0 text-right">
+        strong
+        <br />
+        <span className="text-light">$6.94</span>
+      </span>
+    </div>
+  </div>
 );
 
 const GuidePage = () => (
@@ -36,8 +130,155 @@ const GuidePage = () => (
     <div className="max-w-3xl">
       <h1 className="text-3xl font-condensed mb-1">Guide</h1>
       <p className="text-muted-text text-sm mb-6">
-        How agents get rated, ranked, and awarded.
+        Every number in dash, and exactly how it's built — so you can check the
+        math, not just trust it. The figures below are worked examples; your live
+        numbers are on the dashboard and Expenses page.
       </p>
+
+      <h2 className="font-condensed text-2xl mb-3" style={{ color: AMBER_HI }}>
+        The money
+      </h2>
+
+      <Metric
+        title="Your net revenue — what you actually keep"
+        answers="Every revenue figure in dash is your net take-home, not the full rate the customer paid."
+      >
+        <Formula>
+          net = linehaul × your&nbsp;linehaul&nbsp;% + fuel&nbsp;surcharge × 100% +
+          each accessorial × its own rate
+        </Formula>
+        <div className="flex flex-col gap-2 mt-3">
+          <KeepBar label="Linehaul" pct={73} />
+          <KeepBar label="Fuel surcharge" pct={100} />
+          <KeepBar label="Accessorials" pct={100} note="by type (0–100%)" />
+        </div>
+        <Why>
+          You book the full customer rate, but your leased carrier keeps a cut. In
+          this example you keep <span className="text-light">73% of linehaul</span>,{" "}
+          <span className="text-light">100% of fuel surcharge</span>, and
+          accessorials by type (tarp 100%, hazmat 73%, excess-value 0%) — every
+          percentage is yours to set in <span className="text-light">Settings</span>.
+          On your own authority you keep it all: set everything to 100%.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="True cost per mile"
+        answers="What it costs to roll one mile, everything in."
+      >
+        <Formula>
+          true cost = P&amp;L operating cost + monthly obligations (truck note,
+          etc.)
+          <br />
+          cost per mile = true cost ÷ every mile you drove
+        </Formula>
+        <Eg>$23,600/mo ÷ ~7,450 miles ≈ $3.17 per mile.</Eg>
+        <Why>
+          Blended over your last <span className="text-light">3 complete months</span>{" "}
+          (rolling ~90 days) so one lumpy month — a big repair, say — doesn't swing
+          it. It's over <span className="text-light">total</span> miles (loaded and
+          empty), because every mile you drive costs you.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Break-even — the rate to book"
+        answers="The gross rate per mile you have to book to cover your cost."
+      >
+        <div className="flex items-center gap-2 flex-wrap my-1">
+          <ChainBox top="$3.17" bottom="cost / mile" />
+          <ArrowRight size={16} className="text-muted-text" />
+          <ChainBox top="÷ 73%" bottom="your keep" />
+          <ArrowRight size={16} className="text-muted-text" />
+          <ChainBox top="$4.34" bottom="gross to book" />
+        </div>
+        <Why>
+          Two haircuts, and they're different: you fold your{" "}
+          <span className="text-light">deadhead</span> into the miles yourself (cost
+          is spread over every mile you drive), and you only{" "}
+          <span className="text-light">keep 73%</span> of what you book — so the
+          rate to book is your cost-per-mile ÷ 0.73. Anything above{" "}
+          <span className="text-light">$4.34</span> (with your empty miles counted)
+          makes money. It's conservative: you keep 100% of fuel surcharge on top, so
+          your real cushion is a bit bigger.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="The rate ladder"
+        answers="Where your booked rate lands against your targets."
+      >
+        <MiniLadder />
+        <Formula>
+          walk-away = break-even · minimum = ×1.15 · target = ×1.35 · strong = ×1.60
+        </Formula>
+        <Why>
+          The tiers mark up your break-even by 15 / 35 / 60%. The marker on the
+          dashboard is your actual gross rate per mile — where you're really pricing.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Weekly & daily targets"
+        answers="The gross dollars to book each week and day."
+      >
+        <Formula>
+          weekly = (true cost ÷ your keep) ÷ 4.33 weeks
+          <br />
+          daily = (true cost ÷ your keep) ÷ 22 working days · × tiers for target/strong
+        </Formula>
+        <Why>
+          Same idea as the ladder, in dollars instead of per-mile — and all in{" "}
+          <span className="text-light">gross booking dollars</span>, the number you
+          track when you take a load.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Rate per mile (RPM)"
+        answers="Your net rate on the miles you actually get paid for."
+      >
+        <Formula>RPM = net revenue ÷ loaded miles</Formula>
+        <Why>
+          Loaded miles, not total — because the customer pays you for the haul, not
+          your empty run to the pickup.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Deadhead"
+        answers="The share of your miles that ran empty."
+      >
+        <Formula>deadhead % = (total miles − loaded miles) ÷ total miles</Formula>
+        <Why>
+          Total miles come from your odometer (loads + fuel + service readings);
+          loaded miles are the paid distance. Lower is better — every empty mile is
+          cost with no revenue.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Fuel economy (MPG)"
+        answers="Real MPG, measured tank to tank — not the dash estimate."
+      >
+        <Formula>
+          MPG = miles between full fills ÷ every gallon added in that stretch
+        </Formula>
+        <Why>
+          A fill of <span className="text-light">120+ gallons</span> is a full tank;
+          smaller top-offs roll into the next full. Measuring full-to-full is why
+          it's honest — actual pump gallons against actual odometer miles.
+        </Why>
+      </Metric>
+
+      <div
+        className="my-6 border-t"
+        style={{ borderColor: "#22304a" }}
+        aria-hidden="true"
+      />
+      <h2 className="font-condensed text-2xl mb-3" style={{ color: AMBER_HI }}>
+        Agents
+      </h2>
 
       <Section title="Agent ratings">
         <p className="text-sm text-muted-text mb-4">
@@ -58,10 +299,10 @@ const GuidePage = () => (
 
       <Section title="The quarterly leaderboard">
         <p className="text-sm text-muted-text">
-          Ratings are your opinion; this is the scoreboard. Every calendar
-          quarter, your agents are ranked by the revenue on the loads they
-          actually delivered. Two things fall out of it — trophies, and a career
-          rank — and both stick with the agent for good.
+          Ratings are your opinion; this is the scoreboard. Every calendar quarter,
+          your agents are ranked by the revenue on the loads they actually
+          delivered. Two things fall out of it — trophies, and a career rank — and
+          both stick with the agent for good.
         </p>
       </Section>
 
@@ -73,7 +314,7 @@ const GuidePage = () => (
           <div className="flex items-center gap-4">
             <span
               className="w-24 shrink-0 flex items-center gap-1.5 font-medium"
-              style={{ color: "#f5b03a" }}
+              style={{ color: AMBER_HI }}
             >
               <Trophy size={18} /> Gold
             </span>
