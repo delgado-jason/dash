@@ -133,8 +133,8 @@ const LoadsPage = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Kpi
-          label="This month"
-          value={money(kpis.deliveredGross)}
+          label="This month · net"
+          value={money(kpis.deliveredNet)}
           sub={`${kpis.deliveredCount} load${plural(kpis.deliveredCount)} delivered`}
         />
         <Kpi

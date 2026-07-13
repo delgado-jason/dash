@@ -1,4 +1,7 @@
 import type { Load } from "@/types/load";
+// The canonical NET revenue helper (server-computed, after the carrier's cut).
+// Aliased so the money KPIs below report what the company actually keeps.
+import { loadRevenue as loadNet } from "./rateTargets";
 
 // Total revenue for a load = linehaul + fuel surcharge + accessorials.
 // Postgres numerics arrive as strings, so coerce before adding.
@@ -56,8 +59,8 @@ export const deliveredThisMonth = (
 
 export interface LoadsKpis {
   deliveredCount: number;
-  deliveredGross: number;
-  rpm: number | null; // revenue per loaded mile this month; null when no miles
+  deliveredNet: number; // this month's delivered revenue, NET (what the company keeps)
+  rpm: number | null; // GROSS rate per loaded mile this month; null when no miles
   loadedMiles: number;
   arTotal: number;
   arCount: number;
@@ -69,6 +72,8 @@ export interface LoadsKpis {
 // what's owed, and what's in the pipeline.
 export const loadsKpis = (loads: Array<Load>, now: Date): LoadsKpis => {
   const delivered = deliveredThisMonth(loads, now);
+  // Dollars the company keeps (net); rate/mile stays gross (the booking lens).
+  const deliveredNet = delivered.reduce((s, l) => s + loadNet(l), 0);
   const deliveredGross = delivered.reduce((s, l) => s + loadRevenue(l), 0);
   const loadedMiles = delivered.reduce(
     (s, l) => s + (Number(l.loaded_miles) || 0),
@@ -77,10 +82,10 @@ export const loadsKpis = (loads: Array<Load>, now: Date): LoadsKpis => {
   const ar = outstandingLoads(loads);
   return {
     deliveredCount: delivered.length,
-    deliveredGross,
+    deliveredNet,
     rpm: loadedMiles > 0 ? deliveredGross / loadedMiles : null,
     loadedMiles,
-    arTotal: ar.reduce((s, l) => s + loadRevenue(l), 0),
+    arTotal: ar.reduce((s, l) => s + loadNet(l), 0),
     arCount: ar.length,
     bookedCount: getBookedCount(loads),
     inTransitCount: getInTransitCount(loads),

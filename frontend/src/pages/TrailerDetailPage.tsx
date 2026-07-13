@@ -14,11 +14,14 @@ import {
   avgMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
+import { loadRevenue } from "@/lib/metrics/rateTargets";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
 import { TRAILER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
+
+const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 const Spec = ({
   label,
@@ -68,6 +71,14 @@ const TrailerDetailPage = () => {
   }, [trailer, services]);
 
   const mpm = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
+  const trailerLoads = useMemo(
+    () => loads.filter((l) => l.trailer_id === id),
+    [loads, id],
+  );
+  const revenue = useMemo(
+    () => trailerLoads.reduce((s, l) => s + loadRevenue(l), 0),
+    [trailerLoads],
+  );
   const due = useMemo(() => {
     let overdue = 0;
     let soon = 0;
@@ -186,16 +197,26 @@ const TrailerDetailPage = () => {
         </div>
       </div>
 
-      <Link
-        to="/maintenance"
-        className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors block max-w-xs"
-      >
-        <p className="text-xs text-muted-text mb-2">Maintenance</p>
-        <div className="flex gap-3 text-sm">
-          <span style={{ color: "#e24b4a" }}>{due.overdue} overdue</span>
-          <span style={{ color: "#e8940a" }}>{due.soon} due soon</span>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link
+          to="/maintenance"
+          className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors block"
+        >
+          <p className="text-xs text-muted-text mb-2">Maintenance</p>
+          <div className="flex gap-3 text-sm">
+            <span style={{ color: "#e24b4a" }}>{due.overdue} overdue</span>
+            <span style={{ color: "#e8940a" }}>{due.soon} due soon</span>
+          </div>
+        </Link>
+        <div className="bg-plate rounded-lg p-4">
+          <p className="text-xs text-muted-text mb-1">Loads hauled</p>
+          <p className="text-2xl font-condensed">{trailerLoads.length}</p>
         </div>
-      </Link>
+        <div className="bg-plate rounded-lg p-4">
+          <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
+          <p className="text-2xl font-condensed">{money(revenue)}</p>
+        </div>
+      </div>
     </div>
   );
 };
