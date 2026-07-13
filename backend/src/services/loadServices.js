@@ -51,6 +51,21 @@ export async function getLoads(user_id) {
                    AND apr.accessorial_type = a.accessorial_type
                  WHERE a.load_id = loads.load_id)
             , 2) AS net_revenue,
+            -- The trailer's cut: its % of linehaul plus its % of the base-rate
+            -- accessorials it rides on (those paid at linehaul_pct + trailer_pct).
+            -- FSC and flat-100% accessorials belong to the tractor, not the trailer.
+            ROUND(
+              linehaul * COALESCE(ss.trailer_pct, 0)
+              + COALESCE(ss.trailer_pct, 0) * (
+                  SELECT COALESCE(SUM(a.amount), 0)
+                  FROM accessorials a
+                  LEFT JOIN accessorial_pay_rates apr
+                    ON apr.user_id = loads.user_id
+                    AND apr.accessorial_type = a.accessorial_type
+                  WHERE a.load_id = loads.load_id
+                    AND COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
+                        = COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
+            , 2) AS trailer_net,
             commodity,
             weight,
             dimensions,
@@ -133,6 +148,21 @@ export async function getLoad(user_id, load_id) {
                    AND apr.accessorial_type = a.accessorial_type
                  WHERE a.load_id = l.load_id)
             , 2) AS net_revenue,
+            -- The trailer's cut: its % of linehaul plus its % of the base-rate
+            -- accessorials it rides on (those paid at linehaul_pct + trailer_pct).
+            -- FSC and flat-100% accessorials belong to the tractor, not the trailer.
+            ROUND(
+              linehaul * COALESCE(ss.trailer_pct, 0)
+              + COALESCE(ss.trailer_pct, 0) * (
+                  SELECT COALESCE(SUM(a.amount), 0)
+                  FROM accessorials a
+                  LEFT JOIN accessorial_pay_rates apr
+                    ON apr.user_id = l.user_id
+                    AND apr.accessorial_type = a.accessorial_type
+                  WHERE a.load_id = l.load_id
+                    AND COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
+                        = COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
+            , 2) AS trailer_net,
             commodity,
             weight,
             dimensions,

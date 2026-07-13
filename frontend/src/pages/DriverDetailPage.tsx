@@ -80,6 +80,15 @@ const DriverDetailPage = () => {
     () => loads.filter((l) => l.driver_id === id),
     [loads, id],
   );
+  // Revenue/count use only earned freight — delivered AND paid — matching the
+  // dashboard. Cancelled/booked/in-transit loads haven't earned anything yet.
+  const earnedLoads = useMemo(
+    () =>
+      driverLoads.filter(
+        (l) => l.load_status === "delivered" && l.payment_status === "paid",
+      ),
+    [driverLoads],
+  );
 
   // The player card only makes sense for a driver who actually hauls; a
   // dispatch-only driver (e.g. Brandie) keeps the plain page.
@@ -149,7 +158,7 @@ const DriverDetailPage = () => {
       </div>
     );
 
-  const revenue = driverLoads.reduce((s, l) => s + loadRevenue(l), 0);
+  const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
   const milesHauled = driverLoads.reduce(
     (s, l) =>
       l.load_status === "delivered" ? s + (Number(l.loaded_miles) || 0) : s,
@@ -263,7 +272,7 @@ const DriverDetailPage = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
           <div className="bg-plate rounded-lg p-4">
             <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-            <p className="text-2xl font-condensed">{driverLoads.length}</p>
+            <p className="text-2xl font-condensed">{earnedLoads.length}</p>
           </div>
           <div className="bg-plate rounded-lg p-4">
             <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
@@ -280,11 +289,11 @@ const DriverDetailPage = () => {
 
       <div className="bg-plate rounded-lg p-4 mt-4">
         <p className="text-xs text-muted-text mb-2">Recent loads</p>
-        {driverLoads.length === 0 ? (
+        {earnedLoads.length === 0 ? (
           <p className="text-sm text-muted-text">None for this driver yet.</p>
         ) : (
           <div className="text-sm divide-y divide-steel">
-            {driverLoads.slice(0, 6).map((l) => (
+            {earnedLoads.slice(0, 6).map((l) => (
               <div key={l.load_id} className="py-2 flex justify-between">
                 <span>
                   {l.origin_market} → {l.delivery_market}
