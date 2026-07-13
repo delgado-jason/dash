@@ -75,3 +75,13 @@ export const computeMedals = (d: MedalData): Medal[] => {
 // Earned medals only, most prestigious first — for the card header.
 export const earnedMedals = (medals: Medal[]): Medal[] =>
   medals.filter((m) => m.tier > 0).sort((a, b) => b.tier - a.tier);
+
+// Static catalog for the Guide's award-system reference (name + the tier ladder).
+export const MEDAL_GUIDE: { name: string; icon: string; tiers: string }[] = [
+  { name: "Mile Club", icon: "medal", tiers: "100k · 250k · 500k · 1M mi" },
+  { name: "Freight Hauler", icon: "stack-2", tiers: "100 · 250 · 500 loads" },
+  { name: "Big Earner", icon: "coins", tiers: "$250k · $500k · $750k net" },
+  { name: "Iron Streak", icon: "flame", tiers: "4 · 8 · 12-week streak" },
+  { name: "Debt Crusher", icon: "lock-open", tiers: "25% · 50% · 75% paid off" },
+  { name: "Strong Season", icon: "trophy", tiers: "a strong-margin season" },
+];

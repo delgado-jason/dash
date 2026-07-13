@@ -123,3 +123,16 @@ export const computePatches = (loads: Load[], _fuel: FuelEntry[]): Patch[] => {
 
   return out;
 };
+
+// Static catalog for the Guide's award-system reference (name + how to earn).
+export const PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
+  { name: "Big Ticket", icon: "cash", how: "Land a top-tier load gross — the bar rises as you book bigger." },
+  { name: "Long Hauler", icon: "road", how: "A haul among your longest — 1,000+ mi and climbing." },
+  { name: "Mountain Mover", icon: "mountain", how: "One of your heaviest loads — oversize and over-weight." },
+  { name: "Rainmaker", icon: "coins", how: "A top-tier net month." },
+  { name: "Iron Week", icon: "barbell", how: "One of your busiest pay-weeks by load count." },
+  { name: "Clean Run", icon: "gauge", how: "A week with your tightest deadhead." },
+  { name: "Trailblazer", icon: "map-pin", how: "Deliver to a new state — the ×count is your states-conquered map." },
+  { name: "Coast to Coast", icon: "arrows-horizontal", how: "A single run spanning the West and East coasts." },
+  { name: "Doubleheader", icon: "layers-subtract", how: "Deliver two or more loads in one day." },
+];

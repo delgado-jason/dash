@@ -1,8 +1,9 @@
 // The set of awards currently earned, each with a STABLE id that changes only
-// when the award is genuinely re-earned (a new record, a new tier). The pop
-// system diffs this against a per-device "seen" list: anything whose id isn't
-// seen is new and fires a celebration. Encoding the value/threshold in the id is
-// what makes "beat your own best" re-pop while an unchanged best stays quiet.
+// when the award is genuinely re-earned (a new record value, a stacked patch, a
+// higher medal tier). The pop system diffs this against a per-device "seen" list;
+// anything whose id isn't seen is new and fires a celebration. Encoding the
+// value/count/tier in the id is what makes "beat your own best" re-pop while an
+// unchanged one stays quiet.
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
@@ -12,16 +13,17 @@ import {
   marginGrade,
   personalBests,
 } from "./playerCard";
-import { mileMilestone } from "./mileClub";
 import { resolvePeriod, loadsInRange, type RecapScope } from "./recap";
 import { loadRevenue } from "./rateTargets";
+import { computePatches } from "@/lib/awards/patches";
+import { computeMedals } from "@/lib/awards/medals";
 import type { TrophyDef } from "@/lib/trophies/catalog";
 import type { TrophyStatus } from "@/lib/trophies/status";
 import type { Trophy } from "@/types/trophy";
 
-// Grandest → smallest. trophy = once-in-a-career Hall milestone; recap = a period
-// close; marquee = a big win; burst = a frequent badge.
-export type AwardTier = "trophy" | "recap" | "marquee" | "burst";
+// Grandest → smallest. trophy = career Hall monument; medal = a tier-up; recap = a
+// period close; patch = a stacked hard feat; record = a new personal best.
+export type AwardTier = "trophy" | "medal" | "recap" | "patch" | "record";
 
 export interface Award {
   id: string;
@@ -29,13 +31,13 @@ export interface Award {
   name: string;
   detail: string;
   icon: string; // mapped to a lucide icon in the UI
-  scope?: RecapScope; // recap tier only — drives the prestige of the ceremony
-  image?: string; // trophy tier only — the approved AI art
+  scope?: RecapScope; // recap tier — drives the ceremony prestige
+  image?: string; // trophy tier — the approved AI art
+  medalTier?: number; // medal tier — drives the medallion metal (1/2/3)
 }
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const kMoney = (n: number) =>
-  n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`;
+const kMoney = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`);
 
 export interface AwardInputs {
   loads: Load[];
@@ -43,28 +45,22 @@ export interface AwardInputs {
   fuel: FuelEntry[];
   lifetimeMiles: number;
   obligationsDebtMonthly: number;
-  streak?: number; // current grind streak (weeks beating target)
+  streak?: number; // grind streak (weeks beating target)
+  loanPaidPct?: number | null; // best % paid across tracked loans — Debt Crusher medal
   now: Date;
 }
-
-const RELATIONSHIP_MARKS = [5, 10, 25, 50, 100];
-const CENTURY_MARKS = [500, 250, 100];
-const STREAK_MARKS = [12, 8, 4];
 
 export const earnedAwards = (i: AwardInputs): Award[] => {
   const out: Award[] = [];
 
   // ---- Recap ceremony: each COMPLETED period (month/quarter/year) with earned
   // freight. A smaller period that closes on the SAME day as a larger one is
-  // SUBSUMED — only the grandest ceremony fires (the last month of a quarter
-  // hands the moment to the quarter; the last quarter of a year, to the year).
-  // The subsumed period is still fully browsable on the recap page. The id carries
-  // the label so each period only ever fires once.
+  // subsumed — only the grandest ceremony fires; the id carries the label so each
+  // period only ever fires once.
   const monthR = resolvePeriod("month", 0, i.now);
   const quarterR = resolvePeriod("quarter", 0, i.now);
   const yearR = resolvePeriod("year", 0, i.now);
-  const sameClose = (a: typeof monthR, b: typeof monthR) =>
-    a.end.getTime() === b.end.getTime();
+  const sameClose = (a: typeof monthR, b: typeof monthR) => a.end.getTime() === b.end.getTime();
   const recapPeriods = [
     { scope: "month" as RecapScope, r: monthR, subsumed: sameClose(monthR, quarterR) },
     { scope: "quarter" as RecapScope, r: quarterR, subsumed: sameClose(quarterR, yearR) },
@@ -85,84 +81,51 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
     });
   }
 
-  // ---- Marquee: career rank ----
+  // ---- Medals (tier-up): the fixed milestone ladder + a career rank-up ----
+  const del = i.loads.filter((l) => l.load_status === "delivered");
+  const season = getSeasonStats(i.periods, i.loads, i.now, 3, i.obligationsDebtMonthly);
+  const medals = computeMedals({
+    lifetimeMiles: i.lifetimeMiles,
+    deliveredCount: del.length,
+    cumulativeNet: del.reduce((s, l) => s + loadRevenue(l), 0),
+    streak: i.streak ?? 0,
+    loanPaidPct: i.loanPaidPct ?? null,
+    seasonStrong: marginGrade(season.netMargin) === "strong",
+  });
+  for (const m of medals)
+    if (m.tier > 0)
+      out.push({ id: `medal:${m.key}:${m.tier}`, tier: "medal", name: `${m.name} ${m.tierLabel}`, detail: m.hint, icon: m.icon, medalTier: m.tier });
   const rank = careerRank(i.lifetimeMiles);
   out.push({
-    id: `rank:${rank.key}`,
-    tier: "marquee",
+    id: `medal:rank:${rank.index}`,
+    tier: "medal",
     name: `Rank up — ${rank.name}`,
     detail: `${Math.round(rank.miles).toLocaleString("en-US")} lifetime miles`,
     icon: "truck",
+    medalTier: 3,
   });
 
-  // ---- Marquee: mile club ----
-  const mm = mileMilestone(i.lifetimeMiles);
-  if (mm.crossed != null && mm.label)
-    out.push({
-      id: `mileclub:${mm.crossed}`,
-      tier: "marquee",
-      name: `${mm.label} Mile Club`,
-      detail: mm.title ?? "Lifetime",
-      icon: "medal",
-    });
+  // ---- Patches (stacked hard feat): fire when the ×count climbs ----
+  for (const p of computePatches(i.loads, i.fuel))
+    if (p.count > 0)
+      out.push({ id: `patch:${p.key}:${p.count}`, tier: "patch", name: `${p.name} ×${p.count}`, detail: p.hint, icon: p.icon });
 
-  // ---- Marquee: strong season ----
-  const season = getSeasonStats(i.periods, i.loads, i.now, 3, i.obligationsDebtMonthly);
-  if (marginGrade(season.netMargin) === "strong")
-    out.push({
-      id: `strong-season:${season.label}`,
-      tier: "marquee",
-      name: "Strong Season",
-      detail: `${season.label} · ${season.netMargin != null ? (season.netMargin * 100).toFixed(1) : "?"}% margin`,
-      icon: "trophy",
-    });
-
-  // ---- Burst: personal bests (re-fire when the record improves) ----
+  // ---- Records (new personal best): fire when a best improves ----
   const pb = personalBests(i.loads, i.fuel, i.now);
-  if (pb.bestWeekRevenue != null)
-    out.push({ id: `best-week:${Math.round(pb.bestWeekRevenue)}`, tier: "burst", name: "Personal Best Week", detail: `${money(pb.bestWeekRevenue)} in a week`, icon: "trophy" });
-  if (pb.bestMpg != null)
-    out.push({ id: `best-mpg:${pb.bestMpg.toFixed(1)}`, tier: "burst", name: "Feather Foot", detail: `New best tank — ${pb.bestMpg.toFixed(1)} mpg`, icon: "flame" });
-  if (pb.biggestLoad != null)
-    out.push({ id: `biggest-load:${Math.round(pb.biggestLoad)}`, tier: "burst", name: "Heavy Purse", detail: `Biggest load — ${money(pb.biggestLoad)}`, icon: "package" });
-  if (pb.mostLoadsInWeek != null)
-    out.push({ id: `most-loads:${pb.mostLoadsInWeek}`, tier: "burst", name: "Busy Week", detail: `${pb.mostLoadsInWeek} loads in a week`, icon: "stack" });
-  if (pb.lowestDeadheadPct != null)
-    out.push({ id: `best-deadhead:${(pb.lowestDeadheadPct * 100).toFixed(1)}`, tier: "burst", name: "Tight Lines", detail: `Deadhead down to ${(pb.lowestDeadheadPct * 100).toFixed(1)}%`, icon: "gauge" });
-
-  // ---- Burst: relationship milestones (per agent) ----
-  const byAgent = new Map<string, { name: string; count: number }>();
-  for (const l of i.loads)
-    if (l.load_status === "delivered" && l.agent_id) {
-      const a = byAgent.get(l.agent_id) ?? { name: l.agent, count: 0 };
-      a.count += 1;
-      byAgent.set(l.agent_id, a);
-    }
-  for (const [agentId, a] of byAgent) {
-    const mark = [...RELATIONSHIP_MARKS].reverse().find((x) => a.count >= x);
-    if (mark)
-      out.push({ id: `relationship:${agentId}:${mark}`, tier: "burst", name: "Relationship Builder", detail: `${a.name} ×${mark}`, icon: "users" });
-  }
-
-  // ---- Burst: century of loads ----
-  const delivered = i.loads.filter((l) => l.load_status === "delivered").length;
-  const century = CENTURY_MARKS.find((x) => delivered >= x);
-  if (century)
-    out.push({ id: `century:${century}`, tier: "burst", name: `${century} Loads`, detail: "Career milestone", icon: "stack" });
-
-  // ---- Burst: grind streak milestones ----
-  if (i.streak) {
-    const mark = STREAK_MARKS.find((x) => i.streak! >= x);
-    if (mark)
-      out.push({ id: `on-a-roll:${mark}`, tier: "burst", name: "On a Roll", detail: `${i.streak}-week target streak`, icon: "flame" });
-  }
+  const rec = (key: string, val: number | null, id: string, name: string, detail: string, icon: string) => {
+    if (val != null) out.push({ id: `record:${key}:${id}`, tier: "record", name, detail, icon });
+  };
+  rec("top-week", pb.bestWeekRevenue, `${Math.round(pb.bestWeekRevenue ?? 0)}`, "New record — Top Week", money(pb.bestWeekRevenue ?? 0), "trophy");
+  rec("best-tank", pb.bestMpg, `${(pb.bestMpg ?? 0).toFixed(1)}`, "New record — Best Tank", `${(pb.bestMpg ?? 0).toFixed(1)} mpg`, "flame");
+  rec("biggest-load", pb.biggestLoad, `${Math.round(pb.biggestLoad ?? 0)}`, "New record — Biggest Load", money(pb.biggestLoad ?? 0), "package");
+  rec("most-week", pb.mostLoadsInWeek, `${pb.mostLoadsInWeek ?? 0}`, "New record — Most in a Week", `${pb.mostLoadsInWeek ?? 0} loads`, "stack");
+  rec("best-deadhead", pb.lowestDeadheadPct, `${((pb.lowestDeadheadPct ?? 0) * 100).toFixed(1)}`, "New record — Best Deadhead", `${((pb.lowestDeadheadPct ?? 0) * 100).toFixed(1)}%`, "gauge");
 
   return out;
 };
 
 // The earned Hall trophies as awards — the grandest tier. Same earn-detection the
-// Trophy Room uses (computeAllStatuses), so a trophy pops the instant it's earned
-// and never disagrees with the Hall. Carries the approved AI art for the pop.
+// Trophy Room uses, so a trophy pops the instant it's earned. Carries the AI art.
 export const earnedTrophyAwards = (
   catalog: TrophyDef[],
   statuses: Record<string, TrophyStatus>,
@@ -179,35 +142,28 @@ export const earnedTrophyAwards = (
       image: recordsByKey[d.key]?.image_url ?? undefined,
     }));
 
-// Sample awards for previewing the celebration UI (dashboard `?awarddemo`) —
-// since a real device silently baselines on first load, this is how you see the
-// pop without waiting to earn one.
+// Sample awards for previewing the celebration UI (dashboard `?awarddemo`).
 export const DEMO_AWARDS: Award[] = [
   { id: "demo:trophy", tier: "trophy", name: "Owner Operator", detail: "The origin — you went out on your own.", icon: "trophy" },
   { id: "demo:recap-year", tier: "recap", scope: "year", name: "2026", detail: "$141k hauled · 47 loads", icon: "trophy" },
-  { id: "demo:recap-quarter", tier: "recap", scope: "quarter", name: "Q2 2026", detail: "$70.4k hauled · 23 loads", icon: "trophy" },
-  { id: "demo:recap-month", tier: "recap", scope: "month", name: "Jun 2026", detail: "$24.1k hauled · 8 loads", icon: "trophy" },
-  { id: "demo:rank", tier: "marquee", name: "Rank up — Road Captain", detail: "582,450 lifetime miles and climbing.", icon: "truck" },
-  { id: "demo:tightlines", tier: "burst", name: "Tight Lines", detail: "Deadhead down to 7.2%", icon: "gauge" },
-  { id: "demo:feather", tier: "burst", name: "Feather Foot", detail: "New best tank — 6.9 mpg", icon: "flame" },
+  { id: "demo:medal", tier: "medal", name: "Mile Club III", detail: "582k / 1M", icon: "medal", medalTier: 3 },
+  { id: "demo:patch", tier: "patch", name: "Mountain Mover ×4", detail: "clear 48,000 lb", icon: "mountain" },
+  { id: "demo:record", tier: "record", name: "New record — Top Week", detail: "$8,100", icon: "trophy" },
 ];
 
-// Split newly-earned awards against a seen-id set. Marquee first (they take over
-// the screen), then bursts.
+// Order fresh awards for the pop host: takeovers first (trophy, then recap grandest-
+// first, then medal), then the corner slide-ins (patch, then record).
 export const newAwards = (earned: Award[], seen: Set<string>): Award[] => {
   const fresh = earned.filter((a) => !seen.has(a.id));
   const scopeRank: Record<string, number> = { year: 0, quarter: 1, month: 2 };
-  // Recap ceremonies lead, grandest first (year → quarter → month) so the biggest
-  // milestone is the primary pop and smaller ones queue behind it; then any
-  // marquee, then bursts.
   const recaps = fresh
     .filter((a) => a.tier === "recap")
     .sort((a, b) => (scopeRank[a.scope ?? "month"] ?? 0) - (scopeRank[b.scope ?? "month"] ?? 0));
-  // Trophies (career milestones) lead everything, then recaps, marquees, bursts.
   return [
     ...fresh.filter((a) => a.tier === "trophy"),
     ...recaps,
-    ...fresh.filter((a) => a.tier === "marquee"),
-    ...fresh.filter((a) => a.tier === "burst"),
+    ...fresh.filter((a) => a.tier === "medal"),
+    ...fresh.filter((a) => a.tier === "patch"),
+    ...fresh.filter((a) => a.tier === "record"),
   ];
 };

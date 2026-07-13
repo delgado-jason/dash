@@ -1,36 +1,14 @@
 import { useState, useEffect } from "react";
-import {
-  Truck,
-  Medal,
-  Trophy,
-  Flame,
-  Package,
-  Layers,
-  Users,
-  Gauge,
-  type LucideIcon,
-} from "lucide-react";
 import type { Award } from "@/lib/metrics/awards";
-import { MarqueeAward } from "./MarqueeAward";
+import { awardIcon } from "@/components/awards/awardIcons";
 import { BurstAward } from "./BurstAward";
 import { RecapCeremony } from "./RecapCeremony";
 import { TrophyCeremony } from "./TrophyCeremony";
+import { MedalAward } from "./MedalAward";
 
-const ICONS: Record<string, LucideIcon> = {
-  truck: Truck,
-  medal: Medal,
-  trophy: Trophy,
-  flame: Flame,
-  package: Package,
-  stack: Layers,
-  users: Users,
-  gauge: Gauge,
-};
-const iconFor = (n: string): LucideIcon => ICONS[n] ?? Trophy;
-
-// Orchestrates the celebration: a takeover (recap ceremony or marquee) owns the
-// screen one at a time; bursts stack in the corner and auto-fade. A takeover
-// blocks bursts until dismissed. Recap ceremonies outrank marquees.
+// Orchestrates the celebration. Takeovers own the screen one at a time, ranked
+// trophy > recap > medal; corner slide-ins (a stacked patch, a beaten record) fade
+// on their own after a few seconds. A takeover blocks the corner until dismissed.
 export const AwardPopHost = ({
   pops,
   truckAvatarUrl,
@@ -50,25 +28,28 @@ export const AwardPopHost = ({
   const takeover =
     visible.find((p) => p.tier === "trophy") ??
     visible.find((p) => p.tier === "recap") ??
-    visible.find((p) => p.tier === "marquee");
-  const bursts = takeover ? [] : visible.filter((p) => p.tier === "burst").slice(0, 4);
+    visible.find((p) => p.tier === "medal");
+  const slideIns = takeover
+    ? []
+    : visible.filter((p) => p.tier === "patch" || p.tier === "record").slice(0, 4);
 
-  const burstKey = bursts.map((b) => b.id).join(",");
+  const slideKey = slideIns.map((b) => b.id).join(",");
   useEffect(() => {
-    if (!burstKey) return;
-    const ids = burstKey.split(",");
-    const timers = ids.map((id, idx) => setTimeout(() => dismiss(id), 5000 + idx * 600));
+    if (!slideKey) return;
+    const ids = slideKey.split(",");
+    // Records/patches hold ~3.5s so they can be read, then slide back out.
+    const timers = ids.map((id, idx) => setTimeout(() => dismiss(id), 3500 + idx * 600));
     return () => timers.forEach(clearTimeout);
-  }, [burstKey]);
+  }, [slideKey]);
 
-  if (!takeover && bursts.length === 0) return null;
+  if (!takeover && slideIns.length === 0) return null;
 
   return (
     <>
-      {bursts.length > 0 && (
+      {slideIns.length > 0 && (
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end">
-          {bursts.map((b) => (
-            <BurstAward key={b.id} award={b} Icon={iconFor(b.icon)} onDismiss={() => dismiss(b.id)} />
+          {slideIns.map((b) => (
+            <BurstAward key={b.id} award={b} Icon={awardIcon(b.icon)} onDismiss={() => dismiss(b.id)} />
           ))}
         </div>
       )}
@@ -78,8 +59,8 @@ export const AwardPopHost = ({
       {takeover && takeover.tier === "recap" && (
         <RecapCeremony award={takeover} truckAvatarUrl={truckAvatarUrl} onDismiss={() => dismiss(takeover.id)} />
       )}
-      {takeover && takeover.tier === "marquee" && (
-        <MarqueeAward award={takeover} Icon={iconFor(takeover.icon)} onDismiss={() => dismiss(takeover.id)} />
+      {takeover && takeover.tier === "medal" && (
+        <MedalAward award={takeover} Icon={awardIcon(takeover.icon)} onDismiss={() => dismiss(takeover.id)} />
       )}
     </>
   );

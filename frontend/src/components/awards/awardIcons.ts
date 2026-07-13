@@ -13,6 +13,9 @@ import {
   Flame,
   Unlock,
   Trophy,
+  Truck,
+  Package,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +36,10 @@ const MAP: Record<string, LucideIcon> = {
   flame: Flame,
   "lock-open": Unlock,
   trophy: Trophy,
+  truck: Truck,
+  package: Package,
+  stack: Layers,
+  users: Users,
 };
 
 export const awardIcon = (name: string): LucideIcon => MAP[name] ?? Trophy;
