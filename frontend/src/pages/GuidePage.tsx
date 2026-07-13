@@ -286,6 +286,43 @@ const GuidePage = () => (
       </Metric>
 
       <Metric
+        title="Lane rate — typical vs blended"
+        answers="On the Lanes page each rate is the typical load, so one fluke haul can't crown a lane it can't repeat."
+      >
+        <Formula>
+          typical $/mi = median of each load's rate · blended = gross ÷ all loaded
+          miles
+        </Formula>
+        <Eg>
+          Five loads near $2.10 and one short oversize at $6.00 → blended reads $2.72,
+          but <span className="text-light">typical is $2.10</span> — the number you'll
+          actually see next time. Lanes rank on typical; blended rides underneath.
+        </Eg>
+        <Why>
+          A lane with only a handful of loads is easily skewed by a single
+          high-accessorial run. The median asks "what does a normal load here pay,"
+          which is the honest basis for deciding where to book.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Outstanding loads — how long money sits"
+        answers="The headline aging is the typical unpaid load, with the oldest called out separately."
+      >
+        <Formula>median days outstanding · oldest days outstanding</Formula>
+        <Eg>
+          Loads out 12, 18, and 61 days → <span className="text-light">median 18d</span>
+          , oldest 61d. A mean would say 30d and bury the fact that one disputed
+          invoice is the real problem.
+        </Eg>
+        <Why>
+          One stuck invoice shouldn't make routine collections look slow. The median
+          shows the normal pace; the oldest surfaces the exception instead of hiding
+          it.
+        </Why>
+      </Metric>
+
+      <Metric
         title="Deadhead"
         answers="The share of your miles that ran empty."
       >

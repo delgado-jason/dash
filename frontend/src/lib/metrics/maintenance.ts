@@ -1,6 +1,7 @@
 import type { MaintenanceItem } from "@/types/maintenance";
 import type { Load } from "@/types/load";
 import type { Alert } from "@/types/alert";
+import { median } from "./stats";
 
 const MS_DAY = 86_400_000;
 const DAYS_PER_MONTH = 30.44;
@@ -116,18 +117,29 @@ export const currentTractorMiles = (loads: Load[]): number | null => {
   return max;
 };
 
-// Recent driving pace (miles/month) from delivered loads in the last 90 days —
-// drives the mileage→date projection.
-export const avgMilesPerMonth = (loads: Load[], now: Date): number | null => {
-  const cutoff = now.getTime() - 90 * MS_DAY;
-  let miles = 0;
+// Recent driving pace (miles/month) that drives the mileage→date projection.
+// We bucket delivered miles by calendar month over a recent window, then take
+// the MEDIAN of the last few monthly totals — so one anomalous month (a
+// breakdown that idles the truck, a monster haul, or the partial current month)
+// can't skew the projection the way a mean would. Window is generous (120d) to
+// reliably capture ~3 full months.
+export const recentMilesPerMonth = (loads: Load[], now: Date): number | null => {
+  const cutoff = now.getTime() - 120 * MS_DAY;
+  const byMonth = new Map<string, number>();
   for (const l of loads) {
     if (l.load_status !== "delivered" || !l.delivery_date) continue;
     if (new Date(l.delivery_date).getTime() < cutoff) continue;
-    if (l.odometer_end != null && l.odometer_start != null)
-      miles += Number(l.odometer_end) - Number(l.odometer_start);
+    if (l.odometer_end == null || l.odometer_start == null) continue;
+    const miles = Number(l.odometer_end) - Number(l.odometer_start);
+    if (miles <= 0) continue;
+    const key = l.delivery_date.slice(0, 7); // YYYY-MM (ISO prefix, UTC-safe)
+    byMonth.set(key, (byMonth.get(key) ?? 0) + miles);
   }
-  return miles > 0 ? miles / 3 : null;
+  const recent = [...byMonth.keys()]
+    .sort()
+    .slice(-3)
+    .map((k) => byMonth.get(k)!);
+  return median(recent);
 };
 
 // Overdue / due-soon items → dashboard alerts (overdue = critical, first).

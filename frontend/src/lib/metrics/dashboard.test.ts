@@ -273,17 +273,23 @@ describe("getRecentDeliveredLoads", () => {
 });
 
 describe("getOutstandingSummary", () => {
-  it("totals revenue and averages aging", () => {
+  it("totals revenue and reports median + oldest aging", () => {
     const summary = getOutstandingSummary([
       { load_id: "1", load_number: "1", broker: "B", revenue: 1000, daysOutstanding: 10 },
       { load_id: "2", load_number: "2", broker: "B", revenue: 500, daysOutstanding: 20 },
+      { load_id: "3", load_number: "3", broker: "B", revenue: 300, daysOutstanding: 61 },
     ]);
-    expect(summary.total).toBe(1500);
-    expect(summary.avgDaysOutstanding).toBe(15);
+    expect(summary.total).toBe(1800);
+    expect(summary.medianDaysOutstanding).toBe(20); // not the 30.3 mean the 61 would force
+    expect(summary.oldestDaysOutstanding).toBe(61);
   });
 
   it("returns null aging when there is nothing outstanding", () => {
-    expect(getOutstandingSummary([])).toEqual({ total: 0, avgDaysOutstanding: null });
+    expect(getOutstandingSummary([])).toEqual({
+      total: 0,
+      medianDaysOutstanding: null,
+      oldestDaysOutstanding: null,
+    });
   });
 });
 

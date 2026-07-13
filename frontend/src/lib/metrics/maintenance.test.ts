@@ -5,7 +5,7 @@ import {
   computeDue,
   addMonths,
   currentTractorMiles,
-  avgMilesPerMonth,
+  recentMilesPerMonth,
   maxOdometer,
   maintenanceAlerts,
   fleetHealth,
@@ -211,7 +211,7 @@ describe("computeDue — both lenses, worst wins", () => {
   });
 });
 
-describe("currentTractorMiles / avgMilesPerMonth", () => {
+describe("currentTractorMiles / recentMilesPerMonth", () => {
   it("takes the highest odometer reading", () => {
     const loads = [
       load({ odometer_end: 560000 }),
@@ -221,17 +221,20 @@ describe("currentTractorMiles / avgMilesPerMonth", () => {
     expect(currentTractorMiles(loads)).toBe(568737);
   });
 
-  it("averages last-90-day delivered miles into a monthly pace", () => {
+  it("takes the median of recent monthly totals, ignoring a low outlier month", () => {
+    // now = 2026-07-09 (see top of file). Three months: May 9000, June 8000,
+    // July 1000 (a breakdown month). A mean would say 6000; the median holds at
+    // the typical 8000 so the projection doesn't lurch.
     const loads = [
-      load({ delivery_date: "2026-06-20", odometer_start: 0, odometer_end: 9000 }),
-      load({ delivery_date: "2026-07-01", odometer_start: 0, odometer_end: 9000 }),
-      load({ delivery_date: "2026-01-01", odometer_start: 0, odometer_end: 9999 }), // outside 90d
+      load({ delivery_date: "2026-05-10", odometer_start: 0, odometer_end: 9000 }),
+      load({ delivery_date: "2026-06-10", odometer_start: 0, odometer_end: 8000 }),
+      load({ delivery_date: "2026-07-05", odometer_start: 0, odometer_end: 1000 }),
     ];
-    expect(avgMilesPerMonth(loads, now)).toBeCloseTo(6000, 5); // 18000 / 3
+    expect(recentMilesPerMonth(loads, now)).toBeCloseTo(8000, 5);
   });
 
   it("null pace when there are no recent miles", () => {
-    expect(avgMilesPerMonth([], now)).toBeNull();
+    expect(recentMilesPerMonth([], now)).toBeNull();
   });
 });
 

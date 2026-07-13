@@ -12,12 +12,14 @@ const Card = ({
   icon,
   title,
   rpm,
+  blended,
   loads,
 }: {
   label: string;
   icon: ReactNode;
   title: string;
-  rpm: number | null;
+  rpm: number | null; // typical (median) — the headline
+  blended: number | null; // revenue-weighted — the quiet sub-line
   loads: number;
 }) => (
   <div className="bg-plate rounded-lg p-4">
@@ -28,8 +30,14 @@ const Card = ({
     <p className="text-base font-condensed text-light mt-1">{title}</p>
     <p className="text-sm mt-1">
       <span className={`font-semibold ${rpmTextClass(rpm)}`}>{fmtRpm(rpm)}</span>
+      <span className="text-muted-text text-xs"> typical</span>
       <span className="text-muted-text"> · {loads} loads</span>
     </p>
+    {blended !== null && (
+      <p className="text-[11px] mt-0.5" style={{ color: "#5b6b82" }}>
+        blended {fmtRpm(blended)}
+      </p>
+    )}
   </div>
 );
 
@@ -58,7 +66,8 @@ export const LanesKpis = ({ summary }: Props) => {
           label="Top RPM lane"
           icon={FLAME}
           title={topRpmLane.lane}
-          rpm={topRpmLane.avgRpm}
+          rpm={topRpmLane.medianRpm}
+          blended={topRpmLane.avgRpm}
           loads={topRpmLane.loadCount}
         />
       ) : (
@@ -69,7 +78,8 @@ export const LanesKpis = ({ summary }: Props) => {
           label="Highest volume"
           icon={TRUCK}
           title={highestVolumeLane.lane}
-          rpm={highestVolumeLane.avgRpm}
+          rpm={highestVolumeLane.medianRpm}
+          blended={highestVolumeLane.avgRpm}
           loads={highestVolumeLane.loadCount}
         />
       ) : (
@@ -80,7 +90,8 @@ export const LanesKpis = ({ summary }: Props) => {
           label="Best origin market"
           icon={CROWN}
           title={bestOriginMarket.market}
-          rpm={bestOriginMarket.avgRpm}
+          rpm={bestOriginMarket.medianRpm}
+          blended={bestOriginMarket.avgRpm}
           loads={bestOriginMarket.loadCount}
         />
       ) : (

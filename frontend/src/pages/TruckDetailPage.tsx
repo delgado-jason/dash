@@ -13,7 +13,7 @@ import { getFuelEntries } from "@/services/fuelService";
 import { useLoads } from "@/hooks/useLoads";
 import {
   computeDue,
-  avgMilesPerMonth,
+  recentMilesPerMonth,
   maxOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
@@ -147,7 +147,7 @@ const TruckDetailPage = () => {
     );
   }, [truck, truckLoads, services, fuelEntries, id]);
 
-  const mpm = useMemo(() => avgMilesPerMonth(loads, new Date()), [loads]);
+  const mpm = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
   const due = useMemo(() => {
     let overdue = 0;
     let soon = 0;

@@ -145,6 +145,7 @@ describe("getLanesSummary", () => {
     const summary = getLanesSummary(loads);
     expect(summary.topRpmLane?.destination).toBe("Dallas");
     expect(summary.topRpmLane?.avgRpm).toBeCloseTo(3.0, 5);
+    expect(summary.topRpmLane?.medianRpm).toBeCloseTo(3.0, 5);
     expect(summary.highestVolumeLane?.loadCount).toBe(3);
     expect(summary.bestOriginMarket?.market).toBe("Atlanta");
   });
@@ -154,6 +155,27 @@ describe("getLanesSummary", () => {
     expect(summary.topRpmLane).toBeNull();
     expect(summary.highestVolumeLane).toBeNull();
     expect(summary.bestOriginMarket).toBeNull();
+  });
+
+  it("ranks lanes on the typical (median) rate, not a blended fluke", () => {
+    const loads = [
+      // Atlanta → Dallas: 3 steady loads at $2.00/mi
+      makeLoad({ linehaul: "2000", loaded_miles: 1000 }),
+      makeLoad({ linehaul: "2000", loaded_miles: 1000 }),
+      makeLoad({ linehaul: "2000", loaded_miles: 1000 }),
+      // Atlanta → Miami: two $2.10 loads + one short oversize fluke at $6/mi.
+      // Blended (revenue-weighted) tops $2.10; median stays $2.10.
+      makeLoad({ delivery_market: "Miami", linehaul: "2100", loaded_miles: 1000 }),
+      makeLoad({ delivery_market: "Miami", linehaul: "2100", loaded_miles: 1000 }),
+      makeLoad({ delivery_market: "Miami", linehaul: "1200", loaded_miles: 200 }),
+    ];
+    const summary = getLanesSummary(loads);
+    // Miami's blended rate is inflated by the fluke, but its typical load is
+    // $2.10 — so Dallas ($2.00) shouldn't lose the crown to a rate Miami can't
+    // repeat. Median ranking keeps Miami on top only on its typical strength.
+    expect(summary.topRpmLane?.destination).toBe("Miami");
+    expect(summary.topRpmLane?.medianRpm).toBeCloseTo(2.1, 5);
+    expect(summary.topRpmLane?.avgRpm ?? 0).toBeGreaterThan(2.2); // blended is pulled up
   });
 });
 
