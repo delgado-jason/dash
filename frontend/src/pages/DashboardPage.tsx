@@ -191,16 +191,11 @@ const DashboardPage = () => {
         <div className="lg:col-span-2">
           <RevenueChart data={monthlyRevenue} />
         </div>
-        <div className="bg-plate rounded-lg p-4">
-          <p className="text-xs text-muted-text mb-2">
-            Top 5 agents · last 90 days
-          </p>
-          <TopAgents
-            agents={topAgents}
-            honors={agentHonors}
-            standings={agentStandings}
-          />
-        </div>
+        <TopAgents
+          agents={topAgents}
+          honors={agentHonors}
+          standings={agentStandings}
+        />
       </div>
 
       {/* RPM chart + what's next */}
