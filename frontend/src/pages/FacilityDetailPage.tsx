@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Warehouse } from "lucide-react";
 import type { Facility } from "@/types/facility";
-import { getFacility } from "@/services/facilitiesService";
+import { getFacility, mergeFacilities } from "@/services/facilitiesService";
+import { useFacilities } from "@/hooks/useFacilities";
 import { useLoads } from "@/hooks/useLoads";
 import { dwell } from "@/lib/stopTimes";
 import { facilityStops, scoreStops } from "@/lib/metrics/stopScore";
@@ -30,9 +31,26 @@ interface StopRow {
 
 const FacilityDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [facility, setFacility] = useState<Facility | null>(null);
   const [freeHours, setFreeHours] = useState(3);
   const { loads } = useLoads(0);
+  const { facilities } = useFacilities(0);
+  const [mergeTarget, setMergeTarget] = useState("");
+  const [merging, setMerging] = useState(false);
+
+  // Merge THIS facility into another (the fallback for dupes the finder can't
+  // auto-cluster). Reassigns its loads onto the target, then deletes this one.
+  const doMerge = async () => {
+    if (!id || !mergeTarget) return;
+    setMerging(true);
+    try {
+      await mergeFacilities(mergeTarget, [id]);
+      navigate(`/facilities/${mergeTarget}`);
+    } catch {
+      setMerging(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -167,6 +185,39 @@ const FacilityDetailPage = () => {
           </div>
         )}
       </div>
+
+      <details className="mt-4 text-sm">
+        <summary className="text-muted-text cursor-pointer">
+          Merge this facility into another…
+        </summary>
+        <div className="mt-2 flex gap-2 items-center flex-wrap">
+          <select
+            className="bg-steel rounded px-2 py-1.5 text-sm text-light"
+            value={mergeTarget}
+            onChange={(e) => setMergeTarget(e.target.value)}
+          >
+            <option value="">Choose the facility to keep…</option>
+            {facilities
+              .filter((f) => f.facility_id !== id)
+              .map((f) => (
+                <option key={f.facility_id} value={f.facility_id}>
+                  {facilityLabel(f)} · {f.city}, {f.state}
+                </option>
+              ))}
+          </select>
+          <button
+            onClick={doMerge}
+            disabled={!mergeTarget || merging}
+            className="bg-amber text-steel text-xs px-3 py-1.5 rounded font-semibold disabled:opacity-50"
+          >
+            {merging ? "Merging…" : "Merge & delete this"}
+          </button>
+        </div>
+        <p className="text-[11px] text-muted-text mt-1">
+          Moves this facility's {rows.length} load{rows.length === 1 ? "" : "s"}{" "}
+          onto the chosen one and deletes this facility. Can't be undone.
+        </p>
+      </details>
     </div>
   );
 };

@@ -72,3 +72,17 @@ export const facilityLabel = (f: {
   name: string | null;
   address: string | null;
 }): string => f.name || f.address || "Unnamed";
+
+// Cluster facilities that share a dedup key — the likely-duplicate groups (2+).
+// Generic so it preserves the caller's row type (with load counts).
+export const possibleDuplicates = <T extends Identity>(facilities: T[]): T[][] => {
+  const groups = new Map<string, T[]>();
+  for (const f of facilities) {
+    const key = facilityKey(f);
+    if (!key) continue;
+    const g = groups.get(key);
+    if (g) g.push(f);
+    else groups.set(key, [f]);
+  }
+  return [...groups.values()].filter((g) => g.length > 1);
+};

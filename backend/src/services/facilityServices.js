@@ -138,6 +138,59 @@ export async function patchFacility(user_id, facility_id, data) {
   return result.rows[0];
 }
 
+// ---- MERGE FACILITIES ---- (fold duplicates into one keeper, atomically)
+// Reassigns every load off the merged facilities onto the keeper, then deletes
+// the duplicates — all in one transaction so it can't half-apply.
+export async function mergeFacilities(user_id, keeper_id, merge_ids) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  if (!keeper_id) throw new ValidationError("Missing keeper_id");
+  if (!Array.isArray(merge_ids) || merge_ids.length === 0)
+    throw new ValidationError("Provide at least one facility to merge");
+  if (merge_ids.includes(keeper_id))
+    throw new ValidationError("The keeper can't also be in the merge list");
+
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Every id (keeper + merges) must belong to this user.
+    const ids = [keeper_id, ...merge_ids];
+    const owned = await client.query(
+      `SELECT facility_id FROM facilities WHERE user_id = $1 AND facility_id = ANY($2::uuid[])`,
+      [user_id, ids],
+    );
+    if (owned.rowCount !== ids.length)
+      throw new NotFoundError("One or more facilities not found");
+
+    const s = await client.query(
+      `UPDATE loads SET shipper_facility_id = $1
+         WHERE user_id = $2 AND shipper_facility_id = ANY($3::uuid[])`,
+      [keeper_id, user_id, merge_ids],
+    );
+    const r = await client.query(
+      `UPDATE loads SET receiver_facility_id = $1
+         WHERE user_id = $2 AND receiver_facility_id = ANY($3::uuid[])`,
+      [keeper_id, user_id, merge_ids],
+    );
+    const d = await client.query(
+      `DELETE FROM facilities WHERE user_id = $1 AND facility_id = ANY($2::uuid[])`,
+      [user_id, merge_ids],
+    );
+
+    await client.query("COMMIT");
+    return {
+      keeper_id,
+      merged: d.rowCount,
+      loads_reassigned: s.rowCount + r.rowCount,
+    };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // ---- DELETE FACILITY SERVICE ---- (loads keep their history; link goes null)
 export async function deleteFacility(user_id, facility_id) {
   if (!user_id) throw new ValidationError("Missing user_id");

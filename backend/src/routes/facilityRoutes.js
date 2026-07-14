@@ -6,10 +6,28 @@ import {
   createFacility,
   patchFacility,
   deleteFacility,
+  mergeFacilities,
 } from "../services/facilityServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
+
+// ---- MERGE FACILITIES ---- (must precede /:facility_id routes)
+router.post("/merge", async (req, res) => {
+  try {
+    const { keeper_id, merge_ids } = req.body;
+    const result = await mergeFacilities(req.user.user_id, keeper_id, merge_ids);
+    return res.status(200).json({ message: "Facilities merged", ...result });
+  } catch (err) {
+    if (err.type === "validation")
+      return res.status(err.statusCode).json({ error: err.message });
+    if (err.type === "not_found")
+      return res.status(err.statusCode).json({ error: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err.message });
+  }
+});
 
 // ---- GET ALL FACILITIES ----
 router.get("/", async (req, res) => {
