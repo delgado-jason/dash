@@ -4,6 +4,7 @@ import { createTrip, getLatestOdometer } from "@/services/tripsService";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Panel } from "@/components/ui/Panel";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -88,7 +89,7 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
   };
 
   return (
-    <div className="bg-plate rounded p-6 mb-6">
+    <Panel className="p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-condensed text-light">Log Trip</h2>
         <button onClick={onClose} className="text-muted-text hover:text-light">
@@ -197,7 +198,7 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
           Cancel
         </Button>
       </div>
-    </div>
+    </Panel>
   );
 };
 

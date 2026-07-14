@@ -39,6 +39,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/Panel";
 
 import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
 import {
@@ -493,7 +494,7 @@ export const LoadDetailPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className={cardLbl}>Route</p>
           <div className="flex gap-3">
             <div className="flex flex-col items-center pt-1.5">
@@ -514,9 +515,9 @@ export const LoadDetailPage = () => {
               <p className="text-xs text-muted-text">{load.delivery_market}</p>
             </div>
           </div>
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4 border border-amber">
+        <Panel className="p-4 border border-amber">
           <p className={`${cardLbl} text-amber-light`}>Fleet</p>
           <Row
             label={
@@ -575,9 +576,9 @@ export const LoadDetailPage = () => {
               )
             }
           />
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className={cardLbl}>Revenue</p>
           <Row label="Linehaul" value={money2(Number(load.linehaul))} />
           <Row
@@ -605,9 +606,9 @@ export const LoadDetailPage = () => {
               </p>
             </>
           )}
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className={cardLbl}>Mileage</p>
           <Row
             label="Loaded"
@@ -625,9 +626,9 @@ export const LoadDetailPage = () => {
                 : "Not recorded"
             }
           />
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className={cardLbl}>Cargo</p>
           <Row label="Commodity" value={load.commodity || "—"} />
           <Row
@@ -635,9 +636,9 @@ export const LoadDetailPage = () => {
             value={load.weight ? `${load.weight.toLocaleString("en-US")} lb` : "—"}
           />
           <Row label="Dimensions" value={load.dimensions || "Legal"} />
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <div className="flex items-baseline justify-between gap-2">
             <p className={`${cardLbl} mb-0`}>Shipper</p>
             <div className="flex items-center gap-2">
@@ -674,9 +675,9 @@ export const LoadDetailPage = () => {
             </p>
           )}
           <StopTimes inTime={load.shipper_in} outTime={load.shipper_out} />
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <div className="flex items-baseline justify-between gap-2">
             <p className={`${cardLbl} mb-0`}>Receiver</p>
             <div className="flex items-center gap-2">
@@ -714,9 +715,9 @@ export const LoadDetailPage = () => {
             </p>
           )}
           <StopTimes inTime={load.receiver_in} outTime={load.receiver_out} />
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <p className={`${cardLbl} mb-0`}>Fuel</p>
             <span
@@ -761,9 +762,9 @@ export const LoadDetailPage = () => {
               Add loaded miles to estimate fuel.
             </p>
           )}
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className={cardLbl}>Broker · agent</p>
           <p className="text-sm">{load.broker}</p>
           <p className="text-sm text-muted-text">
@@ -775,9 +776,9 @@ export const LoadDetailPage = () => {
             </Link>
             {load.agent_email ? ` · ${load.agent_email}` : ""}
           </p>
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4 md:col-span-2">
+        <Panel className="p-4 md:col-span-2">
           <p className={cardLbl}>Update status</p>
           <div className="flex flex-wrap gap-2 items-center">
             <select
@@ -810,10 +811,10 @@ export const LoadDetailPage = () => {
               {isSaving ? "Saving…" : "Save"}
             </button>
           </div>
-        </div>
+        </Panel>
       </div>
 
-      <div className="bg-plate rounded-lg p-4 mt-4">
+      <Panel className="p-4 mt-4">
         <div className="flex justify-between items-center mb-2">
           <p className={`${cardLbl} mb-0`}>Accessorials</p>
           <span className="text-xs text-muted-text">
@@ -958,7 +959,7 @@ export const LoadDetailPage = () => {
             Add
           </button>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 };

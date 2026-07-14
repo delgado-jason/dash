@@ -1,5 +1,6 @@
 import { Truck } from "lucide-react";
 import { fleetHealth } from "@/lib/metrics/maintenance";
+import { Panel } from "@/components/ui/Panel";
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 // Score 0–100 maps across the 180° dial (180° left → 0° right).
@@ -29,7 +30,7 @@ export const HealthGauge = ({ counts }: { counts: Counts }) => {
   const n = needle(h.score ?? 0);
 
   return (
-    <div className="bg-plate rounded-lg p-4 flex gap-5 items-center flex-wrap mb-4">
+    <Panel className="p-4 flex gap-5 items-center flex-wrap mb-4">
       <svg viewBox="0 0 200 116" width={180} height={104} className="shrink-0">
         <path
           d="M20,100 A80,80 0 0 1 124.7,23.9"
@@ -89,6 +90,6 @@ export const HealthGauge = ({ counts }: { counts: Counts }) => {
           {counts.unknown > 0 && chip(counts.unknown, "no baseline", "#9daabb")}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 };

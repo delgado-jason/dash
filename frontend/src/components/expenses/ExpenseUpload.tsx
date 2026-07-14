@@ -10,6 +10,7 @@ import {
   saveExpensePeriod,
 } from "@/services/expensesService";
 import type { ExpenseType } from "@/types/expense";
+import { Panel } from "@/components/ui/Panel";
 
 interface Props {
   onSaved: () => void;
@@ -75,7 +76,7 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
   };
 
   return (
-    <div className="bg-plate rounded-lg p-4 mb-6">
+    <Panel className="p-4 mb-6">
       {!proposed ? (
         <div>
           <p className="text-sm text-light mb-2">
@@ -158,6 +159,6 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
         </div>
       )}
       {error && <p className="text-destructive text-sm mt-2">{error}</p>}
-    </div>
+    </Panel>
   );
 };

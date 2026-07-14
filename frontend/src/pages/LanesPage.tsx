@@ -9,6 +9,7 @@ import {
 import { LanesKpis } from "@/components/lanes/LanesKpis";
 import { LanesMap } from "@/components/lanes/LanesMap";
 import { LanesTable } from "@/components/lanes/LanesTable";
+import { Panel } from "@/components/ui/Panel";
 
 const WINDOWS = [30, 60, 90];
 
@@ -41,7 +42,7 @@ const LanesPage = () => {
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-condensed text-light">Lanes</h1>
-        <div className="flex gap-1 bg-plate rounded-lg p-1">
+        <div className="flex gap-1 bg-steel rounded-lg p-1">
           {WINDOWS.map((w) => (
             <button
               key={w}
@@ -64,12 +65,12 @@ const LanesPage = () => {
         <LanesMap data={mapData} windowDays={windowDays} />
       </div>
 
-      <div className="mt-6 bg-plate rounded-lg p-4">
+      <Panel className="mt-6 p-4">
         <p className="text-xs text-muted-text mb-2">
           By region · last {windowDays} days · expand a market for its lanes
         </p>
         <LanesTable rollup={rollup} />
-      </div>
+      </Panel>
     </div>
   );
 };

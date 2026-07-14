@@ -9,6 +9,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { WeekCost } from "@/lib/metrics/fuelEconomy";
+import { Panel } from "@/components/ui/Panel";
 
 const fmtWeek = (d: string) =>
   new Date(d + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -26,7 +27,7 @@ export const WeeklyCostChart = ({
   data: WeekCost[];
   avg: number | null;
 }) => (
-  <div className="bg-plate rounded-lg p-4">
+  <Panel className="p-4">
     <h3 className="text-sm font-medium mb-1 text-light">Weekly fuel cost</h3>
     <p className="text-xs text-muted-text mb-4">
       Spend per week{avg != null ? " · dashed = 90-day avg" : ""}
@@ -84,5 +85,5 @@ export const WeeklyCostChart = ({
         </BarChart>
       </ResponsiveContainer>
     )}
-  </div>
+  </Panel>
 );

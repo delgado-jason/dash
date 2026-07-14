@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, X } from "lucide-react";
 import type { MaintenanceItem, MaintenanceUnit } from "@/types/maintenance";
 import type { ItemInput } from "@/services/maintenanceService";
+import { Panel } from "@/components/ui/Panel";
 
 const CATEGORIES = ["engine", "chassis", "brakes", "compliance", "trailer", "other"];
 
@@ -49,7 +50,7 @@ export const MaintenanceItemForm = ({
   };
 
   return (
-    <div className="bg-plate rounded-lg p-4 mb-4">
+    <Panel className="p-4 mb-4">
       <p className="text-sm font-medium mb-3">
         {initial ? "Edit item" : "New maintenance item"}
       </p>
@@ -166,6 +167,6 @@ export const MaintenanceItemForm = ({
           <X size={15} /> Cancel
         </button>
       </div>
-    </div>
+    </Panel>
   );
 };

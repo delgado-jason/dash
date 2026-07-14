@@ -22,6 +22,7 @@ import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
 import { ObligationsCard } from "@/components/expenses/ObligationsCard";
+import { Panel } from "@/components/ui/Panel";
 
 const money = (n: number): string =>
   `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -51,10 +52,10 @@ const monthMiles = (loads: Load[], periodMonth: string) => {
 };
 
 const Kpi = ({ label, value }: { label: string; value: string }) => (
-  <div className="bg-plate rounded-lg p-4">
+  <Panel className="p-4">
     <p className="text-xs text-muted-text">{label}</p>
     <p className="text-2xl font-condensed mt-1">{value}</p>
-  </div>
+  </Panel>
 );
 
 const ExpensesPage = () => {
@@ -280,7 +281,7 @@ const ExpensesPage = () => {
           </p>
 
           {rateLadder.walkAway != null && (
-            <div className="bg-plate rounded-lg p-4 mb-6">
+            <Panel className="p-4 mb-6">
               <p className="text-xs text-muted-text mb-3">
                 Rate to book · gross $/mile driven · last {rateBasis.months}{" "}
                 complete month{rateBasis.months > 1 ? "s" : ""}
@@ -319,14 +320,14 @@ const ExpensesPage = () => {
                 {Math.round(linehaulTake * 100)}% keep. Book above it with your
                 deadhead folded into the miles and you clear cost.
               </p>
-            </div>
+            </Panel>
           )}
 
           {periods.length > 1 && (
             <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
           )}
 
-          <div className="bg-plate rounded-lg p-4 mb-6 mt-6">
+          <Panel className="p-4 mb-6 mt-6">
             <p className="text-xs text-muted-text mb-2">
               Fixed vs variable · P&amp;L operating · {money(metrics.monthlyCost)}
             </p>
@@ -359,11 +360,11 @@ const ExpensesPage = () => {
                 true monthly cost
               </p>
             )}
-          </div>
+          </Panel>
 
           <ObligationsCard items={obligations} onChange={reloadObligations} />
 
-          <div className="bg-plate rounded-lg p-4 mb-6">
+          <Panel className="p-4 mb-6">
             <p className="text-xs text-muted-text mb-2">
               All expenses · reclassify, edit value, add or delete
             </p>
@@ -373,7 +374,7 @@ const ExpensesPage = () => {
               income={selected.income_total}
               onChange={refresh}
             />
-          </div>
+          </Panel>
         </>
       ) : null}
     </div>

@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ExpensePeriod } from "@/types/expense";
+import { Panel } from "@/components/ui/Panel";
 
 interface Datum {
   month: string;
@@ -76,7 +77,7 @@ export const ExpenseYtdChart = ({
   if (data.length === 0) return null;
 
   return (
-    <div className="bg-plate rounded-lg p-4" style={{ height: 280 }}>
+    <Panel className="p-4" style={{ height: 280 }}>
       <p className="text-xs text-muted-text mb-2">
         Revenue vs {obligationsTotal > 0 ? "true cost" : "cost"} · year to date
       </p>
@@ -117,6 +118,6 @@ export const ExpenseYtdChart = ({
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </Panel>
   );
 };

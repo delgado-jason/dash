@@ -10,6 +10,7 @@ import { facilityStops, scoreStops } from "@/lib/metrics/stopScore";
 import { StopScorecard } from "@/components/StopScorecard";
 import { facilityLabel } from "@/lib/facilityMatch";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { Panel } from "@/components/ui/Panel";
 
 const fmtDate = (d?: string | null) =>
   d
@@ -145,14 +146,14 @@ const FacilityDetailPage = () => {
         </div>
       </div>
 
-      <div className="bg-plate rounded-lg p-4 mb-4">
+      <Panel className="p-4 mb-4">
         <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
           Scorecard
         </p>
         <StopScorecard score={score} countLabel="Loads" countValue={rows.length} />
-      </div>
+      </Panel>
 
-      <div className="bg-plate rounded-lg p-4">
+      <Panel className="p-4">
         <p className="text-xs text-muted-text uppercase tracking-wider mb-2">
           Loads through here
         </p>
@@ -184,7 +185,7 @@ const FacilityDetailPage = () => {
             ))}
           </div>
         )}
-      </div>
+      </Panel>
 
       <details className="mt-4 text-sm">
         <summary className="text-muted-text cursor-pointer">

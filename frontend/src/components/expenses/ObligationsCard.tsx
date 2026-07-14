@@ -6,6 +6,7 @@ import {
   patchObligation,
   deleteObligation,
 } from "@/services/obligationsService";
+import { Panel } from "@/components/ui/Panel";
 
 interface Props {
   items: Obligation[];
@@ -52,7 +53,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
     .reduce((s, o) => s + o.amount, 0);
 
   return (
-    <div className="bg-plate rounded-lg p-4 mb-6">
+    <Panel className="p-4 mb-6">
       <div className="flex justify-between items-start mb-1">
         <p className="text-xs text-muted-text">
           Monthly obligations · cash out that's not on your P&amp;L
@@ -316,6 +317,6 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
         </tbody>
       </table>
       {error && <p className="text-destructive text-sm mt-2">{error}</p>}
-    </div>
+    </Panel>
   );
 };

@@ -6,6 +6,7 @@ import {
   upsertAccessorialRate,
   deleteAccessorialRate,
 } from "@/services/accessorialRateService";
+import { Panel } from "@/components/ui/Panel";
 
 const errText = (e: unknown): string =>
   (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
@@ -75,7 +76,7 @@ export const AccessorialRatesCard = () => {
   };
 
   return (
-    <div className="mt-6 max-w-[680px] bg-plate rounded-lg p-5">
+    <Panel className="mt-6 max-w-[680px] p-5">
       <h2 className="text-lg font-medium text-light">Accessorial rates</h2>
       <p className="text-sm text-muted-text mt-1">
         What you keep of each accessorial charge. These feed your net revenue and
@@ -156,6 +157,6 @@ export const AccessorialRatesCard = () => {
           {err && <p className="text-destructive text-sm mt-3">{err}</p>}
         </div>
       )}
-    </div>
+    </Panel>
   );
 };

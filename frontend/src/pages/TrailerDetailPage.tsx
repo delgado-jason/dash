@@ -34,6 +34,7 @@ import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
 import { TRAILER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
+import { Panel } from "@/components/ui/Panel";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -323,7 +324,7 @@ const TrailerDetailPage = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
         <Link
           to="/maintenance"
-          className="bg-plate rounded-lg p-4 hover:bg-steel transition-colors block"
+          className="ds-panel ds-panel--default ds-panel--interactive p-4 block"
         >
           <p className="text-xs text-muted-text mb-2">Maintenance</p>
           <div className="flex gap-3 text-sm">
@@ -331,17 +332,17 @@ const TrailerDetailPage = () => {
             <span style={{ color: "#e8940a" }}>{due.soon} due soon</span>
           </div>
         </Link>
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className="text-xs text-muted-text mb-1">Loads hauled</p>
           <p className="text-2xl font-condensed">{earnedLoads.length}</p>
-        </div>
-        <div className="bg-plate rounded-lg p-4">
+        </Panel>
+        <Panel className="p-4">
           <p className="text-xs text-muted-text mb-1">Trailer earnings · all time</p>
           <p className="text-2xl font-condensed">{money(revenue)}</p>
           <p className="text-[11px] text-muted-text mt-1">
             its cut of every load it carried
           </p>
-        </div>
+        </Panel>
       </div>
     </div>
   );

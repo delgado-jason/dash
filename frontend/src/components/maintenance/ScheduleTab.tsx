@@ -12,6 +12,7 @@ import { computeDue, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import { MaintenanceItemForm } from "./MaintenanceItemForm";
 import { HealthGauge } from "./HealthGauge";
 import { Stamp } from "@/components/Stamp";
+import { Panel } from "@/components/ui/Panel";
 
 interface Props {
   items: MaintenanceItem[];
@@ -122,7 +123,7 @@ export const ScheduleTab = ({
 
   if (items.length === 0 && !showForm) {
     return (
-      <div className="bg-plate rounded-lg p-6 text-center">
+      <Panel className="p-6 text-center">
         <p className="text-muted-text mb-4">
           No maintenance schedule yet. Load the starter schedule for your LT625 +
           X15 (severe-duty intervals you can tune), or add items yourself.
@@ -146,7 +147,7 @@ export const ScheduleTab = ({
             Add item
           </button>
         </div>
-      </div>
+      </Panel>
     );
   }
 
@@ -251,7 +252,7 @@ export const ScheduleTab = ({
           if (group.length === 0) return null;
           group.sort((a, b) => (b.due.progress ?? 0) - (a.due.progress ?? 0));
           return (
-            <div key={section} className="bg-plate rounded-lg p-4 mb-4">
+            <Panel key={section} className="p-4 mb-4">
               <p className="text-sm font-medium mb-1">
                 {section}{" "}
                 <span className="text-xs text-muted-text">· {group.length}</span>
@@ -259,11 +260,11 @@ export const ScheduleTab = ({
               {group.map(({ item, due }) => (
                 <ItemRow key={item.item_id} item={item} due={due} />
               ))}
-            </div>
+            </Panel>
           );
         })
       ) : (
-        <div className="bg-plate rounded-lg p-4 overflow-x-auto">
+        <Panel className="p-4 overflow-x-auto">
           <table className="w-full text-sm min-w-[560px] [&_th]:pr-4 [&_td]:pr-4 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
             <thead>
               <tr className="text-xs text-muted-text text-left">
@@ -297,7 +298,7 @@ export const ScheduleTab = ({
                 ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
     </div>
   );

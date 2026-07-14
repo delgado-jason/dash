@@ -45,6 +45,7 @@ import {
 import { Kpi } from "@/components/Kpi";
 import { Stamp } from "@/components/Stamp";
 import { ComplianceItemForm } from "@/components/compliance/ComplianceItemForm";
+import { Panel } from "@/components/ui/Panel";
 
 const fmtDate = (d: string) =>
   new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -310,7 +311,7 @@ const CompliancePage = () => {
   ) => {
     const isAdding = adding?.scope === scope && adding?.entityId === entityId;
     return (
-      <div key={key} className="bg-plate rounded-lg px-4 pb-3 pt-1 mt-4">
+      <Panel key={key} className="px-4 pb-3 pt-1 mt-4">
         <div className="flex items-center gap-2 py-3">
           <Icon size={18} className="text-amber-light" />
           <span className="font-condensed text-lg">{title}</span>
@@ -348,7 +349,7 @@ const CompliancePage = () => {
             />
           </div>
         )}
-      </div>
+      </Panel>
     );
   };
 
@@ -450,7 +451,7 @@ const CdlForm = ({
   const [exp, setExp] = useState(driver.cdl_expiration?.slice(0, 10) ?? "");
   const [endorsements, setEndorsements] = useState(driver.endorsements ?? "");
   return (
-    <div className="bg-steel rounded-lg p-3 border-t border-[#3b4660]">
+    <Panel variant="panel" className="p-3 border-t border-[#3b4660]">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={lbl}>CDL #</label>
@@ -489,7 +490,7 @@ const CdlForm = ({
           Cancel
         </button>
       </div>
-    </div>
+    </Panel>
   );
 };
 

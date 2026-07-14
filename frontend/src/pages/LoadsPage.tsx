@@ -9,6 +9,7 @@ import { useMarkets } from "@/hooks/useMarkets";
 import { useFacilities } from "@/hooks/useFacilities";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Kpi } from "@/components/Kpi";
+import { Panel } from "@/components/ui/Panel";
 import LoadForm from "../components/LoadForm";
 import { createLoad } from "@/services/createLoadService";
 import { loadsKpis, loadRevenue } from "@/lib/metrics/loads";
@@ -345,7 +346,7 @@ const LoadsPage = () => {
         </div>
       )}
 
-      <div className="bg-plate rounded-lg p-4 mt-4 overflow-x-auto">
+      <Panel className="p-4 mt-4 overflow-x-auto">
         {rest.length === 0 ? (
           <p className="text-muted-text text-sm">
             {(loads ?? []).length === 0
@@ -374,7 +375,7 @@ const LoadsPage = () => {
             </tbody>
           </table>
         )}
-      </div>
+      </Panel>
     </div>
   );
 };

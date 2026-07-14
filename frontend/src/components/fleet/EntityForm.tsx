@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
+import { Panel } from "@/components/ui/Panel";
 
 export interface FormField {
   name: string;
@@ -49,7 +50,7 @@ export const EntityForm = ({
   };
 
   return (
-    <div className="bg-plate rounded-lg p-4 mb-4">
+    <Panel className="p-4 mb-4">
       <p className="text-sm font-medium mb-3">{title}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {fields.map((f) => (
@@ -100,6 +101,6 @@ export const EntityForm = ({
           <X size={15} /> Cancel
         </button>
       </div>
-    </div>
+    </Panel>
   );
 };

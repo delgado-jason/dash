@@ -7,6 +7,7 @@ import { getTrailers, createTrailer } from "@/services/trailersService";
 import { getMaintenanceServices } from "@/services/maintenanceService";
 import { useLoads } from "@/hooks/useLoads";
 import { trailerFleetSummary } from "@/lib/metrics/trailerMetrics";
+import { Panel } from "@/components/ui/Panel";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { MilestoneBurst } from "@/components/fleet/MilestoneBurst";
@@ -134,7 +135,7 @@ const TrailersPage = () => {
       )}
 
       {fleet.length > 1 && (
-        <div className="bg-plate rounded-lg p-4 mb-4 overflow-x-auto">
+        <Panel className="p-4 mb-4 overflow-x-auto">
           <p className="text-xs text-muted-text mb-2">
             Fleet comparison{" "}
             <span className="text-[11px]">· best per column highlighted</span>
@@ -169,7 +170,7 @@ const TrailersPage = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
 
       {loading ? (
@@ -186,7 +187,7 @@ const TrailersPage = () => {
               <Link
                 key={t.trailer_id}
                 to={`/trailers/${t.trailer_id}`}
-                className="relative overflow-hidden bg-plate rounded-lg p-4 flex gap-3 items-center hover:bg-steel transition-colors"
+                className="relative overflow-hidden ds-panel ds-panel--default ds-panel--interactive p-4 flex gap-3 items-center"
               >
                 {m.crossed != null && (
                   <div className="absolute -top-2 -right-2 rotate-[-8deg]">

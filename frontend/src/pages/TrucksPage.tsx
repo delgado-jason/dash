@@ -9,6 +9,7 @@ import { getFuelEntries } from "@/services/fuelService";
 import { getMaintenanceServices } from "@/services/maintenanceService";
 import { useLoads } from "@/hooks/useLoads";
 import { fleetSummary } from "@/lib/metrics/truckMetrics";
+import { Panel } from "@/components/ui/Panel";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { MilestoneBurst } from "@/components/fleet/MilestoneBurst";
@@ -119,7 +120,7 @@ const TrucksPage = () => {
       )}
 
       {fleet.length > 1 && (
-        <div className="bg-plate rounded-lg p-4 mb-4 overflow-x-auto">
+        <Panel className="p-4 mb-4 overflow-x-auto">
           <p className="text-xs text-muted-text mb-2">
             Fleet comparison{" "}
             <span className="text-[11px]">· best per column highlighted</span>
@@ -154,7 +155,7 @@ const TrucksPage = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
 
       {loading ? (
@@ -171,7 +172,7 @@ const TrucksPage = () => {
               <Link
                 key={t.truck_id}
                 to={`/trucks/${t.truck_id}`}
-                className="relative overflow-hidden bg-plate rounded-lg p-4 flex gap-3 items-center hover:bg-steel transition-colors"
+                className="relative overflow-hidden ds-panel ds-panel--default ds-panel--interactive p-4 flex gap-3 items-center"
               >
                 {m.crossed != null && (
                   <div className="absolute -top-2 -right-2 rotate-[-8deg]">
