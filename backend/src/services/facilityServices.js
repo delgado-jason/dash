@@ -24,6 +24,7 @@ export async function getFacilities(user_id) {
         SELECT
             f.facility_id,
             f.name,
+            f.kind,
             f.city,
             f.state,
             f.address,
@@ -47,7 +48,7 @@ export async function getFacility(user_id, facility_id) {
   if (!facility_id) throw new ValidationError("Missing facility_id");
 
   const query = `
-        SELECT facility_id, name, city, state, address, notes, created_at, updated_at
+        SELECT facility_id, name, kind, city, state, address, notes, created_at, updated_at
         FROM facilities
         WHERE user_id = $1 AND facility_id = $2;
     `;
@@ -61,7 +62,7 @@ export async function getFacility(user_id, facility_id) {
 export async function createFacility(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
 
-  const allowedFields = ["name", "city", "state", "address", "notes"];
+  const allowedFields = ["name", "kind", "city", "state", "address", "notes"];
   for (const field in data) {
     if (!allowedFields.includes(field))
       throw new ValidationError(`${field} not allowed`);
@@ -74,19 +75,20 @@ export async function createFacility(user_id, data) {
   // On a name+city+state collision, return the existing facility rather than
   // erroring or duplicating — picking "the same dock" should just find it.
   const query = `
-        INSERT INTO facilities (user_id, name, city, state, address, notes)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO facilities (user_id, name, city, state, address, notes, kind)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (user_id, name, city, state)
         DO UPDATE SET updated_at = NOW()
         RETURNING *;
     `;
   const values = [
     user_id,
-    clean.name,
+    clean.name ?? null,
     clean.city,
     clean.state,
     clean.address ?? null,
     clean.notes ?? null,
+    clean.kind ?? "business",
   ];
 
   const result = await db.query(query, values);
@@ -98,7 +100,7 @@ export async function patchFacility(user_id, facility_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!facility_id) throw new ValidationError("Missing facility_id");
 
-  const allowedFields = ["name", "city", "state", "address", "notes"];
+  const allowedFields = ["name", "kind", "city", "state", "address", "notes"];
   for (const field in data) {
     if (!allowedFields.includes(field))
       throw new ValidationError(`${field} not allowed`);

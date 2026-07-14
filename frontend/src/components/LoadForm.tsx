@@ -22,6 +22,7 @@ import type { CreateAgentInput } from "@/types/createAgentInput";
 import type { CreateMarketInput } from "@/types/createMarketInput";
 import type { Facility } from "@/types/facility";
 import { FacilityPicker } from "@/components/FacilityPicker";
+import { facilityLabel } from "@/lib/facilityMatch";
 
 // UI Component Imports
 
@@ -936,11 +937,15 @@ const LoadForm = ({
                   setFormData({
                     ...formData,
                     shipper_facility_id: f?.facility_id ?? null,
-                    shipper_name: f?.name ?? null,
+                    shipper_name: f ? facilityLabel(f) : null,
                   })
                 }
                 onCreated={(f) => {
-                  setFacilityList((prev) => [...prev, f]);
+                  setFacilityList((prev) =>
+                    prev.some((x) => x.facility_id === f.facility_id)
+                      ? prev
+                      : [...prev, f],
+                  );
                   onFacilityCreated?.();
                 }}
               />
@@ -982,11 +987,15 @@ const LoadForm = ({
                   setFormData({
                     ...formData,
                     receiver_facility_id: f?.facility_id ?? null,
-                    receiver_name: f?.name ?? null,
+                    receiver_name: f ? facilityLabel(f) : null,
                   })
                 }
                 onCreated={(f) => {
-                  setFacilityList((prev) => [...prev, f]);
+                  setFacilityList((prev) =>
+                    prev.some((x) => x.facility_id === f.facility_id)
+                      ? prev
+                      : [...prev, f],
+                  );
                   onFacilityCreated?.();
                 }}
               />
