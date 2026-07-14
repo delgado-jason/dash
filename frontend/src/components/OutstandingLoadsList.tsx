@@ -3,6 +3,8 @@ import {
   getOutstandingSummary,
   type OutstandingLoad,
 } from "@/lib/metrics/dashboard";
+import { Panel } from "@/components/ui/Panel";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Props {
   loads: OutstandingLoad[];
@@ -27,7 +29,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
     getOutstandingSummary(loads);
 
   return (
-    <div className="bg-plate rounded-lg p-4">
+    <Panel variant="panel" className="p-4">
       <div className="flex items-baseline justify-between mb-4">
         <h3 className="text-sm font-medium text-light">Outstanding loads</h3>
         <span className="text-sm text-status-aware-text font-medium">
@@ -50,9 +52,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
       </div>
 
       {loads.length === 0 ? (
-        <p className="text-sm text-muted-text italic py-4">
-          Nothing outstanding — all paid up.
-        </p>
+        <EmptyState title="All paid up" hint="Nothing outstanding — clean books." />
       ) : (
         <div className="flex flex-col gap-2">
           {loads.map((load) => (
@@ -74,6 +74,6 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   );
 };

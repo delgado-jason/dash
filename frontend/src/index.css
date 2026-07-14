@@ -202,3 +202,51 @@
   from { transform: translateX(40px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+
+/* ===== Design system — layered panels + primitives ===== */
+.ds-panel { position: relative; border-radius: 13px; }
+.ds-panel--default {
+  background: linear-gradient(180deg, #313b53, #262f42);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.42);
+}
+.ds-panel--steel {
+  background: linear-gradient(160deg, #37415a 0%, #2a3347 45%, #242c3e 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.11);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+.ds-panel--hero {
+  background: #2a3347;
+  border: 2px solid #e8940a;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.42);
+}
+.ds-panel--hero::before {
+  content: "";
+  position: absolute; top: 0; right: 0;
+  width: 72px; height: 72px;
+  background-image: radial-gradient(#e8940a 1.3px, transparent 1.4px);
+  background-size: 7px 7px;
+  opacity: 0.13; pointer-events: none;
+  border-top-right-radius: inherit;
+}
+.ds-panel--interactive { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.ds-panel--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.55);
+}
+.ds-panel--interactive:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes ds-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.ds-skeleton {
+  background: linear-gradient(90deg, #2a3347 25%, #384259 50%, #2a3347 75%);
+  background-size: 200% 100%;
+  animation: ds-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}

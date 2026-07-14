@@ -1,5 +1,6 @@
 import type { useRateTargets } from "@/hooks/useRateTargets";
 import { RateLadder } from "./RateLadder";
+import { Panel } from "@/components/ui/Panel";
 
 type Targets = ReturnType<typeof useRateTargets>;
 
@@ -153,7 +154,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
     weekEarned >= gross.weeklyTarget;
 
   return (
-    <div className="bg-plate rounded-lg p-4">
+    <Panel className="p-4">
       <div className="flex justify-between items-baseline mb-3">
         <p className="text-sm font-medium text-light">Rate &amp; pace targets</p>
         <p className="text-xs text-muted-text">
@@ -235,6 +236,6 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
           </div>
         </div>
       )}
-    </div>
+    </Panel>
   );
 };
