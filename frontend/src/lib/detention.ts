@@ -57,3 +57,14 @@ export const detentionOwed = (load: Load, freeHours: number): boolean =>
 // A TONU load's fee is owed until marked paid → the red flag/banner.
 export const tonuOwed = (load: Load): boolean =>
   load.load_status === "tonu" && !load.tonu_paid;
+
+// The loads-table traffic-light flag, in priority order: an unpaid TONU (red)
+// beats unpaid detention (amber) beats an in-transit load (green). null = none.
+export type LoadFlag = "tonu" | "detention" | "in-transit";
+
+export const loadFlag = (load: Load, freeHours: number): LoadFlag | null => {
+  if (tonuOwed(load)) return "tonu";
+  if (detentionOwed(load, freeHours)) return "detention";
+  if (load.load_status === "in_transit") return "in-transit";
+  return null;
+};
