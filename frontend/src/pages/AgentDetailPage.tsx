@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
 import { Mail, Phone, StickyNote, Star } from "lucide-react";
 
@@ -6,8 +6,11 @@ import { useAgent } from "@/hooks/useAgent";
 import { useLoads } from "@/hooks/useLoads";
 import { useCarrierName } from "@/hooks/useCarrierName";
 import { createAgentNote } from "@/services/createAgentNoteService";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
 
 import RatingForm from "@/components/RatingForm";
+import { StopScorecard } from "@/components/StopScorecard";
 import { Kpi } from "@/components/Kpi";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RatingStamp } from "@/components/agents/RatingStamp";
@@ -58,6 +61,19 @@ const AgentDetailPage = () => {
   const [noteInitials, setNoteInitials] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
+  const [freeHours, setFreeHours] = useState(3);
+
+  useEffect(() => {
+    getSettlementSchedule()
+      .then((s) => setFreeHours(s.detention_free_hours))
+      .catch(() => {});
+  }, []);
+
+  // How this agent's freight behaves on the clock — dwell, on-time, detention.
+  const timeScore = useMemo(
+    () => scoreStops(agentStops(loads ?? [], freeHours)),
+    [loads, freeHours],
+  );
 
   const agentId = agent?.agent_id;
   const honors = useMemo(
@@ -200,6 +216,17 @@ const AgentDetailPage = () => {
         />
         <Kpi label="Cancelled" value={String(getCancelledCount(loads))} />
         <Kpi label="Last worked" value={lastWorked ? fmtDate(lastWorked) : "Never"} />
+      </div>
+
+      <div className="bg-plate rounded-lg p-4 mt-4">
+        <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
+          Time on the dock · this agent's freight
+        </p>
+        <StopScorecard
+          score={timeScore}
+          countLabel="Loads"
+          countValue={getLoadCount(loads)}
+        />
       </div>
 
       <div className="mt-4">
