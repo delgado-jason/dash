@@ -1,5 +1,6 @@
 import type { NationalDiesel } from "@/types/fuelEntry";
 import { Stamp } from "@/components/Stamp";
+import { Panel } from "@/components/ui/Panel";
 
 const money3 = (n: number) => `$${n.toFixed(3)}`;
 
@@ -28,7 +29,7 @@ export const DieselCompareCard = ({
   const deltaColor = delta == null ? "#9daabb" : under ? "#4ade80" : "#e8940a";
 
   return (
-    <div className="bg-plate rounded-lg p-4 mt-4">
+    <Panel className="p-4 mt-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-xs text-muted-text uppercase tracking-wider">
@@ -66,6 +67,6 @@ export const DieselCompareCard = ({
           </p>
         </div>
       </div>
-    </div>
+    </Panel>
   );
 };

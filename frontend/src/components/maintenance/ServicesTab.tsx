@@ -8,6 +8,7 @@ import {
 } from "@/services/maintenanceService";
 import { ServiceForm } from "./ServiceForm";
 import { Stamp } from "@/components/Stamp";
+import { Panel } from "@/components/ui/Panel";
 
 interface Props {
   services: MaintenanceService[];
@@ -175,10 +176,10 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
       </div>
 
       {justLogged && (
-        <div className="flex items-center gap-3 bg-plate rounded-lg p-3 mb-3">
+        <Panel className="flex items-center gap-3 p-3 mb-3">
           <Stamp label="Done!" color="#1d9e75" />
           <span className="text-sm text-muted-text">Service logged.</span>
-        </div>
+        </Panel>
       )}
 
       {error && <p className="text-destructive text-sm mb-3">{error}</p>}
@@ -192,7 +193,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
         />
       )}
 
-      <div className="bg-plate rounded-lg p-3 mb-4">
+      <Panel className="p-3 mb-4">
         <div className="flex flex-wrap items-center gap-2">
           {PRESETS.map(([key, label]) => (
             <button
@@ -244,10 +245,10 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
             </div>
           </div>
         )}
-      </div>
+      </Panel>
 
       {vendors.length > 0 && (
-        <div className="bg-plate rounded-lg p-4 mb-4">
+        <Panel className="p-4 mb-4">
           <p className="text-xs text-muted-text mb-2">Vendor pricing</p>
           <table className="w-full text-sm">
             <thead>
@@ -271,7 +272,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
 
       {filtered.length === 0 ? (
@@ -281,7 +282,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
             : "No services in this month range."}
         </p>
       ) : (
-        <div className="bg-plate rounded-lg p-4 overflow-x-auto">
+        <Panel className="p-4 overflow-x-auto">
           <table className="w-full text-sm min-w-[720px] [&_th]:pr-5 [&_td]:pr-5 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
             <thead>
               <tr className="text-xs text-muted-text text-left">
@@ -340,7 +341,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
     </div>
   );

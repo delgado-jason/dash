@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useFacilities } from "@/hooks/useFacilities";
 import { FacilityCreateForm } from "@/components/FacilityCreateForm";
+import { Panel } from "@/components/ui/Panel";
 import { facilityLabel, possibleDuplicates } from "@/lib/facilityMatch";
 import { mergeFacilities } from "@/services/facilitiesService";
 import type { FacilityRow } from "@/types/facility";
@@ -115,9 +116,9 @@ const FacilitiesPage = () => {
           {dupes.map((cluster) => {
             const keeperId = keeperFor(cluster);
             return (
-              <div
+              <Panel
                 key={clusterKey(cluster)}
-                className="bg-plate rounded-lg p-4 border max-w-lg"
+                className="p-4 border max-w-lg"
                 style={{ borderColor: "#3a2a12" }}
               >
                 <div className="flex justify-between items-center mb-1">
@@ -170,7 +171,7 @@ const FacilitiesPage = () => {
                     Merge {cluster.length - 1} into keeper →
                   </button>
                 </div>
-              </div>
+              </Panel>
             );
           })}
         </div>
@@ -194,7 +195,7 @@ const FacilitiesPage = () => {
       ) : filtered.length === 0 ? (
         <p className="text-muted-text">No facilities match "{search}".</p>
       ) : (
-        <div className="bg-plate rounded-lg p-4 overflow-x-auto">
+        <Panel className="p-4 overflow-x-auto">
           <table className="w-full text-sm" style={{ minWidth: 480 }}>
             <thead>
               <tr className="text-muted-text text-left text-xs">
@@ -225,7 +226,7 @@ const FacilitiesPage = () => {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
 
       {confirmCluster &&

@@ -33,7 +33,7 @@ const TIERS: [PrestigeTier, string][] = [
 ];
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
-  <section className="bg-plate rounded-lg p-5 mb-4">
+  <section className="ds-panel ds-panel--default p-5 mb-4">
     <h2 className="font-condensed text-xl mb-3">{title}</h2>
     {children}
   </section>
@@ -70,7 +70,7 @@ const Metric = ({
   answers: string;
   children: ReactNode;
 }) => (
-  <section className="bg-plate rounded-lg p-5 mb-4">
+  <section className="ds-panel ds-panel--default p-5 mb-4">
     <h3 className="font-condensed text-lg" style={{ color: AMBER_HI }}>
       {title}
     </h3>

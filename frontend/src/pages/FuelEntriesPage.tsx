@@ -16,6 +16,7 @@ import {
   entryCost,
 } from "@/lib/metrics/fuelEconomy";
 import { Kpi } from "@/components/Kpi";
+import { Panel } from "@/components/ui/Panel";
 import { MpgChart } from "@/components/fuel/MpgChart";
 import { WeeklyCostChart } from "@/components/fuel/WeeklyCostChart";
 import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
@@ -215,7 +216,7 @@ const FuelEntriesPage = () => {
       />
 
       {showForm && (
-        <div className="bg-plate rounded-lg p-4 mt-4">
+        <Panel className="p-4 mt-4">
           <p className="text-sm font-medium mb-3">Add fill-up</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
@@ -329,7 +330,7 @@ const FuelEntriesPage = () => {
               Cancel
             </button>
           </div>
-        </div>
+        </Panel>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
@@ -337,7 +338,7 @@ const FuelEntriesPage = () => {
         <WeeklyCostChart data={weekly} avg={stats.avgWeeklyCost90} />
       </div>
 
-      <div className="bg-plate rounded-lg p-4 mt-4 overflow-x-auto">
+      <Panel className="p-4 mt-4 overflow-x-auto">
         <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
           Fill-ups
         </p>
@@ -417,7 +418,7 @@ const FuelEntriesPage = () => {
             </tbody>
           </table>
         )}
-      </div>
+      </Panel>
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, X } from "lucide-react";
 import type { MaintenanceItem, ServiceUnit } from "@/types/maintenance";
 import type { ServiceInput } from "@/services/maintenanceService";
+import { Panel } from "@/components/ui/Panel";
 
 const field = "bg-steel rounded px-2 py-1 text-sm w-full";
 const lbl = "text-xs text-muted-text mb-1 block";
@@ -64,7 +65,7 @@ export const ServiceForm = ({
   );
 
   return (
-    <div className="bg-plate rounded-lg p-4 mb-4">
+    <Panel className="p-4 mb-4">
       <p className="text-sm font-medium mb-3">Log service</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div>
@@ -216,6 +217,6 @@ export const ServiceForm = ({
           <X size={15} /> Cancel
         </button>
       </div>
-    </div>
+    </Panel>
   );
 };

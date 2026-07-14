@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Flame, Truck, Crown } from "lucide-react";
 import type { LanesSummary } from "@/lib/metrics/lanes";
 import { fmtRpm, rpmTextClass } from "./rpmStyle";
+import { Panel } from "@/components/ui/Panel";
 
 interface Props {
   summary: LanesSummary;
@@ -22,7 +23,7 @@ const Card = ({
   blended: number | null; // revenue-weighted — the quiet sub-line
   loads: number;
 }) => (
-  <div className="bg-plate rounded-lg p-4">
+  <Panel className="p-4">
     <p className="text-xs text-muted-text flex items-center gap-1.5">
       {icon}
       {label}
@@ -38,18 +39,18 @@ const Card = ({
         blended {fmtRpm(blended)}
       </p>
     )}
-  </div>
+  </Panel>
 );
 
 const EmptyCard = ({ label, icon }: { label: string; icon: ReactNode }) => (
-  <div className="bg-plate rounded-lg p-4">
+  <Panel className="p-4">
     <p className="text-xs text-muted-text flex items-center gap-1.5">
       {icon}
       {label}
     </p>
     <p className="text-base font-condensed text-muted-text mt-1">—</p>
     <p className="text-sm text-muted-text mt-1">not enough data</p>
-  </div>
+  </Panel>
 );
 
 const FLAME = <Flame size={14} style={{ color: "#e8621e" }} />;

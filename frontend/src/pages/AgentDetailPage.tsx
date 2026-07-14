@@ -33,6 +33,7 @@ import {
   buildTimeline,
 } from "@/lib/metrics/agent";
 import { loadRevenue } from "@/lib/metrics/loads";
+import { Panel } from "@/components/ui/Panel";
 
 const money0 = (n: number) =>
   n.toLocaleString("en-US", {
@@ -218,7 +219,7 @@ const AgentDetailPage = () => {
         <Kpi label="Last worked" value={lastWorked ? fmtDate(lastWorked) : "Never"} />
       </div>
 
-      <div className="bg-plate rounded-lg p-4 mt-4">
+      <Panel className="p-4 mt-4">
         <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
           Time on the dock · this agent's freight
         </p>
@@ -227,13 +228,13 @@ const AgentDetailPage = () => {
           countLabel="Loads"
           countValue={getLoadCount(loads)}
         />
-      </div>
+      </Panel>
 
       <div className="mt-4">
         <TrophyCase honors={honors} log={season} live={live} />
       </div>
 
-      <div className="bg-plate rounded-lg p-4 mt-4">
+      <Panel className="p-4 mt-4">
         <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
           Loads with this agent
         </p>
@@ -289,10 +290,10 @@ const AgentDetailPage = () => {
             </table>
           </div>
         )}
-      </div>
+      </Panel>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <div className="md:col-span-2 bg-plate rounded-lg p-4">
+        <Panel className="md:col-span-2 p-4">
           <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
             Activity
           </p>
@@ -374,9 +375,9 @@ const AgentDetailPage = () => {
               )}
             </div>
           )}
-        </div>
+        </Panel>
 
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
             Contact
           </p>
@@ -390,7 +391,7 @@ const AgentDetailPage = () => {
           </p>
           <p className="text-xs text-muted-text">Preferred</p>
           <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
-        </div>
+        </Panel>
       </div>
     </div>
   );

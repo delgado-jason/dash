@@ -4,6 +4,7 @@ import type {
   ComplianceItemInput,
   ComplianceScope,
 } from "@/types/compliance";
+import { Panel } from "@/components/ui/Panel";
 
 const inputCls = "bg-steel rounded px-2 py-1.5 text-sm w-full text-light";
 const lbl = "text-xs text-muted-text mb-1 block";
@@ -108,7 +109,7 @@ export const ComplianceItemForm = ({
   };
 
   return (
-    <div className="bg-steel rounded-lg p-3 mt-2">
+    <Panel variant="panel" className="p-3 mt-2">
       {!initial && (
         <div className="mb-3">
           <label className={lbl}>Start from a common doc</label>
@@ -206,6 +207,6 @@ export const ComplianceItemForm = ({
           Cancel
         </button>
       </div>
-    </div>
+    </Panel>
   );
 };

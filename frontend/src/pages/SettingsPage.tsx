@@ -4,6 +4,7 @@ import {
   updateSettlementSchedule,
 } from "@/services/settlementScheduleService";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
+import { Panel } from "@/components/ui/Panel";
 
 const money = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -112,7 +113,7 @@ const SettingsPage = () => {
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <h1 className="text-3xl font-condensed">Settings</h1>
 
-      <div className="mt-6 max-w-[680px] bg-plate rounded-lg p-5">
+      <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Settlement schedule</h2>
         <p className="text-sm text-muted-text mt-1">
           Your carrier's pay split. You keep entering each load's full customer
@@ -203,9 +204,9 @@ const SettingsPage = () => {
             </button>
           </>
         )}
-      </div>
+      </Panel>
 
-      <div className="mt-6 max-w-[680px] bg-plate rounded-lg p-5">
+      <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Detention</h2>
         <p className="text-sm text-muted-text mt-1">
           Free time at a stop before detention starts accruing, applied to the
@@ -233,7 +234,7 @@ const SettingsPage = () => {
             Saved with the schedule above.
           </span>
         </label>
-      </div>
+      </Panel>
 
       <AccessorialRatesCard />
     </div>

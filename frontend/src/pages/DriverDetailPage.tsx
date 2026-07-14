@@ -16,6 +16,7 @@ import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate } from "@/lib/format";
+import { Panel } from "@/components/ui/Panel";
 import {
   getCostBasis,
   getRateLadder,
@@ -237,7 +238,7 @@ const DriverDetailPage = () => {
       )}
 
       {/* driver details — demoted below the card, still fully editable */}
-      <div className="bg-plate rounded-lg p-4 mt-4">
+      <Panel className="p-4 mt-4">
         {editing ? (
           <EntityForm
             title="Edit driver"
@@ -285,29 +286,29 @@ const DriverDetailPage = () => {
             </p>
           </>
         )}
-      </div>
+      </Panel>
 
       {/* plain-page stats for a non-hauling driver (hauling stats live in the card) */}
       {!card && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-          <div className="bg-plate rounded-lg p-4">
+          <Panel className="p-4">
             <p className="text-xs text-muted-text mb-1">Loads hauled</p>
             <p className="text-2xl font-condensed">{earnedLoads.length}</p>
-          </div>
-          <div className="bg-plate rounded-lg p-4">
+          </Panel>
+          <Panel className="p-4">
             <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
             <p className="text-2xl font-condensed">{money(revenue)}</p>
-          </div>
-          <div className="bg-plate rounded-lg p-4">
+          </Panel>
+          <Panel className="p-4">
             <p className="text-xs text-muted-text mb-1">Miles hauled</p>
             <p className="text-2xl font-condensed">
               {milesHauled.toLocaleString("en-US")}
             </p>
-          </div>
+          </Panel>
         </div>
       )}
 
-      <div className="bg-plate rounded-lg p-4 mt-4">
+      <Panel className="p-4 mt-4">
         <p className="text-xs text-muted-text mb-2">Recent loads</p>
         {earnedLoads.length === 0 ? (
           <p className="text-sm text-muted-text">None for this driver yet.</p>
@@ -323,7 +324,7 @@ const DriverDetailPage = () => {
             ))}
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 };

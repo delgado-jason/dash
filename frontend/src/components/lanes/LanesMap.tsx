@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Flame } from "lucide-react";
+import { Panel } from "@/components/ui/Panel";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
@@ -72,7 +73,7 @@ export const LanesMap = ({ data, windowDays }: Props) => {
   };
 
   return (
-    <div ref={containerRef} className="bg-plate rounded-lg p-4 relative">
+    <Panel ref={containerRef} className="p-4 relative">
       <p className="text-xs text-muted-text mb-2 flex items-center gap-1 flex-wrap">
         Footprint · shaded by loads ·
         <Flame size={12} style={{ color: "#e8621e" }} /> best-paying states ·
@@ -148,6 +149,6 @@ export const LanesMap = ({ data, windowDays }: Props) => {
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 };

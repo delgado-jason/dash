@@ -55,7 +55,7 @@ export const AgentCard = ({
   return (
     <Link
       to={`/agents/${agent.agent_id}`}
-      className="relative overflow-hidden block bg-plate border border-[#3b4660] rounded-lg p-3.5 hover:border-amber transition-colors"
+      className="relative overflow-hidden block ds-panel ds-panel--default ds-panel--interactive border border-[#3b4660] p-3.5 hover:border-amber transition-colors"
     >
       <PrestigeBadge tier={tier} />
 

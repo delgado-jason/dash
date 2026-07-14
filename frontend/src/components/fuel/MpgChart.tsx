@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { MpgWindow } from "@/lib/metrics/fuelEconomy";
+import { Panel } from "@/components/ui/Panel";
 
 const fmtDate = (d: string) =>
   new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -17,7 +18,7 @@ const fmtDate = (d: string) =>
   });
 
 export const MpgChart = ({ windows }: { windows: MpgWindow[] }) => (
-  <div className="bg-plate rounded-lg p-4">
+  <Panel className="p-4">
     <h3 className="text-sm font-medium mb-1 text-light">MPG per tank</h3>
     <p className="text-xs text-muted-text mb-4">One point per full tank</p>
     {windows.length === 0 ? (
@@ -66,5 +67,5 @@ export const MpgChart = ({ windows }: { windows: MpgWindow[] }) => (
         </LineChart>
       </ResponsiveContainer>
     )}
-  </div>
+  </Panel>
 );

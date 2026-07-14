@@ -96,7 +96,7 @@ const RecapPage = () => {
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <h1 className="text-3xl font-condensed">Recap</h1>
-        <div className="flex gap-1 bg-plate rounded-lg p-1">
+        <div className="flex gap-1 bg-steel rounded-lg p-1">
           {SCOPES.map((s) => (
             <button
               key={s.key}

@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import { forwardRef, type HTMLAttributes } from "react";
 
 export type PanelVariant = "default" | "panel" | "hero";
 
@@ -14,20 +14,19 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 }
 
 // The layered surface primitive. One place for the app's card depth, so every
-// panel reads as part of one system.
-export const Panel = ({
-  variant = "default",
-  interactive = false,
-  className = "",
-  children,
-  ...rest
-}: Props) => (
-  <div
-    className={`ds-panel ${VARIANT[variant]} ${
-      interactive ? "ds-panel--interactive" : ""
-    } ${className}`}
-    {...rest}
-  >
-    {children}
-  </div>
+// panel reads as part of one system. Forwards a ref so ref'd containers (e.g.
+// hover-tooltip measurement) can adopt it too.
+export const Panel = forwardRef<HTMLDivElement, Props>(
+  ({ variant = "default", interactive = false, className = "", children, ...rest }, ref) => (
+    <div
+      ref={ref}
+      className={`ds-panel ${VARIANT[variant]} ${
+        interactive ? "ds-panel--interactive" : ""
+      } ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  ),
 );
+Panel.displayName = "Panel";
