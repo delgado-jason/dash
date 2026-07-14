@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { Facility } from "@/types/facility";
-import { normalizeFacilityName, findDuplicate, facilityLabel } from "./facilityMatch";
+import {
+  normalizeFacilityName,
+  findDuplicate,
+  facilityLabel,
+  possibleDuplicates,
+} from "./facilityMatch";
 
 describe("normalizeFacilityName", () => {
   it("collapses the Inc/LLC/comma variants to one key", () => {
@@ -76,6 +81,32 @@ describe("findDuplicate", () => {
     expect(
       findDuplicate(existing, { kind: "business", name: "", address: null, city: "Chicago", state: "IL" }),
     ).toBeNull();
+  });
+});
+
+describe("possibleDuplicates", () => {
+  it("clusters the variants and leaves singletons out", () => {
+    const facs = [
+      F({ facility_id: "1", name: "ABC Manufacturing", city: "Chicago", state: "IL" }),
+      F({ facility_id: "2", name: "ABC Manufacturing Inc", city: "Chicago", state: "IL" }),
+      F({ facility_id: "3", name: "ABC Manufacturing", city: "Dallas", state: "TX" }), // diff city
+      F({ facility_id: "4", name: "Nucor", city: "Decatur", state: "AL" }),
+    ];
+    const clusters = possibleDuplicates(facs);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].map((f) => f.facility_id).sort()).toEqual(["1", "2"]);
+  });
+
+  it("clusters job sites by address", () => {
+    const facs = [
+      F({ facility_id: "1", kind: "job_site", address: "1420 Construction Pkwy", city: "Houston", state: "TX" }),
+      F({ facility_id: "2", kind: "job_site", address: "1420 Construction Parkway", city: "Houston", state: "TX" }),
+    ];
+    // "Pkwy" vs "Parkway" won't collapse (no abbrev expansion in v1) — distinct keys
+    expect(possibleDuplicates(facs)).toHaveLength(0);
+    // but identical address does cluster
+    facs[1].address = "1420 Construction Pkwy";
+    expect(possibleDuplicates(facs)).toHaveLength(1);
   });
 });
 

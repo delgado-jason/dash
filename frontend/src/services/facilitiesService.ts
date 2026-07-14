@@ -25,3 +25,16 @@ export const patchFacility = async (
   const res = await api.patch(`/facilities/${id}`, data);
   return res.data.facility;
 };
+
+// Fold duplicates into one keeper: reassigns their loads onto the keeper and
+// deletes them (backend does it in one transaction).
+export const mergeFacilities = async (
+  keeperId: string,
+  mergeIds: string[],
+): Promise<{ merged: number; loads_reassigned: number }> => {
+  const res = await api.post("/facilities/merge", {
+    keeper_id: keeperId,
+    merge_ids: mergeIds,
+  });
+  return res.data;
+};
