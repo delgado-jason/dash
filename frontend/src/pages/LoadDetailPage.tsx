@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Trash2, Truck, User, Container } from "lucide-react";
+import { Pencil, Trash2, Truck, User, Container, Clock, Ban } from "lucide-react";
 
 import { useLoad } from "@/hooks/useLoad";
 import { useAccessorials } from "@/hooks/useAccessorials";
@@ -21,6 +21,15 @@ import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Kpi } from "@/components/Kpi";
 import { fmtTime, dwell } from "@/lib/stopTimes";
+import {
+  onTimeStatus,
+  type OnTime,
+  detentionOwed,
+  detentionMinutes,
+  detentionLabel,
+  tonuOwed,
+} from "@/lib/detention";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import {
   Dialog,
   DialogContent,
@@ -64,6 +73,31 @@ const Row = ({ label, value }: { label: ReactNode; value: ReactNode }) => (
     <span className="text-right">{value}</span>
   </div>
 );
+
+// Scheduled appointment (no end) or window (start–end), for the stop cards.
+const schedLabel = (start?: string | null, end?: string | null): string | null => {
+  if (!start) return null;
+  return end ? `Window ${fmtTime(start)}–${fmtTime(end)}` : `Appt ${fmtTime(start)}`;
+};
+
+const ONTIME_STYLE: Record<OnTime, { bg: string; fg: string; label: string }> = {
+  "on-time": { bg: "#0f2419", fg: "#8fd6a8", label: "On time" },
+  late: { bg: "#3a1417", fg: "#f2a6a3", label: "Late" },
+  waited: { bg: "#2a1e0e", fg: "#f5c37a", label: "Waited" },
+};
+
+const OnTimeBadge = ({ status }: { status: OnTime | null }) => {
+  if (!status) return null;
+  const s = ONTIME_STYLE[status];
+  return (
+    <span
+      className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+      style={{ background: s.bg, color: s.fg }}
+    >
+      {s.label}
+    </span>
+  );
+};
 
 // The in → out time line for one stop, with a dwell chip when both are set.
 const StopTimes = ({
@@ -123,6 +157,24 @@ export const LoadDetailPage = () => {
   const { agents } = useAgents(0);
   const { markets } = useMarkets(0);
   const { facilities } = useFacilities(0);
+  const [freeHours, setFreeHours] = useState(3);
+
+  useEffect(() => {
+    getSettlementSchedule()
+      .then((s) => setFreeHours(s.detention_free_hours))
+      .catch(() => {});
+  }, []);
+
+  // Mark a detention/TONU fee collected — clears the owed flag + row highlight.
+  const markPaid = async (field: "detention_paid" | "tonu_paid") => {
+    if (!load) return;
+    try {
+      await patchLoad(load.load_id, { [field]: true });
+      setRefreshKey((p) => p + 1);
+    } catch {
+      /* surfaced by the normal error path on next load */
+    }
+  };
 
   const navigate = useNavigate();
 
@@ -271,10 +323,14 @@ export const LoadDetailPage = () => {
                 shipper_facility_id: load.shipper_facility_id ?? null,
                 shipper_in: load.shipper_in ?? null,
                 shipper_out: load.shipper_out ?? null,
+                pickup_appt_start: load.pickup_appt_start ?? null,
+                pickup_appt_end: load.pickup_appt_end ?? null,
                 receiver_name: load.receiver_name ?? null,
                 receiver_facility_id: load.receiver_facility_id ?? null,
                 receiver_in: load.receiver_in ?? null,
                 receiver_out: load.receiver_out ?? null,
+                delivery_appt_start: load.delivery_appt_start ?? null,
+                delivery_appt_end: load.delivery_appt_end ?? null,
                 linehaul: Number(load.linehaul),
                 fuel_surcharge: Number(load.fuel_surcharge),
                 deadhead_miles: load.deadhead_miles,
@@ -353,6 +409,69 @@ export const LoadDetailPage = () => {
           </button>
         </div>
       </div>
+
+      {tonuOwed(load) && (
+        <div
+          className="mb-4 rounded-lg p-4 flex items-center gap-3 flex-wrap"
+          style={{ border: "1px solid #7a2f2e", background: "#241012" }}
+        >
+          <Ban size={20} style={{ color: "#f2a6a3" }} />
+          <div className="flex-1 min-w-[180px]">
+            <p className="font-condensed text-lg" style={{ color: "#f2a6a3" }}>
+              TONU fee owed · {money0(revenue)}
+            </p>
+            <p className="text-[11px] text-muted-text">
+              Truck ordered, not used. Collect the fee, then mark it.
+            </p>
+          </div>
+          <button
+            onClick={() => markPaid("tonu_paid")}
+            className="text-xs px-3 py-1.5 rounded font-semibold"
+            style={{ background: "#e24b4a", color: "#120f08" }}
+          >
+            Mark TONU paid
+          </button>
+        </div>
+      )}
+      {load.load_status === "tonu" && load.tonu_paid && (
+        <div
+          className="mb-4 rounded-lg px-4 py-2 text-sm"
+          style={{ background: "#12180f", color: "#6f9a80" }}
+        >
+          TONU fee paid ✓
+        </div>
+      )}
+      {detentionOwed(load, freeHours) && (
+        <div
+          className="mb-4 rounded-lg p-4 flex items-center gap-3 flex-wrap"
+          style={{ border: "1px solid #7a4718", background: "#241a0e" }}
+        >
+          <Clock size={20} style={{ color: "#f5b03a" }} />
+          <div className="flex-1 min-w-[180px]">
+            <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
+              Detention owed · {detentionLabel(load, freeHours)}
+            </p>
+            <p className="text-[11px] text-muted-text">
+              Past your {freeHours}h free at a stop. Bill it as an accessorial.
+            </p>
+          </div>
+          <button
+            onClick={() => markPaid("detention_paid")}
+            className="text-xs px-3 py-1.5 rounded font-semibold"
+            style={{ background: "#e8940a", color: "#161008" }}
+          >
+            Mark detention paid
+          </button>
+        </div>
+      )}
+      {load.detention_paid && detentionMinutes(load, freeHours) > 0 && (
+        <div
+          className="mb-4 rounded-lg px-4 py-2 text-sm"
+          style={{ background: "#12180f", color: "#6f9a80" }}
+        >
+          Detention paid ✓
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Kpi label="Total revenue" value={money0(revenue)} />
@@ -519,11 +638,20 @@ export const LoadDetailPage = () => {
         </div>
 
         <div className="bg-plate rounded-lg p-4">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline justify-between gap-2">
             <p className={`${cardLbl} mb-0`}>Shipper</p>
-            <span className="text-[11px] text-muted-text">
-              Pickup · {fmtDate(load.pickup_date)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-text">
+                Pickup · {fmtDate(load.pickup_date)}
+              </span>
+              <OnTimeBadge
+                status={onTimeStatus(
+                  load.pickup_appt_start,
+                  load.pickup_appt_end,
+                  load.shipper_in,
+                )}
+              />
+            </div>
           </div>
           <p className="text-base font-condensed mt-1">
             {load.shipper_facility_id ? (
@@ -540,15 +668,29 @@ export const LoadDetailPage = () => {
           <p className="text-xs text-muted-text">
             {load.origin_city}, {load.origin_state}
           </p>
+          {schedLabel(load.pickup_appt_start, load.pickup_appt_end) && (
+            <p className="text-[11px] text-muted-text mt-1">
+              Scheduled · {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
+            </p>
+          )}
           <StopTimes inTime={load.shipper_in} outTime={load.shipper_out} />
         </div>
 
         <div className="bg-plate rounded-lg p-4">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline justify-between gap-2">
             <p className={`${cardLbl} mb-0`}>Receiver</p>
-            <span className="text-[11px] text-muted-text">
-              Delivery · {fmtDate(load.delivery_date)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-text">
+                Delivery · {fmtDate(load.delivery_date)}
+              </span>
+              <OnTimeBadge
+                status={onTimeStatus(
+                  load.delivery_appt_start,
+                  load.delivery_appt_end,
+                  load.receiver_in,
+                )}
+              />
+            </div>
           </div>
           <p className="text-base font-condensed mt-1">
             {load.receiver_facility_id ? (
@@ -565,6 +707,12 @@ export const LoadDetailPage = () => {
           <p className="text-xs text-muted-text">
             {load.destination_city}, {load.destination_state}
           </p>
+          {schedLabel(load.delivery_appt_start, load.delivery_appt_end) && (
+            <p className="text-[11px] text-muted-text mt-1">
+              Scheduled ·{" "}
+              {schedLabel(load.delivery_appt_start, load.delivery_appt_end)}
+            </p>
+          )}
           <StopTimes inTime={load.receiver_in} outTime={load.receiver_out} />
         </div>
 

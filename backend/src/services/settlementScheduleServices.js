@@ -9,6 +9,7 @@ const DEFAULTS = {
   fuel_surcharge_pct: 1,
   accessorial_pct: 1,
   carrier_name: null,
+  detention_free_hours: 3,
 };
 
 const PCT_FIELDS = [
@@ -18,7 +19,7 @@ const PCT_FIELDS = [
   "accessorial_pct",
 ];
 
-const COLUMNS = [...PCT_FIELDS, "carrier_name"];
+const COLUMNS = [...PCT_FIELDS, "carrier_name", "detention_free_hours"];
 
 // ---- GET ---- (always returns a schedule; defaults if none saved yet)
 export async function getSettlementSchedule(user_id) {
@@ -48,6 +49,13 @@ export async function upsertSettlementSchedule(user_id, data) {
   if (carrierProvided)
     provided.carrier_name = (data.carrier_name ?? "").trim() || null;
 
+  if (data.detention_free_hours !== undefined) {
+    const n = Number(data.detention_free_hours);
+    if (!Number.isFinite(n) || n < 0 || n > 24)
+      throw new ValidationError("detention_free_hours must be between 0 and 24");
+    provided.detention_free_hours = n;
+  }
+
   if (Object.keys(provided).length === 0)
     throw new ValidationError("No valid fields to update");
 
@@ -57,15 +65,16 @@ export async function upsertSettlementSchedule(user_id, data) {
 
   const result = await db.query(
     `INSERT INTO settlement_schedules
-       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name)
-     VALUES ($1, $2, $3, $4, $5, $6)
+       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name, detention_free_hours)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (user_id) DO UPDATE SET
-       linehaul_pct       = EXCLUDED.linehaul_pct,
-       trailer_pct        = EXCLUDED.trailer_pct,
-       fuel_surcharge_pct = EXCLUDED.fuel_surcharge_pct,
-       accessorial_pct    = EXCLUDED.accessorial_pct,
-       carrier_name       = EXCLUDED.carrier_name,
-       updated_at         = NOW()
+       linehaul_pct         = EXCLUDED.linehaul_pct,
+       trailer_pct          = EXCLUDED.trailer_pct,
+       fuel_surcharge_pct   = EXCLUDED.fuel_surcharge_pct,
+       accessorial_pct      = EXCLUDED.accessorial_pct,
+       carrier_name         = EXCLUDED.carrier_name,
+       detention_free_hours = EXCLUDED.detention_free_hours,
+       updated_at           = NOW()
      RETURNING ${COLUMNS.join(", ")}`,
     [
       user_id,
@@ -74,6 +83,7 @@ export async function upsertSettlementSchedule(user_id, data) {
       m.fuel_surcharge_pct,
       m.accessorial_pct,
       m.carrier_name,
+      m.detention_free_hours,
     ],
   );
   return result.rows[0];

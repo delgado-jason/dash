@@ -19,10 +19,14 @@ export interface LoadInput {
   shipper_facility_id?: string | null;
   shipper_in?: string | null;
   shipper_out?: string | null;
+  pickup_appt_start?: string | null;
+  pickup_appt_end?: string | null;
   receiver_name?: string | null;
   receiver_facility_id?: string | null;
   receiver_in?: string | null;
   receiver_out?: string | null;
+  delivery_appt_start?: string | null;
+  delivery_appt_end?: string | null;
   linehaul: number;
   fuel_surcharge: number;
   deadhead_miles?: number | null;
