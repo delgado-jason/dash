@@ -20,6 +20,8 @@ import { createMarket } from "@/services/createMarketService";
 import type { CreateBrokerInput } from "@/types/createBrokerInput";
 import type { CreateAgentInput } from "@/types/createAgentInput";
 import type { CreateMarketInput } from "@/types/createMarketInput";
+import type { Facility } from "@/types/facility";
+import { FacilityPicker } from "@/components/FacilityPicker";
 
 // UI Component Imports
 
@@ -42,10 +44,12 @@ interface LoadFormProps {
   brokers: Broker[];
   agents: Agent[];
   markets: Market[];
+  facilities: Facility[];
   onSuccess: () => void;
   onBrokerCreated: () => void;
   onAgentCreated: () => void;
   onMarketCreated: () => void;
+  onFacilityCreated?: () => void;
   onClose: () => void;
   onSubmit: (data: LoadInput) => Promise<void>;
 }
@@ -56,11 +60,13 @@ const LoadForm = ({
   brokers,
   agents,
   markets,
+  facilities,
   onSuccess,
   onSubmit,
   onBrokerCreated,
   onAgentCreated,
   onMarketCreated,
+  onFacilityCreated,
   onClose,
 }: LoadFormProps) => {
   // --- STATE ---
@@ -84,9 +90,11 @@ const LoadForm = ({
           weight: initialData.weight ?? null,
           dimensions: initialData.dimensions ?? null,
           shipper_name: initialData.shipper_name ?? null,
+          shipper_facility_id: initialData.shipper_facility_id ?? null,
           shipper_in: initialData.shipper_in ?? null,
           shipper_out: initialData.shipper_out ?? null,
           receiver_name: initialData.receiver_name ?? null,
+          receiver_facility_id: initialData.receiver_facility_id ?? null,
           receiver_in: initialData.receiver_in ?? null,
           receiver_out: initialData.receiver_out ?? null,
           linehaul: Number(initialData.linehaul),
@@ -118,9 +126,11 @@ const LoadForm = ({
           weight: null,
           dimensions: null,
           shipper_name: null,
+          shipper_facility_id: null,
           shipper_in: null,
           shipper_out: null,
           receiver_name: null,
+          receiver_facility_id: null,
           receiver_in: null,
           receiver_out: null,
           linehaul: 0,
@@ -139,6 +149,7 @@ const LoadForm = ({
   const [brokerList, setBrokerList] = useState<Broker[]>(brokers);
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
+  const [facilityList, setFacilityList] = useState<Facility[]>(facilities);
 
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -857,13 +868,24 @@ const LoadForm = ({
           <h3 className="text-sm font-semibold mb-2">What</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="shipper_name">Shipper Name</Label>
-              <Input
-                name="shipper_name"
-                id="shipper_name"
-                onChange={handleChange}
-                value={formData.shipper_name ?? ""}
-              ></Input>
+              <FacilityPicker
+                label="Shipper"
+                facilities={facilityList}
+                value={formData.shipper_facility_id}
+                defaultCity={formData.origin_city}
+                defaultState={formData.origin_state}
+                onSelect={(f) =>
+                  setFormData({
+                    ...formData,
+                    shipper_facility_id: f?.facility_id ?? null,
+                    shipper_name: f?.name ?? null,
+                  })
+                }
+                onCreated={(f) => {
+                  setFacilityList((prev) => [...prev, f]);
+                  onFacilityCreated?.();
+                }}
+              />
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <div>
                   <Label htmlFor="shipper_in">Shipper In</Label>
@@ -892,13 +914,24 @@ const LoadForm = ({
               </div>
             </div>
             <div>
-              <Label htmlFor="receiver_name">Receiver Name</Label>
-              <Input
-                name="receiver_name"
-                id="receiver_name"
-                onChange={handleChange}
-                value={formData.receiver_name ?? ""}
-              ></Input>
+              <FacilityPicker
+                label="Receiver"
+                facilities={facilityList}
+                value={formData.receiver_facility_id}
+                defaultCity={formData.destination_city}
+                defaultState={formData.destination_state}
+                onSelect={(f) =>
+                  setFormData({
+                    ...formData,
+                    receiver_facility_id: f?.facility_id ?? null,
+                    receiver_name: f?.name ?? null,
+                  })
+                }
+                onCreated={(f) => {
+                  setFacilityList((prev) => [...prev, f]);
+                  onFacilityCreated?.();
+                }}
+              />
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <div>
                   <Label htmlFor="receiver_in">Receiver In</Label>
