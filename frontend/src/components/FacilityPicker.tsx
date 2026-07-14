@@ -1,17 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Facility } from "@/types/facility";
-import { createFacility } from "@/services/facilitiesService";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { normalizeFacilityName, facilityLabel } from "@/lib/facilityMatch";
+import { FacilityCreateForm } from "@/components/FacilityCreateForm";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface Props {
   label: string; // "Shipper" / "Receiver"
@@ -23,9 +14,22 @@ interface Props {
   onCreated: (facility: Facility) => void;
 }
 
-// Pick an existing facility or create a new one inline. Creating one whose
-// name+city+state already exists just returns that facility (find-or-create on
-// the server), so it can't duplicate a dock.
+const KindTag = ({ kind }: { kind: string }) => (
+  <span
+    className="text-[9px] px-1.5 py-0.5 rounded-full"
+    style={
+      kind === "job_site"
+        ? { background: "#1e2740", color: "#9db2d8" }
+        : { background: "#12251a", color: "#6fd08c" }
+    }
+  >
+    {kind === "job_site" ? "job site" : "business"}
+  </span>
+);
+
+// Type-to-search facility picker. Live-filters existing docks so you reuse one
+// before you'd ever make a near-duplicate; the "looks like this exists" nudge
+// catches the Inc/LLC case that a substring search would miss.
 export const FacilityPicker = ({
   label,
   facilities,
@@ -35,116 +39,143 @@ export const FacilityPicker = ({
   onSelect,
   onCreated,
 }: Props) => {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    city: defaultCity ?? "",
-    state: defaultState ?? "",
-    address: "",
-  });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const create = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const f = await createFacility({
-        name: form.name,
-        city: form.city,
-        state: form.state,
-        address: form.address || null,
-      });
-      onCreated(f);
-      onSelect(f);
-      setCreating(false);
-      setForm({ name: "", city: defaultCity ?? "", state: defaultState ?? "", address: "" });
-    } catch (e) {
-      setError(
-        (e as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error || "Could not create facility",
-      );
-    } finally {
-      setBusy(false);
-    }
+  const selected = facilities.find((f) => f.facility_id === value) ?? null;
+
+  // Show the selected facility's label in the box when not actively searching.
+  useEffect(() => {
+    if (selected && !open) setQuery(facilityLabel(selected));
+    if (!selected && !open) setQuery("");
+  }, [selected, open]);
+
+  // Click outside closes the dropdown.
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setCreating(false);
+      }
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const matches = q
+    ? facilities.filter((f) =>
+        `${f.name ?? ""} ${f.address ?? ""} ${f.city} ${f.state}`
+          .toLowerCase()
+          .includes(q),
+      )
+    : facilities;
+
+  // Fuzzy nudge: a facility whose normalized name equals the normalized query
+  // but isn't already an exact substring hit (the Inc/LLC case).
+  const nq = normalizeFacilityName(query);
+  const nudge =
+    nq.length > 0
+      ? facilities.find(
+          (f) =>
+            normalizeFacilityName(facilityLabel(f)) === nq &&
+            !matches.some((m) => m.facility_id === f.facility_id),
+        )
+      : undefined;
+
+  const choose = (f: Facility) => {
+    onSelect(f);
+    setQuery(facilityLabel(f));
+    setOpen(false);
+    setCreating(false);
   };
 
-  if (creating) {
-    return (
-      <div>
-        <Label>
-          {label} facility · <span className="text-status-positive-text">new</span>
-        </Label>
-        <div className="border border-dashed border-steel rounded-md p-3 grid gap-2 mt-1">
-          <Input
-            placeholder="Facility name (e.g. Walmart DC 6094)"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <div className="flex gap-2">
-            <Input
-              placeholder="City"
-              value={form.city}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-            />
-            <Input
-              placeholder="ST"
-              maxLength={2}
-              className="w-16"
-              value={form.state}
-              onChange={(e) => setForm({ ...form, state: e.target.value })}
-            />
-          </div>
-          <Input
-            placeholder="Street address (optional)"
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-          />
-          {error && <p className="text-destructive text-xs">{error}</p>}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={create}
-              disabled={busy || !form.name || !form.city || form.state.trim().length !== 2}
-            >
-              {busy ? "Saving…" : "Create facility"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const resolveCreated = (f: Facility) => {
+    onCreated(f); // parent de-dupes its list
+    choose(f);
+  };
 
   return (
-    <div>
+    <div ref={ref} className="relative">
       <Label>{label} facility</Label>
-      <div className="flex gap-2">
-        <Select
-          value={value ?? ""}
-          onValueChange={(id) =>
-            onSelect(facilities.find((f) => f.facility_id === id) ?? null)
-          }
-        >
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder={`Select ${label.toLowerCase()} facility`} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {facilities.map((f) => (
-                <SelectItem key={f.facility_id} value={f.facility_id}>
-                  {f.name} · {f.city}, {f.state}
-                </SelectItem>
+      <input
+        className="w-full bg-steel rounded px-2 py-1.5 text-sm text-light placeholder:text-muted-text"
+        placeholder={`Search or add ${label.toLowerCase()} facility`}
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setCreating(false);
+          if (selected) onSelect(null);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+
+      {open && (
+        <div className="absolute z-20 left-0 right-0 mt-1 rounded-md border border-steel bg-iron shadow-xl overflow-hidden">
+          {creating ? (
+            <div className="p-2">
+              <FacilityCreateForm
+                facilities={facilities}
+                defaultCity={defaultCity}
+                defaultState={defaultState}
+                defaultName={query}
+                onResolved={resolveCreated}
+                onCancel={() => setCreating(false)}
+              />
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto">
+              {nudge && (
+                <div
+                  className="px-2.5 py-2 flex items-center justify-between gap-2"
+                  style={{ background: "#241a0e", borderBottom: "1px solid #3a2a12" }}
+                >
+                  <span className="text-[11px]" style={{ color: "#f5c37a" }}>
+                    ⚠ Looks like this exists · {facilityLabel(nudge)} · {nudge.city},{" "}
+                    {nudge.state}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => choose(nudge)}
+                    className="bg-amber text-steel text-[11px] px-2 py-0.5 rounded font-semibold shrink-0"
+                  >
+                    Use it
+                  </button>
+                </div>
+              )}
+              {matches.slice(0, 30).map((f) => (
+                <button
+                  key={f.facility_id}
+                  type="button"
+                  onClick={() => choose(f)}
+                  className="w-full text-left px-2.5 py-2 text-sm hover:bg-steel flex items-center gap-2 border-t border-plate first:border-t-0"
+                >
+                  <span className="truncate">
+                    {facilityLabel(f)}{" "}
+                    <span className="text-muted-text">
+                      · {f.city}, {f.state}
+                    </span>
+                  </span>
+                  <span className="ml-auto shrink-0">
+                    <KindTag kind={f.kind} />
+                  </span>
+                </button>
               ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <Button type="button" variant="outline" onClick={() => setCreating(true)}>
-          ＋ New
-        </Button>
-      </div>
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="w-full text-left px-2.5 py-2 text-sm border-t border-plate"
+                style={{ color: "#6fd08c" }}
+              >
+                ＋ Add {query.trim() ? `"${query.trim()}"` : "a facility"}…
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

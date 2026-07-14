@@ -7,6 +7,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { dwell } from "@/lib/stopTimes";
 import { facilityStops, scoreStops } from "@/lib/metrics/stopScore";
 import { StopScorecard } from "@/components/StopScorecard";
+import { facilityLabel } from "@/lib/facilityMatch";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 
 const fmtDate = (d?: string | null) =>
@@ -102,10 +103,24 @@ const FacilityDetailPage = () => {
           <Warehouse size={26} className="text-muted-text" />
         </div>
         <div>
-          <h1 className="text-3xl font-condensed">{facility.name}</h1>
+          <h1 className="text-3xl font-condensed">
+            {facilityLabel(facility)}{" "}
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full align-middle font-body"
+              style={
+                facility.kind === "job_site"
+                  ? { background: "#1e2740", color: "#9db2d8" }
+                  : { background: "#12251a", color: "#6fd08c" }
+              }
+            >
+              {facility.kind === "job_site" ? "job site" : "business"}
+            </span>
+          </h1>
           <p className="text-muted-text text-sm">
             {facility.city}, {facility.state}
-            {facility.address ? ` · ${facility.address}` : ""}
+            {facility.kind === "business" && facility.address
+              ? ` · ${facility.address}`
+              : ""}
             <span className="text-steel"> · </span>
             {role}
           </p>

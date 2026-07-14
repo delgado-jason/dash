@@ -1,6 +1,11 @@
+export type FacilityKind = "business" | "job_site";
+
 export interface Facility {
   facility_id: string;
-  name: string;
+  // A business is identified by its name; a job site (name may be null) by its
+  // address.
+  name: string | null;
+  kind: FacilityKind;
   city: string;
   state: string;
   address: string | null;
