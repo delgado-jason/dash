@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { Panel } from "@/components/ui/Panel";
 
 interface MonthlyRpm {
   month: string; // "2026-06"
@@ -35,7 +36,7 @@ const GRID = "#2a3347";
 
 export const RpmChart = ({ data, breakEven }: Props) => {
   return (
-    <div className="bg-plate rounded-lg p-4">
+    <Panel className="p-4">
       <h3 className="text-sm font-medium mb-1 text-light">RPM vs break-even</h3>
       <p className="text-xs text-muted-text mb-4">
         Blended monthly rate · red line = ${breakEven.toFixed(2)} break-even
@@ -97,6 +98,6 @@ export const RpmChart = ({ data, breakEven }: Props) => {
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </Panel>
   );
 };

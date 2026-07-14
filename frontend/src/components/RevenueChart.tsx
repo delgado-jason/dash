@@ -9,6 +9,7 @@ import {
   ReferenceLine,
   Cell,
 } from "recharts";
+import { Panel } from "@/components/ui/Panel";
 
 interface MonthlyRevenue {
   month: string; // "2026-06"
@@ -41,7 +42,7 @@ const GRID = "#2a3347";
 
 export const RevenueChart = ({ data, target }: Props) => {
   return (
-    <div className="bg-plate rounded-lg p-4">
+    <Panel className="p-4">
       <h3 className="text-sm font-medium mb-1 text-light">Revenue over time</h3>
       <p className="text-xs text-muted-text mb-4">
         Monthly gross{target ? " · dashed line = target" : ""}
@@ -99,6 +100,6 @@ export const RevenueChart = ({ data, target }: Props) => {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </Panel>
   );
 };

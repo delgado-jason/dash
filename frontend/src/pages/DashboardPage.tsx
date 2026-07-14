@@ -3,6 +3,8 @@ import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
 import { Link } from "react-router-dom";
 import { KpiCard } from "@/components/KpiCard";
+import { Panel } from "@/components/ui/Panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BREAK_EVEN_RPM, DEADHEAD_TARGET } from "@/lib/constants/targets";
 import {
   getRevenueMTD,
@@ -84,8 +86,18 @@ const DashboardPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen">
-        <p className="text-muted-text">Loading dashboard...</p>
+      <div className="p-6 bg-iron text-light min-h-screen font-body">
+        <Skeleton className="h-8 w-40 mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" style={{ borderRadius: 13 }} />
+          ))}
+        </div>
+        <Skeleton className="h-28 mt-6" style={{ borderRadius: 13 }} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+          <Skeleton className="h-56 lg:col-span-2" style={{ borderRadius: 13 }} />
+          <Skeleton className="h-56" style={{ borderRadius: 13 }} />
+        </div>
       </div>
     );
 
@@ -108,6 +120,10 @@ const DashboardPage = () => {
   const loadsDelta = computeDelta(loadsMonthly.thisMonth, loadsMonthly.lastMonth);
   const monthlyRevenue = getMonthlyRevenue(loads);
   const monthlyRpm = getMonthlyRPM(loads);
+  const revenueTrend = monthlyRevenue.map((d) => d.revenue);
+  const rpmTrend = monthlyRpm
+    .map((d) => d.rpm)
+    .filter((r): r is number => r != null);
   const outstanding = getOutstandingLoads(loads);
   const topAgents = getTopAgentsByRevenue(loads);
   const now = new Date();
@@ -152,11 +168,16 @@ const DashboardPage = () => {
           value={formatCurrency(revenueMTD)}
           delta={mtdDelta}
         />
-        <KpiCard label="Net revenue · YTD" value={formatCurrency(revenueYTD)} />
+        <KpiCard
+          label="Net revenue · YTD"
+          value={formatCurrency(revenueYTD)}
+          trend={revenueTrend}
+        />
         <KpiCard
           label="Net RPM · 3mo"
           value={formatRpm(avgRpm)}
           status={rpmStatus}
+          trend={rpmTrend}
           subtext={
             avgRpm === null
               ? undefined
@@ -203,18 +224,18 @@ const DashboardPage = () => {
         <div className="lg:col-span-2">
           <RpmChart data={monthlyRpm} breakEven={liveBreakEven} />
         </div>
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className="text-xs text-muted-text mb-2">What's next · booked</p>
           <WhatsNext loads={upcoming} />
-        </div>
+        </Panel>
       </div>
 
       {/* Recent loads + outstanding */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
-        <div className="bg-plate rounded-lg p-4">
+        <Panel className="p-4">
           <p className="text-xs text-muted-text mb-2">Recent loads</p>
           <RecentLoads loads={recentLoads} />
-        </div>
+        </Panel>
         <OutstandingLoadsList loads={outstanding} />
       </div>
     </div>
