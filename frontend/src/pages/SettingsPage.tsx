@@ -51,6 +51,7 @@ const Field = ({
 const SettingsPage = () => {
   const [pcts, setPcts] = useState<Pcts | null>(null);
   const [carrier, setCarrier] = useState("");
+  const [freeHours, setFreeHours] = useState(3);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -65,6 +66,7 @@ const SettingsPage = () => {
           accessorial: s.accessorial_pct * 100,
         });
         setCarrier(s.carrier_name ?? "");
+        setFreeHours(s.detention_free_hours);
       })
       .catch(() => setErr("Couldn't load your settlement schedule."));
   }, []);
@@ -86,6 +88,7 @@ const SettingsPage = () => {
         fuel_surcharge_pct: pcts.fsc / 100,
         accessorial_pct: pcts.accessorial / 100,
         carrier_name: carrier.trim() || null,
+        detention_free_hours: freeHours,
       });
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
@@ -200,6 +203,36 @@ const SettingsPage = () => {
             </button>
           </>
         )}
+      </div>
+
+      <div className="mt-6 max-w-[680px] bg-plate rounded-lg p-5">
+        <h2 className="text-lg font-medium text-light">Detention</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Free time at a stop before detention starts accruing, applied to the
+          shipper and receiver separately. A load whose dwell runs past this gets
+          flagged "detention owed" until you mark it paid.
+        </p>
+        <label className="block mt-4">
+          <span className="text-sm text-light">Free hours (per stop)</span>
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="number"
+              min={0}
+              max={24}
+              step={0.5}
+              value={Number.isFinite(freeHours) ? freeHours : ""}
+              onChange={(e) => {
+                setMsg(null);
+                setFreeHours(Number(e.target.value));
+              }}
+              className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+            />
+            <span className="text-muted-text">hours</span>
+          </div>
+          <span className="text-xs text-muted-text mt-1 block">
+            Saved with the schedule above.
+          </span>
+        </label>
       </div>
 
       <AccessorialRatesCard />

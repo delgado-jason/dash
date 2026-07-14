@@ -7,6 +7,8 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   fuel_surcharge_pct: Number(s.fuel_surcharge_pct),
   accessorial_pct: Number(s.accessorial_pct),
   carrier_name: (s.carrier_name as string | null) ?? null,
+  detention_free_hours:
+    s.detention_free_hours != null ? Number(s.detention_free_hours) : 3,
 });
 
 export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {

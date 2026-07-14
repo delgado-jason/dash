@@ -11,9 +11,12 @@ export interface Load {
   shipper_name?: string | null;
   shipper_facility_id?: string | null;
   // Stop times as bare "HH:MM:SS" (Postgres `time`), paired with pickup/delivery
-  // date. Null when not recorded.
+  // date. Null when not recorded. *_appt_start + optional *_appt_end are the
+  // scheduled appointment (end null) or window (end present).
   shipper_in?: string | null;
   shipper_out?: string | null;
+  pickup_appt_start?: string | null;
+  pickup_appt_end?: string | null;
   pickup_date: string;
   origin_market_id: string;
   origin_city: string;
@@ -23,6 +26,8 @@ export interface Load {
   receiver_facility_id?: string | null;
   receiver_in?: string | null;
   receiver_out?: string | null;
+  delivery_appt_start?: string | null;
+  delivery_appt_end?: string | null;
   delivery_date?: string | null;
   destination_market_id: string;
   destination_city: string;
@@ -48,6 +53,10 @@ export interface Load {
   odometer_start?: number | null;
   odometer_end?: number | null;
   payment_status: string;
+  // Detention/TONU fees owed until collected — "owed" is derived, "paid" is the
+  // manual mark that clears the flag.
+  detention_paid?: boolean;
+  tonu_paid?: boolean;
   truck_id?: string | null;
   driver_id?: string | null;
   trailer_id?: string | null;

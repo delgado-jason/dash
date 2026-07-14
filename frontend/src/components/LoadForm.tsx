@@ -93,10 +93,14 @@ const LoadForm = ({
           shipper_facility_id: initialData.shipper_facility_id ?? null,
           shipper_in: initialData.shipper_in ?? null,
           shipper_out: initialData.shipper_out ?? null,
+          pickup_appt_start: initialData.pickup_appt_start ?? null,
+          pickup_appt_end: initialData.pickup_appt_end ?? null,
           receiver_name: initialData.receiver_name ?? null,
           receiver_facility_id: initialData.receiver_facility_id ?? null,
           receiver_in: initialData.receiver_in ?? null,
           receiver_out: initialData.receiver_out ?? null,
+          delivery_appt_start: initialData.delivery_appt_start ?? null,
+          delivery_appt_end: initialData.delivery_appt_end ?? null,
           linehaul: Number(initialData.linehaul),
           fuel_surcharge: Number(initialData.fuel_surcharge),
           deadhead_miles: initialData.deadhead_miles,
@@ -129,10 +133,14 @@ const LoadForm = ({
           shipper_facility_id: null,
           shipper_in: null,
           shipper_out: null,
+          pickup_appt_start: null,
+          pickup_appt_end: null,
           receiver_name: null,
           receiver_facility_id: null,
           receiver_in: null,
           receiver_out: null,
+          delivery_appt_start: null,
+          delivery_appt_end: null,
           linehaul: 0,
           fuel_surcharge: 0,
           deadhead_miles: null,
@@ -676,7 +684,7 @@ const LoadForm = ({
         <div className="mt-4">
           <h3 className="text-sm font-semibold mb-2">When</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Pickup Date field */}
+            {/* Pickup Date + appointment/window */}
             <div>
               <Label htmlFor="pickup_date">Pickup Date</Label>
               <Input
@@ -686,8 +694,33 @@ const LoadForm = ({
                 onChange={handleChange}
                 value={formData.pickup_date}
               />
+              <div className="mt-2">
+                <Label>Pickup appt / window</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    aria-label="Pickup appointment start"
+                    value={(formData.pickup_appt_start ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pickup_appt_start: e.target.value || null })
+                    }
+                  />
+                  <span className="text-xs text-muted-text">to</span>
+                  <Input
+                    type="time"
+                    aria-label="Pickup window end"
+                    value={(formData.pickup_appt_end ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pickup_appt_end: e.target.value || null })
+                    }
+                  />
+                </div>
+                <span className="text-[11px] text-muted-text">
+                  Blank "to" = set appointment; fill it for a window.
+                </span>
+              </div>
             </div>
-            {/* Delivery Date field */}
+            {/* Delivery Date + appointment/window */}
             <div>
               <Label htmlFor="delivery_date">Delivery Date</Label>
               <Input
@@ -697,6 +730,31 @@ const LoadForm = ({
                 onChange={handleChange}
                 value={formData.delivery_date ?? ""}
               />
+              <div className="mt-2">
+                <Label>Delivery appt / window</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    aria-label="Delivery appointment start"
+                    value={(formData.delivery_appt_start ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, delivery_appt_start: e.target.value || null })
+                    }
+                  />
+                  <span className="text-xs text-muted-text">to</span>
+                  <Input
+                    type="time"
+                    aria-label="Delivery window end"
+                    value={(formData.delivery_appt_end ?? "").slice(0, 5)}
+                    onChange={(e) =>
+                      setFormData({ ...formData, delivery_appt_end: e.target.value || null })
+                    }
+                  />
+                </div>
+                <span className="text-[11px] text-muted-text">
+                  Blank "to" = set appointment; fill it for a window.
+                </span>
+              </div>
             </div>
           </div>
         </div>

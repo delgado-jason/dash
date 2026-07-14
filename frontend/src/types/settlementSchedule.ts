@@ -7,4 +7,5 @@ export interface SettlementSchedule {
   fuel_surcharge_pct: number;
   accessorial_pct: number;
   carrier_name: string | null; // e.g. "Landstar"; null on own authority
+  detention_free_hours: number; // free time per stop before detention accrues
 }

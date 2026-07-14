@@ -1,6 +1,12 @@
 // Formatting + duration for a load's stop times. Times are bare "HH:MM[:SS]"
 // (Postgres `time`) — no date, no timezone, so no day-shift risk.
 
+// Minutes-of-day for an "HH:MM[:SS]" time.
+const toMin = (t: string): number => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+
 // "08:30:00" → "8:30a". Returns "—" for a missing time.
 export const fmtTime = (t?: string | null): string => {
   if (!t) return "—";
@@ -12,20 +18,25 @@ export const fmtTime = (t?: string | null): string => {
 };
 
 // Minutes a load sat at a stop (out − in), rolling a day when it ran overnight.
-// Null unless both times are present (or the gap is zero). → "2h 15m".
-export const dwell = (
+// Null unless both times are present.
+export const dwellMinutes = (
   inT?: string | null,
   outT?: string | null,
-): string | null => {
+): number | null => {
   if (!inT || !outT) return null;
-  const mins = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    return h * 60 + m;
-  };
-  let d = mins(outT) - mins(inT);
+  let d = toMin(outT) - toMin(inT);
   if (d < 0) d += 1440; // ran past midnight
-  if (d === 0) return null;
-  const h = Math.floor(d / 60);
-  const m = d % 60;
+  return d;
+};
+
+// A minute count → "2h 15m" / "45m" / "3h". Null (nothing to show) for ≤ 0.
+export const fmtDuration = (mins: number | null): string | null => {
+  if (mins == null || mins <= 0) return null;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
   return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 };
+
+// Formatted dwell for a stop → "2h 15m" (null when incomplete or zero-length).
+export const dwell = (inT?: string | null, outT?: string | null): string | null =>
+  fmtDuration(dwellMinutes(inT, outT));
