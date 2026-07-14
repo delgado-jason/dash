@@ -7,6 +7,7 @@ import {
   detentionLabel,
   detentionOwed,
   tonuOwed,
+  loadFlag,
 } from "./detention";
 
 const L = (o: Record<string, unknown>): Load => o as unknown as Load;
@@ -84,5 +85,32 @@ describe("tonuOwed", () => {
     expect(tonuOwed(L({ load_status: "tonu", tonu_paid: false }))).toBe(true);
     expect(tonuOwed(L({ load_status: "tonu", tonu_paid: true }))).toBe(false);
     expect(tonuOwed(L({ load_status: "delivered", tonu_paid: false }))).toBe(false);
+  });
+});
+
+describe("loadFlag priority", () => {
+  const detentioned = { shipper_in: "08:00", shipper_out: "14:00" }; // 6h → owed at 3h free
+
+  it("unpaid TONU wins even over detention", () => {
+    expect(
+      loadFlag(L({ load_status: "tonu", tonu_paid: false, ...detentioned }), 3),
+    ).toBe("tonu");
+  });
+
+  it("unpaid detention beats in-transit", () => {
+    expect(
+      loadFlag(L({ load_status: "in_transit", detention_paid: false, ...detentioned }), 3),
+    ).toBe("detention");
+  });
+
+  it("in-transit when nothing is owed", () => {
+    expect(loadFlag(L({ load_status: "in_transit" }), 3)).toBe("in-transit");
+  });
+
+  it("null once fees are paid / nothing applies", () => {
+    expect(
+      loadFlag(L({ load_status: "tonu", tonu_paid: true }), 3),
+    ).toBeNull();
+    expect(loadFlag(L({ load_status: "delivered" }), 3)).toBeNull();
   });
 });
