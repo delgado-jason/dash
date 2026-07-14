@@ -349,6 +349,115 @@ const GuidePage = () => (
       </Metric>
 
       <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
+        The dock — facilities, scheduling &amp; detention
+      </h2>
+
+      <Metric
+        title="Facilities — your shippers and receivers"
+        answers="Every stop is a saved place, kept apart by location so the many Walmarts never blur into one."
+      >
+        <Why>
+          On a load, search your existing facilities as you type and pick one — that's
+          what keeps the data clean. A <span className="text-light">business</span> is
+          known by its name; a <span className="text-light">job site</span> has no
+          company name, so it's known by its address. If two of the same place slip in
+          (ABC Manufacturing vs ABC Manufacturing Inc), the Facilities page flags them
+          under "Possible duplicates" so you can merge them into one.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Appointment or window"
+        answers="Each stop gets a scheduled time — a set appointment or a delivery window."
+      >
+        <Formula>appointment = one time · window = a start–end range</Formula>
+        <Eg>
+          On the load form, leave the "to" blank for a set appointment (9:00), or fill
+          it for a window (6:00–10:00, first-come-first-served).
+        </Eg>
+        <Why>
+          Once you also log when you arrived, the stop shows an on-time badge:{" "}
+          <span className="text-light">on time</span>,{" "}
+          <span className="text-light">late</span>, or{" "}
+          <span className="text-light">waited</span> (you beat the window open).
+        </Why>
+      </Metric>
+
+      <Metric
+        title="In / out times & dwell"
+        answers="Log when you arrived and left each stop; dwell is how long you sat."
+      >
+        <Formula>dwell = departed − arrived</Formula>
+        <Eg>
+          Arrived 8:30a, left 10:45a → <span className="text-light">2h 15m</span> at the
+          dock. Overnight stays are handled.
+        </Eg>
+      </Metric>
+
+      <Metric
+        title="Detention — the wait you're owed for"
+        answers="When a stop holds you past your free time, the load flags detention automatically."
+      >
+        <Formula>detention = dwell − free hours (per stop)</Formula>
+        <Eg>
+          Sat 5h 20m with 3h free → <span className="text-light">2h 20m</span> billable.
+          Set your free hours on the Settings page (you give 3).
+        </Eg>
+        <Why>
+          The load shows a "Detention owed" banner and the loads table flags the row.
+          Bill the hours as an accessorial, then hit{" "}
+          <span className="text-light">Mark detention paid</span> to clear it.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="TONU — the dead-run fee"
+        answers="A truck-ordered-not-used load still owes you a fee."
+      >
+        <Why>
+          A TONU flags red until you collect it. Mark it{" "}
+          <span className="text-light">TONU paid</span> the same way you clear
+          detention.
+        </Why>
+      </Metric>
+
+      <Section title="The loads table, by color">
+        <p className="text-sm text-muted-text mb-2">
+          A left bar and row tint tell you what needs action, worst first:
+        </p>
+        <div className="text-sm flex flex-col gap-1.5">
+          <p>
+            <span style={{ color: "#3fb950" }}>● Green</span> — in transit. These lift
+            into an "On the road" group up top, so what's rolling is always in view.
+          </p>
+          <p>
+            <span style={{ color: "#e8940a" }}>● Amber</span> — detention owed &amp;
+            unpaid (with a "DET" chip).
+          </p>
+          <p>
+            <span style={{ color: "#e24b4a" }}>● Red</span> — a TONU fee owed &amp;
+            unpaid.
+          </p>
+        </div>
+        <p className="text-sm text-muted-text mt-2">
+          Amber and red clear to a muted "paid" chip once you mark them. Filter the
+          table by <span className="text-light">TONU</span> or{" "}
+          <span className="text-light">Detention</span> to work through what's owed.
+        </p>
+      </Section>
+
+      <Section title="Facility & agent scorecards">
+        <p className="text-sm text-muted-text">
+          As your stop times pile up, each facility and agent grows a scorecard —{" "}
+          <span className="text-light">typical dwell</span> (the median, so one bad day
+          doesn't skew it), <span className="text-light">on-time %</span>, and how often
+          loads there ran into detention. It needs at least three timed stops before it
+          shows, so it fills in over a few weeks — that's how you learn which docks eat
+          your day and which agents' freight is worth the rate.
+        </p>
+      </Section>
+
+      <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
         The truck
       </h2>
 
