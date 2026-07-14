@@ -6,6 +6,9 @@ type Targets = ReturnType<typeof useRateTargets>;
 const RED = "#e24b4a";
 const AMBER = "#e8940a";
 const GREEN = "#1d9e75";
+const GREEN_TICK = "#35c47a"; // brighter than the fill, so the target tick reads on top of it
+const GOLD = "#f5b03a";
+const GRAY = "#5b6b82";
 const TRACK = "#232c3f";
 
 const money = (n: number | null): string =>
@@ -30,14 +33,29 @@ const PaceBar = ({
   target: number;
   strong: number;
 }) => {
-  const max = strong > 0 ? strong : target;
+  // Headroom past `strong` so it sits inside the bar as a milestone, not flush
+  // at the right edge.
+  const top = strong > 0 ? strong : target;
+  const max = top > 0 ? top * 1.12 : target;
   const frac = (v: number) => (max > 0 ? Math.max(0, Math.min(1, v / max)) : 0);
   const color = earned >= target ? GREEN : earned >= floor ? AMBER : RED;
-  const tick = (v: number, title: string) => (
+  // Floor/min are quiet reference ticks; target (green) and strong (gold) are the
+  // goals — taller, glowing, and color-coded to the theme.
+  const tick = (v: number, c: string, goal: boolean, title: string) => (
     <div
-      className="absolute top-0 h-2"
-      style={{ left: `${frac(v) * 100}%`, width: 2, background: "#ebedf5" }}
+      className="absolute"
       title={title}
+      style={{
+        left: `${frac(v) * 100}%`,
+        transform: "translateX(-50%)",
+        width: goal ? 3 : 2,
+        top: goal ? -3 : 0,
+        height: goal ? 14 : 8,
+        borderRadius: goal ? 2 : 0,
+        background: c,
+        boxShadow: goal ? `0 0 4px ${c}` : undefined,
+        opacity: goal ? 1 : 0.75,
+      }}
     />
   );
   return (
@@ -50,12 +68,36 @@ const PaceBar = ({
         className="absolute left-0 top-0 h-2 rounded"
         style={{ width: `${frac(earned) * 100}%`, background: color }}
       />
-      {tick(floor, "break-even floor")}
-      {tick(minimum, "minimum")}
-      {tick(target, "target")}
+      {tick(floor, AMBER, false, "break-even floor")}
+      {tick(minimum, GRAY, false, "minimum")}
+      {tick(target, GREEN_TICK, true, "target")}
+      {strong > 0 && tick(strong, GOLD, true, "strong")}
     </div>
   );
 };
+
+// Color-coded key so each tick's threshold is unmistakable.
+const LegendItem = ({
+  color,
+  label,
+  value,
+  emphasize,
+}: {
+  color: string;
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) => (
+  <span className="inline-flex items-center gap-1">
+    <span
+      className="inline-block rounded-sm shrink-0"
+      style={{ width: 9, height: 9, background: color }}
+    />
+    <span style={emphasize ? { color: "#c8d0dc", fontWeight: 600 } : undefined}>
+      {label} {value}
+    </span>
+  </span>
+);
 
 const BURST =
   "57,30 47.39,34.66 53.38,43.5 42.73,42.73 43.5,53.38 34.66,47.39 30,57 " +
@@ -154,10 +196,22 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
               target={gross.weeklyTarget ?? 0}
               strong={weeklyStrong ?? 0}
             />
-            <p className="text-xs text-muted-text">
-              floor {money(gross.weeklyBreakEven)} · min {money(weeklyMinimum)} ·
-              target {money(gross.weeklyTarget)} · strong {money(weeklyStrong)}
-            </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-text">
+              <LegendItem color={AMBER} label="floor" value={money(gross.weeklyBreakEven)} />
+              <LegendItem color={GRAY} label="min" value={money(weeklyMinimum)} />
+              <LegendItem
+                color={GREEN_TICK}
+                label="target"
+                value={money(gross.weeklyTarget)}
+                emphasize
+              />
+              <LegendItem
+                color={GOLD}
+                label="strong"
+                value={money(weeklyStrong)}
+                emphasize
+              />
+            </div>
             {committedAhead > 0 && (
               <p className="text-xs mt-1 text-muted-text">
                 + {money(committedAhead)} committed, still to haul
