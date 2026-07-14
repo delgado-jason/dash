@@ -5,6 +5,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { useBrokers } from "@/hooks/useBrokers";
 import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
+import { useFacilities } from "@/hooks/useFacilities";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Kpi } from "@/components/Kpi";
 import LoadForm from "../components/LoadForm";
@@ -42,11 +43,13 @@ const LoadsPage = () => {
   const [brokerRefreshKey, setBrokerRefreshKey] = useState(0);
   const [agentRefreshKey, setAgentRefreshKey] = useState(0);
   const [marketRefreshKey, setMarketRefreshKey] = useState(0);
+  const [facilityRefreshKey, setFacilityRefreshKey] = useState(0);
 
   const { brokers } = useBrokers(brokerRefreshKey);
   const { loads, isLoading, error } = useLoads(refreshKey);
   const { agents } = useAgents(agentRefreshKey);
   const { markets } = useMarkets(marketRefreshKey);
+  const { facilities } = useFacilities(facilityRefreshKey);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [search, setSearch] = useState("");
@@ -108,6 +111,7 @@ const LoadsPage = () => {
               brokers={brokers}
               agents={agents}
               markets={markets}
+              facilities={facilities}
               onSubmit={async (data) => {
                 await createLoad(data);
               }}
@@ -115,6 +119,7 @@ const LoadsPage = () => {
               onBrokerCreated={() => setBrokerRefreshKey((p) => p + 1)}
               onAgentCreated={() => setAgentRefreshKey((p) => p + 1)}
               onMarketCreated={() => setMarketRefreshKey((p) => p + 1)}
+              onFacilityCreated={() => setFacilityRefreshKey((p) => p + 1)}
               onClose={() => setShowCreateForm(false)}
             />
           </div>

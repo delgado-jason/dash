@@ -8,6 +8,7 @@ import { useAccessorials } from "@/hooks/useAccessorials";
 import { useBrokers } from "@/hooks/useBrokers";
 import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
+import { useFacilities } from "@/hooks/useFacilities";
 
 import { patchLoad } from "@/services/patchLoadService";
 import { createAccessorial } from "@/services/createAccessorialService";
@@ -121,6 +122,7 @@ export const LoadDetailPage = () => {
   const { brokers } = useBrokers(0);
   const { agents } = useAgents(0);
   const { markets } = useMarkets(0);
+  const { facilities } = useFacilities(0);
 
   const navigate = useNavigate();
 
@@ -266,9 +268,11 @@ export const LoadDetailPage = () => {
                 weight: load.weight ?? null,
                 dimensions: load.dimensions ?? null,
                 shipper_name: load.shipper_name ?? null,
+                shipper_facility_id: load.shipper_facility_id ?? null,
                 shipper_in: load.shipper_in ?? null,
                 shipper_out: load.shipper_out ?? null,
                 receiver_name: load.receiver_name ?? null,
+                receiver_facility_id: load.receiver_facility_id ?? null,
                 receiver_in: load.receiver_in ?? null,
                 receiver_out: load.receiver_out ?? null,
                 linehaul: Number(load.linehaul),
@@ -285,6 +289,7 @@ export const LoadDetailPage = () => {
               brokers={brokers}
               agents={agents}
               markets={markets}
+              facilities={facilities}
               onSubmit={async (data) => {
                 await patchLoad(load.load_id, data);
               }}
@@ -521,7 +526,16 @@ export const LoadDetailPage = () => {
             </span>
           </div>
           <p className="text-base font-condensed mt-1">
-            {load.shipper_name || "—"}
+            {load.shipper_facility_id ? (
+              <Link
+                to={`/facilities/${load.shipper_facility_id}`}
+                className="text-amber-light hover:underline"
+              >
+                {load.shipper_name || "—"}
+              </Link>
+            ) : (
+              load.shipper_name || "—"
+            )}
           </p>
           <p className="text-xs text-muted-text">
             {load.origin_city}, {load.origin_state}
@@ -537,7 +551,16 @@ export const LoadDetailPage = () => {
             </span>
           </div>
           <p className="text-base font-condensed mt-1">
-            {load.receiver_name || "—"}
+            {load.receiver_facility_id ? (
+              <Link
+                to={`/facilities/${load.receiver_facility_id}`}
+                className="text-amber-light hover:underline"
+              >
+                {load.receiver_name || "—"}
+              </Link>
+            ) : (
+              load.receiver_name || "—"
+            )}
           </p>
           <p className="text-xs text-muted-text">
             {load.destination_city}, {load.destination_state}

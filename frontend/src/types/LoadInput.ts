@@ -16,9 +16,11 @@ export interface LoadInput {
   weight?: number | null;
   dimensions?: string | null;
   shipper_name?: string | null;
+  shipper_facility_id?: string | null;
   shipper_in?: string | null;
   shipper_out?: string | null;
   receiver_name?: string | null;
+  receiver_facility_id?: string | null;
   receiver_in?: string | null;
   receiver_out?: string | null;
   linehaul: number;

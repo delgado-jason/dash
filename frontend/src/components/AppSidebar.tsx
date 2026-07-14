@@ -29,6 +29,7 @@ const nav: Entry[] = [
       { to: "/trips", label: "Trips" },
       { to: "/lanes", label: "Lanes" },
       { to: "/agents", label: "Agents" },
+      { to: "/facilities", label: "Facilities" },
     ],
   },
   {

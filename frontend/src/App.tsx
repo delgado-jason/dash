@@ -19,6 +19,8 @@ import DriversPage from "@/pages/DriversPage";
 import DriverDetailPage from "@/pages/DriverDetailPage";
 import TrailersPage from "@/pages/TrailersPage";
 import TrailerDetailPage from "@/pages/TrailerDetailPage";
+import FacilitiesPage from "@/pages/FacilitiesPage";
+import FacilityDetailPage from "@/pages/FacilityDetailPage";
 import { LoadDetailPage } from "@/pages/LoadDetailPage";
 import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
@@ -75,6 +77,8 @@ const App = () => {
           <Route path="/drivers/:id" element={<DriverDetailPage />} />
           <Route path="/trailers" element={<TrailersPage />} />
           <Route path="/trailers/:id" element={<TrailerDetailPage />} />
+          <Route path="/facilities" element={<FacilitiesPage />} />
+          <Route path="/facilities/:id" element={<FacilityDetailPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
