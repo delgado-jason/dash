@@ -5,6 +5,9 @@ import type { Facility } from "@/types/facility";
 import { getFacility } from "@/services/facilitiesService";
 import { useLoads } from "@/hooks/useLoads";
 import { dwell } from "@/lib/stopTimes";
+import { facilityStops, scoreStops } from "@/lib/metrics/stopScore";
+import { StopScorecard } from "@/components/StopScorecard";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
 
 const fmtDate = (d?: string | null) =>
   d
@@ -27,6 +30,7 @@ interface StopRow {
 const FacilityDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [facility, setFacility] = useState<Facility | null>(null);
+  const [freeHours, setFreeHours] = useState(3);
   const { loads } = useLoads(0);
 
   useEffect(() => {
@@ -35,6 +39,17 @@ const FacilityDetailPage = () => {
       .then(setFacility)
       .catch(() => {});
   }, [id]);
+
+  useEffect(() => {
+    getSettlementSchedule()
+      .then((s) => setFreeHours(s.detention_free_hours))
+      .catch(() => {});
+  }, []);
+
+  const score = useMemo(
+    () => (id ? scoreStops(facilityStops(loads ?? [], id, freeHours)) : null),
+    [loads, id, freeHours],
+  );
 
   // Every stop this facility played on a load — as shipper and/or receiver.
   const rows = useMemo<StopRow[]>(() => {
@@ -97,6 +112,13 @@ const FacilityDetailPage = () => {
         </div>
       </div>
 
+      <div className="bg-plate rounded-lg p-4 mb-4">
+        <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
+          Scorecard
+        </p>
+        <StopScorecard score={score} countLabel="Loads" countValue={rows.length} />
+      </div>
+
       <div className="bg-plate rounded-lg p-4">
         <p className="text-xs text-muted-text uppercase tracking-wider mb-2">
           Loads through here
@@ -130,11 +152,6 @@ const FacilityDetailPage = () => {
           </div>
         )}
       </div>
-
-      <p className="text-[11px] text-muted-text mt-3">
-        Dwell/on-time/detention scorecard lands here once appointment data starts
-        accruing (Phase C).
-      </p>
     </div>
   );
 };
