@@ -323,6 +323,27 @@ const GuidePage = () => (
       </Metric>
 
       <Metric
+        title="Per diem — the meal-allowance deduction"
+        answers="Your days out, turned into the M&IE tax deduction. Mark days on a year calendar; unmarked past days are inferred from your loads."
+      >
+        <Formula>
+          (full days × rate + half days × 75% × rate) × 80% deductible
+        </Formula>
+        <Eg>
+          A week out = 5 full days + 2 half days (the days you left and got home).
+          Each day away overnight counts; the departure and return days are 75%.
+        </Eg>
+        <Why>
+          As a DOT hours-of-service driver you deduct <span className="text-light">80%</span>{" "}
+          of the IRS special rate (vs 50% for everyone else). The rate updates each
+          October — set it and the deductible on the Settings page. On the Per Diem
+          page, tap a day to cycle home → full → half; days you haven't marked yet
+          this year are inferred from your delivered loads (shown hollow) for you to
+          confirm.
+        </Why>
+      </Metric>
+
+      <Metric
         title="Deadhead"
         answers="The share of your miles that ran empty."
       >
