@@ -23,6 +23,7 @@ import type { CreateMarketInput } from "@/types/createMarketInput";
 import type { Facility } from "@/types/facility";
 import { FacilityPicker } from "@/components/FacilityPicker";
 import { facilityLabel } from "@/lib/facilityMatch";
+import { toInches, toFeetInches, isOverWidth, formatInches } from "@/lib/dimensions";
 
 // UI Component Imports
 
@@ -54,6 +55,60 @@ interface LoadFormProps {
   onClose: () => void;
   onSubmit: (data: LoadInput) => Promise<void>;
 }
+
+// One labeled dimension entered as feet + inches, emitting whole inches (or null
+// when both fields are blank). Local input state is the source of truth for the
+// boxes; the parent holds the derived inch value.
+const DimensionField = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (inches: number | null) => void;
+}) => {
+  const start = value != null ? toFeetInches(value) : null;
+  const [feet, setFeet] = useState(start ? String(start.feet) : "");
+  const [inch, setInch] = useState(start ? String(start.inches) : "");
+
+  const emit = (f: string, i: string) => {
+    if (f.trim() === "" && i.trim() === "") return onChange(null);
+    const total = toInches(Number(f) || 0, Number(i) || 0);
+    onChange(total > 0 ? total : null);
+  };
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="flex items-center gap-1.5 mt-1">
+        <Input
+          type="number"
+          min={0}
+          value={feet}
+          onChange={(e) => {
+            setFeet(e.target.value);
+            emit(e.target.value, inch);
+          }}
+          className="w-16 text-right"
+        />
+        <span className="text-xs text-muted-text">ft</span>
+        <Input
+          type="number"
+          min={0}
+          max={11}
+          value={inch}
+          onChange={(e) => {
+            setInch(e.target.value);
+            emit(feet, e.target.value);
+          }}
+          className="w-16 text-right"
+        />
+        <span className="text-xs text-muted-text">in</span>
+      </div>
+    </div>
+  );
+};
 
 const LoadForm = ({
   initialData,
@@ -89,7 +144,9 @@ const LoadForm = ({
           destination_market_id: initialData.destination_market_id,
           commodity: initialData.commodity,
           weight: initialData.weight ?? null,
-          dimensions: initialData.dimensions ?? null,
+          length_in: initialData.length_in ?? null,
+          width_in: initialData.width_in ?? null,
+          height_in: initialData.height_in ?? null,
           shipper_name: initialData.shipper_name ?? null,
           shipper_facility_id: initialData.shipper_facility_id ?? null,
           shipper_in: initialData.shipper_in ?? null,
@@ -129,7 +186,9 @@ const LoadForm = ({
           destination_market_id: "",
           commodity: null,
           weight: null,
-          dimensions: null,
+          length_in: null,
+          width_in: null,
+          height_in: null,
           shipper_name: null,
           shipper_facility_id: null,
           shipper_in: null,
@@ -1046,14 +1105,33 @@ const LoadForm = ({
               ></Input>
             </div>
             <div className="col-span-2">
-              <Label htmlFor="dimensions">Dimensions</Label>
-              <Input
-                name="dimensions"
-                id="dimensions"
-                placeholder="8.5' x 13.5' x 73'"
-                onChange={handleChange}
-                value={formData.dimensions ?? ""}
-              ></Input>
+              <Label>Dimensions</Label>
+              <p className="text-xs text-muted-text mb-2">
+                The cargo's own size — leave blank for a legal load.
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <DimensionField
+                  label="Length"
+                  value={formData.length_in ?? null}
+                  onChange={(v) => setFormData({ ...formData, length_in: v })}
+                />
+                <DimensionField
+                  label="Width"
+                  value={formData.width_in ?? null}
+                  onChange={(v) => setFormData({ ...formData, width_in: v })}
+                />
+                <DimensionField
+                  label="Height"
+                  value={formData.height_in ?? null}
+                  onChange={(v) => setFormData({ ...formData, height_in: v })}
+                />
+              </div>
+              {isOverWidth(formData.width_in) && (
+                <p className="text-xs mt-2" style={{ color: "#f5b03a" }}>
+                  {formatInches(formData.width_in)} wide is over the 8'6" legal
+                  limit — flag it Oversize in Load Type.
+                </p>
+              )}
             </div>
           </div>
         </div>

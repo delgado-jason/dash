@@ -49,7 +49,10 @@ export interface Load {
   trailer_net?: string;
   commodity: string | null;
   weight?: number | null;
-  dimensions?: string | null;
+  // The cargo's own dimensions in whole inches; null on a legal load.
+  length_in?: number | null;
+  width_in?: number | null;
+  height_in?: number | null;
   odometer_start?: number | null;
   odometer_end?: number | null;
   payment_status: string;

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Pencil, Trash2, Truck, User, Container, Clock, Ban } from "lucide-react";
 
 import { useLoad } from "@/hooks/useLoad";
+import { formatLoadDims } from "@/lib/dimensions";
 import { useAccessorials } from "@/hooks/useAccessorials";
 import { useBrokers } from "@/hooks/useBrokers";
 import { useAgents } from "@/hooks/useAgents";
@@ -319,7 +320,9 @@ export const LoadDetailPage = () => {
                 destination_market_id: load.destination_market_id,
                 commodity: load.commodity,
                 weight: load.weight ?? null,
-                dimensions: load.dimensions ?? null,
+                length_in: load.length_in ?? null,
+                width_in: load.width_in ?? null,
+                height_in: load.height_in ?? null,
                 shipper_name: load.shipper_name ?? null,
                 shipper_facility_id: load.shipper_facility_id ?? null,
                 shipper_in: load.shipper_in ?? null,
@@ -635,7 +638,13 @@ export const LoadDetailPage = () => {
             label="Weight"
             value={load.weight ? `${load.weight.toLocaleString("en-US")} lb` : "—"}
           />
-          <Row label="Dimensions" value={load.dimensions || "Legal"} />
+          <Row
+            label="Dimensions"
+            value={
+              formatLoadDims(load.length_in, load.width_in, load.height_in) ||
+              "Legal"
+            }
+          />
         </Panel>
 
         <Panel className="p-4">
