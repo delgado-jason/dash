@@ -56,6 +56,7 @@ const SettingsPage = () => {
   const [perDiemRate, setPerDiemRate] = useState(69);
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [hometimeThresh, setHometimeThresh] = useState(21);
+  const [operation, setOperation] = useState("flatbed");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -74,6 +75,7 @@ const SettingsPage = () => {
         setPerDiemRate(s.per_diem_rate);
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
         setHometimeThresh(s.hometime_threshold_days);
+        setOperation(s.operation);
       })
       .catch(() => setErr("Couldn't load your settlement schedule."));
   }, []);
@@ -99,6 +101,7 @@ const SettingsPage = () => {
         per_diem_rate: perDiemRate,
         per_diem_deduct_pct: perDiemPct / 100,
         hometime_threshold_days: hometimeThresh,
+        operation,
       });
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
@@ -294,6 +297,39 @@ const SettingsPage = () => {
         <span className="text-xs text-muted-text mt-3 block">
           Saved with the schedule above.
         </span>
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Operation</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Your equipment and discipline. It tailors your achievements — open-deck
+          operations (flatbed, heavy haul, oversize) earn the oversize badge set;
+          others keep the universal badges.
+        </p>
+        <label className="block mt-4">
+          <span className="text-sm text-light">Operation type</span>
+          <select
+            value={operation}
+            onChange={(e) => {
+              setMsg(null);
+              setOperation(e.target.value);
+            }}
+            className="block mt-1 w-56 bg-steel rounded px-2 py-1.5 text-light"
+          >
+            <option value="flatbed">Flatbed / Platform</option>
+            <option value="heavy haul">Heavy Haul</option>
+            <option value="oversize">Oversize</option>
+            <option value="tank">Tank</option>
+            <option value="van">Dry Van</option>
+            <option value="reefer">Reefer</option>
+            <option value="dump">Dump</option>
+            <option value="car hauler">Car Hauler</option>
+            <option value="other">Other</option>
+          </select>
+          <span className="text-xs text-muted-text mt-1 block">
+            Saved with the schedule above.
+          </span>
+        </label>
       </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">

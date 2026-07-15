@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
 import { PrestigeBurst, PRESTIGE_META } from "@/components/agents/PrestigeBadge";
@@ -630,6 +631,17 @@ const GuidePage = () => (
       </Section>
 
       <Section title="Driver patches — hard, and they stack">
+        <p className="text-sm text-muted-text mb-3">
+          Patches earned in <span style={{ color: "#60a5fa" }}>blue</span> are your{" "}
+          <span className="text-light">operation-specific</span> feats — the
+          oversize/flatbed set (Wide, Long, Super Load, Mountain Mover) tied to your
+          Operation setting. The rest are <span style={{ color: "#f5b03a" }}>amber</span>{" "}
+          universal feats every operation can earn. Set your operation on the{" "}
+          <Link to="/settings" className="text-status-info-text hover:underline">
+            Settings page
+          </Link>
+          .
+        </p>
         <div className="grid sm:grid-cols-2 gap-x-6">
           {PATCH_GUIDE.map((p) => (
             <AwardLine key={p.name} icon={p.icon} name={p.name} sub={p.how} />

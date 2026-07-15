@@ -16,6 +16,7 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
     s.hometime_threshold_days != null
       ? Number(s.hometime_threshold_days)
       : 21,
+  operation: (s.operation as string) ?? "flatbed",
 });
 
 export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {

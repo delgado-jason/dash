@@ -13,7 +13,20 @@ const DEFAULTS = {
   per_diem_rate: 69,
   per_diem_deduct_pct: 0.8,
   hometime_threshold_days: 21,
+  operation: "flatbed",
 };
+
+const OPERATIONS = [
+  "flatbed",
+  "heavy haul",
+  "oversize",
+  "tank",
+  "van",
+  "reefer",
+  "dump",
+  "car hauler",
+  "other",
+];
 
 const PCT_FIELDS = [
   "linehaul_pct",
@@ -29,6 +42,7 @@ const COLUMNS = [
   "per_diem_rate",
   "per_diem_deduct_pct",
   "hometime_threshold_days",
+  "operation",
 ];
 
 // ---- GET ---- (always returns a schedule; defaults if none saved yet)
@@ -89,6 +103,12 @@ export async function upsertSettlementSchedule(user_id, data) {
     provided.hometime_threshold_days = n;
   }
 
+  if (data.operation !== undefined) {
+    if (!OPERATIONS.includes(data.operation))
+      throw new ValidationError(`operation must be one of: ${OPERATIONS.join(", ")}`);
+    provided.operation = data.operation;
+  }
+
   if (Object.keys(provided).length === 0)
     throw new ValidationError("No valid fields to update");
 
@@ -98,8 +118,8 @@ export async function upsertSettlementSchedule(user_id, data) {
 
   const result = await db.query(
     `INSERT INTO settlement_schedules
-       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name, detention_free_hours, per_diem_rate, per_diem_deduct_pct, hometime_threshold_days)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name, detention_free_hours, per_diem_rate, per_diem_deduct_pct, hometime_threshold_days, operation)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      ON CONFLICT (user_id) DO UPDATE SET
        linehaul_pct            = EXCLUDED.linehaul_pct,
        trailer_pct             = EXCLUDED.trailer_pct,
@@ -110,6 +130,7 @@ export async function upsertSettlementSchedule(user_id, data) {
        per_diem_rate           = EXCLUDED.per_diem_rate,
        per_diem_deduct_pct     = EXCLUDED.per_diem_deduct_pct,
        hometime_threshold_days = EXCLUDED.hometime_threshold_days,
+       operation               = EXCLUDED.operation,
        updated_at              = NOW()
      RETURNING ${COLUMNS.join(", ")}`,
     [
@@ -123,6 +144,7 @@ export async function upsertSettlementSchedule(user_id, data) {
       m.per_diem_rate,
       m.per_diem_deduct_pct,
       m.hometime_threshold_days,
+      m.operation,
     ],
   );
   return result.rows[0];
