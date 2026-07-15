@@ -261,12 +261,20 @@ const rules = {
       errors.push("weight must be greater than 0");
     }
   },
-  dimensions: (value, errors) => {
-    if (!value) return;
-
-    if (!isValidType("string", value)) {
-      errors.push("dimensions must be a string");
-    }
+  length_in: (value, errors) => {
+    if (value == null) return;
+    if (!isValidType("integer", value) || value < 1)
+      errors.push("length_in must be a positive integer (inches)");
+  },
+  width_in: (value, errors) => {
+    if (value == null) return;
+    if (!isValidType("integer", value) || value < 1)
+      errors.push("width_in must be a positive integer (inches)");
+  },
+  height_in: (value, errors) => {
+    if (value == null) return;
+    if (!isValidType("integer", value) || value < 1)
+      errors.push("height_in must be a positive integer (inches)");
   },
   deadhead_miles: (value, errors) => {
     if (!value) return;

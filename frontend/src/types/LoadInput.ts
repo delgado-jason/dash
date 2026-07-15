@@ -14,7 +14,9 @@ export interface LoadInput {
   destination_market_id: string;
   commodity?: string | null;
   weight?: number | null;
-  dimensions?: string | null;
+  length_in?: number | null;
+  width_in?: number | null;
+  height_in?: number | null;
   shipper_name?: string | null;
   shipper_facility_id?: string | null;
   shipper_in?: string | null;
