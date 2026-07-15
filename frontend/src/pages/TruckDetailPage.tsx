@@ -10,6 +10,7 @@ import {
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { getFuelEntries } from "@/services/fuelService";
+import { getHomeDays } from "@/services/perDiemService";
 import { useLoads } from "@/hooks/useLoads";
 import {
   computeDue,
@@ -86,6 +87,7 @@ const TruckDetailPage = () => {
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [homeDays, setHomeDays] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +108,9 @@ const TruckDetailPage = () => {
       .catch(() => {});
     getObligations()
       .then(setObligations)
+      .catch(() => {});
+    getHomeDays()
+      .then(setHomeDays)
       .catch(() => {});
   }, [id]);
 
@@ -188,13 +193,14 @@ const TruckDetailPage = () => {
   const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
   const now = new Date();
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
-  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now);
+  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays);
   const truckMedals = earnedMedals(
     computeTruckMedals({
       odometer,
       avgMpg: metrics.avgMpg,
       deliveredCount: earnedLoads.length,
       loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
+      utilization: metrics.utilization,
     }),
   );
   const patches = computeTruckPatches(truckLoads, truckFuel);
@@ -302,7 +308,7 @@ const TruckDetailPage = () => {
               {metrics.utilization != null ? `${Math.round(metrics.utilization * 100)}%` : "—"}
             </div>
             <div className="text-[9px] mt-1 tracking-wide" style={{ color: "#8fd6a8" }}>
-              UTILIZATION · ACTIVE WEEKS
+              UTILIZATION · DAYS UNDER LOAD
             </div>
           </div>
           <Kpi value={metrics.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"} label="AVG MPG" />
@@ -316,6 +322,16 @@ const TruckDetailPage = () => {
           />
           <Kpi value={metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—"} label="MI / MONTH" />
         </div>
+        {metrics.windowDays > 0 && (
+          <p className="text-[11px] text-muted-text mt-2">
+            {metrics.windowDays.toLocaleString("en-US")} days ·{" "}
+            <span style={{ color: "#4ade80" }}>
+              {metrics.underLoadDays} under load
+            </span>{" "}
+            · <span style={{ color: "#60a5fa" }}>{metrics.homeDays} home</span> ·{" "}
+            <span style={{ color: "#f87171" }}>{metrics.idleDays} idle</span>
+          </p>
+        )}
       </div>
 
       {truckLoan && <PayoffTracker obligation={truckLoan} kind="truck" />}

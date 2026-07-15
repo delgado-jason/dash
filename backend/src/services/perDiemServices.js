@@ -38,6 +38,19 @@ export async function getLastHomeDay(user_id) {
   return { last_home: result.rows[0]?.last_home ?? null };
 }
 
+// ---- all "home" days ---- (for the truck utilization week breakdown)
+export async function getHomeDays(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT to_char(day, 'YYYY-MM-DD') AS day
+       FROM per_diem_days
+      WHERE user_id = $1 AND status = 'home'
+      ORDER BY day`,
+    [user_id],
+  );
+  return result.rows.map((r) => r.day);
+}
+
 // ---- UPSERT a day's status ----
 export async function upsertPerDiemDay(user_id, day, status) {
   if (!user_id) throw new ValidationError("Missing user_id");
