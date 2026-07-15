@@ -12,6 +12,7 @@ const DEFAULTS = {
   detention_free_hours: 3,
   per_diem_rate: 69,
   per_diem_deduct_pct: 0.8,
+  hometime_threshold_days: 21,
 };
 
 const PCT_FIELDS = [
@@ -27,6 +28,7 @@ const COLUMNS = [
   "detention_free_hours",
   "per_diem_rate",
   "per_diem_deduct_pct",
+  "hometime_threshold_days",
 ];
 
 // ---- GET ---- (always returns a schedule; defaults if none saved yet)
@@ -78,6 +80,15 @@ export async function upsertSettlementSchedule(user_id, data) {
     provided.per_diem_deduct_pct = n;
   }
 
+  if (data.hometime_threshold_days !== undefined) {
+    const n = Number(data.hometime_threshold_days);
+    if (!Number.isInteger(n) || n < 1 || n > 365)
+      throw new ValidationError(
+        "hometime_threshold_days must be a whole number between 1 and 365",
+      );
+    provided.hometime_threshold_days = n;
+  }
+
   if (Object.keys(provided).length === 0)
     throw new ValidationError("No valid fields to update");
 
@@ -87,18 +98,19 @@ export async function upsertSettlementSchedule(user_id, data) {
 
   const result = await db.query(
     `INSERT INTO settlement_schedules
-       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name, detention_free_hours, per_diem_rate, per_diem_deduct_pct)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name, detention_free_hours, per_diem_rate, per_diem_deduct_pct, hometime_threshold_days)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (user_id) DO UPDATE SET
-       linehaul_pct         = EXCLUDED.linehaul_pct,
-       trailer_pct          = EXCLUDED.trailer_pct,
-       fuel_surcharge_pct   = EXCLUDED.fuel_surcharge_pct,
-       accessorial_pct      = EXCLUDED.accessorial_pct,
-       carrier_name         = EXCLUDED.carrier_name,
-       detention_free_hours = EXCLUDED.detention_free_hours,
-       per_diem_rate        = EXCLUDED.per_diem_rate,
-       per_diem_deduct_pct  = EXCLUDED.per_diem_deduct_pct,
-       updated_at           = NOW()
+       linehaul_pct            = EXCLUDED.linehaul_pct,
+       trailer_pct             = EXCLUDED.trailer_pct,
+       fuel_surcharge_pct      = EXCLUDED.fuel_surcharge_pct,
+       accessorial_pct         = EXCLUDED.accessorial_pct,
+       carrier_name            = EXCLUDED.carrier_name,
+       detention_free_hours    = EXCLUDED.detention_free_hours,
+       per_diem_rate           = EXCLUDED.per_diem_rate,
+       per_diem_deduct_pct     = EXCLUDED.per_diem_deduct_pct,
+       hometime_threshold_days = EXCLUDED.hometime_threshold_days,
+       updated_at              = NOW()
      RETURNING ${COLUMNS.join(", ")}`,
     [
       user_id,
@@ -110,6 +122,7 @@ export async function upsertSettlementSchedule(user_id, data) {
       m.detention_free_hours,
       m.per_diem_rate,
       m.per_diem_deduct_pct,
+      m.hometime_threshold_days,
     ],
   );
   return result.rows[0];

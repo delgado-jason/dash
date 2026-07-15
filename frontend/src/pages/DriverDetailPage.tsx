@@ -11,6 +11,9 @@ import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getFuelEntries } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
+import { getLastHomeDay } from "@/services/perDiemService";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { hometimeStatus } from "@/lib/metrics/hometime";
 import { useLoads } from "@/hooks/useLoads";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
@@ -33,6 +36,7 @@ import {
   personalBests,
 } from "@/lib/metrics/playerCard";
 import { computeGrind } from "@/lib/metrics/grind";
+import { loadTypeMix } from "@/lib/metrics/loadMix";
 import { computePatches } from "@/lib/awards/patches";
 import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
@@ -63,6 +67,8 @@ const DriverDetailPage = () => {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [lastHome, setLastHome] = useState<string | null>(null);
+  const [hometimeThreshold, setHometimeThreshold] = useState(21);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +86,10 @@ const DriverDetailPage = () => {
     getObligations().then(setObligations).catch(() => {});
     getFuelEntries().then(setFuel).catch(() => {});
     getTrucks().then(setTrucks).catch(() => {});
+    getLastHomeDay().then(setLastHome).catch(() => {});
+    getSettlementSchedule()
+      .then((s) => setHometimeThreshold(s.hometime_threshold_days))
+      .catch(() => {});
   }, []);
 
   const driverLoads = useMemo(
@@ -147,8 +157,17 @@ const DriverDetailPage = () => {
       medals: earnedMedals(medals),
       bests: personalBests(driverLoads, fuel, now),
       patches: computePatches(driverLoads, fuel),
+      // Equipment identity — oversize and heavy haul kept as separate disciplines.
+      oversize: loadTypeMix(driverLoads, "oversize"),
+      heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
   }, [driverLoads, periods, obligations, fuel, trucks]);
+
+  // Hometime status for the (owner-op) driver — days since their last home mark.
+  const hometime = useMemo(
+    () => hometimeStatus(lastHome, hometimeThreshold, new Date()),
+    [lastHome, hometimeThreshold],
+  );
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!driver) return;
@@ -213,6 +232,9 @@ const DriverDetailPage = () => {
             form={card.form}
             windowRpm={card.windowRpm}
             medals={card.medals}
+            oversize={card.oversize}
+            heavyHaul={card.heavyHaul}
+            hometime={hometime}
           />
           <RecordBook records={driverRecordChips(card.bests)} />
           <PatchBoard patches={card.patches} />

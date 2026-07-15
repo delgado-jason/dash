@@ -479,6 +479,59 @@ const GuidePage = () => (
       </Section>
 
       <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
+        The driver card
+      </h2>
+
+      <Metric
+        title="Overall — your current grade"
+        answers="The weaker of your rate grade and your operating-margin grade — a weakest-link read on how the season is going."
+      >
+        <Formula>Overall = the lower of your Rate grade and Op-margin grade</Formula>
+        <Why>
+          A strong rate can't paper over a thin margin, and vice-versa, so the card
+          shows whichever is lagging. Rate and Op margin each grade{" "}
+          <span className="text-light">Below → Minimum → Target → Strong</span>{" "}
+          against your break-even ladder. (This was labeled "Form" before.)
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Equipment mix — oversize &amp; heavy haul"
+        answers="How much of your delivered work is oversize, and separately, heavy haul. Clear a high bar in either and the card names you a specialist."
+      >
+        <Formula>loads of that type ÷ your delivered loads</Formula>
+        <Eg>
+          12 oversize of 48 delivered → <span className="text-light">25%</span>. The
+          specialist badge lights at{" "}
+          <span className="text-light">40% and at least 5 loads</span>.
+        </Eg>
+        <Why>
+          Oversize and heavy haul are different disciplines — different equipment,
+          permits, and skill — so each gets its own strip and its own badge. A strip
+          appears once you've delivered{" "}
+          <span className="text-light">10+ loads</span> of that type, so a one-off
+          doesn't earn a card. Standard and hazmat loads aren't counted toward either.
+        </Why>
+      </Metric>
+
+      <Metric
+        title="Hometime — days since you were home"
+        answers="Days since your most recent home day. Past your threshold, the card flags it so a long stretch out doesn't sneak up on you."
+      >
+        <Formula>today − your last home day · flag when it crosses your threshold</Formula>
+        <Eg>
+          Home June 27, today July 15 → <span className="text-light">18 days out</span>.
+          Under a 21-day target it stays calm; cross 21 and it turns to a red flag.
+        </Eg>
+        <Why>
+          It reads home days from the Per Diem calendar — mark them there to keep it
+          honest. Set the threshold on the Settings page (default{" "}
+          <span className="text-light">21 days</span>). No home marks yet? The card
+          nudges you to start rather than guess.
+        </Why>
+      </Metric>
+
+      <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
         The truck
       </h2>
 
