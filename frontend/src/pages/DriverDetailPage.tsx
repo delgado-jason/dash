@@ -69,6 +69,7 @@ const DriverDetailPage = () => {
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [lastHome, setLastHome] = useState<string | null>(null);
   const [hometimeThreshold, setHometimeThreshold] = useState(21);
+  const [operation, setOperation] = useState("flatbed");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +89,10 @@ const DriverDetailPage = () => {
     getTrucks().then(setTrucks).catch(() => {});
     getLastHomeDay().then(setLastHome).catch(() => {});
     getSettlementSchedule()
-      .then((s) => setHometimeThreshold(s.hometime_threshold_days))
+      .then((s) => {
+        setHometimeThreshold(s.hometime_threshold_days);
+        setOperation(s.operation);
+      })
       .catch(() => {});
   }, []);
 
@@ -156,12 +160,12 @@ const DriverDetailPage = () => {
       windowRpm: basis.windowRpm,
       medals: earnedMedals(medals),
       bests: personalBests(driverLoads, fuel, now),
-      patches: computePatches(driverLoads, fuel),
+      patches: computePatches(driverLoads, fuel, operation),
       // Equipment identity — oversize and heavy haul kept as separate disciplines.
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, periods, obligations, fuel, trucks]);
+  }, [driverLoads, periods, obligations, fuel, trucks, operation]);
 
   // Hometime status for the (owner-op) driver — days since their last home mark.
   const hometime = useMemo(

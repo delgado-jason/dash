@@ -6,6 +6,7 @@
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { loadGross, loadRevenue } from "@/lib/metrics/rateTargets";
+import { formatInches } from "@/lib/dimensions";
 import { computeStack, type BarOpts } from "./adaptiveBar";
 
 export interface Patch {
@@ -14,9 +15,25 @@ export interface Patch {
   icon: string;
   count: number; // ×N earned (0 = not yet)
   bar: number | null; // current threshold to clear now (null = structural)
-  unit: "money" | "miles" | "pct" | "weight" | null;
+  unit: "money" | "miles" | "pct" | "weight" | "length" | null;
+  operational?: boolean; // true = operation-specific set (shown blue), else universal
   hint: string; // one-liner requirement / progress
 }
+
+// Operations that run open-deck freight and so earn the oversize/flatbed set.
+const OPEN_DECK = new Set(["flatbed", "heavy haul", "oversize"]);
+
+// A genuine superload by the common cross-state thresholds (varies by state):
+// beyond ~16' wide/high, ~150' long, or ~200,000 lb. See #231 research.
+const SUPER_WIDTH_IN = 16 * 12;
+const SUPER_HEIGHT_IN = 16 * 12;
+const SUPER_LENGTH_IN = 150 * 12;
+const SUPER_WEIGHT_LB = 200_000;
+const isSuperload = (l: Load): boolean =>
+  (Number(l.width_in) || 0) >= SUPER_WIDTH_IN ||
+  (Number(l.height_in) || 0) >= SUPER_HEIGHT_IN ||
+  (Number(l.length_in) || 0) >= SUPER_LENGTH_IN ||
+  (Number(l.weight) || 0) >= SUPER_WEIGHT_LB;
 
 const delivered = (loads: Load[]): Load[] =>
   loads
@@ -62,12 +79,15 @@ const ADAPTIVE: {
 }[] = [
   { key: "big-ticket", name: "Big Ticket", icon: "cash", unit: "money", opts: { n: 5, floor: 7000 }, value: (l) => loadGross(l) },
   { key: "long-hauler", name: "Long Hauler", icon: "road", unit: "miles", opts: { n: 5, floor: 1200 }, value: (l) => Number(l.loaded_miles) || 0 },
-  { key: "mountain-mover", name: "Mountain Mover", icon: "mountain", unit: "weight", opts: { n: 5, floor: 46000 }, value: (l) => Number(l.weight) || 0 },
 ];
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
-export const computePatches = (loads: Load[], _fuel: FuelEntry[]): Patch[] => {
+export const computePatches = (
+  loads: Load[],
+  _fuel: FuelEntry[],
+  operation: string = "flatbed",
+): Patch[] => {
   const dl = delivered(loads);
   const out: Patch[] = [];
 
@@ -121,6 +141,30 @@ export const computePatches = (loads: Load[], _fuel: FuelEntry[]): Patch[] => {
   const doubles = [...perDay.values()].filter((c) => c >= 2).length;
   out.push({ key: "doubleheader", name: "Doubleheader", icon: "layers-subtract", count: doubles, bar: null, unit: null, hint: "2+ delivered in a day" });
 
+  // ---- Operation-specific set (open-deck): the oversize/flatbed feats, shown blue.
+  // Gated so a tanker or van never sees "Wide Load". Dimensions come from #244.
+  if (OPEN_DECK.has(operation)) {
+    // Wide Load — adaptive on cargo width, floor 12' (only true wide loads count).
+    const widths = dl.map((l) => Number(l.width_in) || 0).filter((v) => v > 0);
+    const wide = computeStack(widths, { n: 5, floor: 12 * 12 });
+    out.push({ key: "wide-load", name: "Wide Load", icon: "move-horizontal", count: wide.count, bar: wide.bar, unit: "length", operational: true, hint: `clear ${formatInches(Math.round(wide.bar))}` });
+
+    // Long Load — adaptive on cargo length, floor 80'.
+    const lengths = dl.map((l) => Number(l.length_in) || 0).filter((v) => v > 0);
+    const long = computeStack(lengths, { n: 5, floor: 80 * 12 });
+    out.push({ key: "long-load", name: "Long Load", icon: "ruler", count: long.count, bar: long.bar, unit: "length", operational: true, hint: `clear ${formatInches(Math.round(long.bar))}` });
+
+    // Mountain Mover — adaptive on weight (operation-specific for open-deck).
+    const weights = dl.map((l) => Number(l.weight) || 0).filter((v) => v > 0);
+    const mm = computeStack(weights, { n: 5, floor: 46000 });
+    out.push({ key: "mountain-mover", name: "Mountain Mover", icon: "mountain", count: mm.count, bar: mm.bar, unit: "weight", operational: true, hint: `clear ${Math.round(mm.bar).toLocaleString("en-US")} lb` });
+
+    // Super Load — structural: a genuine superload by the real thresholds. Sits at
+    // x0 until you run one — a career milestone, not an everyday feat.
+    const supers = dl.filter(isSuperload).length;
+    out.push({ key: "super-load", name: "Super Load", icon: "crown", count: supers, bar: null, unit: null, operational: true, hint: "16'W · 16'H · 150'L · 200k lb" });
+  }
+
   return out;
 };
 
@@ -128,7 +172,10 @@ export const computePatches = (loads: Load[], _fuel: FuelEntry[]): Patch[] => {
 export const PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
   { name: "Big Ticket", icon: "cash", how: "Land a top-tier load gross — the bar rises as you book bigger." },
   { name: "Long Hauler", icon: "road", how: "A haul among your longest — 1,000+ mi and climbing." },
-  { name: "Mountain Mover", icon: "mountain", how: "One of your heaviest loads — oversize and over-weight." },
+  { name: "Wide Load", icon: "move-horizontal", how: "An over-12' load — climbs toward your widest. (Open-deck operations.)" },
+  { name: "Long Load", icon: "ruler", how: "An 80'+ load by cargo length — the long stuff. (Open-deck operations.)" },
+  { name: "Mountain Mover", icon: "mountain", how: "One of your heaviest loads. (Open-deck operations.)" },
+  { name: "Super Load", icon: "crown", how: "A true superload — 16' wide/high, 150' long, or 200k lb. A career milestone." },
   { name: "Rainmaker", icon: "coins", how: "A top-tier net month." },
   { name: "Iron Week", icon: "barbell", how: "One of your busiest pay-weeks by load count." },
   { name: "Clean Run", icon: "gauge", how: "A week with your tightest deadhead." },

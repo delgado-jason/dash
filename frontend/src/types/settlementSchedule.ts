@@ -11,4 +11,5 @@ export interface SettlementSchedule {
   per_diem_rate: number; // IRS special M&IE daily rate
   per_diem_deduct_pct: number; // deductible share (0.80 for DOT drivers)
   hometime_threshold_days: number; // flag the driver page past this many days out
+  operation: string; // equipment/discipline — tailors which achievements apply
 }

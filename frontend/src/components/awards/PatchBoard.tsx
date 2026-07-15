@@ -3,6 +3,7 @@ import { awardIcon } from "./awardIcons";
 
 const PatchEmblem = ({ p }: { p: Patch }) => {
   const earned = p.count > 0;
+  const blue = !!p.operational; // operation-specific feats read blue vs amber
   const Icon = awardIcon(p.icon);
   return (
     <div style={{ width: 96, textAlign: "center", position: "relative", opacity: earned ? 1 : 0.5 }}>
@@ -15,11 +16,11 @@ const PatchEmblem = ({ p }: { p: Patch }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: earned ? "#2a1e0e" : "#141a26",
-          border: `3px solid ${earned ? "#e8940a" : "#2a3550"}`,
+          background: earned ? (blue ? "#0f1d33" : "#2a1e0e") : "#141a26",
+          border: `3px solid ${earned ? (blue ? "#3b82f6" : "#e8940a") : "#2a3550"}`,
         }}
       >
-        <Icon size={28} style={{ color: earned ? "#f5b03a" : "#5b6b82" }} />
+        <Icon size={28} style={{ color: earned ? (blue ? "#60a5fa" : "#f5b03a") : "#5b6b82" }} />
       </div>
       {earned && (
         <span
@@ -28,8 +29,8 @@ const PatchEmblem = ({ p }: { p: Patch }) => {
             position: "absolute",
             top: -3,
             right: 12,
-            background: "#e8940a",
-            color: "#120f08",
+            background: blue ? "#3b82f6" : "#e8940a",
+            color: blue ? "#08111f" : "#120f08",
             borderRadius: 99,
             fontSize: 11,
             padding: "0 6px",

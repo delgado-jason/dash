@@ -20,6 +20,9 @@ import {
   Flag,
   Droplet,
   Weight,
+  MoveHorizontal,
+  Ruler,
+  Crown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,6 +51,9 @@ const MAP: Record<string, LucideIcon> = {
   flag: Flag,
   droplet: Droplet,
   weight: Weight,
+  "move-horizontal": MoveHorizontal,
+  ruler: Ruler,
+  crown: Crown,
 };
 
 export const awardIcon = (name: string): LucideIcon => MAP[name] ?? Trophy;
