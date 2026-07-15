@@ -44,6 +44,7 @@ const nav: Entry[] = [
   },
   { to: "/compliance", label: "Compliance" },
   { to: "/expenses", label: "Expenses" },
+  { to: "/per-diem", label: "Per Diem" },
   { to: "/recap", label: "Recap" },
   { to: "/trophy-room", label: "Trophy Room" },
   { to: "/guide", label: "Guide" },

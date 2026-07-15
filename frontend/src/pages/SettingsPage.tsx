@@ -53,6 +53,8 @@ const SettingsPage = () => {
   const [pcts, setPcts] = useState<Pcts | null>(null);
   const [carrier, setCarrier] = useState("");
   const [freeHours, setFreeHours] = useState(3);
+  const [perDiemRate, setPerDiemRate] = useState(69);
+  const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -68,6 +70,8 @@ const SettingsPage = () => {
         });
         setCarrier(s.carrier_name ?? "");
         setFreeHours(s.detention_free_hours);
+        setPerDiemRate(s.per_diem_rate);
+        setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
       })
       .catch(() => setErr("Couldn't load your settlement schedule."));
   }, []);
@@ -90,6 +94,8 @@ const SettingsPage = () => {
         accessorial_pct: pcts.accessorial / 100,
         carrier_name: carrier.trim() || null,
         detention_free_hours: freeHours,
+        per_diem_rate: perDiemRate,
+        per_diem_deduct_pct: perDiemPct / 100,
       });
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
@@ -234,6 +240,57 @@ const SettingsPage = () => {
             Saved with the schedule above.
           </span>
         </label>
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Per diem</h2>
+        <p className="text-sm text-muted-text mt-1">
+          The IRS special M&amp;IE daily rate and your deductible share. The rate
+          updates each October; DOT hours-of-service drivers deduct 80%. Drives the
+          Per Diem tracker's totals.
+        </p>
+        <div className="flex flex-wrap gap-6 mt-4">
+          <label className="block">
+            <span className="text-sm text-light">Daily rate</span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-muted-text">$</span>
+              <input
+                type="number"
+                min={0}
+                max={500}
+                step={1}
+                value={Number.isFinite(perDiemRate) ? perDiemRate : ""}
+                onChange={(e) => {
+                  setMsg(null);
+                  setPerDiemRate(Number(e.target.value));
+                }}
+                className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+              />
+              <span className="text-muted-text">/ day</span>
+            </div>
+          </label>
+          <label className="block">
+            <span className="text-sm text-light">Deductible</span>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={5}
+                value={Number.isFinite(perDiemPct) ? perDiemPct : ""}
+                onChange={(e) => {
+                  setMsg(null);
+                  setPerDiemPct(Number(e.target.value));
+                }}
+                className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+              />
+              <span className="text-muted-text">%</span>
+            </div>
+          </label>
+        </div>
+        <span className="text-xs text-muted-text mt-3 block">
+          Saved with the schedule above.
+        </span>
       </Panel>
 
       <AccessorialRatesCard />

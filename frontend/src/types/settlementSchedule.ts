@@ -8,4 +8,6 @@ export interface SettlementSchedule {
   accessorial_pct: number;
   carrier_name: string | null; // e.g. "Landstar"; null on own authority
   detention_free_hours: number; // free time per stop before detention accrues
+  per_diem_rate: number; // IRS special M&IE daily rate
+  per_diem_deduct_pct: number; // deductible share (0.80 for DOT drivers)
 }
