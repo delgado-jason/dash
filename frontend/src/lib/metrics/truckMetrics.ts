@@ -8,10 +8,17 @@ import type { MaintenanceService } from "@/types/maintenance";
 import type { Truck } from "@/types/truck";
 import { loadRevenue } from "./rateTargets";
 import { fuelStats } from "./fuelEconomy";
+import { underLoadDaySet } from "./underLoad";
 
 export interface TruckMetrics {
-  utilization: number | null; // active weeks ÷ weeks in service (0..1)
-  activeWeeks: number;
+  utilization: number | null; // under-load days ÷ window days (0..1)
+  // Breakdown of the window days so a low utilization is interpretable.
+  // underLoad + home + idle = windowDays. Home days count against utilization —
+  // this just explains why it wasn't earning (chosen time off vs. no freight).
+  windowDays: number; // days since the later of in-service and first logged load
+  underLoadDays: number; // days under a load (pickup→delivery spans, deduped)
+  homeDays: number; // days marked home and not under load
+  idleDays: number; // days with no load and no home mark — the true idle
   avgMpg: number | null;
   bestTank: number | null;
   fuelPerMile: number | null;
@@ -34,13 +41,6 @@ const loadMiles = (l: Load): number => {
   return odo > 0 ? odo : Number(l.loaded_miles || 0) + Number(l.deadhead_miles || 0);
 };
 
-const weekKey = (iso: string): string => {
-  const d = new Date(iso.slice(0, 10) + "T00:00:00Z");
-  const monday = new Date(d);
-  monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return monday.toISOString().slice(0, 10);
-};
-
 // Maintenance services attributable to the tractor (no per-truck link exists yet,
 // so tractor + both count; fine for a single truck).
 const truckServiceSpend = (services: MaintenanceService[]): number =>
@@ -54,6 +54,7 @@ export const computeTruckMetrics = (
   truckFuel: FuelEntry[],
   services: MaintenanceService[],
   now: Date,
+  homeDays: string[] = [], // "YYYY-MM-DD" home marks, for the week breakdown
 ): TruckMetrics => {
   // Earned freight — delivered AND paid — matches the truck's net revenue elsewhere.
   const earned = truckLoads.filter(
@@ -66,20 +67,53 @@ export const computeTruckMetrics = (
   const fuelSpend = fs.totalSpend;
   const maintSpend = truckServiceSpend(services);
 
-  // Utilization — share of the weeks it's been in service that it actually ran.
+  // Utilization — days the truck was under a load ÷ days in the window. The window
+  // starts at the LATER of the in-service date and the first logged load, so weeks
+  // before you were running loads don't read as "idle" — they're unmeasured, not
+  // wasted. Days basis (not weeks) so intensity shows: a light week and a heavy one
+  // no longer look identical.
   const inService = truck.in_service_date
     ? new Date(truck.in_service_date.slice(0, 10) + "T00:00:00Z")
     : null;
-  const weeksInService = inService
-    ? Math.max(1, Math.round((now.getTime() - inService.getTime()) / (7 * DAY)))
+  const nowDay = now.toISOString().slice(0, 10);
+  const inServiceDay = truck.in_service_date
+    ? truck.in_service_date.slice(0, 10)
     : null;
-  const activeWeeks = new Set(
-    earned.filter((l) => l.delivery_date).map((l) => weekKey(l.delivery_date!)),
-  ).size;
+  const firstPickup = truckLoads
+    .filter((l) => l.load_status === "delivered" && l.pickup_date)
+    .map((l) => l.pickup_date.slice(0, 10))
+    .sort()[0];
+  const windowStart =
+    [inServiceDay, firstPickup].filter((d): d is string => !!d).sort().at(-1) ??
+    null;
+  const windowDays = windowStart
+    ? Math.max(
+        1,
+        Math.round(
+          (Date.parse(`${nowDay}T00:00:00Z`) -
+            Date.parse(`${windowStart}T00:00:00Z`)) /
+            DAY,
+        ),
+      )
+    : 0;
+
+  const underLoadSet = underLoadDaySet(truckLoads, windowStart, nowDay);
+  const underLoadDays = underLoadSet.size;
   const utilization =
-    weeksInService && weeksInService > 0
-      ? Math.min(1, activeWeeks / weeksInService)
-      : null;
+    windowDays > 0 ? Math.min(1, underLoadDays / windowDays) : null;
+
+  // Split the non-working days: home (marked home, not under load) vs truly idle.
+  // Home days still count against utilization (the truck's costs accrue) — this
+  // only labels why it wasn't earning.
+  const homeDayCount = new Set(
+    homeDays.filter(
+      (d) =>
+        (!windowStart || d >= windowStart) &&
+        d <= nowDay &&
+        !underLoadSet.has(d),
+    ),
+  ).size;
+  const idleDays = Math.max(0, windowDays - underLoadDays - homeDayCount);
 
   const monthsInService = inService
     ? Math.max(1, (now.getTime() - inService.getTime()) / (30.44 * DAY))
@@ -87,7 +121,10 @@ export const computeTruckMetrics = (
 
   return {
     utilization,
-    activeWeeks,
+    windowDays,
+    underLoadDays,
+    homeDays: homeDayCount,
+    idleDays,
     avgMpg: fs.avgMpg,
     bestTank: fs.bestMpg,
     fuelPerMile: fs.costPerMile,

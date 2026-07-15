@@ -537,20 +537,54 @@ const GuidePage = () => (
       </h2>
 
       <Metric
-        title="Utilization — how often the truck earns"
-        answers="The share of the weeks it's been in service that it actually ran a load. Idle weeks pull it down."
+        title="Utilization — how hard the truck runs"
+        answers="The share of days the truck was under a load — pickup to delivery — since your first logged load. Idle days pull it down."
       >
-        <Formula>active weeks ÷ weeks in service</Formula>
+        <Formula>days under load ÷ days in window</Formula>
         <div className="mt-3">
-          <UtilBar active={23} total={26} />
+          <UtilBar active={138} total={190} />
         </div>
         <Eg>
-          In service 26 weeks, ran a load in 23 →{" "}
-          <span className="text-light">88%</span>.
+          Under a load 138 of 190 days →{" "}
+          <span className="text-light">73%</span>. The day breakdown splits the
+          rest: <span style={{ color: "#60a5fa" }}>home</span> days (you marked
+          home and ran nothing) vs <span style={{ color: "#f87171" }}>idle</span>{" "}
+          days (no load, not home) — so a low number tells you whether it was time
+          off or missing freight. Home days still count against utilization; it's
+          your truck's real opportunity cost. The window starts at your first logged
+          load, so weeks before you were entering loads don't read as idle.
         </Eg>
         <Why>
-          Across a fleet, this is the number that exposes a truck sitting idle
-          while the others run.
+          Across a fleet, this is the number that exposes a truck sitting idle while
+          the others run.{" "}
+          <span className="text-light">Benchmark:</span> best-in-class fleets run{" "}
+          <span className="text-light">80–85%</span>; under{" "}
+          <span className="text-light">70%</span> signals real idle time or weak
+          load planning. Measuring days-under-load (not hours) keeps it close to the
+          industry's revenue-hours ÷ available-hours, so the benchmark is a fair
+          read. It also powers the <span className="text-light">Road Warrior</span>{" "}
+          medal (70 · 80 · 85%).
+          <span className="block mt-1 text-xs text-muted-text">
+            Sources:{" "}
+            <a
+              href="https://fleetrabbit.com/industry/transportation-and-logistics/improving-truck-fleet-utilization-above-85-percent-across-lanes-and-terminals-2026"
+              target="_blank"
+              rel="noreferrer"
+              className="text-status-info-text hover:underline"
+            >
+              FleetRabbit (2026)
+            </a>
+            ,{" "}
+            <a
+              href="https://www.atbs.com/post/how-have-owner-operators-performed-so-far"
+              target="_blank"
+              rel="noreferrer"
+              className="text-status-info-text hover:underline"
+            >
+              ATBS
+            </a>
+            .
+          </span>
         </Why>
       </Metric>
 

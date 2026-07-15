@@ -14,18 +14,20 @@ const L = (o: Record<string, unknown>): Load =>
 
 describe("computeTruckMedals", () => {
   it("tiers Mile Club on the odometer and adds Fuel Miser / Debt Crusher when present", () => {
-    const m = computeTruckMedals({ odometer: 582_450, avgMpg: 7.1, deliveredCount: 47, loanPaidPct: 0.36 });
+    const m = computeTruckMedals({ odometer: 582_450, avgMpg: 7.1, deliveredCount: 47, loanPaidPct: 0.36, utilization: 0.82 });
     const byKey = Object.fromEntries(m.map((x) => [x.key, x]));
     expect(byKey["mile-club"].tier).toBe(3); // ≥500k
     expect(byKey["fuel-miser"].tier).toBe(2); // ≥7.0
     expect(byKey["workhorse"].tier).toBe(0); // 47 < 100
     expect(byKey["debt-crusher"].tier).toBe(1); // ≥25%
+    expect(byKey["road-warrior"].tier).toBe(2); // ≥80%
   });
 
-  it("omits Fuel Miser / Debt Crusher when there's no data", () => {
-    const keys = computeTruckMedals({ odometer: 0, avgMpg: null, deliveredCount: 0, loanPaidPct: null }).map((m) => m.key);
+  it("omits Fuel Miser / Debt Crusher / Road Warrior when there's no data", () => {
+    const keys = computeTruckMedals({ odometer: 0, avgMpg: null, deliveredCount: 0, loanPaidPct: null, utilization: null }).map((m) => m.key);
     expect(keys).not.toContain("fuel-miser");
     expect(keys).not.toContain("debt-crusher");
+    expect(keys).not.toContain("road-warrior");
   });
 });
 

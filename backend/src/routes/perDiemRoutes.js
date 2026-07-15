@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getPerDiemDays,
   getLastHomeDay,
+  getHomeDays,
   upsertPerDiemDay,
   deletePerDiemDay,
 } from "../services/perDiemServices.js";
@@ -16,6 +17,20 @@ router.get("/last-home", async (req, res) => {
   try {
     const result = await getLastHomeDay(req.user.user_id);
     return res.status(200).json(result);
+  } catch (err) {
+    if (err.type === "validation")
+      return res.status(err.statusCode).json({ error: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err.message });
+  }
+});
+
+// ---- GET all home days (for the truck utilization week breakdown) ----
+router.get("/home-days", async (req, res) => {
+  try {
+    const days = await getHomeDays(req.user.user_id);
+    return res.status(200).json({ days });
   } catch (err) {
     if (err.type === "validation")
       return res.status(err.statusCode).json({ error: err.message });

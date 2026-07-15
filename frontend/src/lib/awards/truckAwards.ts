@@ -5,6 +5,7 @@ import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
 import { mpgWindows } from "@/lib/metrics/fuelEconomy";
+import { underLoadRuns } from "@/lib/metrics/underLoad";
 import { computeStack } from "./adaptiveBar";
 import { tiered, type Medal } from "./medals";
 import type { Patch } from "./patches";
@@ -59,6 +60,10 @@ export const computeTruckPatches = (truckLoads: Load[], truckFuel: FuelEntry[]):
   const th = computeStack(costPerMi, { n: 5, floor: 0.6, lowerIsBetter: true });
   out.push({ key: "thrifty", name: "Thrifty", icon: "coins", count: th.count, bar: th.bar, unit: "money", hint: `tank under $${th.bar.toFixed(2)}/mi` });
 
+  // Relentless — a run among your longest of consecutive days under a load.
+  const rel = computeStack(underLoadRuns(truckLoads), { n: 5, floor: 7 });
+  out.push({ key: "relentless", name: "Relentless", icon: "flame", count: rel.count, bar: rel.bar, unit: null, hint: `${Math.round(rel.bar)}-day run under load` });
+
   return out;
 };
 
@@ -67,6 +72,7 @@ export interface TruckMedalData {
   avgMpg: number | null;
   deliveredCount: number;
   loanPaidPct: number | null; // truck payoff
+  utilization: number | null; // days-based (0..1); drives Road Warrior
 }
 
 export const computeTruckMedals = (d: TruckMedalData): Medal[] => {
@@ -78,6 +84,8 @@ export const computeTruckMedals = (d: TruckMedalData): Medal[] => {
     medals.push(tiered("fuel-miser", "Fuel Miser", "droplet", [6.5, 7, 7.5], d.avgMpg, (n) => `${n.toFixed(1)} mpg`));
   if (d.loanPaidPct != null)
     medals.push(tiered("debt-crusher", "Debt Crusher", "lock-open", [0.25, 0.5, 0.75], d.loanPaidPct, (n) => `${Math.round(n * 100)}%`));
+  if (d.utilization != null)
+    medals.push(tiered("road-warrior", "Road Warrior", "gauge", [0.7, 0.8, 0.85], d.utilization, (n) => `${Math.round(n * 100)}%`));
   return medals;
 };
 
@@ -113,6 +121,7 @@ export const TRUCK_PATCH_GUIDE: { name: string; icon: string; how: string }[] = 
   { name: "Iron Horse", icon: "road", how: "A workhorse month — one of your highest for miles driven." },
   { name: "Marathon", icon: "flag", how: "One of your longest single hauls." },
   { name: "Thrifty", icon: "coins", how: "A tank under your best fuel cost per mile." },
+  { name: "Relentless", icon: "flame", how: "A run among your longest of consecutive days under a load." },
 ];
 
 export const TRUCK_MEDAL_GUIDE: { name: string; icon: string; tiers: string }[] = [
@@ -120,4 +129,5 @@ export const TRUCK_MEDAL_GUIDE: { name: string; icon: string; tiers: string }[] 
   { name: "Fuel Miser", icon: "droplet", tiers: "6.5 · 7.0 · 7.5 avg mpg" },
   { name: "Workhorse", icon: "stack-2", tiers: "100 · 250 · 500 loads hauled" },
   { name: "Debt Crusher", icon: "lock-open", tiers: "25% · 50% · 75% paid off" },
+  { name: "Road Warrior", icon: "gauge", tiers: "70% · 80% · 85% utilization" },
 ];
