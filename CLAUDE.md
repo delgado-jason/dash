@@ -56,6 +56,7 @@ These are stable lessons that apply regardless of the specific project. Concrete
 - **Branch-per-issue:** fresh branch per issue → PR → squash-merge → delete branch → repeat. Never reuse a long-lived branch; never commit straight to main.
 - **Semver by additive-vs-corrective**, NOT by visibility: a new capability is a `feat` (minor) even if invisible; a correction is `fix` (patch); a broken contract is major.
 - **Always run the strict production build locally before pushing.** Dev servers are lenient; the production/type build is strict and matches CI. Catch errors locally, not in a failed deploy.
+- **RLS on by default (Supabase, added 2026-07-14).** Every `public` table must have Row-Level Security enabled. The backend connects as the `postgres` owner role, which BYPASSES RLS, so the app is unaffected — RLS just walls tables off from Supabase's auto-exposed PostgREST API on the public anon/authenticated keys. **The enforcement is a convention: every migration that creates a `public` table MUST include `ALTER TABLE … ENABLE ROW LEVEL SECURITY`.** Migration 042 also installs a best-effort event trigger (`rls_on_create_table`) that auto-enables RLS on new tables — but creating it needs superuser, which **dev has and prod does not**, so the trigger is live on dev only and is gracefully skipped on prod. Don't rely on the trigger for prod; add the explicit `ENABLE ROW LEVEL SECURITY` every time. Don't add per-user policies unless the app ever talks to Postgres as a non-`postgres` role.
 
 **Code correctness (recurring traps to watch for):**
 
