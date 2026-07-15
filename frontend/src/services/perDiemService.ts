@@ -17,3 +17,9 @@ export const setPerDiemDay = async (
 export const clearPerDiemDay = async (day: string): Promise<void> => {
   await api.delete(`/per-diem/${day}`);
 };
+
+// Most recent home day on/before today, or null when nothing's marked.
+export const getLastHomeDay = async (): Promise<string | null> => {
+  const res = await api.get("/per-diem/last-home");
+  return res.data.last_home ?? null;
+};

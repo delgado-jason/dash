@@ -2,12 +2,28 @@ import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getPerDiemDays,
+  getLastHomeDay,
   upsertPerDiemDay,
   deletePerDiemDay,
 } from "../services/perDiemServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
+
+// ---- GET the last home day (for the hometime metric) ----
+// Declared before "/" so the literal path matches ahead of the year list.
+router.get("/last-home", async (req, res) => {
+  try {
+    const result = await getLastHomeDay(req.user.user_id);
+    return res.status(200).json(result);
+  } catch (err) {
+    if (err.type === "validation")
+      return res.status(err.statusCode).json({ error: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err.message });
+  }
+});
 
 // ---- GET a year's marked days ----
 router.get("/", async (req, res) => {

@@ -24,6 +24,20 @@ export async function getPerDiemDays(user_id, year) {
   return result.rows;
 }
 
+// ---- most recent "home" day on or before today ---- (drives the hometime
+// metric — "days since you were last home"). Future home marks are excluded so a
+// planned home day doesn't reset the count early. null when nothing's marked.
+export async function getLastHomeDay(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT to_char(max(day), 'YYYY-MM-DD') AS last_home
+       FROM per_diem_days
+      WHERE user_id = $1 AND status = 'home' AND day <= CURRENT_DATE`,
+    [user_id],
+  );
+  return { last_home: result.rows[0]?.last_home ?? null };
+}
+
 // ---- UPSERT a day's status ----
 export async function upsertPerDiemDay(user_id, day, status) {
   if (!user_id) throw new ValidationError("Missing user_id");

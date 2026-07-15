@@ -55,6 +55,7 @@ const SettingsPage = () => {
   const [freeHours, setFreeHours] = useState(3);
   const [perDiemRate, setPerDiemRate] = useState(69);
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
+  const [hometimeThresh, setHometimeThresh] = useState(21);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -72,6 +73,7 @@ const SettingsPage = () => {
         setFreeHours(s.detention_free_hours);
         setPerDiemRate(s.per_diem_rate);
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
+        setHometimeThresh(s.hometime_threshold_days);
       })
       .catch(() => setErr("Couldn't load your settlement schedule."));
   }, []);
@@ -96,6 +98,7 @@ const SettingsPage = () => {
         detention_free_hours: freeHours,
         per_diem_rate: perDiemRate,
         per_diem_deduct_pct: perDiemPct / 100,
+        hometime_threshold_days: hometimeThresh,
       });
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
@@ -291,6 +294,36 @@ const SettingsPage = () => {
         <span className="text-xs text-muted-text mt-3 block">
           Saved with the schedule above.
         </span>
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Hometime</h2>
+        <p className="text-sm text-muted-text mt-1">
+          How many days out before the driver page flags your hometime. "Days
+          out" counts from your most recent home day on the Per Diem calendar, so
+          mark home days there to keep it accurate.
+        </p>
+        <label className="block mt-4">
+          <span className="text-sm text-light">Flag after</span>
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              step={1}
+              value={Number.isFinite(hometimeThresh) ? hometimeThresh : ""}
+              onChange={(e) => {
+                setMsg(null);
+                setHometimeThresh(Math.round(Number(e.target.value)));
+              }}
+              className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+            />
+            <span className="text-muted-text">days out</span>
+          </div>
+          <span className="text-xs text-muted-text mt-1 block">
+            Saved with the schedule above.
+          </span>
+        </label>
       </Panel>
 
       <AccessorialRatesCard />

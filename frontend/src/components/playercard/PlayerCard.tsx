@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
-import { Truck } from "lucide-react";
+import { Truck, Maximize2, Weight, Home } from "lucide-react";
 import type { Grade, CareerRank, SeasonStats } from "@/lib/metrics/playerCard";
+import { STRIP_MIN_COUNT, type TypeMix } from "@/lib/metrics/loadMix";
+import type { Hometime } from "@/lib/metrics/hometime";
 import type { Medal } from "@/lib/awards/medals";
 import { fmtMiles } from "@/lib/metrics/mileClub";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
@@ -9,6 +11,7 @@ import { MedalBadge } from "@/components/awards/MedalBadge";
 
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const pct1 = (n: number) => `${(n * 100).toFixed(1)}%`;
+const pct0 = (n: number) => `${Math.round(n * 100)}%`;
 
 const GREEN = "#4ade80";
 const RED = "#f87171";
@@ -65,6 +68,98 @@ const Stat = ({
   </div>
 );
 
+// An equipment-mix identity strip (oversize / heavy haul). Oversize and heavy
+// haul are DIFFERENT disciplines, so each gets its own strip. The specialist
+// styling only lights when the underlying mix says so.
+const TypeStrip = ({
+  icon,
+  label,
+  mix,
+}: {
+  icon: ReactNode;
+  label: string;
+  mix: TypeMix;
+}) => {
+  const spec = mix.specialist;
+  return (
+    <div
+      className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px]"
+      style={
+        spec
+          ? { background: "#241a06", border: "1px solid #85500b" }
+          : { background: "#1a2130", border: "1px solid #2a3347" }
+      }
+    >
+      <span
+        className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wide"
+        style={{ color: spec ? "#f5b03a" : "#9fb0c9" }}
+      >
+        {icon}
+        {spec ? `${label} specialist` : label}
+      </span>
+      <span style={{ color: spec ? "#c7935a" : "#7d8ba3" }}>
+        {mix.count} {mix.count === 1 ? "load" : "loads"}
+        {mix.pct != null ? ` · ${pct0(mix.pct)}` : ""}
+      </span>
+    </div>
+  );
+};
+
+const shortDate = (key: string): string =>
+  new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+// Hometime status strip — reads the days since your last "home" mark and flags
+// when you've been out past your threshold. Four states, calm by default.
+const HometimeChip = ({ hometime }: { hometime: Hometime }) => {
+  const { state, daysOut, toTarget, lastHome } = hometime;
+  const S =
+    state === "over"
+      ? { bg: "#3a1a1a", border: "#a32d2d", fg: "#f87171", sub: "#c98a8a" }
+      : state === "home"
+        ? { bg: "#123020", border: "#1f6e4a", fg: "#4ade80", sub: "#8fb9a4" }
+        : { bg: "#1a2130", border: "#2a3347", fg: "#cdd8e8", sub: "#7d8ba3" };
+
+  const title =
+    state === "none"
+      ? "No hometime data yet"
+      : state === "home"
+        ? "Home"
+        : `Out ${daysOut} ${daysOut === 1 ? "day" : "days"}`;
+
+  const sub =
+    state === "none"
+      ? "Mark home days on the per-diem calendar"
+      : state === "home"
+        ? "you're home today"
+        : state === "over"
+          ? `past your ${hometime.threshold}-day target${lastHome ? ` · last home ${shortDate(lastHome)}` : ""}`
+          : `${toTarget} to your ${hometime.threshold}-day target`;
+
+  return (
+    <div
+      className="flex items-center gap-2.5 mt-4 px-3 py-2 rounded-lg"
+      style={{ background: S.bg, border: `1px solid ${S.border}` }}
+    >
+      <Home size={18} style={{ color: S.fg, flexShrink: 0 }} />
+      <div className="min-w-0">
+        <p
+          className="text-sm font-semibold uppercase tracking-wide"
+          style={{ color: S.fg }}
+        >
+          {title}
+        </p>
+        <p className="text-[10.5px]" style={{ color: S.sub }}>
+          {sub}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 export interface PlayerCardProps {
   name: string;
   business: string;
@@ -76,6 +171,9 @@ export interface PlayerCardProps {
   form: Grade | null;
   windowRpm: number | null;
   medals: Medal[]; // earned tiers only — worn by the name
+  oversize?: TypeMix; // oversize equipment mix; strip hidden when count is 0
+  heavyHaul?: TypeMix; // heavy-haul mix — a distinct discipline from oversize
+  hometime?: Hometime; // days-since-home status; strip hidden when not provided
 }
 
 export const PlayerCard = ({
@@ -89,6 +187,9 @@ export const PlayerCard = ({
   form,
   windowRpm,
   medals,
+  oversize,
+  heavyHaul,
+  hometime,
 }: PlayerCardProps) => {
   const stars = "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
 
@@ -113,6 +214,25 @@ export const PlayerCard = ({
               )}
             </div>
             <p className="text-xs text-muted-text mb-3 mt-1">{business}</p>
+            {((oversize && oversize.count >= STRIP_MIN_COUNT) ||
+              (heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT)) && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {oversize && oversize.count >= STRIP_MIN_COUNT && (
+                  <TypeStrip
+                    icon={<Maximize2 size={13} />}
+                    label="Oversize"
+                    mix={oversize}
+                  />
+                )}
+                {heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT && (
+                  <TypeStrip
+                    icon={<Weight size={13} />}
+                    label="Heavy haul"
+                    mix={heavyHaul}
+                  />
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
@@ -140,6 +260,8 @@ export const PlayerCard = ({
           </div>
         </div>
 
+        {hometime && <HometimeChip hometime={hometime} />}
+
         <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t relative" style={{ borderColor: "#2a3347" }}>
           <span className="font-condensed text-sm tracking-wide text-muted-text">SEASON · {season.label}</span>
           <span className="text-[11px] text-muted-text">Rate</span>
@@ -147,7 +269,12 @@ export const PlayerCard = ({
           <span className="text-[11px] text-muted-text">Op margin</span>
           <GradeChip grade={marginGrade} value={season.netMargin != null ? pct1(season.netMargin) : undefined} />
           <span className="flex-1" />
-          <span className="text-[11px] text-muted-text">Form</span>
+          <span
+            className="text-[11px] text-muted-text"
+            title="The weaker of your rate and margin grade"
+          >
+            Overall
+          </span>
           {form ? (
             <span className="font-comic px-2.5 py-0.5 rounded-full" style={{ background: GRADE_META[form].bg, color: GRADE_META[form].fg, letterSpacing: "2px", fontSize: 14 }}>
               {GRADE_META[form].label}

@@ -12,6 +12,10 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   per_diem_rate: s.per_diem_rate != null ? Number(s.per_diem_rate) : 69,
   per_diem_deduct_pct:
     s.per_diem_deduct_pct != null ? Number(s.per_diem_deduct_pct) : 0.8,
+  hometime_threshold_days:
+    s.hometime_threshold_days != null
+      ? Number(s.hometime_threshold_days)
+      : 21,
 });
 
 export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {
