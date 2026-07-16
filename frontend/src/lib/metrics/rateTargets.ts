@@ -81,6 +81,7 @@ export interface CostBasis {
   windowRpm: number | null; // net revenue ÷ loaded miles over the window
   costPerTotalMile: number | null; // true cost ÷ TOTAL miles — cost per mile driven
   grossPerTotalMile: number | null; // full gross ÷ TOTAL miles — your booked rate/mile
+  payTake: number | null; // net ÷ gross — your blended keep after the carrier's cut
   months: number; // months with a P&L that were actually included
 }
 
@@ -126,6 +127,7 @@ export const getCostBasis = (
     windowRpm: loaded > 0 ? revenue / loaded : null,
     costPerTotalMile: total > 0 ? cost / total : null,
     grossPerTotalMile: total > 0 ? grossRev / total : null,
+    payTake: grossRev > 0 ? revenue / grossRev : null,
     months: n,
   };
 };

@@ -260,6 +260,28 @@ const GuidePage = () => (
       </Metric>
 
       <Metric
+        title="Load Scorer — Take It or Leave It"
+        answers="Punch a rate, loaded miles, and deadhead into the Score a Load page and get an instant verdict on whether the load's worth taking."
+      >
+        <Formula>all-in $/mi = rate ÷ (loaded + deadhead) · vs your break-even per driven mile</Formula>
+        <Eg>
+          $2,900 for 460 loaded + 80 deadhead = 540 miles you drive →{" "}
+          <span className="text-light">$5.37/mi</span>. The deadhead is baked in on
+          purpose — it's the empty cost agents leave out.
+        </Eg>
+        <Why>
+          The break-even here is per <span className="text-light">driven</span> mile
+          (your cost/mile ÷ your Landstar take), so it's apples-to-apples with the
+          all-in rate — a lower number than the dashboard's per-loaded-mile ladder,
+          by design. The stamp maps to your tiers:{" "}
+          <span style={{ color: "#f87171" }}>PASS</span> below break-even,{" "}
+          <span style={{ color: "#e8940a" }}>MEH</span> under +35%,{" "}
+          <span style={{ color: "#4ade80" }}>TAKE IT</span> at +35%,{" "}
+          <span style={{ color: "#fbbf24" }}>STEAL</span> at +60%.
+        </Why>
+      </Metric>
+
+      <Metric
         title="Weekly & daily targets"
         answers="The gross dollars to book each week and day."
       >
