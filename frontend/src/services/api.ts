@@ -24,17 +24,28 @@ api.interceptors.request.use(
   },
 );
 
-// Handle global response errors (optional but recommended)
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Sliding session: if the backend handed back a renewed token, keep it so the
+    // next request rides the extended session and the user is never kicked mid-work.
+    const refreshed = response.headers["x-refreshed-token"];
+    if (refreshed) {
+      localStorage.setItem("token", refreshed);
+    }
+    return response;
+  },
   (error) => {
-    // Example: auto-handle unauthorized access
+    // Bounce to login only when a real session actually expired — i.e. we HAD a
+    // token. A failed login/signup also 401s but shouldn't trigger the redirect.
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user_id");
-
-      // Optional: redirect to login
-      window.location.href = "/login";
+      const hadToken = localStorage.getItem("token");
+      const url = error.config?.url || "";
+      const isAuthAttempt = url.includes("/auth/login") || url.includes("/auth/signup");
+      if (hadToken && !isAuthAttempt) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user_id");
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(error);
