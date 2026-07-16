@@ -12,10 +12,18 @@ router.post("/signup", async (req, res) => {
 
     const user = await createUser(email, password);
 
-    // Create JWT
-    const accessToken = signToken({ user_id: user.user_id });
+    // A fresh signup is an account owner/admin (account = self).
+    const accessToken = signToken({
+      user_id: user.user_id,
+      account_id: user.user_id,
+      role: "admin",
+    });
 
-    res.status(201).json({ message: "User created", user, token: accessToken });
+    res.status(201).json({
+      message: "User created",
+      user: { ...user, role: "admin", display_name: null },
+      token: accessToken,
+    });
   } catch (err) {
     if (err.message === "Missing fields") {
       return res.status(400).json({ error: err.message });
@@ -39,12 +47,22 @@ router.post("/login", async (req, res) => {
 
     const user = await validateUser(email, password);
 
-    // Create JWT
-    const accessToken = signToken({ user_id: user.user_id });
+    // Data scope resolves to the account owner; a dispatcher rides their owner's id.
+    const account_id = user.parent_user_id ?? user.user_id;
+    const accessToken = signToken({
+      user_id: user.user_id,
+      account_id,
+      role: user.role,
+    });
 
     res.status(200).json({
       message: "User logged in successfully",
-      user,
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        role: user.role,
+        display_name: user.display_name,
+      },
       token: accessToken,
     });
   } catch (err) {
