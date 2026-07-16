@@ -47,7 +47,7 @@ export async function validateUser(email, password) {
   // fetch user row
   const result = await db.query(
     `
-    SELECT user_id, email, password_hash
+    SELECT user_id, email, password_hash, role, parent_user_id, display_name
     FROM users
     WHERE email = $1
     `,
@@ -68,5 +68,46 @@ export async function validateUser(email, password) {
   }
 
   // return a SAFE user object (no password_hash)
-  return { user_id: user.user_id, email: user.email };
+  return {
+    user_id: user.user_id,
+    email: user.email,
+    role: user.role,
+    parent_user_id: user.parent_user_id,
+    display_name: user.display_name,
+  };
+}
+
+// ---- CREATE A DISPATCHER under an owner's account ----
+// role + parent are forced by the caller (the admin's account) — never trusted
+// from the client — so a dispatcher can't be created outside its account.
+export async function createDispatcher(accountId, { email, password, display_name }) {
+  if (!accountId) throw new Error("Missing account");
+  if (!email || !password) throw new Error("Missing fields");
+  if (!email.includes("@")) throw new Error("Invalid email");
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  try {
+    const result = await db.query(
+      `INSERT INTO users (email, password_hash, role, parent_user_id, display_name)
+       VALUES ($1, $2, 'dispatcher', $3, $4)
+       RETURNING user_id, email, role, display_name, created_at`,
+      [email, passwordHash, accountId, display_name ?? null],
+    );
+    return result.rows[0];
+  } catch (err) {
+    if (err.code === "23505") throw new Error("Email already exists");
+    throw err;
+  }
+}
+
+// ---- LIST an account's team ---- (owner + its dispatchers; safe fields only)
+export async function listAccountUsers(accountId) {
+  const result = await db.query(
+    `SELECT user_id, email, role, display_name, created_at
+       FROM users
+      WHERE user_id = $1 OR parent_user_id = $1
+      ORDER BY (user_id = $1) DESC, created_at`,
+    [accountId],
+  );
+  return result.rows;
 }

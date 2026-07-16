@@ -4,6 +4,7 @@ import {
   updateSettlementSchedule,
 } from "@/services/settlementScheduleService";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
+import { TeamCard } from "@/components/settings/TeamCard";
 import { Panel } from "@/components/ui/Panel";
 
 const money = (n: number) =>
@@ -124,6 +125,8 @@ const SettingsPage = () => {
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <h1 className="text-3xl font-condensed">Settings</h1>
+
+      {localStorage.getItem("role") === "admin" && <TeamCard />}
 
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Settlement schedule</h2>

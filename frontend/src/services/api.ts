@@ -44,6 +44,8 @@ api.interceptors.response.use(
       if (hadToken && !isAuthAttempt) {
         localStorage.removeItem("token");
         localStorage.removeItem("user_id");
+        localStorage.removeItem("role");
+        localStorage.removeItem("display_name");
         window.location.href = "/login";
       }
     }
