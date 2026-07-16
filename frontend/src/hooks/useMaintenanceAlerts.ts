@@ -7,16 +7,19 @@ import type {
   MaintenanceUnit,
 } from "@/types/maintenance";
 import type { FuelEntry } from "@/types/fuelEntry";
+import type { Trip } from "@/types/trip";
 import {
   getMaintenanceItems,
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { getFuelEntries } from "@/services/fuelService";
+import { getTrips } from "@/services/tripsService";
 import {
   maintenanceAlerts,
   currentTractorMiles,
   recentMilesPerMonth,
   maxOdometer,
+  maxTripOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 
@@ -26,6 +29,7 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -33,12 +37,14 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
       getMaintenanceItems(),
       getMaintenanceServices(),
       getFuelEntries(),
+      getTrips(),
     ])
-      .then(([its, svcs, fuel]) => {
+      .then(([its, svcs, fuel, trps]) => {
         if (!active) return;
         setItems(its);
         setServices(svcs);
         setFuelEntries(fuel);
+        setTrips(trps);
       })
       .catch(() => {});
     return () => {
@@ -65,9 +71,10 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
         currentTractorMiles(loads),
         svcOdo("tractor"),
         maxFuelOdometer(fuelEntries),
+        maxTripOdometer(trips),
       ),
       trailer: maxOdometer(svcOdo("trailer")),
     };
     return maintenanceAlerts(items, currentMiles, now, recentMilesPerMonth(loads, now));
-  }, [items, services, fuelEntries, loads]);
+  }, [items, services, fuelEntries, trips, loads]);
 };

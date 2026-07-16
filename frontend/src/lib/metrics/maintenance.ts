@@ -105,6 +105,19 @@ export const maxOdometer = (
   return max;
 };
 
+// Highest odometer recorded on trips (optionally scoped to one truck). A trip
+// carries the tractor's odometer, so a repositioning or home-time move counts
+// toward its latest reading just like a load does.
+export const maxTripOdometer = (
+  trips: { truck_id?: string | null; odometer_end?: number | null }[],
+  truckId?: string,
+): number | null =>
+  maxOdometer(
+    ...trips
+      .filter((t) => (truckId ? t.truck_id === truckId : true))
+      .map((t) => t.odometer_end ?? null),
+  );
+
 // Current tractor odometer = the highest odometer reading across loads.
 export const currentTractorMiles = (loads: Load[]): number | null => {
   let max: number | null = null;

@@ -5,6 +5,13 @@ import {
 } from "../utils/validation/tripsValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
 
+// The account's single id from a query, or null unless there's exactly one — so a
+// new trip auto-attributes its truck/driver (mirrors the loads/maintenance rule).
+async function loneId(sql, user_id) {
+  const r = await db.query(sql, [user_id]);
+  return r.rowCount === 1 ? Object.values(r.rows[0])[0] : null;
+}
+
 // ---- GET TRIPS SERVICE ----
 export async function getTrips(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
@@ -19,7 +26,7 @@ export async function getTrips(user_id) {
             drivers.first_name AS driver_name,
             trip_type,
             trip_source,
-            trip_date,
+            to_char(trip_date, 'YYYY-MM-DD') AS trip_date,
             trips.status,
             trips.trip_purpose,
             odometer_start,
@@ -54,7 +61,7 @@ export async function getTrip(user_id, trip_id) {
             drivers.first_name AS driver_name,
             trip_type,
             trip_source,
-            trip_date,
+            to_char(trip_date, 'YYYY-MM-DD') AS trip_date,
             trips.status,
             trips.trip_purpose,
             odometer_start,
@@ -124,6 +131,23 @@ export async function createTrip(user_id, data) {
   const errors = validateTripCreate(data);
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
+
+  // Auto-assign the single truck + driver when the account has exactly one, so a
+  // trip is attributed like a load and its odometer counts toward the truck.
+  if (data.truck_id === undefined) {
+    const truckId = await loneId(
+      "SELECT truck_id FROM trucks WHERE user_id = $1 AND is_deleted = false",
+      user_id,
+    );
+    if (truckId) data.truck_id = truckId;
+  }
+  if (data.driver_id === undefined) {
+    const driverId = await loneId(
+      "SELECT driver_id FROM drivers WHERE user_id = $1 AND active = true",
+      user_id,
+    );
+    if (driverId) data.driver_id = driverId;
+  }
 
   // Add system fields
   const tripData = {
