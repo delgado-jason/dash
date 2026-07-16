@@ -27,6 +27,7 @@ import type { Obligation } from "@/types/obligation";
 import { isPayoffTracked, assetLoanStatus } from "@/lib/metrics/payoff";
 import { PayoffTracker } from "@/components/fleet/PayoffTracker";
 import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
+import { RollingNumber } from "@/components/comic/RollingNumber";
 import {
   computeTruckPatches,
   computeTruckMedals,
@@ -285,10 +286,13 @@ const TruckDetailPage = () => {
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Spec label="Unit #" value={truck.unit_number} />
-                <Spec
-                  label="Odometer · latest"
-                  value={`${odometer.toLocaleString("en-US")} mi`}
-                />
+                <div>
+                  <p className="text-xs text-muted-text">Odometer · latest</p>
+                  <p className="text-sm">
+                    <RollingNumber value={odometer} />{" "}
+                    <span className="text-muted-text">mi</span>
+                  </p>
+                </div>
                 <Spec label="VIN" value={truck.vin} />
                 <Spec
                   label="Plate"

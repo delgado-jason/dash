@@ -20,6 +20,7 @@ import { getAccessorialRates } from "@/services/accessorialRateService";
 
 import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
+import { RubberStamp, loadStamp } from "@/components/comic/RubberStamp";
 import { Kpi } from "@/components/Kpi";
 import { fmtTime, dwell } from "@/lib/stopTimes";
 import {
@@ -406,6 +407,7 @@ export const LoadDetailPage = () => {
             <h1 className="text-3xl font-condensed">{load.load_number}</h1>
             <StatusBadge value={load.load_status} />
             <StatusBadge value={load.payment_status} />
+            <RubberStamp value={loadStamp(load.load_status, load.payment_status)} />
           </div>
           <p className="text-muted-text text-sm mt-1">
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
