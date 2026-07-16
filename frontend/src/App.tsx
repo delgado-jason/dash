@@ -8,6 +8,7 @@ import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
 import TripsPage from "@/pages/TripsPage";
+import ScoreLoadPage from "@/pages/ScoreLoadPage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import MaintenancePage from "@/pages/MaintenancePage";
@@ -49,6 +50,7 @@ const App = () => {
           <Route path="/loads" element={<LoadsPage />} />
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/trips" element={<TripsPage />} />
+          <Route path="/score" element={<ScoreLoadPage />} />
           <Route
             path="/lanes"
             element={
