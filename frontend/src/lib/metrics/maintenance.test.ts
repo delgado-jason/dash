@@ -7,6 +7,7 @@ import {
   currentTractorMiles,
   recentMilesPerMonth,
   maxOdometer,
+  maxTripOdometer,
   maintenanceAlerts,
   fleetHealth,
 } from "./maintenance";
@@ -243,6 +244,25 @@ describe("maxOdometer", () => {
     expect(maxOdometer(314697, 568387, null)).toBe(568387); // fuel-style fresh read wins
     expect(maxOdometer(null, undefined)).toBeNull();
     expect(maxOdometer(560000)).toBe(560000);
+  });
+});
+
+describe("maxTripOdometer", () => {
+  const trips = [
+    { truck_id: "t1", odometer_end: 570100 },
+    { truck_id: "t1", odometer_end: 569000 },
+    { truck_id: "t2", odometer_end: 999999 },
+    { truck_id: "t1", odometer_end: null },
+  ];
+
+  it("takes the highest trip odometer, scoped to one truck when given", () => {
+    expect(maxTripOdometer(trips, "t1")).toBe(570100); // ignores t2's reading
+    expect(maxTripOdometer(trips)).toBe(999999); // unscoped = all trips
+  });
+
+  it("returns null when no trip carries a reading", () => {
+    expect(maxTripOdometer([{ truck_id: "t1", odometer_end: null }], "t1")).toBeNull();
+    expect(maxTripOdometer([])).toBeNull();
   });
 });
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTrips } from "@/hooks/useTrips";
 import TripForm from "@/components/TripForm";
+import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 
 // Components
@@ -65,7 +66,7 @@ const TripsPage = () => {
                 <TableCell className="text-foreground">
                   {trip.trip_number}
                 </TableCell>
-                <TableCell>{trip.trip_date}</TableCell>
+                <TableCell>{formatDate(trip.trip_date)}</TableCell>
                 <TableCell>{trip.trip_purpose}</TableCell>
                 <TableCell>{trip.odometer_start}</TableCell>
                 <TableCell>{trip.odometer_end}</TableCell>

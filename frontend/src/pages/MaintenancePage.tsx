@@ -7,10 +7,13 @@ import {
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { getFuelEntries } from "@/services/fuelService";
+import { getTrips } from "@/services/tripsService";
+import type { Trip } from "@/types/trip";
 import {
   currentTractorMiles,
   recentMilesPerMonth,
   maxOdometer,
+  maxTripOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { ScheduleTab } from "@/components/maintenance/ScheduleTab";
@@ -21,6 +24,7 @@ const MaintenancePage = () => {
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [tab, setTab] = useState<"schedule" | "services">("schedule");
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -32,12 +36,14 @@ const MaintenancePage = () => {
       getMaintenanceItems(),
       getMaintenanceServices(),
       getFuelEntries(),
+      getTrips(),
     ])
-      .then(([its, svcs, fuel]) => {
+      .then(([its, svcs, fuel, trps]) => {
         if (!active) return;
         setItems(its);
         setServices(svcs);
         setFuelEntries(fuel);
+        setTrips(trps);
       })
       .catch(() => {})
       .finally(() => {
@@ -72,10 +78,11 @@ const MaintenancePage = () => {
         currentTractorMiles(loads),
         maxServiceOdo("tractor"),
         maxFuelOdometer(fuelEntries),
+        maxTripOdometer(trips),
       ),
       trailer: maxOdometer(maxServiceOdo("trailer")),
     };
-  }, [loads, services, fuelEntries]);
+  }, [loads, services, fuelEntries, trips]);
 
   const milesPerMonth = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
 

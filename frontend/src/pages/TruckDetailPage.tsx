@@ -16,10 +16,13 @@ import {
   computeDue,
   recentMilesPerMonth,
   maxOdometer,
+  maxTripOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
 import { getObligations } from "@/services/obligationsService";
+import { getTrips } from "@/services/tripsService";
+import type { Trip } from "@/types/trip";
 import type { Obligation } from "@/types/obligation";
 import { isPayoffTracked, assetLoanStatus } from "@/lib/metrics/payoff";
 import { PayoffTracker } from "@/components/fleet/PayoffTracker";
@@ -87,6 +90,7 @@ const TruckDetailPage = () => {
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [homeDays, setHomeDays] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -108,6 +112,9 @@ const TruckDetailPage = () => {
       .catch(() => {});
     getObligations()
       .then(setObligations)
+      .catch(() => {});
+    getTrips()
+      .then(setTrips)
       .catch(() => {});
     getHomeDays()
       .then(setHomeDays)
@@ -137,7 +144,7 @@ const TruckDetailPage = () => {
   );
 
   // Latest odometer, derived from the app: stored value + newest load + newest
-  // service reading + newest fuel fill-up (fuel is usually the freshest).
+  // trip + newest service reading + newest fuel fill-up (fuel is usually freshest).
   const odometer = useMemo(() => {
     if (!truck) return 0;
     const loadOdos = truckLoads.map((l) => l.odometer_end ?? null);
@@ -148,10 +155,15 @@ const TruckDetailPage = () => {
       fuelEntries.filter((f) => f.truck_id === id),
     );
     return (
-      maxOdometer(truck.current_odometer, ...loadOdos, ...svcOdos, fuelOdo) ??
-      truck.current_odometer
+      maxOdometer(
+        truck.current_odometer,
+        ...loadOdos,
+        ...svcOdos,
+        fuelOdo,
+        maxTripOdometer(trips, id),
+      ) ?? truck.current_odometer
     );
-  }, [truck, truckLoads, services, fuelEntries, id]);
+  }, [truck, truckLoads, services, fuelEntries, trips, id]);
 
   const mpm = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
   const due = useMemo(() => {
