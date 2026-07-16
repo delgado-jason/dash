@@ -48,6 +48,9 @@ import {
   ASSUMED_MPG,
   ASSUMED_FUEL_PRICE,
 } from "@/lib/metrics/fuel";
+import { fuelStats } from "@/lib/metrics/fuelEconomy";
+import { getFuelEntries } from "@/services/fuelService";
+import type { FuelEntry } from "@/types/fuelEntry";
 import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
 
 const money0 = (n: number) =>
@@ -160,10 +163,14 @@ export const LoadDetailPage = () => {
   const { markets } = useMarkets(0);
   const { facilities } = useFacilities(0);
   const [freeHours, setFreeHours] = useState(3);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
 
   useEffect(() => {
     getSettlementSchedule()
       .then((s) => setFreeHours(s.detention_free_hours))
+      .catch(() => {});
+    getFuelEntries()
+      .then(setFuelEntries)
       .catch(() => {});
   }, []);
 
@@ -221,7 +228,13 @@ export const LoadDetailPage = () => {
     : revenue;
   const rpm = loadRpm(load);
   const dh = deadheadShare(load);
-  const fuel = estimateLoadFuel(load);
+  // Use the truck's real MPG + price/gal from fuel history; fall back to the
+  // working assumptions only until there's fuel data logged.
+  const fs = fuelStats(fuelEntries, new Date());
+  const fuelMpg = fs.avgMpg ?? ASSUMED_MPG;
+  const fuelPrice = fs.avgCostPerGallon ?? ASSUMED_FUEL_PRICE;
+  const usingRealFuel = fs.avgMpg != null && fs.avgCostPerGallon != null;
+  const fuel = estimateLoadFuel(load, fuelMpg, fuelPrice);
   const accTotal = accessorials.reduce((s, a) => s + Number(a.amount), 0);
 
   const handleSaveChanges = async () => {
@@ -757,13 +770,16 @@ export const LoadDetailPage = () => {
                 value={`${Math.round(fuel.gallons).toLocaleString("en-US")} gal`}
               />
               <Row
-                label="Assumed"
-                value={`${ASSUMED_MPG} mpg · $${ASSUMED_FUEL_PRICE.toFixed(2)}/gal`}
+                label={usingRealFuel ? "Your avg" : "Assumed"}
+                value={`${fuelMpg.toFixed(1)} mpg · $${fuelPrice.toFixed(2)}/gal`}
               />
               <p className="text-xs text-muted-text mt-2">
                 {fuel.basis === "actual"
-                  ? "Based on the odometer readings entered for this load."
-                  : "Estimated from loaded + deadhead miles. Enter odometer start and end to reflect actual miles."}
+                  ? "Miles from this load's odometer readings."
+                  : "Miles estimated from loaded + deadhead — enter odometer start and end for actual."}{" "}
+                {usingRealFuel
+                  ? "MPG and price are your fuel-history averages."
+                  : "MPG and price are working assumptions until you log fuel."}
               </p>
             </>
           ) : (
