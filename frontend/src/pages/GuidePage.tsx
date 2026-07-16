@@ -484,15 +484,19 @@ const GuidePage = () => (
       </h2>
 
       <Metric
-        title="Overall — your current grade"
-        answers="The weaker of your rate grade and your operating-margin grade — a weakest-link read on how the season is going."
+        title="Bottleneck — your three profit levers"
+        answers="Your season net breaks into Rate × Utilization × Margin. The card grades all three and names the weakest — the one holding you back."
       >
-        <Formula>Overall = the lower of your Rate grade and Op-margin grade</Formula>
+        <Formula>net ≈ Rate × Utilization × Margin · bottleneck = the weakest lever</Formula>
         <Why>
-          A strong rate can't paper over a thin margin, and vice-versa, so the card
-          shows whichever is lagging. Rate and Op margin each grade{" "}
-          <span className="text-light">Below → Minimum → Target → Strong</span>{" "}
-          against your break-even ladder. (This was labeled "Form" before.)
+          Each lever grades <span className="text-light">Below → Minimum → Target →
+          Strong</span>: <span className="text-light">Rate</span> against your
+          break-even ladder, <span className="text-light">Utilization</span> against
+          the 70/80/85% benchmark, <span className="text-light">Op margin</span>{" "}
+          against your margin tiers. They mask each other — a great rate with the
+          truck sitting still nets mediocre — so the card names whichever is lagging
+          and what to do about it. When all three reach Target, it reads{" "}
+          <span style={{ color: "#4ade80" }}>Firing on all cylinders</span>.
         </Why>
       </Metric>
 

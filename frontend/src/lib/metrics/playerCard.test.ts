@@ -7,6 +7,9 @@ import {
   marginGrade,
   rpmGrade,
   worseGrade,
+  utilizationGrade,
+  bottleneckLevers,
+  allLeversOnTarget,
   getSeasonStats,
   personalBests,
   earnedTrophies,
@@ -98,6 +101,44 @@ describe("grades", () => {
     expect(worseGrade("below", "strong")).toBe("below");
     expect(worseGrade(null, "target")).toBe("target");
     expect(worseGrade(null, null)).toBeNull();
+  });
+
+  it("utilizationGrade maps to the 70/80/85 benchmark", () => {
+    expect(utilizationGrade(0.9)).toBe("strong");
+    expect(utilizationGrade(0.82)).toBe("target");
+    expect(utilizationGrade(0.73)).toBe("minimum");
+    expect(utilizationGrade(0.6)).toBe("below");
+    expect(utilizationGrade(null)).toBeNull();
+  });
+
+  it("bottleneckLevers names the weakest lever when it's below/minimum", () => {
+    const levers = [
+      { key: "rate", label: "Rate", grade: "target" as const },
+      { key: "util", label: "Utilization", grade: "minimum" as const },
+      { key: "margin", label: "Op margin", grade: "strong" as const },
+    ];
+    const bn = bottleneckLevers(levers);
+    expect(bn.map((l) => l.key)).toEqual(["util"]);
+    expect(allLeversOnTarget(levers)).toBe(false);
+  });
+
+  it("returns every lever tied for weakest", () => {
+    const bn = bottleneckLevers([
+      { key: "rate", label: "Rate", grade: "below" },
+      { key: "util", label: "Utilization", grade: "below" },
+      { key: "margin", label: "Op margin", grade: "target" },
+    ]);
+    expect(bn.map((l) => l.key).sort()).toEqual(["rate", "util"]);
+  });
+
+  it("flags no bottleneck when every lever is target or better", () => {
+    const levers = [
+      { key: "rate", label: "Rate", grade: "target" as const },
+      { key: "util", label: "Utilization", grade: "strong" as const },
+      { key: "margin", label: "Op margin", grade: "target" as const },
+    ];
+    expect(bottleneckLevers(levers)).toEqual([]);
+    expect(allLeversOnTarget(levers)).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Truck, Maximize2, Weight, Home } from "lucide-react";
-import type { Grade, CareerRank, SeasonStats } from "@/lib/metrics/playerCard";
+import { Truck, Maximize2, Weight, Home, Gauge } from "lucide-react";
+import type { Grade, CareerRank, SeasonStats, Lever } from "@/lib/metrics/playerCard";
+import { bottleneckLevers, allLeversOnTarget } from "@/lib/metrics/playerCard";
 import { STRIP_MIN_COUNT, type TypeMix } from "@/lib/metrics/loadMix";
 import type { Hometime } from "@/lib/metrics/hometime";
 import type { Medal } from "@/lib/awards/medals";
@@ -30,18 +31,6 @@ const GRADE_META: Record<Grade, { label: string; fg: string; bg: string }> = {
   minimum: { label: "MINIMUM", fg: "#e8940a", bg: "#3a2a0a" },
   target: { label: "TARGET", fg: "#4ade80", bg: "#1a3a2a" },
   strong: { label: "STRONG", fg: "#fbbf24", bg: "#3a300a" },
-};
-
-const GradeChip = ({ grade, value }: { grade: Grade | null; value?: string }) => {
-  if (!grade)
-    return <span className="text-[11px] px-2 py-0.5 rounded-full bg-plate text-muted-text">—</span>;
-  const m = GRADE_META[grade];
-  return (
-    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: m.bg, color: m.fg }}>
-      {m.label}
-      {value ? ` · ${value}` : ""}
-    </span>
-  );
 };
 
 const gradeColor = (g: Grade | null): string | undefined => (g ? GRADE_META[g].fg : undefined);
@@ -160,6 +149,45 @@ const HometimeChip = ({ hometime }: { hometime: Hometime }) => {
   );
 };
 
+// A short, plain-language nudge for whichever lever is the bottleneck.
+const LEVER_HINTS: Record<string, string> = {
+  rate: "you're booking below target — hold out for better-paying freight.",
+  util: "the truck sitting is what's capping the season — keep it rolling.",
+  margin: "costs are eating the margin — watch deadhead and fuel.",
+};
+
+// One profit lever: its value and grade. Border tints to the grade.
+const LeverTile = ({
+  label,
+  value,
+  grade,
+}: {
+  label: string;
+  value: string;
+  grade: Grade | null;
+}) => {
+  const m = grade ? GRADE_META[grade] : null;
+  return (
+    <div
+      className="rounded-[10px] px-3 py-2.5"
+      style={{ background: "#141b28", border: `1px solid ${m ? m.bg : "#2a3347"}` }}
+    >
+      <p className="text-[10px] tracking-wide text-muted-text uppercase">{label}</p>
+      <p className="text-lg font-condensed my-0.5 truncate">{value}</p>
+      {m ? (
+        <span
+          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: m.bg, color: m.fg }}
+        >
+          {m.label}
+        </span>
+      ) : (
+        <span className="text-[10px] text-muted-text">—</span>
+      )}
+    </div>
+  );
+};
+
 export interface PlayerCardProps {
   name: string;
   business: string;
@@ -168,7 +196,8 @@ export interface PlayerCardProps {
   season: SeasonStats;
   rpmGrade: Grade | null;
   marginGrade: Grade | null;
-  form: Grade | null;
+  utilization: number | null; // 0..1, days-based; the third profit lever
+  utilGrade: Grade | null;
   windowRpm: number | null;
   medals: Medal[]; // earned tiers only — worn by the name
   oversize?: TypeMix; // oversize equipment mix; strip hidden when count is 0
@@ -184,7 +213,8 @@ export const PlayerCard = ({
   season,
   rpmGrade,
   marginGrade,
-  form,
+  utilization,
+  utilGrade,
   windowRpm,
   medals,
   oversize,
@@ -192,6 +222,18 @@ export const PlayerCard = ({
   hometime,
 }: PlayerCardProps) => {
   const stars = "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
+
+  // The three profit levers and their bottleneck (weakest, if below/minimum).
+  const levers: Lever[] = [
+    { key: "rate", label: "Rate", grade: rpmGrade },
+    { key: "util", label: "Utilization", grade: utilGrade },
+    { key: "margin", label: "Op margin", grade: marginGrade },
+  ];
+  const bottleneck = bottleneckLevers(levers);
+  const onTarget = allLeversOnTarget(levers);
+  const rateVal = windowRpm != null ? `$${windowRpm.toFixed(2)}/mi` : "—";
+  const utilVal = utilization != null ? pct0(utilization) : "—";
+  const marginVal = season.netMargin != null ? pct1(season.netMargin) : "—";
 
   return (
     <div>
@@ -262,25 +304,49 @@ export const PlayerCard = ({
 
         {hometime && <HometimeChip hometime={hometime} />}
 
-        <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t relative" style={{ borderColor: "#2a3347" }}>
-          <span className="font-condensed text-sm tracking-wide text-muted-text">SEASON · {season.label}</span>
-          <span className="text-[11px] text-muted-text">Rate</span>
-          <GradeChip grade={rpmGrade} value={windowRpm != null ? `$${windowRpm.toFixed(2)}` : undefined} />
-          <span className="text-[11px] text-muted-text">Op margin</span>
-          <GradeChip grade={marginGrade} value={season.netMargin != null ? pct1(season.netMargin) : undefined} />
-          <span className="flex-1" />
-          <span
-            className="text-[11px] text-muted-text"
-            title="The weaker of your rate and margin grade"
-          >
-            Overall
-          </span>
-          {form ? (
-            <span className="font-comic px-2.5 py-0.5 rounded-full" style={{ background: GRADE_META[form].bg, color: GRADE_META[form].fg, letterSpacing: "2px", fontSize: 14 }}>
-              {GRADE_META[form].label}
+        <div className="mt-4 pt-3 border-t relative" style={{ borderColor: "#2a3347" }}>
+          <div className="flex items-baseline gap-2 mb-2.5">
+            <span className="font-condensed text-sm tracking-wide text-muted-text">
+              SEASON · {season.label}
             </span>
+            <span className="text-[11px] text-muted-text">your three profit levers</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            <LeverTile label="Rate" value={rateVal} grade={rpmGrade} />
+            <LeverTile label="Utilization" value={utilVal} grade={utilGrade} />
+            <LeverTile label="Op margin" value={marginVal} grade={marginGrade} />
+          </div>
+          {bottleneck.length > 0 ? (
+            <div
+              className="flex items-center gap-3 mt-3 px-3.5 py-2.5 rounded-[10px]"
+              style={{ background: "#231a06", border: "1px solid #85500b" }}
+            >
+              <Gauge size={24} style={{ color: "#f5b03a", flexShrink: 0 }} />
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold tracking-wide uppercase" style={{ color: "#f5b03a" }}>
+                  Bottleneck · {bottleneck.map((l) => l.label).join(" & ")}
+                </p>
+                <p className="text-[11px]" style={{ color: "#c7935a" }}>
+                  {bottleneck.length === 1
+                    ? LEVER_HINTS[bottleneck[0].key]
+                    : "two levers are lagging — tackle the weakest first."}
+                </p>
+              </div>
+            </div>
+          ) : onTarget ? (
+            <div
+              className="flex items-center gap-3 mt-3 px-3.5 py-2.5 rounded-[10px]"
+              style={{ background: "#12261a", border: "1px solid #1f6e4a" }}
+            >
+              <Gauge size={24} style={{ color: "#4ade80", flexShrink: 0 }} />
+              <p className="text-[13px] font-semibold tracking-wide uppercase" style={{ color: "#4ade80" }}>
+                Firing on all cylinders
+              </p>
+            </div>
           ) : (
-            <span className="text-[11px] text-muted-text">— needs a full month</span>
+            <p className="text-[11px] text-muted-text mt-3">
+              Grades build over a full month of data.
+            </p>
           )}
         </div>
       </div>

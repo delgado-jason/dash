@@ -77,6 +77,46 @@ export const rpmGrade = (rpm: number | null, ladder: RateLadder): Grade | null =
   return rpm >= ladder.walkAway ? "minimum" : "below";
 };
 
+// Utilization graded on the industry benchmark (70 / 80 / 85%).
+export const utilizationGrade = (u: number | null): Grade | null => {
+  if (u == null) return null;
+  if (u >= 0.85) return "strong";
+  if (u >= 0.8) return "target";
+  if (u >= 0.7) return "minimum";
+  return "below";
+};
+
+// ---------- profit-lever bottleneck (Rate × Utilization × Margin) ----------
+export interface Lever {
+  key: string;
+  label: string;
+  grade: Grade | null;
+}
+
+const GRADE_RANK: Record<Grade, number> = {
+  below: 0,
+  minimum: 1,
+  target: 2,
+  strong: 3,
+};
+
+// The weakest lever(s) worth flagging — only when the weakest is below/minimum.
+// Ties return every lever at that grade. Empty = no bottleneck (all at target+,
+// or nothing graded yet).
+export const bottleneckLevers = (levers: Lever[]): Lever[] => {
+  const graded = levers.filter((l) => l.grade != null);
+  if (!graded.length) return [];
+  const minRank = Math.min(...graded.map((l) => GRADE_RANK[l.grade!]));
+  if (minRank > GRADE_RANK.minimum) return [];
+  return graded.filter((l) => GRADE_RANK[l.grade!] === minRank);
+};
+
+// True when every graded lever is at target or better — no bottleneck to flag.
+export const allLeversOnTarget = (levers: Lever[]): boolean => {
+  const graded = levers.filter((l) => l.grade != null);
+  return graded.length > 0 && graded.every((l) => GRADE_RANK[l.grade!] >= GRADE_RANK.target);
+};
+
 // ---------- season stat line ----------
 export interface SeasonStats {
   label: string; // e.g. "Apr–Jun 2026"

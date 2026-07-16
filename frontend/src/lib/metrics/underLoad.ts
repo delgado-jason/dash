@@ -28,6 +28,14 @@ export const underLoadDaySet = (
   return set;
 };
 
+// The earliest delivered-load pickup day ("YYYY-MM-DD"), or null. The utilization
+// window start for a driver-scoped view (no truck in-service date needed).
+export const firstDeliveredPickup = (loads: Load[]): string | null =>
+  loads
+    .filter((l) => l.load_status === "delivered" && l.pickup_date)
+    .map((l) => l.pickup_date.slice(0, 10))
+    .sort()[0] ?? null;
+
 // Lengths of each consecutive-day run of under-load days (gaps-and-islands) — the
 // stretches the truck rolled without a break. Feeds the Relentless patch.
 export const underLoadRuns = (loads: Load[]): number[] => {

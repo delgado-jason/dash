@@ -32,11 +32,12 @@ import {
   getSeasonStats,
   marginGrade,
   rpmGrade,
-  worseGrade,
+  utilizationGrade,
   personalBests,
 } from "@/lib/metrics/playerCard";
 import { computeGrind } from "@/lib/metrics/grind";
 import { loadTypeMix } from "@/lib/metrics/loadMix";
+import { underLoadDaySet, firstDeliveredPickup } from "@/lib/metrics/underLoad";
 import { computePatches } from "@/lib/awards/patches";
 import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
@@ -134,6 +135,23 @@ const DriverDetailPage = () => {
     const season = getSeasonStats(periods, driverLoads, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
+    // Driver utilization (days-based) — under-load days ÷ days since first load.
+    const nowKey = now.toISOString().slice(0, 10);
+    const winStart = firstDeliveredPickup(driverLoads);
+    const winDays = winStart
+      ? Math.max(
+          1,
+          Math.round(
+            (Date.parse(`${nowKey}T00:00:00Z`) -
+              Date.parse(`${winStart}T00:00:00Z`)) /
+              86_400_000,
+          ),
+        )
+      : 0;
+    const utilization =
+      winDays > 0
+        ? Math.min(1, underLoadDaySet(driverLoads, winStart, nowKey).size / winDays)
+        : null;
     const grind = computeGrind(driverLoads, periods, obligationsTotal, now);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => l.load_status === "delivered");
@@ -156,7 +174,8 @@ const DriverDetailPage = () => {
       season,
       rpmGrade: rpmG,
       marginGrade: marginG,
-      form: worseGrade(rpmG, marginG),
+      utilization,
+      utilGrade: utilizationGrade(utilization),
       windowRpm: basis.windowRpm,
       medals: earnedMedals(medals),
       bests: personalBests(driverLoads, fuel, now),
@@ -233,7 +252,8 @@ const DriverDetailPage = () => {
             season={card.season}
             rpmGrade={card.rpmGrade}
             marginGrade={card.marginGrade}
-            form={card.form}
+            utilization={card.utilization}
+            utilGrade={card.utilGrade}
             windowRpm={card.windowRpm}
             medals={card.medals}
             oversize={card.oversize}
