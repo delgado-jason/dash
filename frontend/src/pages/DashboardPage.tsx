@@ -39,6 +39,8 @@ import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { TopAgents } from "@/components/dashboard/TopAgents";
 import { WhatsNext } from "@/components/dashboard/WhatsNext";
 import { RecentLoads } from "@/components/dashboard/RecentLoads";
+import { isDispatcher } from "@/lib/roles";
+import DispatchDashboard from "./DispatchDashboard";
 
 // helpers
 const formatCurrency = (n: number | null): string =>
@@ -61,7 +63,7 @@ const computeDelta = (current: number | null, previous: number | null) => {
   };
 };
 
-const DashboardPage = () => {
+const OwnerDashboard = () => {
   const [refreshKey] = useState(0);
   const {
     loads,
@@ -241,5 +243,11 @@ const DashboardPage = () => {
     </div>
   );
 };
+
+// The owner sees the full financial dashboard; a dispatcher gets her own
+// operational board (no net revenue / RPM / P&L). Role is fixed for the
+// session, so the branch is stable across renders.
+const DashboardPage = () =>
+  isDispatcher() ? <DispatchDashboard /> : <OwnerDashboard />;
 
 export default DashboardPage;

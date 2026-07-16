@@ -830,6 +830,55 @@ const GuidePage = () => (
           each agent's own page.
         </p>
       </Section>
+
+      <div
+        className="my-6 border-t"
+        style={{ borderColor: "#22304a" }}
+        aria-hidden="true"
+      />
+      <h2 className="font-condensed text-2xl mb-3" style={{ color: AMBER_HI }}>
+        Team &amp; roles
+      </h2>
+
+      <Section title="Adding a dispatcher">
+        <p className="text-sm text-muted-text">
+          As the owner (an <span className="text-light">admin</span>), you can add
+          a <span className="text-light">dispatcher</span> to your account from{" "}
+          <Link to="/settings" className="text-status-info-text hover:underline">
+            Settings → Team
+          </Link>
+          . They sign in with their own email and password, but everything they
+          see is your account's data — same loads, agents, and trucks. It's one
+          shared operation, with a login of their own.
+        </p>
+      </Section>
+
+      <Section title="What a dispatcher sees">
+        <p className="text-sm text-muted-text">
+          A dispatcher's menu is trimmed to the day-to-day: the Dispatch board,
+          Score a Load, Loads, Trips, Lanes, Agents, Facilities, the fleet
+          (Trucks, Trailers, Drivers), Maintenance, Compliance, and this Guide.
+          The money pages — Expenses, Per&nbsp;Diem, Recap, Fuel, Garage, Trophy
+          Room, and Settings — stay owner-only, so the P&amp;L is yours alone.
+        </p>
+      </Section>
+
+      <Section title="The Dispatch board">
+        <p className="text-sm text-muted-text">
+          A dispatcher's dashboard leads with the operational picture instead of
+          the money: how many loads are <span className="text-light">booked</span>{" "}
+          and <span className="text-light">in transit</span>, loads delivered this
+          month, <span className="text-light">detention owed</span>, and{" "}
+          <span className="text-light">deadhead</span> this month against a rolling
+          90-day average. Detention is shown in{" "}
+          <span className="text-light">hours</span>, not dollars — the rate per
+          hour isn't settled until it lands on your statement, so the board tracks
+          the wait you're owed and lets you mark it paid once collected. It keeps
+          the rate ladder (the floor to book above), the grind streak, what's
+          next, a detention chase-list, and the top-agents leaderboard ranked by
+          loads. Net revenue, RPM, and profit never appear.
+        </p>
+      </Section>
     </div>
   </div>
 );
