@@ -32,7 +32,8 @@ import accessorialRateRouter from "./routes/accessorialRateRoutes.js";
 const app = express();
 
 // ---- MIDDLEWARE ----
-app.use(cors());
+// Expose the sliding-session header so the browser can read the refreshed token.
+app.use(cors({ exposedHeaders: ["X-Refreshed-Token"] }));
 app.use(express.json());
 
 // ---- ROUTES ----
