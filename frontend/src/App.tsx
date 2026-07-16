@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import AppLayout from "@/layouts/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 
 import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -52,7 +53,6 @@ const App = () => {
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/score" element={<ScoreLoadPage />} />
-          <Route path="/garage" element={<GaragePage />} />
           <Route
             path="/lanes"
             element={
@@ -67,16 +67,10 @@ const App = () => {
               </Suspense>
             }
           />
-          <Route path="/expenses" element={<ExpensesPage />} />
-          <Route path="/per-diem" element={<PerDiemPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/compliance" element={<CompliancePage />} />
-          <Route path="/recap" element={<RecapPage />} />
-          <Route path="/trophy-room" element={<TrophyHallPage />} />
-          <Route path="/trophy-studio" element={<TrophyStudioPage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
-          <Route path="/fuel-entries" element={<FuelEntriesPage />} />
           <Route path="/trucks" element={<TrucksPage />} />
           <Route path="/trucks/:id" element={<TruckDetailPage />} />
           <Route path="/drivers" element={<DriversPage />} />
@@ -86,7 +80,18 @@ const App = () => {
           <Route path="/facilities" element={<FacilitiesPage />} />
           <Route path="/facilities/:id" element={<FacilityDetailPage />} />
           <Route path="/guide" element={<GuidePage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+
+          {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
+          <Route element={<AdminRoute />}>
+            <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/per-diem" element={<PerDiemPage />} />
+            <Route path="/recap" element={<RecapPage />} />
+            <Route path="/garage" element={<GaragePage />} />
+            <Route path="/trophy-room" element={<TrophyHallPage />} />
+            <Route path="/trophy-studio" element={<TrophyStudioPage />} />
+            <Route path="/fuel-entries" element={<FuelEntriesPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
         </Route>
       </Route>
 

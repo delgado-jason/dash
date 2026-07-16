@@ -14,8 +14,12 @@ import {
   SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "react-router-dom";
+import { isDispatcher } from "@/lib/roles";
 
-type Leaf = { to: string; label: string };
+// `adminOnly` items are owner-only; a dispatcher's nav filters them out (and the
+// route guard bounces her if she types the URL). Keep these flags in lockstep
+// with ADMIN_ONLY_PREFIXES in lib/roles.
+type Leaf = { to: string; label: string; adminOnly?: boolean };
 type Group = { label: string; children: Leaf[] };
 type Entry = Leaf | Group;
 const isGroup = (e: Entry): e is Group => "children" in e;
@@ -40,20 +44,34 @@ const nav: Entry[] = [
       { to: "/trailers", label: "Trailers" },
       { to: "/drivers", label: "Drivers" },
       { to: "/maintenance", label: "Maintenance" },
-      { to: "/fuel-entries", label: "Fuel" },
+      { to: "/fuel-entries", label: "Fuel", adminOnly: true },
     ],
   },
   { to: "/compliance", label: "Compliance" },
-  { to: "/expenses", label: "Expenses" },
-  { to: "/per-diem", label: "Per Diem" },
-  { to: "/recap", label: "Recap" },
-  { to: "/garage", label: "Garage" },
-  { to: "/trophy-room", label: "Trophy Room" },
+  { to: "/expenses", label: "Expenses", adminOnly: true },
+  { to: "/per-diem", label: "Per Diem", adminOnly: true },
+  { to: "/recap", label: "Recap", adminOnly: true },
+  { to: "/garage", label: "Garage", adminOnly: true },
+  { to: "/trophy-room", label: "Trophy Room", adminOnly: true },
   { to: "/guide", label: "Guide" },
 ];
 
+// A dispatcher sees only the non-adminOnly items; empty groups drop out.
+const navFor = (dispatcher: boolean): Entry[] => {
+  if (!dispatcher) return nav;
+  return nav
+    .map((e) =>
+      isGroup(e)
+        ? { ...e, children: e.children.filter((c) => !c.adminOnly) }
+        : e,
+    )
+    .filter((e) => (isGroup(e) ? e.children.length > 0 : !e.adminOnly));
+};
+
 const AppSidebar = () => {
   const { pathname } = useLocation();
+  const dispatcher = isDispatcher();
+  const navItems = navFor(dispatcher);
   const active = (to: string) =>
     pathname === to || pathname.startsWith(to + "/");
 
@@ -61,13 +79,13 @@ const AppSidebar = () => {
   // opens it, but manual toggles of the others are preserved.
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    for (const e of nav)
+    for (const e of navItems)
       if (isGroup(e)) init[e.label] = e.children.some((c) => active(c.to));
     return init;
   });
 
   useEffect(() => {
-    for (const e of nav)
+    for (const e of navItems)
       if (isGroup(e) && e.children.some((c) => active(c.to)))
         setOpen((o) => ({ ...o, [e.label]: true }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,7 +105,7 @@ const AppSidebar = () => {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {nav.map((e) =>
+            {navItems.map((e) =>
               isGroup(e) ? (
                 <SidebarMenuItem key={e.label}>
                   <SidebarMenuButton
@@ -138,11 +156,13 @@ const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="px-4 pt-2">
-          <Link to="/settings" className={`text-sm ${linkCls("/settings")}`}>
-            Settings
-          </Link>
-        </div>
+        {!dispatcher && (
+          <div className="px-4 pt-2">
+            <Link to="/settings" className={`text-sm ${linkCls("/settings")}`}>
+              Settings
+            </Link>
+          </div>
+        )}
         <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground">
           v{__APP_VERSION__}
         </div>

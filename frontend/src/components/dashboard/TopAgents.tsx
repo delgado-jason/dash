@@ -9,6 +9,9 @@ interface Props {
   agents: AgentRevenue[];
   honors: Map<string, AgentHonors>;
   standings: Map<string, LiveStanding>;
+  // "revenue" (owner view) shows net $ per agent; "loads" (dispatch view) shows
+  // volume only, so the board carries no owner-dollar figures.
+  mode?: "revenue" | "loads";
 }
 
 const fmtK = (n: number): string => `$${(n / 1000).toFixed(1)}k`;
@@ -51,7 +54,12 @@ const Pulse = () => (
   />
 );
 
-export const TopAgents = ({ agents, honors, standings }: Props) => (
+export const TopAgents = ({
+  agents,
+  honors,
+  standings,
+  mode = "revenue",
+}: Props) => (
   <div
     className="relative overflow-hidden rounded-2xl border-2 p-4"
     style={{ background: "#10151f", borderColor: "#e8940a" }}
@@ -127,12 +135,18 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
                     color: first ? "#f5b03a" : i < 3 ? "#e8eef7" : "#9daabb",
                   }}
                 >
-                  {fmtK(agent.revenue)}
+                  {mode === "loads" ? agent.loadCount : fmtK(agent.revenue)}
                 </span>
-                {i < 3 && (
+                {mode === "loads" ? (
                   <span className="block text-[10px] text-muted-text">
-                    {agent.loadCount} loads
+                    loads
                   </span>
+                ) : (
+                  i < 3 && (
+                    <span className="block text-[10px] text-muted-text">
+                      {agent.loadCount} loads
+                    </span>
+                  )
                 )}
               </span>
             </>

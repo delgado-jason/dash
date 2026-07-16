@@ -1,6 +1,7 @@
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import { loadRevenue } from "./rateTargets";
+import { detentionOwed, detentionMinutes } from "@/lib/detention";
 import { median } from "./stats";
 
 // Revenue = the owner-op's NET take (their company gross), via loadRevenue —
@@ -92,50 +93,24 @@ export interface MonthlyDeadhead {
   lastMonth: number | null;
 }
 
-// Deadhead % for a single UTC month. Empty miles = delivered loads' odometer
-// windows minus their loaded miles, PLUS every qualifying trip's full odometer
-// window (trips are 100% non-revenue). Payment status is irrelevant — only
-// load_status "delivered" ran (cancelled/tonu did not); all trip purposes count.
-// Both loads and trips need both odometer readings. Returns null when the month
-// has no qualifying miles at all.
-const deadheadForMonth = (
-  loads: Load[],
-  trips: Trip[],
-  year: number,
-  month: number,
-): number | null => {
-  const monthLoads = loads.filter(
-    (load) =>
-      load.load_status === "delivered" &&
-      load.odometer_start != null &&
-      load.odometer_end != null &&
-      load.delivery_date &&
-      new Date(load.delivery_date).getUTCFullYear() === year &&
-      new Date(load.delivery_date).getUTCMonth() === month,
-  );
-
-  const monthTrips = trips.filter(
-    (trip) =>
-      trip.odometer_start != null &&
-      trip.odometer_end != null &&
-      trip.trip_date &&
-      new Date(trip.trip_date).getUTCFullYear() === year &&
-      new Date(trip.trip_date).getUTCMonth() === month,
-  );
-
-  const loadWindow = monthLoads.reduce(
+// The deadhead math over a pre-filtered set of loads + trips. Empty miles =
+// delivered loads' odometer windows minus their loaded miles, PLUS every trip's
+// full odometer window (trips are 100% non-revenue). Returns null when there are
+// no qualifying miles at all. Callers do the date filtering.
+const deadheadOverSets = (loads: Load[], trips: Trip[]): number | null => {
+  const loadWindow = loads.reduce(
     (sum, load) =>
       sum + (Number(load.odometer_end) - Number(load.odometer_start)),
     0,
   );
-  const tripWindow = monthTrips.reduce(
+  const tripWindow = trips.reduce(
     (sum, trip) =>
       sum + (Number(trip.odometer_end) - Number(trip.odometer_start)),
     0,
   );
   const totalMiles = loadWindow + tripWindow;
 
-  const loadedMiles = monthLoads.reduce(
+  const loadedMiles = loads.reduce(
     (sum, load) => sum + Number(load.loaded_miles),
     0,
   );
@@ -143,6 +118,56 @@ const deadheadForMonth = (
   if (totalMiles === 0) return null;
 
   return (totalMiles - loadedMiles) / totalMiles;
+};
+
+// A load counts toward deadhead only if it delivered and has both odometer
+// readings; a trip needs both readings. (Payment status is irrelevant — only
+// load_status "delivered" ran; all trip purposes count.)
+const deadheadLoad = (load: Load): boolean =>
+  load.load_status === "delivered" &&
+  load.odometer_start != null &&
+  load.odometer_end != null &&
+  !!load.delivery_date;
+const deadheadTrip = (trip: Trip): boolean =>
+  trip.odometer_start != null && trip.odometer_end != null && !!trip.trip_date;
+
+// Deadhead % for a single UTC month.
+const deadheadForMonth = (
+  loads: Load[],
+  trips: Trip[],
+  year: number,
+  month: number,
+): number | null =>
+  deadheadOverSets(
+    loads.filter(
+      (l) =>
+        deadheadLoad(l) &&
+        new Date(l.delivery_date as string).getUTCFullYear() === year &&
+        new Date(l.delivery_date as string).getUTCMonth() === month,
+    ),
+    trips.filter(
+      (t) =>
+        deadheadTrip(t) &&
+        new Date(t.trip_date as string).getUTCFullYear() === year &&
+        new Date(t.trip_date as string).getUTCMonth() === month,
+    ),
+  );
+
+// Deadhead % over a [startMs, endMs) window (UTC ms), by delivery/trip date.
+const deadheadForWindow = (
+  loads: Load[],
+  trips: Trip[],
+  startMs: number,
+  endMs: number,
+): number | null => {
+  const inWin = (iso: string): boolean => {
+    const t = new Date(iso).getTime();
+    return t >= startMs && t < endMs;
+  };
+  return deadheadOverSets(
+    loads.filter((l) => deadheadLoad(l) && inWin(l.delivery_date as string)),
+    trips.filter((t) => deadheadTrip(t) && inWin(t.trip_date as string)),
+  );
 };
 
 // This month's deadhead % and last month's, for the KPI comparison.
@@ -165,6 +190,68 @@ export const getMonthlyDeadhead = (
       prev.getUTCFullYear(),
       prev.getUTCMonth(),
     ),
+  };
+};
+
+// Dispatch view: this calendar month's deadhead % vs the trailing 90-day
+// average (the baseline). Lower is leaner. Either side is null when its window
+// has no qualifying miles yet.
+export interface DeadheadTrend {
+  thisMonth: number | null;
+  rolling90: number | null;
+}
+
+export const getDeadheadTrend = (
+  loads: Load[],
+  trips: Trip[],
+  now: Date = new Date(Date.now()),
+): DeadheadTrend => {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const monthStart = Date.UTC(year, month, 1);
+  const nextMonth = Date.UTC(year, month + 1, 1);
+  const end = now.getTime();
+  const start = end - 90 * 24 * 60 * 60 * 1000;
+
+  return {
+    thisMonth: deadheadForWindow(loads, trips, monthStart, nextMonth),
+    rolling90: deadheadForWindow(loads, trips, start, end),
+  };
+};
+
+// Dispatch view: open detention to chase — loads that ran past free time and
+// aren't marked collected. Hours (not dollars) since the rate isn't known until
+// the settlement lands. Sorted longest-dwell first.
+export interface DetentionItem {
+  load_id: string;
+  load_number: string;
+  lane: string;
+  minutes: number;
+}
+export interface DetentionOwed {
+  loadCount: number;
+  totalMinutes: number;
+  items: DetentionItem[];
+}
+
+export const getDetentionOwed = (
+  loads: Load[],
+  freeHours: number,
+): DetentionOwed => {
+  const items = loads
+    .filter((l) => detentionOwed(l, freeHours))
+    .map((l) => ({
+      load_id: l.load_id,
+      load_number: l.load_number,
+      lane: `${l.origin_market} → ${l.delivery_market}`,
+      minutes: detentionMinutes(l, freeHours),
+    }))
+    .sort((a, b) => b.minutes - a.minutes);
+
+  return {
+    loadCount: items.length,
+    totalMinutes: items.reduce((sum, i) => sum + i.minutes, 0),
+    items,
   };
 };
 
@@ -342,12 +429,12 @@ export interface AgentRevenue {
 
 // Two guards, two failure modes: `windowDays` drops stale agents (a great load
 // six months ago falls out of the window); `minLoads` drops one-offs (a single
-// lucky run doesn't rank). loadCount is returned so the ranking self-explains.
-export const getTopAgentsByRevenue = (
+// lucky run doesn't rank). loadCount + revenue are both returned so either
+// ranking self-explains.
+const collectRecentAgents = (
   loads: Load[],
-  windowDays = 90,
-  minLoads = 2,
-  limit = 5,
+  windowDays: number,
+  minLoads: number,
 ): AgentRevenue[] => {
   const cutoff = Date.now() - windowDays * 86_400_000;
   const recent = loads.filter(
@@ -374,10 +461,30 @@ export const getTopAgentsByRevenue = (
       loadCount: agentLoads.length,
     });
   }
-
-  ranked.sort((a, b) => b.revenue - a.revenue);
-  return ranked.slice(0, limit);
+  return ranked;
 };
+
+export const getTopAgentsByRevenue = (
+  loads: Load[],
+  windowDays = 90,
+  minLoads = 2,
+  limit = 5,
+): AgentRevenue[] =>
+  collectRecentAgents(loads, windowDays, minLoads)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, limit);
+
+// Dispatch view: same podium, ranked by LOAD COUNT (volume) not net revenue —
+// so the leaderboard carries no owner-dollar figures. Ties break on revenue.
+export const getTopAgentsByVolume = (
+  loads: Load[],
+  windowDays = 90,
+  minLoads = 2,
+  limit = 5,
+): AgentRevenue[] =>
+  collectRecentAgents(loads, windowDays, minLoads)
+    .sort((a, b) => b.loadCount - a.loadCount || b.revenue - a.revenue)
+    .slice(0, limit);
 
 // ---- UPCOMING LOADS ---- (booked / in-transit, soonest pickup first)
 export interface UpcomingLoad {

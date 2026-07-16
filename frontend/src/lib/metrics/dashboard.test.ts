@@ -15,6 +15,8 @@ import {
   getUpcomingLoads,
   getRecentDeliveredLoads,
   getOutstandingSummary,
+  getDeadheadTrend,
+  getDetentionOwed,
 } from "./dashboard";
 
 // ---- typed factories: override only the fields a test cares about ----
@@ -1510,5 +1512,97 @@ describe("getOutstandingLoads", () => {
     // Revenue computed
     expect(result[0].revenue).toBe(4637); // 3400 + 612 + 625
     expect(result[1].revenue).toBe(2844); // 2283 + 411 + 150
+  });
+});
+
+// ---- DEADHEAD TREND ---- (clock frozen 2026-06-22 → 90-day window = Mar 24 →)
+describe("getDeadheadTrend", () => {
+  it("computes this month vs the trailing 90-day average", () => {
+    const loads = [
+      // June (this month): window 500, loaded 400 → 100 empty
+      makeLoad({
+        delivery_date: "2026-06-10T04:00:00.000Z",
+        odometer_start: 100000,
+        odometer_end: 100500,
+        loaded_miles: 400,
+      }),
+      // April (in the 90-day window, NOT this month): window 300, loaded 300
+      makeLoad({
+        delivery_date: "2026-04-15T04:00:00.000Z",
+        odometer_start: 90000,
+        odometer_end: 90300,
+        loaded_miles: 300,
+      }),
+      // February (older than 90 days): all empty, must be EXCLUDED from both
+      makeLoad({
+        delivery_date: "2026-02-10T04:00:00.000Z",
+        odometer_start: 80000,
+        odometer_end: 81000,
+        loaded_miles: 0,
+      }),
+    ];
+
+    const result = getDeadheadTrend(loads, []);
+    // June only: 100/500
+    expect(result.thisMonth).toBeCloseTo(0.2, 5);
+    // June + April (Feb excluded): total 800, loaded 700 → 100/800
+    expect(result.rolling90).toBeCloseTo(0.125, 5);
+  });
+
+  it("returns null on each side when its window has no qualifying miles", () => {
+    const result = getDeadheadTrend([], []);
+    expect(result.thisMonth).toBeNull();
+    expect(result.rolling90).toBeNull();
+  });
+});
+
+// ---- DETENTION OWED ---- (hours past free time, still uncollected)
+describe("getDetentionOwed", () => {
+  it("sums hours + loads for uncollected detention, longest first", () => {
+    const loads = [
+      // 5h dwell, 2h free → 180 min owed
+      makeLoad({
+        load_id: "A",
+        load_number: "A1",
+        shipper_in: "08:00",
+        shipper_out: "13:00",
+        detention_paid: false,
+      }),
+      // 2h30 dwell, 2h free → 30 min owed
+      makeLoad({
+        load_id: "B",
+        load_number: "B1",
+        receiver_in: "10:00",
+        receiver_out: "12:30",
+        detention_paid: false,
+      }),
+      // detention ran but already collected → excluded
+      makeLoad({
+        load_id: "C",
+        load_number: "C1",
+        shipper_in: "08:00",
+        shipper_out: "13:00",
+        detention_paid: true,
+      }),
+      // dwell inside free time → no detention → excluded
+      makeLoad({
+        load_id: "D",
+        load_number: "D1",
+        shipper_in: "08:00",
+        shipper_out: "09:00",
+        detention_paid: false,
+      }),
+    ];
+
+    const result = getDetentionOwed(loads, 2);
+    expect(result.loadCount).toBe(2);
+    expect(result.totalMinutes).toBe(210); // 180 + 30
+    expect(result.items.map((i) => i.load_number)).toEqual(["A1", "B1"]); // sorted desc
+    expect(result.items[0].minutes).toBe(180);
+  });
+
+  it("returns an empty summary when nothing is owed", () => {
+    const result = getDetentionOwed([], 2);
+    expect(result).toEqual({ loadCount: 0, totalMinutes: 0, items: [] });
   });
 });
