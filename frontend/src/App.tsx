@@ -9,6 +9,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
 import TripsPage from "@/pages/TripsPage";
 import ScoreLoadPage from "@/pages/ScoreLoadPage";
+import GaragePage from "@/pages/GaragePage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import MaintenancePage from "@/pages/MaintenancePage";
@@ -51,6 +52,7 @@ const App = () => {
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/score" element={<ScoreLoadPage />} />
+          <Route path="/garage" element={<GaragePage />} />
           <Route
             path="/lanes"
             element={
