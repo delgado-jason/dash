@@ -63,6 +63,9 @@ export interface Load {
   truck_id?: string | null;
   driver_id?: string | null;
   trailer_id?: string | null;
+  // The user (self_id) who booked this load — powers the dispatcher card's
+  // per-person credit. Defaults to the creator; editable to reassign credit.
+  booked_by?: string | null;
   // Joined labels, present on the single-load fetch (getLoad) only.
   truck_unit?: string | null;
   driver_name?: string | null;

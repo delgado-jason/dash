@@ -89,6 +89,7 @@ export async function getLoads(user_id) {
             loads.truck_id,
             loads.driver_id,
             loads.trailer_id,
+            loads.booked_by,
             loads.created_at AS created_at,
             loads.updated_at AS updated_at
         FROM loads
@@ -200,6 +201,7 @@ export async function getLoad(user_id, load_id) {
             l.truck_id,
             l.driver_id,
             l.trailer_id,
+            l.booked_by,
             trk.unit_number AS truck_unit,
             drv.first_name || ' ' || drv.last_name AS driver_name,
             trl.unit_number AS trailer_unit,
@@ -234,7 +236,10 @@ export async function getLoad(user_id, load_id) {
 }
 
 // ---- CREATE LOAD SERVICE ----
-export async function createLoad(user_id, data) {
+// `self_id` is the logged-in person; a load's booker defaults to them so the
+// dispatcher who enters it gets the credit. The client may override booked_by
+// (e.g. the owner crediting a dispatcher for a load they sourced).
+export async function createLoad(user_id, data, self_id) {
   // Reject missing user_id
   if (!user_id) throw new ValidationError("Missing user_id");
 
@@ -282,6 +287,7 @@ export async function createLoad(user_id, data) {
     "truck_id",
     "driver_id",
     "trailer_id",
+    "booked_by",
   ];
 
   for (const field in data) {
@@ -295,13 +301,16 @@ export async function createLoad(user_id, data) {
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
 
-  let fields = ["user_id"];
-  let values = [user_id];
-  let placeholders = ["$1"];
+  // Booker: explicit override, else the logged-in creator.
+  const booker = data.booked_by ?? self_id ?? user_id;
+  let fields = ["user_id", "booked_by"];
+  let values = [user_id, booker];
+  let placeholders = ["$1", "$2"];
 
-  let index = 2;
+  let index = 3;
 
   for (const field in data) {
+    if (field === "booked_by") continue; // seeded above
     if (data[field] !== undefined) {
       fields.push(field);
       values.push(data[field]);
@@ -371,6 +380,7 @@ export async function patchLoad(user_id, load_id, data) {
     "truck_id",
     "driver_id",
     "trailer_id",
+    "booked_by",
   ];
 
   // Throw error if data contains invalid field(s)

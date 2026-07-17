@@ -9,6 +9,7 @@ import type { Trailer } from "@/types/trailer";
 import { getTrucks } from "@/services/trucksService";
 import { getDrivers } from "@/services/driversService";
 import { getTrailers } from "@/services/trailersService";
+import { getTeam, type TeamMember } from "@/services/teamService";
 import { QuickAddBroker } from "./QuickAddBroker";
 import { QuickAddAgent } from "./QuickAddAgent";
 import { QuickAddMarket } from "./QuickAddMarket";
@@ -169,6 +170,7 @@ const LoadForm = ({
           truck_id: initialData.truck_id ?? null,
           driver_id: initialData.driver_id ?? null,
           trailer_id: initialData.trailer_id ?? null,
+          booked_by: initialData.booked_by ?? null,
         }
       : {
           load_number: "",
@@ -211,6 +213,8 @@ const LoadForm = ({
           truck_id: null,
           driver_id: null,
           trailer_id: null,
+          // Default credit to the creator; the owner can reassign below.
+          booked_by: localStorage.getItem("user_id") ?? null,
         },
   );
 
@@ -218,6 +222,15 @@ const LoadForm = ({
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
   const [facilityList, setFacilityList] = useState<Facility[]>(facilities);
+
+  // Booking credit: the owner (admin) can attribute a load to a dispatcher. A
+  // dispatcher's loads auto-credit to them (server default), so no picker for her.
+  const selfId = localStorage.getItem("user_id");
+  const isAdmin = localStorage.getItem("role") === "admin";
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  useEffect(() => {
+    if (isAdmin) getTeam().then(setTeam).catch(() => {});
+  }, [isAdmin]);
 
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -464,6 +477,32 @@ const LoadForm = ({
                 </SelectContent>
               </Select>
             </div>
+            {/* Booked by — owner only; credits a dispatcher for the booking */}
+            {isAdmin && team.length > 1 && (
+              <div>
+                <Label htmlFor="booked_by">Booked by</Label>
+                <Select
+                  value={formData.booked_by ?? ""}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, booked_by: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Who booked it" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {team.map((m) => (
+                        <SelectItem key={m.user_id} value={m.user_id}>
+                          {(m.display_name || m.email) +
+                            (m.user_id === selfId ? " (you)" : "")}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {/* Broker selects */}
             <div className="flex gap-2 items-end">
               <div className="flex-1">

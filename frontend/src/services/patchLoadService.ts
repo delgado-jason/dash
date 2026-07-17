@@ -4,6 +4,7 @@ import type { Load } from "@/types/load";
 interface PatchLoadInput {
   load_status?: string;
   payment_status?: string;
+  booked_by?: string | null;
 }
 
 export const patchLoad = async (

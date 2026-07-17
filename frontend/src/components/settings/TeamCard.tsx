@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { UserPlus, ChevronRight } from "lucide-react";
 import { Panel } from "@/components/ui/Panel";
 import {
   getTeam,
@@ -57,19 +58,45 @@ export const TeamCard = () => {
       </p>
 
       <div className="mt-4 divide-y divide-steel">
-        {team.map((m) => (
-          <div key={m.user_id} className="flex items-center justify-between py-2">
-            <div className="min-w-0">
-              <span className="text-sm text-light">{m.display_name || m.email}</span>
-              {m.display_name && (
-                <span className="text-xs text-muted-text ml-2">{m.email}</span>
-              )}
+        {team.map((m) => {
+          const inner = (
+            <>
+              <div className="min-w-0">
+                <span className="text-sm text-light">
+                  {m.display_name || m.email}
+                </span>
+                {m.display_name && (
+                  <span className="text-xs text-muted-text ml-2">{m.email}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-steel text-muted-text">
+                  {m.role === "admin" ? "Owner · Admin" : "Dispatcher"}
+                </span>
+                {m.role === "dispatcher" && (
+                  <ChevronRight size={15} className="text-muted-text" />
+                )}
+              </div>
+            </>
+          );
+          // A dispatcher's row opens their card/page; the owner has the driver card.
+          return m.role === "dispatcher" ? (
+            <Link
+              key={m.user_id}
+              to={`/dispatcher/${m.user_id}`}
+              className="flex items-center justify-between py-2 hover:opacity-80"
+            >
+              {inner}
+            </Link>
+          ) : (
+            <div
+              key={m.user_id}
+              className="flex items-center justify-between py-2"
+            >
+              {inner}
             </div>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-steel text-muted-text shrink-0">
-              {m.role === "admin" ? "Owner · Admin" : "Dispatcher"}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
