@@ -1,6 +1,6 @@
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
-import { loadRevenue } from "./rateTargets";
+import { loadRevenue, loadGross } from "./rateTargets";
 import { detentionOwed, detentionMinutes } from "@/lib/detention";
 import { median } from "./stats";
 
@@ -419,18 +419,25 @@ export const getLoadsMonthly = (loads: Load[]): MonthlyLoadCount => {
   };
 };
 
-// ---- TOP AGENTS BY REVENUE ---- (delivered loads, grouped by agent)
+// ---- TOP AGENTS BY GROSS ---- (delivered loads, grouped by agent)
+// `revenue` here is the agent's total GROSS (the full customer rate). Agents are
+// graded on the market value they bring, NOT Jason's net — net would penalize a
+// good booking for his deadhead/cost, which the agent doesn't control. Gross is
+// used for agents/lanes/targets app-wide (owner dashboard too). Assets stay net.
 export interface AgentRevenue {
   agentId: string;
   agent: string;
-  revenue: number;
+  revenue: number; // GROSS
   loadCount: number;
 }
 
+const agentGross = (loads: Load[]): number =>
+  loads.reduce((sum, l) => sum + loadGross(l), 0);
+
 // Two guards, two failure modes: `windowDays` drops stale agents (a great load
 // six months ago falls out of the window); `minLoads` drops one-offs (a single
-// lucky run doesn't rank). loadCount + revenue are both returned so either
-// ranking self-explains.
+// lucky run doesn't rank). loadCount + gross are both returned so the ranking
+// self-explains.
 const collectRecentAgents = (
   loads: Load[],
   windowDays: number,
@@ -457,7 +464,7 @@ const collectRecentAgents = (
     ranked.push({
       agentId,
       agent: agentLoads[0].agent,
-      revenue: getLoadRevenue(agentLoads) ?? 0,
+      revenue: agentGross(agentLoads),
       loadCount: agentLoads.length,
     });
   }
@@ -474,17 +481,29 @@ export const getTopAgentsByRevenue = (
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, limit);
 
-// Dispatch view: same podium, ranked by LOAD COUNT (volume) not net revenue —
-// so the leaderboard carries no owner-dollar figures. Ties break on revenue.
-export const getTopAgentsByVolume = (
-  loads: Load[],
-  windowDays = 90,
-  minLoads = 2,
-  limit = 5,
-): AgentRevenue[] =>
-  collectRecentAgents(loads, windowDays, minLoads)
-    .sort((a, b) => b.loadCount - a.loadCount || b.revenue - a.revenue)
-    .slice(0, limit);
+// The full agent directory for the dispatch Agents table: every agent with a
+// delivered load, lifetime load count + gross, sorted by gross. The component
+// searches / re-sorts / paginates this.
+export const getAgentGrossTable = (loads: Load[]): AgentRevenue[] => {
+  const byAgent = new Map<string, Load[]>();
+  for (const load of loads) {
+    if (load.load_status !== "delivered") continue;
+    const bucket = byAgent.get(load.agent_id);
+    if (bucket) bucket.push(load);
+    else byAgent.set(load.agent_id, [load]);
+  }
+
+  const rows: AgentRevenue[] = [];
+  for (const [agentId, agentLoads] of byAgent) {
+    rows.push({
+      agentId,
+      agent: agentLoads[0].agent,
+      revenue: agentGross(agentLoads),
+      loadCount: agentLoads.length,
+    });
+  }
+  return rows.sort((a, b) => b.revenue - a.revenue);
+};
 
 // ---- UPCOMING LOADS ---- (booked / in-transit, soonest pickup first)
 export interface UpcomingLoad {

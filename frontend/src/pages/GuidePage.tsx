@@ -873,10 +873,25 @@ const GuidePage = () => (
           90-day average. Detention is shown in{" "}
           <span className="text-light">hours</span>, not dollars — the rate per
           hour isn't settled until it lands on your statement, so the board tracks
-          the wait you're owed and lets you mark it paid once collected. It keeps
-          the rate ladder (the floor to book above), the grind streak, what's
-          next, a detention chase-list, and the top-agents leaderboard ranked by
-          loads. Net revenue, RPM, and profit never appear.
+          the wait you're owed and lets you mark it paid once collected. Below the
+          rate ladder and the grind streak sit two searchable, paginated tables —{" "}
+          <span className="text-light">Loads</span> (with the load on the road
+          pulled out on top, and filters for booked / in&#8209;transit / delivered
+          / detention) and <span className="text-light">Agents</span> — then the
+          Top&nbsp;Agents leaderboard. Net revenue, RPM, and profit never appear.
+        </p>
+      </Section>
+
+      <Section title="Agents &amp; lanes are graded on gross">
+        <p className="text-sm text-muted-text">
+          Everywhere an <span className="text-light">agent</span> or a{" "}
+          <span className="text-light">lane</span> is ranked — the Top&nbsp;Agents
+          leaderboard on either dashboard, the Agents table — the number is{" "}
+          <span className="text-light">gross</span> revenue (the full customer
+          rate), not net. An agent who books a strong load did their job; they
+          shouldn't be marked down because a deadhead leg or a cost of yours thinned
+          the net. Net is your operational result and lives on the owner side; gross
+          is what the agent and the lane actually delivered.
         </p>
       </Section>
     </div>
