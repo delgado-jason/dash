@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearSession } from "@/lib/auth";
 
 // Create a centralized axios instance
 const api = axios.create({
@@ -42,10 +43,7 @@ api.interceptors.response.use(
       const url = error.config?.url || "";
       const isAuthAttempt = url.includes("/auth/login") || url.includes("/auth/signup");
       if (hadToken && !isAuthAttempt) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("role");
-        localStorage.removeItem("display_name");
+        clearSession();
         window.location.href = "/login";
       }
     }
