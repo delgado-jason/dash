@@ -14,7 +14,7 @@ import { GrindMeter } from "@/components/dashboard/GrindMeter";
 import { TopAgents } from "@/components/dashboard/TopAgents";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
-import { MyDispatcherCard } from "@/components/dashboard/MyDispatcherCard";
+import { DispatcherChip } from "@/components/dashboard/DispatcherChip";
 import {
   getLoadsMonthly,
   getTopAgentsByRevenue,
@@ -109,7 +109,6 @@ const DispatchDashboard = () => {
   const topAgents = getTopAgentsByRevenue(loads);
   const agentHonors = computeHonors(loads, now);
   const agentStandings = currentQuarterStandings(loads, now);
-  const displayName = localStorage.getItem("display_name") || "Dispatch";
 
   return (
     <div className="p-6 bg-iron text-light min-h-screen font-body">
@@ -118,7 +117,9 @@ const DispatchDashboard = () => {
           <h1 className="font-comic text-3xl" style={{ color: "#f5b03a" }}>
             DISPATCH BOARD
           </h1>
-          <p className="text-xs text-muted-text mt-0.5">{displayName}</p>
+          <div className="mt-2">
+            <DispatcherChip />
+          </div>
         </div>
         <Link
           to="/score"
@@ -127,15 +128,6 @@ const DispatchDashboard = () => {
         >
           <Zap size={15} /> Score a Load
         </Link>
-      </div>
-
-      {/* Her card — the first thing she sees; taps through to her page */}
-      <div className="mb-6">
-        <MyDispatcherCard
-          loads={loads}
-          ladder={targets.bookingLadder}
-          freeHours={freeHours}
-        />
       </div>
 
       <AlertBanners alerts={alerts} />
