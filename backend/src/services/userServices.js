@@ -47,7 +47,7 @@ export async function validateUser(email, password) {
   // fetch user row
   const result = await db.query(
     `
-    SELECT user_id, email, password_hash, role, parent_user_id, display_name
+    SELECT user_id, email, password_hash, role, parent_user_id, display_name, avatar_url
     FROM users
     WHERE email = $1
     `,
@@ -74,6 +74,7 @@ export async function validateUser(email, password) {
     role: user.role,
     parent_user_id: user.parent_user_id,
     display_name: user.display_name,
+    avatar_url: user.avatar_url,
   };
 }
 
@@ -103,11 +104,24 @@ export async function createDispatcher(accountId, { email, password, display_nam
 // ---- LIST an account's team ---- (owner + its dispatchers; safe fields only)
 export async function listAccountUsers(accountId) {
   const result = await db.query(
-    `SELECT user_id, email, role, display_name, created_at
+    `SELECT user_id, email, role, display_name, avatar_url, created_at
        FROM users
       WHERE user_id = $1 OR parent_user_id = $1
       ORDER BY (user_id = $1) DESC, created_at`,
     [accountId],
   );
   return result.rows;
+}
+
+// ---- FETCH one account member ---- (for a team member's dispatcher page).
+// Scoped to the account, so only the owner + its dispatchers are reachable.
+// The route decides WHO may ask (self, or an admin viewing the team).
+export async function getTeamMember(accountId, targetId) {
+  const result = await db.query(
+    `SELECT user_id, email, role, display_name, avatar_url, created_at
+       FROM users
+      WHERE user_id = $1 AND (user_id = $2 OR parent_user_id = $2)`,
+    [targetId, accountId],
+  );
+  return result.rows[0] ?? null;
 }

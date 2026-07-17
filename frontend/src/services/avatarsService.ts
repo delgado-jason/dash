@@ -1,6 +1,6 @@
 import api from "./api";
 
-export type AvatarKind = "truck" | "driver" | "trailer";
+export type AvatarKind = "truck" | "driver" | "trailer" | "user";
 
 // Generate a themed avatar server-side (fal → Supabase Storage). `variant` is
 // the driver gender ('male' | 'female'); ignored for truck/trailer.

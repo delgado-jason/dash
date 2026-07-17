@@ -5,6 +5,7 @@ export interface TeamMember {
   email: string;
   role: string;
   display_name: string | null;
+  avatar_url: string | null;
   created_at: string;
 }
 
@@ -12,6 +13,13 @@ export interface TeamMember {
 export const getTeam = async (): Promise<TeamMember[]> => {
   const res = await api.get("/users");
   return res.data.team;
+};
+
+// One account member's identity, for their dispatcher card/page. A user may
+// fetch their own; an admin may fetch any member of the account.
+export const getUser = async (id: string): Promise<TeamMember> => {
+  const res = await api.get(`/users/${id}`);
+  return res.data.user;
 };
 
 export const createDispatcher = async (data: {

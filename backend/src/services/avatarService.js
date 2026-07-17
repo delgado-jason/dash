@@ -38,6 +38,15 @@ const buildPrompt = (kind, row, variant) => {
       "truck driver, baseball cap, work shirt, confident calm expression."
     );
   }
+  // user — the dispatcher behind the desk (role-relevant, not a driver).
+  if (kind === "user") {
+    const g = variant === "female" ? "woman" : variant === "male" ? "man" : "person";
+    return (
+      `${STYLE}. Head and shoulders avatar portrait of a ${g} freight dispatcher ` +
+      "at a command desk wearing a phone headset, glowing load-board and route " +
+      "map monitors behind, confident friendly expression."
+    );
+  }
   // trailer — reflect the actual type, and force a STANDALONE trailer (flux
   // otherwise draws a flatbed body truck).
   const len = row.length_ft ? `${row.length_ft} foot ` : "";
@@ -89,44 +98,68 @@ export const uploadToStorage = async (path, buffer, contentType) => {
   return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
 };
 
-const setAvatarUrl = async (kind, user_id, id, url) => {
+const isValidKind = (kind) => kind === "user" || !!ENTITY[kind];
+
+const setAvatarUrl = async (kind, auth, id, url) => {
+  if (kind === "user") {
+    await db.query(`UPDATE users SET avatar_url = $1 WHERE user_id = $2`, [
+      url,
+      id,
+    ]);
+    return;
+  }
   const { table, idCol } = ENTITY[kind];
   await db.query(
     `UPDATE ${table} SET avatar_url = $1, updated_at = NOW()
      WHERE ${idCol} = $2 AND user_id = $3`,
-    [url, id, user_id],
+    [url, id, auth.account_id],
   );
 };
 
-const getEntity = async (kind, user_id, id) => {
+// Resolve the target row AND authorize. Entities belong to the account (user_id
+// = account). A `user` avatar is the person's own (id === self_id) or, for an
+// admin, any member of their account.
+const resolveTarget = async (kind, auth, id) => {
+  if (kind === "user") {
+    if (id !== auth.self_id && auth.role !== "admin")
+      throw new NotFoundError("user not found");
+    const r = await db.query(
+      `SELECT * FROM users
+        WHERE user_id = $1 AND (user_id = $2 OR parent_user_id = $2)`,
+      [id, auth.account_id],
+    );
+    if (r.rowCount === 0) throw new NotFoundError("user not found");
+    return r.rows[0];
+  }
   const { table, idCol } = ENTITY[kind];
   const r = await db.query(
     `SELECT * FROM ${table} WHERE ${idCol} = $1 AND user_id = $2`,
-    [id, user_id],
+    [id, auth.account_id],
   );
   if (r.rowCount === 0) throw new NotFoundError(`${kind} not found`);
   return r.rows[0];
 };
 
-// Generate a themed avatar, store it, and set the entity's avatar_url.
-export const generateAvatar = async (user_id, kind, id, variant) => {
-  if (!ENTITY[kind]) throw new ValidationError("Invalid avatar kind");
-  const row = await getEntity(kind, user_id, id);
+// Generate a themed avatar, store it, and set the target's avatar_url.
+// `auth` is req.user ({ account_id, self_id, role }).
+export const generateAvatar = async (auth, kind, id, variant) => {
+  if (!isValidKind(kind)) throw new ValidationError("Invalid avatar kind");
+  const row = await resolveTarget(kind, auth, id);
   const imageUrl = await falGenerate(buildPrompt(kind, row, variant));
   const buffer = Buffer.from(await (await fetch(imageUrl)).arrayBuffer());
   const path = `${kind}/${id}.jpg`;
   const publicUrl = await uploadToStorage(path, buffer, "image/jpeg");
-  await setAvatarUrl(kind, user_id, id, publicUrl);
+  await setAvatarUrl(kind, auth, id, publicUrl);
   return { avatar_url: publicUrl };
 };
 
-// Store a user-uploaded image (buffer) and set the entity's avatar_url.
-export const uploadAvatar = async (user_id, kind, id, buffer, contentType) => {
-  if (!ENTITY[kind]) throw new ValidationError("Invalid avatar kind");
-  await getEntity(kind, user_id, id); // ownership check
+// Store a user-uploaded image (buffer) and set the target's avatar_url.
+export const uploadAvatar = async (auth, kind, id, buffer, contentType) => {
+  if (!isValidKind(kind)) throw new ValidationError("Invalid avatar kind");
+  await resolveTarget(kind, auth, id); // ownership / authorization check
   const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
   const path = `${kind}/${id}-upload.${ext}`;
   const publicUrl = await uploadToStorage(path, buffer, contentType);
-  await setAvatarUrl(kind, user_id, id, publicUrl);
+  await setAvatarUrl(kind, auth, id, publicUrl);
   return { avatar_url: publicUrl };
 };

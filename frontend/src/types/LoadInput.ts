@@ -39,4 +39,7 @@ export interface LoadInput {
   truck_id?: string | null;
   driver_id?: string | null;
   trailer_id?: string | null;
+  // Who gets booking credit — a user's self_id. Defaults to the creator
+  // server-side; the owner may set it to credit a dispatcher.
+  booked_by?: string | null;
 }

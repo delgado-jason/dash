@@ -14,6 +14,7 @@ import { GrindMeter } from "@/components/dashboard/GrindMeter";
 import { TopAgents } from "@/components/dashboard/TopAgents";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
+import { MyDispatcherCard } from "@/components/dashboard/MyDispatcherCard";
 import {
   getLoadsMonthly,
   getTopAgentsByRevenue,
@@ -126,6 +127,15 @@ const DispatchDashboard = () => {
         >
           <Zap size={15} /> Score a Load
         </Link>
+      </div>
+
+      {/* Her card — the first thing she sees; taps through to her page */}
+      <div className="mb-6">
+        <MyDispatcherCard
+          loads={loads}
+          ladder={targets.bookingLadder}
+          freeHours={freeHours}
+        />
       </div>
 
       <AlertBanners alerts={alerts} />

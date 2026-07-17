@@ -29,6 +29,7 @@ import { LoadDetailPage } from "@/pages/LoadDetailPage";
 import { SwatchesPage } from "@/pages/SwatchesPage";
 import SignupPage from "@/pages/SignupPage";
 import GuidePage from "@/pages/GuidePage";
+import DispatcherPage from "@/pages/DispatcherPage";
 import CompliancePage from "@/pages/CompliancePage";
 import RecapPage from "@/pages/RecapPage";
 import TrophyHallPage from "@/pages/TrophyHallPage";
@@ -80,6 +81,7 @@ const App = () => {
           <Route path="/facilities" element={<FacilitiesPage />} />
           <Route path="/facilities/:id" element={<FacilityDetailPage />} />
           <Route path="/guide" element={<GuidePage />} />
+          <Route path="/dispatcher/:id" element={<DispatcherPage />} />
 
           {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
           <Route element={<AdminRoute />}>

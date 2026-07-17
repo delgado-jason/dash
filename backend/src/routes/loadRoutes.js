@@ -69,7 +69,7 @@ router.post("/", async (req, res) => {
     const user_id = req.user.user_id;
     const data = req.body;
 
-    const load = await createLoad(user_id, data);
+    const load = await createLoad(user_id, data, req.user.self_id);
 
     return res.status(201).json({
       message: "Load created successfully",

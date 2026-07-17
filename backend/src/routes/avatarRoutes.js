@@ -20,7 +20,7 @@ const handleError = (res, err) => {
 router.post("/:kind/:id/generate", async (req, res) => {
   try {
     const result = await generateAvatar(
-      req.user.user_id,
+      req.user,
       req.params.kind,
       req.params.id,
       req.body?.variant,
@@ -44,7 +44,7 @@ router.post(
       if (!req.body || !req.body.length)
         return res.status(400).json({ error: "No image in request body" });
       const result = await uploadAvatar(
-        req.user.user_id,
+        req.user,
         req.params.kind,
         req.params.id,
         req.body,

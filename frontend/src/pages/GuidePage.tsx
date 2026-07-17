@@ -894,6 +894,33 @@ const GuidePage = () => (
           is what the agent and the lane actually delivered.
         </p>
       </Section>
+
+      <Section title="The Dispatcher Card">
+        <p className="text-sm text-muted-text">
+          Every dispatcher has their own card — an avatar, a{" "}
+          <span className="text-light">career rank</span> that climbs on lifetime
+          loads booked (Rookie Dispatcher → Load Wrangler → Freight Closer → Rate
+          Hawk → Dispatch Legend), a season grade, and five booking stats:{" "}
+          <span className="text-light">loads booked</span>,{" "}
+          <span className="text-light">gross booked</span>, the{" "}
+          <span className="text-light">average booked rate</span> against your
+          break-even floor, <span className="text-light">detention collected</span>,
+          and <span className="text-light">on-time %</span>. It sits at the top of
+          the dispatch board and opens to a full page with the rank ladder.
+        </p>
+        <p className="text-sm text-muted-text mt-3">
+          The card counts only the loads a person actually booked. Every load
+          records a <span className="text-light">"Booked by"</span> — it defaults
+          to whoever enters it, so a dispatcher's own loads credit to them
+          automatically. As the owner you'll see a Booked-by picker on the load
+          form to hand credit to a dispatcher for a load you entered, and you can
+          open any teammate's card from{" "}
+          <Link to="/settings" className="text-status-info-text hover:underline">
+            Settings → Team
+          </Link>
+          . Everything on the card is gross, never net.
+        </p>
+      </Section>
     </div>
   </div>
 );
