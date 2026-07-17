@@ -7,17 +7,16 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { KpiCard } from "@/components/KpiCard";
-import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { GrindMeter } from "@/components/dashboard/GrindMeter";
 import { TopAgents } from "@/components/dashboard/TopAgents";
-import { WhatsNext } from "@/components/dashboard/WhatsNext";
+import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
+import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
 import {
   getLoadsMonthly,
-  getTopAgentsByVolume,
-  getUpcomingLoads,
+  getTopAgentsByRevenue,
   getDeadheadTrend,
   getDetentionOwed,
 } from "@/lib/metrics/dashboard";
@@ -26,7 +25,6 @@ import {
   currentQuarterStandings,
 } from "@/lib/metrics/agentLeaderboard";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
-import { fmtDuration } from "@/lib/stopTimes";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 
 const formatPercent = (ratio: number | null): string =>
@@ -107,10 +105,9 @@ const DispatchDashboard = () => {
       : deadhead.thisMonth <= deadheadBaseline
         ? "good"
         : "bad";
-  const topAgents = getTopAgentsByVolume(loads);
+  const topAgents = getTopAgentsByRevenue(loads);
   const agentHonors = computeHonors(loads, now);
   const agentStandings = currentQuarterStandings(loads, now);
-  const upcoming = getUpcomingLoads(loads);
   const displayName = localStorage.getItem("display_name") || "Dispatch";
 
   return (
@@ -161,67 +158,24 @@ const DispatchDashboard = () => {
         />
       </div>
 
-      {/* Booking floor + gross pace (gross is hers; net/RPM stay owner-only) */}
-      <div className="mt-6">
+      {/* Booking floor + gross pace | the grind (gross is hers; net/RPM owner-only) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
         <RateTargetsCard targets={targets} />
-      </div>
-
-      {/* The grind — weekly target-beating streak (no dollar figures) */}
-      <div className="mt-6">
         <GrindMeter loads={loads} />
       </div>
 
-      {/* What's next + detention to chase */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
-        <Panel className="p-4">
-          <p className="text-xs uppercase tracking-wider text-muted-text mb-2">
-            What's next · booked
-          </p>
-          <WhatsNext loads={upcoming} />
-        </Panel>
-        <Panel className="p-4">
-          <p
-            className="text-xs uppercase tracking-wider mb-2"
-            style={{ color: "#f5b03a" }}
-          >
-            Detention to collect
-          </p>
-          {detention.items.length === 0 ? (
-            <p className="text-muted-text text-sm">Nothing owed right now.</p>
-          ) : (
-            <>
-              {detention.items.slice(0, 5).map((it) => (
-                <Link
-                  key={it.load_id}
-                  to={`/loads/${it.load_id}`}
-                  className="flex justify-between text-sm py-1.5 border-t border-steel first:border-t-0 hover:opacity-80"
-                >
-                  <span className="text-light truncate">
-                    #{it.load_number} · {it.lane}
-                  </span>
-                  <span
-                    className="whitespace-nowrap ml-2 font-semibold"
-                    style={{ color: "#f5b03a" }}
-                  >
-                    {fmtDuration(it.minutes) ?? "—"}
-                  </span>
-                </Link>
-              ))}
-              <p className="text-[10px] text-muted-text mt-2">
-                Mark paid on the load once it hits a settlement.
-              </p>
-            </>
-          )}
-        </Panel>
+      {/* The workhorses — searchable, paginated loads + agents */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6 items-start">
+        <DispatchLoadsTable loads={loads} freeHours={freeHours} />
+        <DispatchAgentsTable loads={loads} />
       </div>
 
-      {/* Top agents — ranked by volume, no owner dollars */}
+      {/* Top agents — ranked by gross, same card as the owner dashboard */}
       <div className="mt-6">
         <TopAgents
           agents={topAgents}
           honors={agentHonors}
           standings={agentStandings}
-          mode="loads"
         />
       </div>
     </div>

@@ -9,11 +9,10 @@ interface Props {
   agents: AgentRevenue[];
   honors: Map<string, AgentHonors>;
   standings: Map<string, LiveStanding>;
-  // "revenue" (owner view) shows net $ per agent; "loads" (dispatch view) shows
-  // volume only, so the board carries no owner-dollar figures.
-  mode?: "revenue" | "loads";
 }
 
+// agent.revenue is GROSS (see getTopAgentsByRevenue) — agents are graded on the
+// market value they bring, the same way on every dashboard.
 const fmtK = (n: number): string => `$${(n / 1000).toFixed(1)}k`;
 
 // Gold, silver, bronze for the podium (index 0/1/2).
@@ -54,12 +53,7 @@ const Pulse = () => (
   />
 );
 
-export const TopAgents = ({
-  agents,
-  honors,
-  standings,
-  mode = "revenue",
-}: Props) => (
+export const TopAgents = ({ agents, honors, standings }: Props) => (
   <div
     className="relative overflow-hidden rounded-2xl border-2 p-4"
     style={{ background: "#10151f", borderColor: "#e8940a" }}
@@ -79,7 +73,7 @@ export const TopAgents = ({
         TOP AGENTS
       </span>
       <span className="flex-1" />
-      <span className="text-[10px] text-muted-text">90 days</span>
+      <span className="text-[10px] text-muted-text">gross · 90 days</span>
     </div>
 
     {agents.length === 0 ? (
@@ -135,19 +129,11 @@ export const TopAgents = ({
                     color: first ? "#f5b03a" : i < 3 ? "#e8eef7" : "#9daabb",
                   }}
                 >
-                  {mode === "loads" ? agent.loadCount : fmtK(agent.revenue)}
+                  {fmtK(agent.revenue)}
                 </span>
-                {mode === "loads" ? (
-                  <span className="block text-[10px] text-muted-text">
-                    loads
-                  </span>
-                ) : (
-                  i < 3 && (
-                    <span className="block text-[10px] text-muted-text">
-                      {agent.loadCount} loads
-                    </span>
-                  )
-                )}
+                <span className="block text-[10px] text-muted-text">
+                  {agent.loadCount} loads
+                </span>
               </span>
             </>
           );

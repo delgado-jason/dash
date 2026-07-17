@@ -17,6 +17,7 @@ import {
   getOutstandingSummary,
   getDeadheadTrend,
   getDetentionOwed,
+  getAgentGrossTable,
 } from "./dashboard";
 
 // ---- typed factories: override only the fields a test cares about ----
@@ -258,6 +259,43 @@ describe("getTopAgentsByRevenue", () => {
       makeLoad({ agent_id: id, agent: id, delivery_date: "2026-06-11T04:00:00.000Z" }),
     ]);
     expect(getTopAgentsByRevenue(loads, 90, 2, 2)).toHaveLength(2);
+  });
+
+  it("uses GROSS, not net — an agent isn't penalized for Jason's cut", () => {
+    // gross = linehaul + fsc + accessorials = 1250/load; net_revenue (700) must
+    // NOT be what's summed.
+    const grossLoad = {
+      linehaul: "1000",
+      fuel_surcharge: "200",
+      total_accessorials: "50",
+      net_revenue: "700",
+    };
+    const loads = [
+      makeLoad({ agent_id: "g", agent: "Gus", delivery_date: "2026-06-10T04:00:00.000Z", ...grossLoad }),
+      makeLoad({ agent_id: "g", agent: "Gus", delivery_date: "2026-06-12T04:00:00.000Z", ...grossLoad }),
+    ];
+    const top = getTopAgentsByRevenue(loads, 90, 2, 5);
+    expect(top[0].revenue).toBe(2500); // 2 × 1250 gross, not 2 × 700 net
+  });
+});
+
+describe("getAgentGrossTable", () => {
+  it("lists every agent with a delivered load, gross + count, gross-sorted", () => {
+    const loads = [
+      makeLoad({ agent_id: "a1", agent: "Ann", linehaul: "1000", delivery_date: "2026-06-10T04:00:00.000Z" }),
+      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-01T04:00:00.000Z" }),
+      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-05T04:00:00.000Z" }),
+      // booked → excluded (no realized gross yet)
+      makeLoad({ agent_id: "a3", agent: "Cid", load_status: "booked", linehaul: "9999" }),
+    ];
+    const table = getAgentGrossTable(loads);
+    expect(table.map((r) => r.agent)).toEqual(["Ann", "Bob"]); // 1000 > 800
+    expect(table[1].loadCount).toBe(2);
+    expect(table[1].revenue).toBe(800);
+  });
+
+  it("returns an empty list when no loads are delivered", () => {
+    expect(getAgentGrossTable([])).toEqual([]);
   });
 });
 
