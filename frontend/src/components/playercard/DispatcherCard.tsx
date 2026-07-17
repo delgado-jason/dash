@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Headset } from "lucide-react";
 import type { DispatcherCard as CardData } from "@/lib/metrics/dispatcherCard";
+import { RANK_TIERS } from "@/lib/metrics/dispatcherCard";
 import type { Grade } from "@/lib/metrics/playerCard";
 
 interface Props {
@@ -40,28 +42,28 @@ const Stat = ({
   accent?: boolean;
 }) => (
   <div
-    className="rounded-lg px-2.5 py-2"
+    className="rounded-lg px-3 py-2.5"
     style={{
       background: "#1c2333",
       gridColumn: span ? "span 2" : undefined,
       border: accent ? "1px solid #85500b" : undefined,
     }}
   >
-    <div
-      className="text-[8px] tracking-wide"
-      style={{ color: accent ? "#f5b03a" : "#7d8ba3" }}
-    >
+    <div className="text-[9px] tracking-wide" style={{ color: accent ? "#f5b03a" : "#7d8ba3" }}>
       {label}
     </div>
-    <div className="font-comic text-[22px]" style={{ color: accent ? "#f5b03a" : "#f4f7fb" }}>
+    <div className="font-comic text-2xl" style={{ color: accent ? "#f5b03a" : "#f4f7fb" }}>
       {value}
     </div>
-    {sub && <div className="text-[9px]" style={{ color: "#7d8ba3" }}>{sub}</div>}
+    {sub && <div className="text-[10px]" style={{ color: "#7d8ba3" }}>{sub}</div>}
   </div>
 );
 
 export const DispatcherCard = ({ name, business, avatar, card }: Props) => {
   const grade = card.seasonGrade ? GRADE_META[card.seasonGrade] : null;
+  const stars =
+    "★".repeat(card.rank.index + 1) +
+    "☆".repeat(RANK_TIERS.length - card.rank.index - 1);
   const over = card.overBreakEven;
   const overNode =
     over == null ? (
@@ -79,7 +81,7 @@ export const DispatcherCard = ({ name, business, avatar, card }: Props) => {
       style={{ background: "linear-gradient(160deg,#161d2b,#10151f)", borderColor: "#e8940a" }}
     >
       <div
-        className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
+        className="absolute top-0 right-0 w-40 h-40 pointer-events-none"
         style={{
           backgroundImage: "radial-gradient(#e8940a 1.3px, transparent 1.4px)",
           backgroundSize: "8px 8px",
@@ -87,65 +89,63 @@ export const DispatcherCard = ({ name, business, avatar, card }: Props) => {
         }}
       />
 
-      {/* header */}
-      <div className="relative flex gap-3.5 items-center">
+      {/* header: avatar left, identity + rank right */}
+      <div className="relative flex gap-4 items-start">
         <div className="shrink-0">{avatar}</div>
-        <div className="min-w-0 flex-1">
-          <div className="font-comic text-3xl leading-none" style={{ color: "#f5b03a" }}>
+        <div className="flex-1 min-w-0">
+          <div className="font-comic text-4xl leading-none" style={{ color: "#f5b03a" }}>
             {name}
           </div>
           {business && (
-            <div className="text-[10px] mt-1" style={{ color: "#9daabb" }}>
+            <div className="text-[11px] mt-1" style={{ color: "#9daabb" }}>
               {business}
             </div>
           )}
-          <div
-            className="inline-flex items-center gap-1 mt-1.5 rounded-full px-2.5 py-0.5"
-            style={{ background: "rgba(232,148,10,0.14)", border: "1px solid #7a4718" }}
-          >
-            <span className="text-[10px]">⭐</span>
-            <span className="text-[10px] font-semibold tracking-wide" style={{ color: "#f5b03a" }}>
-              {card.rank.name.toUpperCase()}
-            </span>
+
+          <div className="flex items-center gap-3 mt-3">
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: "#3a2a0a", border: "2px solid #e8940a", color: "#f5b03a" }}
+            >
+              <Headset size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div
+                className="font-comic text-xl leading-none"
+                style={{ color: "#f5e6c8", letterSpacing: "1px" }}
+              >
+                {card.rank.name}
+              </div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#7d8ba3" }}>
+                <span style={{ color: "#f5b03a", letterSpacing: "1px" }}>{stars}</span> · Career rank
+              </div>
+              <div className="h-1.5 rounded mt-1 overflow-hidden" style={{ background: "#1c2333" }}>
+                <div className="h-full" style={{ width: `${card.rank.pct * 100}%`, background: "#e8940a" }} />
+              </div>
+              {card.rank.next && (
+                <div className="text-[9.5px] mt-0.5" style={{ color: "#7d8ba3" }}>
+                  {card.rank.toNext} {card.rank.toNext === 1 ? "load" : "loads"} to{" "}
+                  {card.rank.next.name}
+                </div>
+              )}
+            </div>
+            {grade && (
+              <span
+                className="font-comic text-sm tracking-wide rounded px-2.5 py-1 self-center"
+                style={{ background: grade.bg, border: `1px solid ${grade.border}`, color: grade.fg }}
+              >
+                {grade.label}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* rank progress */}
-      <div className="relative mt-3">
-        <div className="flex justify-between text-[8.5px] mb-1" style={{ color: "#7d8ba3" }}>
-          <span>{card.rank.name.toUpperCase()}</span>
-          <span>
-            {card.rank.next
-              ? `${card.rank.next.name.toUpperCase()} · ${card.rank.toNext} loads to go`
-              : "TOP RANK"}
-          </span>
-        </div>
-        <div className="h-1.5 rounded" style={{ background: "#232c3f" }}>
-          <div
-            className="h-1.5 rounded"
-            style={{ width: `${Math.round(card.rank.pct * 100)}%`, background: "linear-gradient(90deg,#e8940a,#f5b03a)" }}
-          />
-        </div>
-      </div>
-
-      {/* season grade */}
-      {grade && (
-        <div className="relative flex items-center gap-1.5 mt-3">
-          <span className="text-[9px] tracking-widest" style={{ color: "#7d8ba3" }}>
-            THIS SEASON
-          </span>
-          <span
-            className="font-comic text-[13px] tracking-wide rounded px-2 py-0.5"
-            style={{ background: grade.bg, border: `1px solid ${grade.border}`, color: grade.fg }}
-          >
-            {grade.label}
-          </span>
-        </div>
-      )}
-
-      {/* stats */}
-      <div className="relative grid grid-cols-2 gap-2 mt-3">
+      {/* wide stat row */}
+      <div
+        className="relative grid grid-cols-2 sm:grid-cols-6 gap-2 mt-4 pt-4 border-t"
+        style={{ borderColor: "#2a3347" }}
+      >
         <Stat
           label="LOADS BOOKED"
           value={String(card.loadsBookedLifetime)}
@@ -159,7 +159,7 @@ export const DispatcherCard = ({ name, business, avatar, card }: Props) => {
           span
           accent
         />
-        <Stat label="DETENTION COLLECTED" value={hrs(card.detentionCollectedMin)} />
+        <Stat label="DETENTION" value={hrs(card.detentionCollectedMin)} sub="collected" />
         <Stat label="ON-TIME" value={pct(card.onTimePct)} />
       </div>
     </div>

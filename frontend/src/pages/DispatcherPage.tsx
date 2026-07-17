@@ -8,7 +8,14 @@ import { getDispatcherCard, RANK_TIERS } from "@/lib/metrics/dispatcherCard";
 import { DispatcherCard } from "@/components/playercard/DispatcherCard";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Panel } from "@/components/ui/Panel";
+
+// Achievement tiers land in 3b; the shells sit here so the page reads complete.
+const COMING = [
+  { icon: "🦅", label: "Rate Hawk" },
+  { icon: "💰", label: "Detention Bounty" },
+  { icon: "🤝", label: "Deal Closer" },
+  { icon: "🔥", label: "Iron Booker" },
+];
 
 const DispatcherPage = () => {
   const { id = "" } = useParams();
@@ -51,7 +58,7 @@ const DispatcherPage = () => {
     return (
       <div className="p-6 bg-iron text-light min-h-screen font-body">
         <Skeleton className="h-4 w-24 mb-4" />
-        <Skeleton className="h-80 max-w-md" style={{ borderRadius: 16 }} />
+        <Skeleton className="h-56" style={{ borderRadius: 16 }} />
       </div>
     );
 
@@ -76,7 +83,7 @@ const DispatcherPage = () => {
       kind="user"
       id={id}
       avatarUrl={avatarUrl}
-      size={80}
+      size={118}
       allowVariant
       onUpdated={(u) => setAvatarUrl(u)}
     />
@@ -88,7 +95,7 @@ const DispatcherPage = () => {
         ← Back
       </Link>
 
-      <div className="mt-3 max-w-md">
+      <div className="mt-3">
         <DispatcherCard
           name={name}
           business="Delgado Trucking Services · Dispatcher"
@@ -96,58 +103,72 @@ const DispatcherPage = () => {
           card={card}
         />
 
-        {/* Career ladder — progression through the ranks */}
-        <Panel className="p-4 mt-4">
-          <p className="text-xs uppercase tracking-wider text-muted-text mb-3">
+        {/* Career ladder — horizontal progression */}
+        <div
+          className="rounded-2xl border p-4 mt-4"
+          style={{ background: "#141a26", borderColor: "#2a3347" }}
+        >
+          <p className="text-[10px] uppercase tracking-widest text-muted-text mb-3">
             Career ladder
           </p>
-          <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-1.5">
             {RANK_TIERS.map((tier, i) => {
-              const reached = card.rank.count >= tier.min;
               const current = i === card.rank.index;
+              const reached = card.rank.count >= tier.min;
               return (
-                <div key={tier.name} className="flex items-center gap-3">
-                  <span
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] shrink-0"
+                <div key={tier.name} className="flex-1 text-center min-w-0">
+                  <div
+                    className="rounded"
                     style={{
-                      background: current
-                        ? "#e8940a"
-                        : reached
-                          ? "#7a4718"
-                          : "#232c3f",
-                      color: current ? "#10151f" : reached ? "#f5b03a" : "#5f6b80",
+                      height: current ? 7 : 4,
+                      background: current ? "#e8940a" : reached ? "#7a4718" : "#232c3f",
                     }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span
-                    className="flex-1 text-sm"
+                  />
+                  <div
+                    className="text-[10px] mt-1.5 truncate"
                     style={{
                       color: current ? "#f5b03a" : reached ? "#cdd8e8" : "#5f6b80",
                       fontWeight: current ? 600 : 400,
                     }}
                   >
                     {tier.name}
-                  </span>
-                  <span className="text-[11px] text-muted-text">
-                    {tier.min}+ loads
-                  </span>
+                  </div>
+                  <div
+                    className="text-[9px]"
+                    style={{ color: current ? "#f5b03a" : "#5f6b80" }}
+                  >
+                    {tier.min}
+                    {current ? " ◄ you" : ""}
+                  </div>
                 </div>
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-text mt-3">
-            {card.rank.next
-              ? `${card.rank.toNext} more ${
-                  card.rank.toNext === 1 ? "load" : "loads"
-                } to reach ${card.rank.next.name}.`
-              : "Top rank reached — legend status."}
-          </p>
-        </Panel>
+        </div>
 
-        <p className="text-[11px] text-muted-text mt-4 text-center">
-          Achievements &amp; goals coming soon.
-        </p>
+        {/* Achievements — 3b */}
+        <div
+          className="rounded-2xl border p-4 mt-4"
+          style={{ background: "#141a26", borderColor: "#2a3347" }}
+        >
+          <p className="text-[10px] uppercase tracking-widest text-muted-text mb-3">
+            Achievements <span className="text-[#5f6b80]">· coming soon</span>
+          </p>
+          <div className="flex gap-2 flex-wrap opacity-60">
+            {COMING.map((a) => (
+              <span
+                key={a.label}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5"
+                style={{ background: "#1a2033", border: "1px dashed #3a4a66" }}
+              >
+                <span>{a.icon}</span>
+                <span className="text-[11px]" style={{ color: "#9daabb" }}>
+                  {a.label}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
