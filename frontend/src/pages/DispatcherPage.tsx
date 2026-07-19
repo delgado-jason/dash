@@ -2,25 +2,44 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { useGrind } from "@/hooks/useGrind";
 import { getUser, type TeamMember } from "@/services/teamService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getDispatcherCard, RANK_TIERS } from "@/lib/metrics/dispatcherCard";
+import {
+  dispatcherMedals,
+  dispatcherPatches,
+  type DispatcherAwardInput,
+} from "@/lib/awards/dispatcherAwards";
 import { DispatcherCard } from "@/components/playercard/DispatcherCard";
+import { DispatcherPatchBoard } from "@/components/awards/DispatcherPatchBoard";
+import { MedalBadge } from "@/components/awards/MedalBadge";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Achievement tiers land in 3b; the shells sit here so the page reads complete.
-const COMING = [
-  { icon: "🦅", label: "Rate Hawk" },
-  { icon: "💰", label: "Detention Bounty" },
-  { icon: "🤝", label: "Deal Closer" },
-  { icon: "🔥", label: "Iron Booker" },
-];
+const LockedMedal = ({ name }: { name: string }) => (
+  <div style={{ width: 46, textAlign: "center", opacity: 0.4 }}>
+    <div
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        margin: "11px auto 0",
+        background: "#141a26",
+        border: "2px solid #2a3550",
+      }}
+    />
+    <div style={{ fontSize: 8.5, color: "#7a869a", marginTop: 4, lineHeight: 1.1 }}>
+      {name}
+    </div>
+  </div>
+);
 
 const DispatcherPage = () => {
   const { id = "" } = useParams();
   const { loads, isLoading: loadsLoading, error } = useLoads(0);
   const targets = useRateTargets(loads);
+  const grind = useGrind(loads);
 
   const [member, setMember] = useState<TeamMember | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -78,6 +97,21 @@ const DispatcherPage = () => {
   );
   const name = member.display_name || member.email;
 
+  const awardInput: DispatcherAwardInput = {
+    loads,
+    userId: id,
+    ladder: targets.bookingLadder,
+    scoreBasis: {
+      costPerDrivenMile: targets.basis.costPerTotalMile,
+      payTake: targets.basis.payTake,
+    },
+    freeHours,
+    streak: grind?.bestStreak ?? 0,
+  };
+  const medals = dispatcherMedals(awardInput);
+  const patches = dispatcherPatches(awardInput);
+  const earnedMedals = medals.filter((m) => m.tier > 0);
+
   const avatar = (
     <EntityAvatar
       kind="user"
@@ -88,6 +122,9 @@ const DispatcherPage = () => {
       onUpdated={(u) => setAvatarUrl(u)}
     />
   );
+
+  const panel = "rounded-2xl border p-4 mt-4";
+  const panelStyle = { background: "#141a26", borderColor: "#2a3347" };
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -101,13 +138,11 @@ const DispatcherPage = () => {
           business="Delgado Trucking Services · Dispatcher"
           avatar={avatar}
           card={card}
+          medals={earnedMedals}
         />
 
-        {/* Career ladder — horizontal progression */}
-        <div
-          className="rounded-2xl border p-4 mt-4"
-          style={{ background: "#141a26", borderColor: "#2a3347" }}
-        >
+        {/* Career ladder */}
+        <div className={panel} style={panelStyle}>
           <p className="text-[10px] uppercase tracking-widest text-muted-text mb-3">
             Career ladder
           </p>
@@ -146,28 +181,30 @@ const DispatcherPage = () => {
           </div>
         </div>
 
-        {/* Achievements — 3b */}
-        <div
-          className="rounded-2xl border p-4 mt-4"
-          style={{ background: "#141a26", borderColor: "#2a3347" }}
-        >
-          <p className="text-[10px] uppercase tracking-widest text-muted-text mb-3">
-            Achievements <span className="text-[#5f6b80]">· coming soon</span>
-          </p>
-          <div className="flex gap-2 flex-wrap opacity-60">
-            {COMING.map((a) => (
-              <span
-                key={a.label}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5"
-                style={{ background: "#1a2033", border: "1px dashed #3a4a66" }}
-              >
-                <span>{a.icon}</span>
-                <span className="text-[11px]" style={{ color: "#9daabb" }}>
-                  {a.label}
-                </span>
-              </span>
-            ))}
+        {/* Medals — rare feats */}
+        <div className={panel} style={panelStyle}>
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+              MEDALS
+            </span>
+            <span className="text-[11px] text-muted-text">
+              rare feats · can't be ground out
+            </span>
           </div>
+          <div className="flex gap-2 flex-wrap">
+            {medals.map((m) =>
+              m.tier > 0 ? (
+                <MedalBadge key={m.key} medal={m} />
+              ) : (
+                <LockedMedal key={m.key} name={m.name} />
+              ),
+            )}
+          </div>
+        </div>
+
+        {/* Patches — the grind */}
+        <div className={panel} style={panelStyle}>
+          <DispatcherPatchBoard patches={patches} />
         </div>
       </div>
     </div>

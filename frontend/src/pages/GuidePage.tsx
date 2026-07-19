@@ -921,6 +921,21 @@ const GuidePage = () => (
           . Everything on the card is gross, never net.
         </p>
       </Section>
+
+      <Section title="Dispatcher achievements — patches &amp; medals">
+        <p className="text-sm text-muted-text">
+          Her page carries two kinds of earned awards, and they pop the same way
+          the driver's do. <span className="text-light">Patches</span> are the
+          everyday grind — Deal Closer, Rainmaker, Rate Hawk, Clockwork (on-time),
+          Quick Turn, Oversize Ace, Lean Machine, Bounty Hunter, Right Hand, Iron
+          Booker — each climbs a ×count and celebrates at milestones as she books.{" "}
+          <span className="text-light">Medals</span> are the rare, hard feats you
+          can't just grind out — Steal (a load the scorer rates a steal), Double-Up
+          (2× break-even), Superload, Whale (a huge single load), Perfect Week,
+          Grand&nbsp;Slam (a steal that's on-time with under 10% deadhead), and Big
+          Week. All of it is scored off her own bookings, on gross.
+        </p>
+      </Section>
     </div>
   </div>
 );

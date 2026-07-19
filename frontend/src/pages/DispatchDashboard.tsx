@@ -6,6 +6,9 @@ import { useTrips } from "@/hooks/useTrips";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
+import { useGrind } from "@/hooks/useGrind";
+import { useDispatcherAwardPops } from "@/hooks/useDispatcherAwardPops";
+import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { KpiCard } from "@/components/KpiCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
@@ -61,6 +64,27 @@ const DispatchDashboard = () => {
       .catch(() => {});
   }, []);
 
+  // Her achievements pop the same way the driver's do — computed from her own
+  // bookings, celebrated on her board. Gated on the rate ladder being ready so
+  // the day-one baseline is built from complete data.
+  const grind = useGrind(loads);
+  const selfId = localStorage.getItem("user_id") ?? "";
+  const awardInput =
+    selfId && targets.bookingLadder.walkAway != null
+      ? {
+          loads,
+          userId: selfId,
+          ladder: targets.bookingLadder,
+          scoreBasis: {
+            costPerDrivenMile: targets.basis.costPerTotalMile,
+            payTake: targets.basis.payTake,
+          },
+          freeHours,
+          streak: grind?.bestStreak ?? 0,
+        }
+      : null;
+  const pops = useDispatcherAwardPops(awardInput);
+
   const isLoading = loadsLoading || tripsLoading;
   const error = loadsError || tripsError;
 
@@ -112,6 +136,8 @@ const DispatchDashboard = () => {
 
   return (
     <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <AwardPopHost pops={pops} />
+
       <div className="flex items-center justify-between mb-6 gap-3">
         <div>
           <h1 className="font-comic text-3xl" style={{ color: "#f5b03a" }}>
