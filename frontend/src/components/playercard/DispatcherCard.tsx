@@ -3,12 +3,15 @@ import { Headset } from "lucide-react";
 import type { DispatcherCard as CardData } from "@/lib/metrics/dispatcherCard";
 import { RANK_TIERS } from "@/lib/metrics/dispatcherCard";
 import type { Grade } from "@/lib/metrics/playerCard";
+import type { Medal } from "@/lib/awards/medals";
+import { MedalBadge } from "@/components/awards/MedalBadge";
 
 interface Props {
   name: string;
   business?: string;
   avatar: ReactNode;
   card: CardData;
+  medals?: Medal[]; // earned rare-feat medals, worn by the name
 }
 
 // Compact gross: "$0", "$840", "$12.4k", "$487k".
@@ -59,7 +62,7 @@ const Stat = ({
   </div>
 );
 
-export const DispatcherCard = ({ name, business, avatar, card }: Props) => {
+export const DispatcherCard = ({ name, business, avatar, card, medals }: Props) => {
   const grade = card.seasonGrade ? GRADE_META[card.seasonGrade] : null;
   const stars =
     "★".repeat(card.rank.index + 1) +
@@ -99,6 +102,14 @@ export const DispatcherCard = ({ name, business, avatar, card }: Props) => {
           {business && (
             <div className="text-[11px] mt-1" style={{ color: "#9daabb" }}>
               {business}
+            </div>
+          )}
+
+          {medals && medals.length > 0 && (
+            <div className="flex gap-1 flex-wrap mt-2">
+              {medals.map((m) => (
+                <MedalBadge key={m.key} medal={m} />
+              ))}
             </div>
           )}
 
