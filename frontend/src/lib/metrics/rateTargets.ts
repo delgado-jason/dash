@@ -214,14 +214,19 @@ export const payWeekRange = (
   return { start, end };
 };
 
-// Non-cancelled loads delivering in [start, end) — booked, in-transit, and
-// delivered all count, so mid-week reflects committed + earned freight.
+// Non-cancelled loads that fall in [start, end) — booked, in-transit, and
+// delivered all count, so mid-week reflects committed + earned freight. Date a
+// load by its delivery day when there is one (planned or actual), else by its
+// pickup day — otherwise the in-transit load you're currently under (no delivery
+// date yet) drops out of the committed pipeline entirely.
 const loadsInWeek = (loads: Load[], start: Date, end: Date): Load[] =>
   loads.filter((l) => {
-    if (l.load_status === "cancelled" || !l.delivery_date) return false;
-    const dd = new Date(l.delivery_date);
+    if (l.load_status === "cancelled") return false;
+    const ref = l.delivery_date ?? l.pickup_date;
+    if (!ref) return false;
+    const rd = new Date(ref);
     const day = new Date(
-      Date.UTC(dd.getUTCFullYear(), dd.getUTCMonth(), dd.getUTCDate()),
+      Date.UTC(rd.getUTCFullYear(), rd.getUTCMonth(), rd.getUTCDate()),
     );
     return day >= start && day < end;
   });
