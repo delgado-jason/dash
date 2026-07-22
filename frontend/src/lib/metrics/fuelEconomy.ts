@@ -133,24 +133,55 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
   };
 };
 
-export interface WeekCost {
-  weekStart: string; // Monday, 'YYYY-MM-DD'
-  cost: number;
+// Gallon-weighted average price/gallon per calendar month, ascending — his own
+// line on the you-vs-national diesel chart.
+export interface MonthPrice {
+  month: string; // 'YYYY-MM'
+  avgPrice: number;
 }
-
-// Fuel spend bucketed by ISO week (Monday start), oldest first — for the chart.
-export const weeklyCostSeries = (entries: FuelLike[]): WeekCost[] => {
-  const buckets = new Map<string, number>();
+export const monthlyFuelPrice = (entries: FuelLike[]): MonthPrice[] => {
+  const byMonth = new Map<string, { cost: number; gallons: number }>();
   for (const e of entries) {
-    const d = new Date(e.fuel_date.slice(0, 10) + "T00:00:00Z");
-    const monday = new Date(d);
-    monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-    const key = monday.toISOString().slice(0, 10);
-    buckets.set(key, (buckets.get(key) ?? 0) + entryCost(e));
+    const month = String(e.fuel_date).slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) continue;
+    const g = byMonth.get(month) ?? { cost: 0, gallons: 0 };
+    g.cost += entryCost(e);
+    g.gallons += gal(e);
+    byMonth.set(month, g);
   }
-  return [...buckets.entries()]
-    .map(([weekStart, cost]) => ({ weekStart, cost }))
-    .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  return [...byMonth.entries()]
+    .filter(([, g]) => g.gallons > 0)
+    .map(([month, g]) => ({ month, avgPrice: g.cost / g.gallons }))
+    .sort((a, b) => (a.month < b.month ? -1 : 1));
+};
+
+const fmtMonth = (m: string): string => {
+  const [y, mo] = m.split("-");
+  return new Date(Date.UTC(Number(y), Number(mo) - 1, 1)).toLocaleDateString(
+    "en-US",
+    { month: "short", year: "2-digit", timeZone: "UTC" },
+  );
+};
+
+// Chart rows over every month he fueled: his avg $/gal + the national price for
+// that month (null when EIA has no value there).
+export interface DieselMonth {
+  month: string;
+  label: string; // "Jul '26"
+  you: number;
+  national: number | null;
+}
+export const dieselChartData = (
+  entries: FuelLike[],
+  national: { month: string; value: number }[],
+): DieselMonth[] => {
+  const nat = new Map(national.map((n) => [n.month, n.value]));
+  return monthlyFuelPrice(entries).map(({ month, avgPrice }) => ({
+    month,
+    label: fmtMonth(month),
+    you: avgPrice,
+    national: nat.get(month) ?? null,
+  }));
 };
 
 // Highest odometer reading across fill-ups (or null if none) — the fuel log is

@@ -5,7 +5,8 @@ import {
   mpgWindows,
   fuelStats,
   avgWeeklyCost,
-  weeklyCostSeries,
+  monthlyFuelPrice,
+  dieselChartData,
   maxFuelOdometer,
 } from "./fuelEconomy";
 
@@ -81,11 +82,32 @@ describe("avgWeeklyCost", () => {
   });
 });
 
-describe("weeklyCostSeries", () => {
-  it("buckets spend by ISO week, oldest first", () => {
-    const s = weeklyCostSeries(first4);
-    expect(s.length).toBeGreaterThan(0);
-    expect(s[0].weekStart <= s[s.length - 1].weekStart).toBe(true);
+describe("monthlyFuelPrice", () => {
+  it("is the gallon-weighted average price per month, ascending", () => {
+    const entries = [
+      e(0, 100, 4.0, "2026-05-10"), // May: 100 gal @ $4.00
+      e(0, 300, 5.0, "2026-05-20"), // May: 300 gal @ $5.00 → weighted $4.75
+      e(0, 100, 3.5, "2026-06-05"), // Jun: $3.50
+    ];
+    const m = monthlyFuelPrice(entries);
+    expect(m.map((x) => x.month)).toEqual(["2026-05", "2026-06"]);
+    expect(m[0].avgPrice).toBeCloseTo(4.75, 5); // (400 + 1500) / 400
+    expect(m[1].avgPrice).toBeCloseTo(3.5, 5);
+  });
+});
+
+describe("dieselChartData", () => {
+  it("joins his monthly avg with national by month; national null when missing", () => {
+    const entries = [
+      e(0, 100, 4.0, "2026-05-10"),
+      e(0, 100, 3.5, "2026-06-05"),
+    ];
+    const national = [{ month: "2026-05", value: 4.2 }]; // no June national
+    const rows = dieselChartData(entries, national);
+    expect(rows.map((r) => r.month)).toEqual(["2026-05", "2026-06"]);
+    expect(rows[0].you).toBeCloseTo(4.0, 5);
+    expect(rows[0].national).toBeCloseTo(4.2, 5);
+    expect(rows[1].national).toBeNull();
   });
 });
 

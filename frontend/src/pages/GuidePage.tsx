@@ -392,6 +392,20 @@ const GuidePage = () => (
         </Why>
       </Metric>
 
+      <Metric
+        title="Diesel price — you vs national"
+        answers="Are you buying fuel below the national average, month over month?"
+      >
+        <Why>
+          The Fuel page charts two monthly lines: your{" "}
+          <span style={{ color: "#f5b03a" }}>gallon-weighted average $/gal</span>{" "}
+          from the fuel log, against the{" "}
+          <span style={{ color: "#8fb9ff" }}>national retail diesel price</span>{" "}
+          (the U.S. EIA weekly number, rolled up to monthly). Buying under the
+          national line means you're routing fuel stops well.
+        </Why>
+      </Metric>
+
       <h2 className="font-condensed text-2xl mb-3 mt-8" style={{ color: AMBER_HI }}>
         The dock — facilities, scheduling &amp; detention
       </h2>

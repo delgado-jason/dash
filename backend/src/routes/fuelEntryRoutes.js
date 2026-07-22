@@ -7,7 +7,10 @@ import {
   patchFuelEntry,
   deleteFuelEntry,
 } from "../services/fuelEntryServices.js";
-import { getNationalDiesel } from "../services/fuelPriceService.js";
+import {
+  getNationalDiesel,
+  getNationalDieselMonthly,
+} from "../services/fuelPriceService.js";
 
 const router = express.Router();
 router.use(requireAuth);
@@ -46,6 +49,16 @@ router.get("/national-diesel", async (req, res) => {
   } catch (err) {
     // A blip at EIA should never break the fuel page — degrade to null.
     return res.status(200).json({ diesel: null, message: err.message });
+  }
+});
+
+// Monthly national-diesel history for the you-vs-national chart.
+router.get("/national-diesel-series", async (req, res) => {
+  try {
+    const series = await getNationalDieselMonthly();
+    return res.status(200).json({ series });
+  } catch (err) {
+    return res.status(200).json({ series: [], message: err.message });
   }
 });
 
