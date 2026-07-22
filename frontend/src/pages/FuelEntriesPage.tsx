@@ -7,18 +7,20 @@ import {
   createFuelEntry,
   deleteFuelEntry,
   getNationalDiesel,
+  getNationalDieselSeries,
+  type NationalDieselMonth,
 } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
 import {
   fuelStats,
-  weeklyCostSeries,
+  dieselChartData,
   isFull,
   entryCost,
 } from "@/lib/metrics/fuelEconomy";
 import { Kpi } from "@/components/Kpi";
 import { Panel } from "@/components/ui/Panel";
 import { MpgChart } from "@/components/fuel/MpgChart";
-import { WeeklyCostChart } from "@/components/fuel/WeeklyCostChart";
+import { DieselPriceChart } from "@/components/fuel/DieselPriceChart";
 import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
 
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
@@ -39,6 +41,7 @@ const FuelEntriesPage = () => {
   const [entries, setEntries] = useState<FuelEntry[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [national, setNational] = useState<NationalDiesel | null>(null);
+  const [nationalSeries, setNationalSeries] = useState<NationalDieselMonth[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -68,6 +71,9 @@ const FuelEntriesPage = () => {
     getNationalDiesel()
       .then(setNational)
       .catch(() => {});
+    getNationalDieselSeries()
+      .then(setNationalSeries)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -76,7 +82,10 @@ const FuelEntriesPage = () => {
 
   const now = new Date();
   const stats = useMemo(() => fuelStats(entries, now), [entries]);
-  const weekly = useMemo(() => weeklyCostSeries(entries), [entries]);
+  const dieselData = useMemo(
+    () => dieselChartData(entries, nationalSeries),
+    [entries, nationalSeries],
+  );
   // Per-full MPG, keyed by the closing odometer of each window.
   const mpgByOdo = useMemo(() => {
     const m = new Map<number, number>();
@@ -335,7 +344,7 @@ const FuelEntriesPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
         <MpgChart windows={stats.windows} />
-        <WeeklyCostChart data={weekly} avg={stats.avgWeeklyCost90} />
+        <DieselPriceChart data={dieselData} />
       </div>
 
       <Panel className="p-4 mt-4 overflow-x-auto">

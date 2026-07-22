@@ -36,3 +36,16 @@ export const getNationalDiesel = async (): Promise<NationalDiesel | null> => {
   const res = await api.get("/fuel/national-diesel");
   return res.data.diesel ?? null;
 };
+
+export interface NationalDieselMonth {
+  month: string; // 'YYYY-MM'
+  value: number; // $/gal
+}
+
+// Monthly national-diesel history for the you-vs-national chart.
+export const getNationalDieselSeries = async (): Promise<
+  NationalDieselMonth[]
+> => {
+  const res = await api.get("/fuel/national-diesel-series");
+  return res.data.series ?? [];
+};
