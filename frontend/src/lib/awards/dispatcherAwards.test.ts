@@ -90,6 +90,15 @@ describe("dispatcherPatches", () => {
     expect(deal.reached).toBe(1); // ≥25, <75 → 1 milestone
   });
 
+  it("Lean Machine ignores loads with unrecorded (0) deadhead", () => {
+    const loads = [
+      mk({ load_id: "R", loaded_miles: 1000, deadhead_miles: 50 }), // ~4.8% → lean
+      mk({ load_id: "U", loaded_miles: 1000, deadhead_miles: 0 }), // unrecorded → not lean
+    ];
+    const lean = dispatcherPatches(input(loads)).find((p) => p.key === "disp-lean")!;
+    expect(lean.badge).toBe("×1"); // only the recorded low-deadhead load
+  });
+
   it("only counts her bookings", () => {
     const loads = [
       mk({ load_id: "A", booked_by: "me" }),

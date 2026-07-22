@@ -49,8 +49,11 @@ const rpm = (l: Load): number => {
   return miles > 0 ? loadGross(l) / miles : 0;
 };
 const deadheadPct = (l: Load): number | null => {
-  const loaded = Number(l.loaded_miles) || 0;
   const dead = Number(l.deadhead_miles) || 0;
+  // A 0/blank deadhead is unrecorded, not truly zero — real deadhead is never
+  // exactly 0. Return null so it can't masquerade as a "lean" or slam-worthy load.
+  if (dead <= 0) return null;
+  const loaded = Number(l.loaded_miles) || 0;
   const tot = loaded + dead;
   return tot > 0 ? dead / tot : null;
 };
