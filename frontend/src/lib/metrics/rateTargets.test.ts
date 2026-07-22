@@ -220,6 +220,21 @@ describe("getWeekBookedGross", () => {
     ];
     expect(getWeekBookedGross(loads, start, end)).toBeCloseTo(6000, 5);
   });
+
+  it("dates a not-yet-delivered load by its pickup day (the load you're under)", () => {
+    const loads = [
+      load({ delivery_date: "2026-07-08", load_status: "delivered", linehaul: "1000" }),
+      // in-transit, no delivery_date yet, but picked up this week — must count
+      load({
+        delivery_date: null,
+        pickup_date: "2026-07-10",
+        load_status: "in_transit",
+        linehaul: "5000",
+      }),
+    ];
+    expect(getWeekBookedGross(loads, start, end)).toBeCloseTo(6000, 5); // committed sees both
+    expect(getWeekEarnedGross(loads, start, end)).toBeCloseTo(1000, 5); // earned, delivered only
+  });
 });
 
 describe("getWeekEarnedGross", () => {
