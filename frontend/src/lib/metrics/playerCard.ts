@@ -240,14 +240,21 @@ export const personalBests = (
     (l) => l.load_status === "delivered" && l.delivery_date,
   );
 
-  const weeks = new Map<string, { rev: number; count: number; loaded: number; dead: number }>();
+  const weeks = new Map<
+    string,
+    { rev: number; count: number; loaded: number; dead: number; deadheadKnown: boolean }
+  >();
   for (const l of delivered) {
     const k = weekKey(l.delivery_date!);
-    const w = weeks.get(k) ?? { rev: 0, count: 0, loaded: 0, dead: 0 };
+    const w = weeks.get(k) ?? { rev: 0, count: 0, loaded: 0, dead: 0, deadheadKnown: true };
     w.rev += loadRevenue(l);
     w.count += 1;
     w.loaded += Number(l.loaded_miles || 0);
-    w.dead += Number(l.deadhead_miles || 0);
+    const dh = Number(l.deadhead_miles || 0);
+    w.dead += dh;
+    // One load with a 0/blank deadhead makes the whole week's deadhead unreliable
+    // (real deadhead is never exactly 0), so that week can't set a "best" record.
+    if (dh <= 0) w.deadheadKnown = false;
     weeks.set(k, w);
   }
 
@@ -258,7 +265,7 @@ export const personalBests = (
     if (bestWeekRevenue == null || w.rev > bestWeekRevenue) bestWeekRevenue = w.rev;
     if (mostLoadsInWeek == null || w.count > mostLoadsInWeek) mostLoadsInWeek = w.count;
     const t = w.loaded + w.dead;
-    if (t > 0) {
+    if (w.deadheadKnown && t > 0) {
       const dh = w.dead / t;
       if (lowestDeadheadPct == null || dh < lowestDeadheadPct) lowestDeadheadPct = dh;
     }

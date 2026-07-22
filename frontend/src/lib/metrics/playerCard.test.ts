@@ -198,6 +198,16 @@ describe("personalBests", () => {
     expect(pb.lowestDeadheadPct).toBeCloseTo(150 / 1650, 3);
     expect(pb.bestMpg).toBeCloseTo(6.483, 2);
   });
+
+  it("ignores a week with an unrecorded (0) deadhead load — no false 0% best", () => {
+    const loads = [
+      mkLoad({ load_id: "a", delivery_date: "2026-05-12", loaded_miles: 1000, deadhead_miles: 100 }),
+      // 0 deadhead = unrecorded, not truly zero → this week can't set the record
+      mkLoad({ load_id: "z", delivery_date: "2026-06-15", loaded_miles: 900, deadhead_miles: 0 }),
+    ];
+    const pb = personalBests(loads, fuel, NOW);
+    expect(pb.lowestDeadheadPct).toBeCloseTo(100 / 1100, 4); // NOT 0
+  });
 });
 
 describe("earnedTrophies", () => {
