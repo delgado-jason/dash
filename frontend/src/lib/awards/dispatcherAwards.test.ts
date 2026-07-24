@@ -90,13 +90,16 @@ describe("dispatcherPatches", () => {
     expect(deal.reached).toBe(1); // ≥25, <75 → 1 milestone
   });
 
-  it("Lean Machine ignores loads with unrecorded (0) deadhead", () => {
+  it("Lean Machine measures deadhead from the odometer, not the planning field", () => {
     const loads = [
-      mk({ load_id: "R", loaded_miles: 1000, deadhead_miles: 50 }), // ~4.8% → lean
-      mk({ load_id: "U", loaded_miles: 1000, deadhead_miles: 0 }), // unrecorded → not lean
+      // Ran 1,050 mi to haul 1,000 → 4.8% actually empty → lean.
+      mk({ load_id: "R", loaded_miles: 1000, odometer_start: 570000, odometer_end: 571050 }),
+      // A tiny planning estimate but no odometer window: we don't know what it
+      // really ran, so it can't count as lean.
+      mk({ load_id: "U", loaded_miles: 1000, deadhead_miles: 10 }),
     ];
     const lean = dispatcherPatches(input(loads)).find((p) => p.key === "disp-lean")!;
-    expect(lean.badge).toBe("×1"); // only the recorded low-deadhead load
+    expect(lean.badge).toBe("×1"); // only the measured load
   });
 
   it("only counts her bookings", () => {

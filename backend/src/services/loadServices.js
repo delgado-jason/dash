@@ -390,8 +390,24 @@ export async function patchLoad(user_id, load_id, data) {
   }
   // ---- VALIDATION LOGIC ----
 
+  // A PATCH may move only one of the two dates, so the date-order check needs
+  // the stored row to compare against. Pulled as text (to_char) so the dates
+  // never round-trip through a JS Date and pick up a timezone shift.
+  let existingDates = {};
+  if (data.pickup_date !== undefined || data.delivery_date !== undefined) {
+    const current = await db.query(
+      `SELECT to_char(pickup_date, 'YYYY-MM-DD')   AS pickup_date,
+              to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date
+         FROM loads
+        WHERE load_id = $1 AND user_id = $2;`,
+      [load_id, user_id],
+    );
+    if (current.rowCount === 0) throw new NotFoundError("Load not found");
+    existingDates = current.rows[0];
+  }
+
   // Must pass validation checks before query request
-  const errors = validateLoadPatch(data);
+  const errors = validateLoadPatch(data, existingDates);
 
   // if errors, reject request
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);

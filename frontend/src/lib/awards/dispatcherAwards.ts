@@ -6,6 +6,7 @@
 import type { Load } from "@/types/load";
 import { loadGross, type RateLadder } from "@/lib/metrics/rateTargets";
 import { scoreLoad, type ScoreBasis } from "@/lib/metrics/loadScore";
+import { loadDeadheadPct, loadEmptyMiles } from "@/lib/metrics/deadhead";
 import { onTimeStatus, detentionMinutes } from "@/lib/detention";
 import { tiered, type Medal } from "./medals";
 import type { Award } from "@/lib/metrics/awards";
@@ -48,15 +49,9 @@ const rpm = (l: Load): number => {
   const miles = Number(l.loaded_miles) || 0;
   return miles > 0 ? loadGross(l) / miles : 0;
 };
-const deadheadPct = (l: Load): number | null => {
-  const dead = Number(l.deadhead_miles) || 0;
-  // A 0/blank deadhead is unrecorded, not truly zero — real deadhead is never
-  // exactly 0. Return null so it can't masquerade as a "lean" or slam-worthy load.
-  if (dead <= 0) return null;
-  const loaded = Number(l.loaded_miles) || 0;
-  const tot = loaded + dead;
-  return tot > 0 ? dead / tot : null;
-};
+// Actual deadhead, from the odometer — null until the load has run, so an
+// un-driven load can't masquerade as a "lean" or slam-worthy one.
+const deadheadPct = (l: Load): number | null => loadDeadheadPct(l);
 const bothOnTime = (l: Load): boolean =>
   onTimeStatus(l.pickup_appt_start, l.pickup_appt_end, l.shipper_in) === "on-time" &&
   onTimeStatus(l.delivery_appt_start, l.delivery_appt_end, l.receiver_in) === "on-time";
@@ -100,7 +95,9 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
       {
         rate: loadGross(l),
         loadedMiles: Number(l.loaded_miles) || 0,
-        deadheadMiles: Number(l.deadhead_miles) || 0,
+        // Actual empty miles once the load has run. Until then it's still a
+        // prospective load — which is exactly what the planning estimate is for.
+        deadheadMiles: loadEmptyMiles(l) ?? (Number(l.deadhead_miles) || 0),
       },
       scoreBasis,
     ).verdict === "steal";

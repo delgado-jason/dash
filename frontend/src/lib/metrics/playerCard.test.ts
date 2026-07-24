@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
+import type { Trip } from "@/types/trip";
 import {
   careerRank,
   marginGrade,
@@ -156,7 +157,7 @@ describe("getSeasonStats", () => {
   ];
 
   it("blends the 3 complete months, excludes the in-progress one", () => {
-    const s = getSeasonStats(periods, loads, NOW);
+    const s = getSeasonStats(periods, loads, [], NOW);
     expect(s.months).toBe(3);
     expect(s.netRevenue).toBeCloseTo(79346.84, 2);
     expect(s.netMargin).toBeCloseTo(0.2366, 3);
@@ -164,15 +165,15 @@ describe("getSeasonStats", () => {
     expect(s.label).toBe("Apr–Jun 2026");
   });
   it("subtracts only debt obligations for True Net (draws excluded upstream)", () => {
-    const s = getSeasonStats(periods, loads, NOW, 3, 2411); // $2,411/mo debt
+    const s = getSeasonStats(periods, loads, [], NOW, 3, 2411); // $2,411/mo debt
     expect(s.netProfit).toBeCloseTo(18774.33, 2); // operating unchanged
     expect(s.trueNet).toBeCloseTo(18774.33 - 2411 * 3, 2); // − 3 months of debt
     expect(s.trueNetMargin).toBeCloseTo((18774.33 - 7233) / 79346.84, 4);
   });
   it("computes deadhead, avg rpm, and best lane over the window", () => {
-    const s = getSeasonStats(periods, loads, NOW);
+    const s = getSeasonStats(periods, loads, [], NOW);
     expect(s.avgRpm).toBeCloseTo((3200 + 2600) / 1800, 3);
-    expect(s.deadheadPct).toBeCloseTo(300 / 2100, 3);
+    expect(s.deadheadPct).toBeCloseTo(500 / 2300, 4); // odometer windows, not the planning field
     expect(s.bestLane?.lane).toBe("Dallas → Atlanta");
   });
 });
@@ -187,26 +188,39 @@ describe("personalBests", () => {
 
   it("finds best week, biggest load, most loads/week, lowest deadhead", () => {
     const loads = [
-      mkLoad({ load_id: "a", delivery_date: "2026-05-12", linehaul: "3200", loaded_miles: 1000, deadhead_miles: 100 }),
-      mkLoad({ load_id: "c", delivery_date: "2026-05-13", linehaul: "1000", loaded_miles: 500, deadhead_miles: 50 }),
-      mkLoad({ load_id: "b", delivery_date: "2026-06-15", linehaul: "2600", loaded_miles: 800, deadhead_miles: 200 }),
+      mkLoad({ load_id: "a", delivery_date: "2026-05-12", linehaul: "3200", loaded_miles: 1000, odometer_start: 570000, odometer_end: 571200 }),
+      mkLoad({ load_id: "c", delivery_date: "2026-05-13", linehaul: "1000", loaded_miles: 500, odometer_start: 571200, odometer_end: 571800 }),
+      mkLoad({ load_id: "b", delivery_date: "2026-06-15", linehaul: "2600", loaded_miles: 800, odometer_start: 572000, odometer_end: 573100 }),
     ];
-    const pb = personalBests(loads, fuel, NOW);
+    const pb = personalBests(loads, [], fuel, NOW);
     expect(pb.bestWeekRevenue).toBeCloseTo(4200, 2);
     expect(pb.mostLoadsInWeek).toBe(2);
     expect(pb.biggestLoad).toBeCloseTo(3200, 2);
-    expect(pb.lowestDeadheadPct).toBeCloseTo(150 / 1650, 3);
+    expect(pb.lowestDeadheadPct).toBeCloseTo(300 / 1800, 4); // May week: 1800 run, 1500 loaded
     expect(pb.bestMpg).toBeCloseTo(6.483, 2);
   });
 
-  it("ignores a week with an unrecorded (0) deadhead load — no false 0% best", () => {
+  it("ignores a week whose load never got odometer readings — no false best", () => {
     const loads = [
-      mkLoad({ load_id: "a", delivery_date: "2026-05-12", loaded_miles: 1000, deadhead_miles: 100 }),
-      // 0 deadhead = unrecorded, not truly zero → this week can't set the record
+      mkLoad({ load_id: "a", delivery_date: "2026-05-12", loaded_miles: 1000, odometer_start: 570000, odometer_end: 571100 }),
+      // No odometer window = we don't know what it ran, so this week can't
+      // set a record (a planning-field 0 must never read as a flawless week).
       mkLoad({ load_id: "z", delivery_date: "2026-06-15", loaded_miles: 900, deadhead_miles: 0 }),
     ];
-    const pb = personalBests(loads, fuel, NOW);
+    const pb = personalBests(loads, [], fuel, NOW);
     expect(pb.lowestDeadheadPct).toBeCloseTo(100 / 1100, 4); // NOT 0
+  });
+
+  it("counts a non-revenue trip as fully empty miles in the week's deadhead", () => {
+    const loads = [
+      mkLoad({ load_id: "a", delivery_date: "2026-05-12", loaded_miles: 1000, odometer_start: 570000, odometer_end: 571100 }),
+    ];
+    // 400 mi run home empty that same week: 1500 run, 1000 loaded → 500 empty.
+    const trips = [
+      { trip_date: "2026-05-13", odometer_start: 571100, odometer_end: 571500 },
+    ] as unknown as Trip[];
+    const pb = personalBests(loads, trips, fuel, NOW);
+    expect(pb.lowestDeadheadPct).toBeCloseTo(500 / 1500, 4);
   });
 });
 

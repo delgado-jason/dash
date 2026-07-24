@@ -15,6 +15,7 @@ import { getLastHomeDay } from "@/services/perDiemService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { hometimeStatus } from "@/lib/metrics/hometime";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
@@ -63,6 +64,7 @@ const Spec = ({
 const DriverDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { loads } = useLoads(0);
+  const { trips } = useTrips(0);
   const [driver, setDriver] = useState<Driver | null>(null);
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
@@ -101,6 +103,12 @@ const DriverDetailPage = () => {
     () => loads.filter((l) => l.driver_id === id),
     [loads, id],
   );
+  // This driver's non-revenue trips — 100% empty miles, so they belong in the
+  // same deadhead math the dashboard KPI uses.
+  const driverTrips = useMemo(
+    () => trips.filter((t) => t.driver_id === id),
+    [trips, id],
+  );
   // Revenue/count use only earned freight — delivered AND paid — matching the
   // dashboard. Cancelled/booked/in-transit loads haven't earned anything yet.
   const earnedLoads = useMemo(
@@ -132,7 +140,7 @@ const DriverDetailPage = () => {
     );
     const basis = getCostBasis(periods, obligationsTotal, driverLoads, now);
     const ladder = getRateLadder(basis.breakEvenRpm, RATE_TIERS);
-    const season = getSeasonStats(periods, driverLoads, now, 3, obligationsDebt);
+    const season = getSeasonStats(periods, driverLoads, driverTrips, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
     // Driver utilization (days-based) — under-load days ÷ days since first load.
@@ -178,13 +186,13 @@ const DriverDetailPage = () => {
       utilGrade: utilizationGrade(utilization),
       windowRpm: basis.windowRpm,
       medals: earnedMedals(medals),
-      bests: personalBests(driverLoads, fuel, now),
-      patches: computePatches(driverLoads, fuel, operation),
+      bests: personalBests(driverLoads, driverTrips, fuel, now),
+      patches: computePatches(driverLoads, driverTrips, fuel, operation),
       // Equipment identity — oversize and heavy haul kept as separate disciplines.
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, periods, obligations, fuel, trucks, operation]);
+  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation]);
 
   // Hometime status for the (owner-op) driver — days since their last home mark.
   const hometime = useMemo(

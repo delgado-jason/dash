@@ -3,12 +3,14 @@ import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { Truck } from "@/types/truck";
+import type { Trip } from "@/types/trip";
 import type { Obligation } from "@/types/obligation";
 import type { Driver } from "@/types/driver";
 import type { Trophy } from "@/types/trophy";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getFuelEntries } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
+import { getTrips } from "@/services/tripsService";
 import { getObligations } from "@/services/obligationsService";
 import { getDrivers } from "@/services/driversService";
 import { getTrophies } from "@/services/trophyService";
@@ -62,6 +64,7 @@ export const useAwardPops = (
     periods: ExpensePeriod[];
     fuel: FuelEntry[];
     trucks: Truck[];
+    trips: Trip[];
     obligations: Obligation[];
     trophies: Trophy[];
     drivers: Driver[];
@@ -73,12 +76,13 @@ export const useAwardPops = (
       getExpensePeriods(),
       getFuelEntries(),
       getTrucks(),
+      getTrips(),
       getObligations(),
       getTrophies(),
       getDrivers(),
     ])
-      .then(([periods, fuel, trucks, obligations, trophies, drivers]) =>
-        setData({ periods, fuel, trucks, obligations, trophies, drivers }),
+      .then(([periods, fuel, trucks, trips, obligations, trophies, drivers]) =>
+        setData({ periods, fuel, trucks, trips, obligations, trophies, drivers }),
       )
       .catch(() => {});
   }, []);
@@ -110,6 +114,7 @@ export const useAwardPops = (
 
     const baseAwards = earnedAwards({
       loads,
+      trips: data.trips,
       periods: data.periods,
       fuel: data.fuel,
       lifetimeMiles,

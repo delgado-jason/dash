@@ -26,7 +26,7 @@ const L = (o: Record<string, unknown>): Load =>
 describe("earnedAwards", () => {
   it("emits medal, patch, and record ids from the new tiers", () => {
     const loads = Array.from({ length: 6 }, (_, k) => L({ load_id: `x${k}` }));
-    const ids = earnedAwards({ loads, periods: [], fuel: [], lifetimeMiles: 582450, obligationsDebtMonthly: 2411, now: NOW }).map((a) => a.id);
+    const ids = earnedAwards({ loads, trips: [], periods: [], fuel: [], lifetimeMiles: 582450, obligationsDebtMonthly: 2411, now: NOW }).map((a) => a.id);
     expect(ids).toContain("medal:mile-club:3"); // 582k → tier III
     expect(ids.some((x) => x.startsWith("medal:rank:"))).toBe(true);
     expect(ids.some((x) => x.startsWith("record:top-week:"))).toBe(true);
@@ -35,7 +35,7 @@ describe("earnedAwards", () => {
 
   it("subsumes the closing month of a quarter — quarter pops, month doesn't", () => {
     const loads = [L({ load_id: "j", delivery_date: "2026-06-15" })];
-    const ids = earnedAwards({ loads, periods: [], fuel: [], lifetimeMiles: 0, obligationsDebtMonthly: 0, now: NOW }).map((a) => a.id);
+    const ids = earnedAwards({ loads, trips: [], periods: [], fuel: [], lifetimeMiles: 0, obligationsDebtMonthly: 0, now: NOW }).map((a) => a.id);
     expect(ids).toContain("recap:quarter:Q2 2026");
     expect(ids).not.toContain("recap:month:Jun 2026");
   });
@@ -43,12 +43,12 @@ describe("earnedAwards", () => {
   it("a mid-quarter month still pops its own recap", () => {
     const NOW_JUN = new Date("2026-06-10T12:00:00Z");
     const loads = [L({ load_id: "m", delivery_date: "2026-05-12" })];
-    const ids = earnedAwards({ loads, periods: [], fuel: [], lifetimeMiles: 0, obligationsDebtMonthly: 0, now: NOW_JUN }).map((a) => a.id);
+    const ids = earnedAwards({ loads, trips: [], periods: [], fuel: [], lifetimeMiles: 0, obligationsDebtMonthly: 0, now: NOW_JUN }).map((a) => a.id);
     expect(ids).toContain("recap:month:May 2026");
   });
 
   it("re-earns: a bigger best week yields a new record id so it pops again", () => {
-    const base = { periods: [], fuel: [], lifetimeMiles: 0, obligationsDebtMonthly: 0, now: NOW };
+    const base = { trips: [], periods: [], fuel: [], lifetimeMiles: 0, obligationsDebtMonthly: 0, now: NOW };
     const a = earnedAwards({ ...base, loads: [L({ load_id: "1", linehaul: "4000" })] });
     const b = earnedAwards({ ...base, loads: [L({ load_id: "1", linehaul: "5000" })] });
     const idA = a.find((x) => x.id.startsWith("record:top-week:"))!.id;
