@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearSession } from "@/lib/auth";
+import { clearSession, adoptRefreshedToken } from "@/lib/auth";
 
 // Create a centralized axios instance
 const api = axios.create({
@@ -29,9 +29,11 @@ api.interceptors.response.use(
   (response) => {
     // Sliding session: if the backend handed back a renewed token, keep it so the
     // next request rides the extended session and the user is never kicked mid-work.
+    // Adopt it only if it actually extends the session — a response replayed from
+    // cache can carry a token minted long ago, and storing that logs the user out.
     const refreshed = response.headers["x-refreshed-token"];
     if (refreshed) {
-      localStorage.setItem("token", refreshed);
+      adoptRefreshedToken(refreshed);
     }
     return response;
   },
