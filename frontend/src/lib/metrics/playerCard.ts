@@ -3,8 +3,10 @@
 // current-season grade, personal-best records, and earned trophies. Pure; take
 // `now` explicitly so it's testable.
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
+import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
 import {
   loadRevenue,
   completeMonthsBefore,
@@ -148,6 +150,7 @@ const inWindow = (
 export const getSeasonStats = (
   periods: ExpensePeriod[],
   loads: Load[],
+  trips: Trip[],
   now: Date,
   monthsBack = 3,
   // Monthly DEBT obligations (owner draws excluded) — subtracted from operating
@@ -172,16 +175,30 @@ export const getSeasonStats = (
     (l) => l.load_status === "delivered" && inWindow(l.delivery_date, months),
   );
   const loaded = seasonLoads.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
-  const dead = seasonLoads.reduce((s, l) => s + Number(l.deadhead_miles || 0), 0);
-  // Prefer the odometer window; fall back to loaded + deadhead when a load has
-  // no odometer readings, so "miles" never reads 0 while loaded miles exist.
-  const total = seasonLoads.reduce((s, l) => {
-    const odo =
-      l.odometer_end != null && l.odometer_start != null
-        ? Number(l.odometer_end) - Number(l.odometer_start)
-        : 0;
-    return s + (odo > 0 ? odo : Number(l.loaded_miles || 0) + Number(l.deadhead_miles || 0));
-  }, 0);
+  // Actual deadhead, odometer-derived, with non-revenue trips counted as fully
+  // empty — the same math the dashboard KPI uses, so the two always agree.
+  const seasonTrips = trips.filter((t) => inWindow(t.trip_date, months));
+  const deadPct = deadheadPctOver(seasonLoads, seasonTrips);
+  // Miles run this season. Prefer the odometer window; fall back to loaded +
+  // planned deadhead when a load has no readings, so "miles" never reads 0 while
+  // loaded miles exist. Trip windows are added on — they're miles too. (This
+  // fallback is why totalMiles can exceed the strict odometer base deadheadPct
+  // is computed from, on loads whose readings were never entered.)
+  const total =
+    seasonLoads.reduce((s, l) => {
+      const odo =
+        l.odometer_end != null && l.odometer_start != null
+          ? Number(l.odometer_end) - Number(l.odometer_start)
+          : 0;
+      return s + (odo > 0 ? odo : Number(l.loaded_miles || 0) + Number(l.deadhead_miles || 0));
+    }, 0) +
+    seasonTrips.reduce((s, t) => {
+      const odo =
+        t.odometer_end != null && t.odometer_start != null
+          ? Number(t.odometer_end) - Number(t.odometer_start)
+          : 0;
+      return s + Math.max(0, odo);
+    }, 0);
   const revenue = seasonLoads.reduce((s, l) => s + loadRevenue(l), 0);
 
   const laneRev = new Map<string, number>();
@@ -208,7 +225,7 @@ export const getSeasonStats = (
     loads: seasonLoads.length,
     totalMiles: total,
     loadedMiles: loaded,
-    deadheadPct: loaded + dead > 0 ? dead / (loaded + dead) : null,
+    deadheadPct: deadPct,
     avgRpm: loaded > 0 ? revenue / loaded : null,
     bestLane,
     months: n,
@@ -231,8 +248,26 @@ const weekKey = (iso: string): string => {
   return monday.toISOString().slice(0, 10);
 };
 
+// Group by pay-week key, skipping anything without a date to place it.
+const byWeek = <T,>(
+  items: T[],
+  dateOf: (x: T) => string | null | undefined,
+): Map<string, T[]> => {
+  const m = new Map<string, T[]>();
+  for (const it of items) {
+    const d = dateOf(it);
+    if (!d) continue;
+    const k = weekKey(d);
+    const arr = m.get(k);
+    if (arr) arr.push(it);
+    else m.set(k, [it]);
+  }
+  return m;
+};
+
 export const personalBests = (
   loads: Load[],
+  trips: Trip[],
   fuel: FuelEntry[],
   now: Date,
 ): PersonalBests => {
@@ -240,35 +275,35 @@ export const personalBests = (
     (l) => l.load_status === "delivered" && l.delivery_date,
   );
 
-  const weeks = new Map<
-    string,
-    { rev: number; count: number; loaded: number; dead: number; deadheadKnown: boolean }
-  >();
+  const weeks = new Map<string, { rev: number; count: number }>();
   for (const l of delivered) {
     const k = weekKey(l.delivery_date!);
-    const w = weeks.get(k) ?? { rev: 0, count: 0, loaded: 0, dead: 0, deadheadKnown: true };
+    const w = weeks.get(k) ?? { rev: 0, count: 0 };
     w.rev += loadRevenue(l);
     w.count += 1;
-    w.loaded += Number(l.loaded_miles || 0);
-    const dh = Number(l.deadhead_miles || 0);
-    w.dead += dh;
-    // One load with a 0/blank deadhead makes the whole week's deadhead unreliable
-    // (real deadhead is never exactly 0), so that week can't set a "best" record.
-    if (dh <= 0) w.deadheadKnown = false;
     weeks.set(k, w);
   }
 
   let bestWeekRevenue: number | null = null;
   let mostLoadsInWeek: number | null = null;
-  let lowestDeadheadPct: number | null = null;
   for (const w of weeks.values()) {
     if (bestWeekRevenue == null || w.rev > bestWeekRevenue) bestWeekRevenue = w.rev;
     if (mostLoadsInWeek == null || w.count > mostLoadsInWeek) mostLoadsInWeek = w.count;
-    const t = w.loaded + w.dead;
-    if (w.deadheadKnown && t > 0) {
-      const dh = w.dead / t;
-      if (lowestDeadheadPct == null || dh < lowestDeadheadPct) lowestDeadheadPct = dh;
-    }
+  }
+
+  // Lowest weekly deadhead, odometer-derived with trips counted as fully empty.
+  // A week only stands as a record if EVERY load in it ran with both readings —
+  // a partly-measured week would set a flattering record on incomplete data.
+  const loadWeeks = byWeek(delivered, (l) => l.delivery_date);
+  const tripWeeks = byWeek(trips, (t) => t.trip_date);
+  let lowestDeadheadPct: number | null = null;
+  for (const k of new Set([...loadWeeks.keys(), ...tripWeeks.keys()])) {
+    const ls = loadWeeks.get(k) ?? [];
+    if (ls.length > 0 && !ls.every(hasOdometerWindow)) continue;
+    const pct = deadheadPctOver(ls, tripWeeks.get(k) ?? []);
+    if (pct == null) continue;
+    if (lowestDeadheadPct == null || pct < lowestDeadheadPct)
+      lowestDeadheadPct = pct;
   }
 
   const biggestLoad = delivered.reduce<number | null>((m, l) => {

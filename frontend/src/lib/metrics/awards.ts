@@ -5,6 +5,7 @@
 // value/count/tier in the id is what makes "beat your own best" re-pop while an
 // unchanged one stays quiet.
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
 import {
@@ -41,6 +42,7 @@ const kMoney = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Ma
 
 export interface AwardInputs {
   loads: Load[];
+  trips: Trip[];
   periods: ExpensePeriod[];
   fuel: FuelEntry[];
   lifetimeMiles: number;
@@ -83,7 +85,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
 
   // ---- Medals (tier-up): the fixed milestone ladder + a career rank-up ----
   const del = i.loads.filter((l) => l.load_status === "delivered");
-  const season = getSeasonStats(i.periods, i.loads, i.now, 3, i.obligationsDebtMonthly);
+  const season = getSeasonStats(i.periods, i.loads, i.trips, i.now, 3, i.obligationsDebtMonthly);
   const medals = computeMedals({
     lifetimeMiles: i.lifetimeMiles,
     deliveredCount: del.length,
@@ -106,12 +108,12 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   });
 
   // ---- Patches (stacked hard feat): fire when the ×count climbs ----
-  for (const p of computePatches(i.loads, i.fuel))
+  for (const p of computePatches(i.loads, i.trips, i.fuel))
     if (p.count > 0)
       out.push({ id: `patch:${p.key}:${p.count}`, tier: "patch", name: `${p.name} ×${p.count}`, detail: p.hint, icon: p.icon });
 
   // ---- Records (new personal best): fire when a best improves ----
-  const pb = personalBests(i.loads, i.fuel, i.now);
+  const pb = personalBests(i.loads, i.trips, i.fuel, i.now);
   const rec = (key: string, val: number | null, id: string, name: string, detail: string, icon: string) => {
     if (val != null) out.push({ id: `record:${key}:${id}`, tier: "record", name, detail, icon });
   };

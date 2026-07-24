@@ -2,6 +2,7 @@ import type { Load } from "@/types/load";
 // The canonical NET revenue helper (server-computed, after the carrier's cut).
 // Aliased so the money KPIs below report what the company actually keeps.
 import { loadRevenue as loadNet } from "./rateTargets";
+import { loadDeadheadPct } from "./deadhead";
 
 // Total revenue for a load = linehaul + fuel surcharge + accessorials.
 // Postgres numerics arrive as strings, so coerce before adding.
@@ -33,13 +34,11 @@ export const loadRpm = (load: Load): number | null => {
   return miles > 0 ? loadRevenue(load) / miles : null;
 };
 
-// Deadhead share of total miles (0–1); null when the load has no miles at all.
-export const deadheadShare = (load: Load): number | null => {
-  const loaded = Number(load.loaded_miles) || 0;
-  const deadhead = Number(load.deadhead_miles) || 0;
-  const total = loaded + deadhead;
-  return total > 0 ? deadhead / total : null;
-};
+// Deadhead share of total miles (0–1) for one load — odometer-derived, so null
+// until the load has run and both readings are in. See metrics/deadhead.ts for
+// why the deadhead_miles field is never the answer here.
+export const deadheadShare = (load: Load): number | null =>
+  loadDeadheadPct(load);
 
 // Loads delivered in the current (UTC) month. Returns the array so callers can
 // count them or sum their revenue. A delivered load with no delivery_date is

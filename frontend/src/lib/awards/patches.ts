@@ -4,10 +4,12 @@
 // patch is derived from load data and takes the loads pre-filtered, so the same
 // function scopes to a driver, a truck, or a trailer just by what you pass in.
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { loadGross, loadRevenue } from "@/lib/metrics/rateTargets";
 import { formatInches } from "@/lib/dimensions";
 import { computeStack, type BarOpts } from "./adaptiveBar";
+import { deadheadPctOver } from "@/lib/metrics/deadhead";
 
 export interface Patch {
   key: string;
@@ -85,6 +87,7 @@ const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 export const computePatches = (
   loads: Load[],
+  trips: Trip[],
   _fuel: FuelEntry[],
   operation: string = "flatbed",
 ): Patch[] => {
@@ -111,14 +114,22 @@ export const computePatches = (
   out.push({ key: "iron-week", name: "Iron Week", icon: "barbell", count: iron.count, bar: iron.bar, unit: null, hint: `${Math.round(iron.bar)}+ loads in a week` });
 
   // ---- Clean Run: adaptive over weekly deadhead %, lower is better ----
+  // Odometer-derived, with that week's non-revenue trips counted as fully empty.
+  // A week with nothing measurable scores 1 (worst) so it can never win a patch.
+  const tripsByWeek = new Map<string, Trip[]>();
+  for (const t of trips) {
+    if (!t.trip_date) continue;
+    const k = weekKey(t.trip_date);
+    const arr = tripsByWeek.get(k);
+    if (arr) arr.push(t);
+    else tripsByWeek.set(k, [t]);
+  }
   const weeklyDeadhead = bucketed(
     dl,
     (l) => weekKey(l.delivery_date!),
-    (ls) => {
-      const loaded = ls.reduce((s, l) => s + (Number(l.loaded_miles) || 0), 0);
-      const dead = ls.reduce((s, l) => s + (Number(l.deadhead_miles) || 0), 0);
-      return loaded + dead > 0 ? dead / (loaded + dead) : 1;
-    },
+    (ls) =>
+      deadheadPctOver(ls, tripsByWeek.get(weekKey(ls[0].delivery_date!)) ?? []) ??
+      1,
   );
   const clean = computeStack(weeklyDeadhead, { n: 5, floor: 0.1, lowerIsBetter: true });
   out.push({ key: "clean-run", name: "Clean Run", icon: "gauge", count: clean.count, bar: clean.bar, unit: "pct", hint: `a week under ${(clean.bar * 100).toFixed(0)}% deadhead` });

@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/Panel";
 
 import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
+import { loadEmptyMiles } from "@/lib/metrics/deadhead";
 import {
   estimateLoadFuel,
   ASSUMED_MPG,
@@ -229,6 +230,8 @@ export const LoadDetailPage = () => {
     : revenue;
   const rpm = loadRpm(load);
   const dh = deadheadShare(load);
+  // Actual empty miles from the odometer window; null until the load has run.
+  const empty = loadEmptyMiles(load);
   // Use the truck's real MPG + price/gal from fuel history; fall back to the
   // working assumptions only until there's fuel data logged.
   const fs = fuelStats(fuelEntries, new Date());
@@ -507,7 +510,11 @@ export const LoadDetailPage = () => {
         <Kpi
           label="Deadhead"
           value={dh == null ? "—" : `${Math.round(dh * 100)}%`}
-          sub={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
+          sub={
+            empty == null
+              ? "needs odometer"
+              : `${Math.round(empty).toLocaleString("en-US")} mi empty`
+          }
         />
       </div>
 
@@ -633,7 +640,15 @@ export const LoadDetailPage = () => {
             value={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} mi`}
           />
           <Row
-            label="Deadhead"
+            label="Deadhead (actual)"
+            value={
+              empty == null
+                ? "—"
+                : `${Math.round(empty).toLocaleString("en-US")} mi`
+            }
+          />
+          <Row
+            label="Deadhead (planned)"
             value={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
           />
           <Row

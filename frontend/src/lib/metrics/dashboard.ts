@@ -2,6 +2,7 @@ import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import { loadRevenue, loadGross } from "./rateTargets";
 import { detentionOwed, detentionMinutes } from "@/lib/detention";
+import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
 import { median } from "./stats";
 
 // Revenue = the owner-op's NET take (their company gross), via loadRevenue —
@@ -64,28 +65,6 @@ export const getRevenueYTD = (loads: Load[]): number | null => {
   return grossRev;
 };
 
-// ---- GET DEADHEAD PERCENTAGE ----
-export const getDeadheadPercent = (loads: Load[]) => {
-  const validLoads = loads.filter(
-    (load) =>
-      load.odometer_start !== null &&
-      load.odometer_end !== null &&
-      load.load_status === "delivered",
-  );
-
-  const totalOdometer = validLoads.reduce((sum, load) => {
-    return sum + (Number(load.odometer_end) - Number(load.odometer_start));
-  }, 0);
-
-  const totalLoaded = validLoads.reduce((sum, load) => {
-    return sum + Number(load.loaded_miles);
-  }, 0);
-
-  if (totalOdometer === 0) return null;
-
-  return (totalOdometer - totalLoaded) / totalOdometer;
-};
-
 // ---- MONTHLY DEADHEAD ---- (this month vs last month, trips included)
 
 export interface MonthlyDeadhead {
@@ -93,41 +72,12 @@ export interface MonthlyDeadhead {
   lastMonth: number | null;
 }
 
-// The deadhead math over a pre-filtered set of loads + trips. Empty miles =
-// delivered loads' odometer windows minus their loaded miles, PLUS every trip's
-// full odometer window (trips are 100% non-revenue). Returns null when there are
-// no qualifying miles at all. Callers do the date filtering.
-const deadheadOverSets = (loads: Load[], trips: Trip[]): number | null => {
-  const loadWindow = loads.reduce(
-    (sum, load) =>
-      sum + (Number(load.odometer_end) - Number(load.odometer_start)),
-    0,
-  );
-  const tripWindow = trips.reduce(
-    (sum, trip) =>
-      sum + (Number(trip.odometer_end) - Number(trip.odometer_start)),
-    0,
-  );
-  const totalMiles = loadWindow + tripWindow;
-
-  const loadedMiles = loads.reduce(
-    (sum, load) => sum + Number(load.loaded_miles),
-    0,
-  );
-
-  if (totalMiles === 0) return null;
-
-  return (totalMiles - loadedMiles) / totalMiles;
-};
-
-// A load counts toward deadhead only if it delivered and has both odometer
-// readings; a trip needs both readings. (Payment status is irrelevant — only
-// load_status "delivered" ran; all trip purposes count.)
+// A load counts toward deadhead only if it delivered with both odometer readings
+// AND a delivery date to place it in time; a trip needs its readings and a date.
+// The odometer math itself lives in metrics/deadhead.ts — the one place actual
+// deadhead is derived, so this KPI and the driver's records can't drift apart.
 const deadheadLoad = (load: Load): boolean =>
-  load.load_status === "delivered" &&
-  load.odometer_start != null &&
-  load.odometer_end != null &&
-  !!load.delivery_date;
+  hasOdometerWindow(load) && !!load.delivery_date;
 const deadheadTrip = (trip: Trip): boolean =>
   trip.odometer_start != null && trip.odometer_end != null && !!trip.trip_date;
 
@@ -138,7 +88,7 @@ const deadheadForMonth = (
   year: number,
   month: number,
 ): number | null =>
-  deadheadOverSets(
+  deadheadPctOver(
     loads.filter(
       (l) =>
         deadheadLoad(l) &&
@@ -164,7 +114,7 @@ const deadheadForWindow = (
     const t = new Date(iso).getTime();
     return t >= startMs && t < endMs;
   };
-  return deadheadOverSets(
+  return deadheadPctOver(
     loads.filter((l) => deadheadLoad(l) && inWin(l.delivery_date as string)),
     trips.filter((t) => deadheadTrip(t) && inWin(t.trip_date as string)),
   );

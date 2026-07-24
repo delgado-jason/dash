@@ -96,6 +96,20 @@ const Eg = ({ children }: { children: ReactNode }) => (
   </p>
 );
 
+// A "don't confuse this with that" warning — for the places where a field you
+// can type into is NOT the number the app reports.
+const Caveat = ({ title, children }: { title: string; children: ReactNode }) => (
+  <div
+    className="px-3 py-2 mt-3"
+    style={{ background: "#2f2616", borderLeft: `2px solid ${AMBER}` }}
+  >
+    <p className="text-xs mb-1" style={{ color: AMBER_HI }}>
+      {title}
+    </p>
+    <p className="text-xs text-muted-text leading-relaxed">{children}</p>
+  </div>
+);
+
 const Why = ({ children }: { children: ReactNode }) => (
   <p className="text-sm text-muted-text mt-3">{children}</p>
 );
@@ -370,11 +384,34 @@ const GuidePage = () => (
         title="Deadhead"
         answers="The share of your miles that ran empty."
       >
-        <Formula>deadhead % = (total miles − loaded miles) ÷ total miles</Formula>
+        <Formula>
+          total miles = Σ (odometer end − odometer start)
+          <br />
+          empty miles = total miles − Σ loaded miles
+          <br />
+          <span style={{ color: AMBER_HI }}>
+            deadhead % = empty miles ÷ total miles
+          </span>
+        </Formula>
+        <Eg>
+          July: odometer windows across delivered loads and trips total{" "}
+          <span className="text-light">7,060 mi</span>; loaded miles total{" "}
+          <span className="text-light">4,934 mi</span>. Empty = 2,126 →{" "}
+          <span className="text-light">30.1%</span> deadhead.
+        </Eg>
+        <Caveat title="Not the “Deadhead Miles” field on the load form">
+          That field is a hand-entered <span className="text-light">planning
+          estimate</span>. Its job is estimating fuel for a run and scoring a
+          load before you book it — where no odometer reading exists yet. Actual
+          deadhead always comes from odometer deltas, because those capture every
+          mile you really drove: detours, fuel stops, repositioning. Measured
+          against your own data, the field understates by roughly 40% — Apr–Jun
+          it read 5,274 empty miles when the odometer says 7,378.
+        </Caveat>
         <Why>
-          Total miles come from your odometer (loads + fuel + service readings);
-          loaded miles are the paid distance. Lower is better — every empty mile is
-          cost with no revenue.
+          Non-revenue trips (running home, to the shop) count as 100% empty —
+          their whole odometer window is deadhead. Lower is better; every empty
+          mile is cost with no revenue against it.
         </Why>
       </Metric>
 
