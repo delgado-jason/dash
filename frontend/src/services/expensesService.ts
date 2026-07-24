@@ -1,4 +1,5 @@
 import api from "./api";
+import { dedupe } from "@/lib/dedupe";
 import type { ExpensePeriod, ExpenseLine, ExpenseType } from "@/types/expense";
 
 // NUMERIC columns arrive as strings — coerce at the boundary.
@@ -25,14 +26,16 @@ const coercePeriod = (p: any): ExpensePeriod => ({
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export const getExpensePeriods = async (): Promise<ExpensePeriod[]> => {
-  try {
-    const res = await api.get("/expenses");
-    return res.data.periods.map(coercePeriod);
-  } catch {
-    throw new Error("Unable to fetch expense periods");
-  }
-};
+// Deduped: three dashboard hooks ask for this simultaneously on every load.
+export const getExpensePeriods = (): Promise<ExpensePeriod[]> =>
+  dedupe("expenses", async () => {
+    try {
+      const res = await api.get("/expenses");
+      return res.data.periods.map(coercePeriod);
+    } catch {
+      throw new Error("Unable to fetch expense periods");
+    }
+  });
 
 export const getExpensePeriod = async (id: string): Promise<ExpensePeriod> => {
   try {

@@ -1,4 +1,5 @@
 import api from "./api";
+import { dedupe } from "@/lib/dedupe";
 import type { Obligation } from "@/types/obligation";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -27,14 +28,16 @@ export interface PayoffInput {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-export const getObligations = async (): Promise<Obligation[]> => {
-  try {
-    const res = await api.get("/obligations");
-    return res.data.obligations.map(coerce);
-  } catch {
-    throw new Error("Unable to fetch obligations");
-  }
-};
+// Deduped: three dashboard hooks ask for this simultaneously on every load.
+export const getObligations = (): Promise<Obligation[]> =>
+  dedupe("obligations", async () => {
+    try {
+      const res = await api.get("/obligations");
+      return res.data.obligations.map(coerce);
+    } catch {
+      throw new Error("Unable to fetch obligations");
+    }
+  });
 
 export const createObligation = async (data: {
   label: string;

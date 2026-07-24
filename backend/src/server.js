@@ -36,6 +36,19 @@ const app = express();
 app.use(cors({ exposedHeaders: ["X-Refreshed-Token"] }));
 app.use(express.json());
 
+// Everything this API returns is per-user, authenticated JSON, and some responses
+// carry the sliding-session X-Refreshed-Token header. Express caches by default
+// (ETag on, no Cache-Control), so the browser was storing those responses AND
+// that header — then replaying a long-dead token out of the HTTP cache over a
+// freshly issued one, which is what booted people straight back to /login.
+// Nothing here is cacheable, so say so at the source. ETags go too: their only
+// job is the revalidation we no longer want.
+app.disable("etag");
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
 // ---- ROUTES ----
 
 app.use("/auth", authRouter);

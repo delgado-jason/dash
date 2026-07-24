@@ -4,17 +4,38 @@
 // login"), which is what happens on mobile after the app sits idle past the
 // token's 1h lifetime.
 
-export const isTokenValid = (token: string | null): token is string => {
-  if (!token) return false;
+// Seconds-since-epoch expiry of a JWT, or null if it can't be read.
+export const tokenExp = (token: string | null): number | null => {
+  if (!token) return null;
   try {
     const seg = token.split(".")[1];
     const b64 = seg.replace(/-/g, "+").replace(/_/g, "/");
     const padded = b64.length % 4 ? b64 + "=".repeat(4 - (b64.length % 4)) : b64;
     const payload = JSON.parse(atob(padded));
-    return typeof payload.exp === "number" && payload.exp * 1000 > Date.now();
+    return typeof payload.exp === "number" ? payload.exp : null;
   } catch {
-    return false;
+    return null;
   }
+};
+
+export const isTokenValid = (token: string | null): token is string => {
+  const exp = tokenExp(token);
+  return exp !== null && exp * 1000 > Date.now();
+};
+
+// A sliding-session refresh may only ever EXTEND the session. We ignore anything
+// unreadable, already expired, or no newer than what we're holding — so a stale
+// token replayed out of a cached response can never clobber a live one. Returns
+// whether the token was adopted.
+export const adoptRefreshedToken = (refreshed: string): boolean => {
+  const next = tokenExp(refreshed);
+  if (next === null || next * 1000 <= Date.now()) return false;
+
+  const current = tokenExp(localStorage.getItem("token"));
+  if (current !== null && next <= current) return false;
+
+  localStorage.setItem("token", refreshed);
+  return true;
 };
 
 // Drop everything a session keeps, in one place.
