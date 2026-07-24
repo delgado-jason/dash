@@ -362,7 +362,21 @@ const LoadForm = ({
     });
   };
 
+  // A delivery date before the pickup date parks the load's earnings in the
+  // wrong pay week and throws off the grind streak, the week's earned total,
+  // and Recent Loads. Catch it here so it never reaches the server.
+  const dateOrderError =
+    formData.pickup_date &&
+    formData.delivery_date &&
+    formData.delivery_date < formData.pickup_date
+      ? "Delivery date can't be earlier than the pickup date."
+      : null;
+
   const handleSubmit = async () => {
+    if (dateOrderError) {
+      setError(dateOrderError);
+      return;
+    }
     try {
       await onSubmit(formData);
       onSuccess();
@@ -826,9 +840,14 @@ const LoadForm = ({
                 type="date"
                 name="delivery_date"
                 id="delivery_date"
+                min={formData.pickup_date ?? undefined}
                 onChange={handleChange}
                 value={formData.delivery_date ?? ""}
+                aria-invalid={dateOrderError ? true : undefined}
               />
+              {dateOrderError && (
+                <p className="text-xs mt-1 text-red-400">{dateOrderError}</p>
+              )}
               <div className="mt-2">
                 <Label>Delivery appt / window</Label>
                 <div className="flex items-center gap-2">

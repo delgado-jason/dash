@@ -325,6 +325,28 @@ const rules = {
   },
 };
 
+// ---- CROSS-FIELD: a load can't deliver before it picks up ----
+// Both come in as 'YYYY-MM-DD', so a string compare is the whole check — no
+// Date parsing, no timezone to get wrong. On a PATCH the caller merges the
+// incoming value over the stored one before calling this, since only the
+// changed field arrives.
+//
+// A delivery date earlier than the pickup date parks a load's earnings in the
+// wrong pay week. One of these (Jul 14 delivery on a Jul 21 pickup) silently
+// broke three dashboard cards: it inflated the grind streak to 8 weeks, emptied
+// the current week's earned total, and mis-sorted Recent Loads.
+export const validateDateOrder = (pickup_date, delivery_date, errors) => {
+  if (!pickup_date || !delivery_date) return;
+  const p = String(pickup_date).trim().slice(0, 10);
+  const d = String(delivery_date).trim().slice(0, 10);
+  if (p.length !== 10 || d.length !== 10) return; // shape errors already reported
+  if (d < p) {
+    errors.push(
+      `delivery_date (${d}) cannot be earlier than pickup_date (${p})`,
+    );
+  }
+};
+
 // ---- CREATE LOAD VALIDATION ----
 export const validateLoadCreate = (data) => {
   const errors = [];
@@ -356,11 +378,16 @@ export const validateLoadCreate = (data) => {
     }
   }
 
+  validateDateOrder(data.pickup_date, data.delivery_date, errors);
+
   return errors;
 };
 
 // ---- PATCH LOAD VALIDATION ----
-export const validateLoadPatch = (data) => {
+// `existing` is the stored row's { pickup_date, delivery_date } as 'YYYY-MM-DD'
+// strings. A PATCH may change only one of the two, so the date-order check has
+// to compare the incoming value against what's already saved.
+export const validateLoadPatch = (data, existing = {}) => {
   const errors = [];
 
   for (const field in data) {
@@ -368,6 +395,12 @@ export const validateLoadPatch = (data) => {
       rules[field](data[field], errors);
     }
   }
+
+  validateDateOrder(
+    data.pickup_date ?? existing.pickup_date,
+    data.delivery_date ?? existing.delivery_date,
+    errors,
+  );
 
   return errors;
 };

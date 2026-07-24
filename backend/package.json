@@ -11,7 +11,8 @@
     "debug": "node src/utils/debug.js",
     "seed": "node scripts/seed.js",
     "start": "node src/server.js",
-    "start:dev": "dotenv -e .env.development -- node src/server"
+    "start:dev": "dotenv -e .env.development -- node src/server",
+    "test": "node --test \"src/**/*.test.js\""
   },
   "author": "Jason Delgado",
   "license": "ISC",
