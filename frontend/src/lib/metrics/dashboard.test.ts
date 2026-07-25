@@ -863,6 +863,41 @@ describe("getRevenueLastMonth", () => {
 
     expect(result).toBe(7124);
   });
+
+  it("rolls back to December of the prior year in January", () => {
+    // The bug: in January, `getUTCMonth() - 1` is -1 (no month) AND the year
+    // filter demanded the current year, so December's revenue read as $0 and
+    // the month-over-month delta broke for all of January.
+    vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
+    const loads = [
+      // December 2025 — this is "last month" and must count.
+      {
+        load_status: "delivered",
+        delivery_date: "2025-12-20T05:00:00.000Z",
+        linehaul: "3000.00",
+        fuel_surcharge: "500.00",
+        total_accessorials: "0",
+      },
+      // January 2026 — current month, must NOT count as last month.
+      {
+        load_status: "delivered",
+        delivery_date: "2026-01-05T05:00:00.000Z",
+        linehaul: "9999.00",
+        fuel_surcharge: "0.00",
+        total_accessorials: "0",
+      },
+      // November 2025 — a month too early, excluded.
+      {
+        load_status: "delivered",
+        delivery_date: "2025-11-15T05:00:00.000Z",
+        linehaul: "1000.00",
+        fuel_surcharge: "0.00",
+        total_accessorials: "0",
+      },
+    ];
+
+    expect(getRevenueLastMonth(loads as any)).toBe(3500);
+  });
 });
 
 // ---- GET REVENUE YTD ----
