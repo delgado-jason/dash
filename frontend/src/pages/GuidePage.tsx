@@ -73,9 +73,11 @@ const TIERS: [PrestigeTier, string][] = [
 
 const Section = ({
   title,
+  sources,
   children,
 }: {
   title: string;
+  sources?: Source[];
   children: ReactNode;
 }) => (
   <section
@@ -84,6 +86,7 @@ const Section = ({
   >
     <h2 className="font-condensed text-xl mb-3">{title}</h2>
     {children}
+    {sources && sources.length > 0 && <SourceChips sources={sources} />}
   </section>
 );
 
@@ -920,6 +923,7 @@ const GuidePage = () => {
           <Metric
             title="Bottleneck — your three profit levers"
             answers="Your season net breaks into Rate × Utilization × Margin. The card grades all three and names the weakest — the one holding you back."
+            sources={[{ label: "Driver card", to: "/drivers" }]}
           >
             <Formula>
               net ≈ Rate × Utilization × Margin · bottleneck = the weakest lever
@@ -943,6 +947,7 @@ const GuidePage = () => {
           <Metric
             title="Equipment mix — oversize &amp; heavy haul"
             answers="How much of your delivered work is oversize, and separately, heavy haul. Clear a high bar in either and the card names you a specialist."
+            sources={[{ label: "Driver card", to: "/drivers" }]}
           >
             <Formula>loads of that type ÷ your delivered loads</Formula>
             <Eg>
@@ -964,6 +969,10 @@ const GuidePage = () => {
           <Metric
             title="Hometime — days since you were home"
             answers="Days since your most recent home day. Past your threshold, the card flags it so a long stretch out doesn't sneak up on you."
+            sources={[
+              { label: "Dashboard", to: "/dashboard" },
+              { label: "Driver card", to: "/drivers" },
+            ]}
           >
             <Formula>
               today − your last home day · flag when it crosses your threshold
@@ -986,6 +995,7 @@ const GuidePage = () => {
           <Metric
             title="Utilization — how hard the truck runs"
             answers="The share of days the truck was under a load — pickup to delivery — since your first logged load. Idle days pull it down."
+            sources={[{ label: "Garage", to: "/garage" }]}
           >
             <Formula>days under load ÷ days in window</Formula>
             <div className="mt-3">
@@ -1041,6 +1051,10 @@ const GuidePage = () => {
           <Metric
             title="Fuel economy — miles per gallon"
             answers="Computed the honest way — only across full tank-to-full-tank windows, so a partial fill never skews a tank's rate."
+            sources={[
+              { label: "Garage", to: "/garage" },
+              { label: "Fuel", to: "/fuel-entries" },
+            ]}
           >
             <Formula>miles between full tanks ÷ gallons burned</Formula>
             <Eg>
@@ -1053,6 +1067,7 @@ const GuidePage = () => {
           <Metric
             title="Cost to run per mile — what the truck costs you"
             answers="The truck's own operating cost per mile — fuel plus maintenance. The truck note isn't here; it lives on the payoff tracker, so it's never double-counted."
+            sources={[{ label: "Garage", to: "/garage" }]}
           >
             <div className="flex items-center gap-2 flex-wrap mb-3">
               <ChainBox top="$0.58" bottom="fuel / mi" />
@@ -1071,6 +1086,7 @@ const GuidePage = () => {
           <Metric
             title="Revenue per mile — what each mile earns"
             answers="The truck's net revenue spread over every mile it drove — its earning efficiency."
+            sources={[{ label: "Garage", to: "/garage" }]}
           >
             <Formula>truck net revenue ÷ total miles driven</Formula>
             <Eg>
@@ -1106,9 +1122,35 @@ const GuidePage = () => {
                 monuments in the Trophy Room.
               </li>
             </ul>
+            <p className="text-sm text-muted-text mt-4 mb-1">
+              The two that compute a threshold work like this:
+            </p>
+            <Formula>
+              patch bar = your 5th-best result so far, ratcheting up (never
+              down)
+              <br />
+              medal tier = highest fixed rung your lifetime total has passed (I
+              · II · III)
+            </Formula>
+            <Why>
+              A <span className="text-light">patch</span> bar is personal and
+              adaptive: it's set from your own top-5 history for that feat, so
+              it stays hard-but-fair and only ever climbs — a slow month can't
+              lower it. You stack a <span className="text-light">×count</span>{" "}
+              every time an event clears the bar that was in effect at that
+              moment, and earns lock in for good. A{" "}
+              <span className="text-light">medal</span> is the opposite — its
+              rungs are <span className="text-light">fixed for everyone</span>{" "}
+              (a million miles is a million miles), so it measures you against
+              the whole trade, not yourself. The same two engines drive the
+              truck, trailer, and dispatcher awards below.
+            </Why>
           </Section>
 
-          <Section title="Driver medals — climb the tiers">
+          <Section
+            title="Driver medals — climb the tiers"
+            sources={[{ label: "Driver card", to: "/drivers" }]}
+          >
             <div className="grid sm:grid-cols-2 gap-x-6">
               {MEDAL_GUIDE.map((m) => (
                 <AwardLine
@@ -1121,7 +1163,10 @@ const GuidePage = () => {
             </div>
           </Section>
 
-          <Section title="Driver patches — hard, and they stack">
+          <Section
+            title="Driver patches — hard, and they stack"
+            sources={[{ label: "Driver card", to: "/drivers" }]}
+          >
             <p className="text-sm text-muted-text mb-3">
               Patches earned in <span style={{ color: "#60a5fa" }}>blue</span>{" "}
               are your <span className="text-light">operation-specific</span>{" "}
@@ -1149,7 +1194,10 @@ const GuidePage = () => {
             </div>
           </Section>
 
-          <Section title="Truck medals & patches — its own set">
+          <Section
+            title="Truck medals & patches — its own set"
+            sources={[{ label: "Garage", to: "/garage" }]}
+          >
             <p className="text-sm text-muted-text mb-3">
               Each asset earns its own awards, on its own stats. The truck runs
               on fuel economy and mileage.
@@ -1174,7 +1222,10 @@ const GuidePage = () => {
             </div>
           </Section>
 
-          <Section title="Trailer medals & patches — its own set">
+          <Section
+            title="Trailer medals & patches — its own set"
+            sources={[{ label: "Garage", to: "/garage" }]}
+          >
             <p className="text-sm text-muted-text mb-3">
               The trailer has no engine, so it earns on the loads it carried:
               its 8% slice of net, the weight it hauled, and hub miles.
@@ -1206,7 +1257,10 @@ const GuidePage = () => {
           />
           <GroupHeading>Agents</GroupHeading>
 
-          <Section title="Agent ratings">
+          <Section
+            title="Agent ratings"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
             <p className="text-sm text-muted-text mb-4">
               You set these by hand — your call on who to work with. They show
               as a medallion on every agent, highest first.
@@ -1223,18 +1277,48 @@ const GuidePage = () => {
             </div>
           </Section>
 
-          <Section title="The quarterly leaderboard">
+          <Section
+            title="The quarterly leaderboard"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
             <p className="text-sm text-muted-text">
               Ratings are your opinion; this is the scoreboard. Every calendar
               quarter, your agents are ranked by the revenue on the loads they
               actually delivered. Two things fall out of it — trophies, and a
               career rank — and both stick with the agent for good.
             </p>
+            <Formula>
+              rank = Σ GROSS revenue on delivered loads, per calendar quarter
+              <br />
+              board = top 5 (2+ loads) · podium = #1 &amp; #2 (3+ loads)
+            </Formula>
+            <Why>
+              The number is <span className="text-light">gross</span> — the full
+              customer rate the agent booked, not your net after the carrier's
+              cut — because that's the market value they delivered (see{" "}
+              <a
+                href="#agents-and-lanes-are-graded-on-gross"
+                className="text-status-info-text hover:underline"
+              >
+                graded on gross
+              </a>
+              ). Only <span className="text-light">delivered</span> loads count,
+              and only <span className="text-light">completed</span> quarters —
+              the one you're in stays live until it closes. Making the{" "}
+              <span className="text-light">board</span> takes just 2 loads and a
+              top-5 finish; a <span className="text-light">trophy</span> needs 3
+              and a podium, so you reach the board more easily than you win the
+              quarter.
+            </Why>
           </Section>
 
-          <Section title="Trophies">
+          <Section
+            title="Trophies"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
             <p className="text-sm text-muted-text mb-4">
-              Awarded each quarter to the agents who ran at least 3 loads.
+              Awarded each quarter to the agents who ran at least 3 loads, by
+              gross delivered revenue.
             </p>
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-4">
@@ -1262,7 +1346,10 @@ const GuidePage = () => {
             </div>
           </Section>
 
-          <Section title="Career rank">
+          <Section
+            title="Career rank"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
             <p className="text-sm text-muted-text mb-4">
               Boards and trophies roll up into a single rank — the starburst in
               the corner of the agent's card. It never clutters and only ever
@@ -1395,7 +1482,10 @@ const GuidePage = () => {
             </p>
           </Section>
 
-          <Section title="Dispatcher achievements — patches &amp; medals">
+          <Section
+            title="Dispatcher achievements — patches &amp; medals"
+            sources={[{ label: "Dispatch board", to: "/dashboard" }]}
+          >
             <p className="text-sm text-muted-text">
               Her page carries two kinds of earned awards, and they pop the same
               way the driver's do. <span className="text-light">Patches</span>{" "}
@@ -1410,6 +1500,28 @@ const GuidePage = () => {
               under 10% deadhead), and Big Week. All of it is scored off her own
               bookings, on gross.
             </p>
+            <Formula>
+              patches use the same adaptive bar · medals are the rare fixed
+              feats
+              <br />
+              every stat is scored on her bookings only (booked_by = her), on
+              gross
+            </Formula>
+            <Why>
+              Same two engines as the driver's awards, pointed at booking
+              instead of driving: a patch bar ratchets up off her own top-5
+              history, and a medal fires on a one-off hard feat. The deadhead a
+              Lean Machine or Grand Slam reads is the load's{" "}
+              <span className="text-light">actual odometer deadhead</span> once
+              it has run — the planning field is never counted (see{" "}
+              <a
+                href="#deadhead"
+                className="text-status-info-text hover:underline"
+              >
+                Deadhead
+              </a>
+              ).
+            </Why>
           </Section>
         </main>
       </div>
