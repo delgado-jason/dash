@@ -138,7 +138,7 @@ const DispatchDashboard = () => {
     <div className="p-6 bg-iron text-light min-h-screen font-body">
       <AwardPopHost pops={pops} />
 
-      <div className="flex items-center justify-between mb-6 gap-3">
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-x-3 gap-y-2">
         <div>
           <h1 className="font-comic text-3xl" style={{ color: "#f5b03a" }}>
             DISPATCH BOARD

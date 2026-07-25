@@ -55,9 +55,9 @@ const Spec = ({
   label: string;
   value: string | null | undefined;
 }) => (
-  <div>
+  <div className="min-w-0">
     <p className="text-xs text-muted-text">{label}</p>
-    <p className="text-sm">{value ? value : "—"}</p>
+    <p className="text-sm break-words">{value ? value : "—"}</p>
   </div>
 );
 

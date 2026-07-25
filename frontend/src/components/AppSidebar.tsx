@@ -12,6 +12,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "react-router-dom";
 import { isDispatcher } from "@/lib/roles";
@@ -75,6 +76,14 @@ const AppSidebar = () => {
   const active = (to: string) =>
     pathname === to || pathname.startsWith(to + "/");
 
+  // On a phone the sidebar is an off-canvas sheet; tapping a destination should
+  // dismiss it so the page is visible, instead of leaving it covering the screen.
+  // On desktop the rail is permanent, so this is a no-op there.
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeOnNav = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
   // A group starts open if it holds the current route; navigating into a group
   // opens it, but manual toggles of the others are preserved.
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
@@ -129,7 +138,11 @@ const AppSidebar = () => {
                             asChild
                             className="!bg-transparent hover:!bg-transparent"
                           >
-                            <Link to={c.to} className={linkCls(c.to)}>
+                            <Link
+                              to={c.to}
+                              onClick={closeOnNav}
+                              className={linkCls(c.to)}
+                            >
                               {c.label}
                             </Link>
                           </SidebarMenuSubButton>
@@ -144,7 +157,11 @@ const AppSidebar = () => {
                     asChild
                     className="!bg-transparent hover:!bg-transparent"
                   >
-                    <Link to={e.to} className={linkCls(e.to)}>
+                    <Link
+                      to={e.to}
+                      onClick={closeOnNav}
+                      className={linkCls(e.to)}
+                    >
                       {e.label}
                     </Link>
                   </SidebarMenuButton>
@@ -158,7 +175,11 @@ const AppSidebar = () => {
       <SidebarFooter>
         {!dispatcher && (
           <div className="px-4 pt-2">
-            <Link to="/settings" className={`text-sm ${linkCls("/settings")}`}>
+            <Link
+              to="/settings"
+              onClick={closeOnNav}
+              className={`text-sm ${linkCls("/settings")}`}
+            >
               Settings
             </Link>
           </div>
