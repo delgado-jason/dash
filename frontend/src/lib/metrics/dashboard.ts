@@ -34,14 +34,21 @@ export const getRevenueMTD = (loads: Load[]): number | null => {
 
 // ---- GET LAST MONTHS REVENUE ----
 export const getRevenueLastMonth = (loads: Load[]): number | null => {
-  const now = new Date();
+  const now = new Date(Date.now());
+  // First of last month in UTC. Deriving the (year, month) pair this way handles
+  // the January → December rollover — `now.getUTCMonth() - 1` alone is -1 every
+  // January, which no month matches, so last-month revenue read empty and the
+  // month-over-month delta broke for the whole of January.
+  const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const prevYear = prev.getUTCFullYear();
+  const prevMonth = prev.getUTCMonth();
 
   const filteredLoads = loads.filter(
     (load) =>
       load.delivery_date &&
       load.load_status === "delivered" &&
-      new Date(load.delivery_date).getUTCFullYear() === now.getUTCFullYear() &&
-      new Date(load.delivery_date).getUTCMonth() === now.getUTCMonth() - 1,
+      new Date(load.delivery_date).getUTCFullYear() === prevYear &&
+      new Date(load.delivery_date).getUTCMonth() === prevMonth,
   );
 
   const grossRev = getLoadRevenue(filteredLoads);
