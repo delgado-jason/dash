@@ -195,8 +195,8 @@ const ExpensesPage = () => {
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-condensed">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        <h1 className="text-3xl font-condensed min-w-0">
           Expenses
           {selected?.period_label ? ` · ${selected.period_label}` : ""}
         </h1>

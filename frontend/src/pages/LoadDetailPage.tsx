@@ -404,9 +404,9 @@ export const LoadDetailPage = () => {
         ← Loads
       </Link>
 
-      <div className="flex justify-between items-start mt-3 mb-6">
-        <div>
-          <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 mt-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <h1 className="text-3xl font-condensed">{load.load_number}</h1>
             <StatusBadge value={load.load_status} />
             <StatusBadge value={load.payment_status} />
@@ -416,7 +416,7 @@ export const LoadDetailPage = () => {
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <button
             onClick={() => setShowEditForm(true)}
             className="bg-steel text-light px-3 py-1.5 rounded text-sm flex items-center gap-1"

@@ -167,13 +167,13 @@ const AgentDetailPage = () => {
         ← Agents
       </Link>
 
-      <div className="flex justify-between items-start mt-3 mb-6 gap-4">
-        <div className="flex gap-4 items-center">
+      <div className="flex flex-col gap-4 mt-3 mb-6 sm:flex-row sm:justify-between sm:items-start">
+        <div className="flex gap-4 items-center min-w-0">
           <div className="size-16 rounded-full bg-steel border-2 border-amber flex items-center justify-center font-condensed font-semibold text-2xl text-amber-light shrink-0">
             {agent.first_name.charAt(0)}
             {agent.last_name.charAt(0)}
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-3xl font-condensed leading-none">
               {agent.first_name} {agent.last_name}
             </h1>
@@ -191,7 +191,7 @@ const AgentDetailPage = () => {
             )}
           </div>
         </div>
-        <div className="text-right shrink-0">
+        <div className="shrink-0 sm:text-right">
           <RatingStamp rating={agent.rating} />
           <div className="mt-3">
             <button
