@@ -45,9 +45,14 @@ export const stopDetentionMinutes = (
   if (!outT) return 0;
   const clock = apptEnd ?? apptStart ?? inT; // window end → appt → arrival
   if (!clock) return 0;
+  const inMin = inT ? toMin(inT) : null;
   let out = toMin(outT);
   const start = toMin(clock);
-  if (out < start) out += 1440; // released after midnight
+  // Overnight only when the stop actually crossed midnight — the release reads
+  // earlier than the ARRIVAL. Anchoring on the arrival (not the appointment) is
+  // the fix: a truck released before the free window even closes is just an
+  // early/on-time departure (zero detention), NOT a midnight crossing.
+  if (inMin != null && out < inMin) out += 1440;
   return Math.max(0, out - (start + freeHours * 60));
 };
 
