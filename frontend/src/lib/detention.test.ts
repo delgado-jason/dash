@@ -63,6 +63,15 @@ describe("stopDetentionMinutes — clock starts at the appointment, not arrival"
     expect(stopDetentionMinutes("21:30", "01:30", "22:00", null, 3)).toBe(30);
   });
 
+  it("does NOT wrap a same-day release that beats the window end (load 1469377 bug)", () => {
+    // window 08:00–11:00, arrive 07:00, released 08:23 — inside the window, so
+    // ZERO. The old rule wrapped 08:23 past midnight (out < window-end) and
+    // charged ~18h. Anchoring the wrap on arrival keeps it at 0.
+    expect(stopDetentionMinutes("07:00", "08:23", "08:00", "11:00", 3)).toBe(0);
+    // its receiver stop: window 07:00–08:00, released 12:54 → 1h54m past 11:00
+    expect(stopDetentionMinutes("06:00", "12:54", "07:00", "08:00", 3)).toBe(114);
+  });
+
   it("is zero when the out time is missing", () => {
     expect(stopDetentionMinutes("08:00", null, "08:00", null, 3)).toBe(0);
   });
