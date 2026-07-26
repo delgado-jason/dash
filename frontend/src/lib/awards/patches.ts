@@ -4,12 +4,10 @@
 // patch is derived from load data and takes the loads pre-filtered, so the same
 // function scopes to a driver, a truck, or a trailer just by what you pass in.
 import type { Load } from "@/types/load";
-import type { Trip } from "@/types/trip";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { loadGross, loadRevenue } from "@/lib/metrics/rateTargets";
 import { formatInches } from "@/lib/dimensions";
 import { computeStack, type BarOpts } from "./adaptiveBar";
-import { deadheadPctOver } from "@/lib/metrics/deadhead";
 
 export interface Patch {
   key: string;
@@ -87,7 +85,6 @@ const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 export const computePatches = (
   loads: Load[],
-  trips: Trip[],
   _fuel: FuelEntry[],
   operation: string = "flatbed",
 ): Patch[] => {
@@ -113,26 +110,8 @@ export const computePatches = (
   const iron = computeStack(weeklyLoads, { n: 5, floor: 5 });
   out.push({ key: "iron-week", name: "Iron Week", icon: "barbell", count: iron.count, bar: iron.bar, unit: null, hint: `${Math.round(iron.bar)}+ loads in a week` });
 
-  // ---- Clean Run: adaptive over weekly deadhead %, lower is better ----
-  // Odometer-derived, with that week's non-revenue trips counted as fully empty.
-  // A week with nothing measurable scores 1 (worst) so it can never win a patch.
-  const tripsByWeek = new Map<string, Trip[]>();
-  for (const t of trips) {
-    if (!t.trip_date) continue;
-    const k = weekKey(t.trip_date);
-    const arr = tripsByWeek.get(k);
-    if (arr) arr.push(t);
-    else tripsByWeek.set(k, [t]);
-  }
-  const weeklyDeadhead = bucketed(
-    dl,
-    (l) => weekKey(l.delivery_date!),
-    (ls) =>
-      deadheadPctOver(ls, tripsByWeek.get(weekKey(ls[0].delivery_date!)) ?? []) ??
-      1,
-  );
-  const clean = computeStack(weeklyDeadhead, { n: 5, floor: 0.1, lowerIsBetter: true });
-  out.push({ key: "clean-run", name: "Clean Run", icon: "gauge", count: clean.count, bar: clean.bar, unit: "pct", hint: `a week under ${(clean.bar * 100).toFixed(0)}% deadhead` });
+  // (Deadhead is a structural cost of oversize work, not a feat to chase, so
+  // there's no weekly-deadhead patch — removed 2026-07-25 at Jason's call.)
 
   // ---- Trailblazer (structural): distinct states touched — the count IS the map ----
   const states = new Set<string>();
@@ -189,7 +168,6 @@ export const PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
   { name: "Super Load", icon: "crown", how: "A true superload — 16' wide/high, 150' long, or 200k lb. A career milestone." },
   { name: "Rainmaker", icon: "coins", how: "A top-tier net month." },
   { name: "Iron Week", icon: "barbell", how: "One of your busiest pay-weeks by load count." },
-  { name: "Clean Run", icon: "gauge", how: "A week with your tightest deadhead." },
   { name: "Trailblazer", icon: "map-pin", how: "Deliver to a new state — the ×count is your states-conquered map." },
   { name: "Coast to Coast", icon: "arrows-horizontal", how: "A single run spanning the West and East coasts." },
   { name: "Doubleheader", icon: "layers-subtract", how: "Deliver two or more loads in one day." },

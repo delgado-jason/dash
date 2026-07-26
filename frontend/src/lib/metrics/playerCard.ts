@@ -6,7 +6,7 @@ import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
+import { deadheadPctOver } from "./deadhead";
 import {
   loadRevenue,
   completeMonthsBefore,
@@ -235,7 +235,6 @@ export const getSeasonStats = (
 // ---------- personal bests (records) ----------
 export interface PersonalBests {
   bestWeekRevenue: number | null;
-  lowestDeadheadPct: number | null;
   bestMpg: number | null;
   biggestLoad: number | null;
   mostLoadsInWeek: number | null;
@@ -248,26 +247,8 @@ const weekKey = (iso: string): string => {
   return monday.toISOString().slice(0, 10);
 };
 
-// Group by pay-week key, skipping anything without a date to place it.
-const byWeek = <T,>(
-  items: T[],
-  dateOf: (x: T) => string | null | undefined,
-): Map<string, T[]> => {
-  const m = new Map<string, T[]>();
-  for (const it of items) {
-    const d = dateOf(it);
-    if (!d) continue;
-    const k = weekKey(d);
-    const arr = m.get(k);
-    if (arr) arr.push(it);
-    else m.set(k, [it]);
-  }
-  return m;
-};
-
 export const personalBests = (
   loads: Load[],
-  trips: Trip[],
   fuel: FuelEntry[],
   now: Date,
 ): PersonalBests => {
@@ -291,21 +272,6 @@ export const personalBests = (
     if (mostLoadsInWeek == null || w.count > mostLoadsInWeek) mostLoadsInWeek = w.count;
   }
 
-  // Lowest weekly deadhead, odometer-derived with trips counted as fully empty.
-  // A week only stands as a record if EVERY load in it ran with both readings —
-  // a partly-measured week would set a flattering record on incomplete data.
-  const loadWeeks = byWeek(delivered, (l) => l.delivery_date);
-  const tripWeeks = byWeek(trips, (t) => t.trip_date);
-  let lowestDeadheadPct: number | null = null;
-  for (const k of new Set([...loadWeeks.keys(), ...tripWeeks.keys()])) {
-    const ls = loadWeeks.get(k) ?? [];
-    if (ls.length > 0 && !ls.every(hasOdometerWindow)) continue;
-    const pct = deadheadPctOver(ls, tripWeeks.get(k) ?? []);
-    if (pct == null) continue;
-    if (lowestDeadheadPct == null || pct < lowestDeadheadPct)
-      lowestDeadheadPct = pct;
-  }
-
   const biggestLoad = delivered.reduce<number | null>((m, l) => {
     const r = loadRevenue(l);
     return m == null || r > m ? r : m;
@@ -313,7 +279,6 @@ export const personalBests = (
 
   return {
     bestWeekRevenue,
-    lowestDeadheadPct,
     bestMpg: fuelStats(fuel, now).bestMpg,
     biggestLoad,
     mostLoadsInWeek,

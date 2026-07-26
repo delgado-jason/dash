@@ -14,7 +14,7 @@ const L = (o: Record<string, unknown>): Load =>
   }) as unknown as Load;
 
 const find = (loads: Load[], key: string) =>
-  computePatches(loads, [], [] as FuelEntry[]).find((p) => p.key === key)!;
+  computePatches(loads, [] as FuelEntry[]).find((p) => p.key === key)!;
 
 describe("computePatches", () => {
   it("Trailblazer counts distinct states touched", () => {
@@ -58,7 +58,7 @@ describe("computePatches", () => {
 
   // ---- Operation-specific (open-deck) set ----
   const findOp = (loads: Load[], key: string, operation: string) =>
-    computePatches(loads, [], [] as FuelEntry[], operation).find((p) => p.key === key);
+    computePatches(loads, [] as FuelEntry[], operation).find((p) => p.key === key);
 
   it("gates the oversize set to open-deck operations", () => {
     const loads = [

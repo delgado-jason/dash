@@ -186,8 +186,8 @@ const DriverDetailPage = () => {
       utilGrade: utilizationGrade(utilization),
       windowRpm: basis.windowRpm,
       medals: earnedMedals(medals),
-      bests: personalBests(driverLoads, driverTrips, fuel, now),
-      patches: computePatches(driverLoads, driverTrips, fuel, operation),
+      bests: personalBests(driverLoads, fuel, now),
+      patches: computePatches(driverLoads, fuel, operation),
       // Equipment identity — oversize and heavy haul kept as separate disciplines.
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
