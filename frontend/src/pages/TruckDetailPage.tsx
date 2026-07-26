@@ -143,6 +143,13 @@ const TruckDetailPage = () => {
       ),
     [truckLoads],
   );
+  // "Loads hauled" is about work run, so it's delivered — paid or not. A load you
+  // delivered but haven't been paid for yet was still hauled. (Revenue stays on
+  // earnedLoads: you've only earned money on the paid ones.)
+  const deliveredLoads = useMemo(
+    () => truckLoads.filter((l) => l.load_status === "delivered"),
+    [truckLoads],
+  );
 
   // Latest odometer, derived from the app: stored value + newest load + newest
   // trip + newest service reading + newest fuel fill-up (fuel is usually freshest).
@@ -368,7 +375,7 @@ const TruckDetailPage = () => {
         </Link>
         <Panel className="p-4">
           <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-          <p className="text-2xl font-condensed">{earnedLoads.length}</p>
+          <p className="text-2xl font-condensed">{deliveredLoads.length}</p>
         </Panel>
         <Panel className="p-4">
           <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
@@ -378,11 +385,11 @@ const TruckDetailPage = () => {
 
       <Panel className="p-4 mt-4">
         <p className="text-xs text-muted-text mb-2">Recent loads</p>
-        {earnedLoads.length === 0 ? (
+        {deliveredLoads.length === 0 ? (
           <p className="text-sm text-muted-text">None on this truck yet.</p>
         ) : (
           <div className="text-sm divide-y divide-steel">
-            {earnedLoads.slice(0, 6).map((l) => (
+            {deliveredLoads.slice(0, 6).map((l) => (
               <div key={l.load_id} className="py-2 flex justify-between">
                 <span>
                   {l.origin_market} → {l.delivery_market}

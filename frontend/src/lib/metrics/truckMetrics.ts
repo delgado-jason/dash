@@ -60,6 +60,9 @@ export const computeTruckMetrics = (
   const earned = truckLoads.filter(
     (l) => l.load_status === "delivered" && l.payment_status === "paid",
   );
+  // Loads HAULED is delivered (paid or not) — payment status doesn't change
+  // whether the truck ran the load.
+  const delivered = truckLoads.filter((l) => l.load_status === "delivered");
   const netRevenue = earned.reduce((s, l) => s + loadRevenue(l), 0);
   const totalMiles = earned.reduce((s, l) => s + loadMiles(l), 0);
 
@@ -133,7 +136,7 @@ export const computeTruckMetrics = (
     milesPerMonth: monthsInService ? totalMiles / monthsInService : null,
     totalMiles,
     netRevenue,
-    loads: earned.length,
+    loads: delivered.length,
   };
 };
 
