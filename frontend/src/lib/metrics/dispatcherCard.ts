@@ -4,7 +4,7 @@
 // passed in so it's testable.
 import type { Load } from "@/types/load";
 import { loadGross, type RateLadder } from "./rateTargets";
-import { detentionMinutes } from "@/lib/detention";
+import { detentionCollectedMinutes } from "@/lib/detention";
 import { agentStops, scoreStops } from "./stopScore";
 import { rpmGrade, type Grade } from "./playerCard";
 
@@ -95,9 +95,11 @@ export const getDispatcherCard = (
       ? avgBookedRate - breakEven
       : null;
 
-  const detentionCollectedMin = mine
-    .filter((l) => l.detention_paid)
-    .reduce((s, l) => s + detentionMinutes(l, freeHours), 0);
+  // Collected = confirmed billable AND paid (detentionCollectedMinutes gates on both).
+  const detentionCollectedMin = mine.reduce(
+    (s, l) => s + detentionCollectedMinutes(l, freeHours),
+    0,
+  );
 
   // On-time only over loads that actually ran.
   const delivered = mine.filter((l) => l.load_status === "delivered");

@@ -3,7 +3,11 @@ import { Link } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import type { Load } from "@/types/load";
 import { Panel } from "@/components/ui/Panel";
-import { detentionOwed, detentionMinutes } from "@/lib/detention";
+import {
+  detentionOwed,
+  detentionEligible,
+  detentionMinutes,
+} from "@/lib/detention";
 import { fmtDuration } from "@/lib/stopTimes";
 
 const PAGE = 10;
@@ -97,14 +101,12 @@ export const DispatchLoadsTable = ({
       filter === "all"
         ? true
         : filter === "detention"
-          ? detentionOwed(l, freeHours)
+          ? detentionOwed(l) || detentionEligible(l, freeHours)
           : l.load_status === filter;
 
     return loads
       .filter((l) => searchMatch(l) && statusMatch(l))
-      .sort((a, b) =>
-        (rowDate(b) ?? "").localeCompare(rowDate(a) ?? ""),
-      );
+      .sort((a, b) => (rowDate(b) ?? "").localeCompare(rowDate(a) ?? ""));
   }, [loads, search, filter, freeHours]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
@@ -188,7 +190,8 @@ export const DispatchLoadsTable = ({
         </p>
       ) : (
         shown.map((l) => {
-          const owed = detentionOwed(l, freeHours);
+          const owed = detentionOwed(l);
+          const eligible = detentionEligible(l, freeHours);
           return (
             <Link
               key={l.load_id}
@@ -206,6 +209,14 @@ export const DispatchLoadsTable = ({
                     style={{ background: "#7a4718", color: "#f5c37a" }}
                   >
                     {fmtDuration(detentionMinutes(l, freeHours))}
+                  </span>
+                )}
+                {eligible && (
+                  <span
+                    className="shrink-0 rounded px-1 text-[9px]"
+                    style={{ color: "#8b98a9" }}
+                  >
+                    det?
                   </span>
                 )}
               </span>

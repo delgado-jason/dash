@@ -308,7 +308,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Facilities — your shippers and receivers",
       "Appointment or window",
       "In / out times & dwell",
-      "Detention — the wait you're owed for",
+      "Detention — a decision, not an auto-flag",
       "TONU — the dead-run fee",
       "The loads table, by color",
       "Facility & agent scorecards",
@@ -884,20 +884,44 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="Detention — the wait you're owed for"
-            answers="When a stop holds you past your free time, the load flags detention automatically."
+            title="Detention — a decision, not an auto-flag"
+            answers="When a stop holds you past free time, the load recommends asking for detention — it only becomes 'owed' once you confirm the shipper is paying."
+            sources={[
+              { label: "Loads", to: "/loads" },
+              { label: "Agents", to: "/agents" },
+            ]}
           >
-            <Formula>detention = dwell − free hours (per stop)</Formula>
+            <Formula>
+              free time ends at (appointment / window END) + your free hours
+              <br />
+              <span style={{ color: AMBER_HI }}>
+                detention = time released past that
+              </span>
+            </Formula>
             <Eg>
-              Sat 5h 20m with 3h free →{" "}
-              <span className="text-light">2h 20m</span> billable. Set your free
-              hours on the Settings page (you give 3).
+              8:00 appointment, 3h free → clock runs out at 11:00; released
+              12:20 = <span className="text-light">1h 20m</span>. A window
+              8:00–11:00 runs out at 2:00 (3h past the window's end).
             </Eg>
             <Why>
-              The load shows a "Detention owed" banner and the loads table flags
-              the row. Bill the hours as an accessorial, then hit{" "}
-              <span className="text-light">Mark detention paid</span> to clear
-              it.
+              The clock starts at the{" "}
+              <span className="text-light">appointment</span> (window END if
+              it's a window), not when you arrived — so showing up early never
+              earns detention. Whether it actually pays is the shipper's call,
+              so the app doesn't auto-flag it: past free time a load shows a{" "}
+              <span className="text-light">"Possible detention"</span> nudge (a
+              faint "det?" in the loads table). Clear it with the agent, then
+              hit <span className="text-light">Detention will be paid</span> —
+              now it's owed and the row highlights — or{" "}
+              <span className="text-light">No detention</span> to dismiss it.{" "}
+              <span className="text-light">Mark detention paid</span> clears it
+              once collected. Set your free hours on Settings (you give 3). Each
+              agent's page shows{" "}
+              <span className="text-light">
+                detention claimable vs collected
+              </span>
+              , so you can spot the ones whose freight holds you up and never
+              pays.
             </Why>
           </Metric>
 

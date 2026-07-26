@@ -59,6 +59,9 @@ export interface Load {
   // Detention/TONU fees owed until collected — "owed" is derived, "paid" is the
   // manual mark that clears the flag.
   detention_paid?: boolean;
+  // Jason's detention decision: undefined/null = undecided (recommend asking),
+  // true = confirmed owed (waiting to collect), false = dismissed (shipper won't pay).
+  detention_billable?: boolean | null;
   tonu_paid?: boolean;
   truck_id?: string | null;
   driver_id?: string | null;

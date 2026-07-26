@@ -7,7 +7,11 @@ import { useLoads } from "@/hooks/useLoads";
 import { useCarrierName } from "@/hooks/useCarrierName";
 import { createAgentNote } from "@/services/createAgentNoteService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
-import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
+import {
+  agentStops,
+  scoreStops,
+  agentDetention,
+} from "@/lib/metrics/stopScore";
 
 import RatingForm from "@/components/RatingForm";
 import { StopScorecard } from "@/components/StopScorecard";
@@ -75,6 +79,11 @@ const AgentDetailPage = () => {
     () => scoreStops(agentStops(loads ?? [], freeHours)),
     [loads, freeHours],
   );
+  // Detention claimed vs actually paid — does this agent's freight waste time?
+  const det = useMemo(
+    () => agentDetention(loads ?? [], freeHours),
+    [loads, freeHours],
+  );
 
   const agentId = agent?.agent_id;
   const honors = useMemo(
@@ -90,7 +99,9 @@ const AgentDetailPage = () => {
   );
   const live = useMemo(
     () =>
-      agentId ? currentQuarterStanding(allLoads ?? [], agentId, new Date()) : null,
+      agentId
+        ? currentQuarterStanding(allLoads ?? [], agentId, new Date())
+        : null,
     [allLoads, agentId],
   );
 
@@ -216,7 +227,10 @@ const AgentDetailPage = () => {
           valueClass={rpmTextClass(rpm)}
         />
         <Kpi label="Cancelled" value={String(getCancelledCount(loads))} />
-        <Kpi label="Last worked" value={lastWorked ? fmtDate(lastWorked) : "Never"} />
+        <Kpi
+          label="Last worked"
+          value={lastWorked ? fmtDate(lastWorked) : "Never"}
+        />
       </div>
 
       <Panel className="p-4 mt-4">
@@ -228,6 +242,28 @@ const AgentDetailPage = () => {
           countLabel="Loads"
           countValue={getLoadCount(loads)}
         />
+        {det.claimable > 0 && (
+          <div className="mt-3 pt-3 border-t border-plate flex items-baseline gap-2 flex-wrap">
+            <span
+              className="font-condensed text-lg"
+              style={{ color: "#f5c37a" }}
+            >
+              {det.paid} / {det.claimable}
+            </span>
+            <span className="text-xs text-muted-text">
+              detention loads collected vs claimable
+              {det.claimable - det.paid > 0 && (
+                <>
+                  {" · "}
+                  <span style={{ color: "#f2a6a3" }}>
+                    {det.claimable - det.paid} held you up with no detention
+                    paid
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+        )}
       </Panel>
 
       <div className="mt-4">
@@ -255,10 +291,7 @@ const AgentDetailPage = () => {
               </thead>
               <tbody>
                 {agentLoads.map((load) => (
-                  <tr
-                    key={load.load_id}
-                    className="border-t border-[#3b4660]"
-                  >
+                  <tr key={load.load_id} className="border-t border-[#3b4660]">
                     <td className="py-2 pr-4 whitespace-nowrap">
                       <Link
                         to={`/loads/${load.load_id}`}
@@ -344,12 +377,15 @@ const AgentDetailPage = () => {
                       <span className="text-muted-text">
                         {log.data.old_rating ?? "—"}
                       </span>{" "}
-                      → <span className="text-amber font-semibold">
+                      →{" "}
+                      <span className="text-amber font-semibold">
                         {log.data.new_rating}
                       </span>
                     </p>
                     {log.data.reason && (
-                      <p className="text-sm text-muted-text">{log.data.reason}</p>
+                      <p className="text-sm text-muted-text">
+                        {log.data.reason}
+                      </p>
                     )}
                     <p className="text-xs text-muted-text mt-1">
                       {fmtDate(log.timestamp)} · {log.data.changed_by}
@@ -386,7 +422,10 @@ const AgentDetailPage = () => {
             {agent.email || "No email"}
           </p>
           <p className="text-sm mb-3">
-            <Phone size={14} className="inline text-muted-text mr-1.5 -mt-0.5" />
+            <Phone
+              size={14}
+              className="inline text-muted-text mr-1.5 -mt-0.5"
+            />
             {agent.phone || "No phone"}
           </p>
           <p className="text-xs text-muted-text">Preferred</p>

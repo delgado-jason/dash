@@ -196,7 +196,7 @@ export const getDetentionOwed = (
   freeHours: number,
 ): DetentionOwed => {
   const items = loads
-    .filter((l) => detentionOwed(l, freeHours))
+    .filter((l) => detentionOwed(l))
     .map((l) => ({
       load_id: l.load_id,
       load_number: l.load_number,

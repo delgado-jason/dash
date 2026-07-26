@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Trash2, Truck, User, Container, Clock, Ban } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Truck,
+  User,
+  Container,
+  Clock,
+  Ban,
+} from "lucide-react";
 
 import { useLoad } from "@/hooks/useLoad";
 import { formatLoadDims } from "@/lib/dimensions";
@@ -27,7 +35,8 @@ import {
   onTimeStatus,
   type OnTime,
   detentionOwed,
-  detentionMinutes,
+  detentionEligible,
+  detentionCollected,
   detentionLabel,
   tonuOwed,
 } from "@/lib/detention";
@@ -82,16 +91,22 @@ const Row = ({ label, value }: { label: ReactNode; value: ReactNode }) => (
 );
 
 // Scheduled appointment (no end) or window (start–end), for the stop cards.
-const schedLabel = (start?: string | null, end?: string | null): string | null => {
+const schedLabel = (
+  start?: string | null,
+  end?: string | null,
+): string | null => {
   if (!start) return null;
-  return end ? `Window ${fmtTime(start)}–${fmtTime(end)}` : `Appt ${fmtTime(start)}`;
+  return end
+    ? `Window ${fmtTime(start)}–${fmtTime(end)}`
+    : `Appt ${fmtTime(start)}`;
 };
 
-const ONTIME_STYLE: Record<OnTime, { bg: string; fg: string; label: string }> = {
-  "on-time": { bg: "#0f2419", fg: "#8fd6a8", label: "On time" },
-  late: { bg: "#3a1417", fg: "#f2a6a3", label: "Late" },
-  waited: { bg: "#2a1e0e", fg: "#f5c37a", label: "Waited" },
-};
+const ONTIME_STYLE: Record<OnTime, { bg: string; fg: string; label: string }> =
+  {
+    "on-time": { bg: "#0f2419", fg: "#8fd6a8", label: "On time" },
+    late: { bg: "#3a1417", fg: "#f2a6a3", label: "Late" },
+    waited: { bg: "#2a1e0e", fg: "#f5c37a", label: "Waited" },
+  };
 
 const OnTimeBadge = ({ status }: { status: OnTime | null }) => {
   if (!status) return null;
@@ -137,7 +152,13 @@ const StopTimes = ({
   );
 };
 
-const LOAD_STATUSES = ["booked", "in_transit", "delivered", "cancelled", "tonu"];
+const LOAD_STATUSES = [
+  "booked",
+  "in_transit",
+  "delivered",
+  "cancelled",
+  "tonu",
+];
 const PAYMENT_STATUSES = ["unpaid", "invoiced", "paid", "cancelled"];
 
 export const LoadDetailPage = () => {
@@ -181,6 +202,19 @@ export const LoadDetailPage = () => {
     if (!load) return;
     try {
       await patchLoad(load.load_id, { [field]: true });
+      setRefreshKey((p) => p + 1);
+    } catch {
+      /* surfaced by the normal error path on next load */
+    }
+  };
+
+  // Record the detention decision: true = confirmed owed (agent says it pays),
+  // false = dismissed (shipper won't pay). Flips the recommend card into the
+  // owed/collected flow or clears it.
+  const setDetentionBillable = async (value: boolean) => {
+    if (!load) return;
+    try {
+      await patchLoad(load.load_id, { detention_billable: value });
       setRefreshKey((p) => p + 1);
     } catch {
       /* surfaced by the normal error path on next load */
@@ -410,7 +444,9 @@ export const LoadDetailPage = () => {
             <h1 className="text-3xl font-condensed">{load.load_number}</h1>
             <StatusBadge value={load.load_status} />
             <StatusBadge value={load.payment_status} />
-            <RubberStamp value={loadStamp(load.load_status, load.payment_status)} />
+            <RubberStamp
+              value={loadStamp(load.load_status, load.payment_status)}
+            />
           </div>
           <p className="text-muted-text text-sm mt-1">
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
@@ -463,7 +499,44 @@ export const LoadDetailPage = () => {
           TONU fee paid ✓
         </div>
       )}
-      {detentionOwed(load, freeHours) && (
+      {/* Detention is a decision, not an auto-flag. Past free time we RECOMMEND
+          asking the agent; only once you confirm it's being paid does it become
+          "owed" (highlighted). "No detention" dismisses it quietly. */}
+      {detentionEligible(load, freeHours) && (
+        <div
+          className="mb-4 rounded-lg p-4 flex items-start gap-3 flex-wrap"
+          style={{ border: "1px solid #7a4718", background: "#241a0e" }}
+        >
+          <Clock size={20} style={{ color: "#f5b03a" }} />
+          <div className="flex-1 min-w-[180px]">
+            <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
+              Possible detention · {detentionLabel(load, freeHours)}
+            </p>
+            <p className="text-[11px] text-muted-text">
+              Released past your {freeHours}h free (measured from the
+              appointment / window). Whether it pays is the shipper's call —
+              clear it with {load.agent || "the agent"} before you count on it.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDetentionBillable(true)}
+              className="text-xs px-3 py-1.5 rounded font-semibold"
+              style={{ background: "#e8940a", color: "#161008" }}
+            >
+              Detention will be paid
+            </button>
+            <button
+              onClick={() => setDetentionBillable(false)}
+              className="text-xs px-3 py-1.5 rounded"
+              style={{ background: "#2a3347", color: "#c7d0dd" }}
+            >
+              No detention
+            </button>
+          </div>
+        </div>
+      )}
+      {detentionOwed(load) && (
         <div
           className="mb-4 rounded-lg p-4 flex items-center gap-3 flex-wrap"
           style={{ border: "1px solid #7a4718", background: "#241a0e" }}
@@ -471,10 +544,11 @@ export const LoadDetailPage = () => {
           <Clock size={20} style={{ color: "#f5b03a" }} />
           <div className="flex-1 min-w-[180px]">
             <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
-              Detention owed · {detentionLabel(load, freeHours)}
+              Detention · {detentionLabel(load, freeHours)} · waiting on payment
             </p>
             <p className="text-[11px] text-muted-text">
-              Past your {freeHours}h free at a stop. Bill it as an accessorial.
+              Confirmed with the agent. Bill it as an accessorial; mark paid
+              when it lands.
             </p>
           </div>
           <button
@@ -486,7 +560,7 @@ export const LoadDetailPage = () => {
           </button>
         </div>
       )}
-      {load.detention_paid && detentionMinutes(load, freeHours) > 0 && (
+      {detentionCollected(load) && (
         <div
           className="mb-4 rounded-lg px-4 py-2 text-sm"
           style={{ background: "#12180f", color: "#6f9a80" }}
@@ -666,7 +740,9 @@ export const LoadDetailPage = () => {
           <Row label="Commodity" value={load.commodity || "—"} />
           <Row
             label="Weight"
-            value={load.weight ? `${load.weight.toLocaleString("en-US")} lb` : "—"}
+            value={
+              load.weight ? `${load.weight.toLocaleString("en-US")} lb` : "—"
+            }
           />
           <Row
             label="Dimensions"
@@ -710,7 +786,8 @@ export const LoadDetailPage = () => {
           </p>
           {schedLabel(load.pickup_appt_start, load.pickup_appt_end) && (
             <p className="text-[11px] text-muted-text mt-1">
-              Scheduled · {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
+              Scheduled ·{" "}
+              {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
             </p>
           )}
           <StopTimes inTime={load.shipper_in} outTime={load.shipper_out} />
@@ -879,10 +956,7 @@ export const LoadDetailPage = () => {
               {accessorials.map((a) => {
                 const editing = editingId === a.accessorial_id;
                 return (
-                  <tr
-                    key={a.accessorial_id}
-                    className="border-t border-steel"
-                  >
+                  <tr key={a.accessorial_id} className="border-t border-steel">
                     <td className="py-2">
                       {editing ? (
                         <input
