@@ -108,12 +108,12 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   });
 
   // ---- Patches (stacked hard feat): fire when the ×count climbs ----
-  for (const p of computePatches(i.loads, i.trips, i.fuel))
+  for (const p of computePatches(i.loads, i.fuel))
     if (p.count > 0)
       out.push({ id: `patch:${p.key}:${p.count}`, tier: "patch", name: `${p.name} ×${p.count}`, detail: p.hint, icon: p.icon });
 
   // ---- Records (new personal best): fire when a best improves ----
-  const pb = personalBests(i.loads, i.trips, i.fuel, i.now);
+  const pb = personalBests(i.loads, i.fuel, i.now);
   const rec = (key: string, val: number | null, id: string, name: string, detail: string, icon: string) => {
     if (val != null) out.push({ id: `record:${key}:${id}`, tier: "record", name, detail, icon });
   };
@@ -121,7 +121,6 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   rec("best-tank", pb.bestMpg, `${(pb.bestMpg ?? 0).toFixed(1)}`, "New record — Best Tank", `${(pb.bestMpg ?? 0).toFixed(1)} mpg`, "flame");
   rec("biggest-load", pb.biggestLoad, `${Math.round(pb.biggestLoad ?? 0)}`, "New record — Biggest Load", money(pb.biggestLoad ?? 0), "package");
   rec("most-week", pb.mostLoadsInWeek, `${pb.mostLoadsInWeek ?? 0}`, "New record — Most in a Week", `${pb.mostLoadsInWeek ?? 0} loads`, "stack");
-  rec("best-deadhead", pb.lowestDeadheadPct, `${((pb.lowestDeadheadPct ?? 0) * 100).toFixed(1)}`, "New record — Best Deadhead", `${((pb.lowestDeadheadPct ?? 0) * 100).toFixed(1)}%`, "gauge");
 
   return out;
 };
