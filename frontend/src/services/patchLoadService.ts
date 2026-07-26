@@ -5,6 +5,9 @@ interface PatchLoadInput {
   load_status?: string;
   payment_status?: string;
   booked_by?: string | null;
+  detention_paid?: boolean;
+  tonu_paid?: boolean;
+  detention_billable?: boolean | null;
 }
 
 export const patchLoad = async (

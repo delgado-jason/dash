@@ -1,8 +1,8 @@
 // On-time and detention logic, derived from a load's scheduled appointment/window
-// vs its actual in/out times. Free-time is a per-user setting (hours), applied per
-// stop. Pure — the UI passes the load + freeHours in.
+// vs its actual in/out times. Free-time is a per-user setting (hours). Pure — the
+// UI passes the load + freeHours in.
 import type { Load } from "@/types/load";
-import { dwellMinutes, fmtDuration } from "./stopTimes";
+import { fmtDuration } from "./stopTimes";
 
 export type OnTime = "on-time" | "late" | "waited";
 
@@ -30,41 +30,86 @@ export const onTimeStatus = (
   return "on-time";
 };
 
-// Billable detention minutes at one stop — dwell beyond the free window.
+// Billable detention minutes at ONE stop = time released past the free window.
+// The free clock starts at the SCHEDULED appointment — the window's END if it's a
+// window, else the set appointment time — NOT at arrival, so showing up early
+// never earns detention. Falls back to arrival only when no appointment is
+// recorded. Needs the out (release) time; 0 without it.
 export const stopDetentionMinutes = (
   inT: string | null | undefined,
   outT: string | null | undefined,
+  apptStart: string | null | undefined,
+  apptEnd: string | null | undefined,
   freeHours: number,
 ): number => {
-  const d = dwellMinutes(inT, outT);
-  if (d == null) return 0;
-  return Math.max(0, d - freeHours * 60);
+  if (!outT) return 0;
+  const clock = apptEnd ?? apptStart ?? inT; // window end → appt → arrival
+  if (!clock) return 0;
+  let out = toMin(outT);
+  const start = toMin(clock);
+  if (out < start) out += 1440; // released after midnight
+  return Math.max(0, out - (start + freeHours * 60));
 };
 
-// Total billable detention across both stops.
+// Total billable-eligible detention across both stops (shipper + receiver).
 export const detentionMinutes = (load: Load, freeHours: number): number =>
-  stopDetentionMinutes(load.shipper_in, load.shipper_out, freeHours) +
-  stopDetentionMinutes(load.receiver_in, load.receiver_out, freeHours);
+  stopDetentionMinutes(
+    load.shipper_in,
+    load.shipper_out,
+    load.pickup_appt_start,
+    load.pickup_appt_end,
+    freeHours,
+  ) +
+  stopDetentionMinutes(
+    load.receiver_in,
+    load.receiver_out,
+    load.delivery_appt_start,
+    load.delivery_appt_end,
+    freeHours,
+  );
 
-// "2h 20m" of billable detention, or null when none.
+// "2h 20m" of detention time, or null when none.
 export const detentionLabel = (load: Load, freeHours: number): string | null =>
   fmtDuration(detentionMinutes(load, freeHours));
 
-// Detention is owed (and not yet collected) → the amber flag/banner.
-export const detentionOwed = (load: Load, freeHours: number): boolean =>
-  !load.detention_paid && detentionMinutes(load, freeHours) > 0;
+// ---- The three detention states (billable is Jason's call, not auto) ----
+
+// Past the free window AND still undecided (billable null) and not paid → the
+// app nudges Jason to ask the agent. A candidate, not a claim.
+export const detentionEligible = (load: Load, freeHours: number): boolean =>
+  load.detention_billable == null &&
+  !load.detention_paid &&
+  detentionMinutes(load, freeHours) > 0;
+
+// Confirmed with the agent (billable = true) and not yet collected → the amber
+// flag/banner. No longer auto-derived from a long dwell — it's a decision.
+export const detentionOwed = (load: Load): boolean =>
+  load.detention_billable === true && !load.detention_paid;
+
+// Confirmed and collected.
+export const detentionCollected = (load: Load): boolean =>
+  load.detention_billable === true && !!load.detention_paid;
+
+// Detention time that was actually confirmed + collected (for "collected" stats).
+export const detentionCollectedMinutes = (
+  load: Load,
+  freeHours: number,
+): number => (detentionCollected(load) ? detentionMinutes(load, freeHours) : 0);
 
 // A TONU load's fee is owed until marked paid → the red flag/banner.
 export const tonuOwed = (load: Load): boolean =>
   load.load_status === "tonu" && !load.tonu_paid;
 
-// The loads-table traffic-light flag, in priority order: an unpaid TONU (red)
-// beats unpaid detention (amber) beats an in-transit load (green). null = none.
-export type LoadFlag = "tonu" | "detention" | "in-transit";
+// The loads-table flag, in priority order: unpaid TONU (red) beats confirmed
+// detention (amber) beats a detention candidate (faint nudge) beats an
+// in-transit load (green). null = none.
+export type LoadFlag =
+  "tonu" | "detention" | "detention-eligible" | "in-transit";
 
 export const loadFlag = (load: Load, freeHours: number): LoadFlag | null => {
   if (tonuOwed(load)) return "tonu";
-  if (detentionOwed(load, freeHours)) return "detention";
+  if (detentionOwed(load)) return "detention";
+  if (detentionEligible(load, freeHours)) return "detention-eligible";
   if (load.load_status === "in_transit") return "in-transit";
   return null;
 };

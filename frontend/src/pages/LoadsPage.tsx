@@ -18,7 +18,8 @@ import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import {
   loadFlag,
   detentionOwed,
-  detentionMinutes,
+  detentionEligible,
+  detentionCollected,
   type LoadFlag,
 } from "@/lib/detention";
 
@@ -53,7 +54,9 @@ const plural = (n: number) => (n !== 1 ? "s" : "");
 
 // Traffic-light colors for the row's left bar (all three) + row tint (the two
 // "money owed" states).
-const BAR: Record<LoadFlag, string> = {
+// Confirmed money-owed states get a colored bar; a detention *candidate* stays
+// subtle (just the "det?" chip, no bar/tint) so the table isn't a wall of amber.
+const BAR: Partial<Record<LoadFlag, string>> = {
   tonu: "#e24b4a",
   detention: "#e8940a",
   "in-transit": "#3fb950",
@@ -75,7 +78,7 @@ const Chip = ({ bg, fg, text }: { bg: string; fg: string; text: string }) => (
 // One loads-table row, shared by the "On the road" group and the main table.
 const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
   const flag = loadFlag(load, freeHours);
-  const detPaid = load.detention_paid && detentionMinutes(load, freeHours) > 0;
+  const detPaid = detentionCollected(load);
   const tonuPaid = load.load_status === "tonu" && load.tonu_paid;
   return (
     <tr
@@ -84,7 +87,11 @@ const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
     >
       <td
         className="py-2 whitespace-nowrap"
-        style={flag ? { borderLeft: `3px solid ${BAR[flag]}`, paddingLeft: 8 } : undefined}
+        style={
+          flag && BAR[flag]
+            ? { borderLeft: `3px solid ${BAR[flag]}`, paddingLeft: 8 }
+            : undefined
+        }
       >
         <Link
           to={`/loads/${load.load_id}`}
@@ -93,6 +100,9 @@ const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
           {load.load_number}
         </Link>
         {flag === "detention" && <Chip bg="#7a4718" fg="#f5c37a" text="DET" />}
+        {flag === "detention-eligible" && (
+          <Chip bg="transparent" fg="#8b98a9" text="det?" />
+        )}
         {detPaid && <Chip bg="#12251a" fg="#6f9a80" text="det paid" />}
         {tonuPaid && <Chip bg="#12251a" fg="#6f9a80" text="tonu paid" />}
       </td>
@@ -180,7 +190,8 @@ const LoadsPage = () => {
     const statusMatch = (l: Load) => {
       if (statusFilter === "all") return true;
       if (statusFilter === "tonu") return l.load_status === "tonu";
-      if (statusFilter === "detention") return detentionOwed(l, freeHours);
+      if (statusFilter === "detention")
+        return detentionOwed(l) || detentionEligible(l, freeHours);
       return l.load_status === statusFilter;
     };
     const base = loads ?? [];
@@ -321,7 +332,10 @@ const LoadsPage = () => {
             }}
           >
             <span className="text-base">🚚</span>
-            <span className="font-condensed text-lg" style={{ color: "#6fd08c" }}>
+            <span
+              className="font-condensed text-lg"
+              style={{ color: "#6fd08c" }}
+            >
               On the road
             </span>
             <span
@@ -338,7 +352,11 @@ const LoadsPage = () => {
             <table className="w-full text-sm min-w-[760px] px-2 [&_td]:pr-5 [&_td:last-child]:pr-0 [&_td:first-child]:pl-3">
               <tbody>
                 {inTransit.map((load) => (
-                  <LoadRow key={load.load_id} load={load} freeHours={freeHours} />
+                  <LoadRow
+                    key={load.load_id}
+                    load={load}
+                    freeHours={freeHours}
+                  />
                 ))}
               </tbody>
             </table>

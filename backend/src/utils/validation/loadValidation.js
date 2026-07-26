@@ -287,6 +287,12 @@ const rules = {
       errors.push("deadhead_miles must be greater than or equal to 0");
     }
   },
+  // null = undecided (recommend), true = owed, false = dismissed.
+  detention_billable: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (typeof value !== "boolean")
+      errors.push("detention_billable must be true, false, or null");
+  },
   odometer_start: (value, errors) => {
     if (!value) return;
 

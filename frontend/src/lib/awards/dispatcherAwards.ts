@@ -7,7 +7,7 @@ import type { Load } from "@/types/load";
 import { loadGross, type RateLadder } from "@/lib/metrics/rateTargets";
 import { scoreLoad, type ScoreBasis } from "@/lib/metrics/loadScore";
 import { loadDeadheadPct, loadEmptyMiles } from "@/lib/metrics/deadhead";
-import { onTimeStatus, detentionMinutes } from "@/lib/detention";
+import { onTimeStatus, detentionCollected } from "@/lib/detention";
 import { tiered, type Medal } from "./medals";
 import type { Award } from "@/lib/metrics/awards";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
@@ -84,7 +84,7 @@ interface Stats {
 }
 
 const computeStats = (input: DispatcherAwardInput): Stats => {
-  const { loads, userId, ladder, scoreBasis, freeHours } = input;
+  const { loads, userId, ladder, scoreBasis } = input;
   const mine = loads.filter((l) => l.booked_by === userId && l.load_status !== "cancelled");
   const delivered = mine.filter((l) => l.load_status === "delivered");
   const target = ladder.target ?? Infinity;
@@ -137,9 +137,7 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
     loadsBooked: mine.length,
     gross: mine.reduce((s, l) => s + loadGross(l), 0),
     rateHawk: mine.filter((l) => rpm(l) >= target).length,
-    detentionLoads: delivered.filter(
-      (l) => l.detention_paid && detentionMinutes(l, freeHours) > 0,
-    ).length,
+    detentionLoads: delivered.filter((l) => detentionCollected(l)).length,
     topAgentLoads,
     clockwork: delivered.filter(bothOnTime).length,
     quickTurn,

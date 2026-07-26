@@ -1372,36 +1372,39 @@ describe("getDeadheadTrend", () => {
 describe("getDetentionOwed", () => {
   it("sums hours + loads for uncollected detention, longest first", () => {
     const loads = [
-      // 5h dwell, 2h free → 180 min owed
+      // 5h past appt (08:00) + 2h free → 180 min, confirmed billable → owed
       makeLoad({
         load_id: "A",
         load_number: "A1",
         shipper_in: "08:00",
         shipper_out: "13:00",
+        detention_billable: true,
         detention_paid: false,
       }),
-      // 2h30 dwell, 2h free → 30 min owed
+      // 2h30 past appt + 2h free → 30 min, confirmed billable → owed
       makeLoad({
         load_id: "B",
         load_number: "B1",
         receiver_in: "10:00",
         receiver_out: "12:30",
+        detention_billable: true,
         detention_paid: false,
       }),
-      // detention ran but already collected → excluded
+      // confirmed + already collected → excluded from owed
       makeLoad({
         load_id: "C",
         load_number: "C1",
         shipper_in: "08:00",
         shipper_out: "13:00",
+        detention_billable: true,
         detention_paid: true,
       }),
-      // dwell inside free time → no detention → excluded
+      // undecided (billable null) — a candidate, NOT owed → excluded
       makeLoad({
         load_id: "D",
         load_number: "D1",
         shipper_in: "08:00",
-        shipper_out: "09:00",
+        shipper_out: "13:00",
         detention_paid: false,
       }),
     ];

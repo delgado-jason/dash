@@ -4,7 +4,13 @@
 // there's enough logged data to mean something.
 import type { Load } from "@/types/load";
 import { dwellMinutes } from "@/lib/stopTimes";
-import { onTimeStatus, stopDetentionMinutes, type OnTime } from "@/lib/detention";
+import {
+  onTimeStatus,
+  stopDetentionMinutes,
+  detentionMinutes,
+  detentionCollected,
+  type OnTime,
+} from "@/lib/detention";
 import { median } from "./stats";
 
 // Below this many timed stops, we don't compute — we say "not enough data".
@@ -36,7 +42,7 @@ const stopOf = (
   paid: boolean,
   freeHours: number,
 ): Stop => {
-  const detentionMin = stopDetentionMinutes(inT, outT, freeHours);
+  const detentionMin = stopDetentionMinutes(inT, outT, apptS, apptE, freeHours);
   return {
     dwellMin: dwellMinutes(inT, outT),
     onTime: onTimeStatus(apptS, apptE, inT),
@@ -105,6 +111,25 @@ export const agentStops = (loads: Load[], freeHours: number): Stop[] => {
     );
   }
   return out;
+};
+
+// Load-level detention record for an agent: how many of their loads ran past
+// free time (technically claimable) vs how many actually got collected. A wide
+// gap = an agent whose shippers hold you up and don't pay — worth flagging.
+export interface AgentDetention {
+  claimable: number; // loads with any detention-eligible time (past appt + free)
+  paid: number; // of those, confirmed billable AND collected
+}
+
+export const agentDetention = (
+  loads: Load[],
+  freeHours: number,
+): AgentDetention => {
+  const claimable = loads.filter((l) => detentionMinutes(l, freeHours) > 0);
+  return {
+    claimable: claimable.length,
+    paid: claimable.filter((l) => detentionCollected(l)).length,
+  };
 };
 
 export const scoreStops = (stops: Stop[]): StopScore => {
