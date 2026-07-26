@@ -299,6 +299,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Deadhead",
       "Fuel economy (MPG)",
       "Diesel price — you vs national",
+      "Fuel vs revenue — is the surcharge covering your fuel?",
     ],
   },
   {
@@ -793,6 +794,36 @@ const GuidePage = () => {
               </span>{" "}
               (the U.S. EIA weekly number, rolled up to monthly). Buying under
               the national line means you're routing fuel stops well.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Fuel vs revenue — is the surcharge covering your fuel?"
+            answers="Two reads on your fuel each month: what slice of gross it eats, and whether the fuel surcharge you collect still pays for it."
+            sources={[{ label: "Fuel", to: "/fuel-entries" }]}
+          >
+            <Formula>
+              fuel · % of gross = fuel spend ÷ gross revenue
+              <br />
+              <span style={{ color: AMBER_HI }}>
+                surcharge covers = fuel surcharge collected ÷ fuel spend
+              </span>
+            </Formula>
+            <Eg>
+              July: $4,080 fuel on $31,660 gross ={" "}
+              <span className="text-light">13%</span>. Surcharge collected was
+              $2,857, so it covered <span className="text-light">70%</span> of
+              the fuel — the missing $1,223 came out of linehaul.
+            </Eg>
+            <Why>
+              You keep 100% of the fuel surcharge, so it's meant to offset
+              diesel. When{" "}
+              <span className="text-light">surcharge covers ≥ 100%</span> the
+              freight paid for its own fuel; under 100%, the gap eats into your
+              linehaul. It's been slipping — the surcharge fell while diesel
+              held — which is worth watching when you price a load. Only months
+              with logged fuel are counted, so a month you haven't entered fills
+              for never shows a false 0%.
             </Why>
           </Metric>
 

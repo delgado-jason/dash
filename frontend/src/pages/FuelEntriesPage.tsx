@@ -17,11 +17,15 @@ import {
   isFull,
   entryCost,
 } from "@/lib/metrics/fuelEconomy";
+import { fuelVsRevenue } from "@/lib/metrics/fuelRevenue";
+import { useLoads } from "@/hooks/useLoads";
+import { FUEL_VENDORS, OTHER_VENDOR, US_STATES } from "@/lib/constants/fuel";
 import { Kpi } from "@/components/Kpi";
 import { Panel } from "@/components/ui/Panel";
 import { MpgChart } from "@/components/fuel/MpgChart";
 import { DieselPriceChart } from "@/components/fuel/DieselPriceChart";
 import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
+import { FuelVsRevenueCard } from "@/components/fuel/FuelVsRevenueCard";
 
 const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const money2 = (n: number) =>
@@ -37,11 +41,18 @@ const fmtDate = (d: string) =>
 const inputCls = "bg-steel rounded px-2 py-1.5 text-sm w-full text-light";
 const lbl = "text-xs text-muted-text mb-1 block";
 
+// Remember the last vendor + state so the next fill-up defaults to them.
+const LS_VENDOR = "dash.fuel.lastVendor";
+const LS_STATE = "dash.fuel.lastState";
+
 const FuelEntriesPage = () => {
   const [entries, setEntries] = useState<FuelEntry[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const { loads } = useLoads(0);
   const [national, setNational] = useState<NationalDiesel | null>(null);
-  const [nationalSeries, setNationalSeries] = useState<NationalDieselMonth[]>([]);
+  const [nationalSeries, setNationalSeries] = useState<NationalDieselMonth[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -52,9 +63,23 @@ const FuelEntriesPage = () => {
   const [odometer, setOdometer] = useState("");
   const [gallons, setGallons] = useState("");
   const [total, setTotal] = useState("");
-  const [company, setCompany] = useState("");
+  // Vendor + state default to your last fill-up (remembered across reloads), so
+  // logging a stop is a couple taps and the fields stop coming up blank.
+  const [company, setCompany] = useState(
+    () => localStorage.getItem(LS_VENDOR) || "",
+  );
+  const [vendorIsOther, setVendorIsOther] = useState(
+    () =>
+      !!localStorage.getItem(LS_VENDOR) &&
+      !FUEL_VENDORS.includes(
+        (localStorage.getItem(LS_VENDOR) ||
+          "") as (typeof FUEL_VENDORS)[number],
+      ),
+  );
   const [city, setCity] = useState("");
-  const [stateCode, setStateCode] = useState("");
+  const [stateCode, setStateCode] = useState(
+    () => localStorage.getItem(LS_STATE) || "",
+  );
 
   const load = () =>
     Promise.all([getFuelEntries(), getTrucks()])
@@ -82,6 +107,10 @@ const FuelEntriesPage = () => {
 
   const now = new Date();
   const stats = useMemo(() => fuelStats(entries, now), [entries]);
+  const fuelRev = useMemo(
+    () => fuelVsRevenue(entries, loads),
+    [entries, loads],
+  );
   const dieselData = useMemo(
     () => dieselChartData(entries, nationalSeries),
     [entries, nationalSeries],
@@ -131,13 +160,14 @@ const FuelEntriesPage = () => {
         fuel_city: city.trim() || null,
         fuel_state: stateCode.trim().toUpperCase(),
       });
+      // Remember vendor + state for the next fill (kept, not cleared).
+      if (company.trim()) localStorage.setItem(LS_VENDOR, company.trim());
+      localStorage.setItem(LS_STATE, stateCode.trim().toUpperCase());
       setDate("");
       setOdometer("");
       setGallons("");
       setTotal("");
-      setCompany("");
       setCity("");
-      setStateCode("");
       setShowForm(false);
       await load();
     } catch (e) {
@@ -224,6 +254,8 @@ const FuelEntriesPage = () => {
         yourCostPerGallon={stats.avgCostPerGallon}
       />
 
+      <FuelVsRevenueCard data={fuelRev} />
+
       {showForm && (
         <Panel className="p-4 mt-4">
           <p className="text-sm font-medium mb-3">Add fill-up</p>
@@ -274,12 +306,35 @@ const FuelEntriesPage = () => {
             </div>
             <div>
               <label className={lbl}>Vendor</label>
-              <input
+              <select
                 className={inputCls}
-                value={company}
-                placeholder="Pilot"
-                onChange={(e) => setCompany(e.target.value)}
-              />
+                value={vendorIsOther ? OTHER_VENDOR : company}
+                onChange={(e) => {
+                  if (e.target.value === OTHER_VENDOR) {
+                    setVendorIsOther(true);
+                    setCompany("");
+                  } else {
+                    setVendorIsOther(false);
+                    setCompany(e.target.value);
+                  }
+                }}
+              >
+                <option value="">Select…</option>
+                {FUEL_VENDORS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+                <option value={OTHER_VENDOR}>Other…</option>
+              </select>
+              {vendorIsOther && (
+                <input
+                  className={`${inputCls} mt-1`}
+                  value={company}
+                  placeholder="Vendor name"
+                  onChange={(e) => setCompany(e.target.value)}
+                />
+              )}
             </div>
             <div>
               <label className={lbl}>City</label>
@@ -291,13 +346,18 @@ const FuelEntriesPage = () => {
             </div>
             <div>
               <label className={lbl}>State</label>
-              <input
+              <select
                 className={inputCls}
                 value={stateCode}
-                maxLength={2}
-                placeholder="AL"
                 onChange={(e) => setStateCode(e.target.value)}
-              />
+              >
+                <option value="">Select…</option>
+                {US_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
             {trucks.length > 1 && (
               <div>
