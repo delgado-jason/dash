@@ -1,19 +1,22 @@
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { loadGross } from "./rateTargets";
+import { loadRevenue } from "./rateTargets";
 
 // Fuel against the money it relates to, per month. Two readings:
-//   • fuelPctGross  — fuel spend as a share of gross revenue (the cost view)
-//   • fscCoverage   — fuel-surcharge collected ÷ fuel spend; ≥1 means the
-//                     surcharge paid for the fuel, <1 means the gap comes out
-//                     of linehaul. This is the one that moves money for a BCO
-//                     who keeps 100% of FSC.
+//   • fuelPctNet   — fuel spend as a share of NET revenue (what the business
+//                    actually keeps after the carrier's cut). Net is the honest
+//                    denominator: fuel is paid out of net, not out of the full
+//                    customer rate that includes Landstar's slice.
+//   • fscCoverage  — fuel-surcharge collected ÷ fuel spend; ≥1 means the
+//                    surcharge paid for the fuel, <1 means the gap comes out
+//                    of linehaul. This is the one that moves money for a BCO
+//                    who keeps 100% of FSC.
 export interface FuelMonth {
   month: string; // "YYYY-MM"
   fuelSpend: number; // Σ gallons × price/gal that month
-  gross: number; // Σ gross revenue delivered that month
+  net: number; // Σ net revenue delivered that month (after the carrier's cut)
   fsc: number; // Σ fuel surcharge delivered that month
-  fuelPctGross: number | null; // null when no gross that month
+  fuelPctNet: number | null; // null when no net that month
   fscCoverage: number | null; // null when no fuel that month (never shown then)
 }
 
@@ -38,13 +41,15 @@ export const fuelVsRevenue = (
     spend.set(k, (spend.get(k) ?? 0) + dollars);
   }
 
-  // Gross + fuel surcharge per month, from delivered loads.
-  const gross = new Map<string, number>();
+  // Net revenue + fuel surcharge per month, from delivered loads. Net is via
+  // loadRevenue (the carrier's cut already taken out) — the money the fuel is
+  // actually paid from.
+  const net = new Map<string, number>();
   const fsc = new Map<string, number>();
   for (const l of loads) {
     if (l.load_status !== "delivered" || !l.delivery_date) continue;
     const k = monthKey(l.delivery_date);
-    gross.set(k, (gross.get(k) ?? 0) + loadGross(l));
+    net.set(k, (net.get(k) ?? 0) + loadRevenue(l));
     fsc.set(k, (fsc.get(k) ?? 0) + (Number(l.fuel_surcharge) || 0));
   }
 
@@ -55,14 +60,14 @@ export const fuelVsRevenue = (
     .sort()
     .map((k) => {
       const fuelSpend = spend.get(k) ?? 0;
-      const g = gross.get(k) ?? 0;
+      const n = net.get(k) ?? 0;
       const f = fsc.get(k) ?? 0;
       return {
         month: k,
         fuelSpend,
-        gross: g,
+        net: n,
         fsc: f,
-        fuelPctGross: g > 0 ? fuelSpend / g : null,
+        fuelPctNet: n > 0 ? fuelSpend / n : null,
         fscCoverage: fuelSpend > 0 ? f / fuelSpend : null,
       };
     });

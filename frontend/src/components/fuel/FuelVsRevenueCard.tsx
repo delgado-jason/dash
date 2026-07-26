@@ -98,13 +98,13 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
         <div className="rounded-md p-3" style={{ background: "#141a26" }}>
-          <p className="text-xs text-muted-text">Fuel · % of gross</p>
+          <p className="text-xs text-muted-text">Fuel · % of net</p>
           <p className="text-2xl font-condensed mt-1 text-light">
-            {m.fuelPctGross == null ? "—" : pct0(m.fuelPctGross)}
+            {m.fuelPctNet == null ? "—" : pct0(m.fuelPctNet)}
           </p>
           <p className="text-[11px] text-muted-text mt-0.5">
             {money0(m.fuelSpend)}
-            {m.gross > 0 ? ` of ${money0(m.gross)} gross` : ""}
+            {m.net > 0 ? ` of ${money0(m.net)} net` : ""}
           </p>
         </div>
 
