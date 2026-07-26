@@ -6,4 +6,8 @@ export interface TripInput {
   odometer_start?: number;
   odometer_end?: number;
   is_estimated?: boolean;
+  start_city?: string;
+  start_state?: string;
+  end_city?: string;
+  end_state?: string;
 }

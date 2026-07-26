@@ -3,6 +3,21 @@ import { useTrips } from "@/hooks/useTrips";
 import TripForm from "@/components/TripForm";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import type { Trip } from "@/types/trip";
+
+// "Irving, TX" from a city/state pair; falls back to whichever is present.
+const place = (city: string | null, state: string | null): string | null => {
+  if (city && state) return `${city}, ${state}`;
+  return state || city || null;
+};
+
+// "Irving, TX → Laredo, TX" for the trips table, or a dash when neither end is set.
+const tripRoute = (trip: Trip): string => {
+  const from = place(trip.start_city, trip.start_state);
+  const to = place(trip.end_city, trip.end_state);
+  if (!from && !to) return "—";
+  return `${from ?? "?"} → ${to ?? "?"}`;
+};
 
 // Components
 import {
@@ -56,6 +71,7 @@ const TripsPage = () => {
               <TableHead>Trip #</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Purpose</TableHead>
+              <TableHead>Route</TableHead>
               <TableHead>OD Start</TableHead>
               <TableHead>OD End</TableHead>
             </TableRow>
@@ -68,6 +84,7 @@ const TripsPage = () => {
                 </TableCell>
                 <TableCell>{formatDate(trip.trip_date)}</TableCell>
                 <TableCell>{trip.trip_purpose}</TableCell>
+                <TableCell>{tripRoute(trip)}</TableCell>
                 <TableCell>{trip.odometer_start}</TableCell>
                 <TableCell>{trip.odometer_end}</TableCell>
               </TableRow>

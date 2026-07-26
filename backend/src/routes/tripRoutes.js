@@ -4,6 +4,7 @@ import {
   getTrips,
   getTrip,
   getLatestOdometer,
+  getLastKnownLocation,
   createTrip,
   patchTrip,
   deleteTrip,
@@ -49,6 +50,31 @@ router.get("/latest-odometer", async (req, res) => {
     return res.status(200).json({
       message: "Latest odometer retrieved successfully",
       latest_odometer,
+    });
+  } catch (err) {
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- GET LAST KNOWN LOCATION ----
+// Also before "/:id" so Express doesn't match it as a trip id.
+
+router.get("/last-known-location", async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const location = await getLastKnownLocation(user_id);
+
+    return res.status(200).json({
+      message: "Last known location retrieved successfully",
+      location,
     });
   } catch (err) {
     if (err.type === "validation") {

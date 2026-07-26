@@ -68,6 +68,10 @@ const baseTrip: Trip = {
   odometer_start: null,
   odometer_end: null,
   is_estimated: true,
+  start_city: null,
+  start_state: null,
+  end_city: null,
+  end_state: null,
   created_at: "",
   updated_at: "",
 };
