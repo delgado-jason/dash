@@ -5,6 +5,7 @@ import {
   formatInches,
   formatLoadDims,
   isOverWidth,
+  classifyOversize,
 } from "./dimensions";
 
 describe("toInches / toFeetInches", () => {
@@ -66,5 +67,36 @@ describe("isOverWidth", () => {
     expect(isOverWidth(96)).toBe(false);
     expect(isOverWidth(null)).toBe(false);
     expect(isOverWidth(undefined)).toBe(false);
+  });
+});
+
+describe("classifyOversize", () => {
+  it("legal when everything is within limits", () => {
+    const v = classifyOversize({ widthIn: 102, heightIn: 162, lengthIn: 636, grossWeightLb: 80000 });
+    expect(v.oversize).toBe(false);
+    expect(v.reasons).toEqual([]);
+  });
+
+  it("legal when nothing is entered", () => {
+    expect(classifyOversize({}).oversize).toBe(false);
+  });
+
+  it("flags over-width and names it", () => {
+    const v = classifyOversize({ widthIn: 144 }); // 12'0"
+    expect(v.oversize).toBe(true);
+    expect(v.reasons).toEqual([`width 12'0" over 8'6"`]);
+  });
+
+  it("flags every dimension that's over, in order", () => {
+    const v = classifyOversize({ widthIn: 144, heightIn: 168, lengthIn: 700, grossWeightLb: 92000 });
+    expect(v.oversize).toBe(true);
+    expect(v.reasons).toHaveLength(4);
+    expect(v.reasons[1]).toBe(`height 14'0" over 13'6"`);
+    expect(v.reasons[3]).toBe("92,000 lb over 80,000 lb");
+  });
+
+  it("is exclusive at the limit — exactly legal is not oversize", () => {
+    expect(classifyOversize({ widthIn: 102, grossWeightLb: 80000 }).oversize).toBe(false);
+    expect(classifyOversize({ widthIn: 103 }).oversize).toBe(true);
   });
 });

@@ -28,6 +28,7 @@ import complianceRouter from "./routes/complianceRoutes.js";
 import trophyRouter from "./routes/trophyRoutes.js";
 import settlementScheduleRouter from "./routes/settlementScheduleRoutes.js";
 import accessorialRateRouter from "./routes/accessorialRateRoutes.js";
+import routingRouter from "./routes/routingRoutes.js";
 
 const app = express();
 
@@ -77,6 +78,7 @@ app.use("/trailers", trailerRouter);
 app.use("/avatars", avatarRouter);
 app.use("/settlement-schedule", settlementScheduleRouter);
 app.use("/accessorial-rates", accessorialRateRouter);
+app.use("/routing", routingRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");

@@ -589,7 +589,7 @@ const GuidePage = () => {
 
           <Metric
             title="Load Scorer — Take It or Leave It"
-            answers="Punch a rate, loaded miles, and deadhead into the Score a Load page and get an instant verdict on whether the load's worth taking."
+            answers="Enter a rate, pickup, and delivery — the miles come back routed, deadhead measured from where your truck sits — for an instant verdict on whether the load's worth taking."
             sources={[{ label: "Score a Load", to: "/score" }]}
           >
             <Formula>
@@ -611,6 +611,17 @@ const GuidePage = () => {
               <span style={{ color: "#e8940a" }}>MEH</span> under +35%,{" "}
               <span style={{ color: "#4ade80" }}>TAKE IT</span> at +35%,{" "}
               <span style={{ color: "#fbbf24" }}>STEAL</span> at +60%.
+            </Why>
+            <Why>
+              Miles come from truck routing (HERE), not a straight line — the
+              deadhead starts from your{" "}
+              <span className="text-light">last-known location</span> (your last
+              delivery, fuel stop, or trip). Enter the load's dimensions and it
+              flags <span className="text-light">legal vs oversize</span> and
+              routes an oversize load around the clearances it can't make, so the
+              miles are honest. It's an estimate for the decision; the odometer is
+              still truth once you run it. Every mile field stays editable if you'd
+              rather type your own.
             </Why>
           </Metric>
 
