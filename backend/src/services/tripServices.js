@@ -32,6 +32,10 @@ export async function getTrips(user_id) {
             odometer_start,
             odometer_end,
             is_estimated,
+            start_city,
+            start_state,
+            end_city,
+            end_state,
             trips.created_at,
             trips.updated_at
         FROM trips
@@ -67,6 +71,10 @@ export async function getTrip(user_id, trip_id) {
             odometer_start,
             odometer_end,
             is_estimated,
+            start_city,
+            start_state,
+            end_city,
+            end_state,
             trips.created_at,
             trips.updated_at
         FROM trips
@@ -105,6 +113,41 @@ export async function getLatestOdometer(user_id) {
   return result.rows[0].latest_odometer; // number | null
 }
 
+// ---- GET LAST KNOWN LOCATION SERVICE ----
+// Where the truck currently sits, derived from the records that already stamp a
+// location: a delivered load ends at its destination, a fuel stop at the pump,
+// a trip at its end. The highest odometer among them is the furthest — and
+// therefore latest — point the truck reached, so its city/state is "now".
+// Trips were the blind spot until they carried an end city/state (migration 051).
+// Maintenance is deliberately excluded — its location is free text, not a clean
+// city/state. Used to prefill a new trip's start location. Returns null when no
+// located record exists yet. Global across trucks, like getLatestOdometer.
+export async function getLastKnownLocation(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const query = `
+        SELECT city, state FROM (
+            SELECT destination_city AS city, destination_state AS state, odometer_end AS odo
+                FROM loads
+                WHERE user_id = $1 AND odometer_end IS NOT NULL
+            UNION ALL
+            SELECT fuel_city AS city, fuel_state AS state, odometer_reading AS odo
+                FROM fuel_entries
+                WHERE user_id = $1
+            UNION ALL
+            SELECT end_city AS city, end_state AS state, odometer_end AS odo
+                FROM trips
+                WHERE user_id = $1 AND odometer_end IS NOT NULL AND end_city IS NOT NULL
+        ) located
+        ORDER BY odo DESC NULLS LAST
+        LIMIT 1;
+    `;
+
+  const result = await db.query(query, [user_id]);
+
+  return result.rows[0] ?? null; // { city, state } | null
+}
+
 // ---- CREATE TRIP SERVICE ----
 export async function createTrip(user_id, data) {
   // Reject missing user_id
@@ -119,6 +162,10 @@ export async function createTrip(user_id, data) {
     "odometer_start",
     "odometer_end",
     "is_estimated",
+    "start_city",
+    "start_state",
+    "end_city",
+    "end_state",
   ];
 
   for (const field in data) {
@@ -195,6 +242,10 @@ export async function patchTrip(user_id, trip_id, data) {
     "trip_date",
     "odometer_start",
     "odometer_end",
+    "start_city",
+    "start_state",
+    "end_city",
+    "end_state",
   ];
 
   // Throw error if data contains invalid field(s)

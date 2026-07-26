@@ -749,7 +749,11 @@ const GuidePage = () => {
             <Why>
               Non-revenue trips (running home, to the shop) count as 100% empty
               — their whole odometer window is deadhead. Lower is better; every
-              empty mile is cost with no revenue against it.
+              empty mile is cost with no revenue against it. Logging a trip's{" "}
+              <span className="text-light">start and end city</span> keeps the
+              truck's last-known location current, so the next trip prefills
+              where the truck actually sits — loads and fuel already stamp it,
+              trips were the blind spot.
             </Why>
           </Metric>
 

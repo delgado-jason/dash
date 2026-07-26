@@ -36,3 +36,22 @@ export const getLatestOdometer = async (): Promise<number | null> => {
     throw new Error("Unable to fetch latest odometer");
   }
 };
+
+export interface LastKnownLocation {
+  city: string | null;
+  state: string | null;
+}
+
+// Where the truck currently sits, derived from the latest located record
+// (delivered load, fuel stop, or trip). Prefills a new trip's start location.
+// Non-fatal: a failure just leaves the field blank, so it swallows errors and
+// returns null rather than throwing.
+export const getLastKnownLocation =
+  async (): Promise<LastKnownLocation | null> => {
+    try {
+      const response = await api.get("/trips/last-known-location");
+      return response.data.location ?? null;
+    } catch {
+      return null;
+    }
+  };

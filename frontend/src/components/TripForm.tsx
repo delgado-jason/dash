@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import type { TripInput } from "@/types/tripInput";
-import { createTrip, getLatestOdometer } from "@/services/tripsService";
+import {
+  createTrip,
+  getLatestOdometer,
+  getLastKnownLocation,
+} from "@/services/tripsService";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +38,10 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
     odometer_start: undefined,
     odometer_end: undefined,
     is_estimated: true,
+    start_city: "",
+    start_state: "",
+    end_city: "",
+    end_state: "",
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +59,25 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
         }
       })
       .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Prefill the START location with the truck's last known spot (the end of the
+  // most recent load/fuel/trip), so a trip begins where the truck actually is.
+  // Non-fatal, same as the odometer prefill: no data → fields stay blank.
+  useEffect(() => {
+    let active = true;
+    getLastKnownLocation().then((loc) => {
+      if (active && loc) {
+        setFormData((prev) => ({
+          ...prev,
+          start_city: loc.city ?? "",
+          start_state: loc.state ?? "",
+        }));
+      }
+    });
     return () => {
       active = false;
     };
@@ -76,9 +103,23 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
       return;
     }
 
+    // Blank location fields → omit (stored NULL, not ""); states normalized to
+    // an uppercase 2-letter code so the location model matches cleanly.
+    const clean = (v?: string) => {
+      const t = v?.trim();
+      return t ? t : undefined;
+    };
+
     setSubmitting(true);
     try {
-      await createTrip({ ...formData, trip_purpose: purpose });
+      await createTrip({
+        ...formData,
+        trip_purpose: purpose,
+        start_city: clean(formData.start_city),
+        start_state: clean(formData.start_state)?.toUpperCase(),
+        end_city: clean(formData.end_city),
+        end_state: clean(formData.end_state)?.toUpperCase(),
+      });
       onSuccess();
       onClose();
     } catch (e) {
@@ -134,6 +175,53 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
               </SelectGroup>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Start location — where the truck currently sits */}
+        <div>
+          <Label htmlFor="start_city">Start City</Label>
+          <Input
+            name="start_city"
+            id="start_city"
+            onChange={handleChange}
+            value={formData.start_city ?? ""}
+          />
+          <p className="text-xs text-muted-text mt-1">
+            Prefilled from your last known location.
+          </p>
+        </div>
+
+        {/* Start state */}
+        <div>
+          <Label htmlFor="start_state">Start State</Label>
+          <Input
+            name="start_state"
+            id="start_state"
+            onChange={handleChange}
+            value={formData.start_state ?? ""}
+          />
+        </div>
+
+        {/* End location — where the truck ends up (feeds its next last-known spot) */}
+        <div>
+          <Label htmlFor="end_city">End City</Label>
+          <Input
+            name="end_city"
+            id="end_city"
+            onChange={handleChange}
+            value={formData.end_city ?? ""}
+          />
+        </div>
+
+        {/* End state */}
+        <div>
+          <Label htmlFor="end_state">End State</Label>
+          <Input
+            name="end_state"
+            id="end_state"
+            onChange={handleChange}
+            value={formData.end_state ?? ""}
+          />
         </div>
 
         {/* Odometer start */}

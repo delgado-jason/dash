@@ -5,7 +5,32 @@
  * trip_date, odometer_start, odometer_end, is_estimated
  */
 
+// Location is optional; when present, a city is a short string and a state is a
+// 2-letter code. null/undefined skip (the field just isn't set).
+const cityRule = (field) => (value, errors) => {
+  if (value == null) return;
+  if (typeof value !== "string") {
+    errors.push(`${field} must be a string`);
+    return;
+  }
+  if (value.length > 50) errors.push(`${field} must be 50 characters or fewer`);
+};
+
+const stateRule = (field) => (value, errors) => {
+  if (value == null) return;
+  if (typeof value !== "string") {
+    errors.push(`${field} must be a string`);
+    return;
+  }
+  if (value.trim().length !== 2)
+    errors.push(`${field} must be a 2-letter state code`);
+};
+
 const rules = {
+  start_city: cityRule("start_city"),
+  start_state: stateRule("start_state"),
+  end_city: cityRule("end_city"),
+  end_state: stateRule("end_state"),
   trip_date: (value, errors) => {
     // Check if date is a string
     if (typeof value !== "string") {
