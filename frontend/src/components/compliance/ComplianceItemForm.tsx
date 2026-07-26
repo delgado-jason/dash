@@ -20,6 +20,10 @@ export const CATEGORIES = [
   "other",
 ];
 
+// Sentinel for the "type your own category" option. Distinct from the generic
+// "other" category above — this reveals a free-text box (permits, bonds, etc.).
+const CUSTOM_CATEGORY = "__custom__";
+
 type Preset = {
   label: string;
   category: string;
@@ -34,24 +38,59 @@ export const PRESETS: Record<ComplianceScope, Preset[]> = {
     { label: "LLC annual report", category: "authority", renewal_months: 12 },
     { label: "UCR registration", category: "authority", renewal_months: 12 },
     { label: "IFTA license", category: "authority", renewal_months: 12 },
-    { label: "MCS-150 biennial update", category: "authority", renewal_months: 24 },
+    {
+      label: "MCS-150 biennial update",
+      category: "authority",
+      renewal_months: 24,
+    },
     { label: "BOC-3 process agent", category: "authority" },
-    { label: "Drug & alcohol consortium", category: "other", renewal_months: 12 },
+    {
+      label: "Drug & alcohol consortium",
+      category: "other",
+      renewal_months: 12,
+    },
   ],
   driver: [
-    { label: "Medical card (DOT physical)", category: "medical", renewal_months: 24, warn: 45 },
+    {
+      label: "Medical card (DOT physical)",
+      category: "medical",
+      renewal_months: 24,
+      warn: 45,
+    },
     { label: "TWIC card", category: "license", renewal_months: 60, warn: 60 },
-    { label: "Hazmat endorsement", category: "license", renewal_months: 60, warn: 60 },
+    {
+      label: "Hazmat endorsement",
+      category: "license",
+      renewal_months: 60,
+      warn: 60,
+    },
     { label: "MVR / annual review", category: "other", renewal_months: 12 },
   ],
   truck: [
-    { label: "Apportioned registration (IRP)", category: "registration", renewal_months: 12, warn: 45 },
-    { label: "Annual DOT inspection", category: "inspection", renewal_months: 12 },
+    {
+      label: "Apportioned registration (IRP)",
+      category: "registration",
+      renewal_months: 12,
+      warn: 45,
+    },
+    {
+      label: "Annual DOT inspection",
+      category: "inspection",
+      renewal_months: 12,
+    },
     { label: "HVUT Form 2290", category: "tax", renewal_months: 12, warn: 45 },
-    { label: "State registration", category: "registration", renewal_months: 12 },
+    {
+      label: "State registration",
+      category: "registration",
+      renewal_months: 12,
+    },
   ],
   trailer: [
-    { label: "Annual DOT inspection", category: "inspection", renewal_months: 12 },
+    {
+      label: "Annual DOT inspection",
+      category: "inspection",
+      renewal_months: 12,
+    },
     { label: "Registration", category: "registration", renewal_months: 12 },
   ],
 };
@@ -75,8 +114,17 @@ export const ComplianceItemForm = ({
 }: Props) => {
   const [label, setLabel] = useState(initial?.label ?? "");
   const [category, setCategory] = useState(initial?.category ?? "");
-  const [expiresOn, setExpiresOn] = useState(initial?.expires_on?.slice(0, 10) ?? "");
-  const [warnDays, setWarnDays] = useState(String(initial?.warn_lead_days ?? 30));
+  // An existing item with a category outside the common list opens straight into
+  // the custom text box (e.g. a permit added earlier).
+  const [categoryIsCustom, setCategoryIsCustom] = useState(
+    () => !!initial?.category && !CATEGORIES.includes(initial.category),
+  );
+  const [expiresOn, setExpiresOn] = useState(
+    initial?.expires_on?.slice(0, 10) ?? "",
+  );
+  const [warnDays, setWarnDays] = useState(
+    String(initial?.warn_lead_days ?? 30),
+  );
   const [renewal, setRenewal] = useState(
     initial?.renewal_months != null ? String(initial.renewal_months) : "",
   );
@@ -112,7 +160,12 @@ export const ComplianceItemForm = ({
     <Panel variant="panel" className="p-3 mt-2">
       {!initial && (
         <div className="mb-3">
-          <label className={lbl}>Start from a common doc</label>
+          <label className={lbl}>
+            Start from a common doc{" "}
+            <span className="text-muted-text">
+              (optional — or just type your own below)
+            </span>
+          </label>
           <select
             className={inputCls}
             defaultValue=""
@@ -134,8 +187,12 @@ export const ComplianceItemForm = ({
             className={inputCls}
             value={label}
             placeholder="Medical card (DOT physical)"
+            maxLength={120}
             onChange={(e) => setLabel(e.target.value)}
           />
+          <p className="text-[11px] text-muted-text mt-1">
+            Type anything — it doesn't have to be on the list.
+          </p>
         </div>
         <div>
           <label className={lbl}>Expires</label>
@@ -150,8 +207,16 @@ export const ComplianceItemForm = ({
           <label className={lbl}>Category</label>
           <select
             className={inputCls}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={categoryIsCustom ? CUSTOM_CATEGORY : category}
+            onChange={(e) => {
+              if (e.target.value === CUSTOM_CATEGORY) {
+                setCategoryIsCustom(true);
+                setCategory("");
+              } else {
+                setCategoryIsCustom(false);
+                setCategory(e.target.value);
+              }
+            }}
           >
             <option value="">—</option>
             {CATEGORIES.map((c) => (
@@ -159,7 +224,17 @@ export const ComplianceItemForm = ({
                 {c}
               </option>
             ))}
+            <option value={CUSTOM_CATEGORY}>Other (type your own)…</option>
           </select>
+          {categoryIsCustom && (
+            <input
+              className={`${inputCls} mt-1`}
+              value={category}
+              placeholder="e.g. permit"
+              maxLength={40}
+              onChange={(e) => setCategory(e.target.value)}
+            />
+          )}
         </div>
         <div>
           <label className={lbl}>Warn me (days before)</label>
