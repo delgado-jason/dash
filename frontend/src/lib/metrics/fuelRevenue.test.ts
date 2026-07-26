@@ -18,7 +18,8 @@ const fuel = (o: Partial<FuelEntry>): FuelEntry =>
     ...o,
   }) as FuelEntry;
 
-// loadGross falls back to linehaul + fuel_surcharge + total_accessorials.
+// loadRevenue uses net_revenue when present (what the business keeps after the
+// carrier's cut), else falls back to gross. Set net_revenue to exercise net.
 const load = (o: Partial<Load>): Load =>
   ({
     load_status: "delivered",
@@ -30,26 +31,28 @@ const load = (o: Partial<Load>): Load =>
   }) as unknown as Load;
 
 describe("fuelVsRevenue", () => {
-  it("computes fuel %-of-gross and surcharge coverage per month", () => {
+  it("computes fuel %-of-NET and surcharge coverage per month", () => {
     const entries = [
       fuel({ fuel_date: "2026-06-05", gallons: 100, price_per_gallon: 4 }), // $400
       fuel({ fuel_date: "2026-06-20", gallons: 100, price_per_gallon: 4 }), // $400 → June $800
     ];
     const loads = [
+      // gross would be 10000, but net (what the business keeps) is 7300.
       load({
         delivery_date: "2026-06-15",
         linehaul: "9000",
         fuel_surcharge: "1000",
-      }), // gross 10000, fsc 1000
+        net_revenue: "7300",
+      }),
     ];
     const r = fuelVsRevenue(entries, loads);
     expect(r.months).toHaveLength(1);
     const jun = r.months[0];
     expect(jun.month).toBe("2026-06");
     expect(jun.fuelSpend).toBeCloseTo(800, 2);
-    expect(jun.gross).toBeCloseTo(10000, 2);
+    expect(jun.net).toBeCloseTo(7300, 2); // NET, not the 10000 gross
     expect(jun.fsc).toBeCloseTo(1000, 2);
-    expect(jun.fuelPctGross).toBeCloseTo(0.08, 4); // 800 / 10000
+    expect(jun.fuelPctNet).toBeCloseTo(800 / 7300, 4); // 11.0%, not 8% of gross
     expect(jun.fscCoverage).toBeCloseTo(1.25, 4); // 1000 / 800 → surcharge covered fuel
     expect(r.latest?.month).toBe("2026-06");
   });
@@ -100,9 +103,9 @@ describe("fuelVsRevenue", () => {
     expect(r.latest).toBeNull();
   });
 
-  it("leaves %-of-gross null when a fuel month has no delivered revenue", () => {
+  it("leaves %-of-net null when a fuel month has no delivered revenue", () => {
     const r = fuelVsRevenue([fuel({ fuel_date: "2026-06-10" })], []);
-    expect(r.months[0].fuelPctGross).toBeNull();
+    expect(r.months[0].fuelPctNet).toBeNull();
     expect(r.months[0].fscCoverage).toBeCloseTo(0, 4); // fsc 0 / spend
   });
 });
