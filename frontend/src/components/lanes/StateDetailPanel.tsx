@@ -20,7 +20,7 @@ export const StateDetailPanel = ({
   windowDays: number;
   onClear: () => void;
 }) => (
-  <Panel className="mt-6 p-5">
+  <Panel noir className="mt-6 p-5">
     <div className="flex items-baseline justify-between border-b border-plate pb-2.5 mb-4">
       <div>
         <span className="text-xl font-condensed text-light">{detail.state}</span>

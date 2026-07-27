@@ -77,7 +77,7 @@ export const ExpenseYtdChart = ({
   if (data.length === 0) return null;
 
   return (
-    <Panel className="p-4" style={{ height: 280 }}>
+    <Panel noir className="p-4" style={{ height: 280 }}>
       <p className="text-xs text-muted-text mb-2">
         Revenue vs {obligationsTotal > 0 ? "true cost" : "cost"} · year to date
       </p>

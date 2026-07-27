@@ -299,7 +299,7 @@ const ExpensesPage = () => {
           </p>
 
           {rateLadder.walkAway != null && (
-            <Panel className="p-4 mb-6">
+            <Panel noir className="p-4 mb-6">
               <p className="text-xs text-muted-text mb-3">
                 Rate to book · gross $/mile driven · last {rateBasis.months}{" "}
                 complete month{rateBasis.months > 1 ? "s" : ""}
@@ -345,7 +345,7 @@ const ExpensesPage = () => {
             <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
           )}
 
-          <Panel className="p-4 mb-6 mt-6">
+          <Panel noir className="p-4 mb-6 mt-6">
             <p className="text-xs text-muted-text mb-2">
               Fixed vs variable · P&amp;L operating · {money(metrics.monthlyCost)}
             </p>
@@ -382,7 +382,7 @@ const ExpensesPage = () => {
 
           <ObligationsCard items={obligations} onChange={reloadObligations} />
 
-          <Panel className="p-4 mb-6">
+          <Panel noir className="p-4 mb-6">
             <p className="text-xs text-muted-text mb-2">
               All expenses · reclassify, edit value, add or delete
             </p>
