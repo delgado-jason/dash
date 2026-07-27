@@ -3,6 +3,9 @@ import { useTrips } from "@/hooks/useTrips";
 import TripForm from "@/components/TripForm";
 import { formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 import type { Trip } from "@/types/trip";
 
 // "Irving, TX" from a city/state pair; falls back to whichever is present.
@@ -36,8 +39,9 @@ const TripsPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light font-body">
-        <p className="text-muted-text">Loading trips...</p>
+      <div className="p-6 bg-iron text-light font-body min-h-screen">
+        <Skeleton className="h-8 w-24 mb-6" />
+        <RowsSkeleton rows={8} />
       </div>
     );
 
@@ -65,32 +69,39 @@ const TripsPage = () => {
       )}
 
       <div className="bg-iron mt-4 p-6">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Trip #</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Purpose</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>OD Start</TableHead>
-              <TableHead>OD End</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {trips.map((trip) => (
-              <TableRow key={trip.trip_id}>
-                <TableCell className="text-foreground">
-                  {trip.trip_number}
-                </TableCell>
-                <TableCell>{formatDate(trip.trip_date)}</TableCell>
-                <TableCell>{trip.trip_purpose}</TableCell>
-                <TableCell>{tripRoute(trip)}</TableCell>
-                <TableCell>{trip.odometer_start}</TableCell>
-                <TableCell>{trip.odometer_end}</TableCell>
+        {trips.length === 0 ? (
+          <EmptyState
+            title="No trips logged yet"
+            hint="Log a trip to track odometer miles, routes, and deadhead."
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Trip #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Purpose</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>OD Start</TableHead>
+                <TableHead>OD End</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {trips.map((trip) => (
+                <TableRow key={trip.trip_id}>
+                  <TableCell className="text-foreground">
+                    {trip.trip_number}
+                  </TableCell>
+                  <TableCell>{formatDate(trip.trip_date)}</TableCell>
+                  <TableCell>{trip.trip_purpose}</TableCell>
+                  <TableCell>{tripRoute(trip)}</TableCell>
+                  <TableCell>{trip.odometer_start}</TableCell>
+                  <TableCell>{trip.odometer_end}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );

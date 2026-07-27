@@ -27,6 +27,8 @@ import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
 import { ObligationsCard } from "@/components/expenses/ObligationsCard";
 import { Panel } from "@/components/ui/Panel";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 
 const money = (n: number): string =>
   `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -233,11 +235,15 @@ const ExpensesPage = () => {
       )}
 
       {loading ? (
-        <p className="text-muted-text">Loading...</p>
+        <div>
+          <StatCardsSkeleton count={3} />
+          <BlockSkeleton className="h-64 mt-6" />
+        </div>
       ) : periods.length === 0 ? (
-        <p className="text-muted-text">
-          No P&amp;L uploaded yet. Upload one to get started.
-        </p>
+        <EmptyState
+          title="No P&L uploaded yet"
+          hint="Upload a profit & loss statement to see your true cost per mile."
+        />
       ) : selected && metrics && trueMonthly ? (
         <>
           {periods.length > 1 && (
