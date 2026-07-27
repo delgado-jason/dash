@@ -288,7 +288,7 @@ const MarketPage = () => {
         </Panel>
       ) : (
         <>
-          <Panel className="mt-6 p-5">
+          <Panel noir className="mt-6 p-5">
             <div className="flex justify-between items-baseline flex-wrap gap-2">
               <h2 className="text-lg font-medium text-light">Every load · rate vs the year</h2>
               <span className="text-xs text-muted-text">gross $/driven mile</span>
@@ -309,7 +309,7 @@ const MarketPage = () => {
           </Panel>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mt-4">
-            <Panel className="p-5">
+            <Panel noir className="p-5">
               <h2 className="text-lg font-medium text-light">Market barometer</h2>
               <p className="text-xs text-muted-text mt-0.5 mb-2">
                 your median rate per driven mile, by month
@@ -325,7 +325,24 @@ const MarketPage = () => {
                   </div>
                   {yvm && (
                     <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-                      <div className="text-xs text-muted-text mb-2">You vs. the market · last 6 months</div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-xs text-muted-text">You vs. the market · last 6 months</span>
+                        <span
+                          className="ds-sfx text-xl"
+                          style={{
+                            color: yvmColor,
+                            padding: "1px 6px",
+                            background:
+                              "radial-gradient(ellipse at center, rgba(245,176,58,0.16), transparent 72%)",
+                          }}
+                        >
+                          {yvm.verdict === "beating"
+                            ? "BEATING"
+                            : yvm.verdict === "lagging"
+                              ? "LAGGING"
+                              : "IN LINE"}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-[11px] text-muted-text w-14">you</span>
                         <div className="flex-1 h-2 rounded" style={{ background: "#232c3f" }}>
@@ -351,7 +368,7 @@ const MarketPage = () => {
               )}
             </Panel>
 
-            <Panel className="p-5">
+            <Panel noir className="p-5">
               <h2 className="text-lg font-medium text-light">Tier gauge</h2>
               <p className="text-xs text-muted-text mt-0.5 mb-3">
                 where your tiers land · last 90 days
