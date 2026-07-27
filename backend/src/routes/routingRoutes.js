@@ -1,11 +1,24 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { loadMiles, routeGeo } from "../services/routingService.js";
+import { citySuggest } from "../services/hereProvider.js";
 import { getLoad } from "../services/loadServices.js";
 import { precedingLocation } from "../services/tripServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
+
+// ---- CITY AUTOCOMPLETE ----
+// Typeahead suggestions for a city field. Non-fatal: any failure returns an
+// empty list, so the dropdown just goes quiet and the user types normally.
+router.get("/city-suggest", async (req, res) => {
+  try {
+    const suggestions = await citySuggest(req.query.q);
+    return res.status(200).json({ suggestions });
+  } catch {
+    return res.status(200).json({ suggestions: [] });
+  }
+});
 
 // ---- SCORE-A-LOAD MILEAGE ----
 // Body: { truckNow?, pickup, delivery, dims? } where a place is { city, state }

@@ -29,7 +29,8 @@ import { toInches, toFeetInches, isOverWidth, formatInches } from "@/lib/dimensi
 // UI Component Imports
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, inputClass } from "@/components/ui/input";
+import CityAutocomplete from "@/components/CityAutocomplete";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -883,12 +884,21 @@ const LoadForm = ({
             {/* Origin City field */}
             <div>
               <Label htmlFor="origin_city">Origin City</Label>
-              <Input
-                name="origin_city"
+              <CityAutocomplete
                 id="origin_city"
-                onChange={handleChange}
                 value={formData.origin_city}
-              ></Input>
+                onType={(city) =>
+                  setFormData((f) => ({ ...f, origin_city: city }))
+                }
+                onSelect={(city, state) =>
+                  setFormData((f) => ({
+                    ...f,
+                    origin_city: city,
+                    origin_state: state,
+                  }))
+                }
+                inputClassName={inputClass}
+              />
             </div>
             {/* Origin State field name */}
             <div>
@@ -942,12 +952,21 @@ const LoadForm = ({
             {/* Destination City field */}
             <div>
               <Label htmlFor="destination_city">Destination City</Label>
-              <Input
-                name="destination_city"
+              <CityAutocomplete
                 id="destination_city"
-                onChange={handleChange}
                 value={formData.destination_city}
-              ></Input>
+                onType={(city) =>
+                  setFormData((f) => ({ ...f, destination_city: city }))
+                }
+                onSelect={(city, state) =>
+                  setFormData((f) => ({
+                    ...f,
+                    destination_city: city,
+                    destination_state: state,
+                  }))
+                }
+                inputClassName={inputClass}
+              />
             </div>
             {/* Destination State field */}
             <div>
