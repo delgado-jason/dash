@@ -1,5 +1,6 @@
 import { Panel } from "@/components/ui/Panel";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { RollingValue } from "@/components/comic/RollingNumber";
 
 type Status = "good" | "bad" | "neutral";
 
@@ -44,7 +45,16 @@ export const KpiCard = ({
         <Sparkline data={trend} color={sparkColor[status]} />
       )}
     </div>
-    <p className={`text-2xl font-condensed ${statusColor[status]}`}>{value}</p>
+    <p
+      className={`w-fit text-2xl font-condensed ${statusColor[status]}`}
+      style={{
+        padding: "3px 10px 3px 3px",
+        background:
+          "radial-gradient(ellipse at 18% 55%, rgba(245,176,58,0.2), transparent 68%)",
+      }}
+    >
+      <RollingValue text={value} />
+    </p>
 
     {delta && (
       <p
