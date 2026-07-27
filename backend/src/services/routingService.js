@@ -1,13 +1,7 @@
-// Load-scoring mileage, provider-agnostic. Talks to hereProvider today; swap that
-// import to change providers. Everything here is an ESTIMATE for scoring a load
-// before it runs — the odometer stays the single source of truth once it does.
-import {
-  geocode,
-  routeMiles,
-  routePolylines,
-  buildMapImageUrl,
-  fetchMapDataUri,
-} from "./hereProvider.js";
+// Load-scoring mileage + route geometry, provider-agnostic. Talks to hereProvider
+// today; swap that import to change providers. Everything here is an ESTIMATE for
+// scoring/visualizing a load — the odometer stays the single source of truth.
+import { geocode, routeMiles } from "./hereProvider.js";
 
 // One leg's miles: geocode both ends, then route between them with the load's
 // dims. Self-contained try/catch so a failure on one leg never sinks the other
@@ -37,91 +31,25 @@ export async function loadMiles({ truckNow, pickup, delivery, dims } = {}) {
   return { loadedMiles, deadheadMiles };
 }
 
-// ---- the "mission map" ----
-
-// Map colors (6-hex, no '#') — the paid haul in amber, the empty leg in gray,
-// pickup green, destination red, and a faint pin where the deadhead began.
-const C_LOADED = "f5b03a";
-const C_DEADHEAD = "6f7a8c";
-const C_START = "4ade80";
-const C_OBJECTIVE = "f87171";
-const C_DH_ORIGIN = "8b98a9";
-
-// Tiny bounded cache: a route's rendered image doesn't change, so don't re-hit
-// HERE for the same haul. Keyed by the three places; oldest evicted past cap.
-const mapCache = new Map();
-const MAP_CACHE_CAP = 60;
-
-// A rendered route-map data URI (PNG) for a load: the loaded haul
-// (pickup→delivery) and, when we know where the truck came from, the deadhead
-// leg into the pickup. null on any failure — the caller shows the text route.
-export async function renderRouteMap({ deadheadOrigin, pickup, delivery } = {}) {
-  if (!process.env.HERE_API_KEY) return null;
-  if (!pickup?.city || !pickup?.state || !delivery?.city || !delivery?.state)
-    return null;
-
-  const key = JSON.stringify({ deadheadOrigin, pickup, delivery });
-  if (mapCache.has(key)) return mapCache.get(key);
-
-  let image = null;
-  try {
-    const [pk, dl, dh] = await Promise.all([
-      geocode(pickup.city, pickup.state),
-      geocode(delivery.city, delivery.state),
-      deadheadOrigin?.city && deadheadOrigin?.state
-        ? geocode(deadheadOrigin.city, deadheadOrigin.state)
-        : null,
-    ]);
-    if (pk && dl) {
-      const points = [];
-      if (dh) points.push({ lat: dh.lat, lng: dh.lng, color: C_DH_ORIGIN });
-      points.push({ lat: pk.lat, lng: pk.lng, color: C_START });
-      points.push({ lat: dl.lat, lng: dl.lng, color: C_OBJECTIVE });
-
-      // Straight raw-coord segments — the confirmed-working fallback.
-      const straight = [];
-      if (dh)
-        straight.push({ coords: [dh.lat, dh.lng, pk.lat, pk.lng], color: C_DEADHEAD, width: 4 });
-      straight.push({ coords: [pk.lat, pk.lng, dl.lat, dl.lng], color: C_LOADED, width: 5 });
-
-      // Road-route geometry — the nicer primary, per leg (polyline when HERE
-      // returns it, otherwise that leg's straight segment).
-      const road = [];
-      if (dh) {
-        const p = await routePolylines(dh, pk);
-        if (p) for (const pl of p) road.push({ polyline: pl, color: C_DEADHEAD, width: 4 });
-        else road.push({ coords: [dh.lat, dh.lng, pk.lat, pk.lng], color: C_DEADHEAD, width: 4 });
-      }
-      const lp = await routePolylines(pk, dl);
-      if (lp) for (const pl of lp) road.push({ polyline: pl, color: C_LOADED, width: 5 });
-      else road.push({ coords: [pk.lat, pk.lng, dl.lat, dl.lng], color: C_LOADED, width: 5 });
-
-      // Try the road route; if its image request fails (rejected polyline, URL
-      // too long), fall back to plain straight lines so a map still renders.
-      for (const lines of [road, straight]) {
-        try {
-          const url = buildMapImageUrl({
-            apiKey: process.env.HERE_API_KEY,
-            width: 640,
-            height: 300,
-            lines,
-            points,
-          });
-          image = await fetchMapDataUri(url);
-          if (image) break;
-        } catch {
-          // try the next line style
-        }
-      }
+// ---- route geometry for the "mission map" ----
+// Geocode each end to { lat, lng, city, state } so the frontend can draw the
+// route AND the faint state borders in one coordinate space. A point that won't
+// geocode (or a null deadhead — e.g. a booked load) comes back null; the map
+// falls back to the text route when pickup/delivery can't resolve.
+export async function routeGeo({ deadheadOrigin, pickup, delivery } = {}) {
+  const geo = async (p) => {
+    if (!p?.city || !p?.state) return null;
+    try {
+      const c = await geocode(p.city, p.state);
+      return c ? { lat: c.lat, lng: c.lng, city: p.city.trim(), state: p.state.trim() } : null;
+    } catch {
+      return null;
     }
-  } catch {
-    image = null;
-  }
-
-  if (image) {
-    mapCache.set(key, image);
-    if (mapCache.size > MAP_CACHE_CAP)
-      mapCache.delete(mapCache.keys().next().value);
-  }
-  return image;
+  };
+  const [pickupGeo, deliveryGeo, deadheadGeo] = await Promise.all([
+    geo(pickup),
+    geo(delivery),
+    geo(deadheadOrigin),
+  ]);
+  return { pickup: pickupGeo, delivery: deliveryGeo, deadhead: deadheadGeo };
 }

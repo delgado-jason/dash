@@ -1,6 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { loadMiles, renderRouteMap } from "../services/routingService.js";
+import { loadMiles, routeGeo } from "../services/routingService.js";
 import { getLoad } from "../services/loadServices.js";
 import { precedingLocation } from "../services/tripServices.js";
 
@@ -28,21 +28,30 @@ router.post("/load-miles", async (req, res) => {
   }
 });
 
-// ---- MISSION MAP FOR A SAVED LOAD ----
-// Renders the load's haul, with the deadhead leg chained from wherever the truck
-// sat before it. Returns { image: dataURI | null }; null just means "show the
-// text route" — a missing map never errors the page.
-router.get("/load-map/:loadId", async (req, res) => {
+// ---- MISSION MAP DATA FOR A SAVED LOAD ----
+// Geocoded pickup/delivery (+ the load's loaded miles) for the mission map. The
+// deadhead leg is included ONLY once the load is active (in_transit/delivered) —
+// on a booked load the deadhead origin isn't real yet, so it's omitted. Returns
+// null coords when a city won't geocode; the page falls back to the text route.
+router.get("/load-route/:loadId", async (req, res) => {
   try {
     const user_id = req.user.user_id;
     const load = await getLoad(user_id, req.params.loadId);
-    const deadheadOrigin = await precedingLocation(user_id, load);
-    const image = await renderRouteMap({
+    const active =
+      load.load_status === "in_transit" || load.load_status === "delivered";
+    const deadheadOrigin = active
+      ? await precedingLocation(user_id, load)
+      : null;
+    const geo = await routeGeo({
       deadheadOrigin,
       pickup: { city: load.origin_city, state: load.origin_state },
       delivery: { city: load.destination_city, state: load.destination_state },
     });
-    return res.status(200).json({ message: "Load map", image });
+    return res.status(200).json({
+      message: "Load route",
+      ...geo,
+      loadedMiles: Number(load.loaded_miles) || null,
+    });
   } catch (err) {
     if (err.type === "not_found") {
       return res.status(err.statusCode).json({ error: err.message });
@@ -54,17 +63,13 @@ router.get("/load-map/:loadId", async (req, res) => {
   }
 });
 
-// ---- MISSION MAP FOR A SCORED (not-yet-saved) LOAD ----
+// ---- MISSION MAP DATA FOR A SCORED (not-yet-saved) LOAD ----
 // Body: { truckNow?, pickup, delivery }. Deadhead leg drawn from truckNow.
-router.post("/map", async (req, res) => {
+router.post("/route", async (req, res) => {
   try {
     const { truckNow, pickup, delivery } = req.body ?? {};
-    const image = await renderRouteMap({
-      deadheadOrigin: truckNow,
-      pickup,
-      delivery,
-    });
-    return res.status(200).json({ message: "Route map", image });
+    const geo = await routeGeo({ deadheadOrigin: truckNow, pickup, delivery });
+    return res.status(200).json({ message: "Route", ...geo });
   } catch (err) {
     return res.status(500).json({
       error: "Internal Server Error",

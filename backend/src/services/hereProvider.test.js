@@ -6,8 +6,6 @@ import {
   poundsToKg,
   parseGeocode,
   parseRouteMeters,
-  parseRoutePolylines,
-  buildMapImageUrl,
 } from "./hereProvider.js";
 
 describe("unit conversions", () => {
@@ -56,45 +54,5 @@ describe("parseRouteMeters", () => {
   test("null when a section is missing its length (don't trust a partial total)", () => {
     const json = { routes: [{ sections: [{ summary: { length: 1000 } }, { summary: {} }] }] };
     assert.equal(parseRouteMeters(json), null);
-  });
-});
-
-describe("parseRoutePolylines", () => {
-  test("collects a polyline per section", () => {
-    const json = { routes: [{ sections: [{ polyline: "AAA" }, { polyline: "BBB" }] }] };
-    assert.deepEqual(parseRoutePolylines(json), ["AAA", "BBB"]);
-  });
-
-  test("null when there's no geometry", () => {
-    assert.equal(parseRoutePolylines({ routes: [{ sections: [{}] }] }), null);
-    assert.equal(parseRoutePolylines({}), null);
-  });
-});
-
-describe("buildMapImageUrl", () => {
-  test("builds a v3 URL with size, line + point overlays, and %23-encoded color", () => {
-    const url = buildMapImageUrl({
-      apiKey: "K",
-      width: 640,
-      height: 300,
-      lines: [{ polyline: "ABC", color: "f5b03a", width: 5 }],
-      points: [{ lat: 32.5, lng: -96.6, color: "4ade80" }],
-    });
-    assert.ok(url.startsWith("https://image.maps.hereapi.com/mia/v3/base/mc/overlay:padding=40/640x300/png"));
-    assert.ok(url.includes("apiKey=K"));
-    assert.ok(url.includes("overlay=line:ABC;color=%23f5b03a;width=5"));
-    // a single pin is `point:` (not `multiPoint:`, which 400s on one pair)
-    assert.ok(url.includes("overlay=point:32.5,-96.6;color=%234ade80"));
-    assert.ok(!url.includes("multiPoint"));
-    // the raw '#' must never appear (it would truncate the URL at the fragment)
-    assert.ok(!url.includes("#"));
-  });
-
-  test("falls back to raw coords for a line when no polyline", () => {
-    const url = buildMapImageUrl({
-      apiKey: "K",
-      lines: [{ coords: [1, 2, 3, 4], color: "6f7a8c", width: 4 }],
-    });
-    assert.ok(url.includes("overlay=line:1,2,3,4;color=%236f7a8c;width=4"));
   });
 });

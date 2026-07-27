@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 
 import { useLoad } from "@/hooks/useLoad";
-import { getLoadMap } from "@/services/routingService";
+import { getLoadRoute, type RouteGeo } from "@/services/routingService";
+import MissionMap from "@/components/MissionMap";
 import { formatLoadDims } from "@/lib/dimensions";
 import { useAccessorials } from "@/hooks/useAccessorials";
 import { useBrokers } from "@/hooks/useBrokers";
@@ -166,7 +167,7 @@ export const LoadDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [accRefreshKey, setAccRefreshKey] = useState(0);
   const { load, isLoading, error } = useLoad(refreshKey);
-  const [mapImage, setMapImage] = useState<string | null>(null);
+  const [route, setRoute] = useState<RouteGeo | null>(null);
   const { accessorials } = useAccessorials(accRefreshKey);
 
   const [newType, setNewType] = useState("");
@@ -232,13 +233,13 @@ export const LoadDetailPage = () => {
     }
   }, [load]);
 
-  // Fetch the mission map for this load (haul + deadhead leg). Non-fatal: null
-  // just leaves the text route to stand on its own.
+  // Fetch the mission-map geometry for this load. Non-fatal: an empty route just
+  // leaves the text route to stand on its own.
   useEffect(() => {
     if (!load?.load_id) return;
     let active = true;
-    getLoadMap(load.load_id).then((img) => {
-      if (active) setMapImage(img);
+    getLoadRoute(load.load_id).then((r) => {
+      if (active) setRoute(r);
     });
     return () => {
       active = false;
@@ -608,34 +609,37 @@ export const LoadDetailPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <Panel className="p-4">
+        <Panel className="p-4 md:col-span-2">
           <p className={cardLbl}>Route</p>
-          {mapImage && (
-            <img
-              src={mapImage}
-              alt={`Route from ${load.origin_city} to ${load.destination_city}`}
-              className="w-full rounded-lg mb-3 border border-steel"
+          {route?.pickup && route?.delivery ? (
+            <MissionMap
+              pickup={route.pickup}
+              delivery={route.delivery}
+              deadhead={route.deadhead}
+              loadedMiles={route.loadedMiles}
+              height={300}
             />
+          ) : (
+            <div className="flex gap-3">
+              <div className="flex flex-col items-center pt-1.5">
+                <div className="w-2 h-2 rounded-full bg-muted-text" />
+                <div className="w-px flex-1 bg-steel min-h-[24px] my-1" />
+                <div className="w-2 h-2 rounded-full bg-amber" />
+              </div>
+              <div className="text-sm flex-1">
+                <p className="font-medium">
+                  {load.origin_city}, {load.origin_state}
+                </p>
+                <p className="text-xs text-muted-text mb-3">
+                  {load.origin_market}
+                </p>
+                <p className="font-medium">
+                  {load.destination_city}, {load.destination_state}
+                </p>
+                <p className="text-xs text-muted-text">{load.delivery_market}</p>
+              </div>
+            </div>
           )}
-          <div className="flex gap-3">
-            <div className="flex flex-col items-center pt-1.5">
-              <div className="w-2 h-2 rounded-full bg-muted-text" />
-              <div className="w-px flex-1 bg-steel min-h-[24px] my-1" />
-              <div className="w-2 h-2 rounded-full bg-amber" />
-            </div>
-            <div className="text-sm flex-1">
-              <p className="font-medium">
-                {load.origin_city}, {load.origin_state}
-              </p>
-              <p className="text-xs text-muted-text mb-3">
-                {load.origin_market}
-              </p>
-              <p className="font-medium">
-                {load.destination_city}, {load.destination_state}
-              </p>
-              <p className="text-xs text-muted-text">{load.delivery_market}</p>
-            </div>
-          </div>
         </Panel>
 
         <Panel className="p-4 border border-amber">
