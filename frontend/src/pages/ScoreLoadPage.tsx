@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
+import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
 import { RATE_TIERS } from "@/lib/constants/targets";
 import {
   getLoadMiles,
@@ -178,6 +178,7 @@ const ScoreLoadPage = () => {
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
   const [route, setRoute] = useState<RouteGeo | null>(null);
+  const [toll, setToll] = useState<number | null>(null);
 
   // Prefill "Truck now" (the deadhead origin) with the truck's last-known
   // location. Non-fatal — no data just leaves it blank to fill by hand.
@@ -233,10 +234,12 @@ const ScoreLoadPage = () => {
       if (res.loadedMiles == null && res.deadheadMiles == null) {
         setRouteErr(true);
         setRoute(null);
+        setToll(null);
         return;
       }
       if (res.loadedMiles != null) setLoaded(String(res.loadedMiles));
       if (res.deadheadMiles != null) setDeadhead(String(res.deadheadMiles));
+      setToll(res.tollUsd);
       // The mission map for what was just entered (haul + deadhead leg).
       getScoreRoute({
         truckNow: truckNow.city && truckNow.state ? truckNow : null,
@@ -266,6 +269,11 @@ const ScoreLoadPage = () => {
     },
   );
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
+  // Counter ladder — only when the load comes in under target (PASS/MEH).
+  const belowTarget = score.verdict === "pass" || score.verdict === "meh";
+  const counter =
+    belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles) : null;
+  const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
   const routeNote = routing
     ? "routing…"
@@ -366,6 +374,17 @@ const ScoreLoadPage = () => {
           </div>
         </div>
 
+        {toll != null && (
+          <div className="flex items-center gap-2 mt-2 mb-1 px-3 py-2 rounded-[9px]" style={{ background: "#141b28" }}>
+            <span className="text-[13px]" style={{ color: "#cdd8e8" }}>
+              Est. tolls <span style={{ color: "#f4f7fb", fontWeight: 600 }}>≈ {money0(toll)}</span>
+            </span>
+            <span className="ml-auto text-[10px]" style={{ color: "#5f6b80" }}>
+              bill as accessorial · Landstar pays 100%
+            </span>
+          </div>
+        )}
+
         {route?.pickup && route?.delivery && (
           <div className="mt-2.5 mb-1 rounded-[9px] overflow-hidden" style={{ border: "1px solid #2a3347" }}>
             <MissionMap
@@ -456,6 +475,31 @@ const ScoreLoadPage = () => {
                 <span style={{ color: "#fbbf24" }}>STEAL</span>
               </div>
             </div>
+
+            {counter && (
+              <div className="mt-4 rounded-[10px] p-3" style={{ border: "1px solid #2a3347" }}>
+                <div className="text-[10px] tracking-wide mb-2" style={{ color: "#8b98a9" }}>
+                  WHAT TO ASK THE AGENT
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 text-center rounded-[8px] py-2" style={{ background: "#141b28" }}>
+                    <div className="text-[9px]" style={{ color: "#f87171" }}>FLOOR</div>
+                    <div className="text-base font-semibold" style={{ color: "#cdd8e8" }}>{money0(counter.floor)}</div>
+                    <div className="text-[8.5px]" style={{ color: "#5f6b80" }}>break-even</div>
+                  </div>
+                  <div className="flex-1 text-center rounded-[8px] py-2" style={{ background: "#12261a", border: "1px solid #1a5c3a" }}>
+                    <div className="text-[9px]" style={{ color: "#4ade80" }}>TAKE IT</div>
+                    <div className="text-base font-semibold" style={{ color: "#4ade80" }}>{money0(counter.take)}</div>
+                    <div className="text-[8.5px]" style={{ color: "#5f8a6e" }}>fair</div>
+                  </div>
+                  <div className="flex-1 text-center rounded-[8px] py-2" style={{ background: "#231d06", border: "1px solid #6b5410" }}>
+                    <div className="text-[9px]" style={{ color: "#fbbf24" }}>STEAL</div>
+                    <div className="text-base font-semibold" style={{ color: "#fbbf24" }}>{money0(counter.steal)}</div>
+                    <div className="text-[8.5px]" style={{ color: "#9a7f2e" }}>open here</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

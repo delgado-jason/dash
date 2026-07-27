@@ -623,6 +623,15 @@ const GuidePage = () => {
               still truth once you run it. Every mile field stays editable if you'd
               rather type your own.
             </Why>
+            <Why>
+              It also shows this route's{" "}
+              <span className="text-light">estimated tolls</span> — a reminder to
+              bill them as an accessorial (Landstar pays 100%), not eat them. And
+              when a load comes in under target, it lays out{" "}
+              <span className="text-light">what to ask the agent</span>: the floor
+              (break-even), the TAKE-IT rate, and the STEAL rate for that load's
+              miles — so you know the room to bargain.
+            </Why>
           </Metric>
 
           <Metric

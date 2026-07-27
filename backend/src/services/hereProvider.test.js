@@ -6,6 +6,7 @@ import {
   poundsToKg,
   parseGeocode,
   parseRouteMeters,
+  parseRouteTolls,
   parseCitySuggestions,
 } from "./hereProvider.js";
 
@@ -55,6 +56,28 @@ describe("parseRouteMeters", () => {
   test("null when a section is missing its length (don't trust a partial total)", () => {
     const json = { routes: [{ sections: [{ summary: { length: 1000 } }, { summary: {} }] }] };
     assert.equal(parseRouteMeters(json), null);
+  });
+});
+
+describe("parseRouteTolls", () => {
+  test("sums every fare across every section", () => {
+    const json = {
+      routes: [
+        {
+          sections: [
+            { tolls: [{ fares: [{ price: { value: 12.5 } }, { price: { value: 3.25 } }] }] },
+            { tolls: [{ fares: [{ price: { value: 8 } }] }] },
+          ],
+        },
+      ],
+    };
+    assert.equal(parseRouteTolls(json), 23.75);
+  });
+
+  test("null when there's no toll data (or a toll-free route)", () => {
+    assert.equal(parseRouteTolls({ routes: [{ sections: [{ summary: {} }] }] }), null);
+    assert.equal(parseRouteTolls({ routes: [{ sections: [{ tolls: [] }] }] }), null);
+    assert.equal(parseRouteTolls({}), null);
   });
 });
 

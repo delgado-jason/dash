@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scoreLoad } from "./loadScore";
+import { scoreLoad, counterRates } from "./loadScore";
 
 // break-even per driven mile = costPerDrivenMile / payTake = 3.08 / 0.78 ≈ $3.95
 const basis = { costPerDrivenMile: 3.08, payTake: 0.78 };
@@ -46,5 +46,22 @@ describe("scoreLoad", () => {
       }).verdict,
     ).toBeNull();
     expect(scoreLoad({ rate: 2000, loadedMiles: 0, deadheadMiles: 0 }, basis).verdict).toBeNull();
+  });
+});
+
+describe("counterRates", () => {
+  it("prices the floor, TAKE IT (+35%), and STEAL (+60%) on the driven miles", () => {
+    const c = counterRates(4, 500)!; // $4/mi break-even, 500 mi
+    expect(c.floor).toBeCloseTo(2000, 5); // 4 × 500
+    expect(c.take).toBeCloseTo(2700, 5); // 4 × 1.35 × 500
+    expect(c.steal).toBeCloseTo(3200, 5); // 4 × 1.60 × 500
+    expect(c.take).toBeGreaterThan(c.floor);
+    expect(c.steal).toBeGreaterThan(c.take);
+  });
+
+  it("is null without a usable break-even or miles", () => {
+    expect(counterRates(null, 500)).toBeNull();
+    expect(counterRates(0, 500)).toBeNull();
+    expect(counterRates(4, 0)).toBeNull();
   });
 });
