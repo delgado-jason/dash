@@ -12,6 +12,7 @@ import TripsPage from "@/pages/TripsPage";
 import ScoreLoadPage from "@/pages/ScoreLoadPage";
 import GaragePage from "@/pages/GaragePage";
 import ExpensesPage from "@/pages/ExpensesPage";
+import MarketPage from "@/pages/MarketPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import AgentsPage from "@/pages/AgentsPage";
@@ -86,6 +87,7 @@ const App = () => {
           {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
           <Route element={<AdminRoute />}>
             <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/market" element={<MarketPage />} />
             <Route path="/per-diem" element={<PerDiemPage />} />
             <Route path="/recap" element={<RecapPage />} />
             <Route path="/garage" element={<GaragePage />} />

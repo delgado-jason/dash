@@ -309,6 +309,7 @@ const NAV: { group: string; items: string[] }[] = [
       "The rate ladder",
       "Load Scorer — Take It or Leave It",
       "Weekly & daily targets",
+      "Market & Rates — reading the cycle",
       "Rate per mile (RPM)",
       "Lane rate — typical vs blended",
       "Outstanding loads — how long money sits",
@@ -688,6 +689,30 @@ const GuidePage = () => {
               per-mile targets drop, but you cover more miles, so the weekly
               dollars you need don't move. Only your cost and your margin goal
               change this number.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Market & Rates — reading the cycle"
+            answers="Every delivered load plotted by what it paid per driven mile, over time — so you can see the freight market turn and tell whether your rate tiers still fit it."
+            sources={[{ label: "Market", to: "/market" }]}
+          >
+            <Why>
+              The <span className="text-light">scatter</span> drops every load on
+              a timeline by its gross rate per driven mile, colored by type, with
+              your break-even and tier lines drawn across it. A soft market shows
+              up as a cluster sinking toward — or under — the break-even line
+              before you'd feel it load by load.
+            </Why>
+            <Why>
+              The <span className="text-light">barometer</span> is your own median
+              rate per driven mile by month — your personal read on where the
+              market is. The <span className="text-light">tier gauge</span> then
+              asks the useful question: where do your tiers land in the last 90
+              days? A target sitting at the 40th percentile means the market
+              clears it easily (hot — room to raise); one at the 90th means it's
+              barely gettable (soft — trim). That turns "when do I adjust my
+              tiers" into a number you read instead of a gut call.
             </Why>
           </Metric>
 

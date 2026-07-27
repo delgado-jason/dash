@@ -71,6 +71,7 @@ const nav: Entry[] = [
     icon: Wallet,
     children: [
       { to: "/expenses", label: "Expenses", adminOnly: true },
+      { to: "/market", label: "Market", adminOnly: true },
       { to: "/per-diem", label: "Per Diem", adminOnly: true },
       { to: "/recap", label: "Recap", adminOnly: true },
       { to: "/garage", label: "Garage", adminOnly: true },
