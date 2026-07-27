@@ -5,6 +5,8 @@ import { useLoads } from "@/hooks/useLoads";
 import { Kpi } from "@/components/Kpi";
 import { AgentCard } from "@/components/agents/AgentCard";
 import { useCarrierName } from "@/hooks/useCarrierName";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   computeHonors,
   perAgentStats,
@@ -79,7 +81,13 @@ const AgentsPage = () => {
   if (isLoading || loadsLoading)
     return (
       <div className="p-6 bg-iron text-light min-h-screen font-body">
-        <p className="text-muted-text">Loading agents...</p>
+        <Skeleton className="h-8 w-32 mb-6" />
+        <Skeleton className="h-10 w-full max-w-md mb-6" style={{ borderRadius: 10 }} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-32" style={{ borderRadius: 13 }} />
+          ))}
+        </div>
       </div>
     );
 
@@ -161,11 +169,14 @@ const AgentsPage = () => {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-muted-text text-sm">
-          {(agents ?? []).length === 0
-            ? "No agents yet."
-            : "No agents match your search."}
-        </p>
+        (agents ?? []).length === 0 ? (
+          <EmptyState
+            title="No agents yet"
+            hint="Add an agent to track who books your freight and how they pay."
+          />
+        ) : (
+          <p className="text-muted-text text-sm">No agents match your search.</p>
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {shown.map((agent) => (

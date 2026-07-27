@@ -38,6 +38,8 @@ import {
 } from "@/lib/metrics/agent";
 import { loadRevenue } from "@/lib/metrics/loads";
 import { Panel } from "@/components/ui/Panel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 
 const money0 = (n: number) =>
   n.toLocaleString("en-US", {
@@ -108,7 +110,10 @@ const AgentDetailPage = () => {
   if (isLoading)
     return (
       <div className="p-6 bg-iron text-light min-h-screen font-body">
-        <p className="text-muted-text">Loading agent...</p>
+        <Skeleton className="h-8 w-48 mb-2" />
+        <Skeleton className="h-4 w-32 mb-6" />
+        <StatCardsSkeleton count={4} />
+        <BlockSkeleton className="h-56 mt-6" />
       </div>
     );
   if (error)

@@ -18,6 +18,7 @@ import {
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { ScheduleTab } from "@/components/maintenance/ScheduleTab";
 import { ServicesTab } from "@/components/maintenance/ServicesTab";
+import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 
 const MaintenancePage = () => {
   const { loads } = useLoads(0);
@@ -114,7 +115,7 @@ const MaintenancePage = () => {
       </div>
 
       {loading ? (
-        <p className="text-muted-text">Loading...</p>
+        <RowsSkeleton rows={6} />
       ) : tab === "schedule" ? (
         <ScheduleTab
           items={items}

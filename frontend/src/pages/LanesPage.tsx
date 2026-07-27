@@ -14,6 +14,8 @@ import { LanesMap } from "@/components/lanes/LanesMap";
 import { LanesTable } from "@/components/lanes/LanesTable";
 import { StateDetailPanel } from "@/components/lanes/StateDetailPanel";
 import { Panel } from "@/components/ui/Panel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 
 const WINDOWS = [30, 60, 90];
 
@@ -30,8 +32,11 @@ const LanesPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light font-body">
-        <p className="text-muted-text">Loading lanes...</p>
+      <div className="p-6 bg-iron text-light font-body min-h-screen">
+        <Skeleton className="h-8 w-28 mb-6" />
+        <StatCardsSkeleton count={3} />
+        <BlockSkeleton className="h-80 mt-6" />
+        <BlockSkeleton className="h-56 mt-6" />
       </div>
     );
 

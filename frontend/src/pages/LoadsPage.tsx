@@ -15,6 +15,9 @@ import { createLoad } from "@/services/createLoadService";
 import { loadsKpis, loadRevenue } from "@/lib/metrics/loads";
 import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import {
   loadFlag,
   detentionOwed,
@@ -209,7 +212,9 @@ const LoadsPage = () => {
   if (isLoading)
     return (
       <div className="p-6 bg-iron text-light min-h-screen">
-        <p className="text-muted-text">Loading loads...</p>
+        <Skeleton className="h-8 w-28 mb-6" />
+        <StatCardsSkeleton count={4} />
+        <BlockSkeleton className="h-64 mt-6" />
       </div>
     );
 
@@ -366,13 +371,18 @@ const LoadsPage = () => {
 
       <Panel className="p-4 mt-4 overflow-x-auto">
         {rest.length === 0 ? (
-          <p className="text-muted-text text-sm">
-            {(loads ?? []).length === 0
-              ? "No loads yet."
-              : inTransit.length > 0
+          (loads ?? []).length === 0 ? (
+            <EmptyState
+              title="No loads yet"
+              hint="Log your first load to start tracking revenue, agents, and lanes."
+            />
+          ) : (
+            <p className="text-muted-text text-sm py-2">
+              {inTransit.length > 0
                 ? "No other loads match these filters."
                 : "No loads match these filters."}
-          </p>
+            </p>
+          )
         ) : (
           <table className="w-full text-sm min-w-[760px] [&_th]:pr-5 [&_td]:pr-5 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
             <thead>
