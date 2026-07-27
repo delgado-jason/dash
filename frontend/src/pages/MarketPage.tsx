@@ -22,6 +22,7 @@ import {
   tierGauge,
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
+import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
 
 const MACRO = "#7fb2e6"; // FRED PPI overlay line
 
@@ -227,6 +228,8 @@ const MarketPage = () => {
 
   const points = useMemo(() => ratePoints(loads), [loads]);
   const monthly = useMemo(() => monthlyMedianRate(points), [points]);
+  const trend = useMemo(() => marketTrend(freightIndex), [freightIndex]);
+  const yvm = useMemo(() => youVsMarket(monthly, freightIndex), [monthly, freightIndex]);
 
   // Merge the owner's monthly median with the FRED macro index on a shared month
   // axis (union of months). Either line can gap where the other has no value.
@@ -242,12 +245,30 @@ const MarketPage = () => {
   }, [monthly, freightIndex]);
   const hasPpi = freightIndex.length > 0;
   const gauge = useMemo(
-    () => tierGauge(points, targets.bookingLadder, targets.specLadder, now),
-    [points, targets.bookingLadder, targets.specLadder, now],
+    () => tierGauge(points, targets.bookingLadder, targets.specLadder, now, 90, trend?.direction),
+    [points, targets.bookingLadder, targets.specLadder, now, trend],
   );
 
   const toneColor =
     gauge.tone === "hot" ? "#4ade80" : gauge.tone === "soft" ? "#f87171" : "#e0a020";
+
+  // #2 You-vs-market readout helpers.
+  const pctLabel = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%`;
+  const yvmScale = yvm
+    ? Math.max(Math.abs(yvm.yourPct), Math.abs(yvm.marketPct), 0.02)
+    : 1;
+  const yvmBar = (x: number) => Math.min(100, (Math.abs(x) / yvmScale) * 100);
+  const gapPts = yvm ? Math.round(Math.abs(yvm.gap) * 100) : 0;
+  const yvmText =
+    yvm?.verdict === "beating"
+      ? `You're beating the market by ${gapPts} pts — your rates are outrunning the freight index.`
+      : yvm?.verdict === "lagging"
+        ? `You're lagging the market by ${gapPts} pts — it's rising faster than your rates. Room to push on rate or lanes.`
+        : yvm
+          ? "You're moving with the market — this looks like the cycle, not your booking."
+          : null;
+  const yvmColor =
+    yvm?.verdict === "beating" ? "#4ade80" : yvm?.verdict === "lagging" ? "#f0b86a" : "#c9d3e0";
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -302,6 +323,28 @@ const MarketPage = () => {
                       <span><span style={{ color: MACRO }}>╌</span> PPI specialized freight (FRED)</span>
                     )}
                   </div>
+                  {yvm && (
+                    <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+                      <div className="text-xs text-muted-text mb-2">You vs. the market · last 6 months</div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[11px] text-muted-text w-14">you</span>
+                        <div className="flex-1 h-2 rounded" style={{ background: "#232c3f" }}>
+                          <div className="h-2 rounded" style={{ width: `${yvmBar(yvm.yourPct)}%`, background: "#4ade80" }} />
+                        </div>
+                        <span className="text-xs w-12 text-right tabular-nums" style={{ color: yvm.yourPct >= 0 ? "#4ade80" : "#f87171" }}>{pctLabel(yvm.yourPct)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-muted-text w-14">market</span>
+                        <div className="flex-1 h-2 rounded" style={{ background: "#232c3f" }}>
+                          <div className="h-2 rounded" style={{ width: `${yvmBar(yvm.marketPct)}%`, background: MACRO }} />
+                        </div>
+                        <span className="text-xs w-12 text-right tabular-nums" style={{ color: MACRO }}>{pctLabel(yvm.marketPct)}</span>
+                      </div>
+                      <div className="mt-2.5 rounded-lg p-2.5 text-[11px] leading-relaxed" style={{ background: "#0d1119", color: yvmColor }}>
+                        {yvmText}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-xs text-muted-text py-6 text-center">No data yet.</p>

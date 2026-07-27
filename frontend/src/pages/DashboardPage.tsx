@@ -31,6 +31,7 @@ import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { latestRecapWithData } from "@/lib/metrics/recap";
 import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
+import { MarketChip } from "@/components/dashboard/MarketChip";
 import { GrindMeter } from "@/components/dashboard/GrindMeter";
 import { RevenueChart } from "@/components/RevenueChart";
 import { RpmChart } from "@/components/RpmChart";
@@ -153,12 +154,15 @@ const OwnerDashboard = () => {
 
       <div className="flex items-center justify-between mb-6 gap-3">
         <h1 className="text-3xl font-condensed">Dashboard</h1>
-        <Link
-          to="/recap"
-          className="text-sm text-status-info-text hover:underline whitespace-nowrap"
-        >
-          Your {latestRecap ? `${latestRecap.label} ` : ""}recap →
-        </Link>
+        <div className="flex items-center gap-3">
+          <MarketChip />
+          <Link
+            to="/recap"
+            className="text-sm text-status-info-text hover:underline whitespace-nowrap"
+          >
+            Your {latestRecap ? `${latestRecap.label} ` : ""}recap →
+          </Link>
+        </div>
       </div>
 
       <AlertBanners alerts={alerts} />

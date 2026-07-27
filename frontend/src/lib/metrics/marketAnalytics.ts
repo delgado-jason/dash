@@ -6,6 +6,7 @@ import type { Load } from "@/types/load";
 import type { RateLadder } from "./rateTargets";
 import { loadGross } from "./rateTargets";
 import { isSpecializedLoadType } from "@/lib/dimensions";
+import type { MarketDirection } from "./marketSignal";
 
 export type RateBucket = "standard" | "hazmat" | "specialized";
 
@@ -115,6 +116,7 @@ export const tierGauge = (
   specLadder: RateLadder,
   now: Date,
   days = 90,
+  direction?: MarketDirection,
 ): TierGauge => {
   const w = windowRates(points, now, days);
   const row = (label: string, value: number | null): TierGaugeRow | null =>
@@ -145,6 +147,26 @@ export const tierGauge = (
     }
   } else if (std) {
     suggestion = "Not enough recent loads to read the market confidently yet.";
+  }
+
+  // Temper with the macro trend: your own loads lag, so let the FRED direction
+  // confirm or caution a raise/trim before you act on it.
+  if (direction && tone) {
+    if (tone === "hot") {
+      if (direction === "softening")
+        suggestion =
+          "Your loads say hot, but the freight market's turning down — hold, don't chase the peak.";
+      else if (direction === "firming")
+        suggestion =
+          "Market's running hot and the macro's firming too — a confident raise.";
+    } else if (tone === "soft") {
+      if (direction === "firming")
+        suggestion =
+          "Your loads are soft, but the macro's firming — hold before you trim; it may be recovering.";
+      else if (direction === "softening")
+        suggestion =
+          "Market's soft and the macro's falling too — the softness looks real. Consider trimming.";
+    }
   }
   return { rows, windowN: w.length, tone, suggestion };
 };

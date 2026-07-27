@@ -136,4 +136,13 @@ describe("tierGauge", () => {
     expect(g.rows).toHaveLength(0);
     expect(g.tone).toBeNull();
   });
+
+  it("macro trend tempers the suggestion (hot loads, market turning down → hold)", () => {
+    const hot = tierGauge(recent, ladder(4, 6), ladder(9, 10), now, 90, "softening");
+    expect(hot.tone).toBe("hot");
+    expect(hot.suggestion).toMatch(/hold, don't chase the peak/i);
+
+    const confident = tierGauge(recent, ladder(4, 6), ladder(9, 10), now, 90, "firming");
+    expect(confident.suggestion).toMatch(/confident raise/i);
+  });
 });
