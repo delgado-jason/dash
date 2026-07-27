@@ -3,11 +3,14 @@ import type { RateLadder as Ladder } from "@/lib/metrics/rateTargets";
 interface Props {
   ladder: Ladder;
   rpm: number | null; // your current rate — the marker
+  spec?: Ladder; // optional Specialized ladder — shown as a compact second row
 }
 
 const RED = "#e24b4a";
 const AMBER = "#e8940a";
 const GREEN = "#1d9e75";
+const GREEN_BRIGHT = "#4ade80"; // reads as text on dark, unlike the fill green
+const CORAL = "#e05a3a"; // Specialized — matches the Scorer/Settings dot
 const TRACK = "#232c3f";
 
 const rate = (n: number | null): string => (n == null ? "—" : `$${n.toFixed(2)}`);
@@ -15,9 +18,12 @@ const rate = (n: number | null): string => (n == null ? "—" : `$${n.toFixed(2)
 // Horizontal ladder from walk-away → strong, split at the target tier. A marker
 // shows where the current rate lands: red at/below walk-away (losing money),
 // amber below target, green at/above target.
-export const RateLadder = ({ ladder, rpm }: Props) => {
+export const RateLadder = ({ ladder, rpm, spec }: Props) => {
   const { walkAway, target, strong } = ladder;
   if (walkAway == null || target == null || strong == null) return null;
+  // Specialized shares the same walk-away (break-even) — only its target/strong
+  // markups differ, so the compact row shows just those two.
+  const showSpec = spec != null && spec.target != null && spec.strong != null;
 
   const span = strong - walkAway;
   const targetPos = span > 0 ? ((target - walkAway) / span) * 100 : 58;
@@ -73,6 +79,26 @@ export const RateLadder = ({ ladder, rpm }: Props) => {
           <span className="text-light">{rate(strong)}</span>
         </span>
       </div>
+
+      {showSpec && (
+        <div
+          className="flex items-center gap-2 flex-wrap mt-2 pt-2 text-xs"
+          style={{ borderTop: "0.5px solid rgba(255,255,255,0.07)" }}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block rounded-full shrink-0"
+              style={{ width: 8, height: 8, background: CORAL }}
+            />
+            <span className="text-light">Specialized</span>
+          </span>
+          <span className="text-[11px] text-muted-text">oversize · hazmat · heavy</span>
+          <span className="ml-auto text-muted-text">
+            target <span style={{ color: AMBER }}>{rate(spec!.target)}</span> · strong{" "}
+            <span style={{ color: GREEN_BRIGHT }}>{rate(spec!.strong)}</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 };

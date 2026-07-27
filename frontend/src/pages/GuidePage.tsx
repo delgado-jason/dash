@@ -265,6 +265,23 @@ const MiniLadder = () => (
         <span className="text-light">$5.64</span>
       </span>
     </div>
+    <div
+      className="flex items-center gap-2 flex-wrap mt-2 pt-2 text-xs"
+      style={{ borderTop: "0.5px solid rgba(255,255,255,0.07)" }}
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block rounded-full shrink-0"
+          style={{ width: 8, height: 8, background: "#e05a3a" }}
+        />
+        <span className="text-light">Specialized</span>
+      </span>
+      <span className="text-[11px] text-muted-text">oversize · hazmat · heavy</span>
+      <span className="ml-auto text-muted-text">
+        target <span style={{ color: AMBER }}>$6.29</span> · strong{" "}
+        <span style={{ color: "#4ade80" }}>$6.94</span>
+      </span>
+    </div>
   </div>
 );
 
@@ -582,14 +599,14 @@ const GuidePage = () => {
             </Formula>
             <Why>
               There are <span className="text-light">two tier sets</span>, both
-              editable in Settings.{" "}
-              <span className="text-light">Standard</span> (seeded +10 / 20 / 30%,
-              shown above) is your everyday freight and drives the dashboard
-              ladder. <span className="text-light">Specialized</span> (+35 / 45 /
+              editable in Settings and both shown on the ladder above.{" "}
+              <span className="text-light">Standard</span> (seeded +10 / 20 / 30%)
+              is your everyday freight and carries the full bar plus your rate
+              marker. <span className="text-light">Specialized</span> (+35 / 45 /
               60%) is the higher bar for oversize, hazmat, and heavy-haul loads —
-              they command a real premium, so they're judged against it. The
-              marker on the dashboard is your actual gross rate per mile — where
-              you're really pricing.
+              they command a real premium — shown as the compact row beneath (same
+              walk-away, higher target and strong). The marker is your actual gross
+              rate per mile, against the Standard bar.
             </Why>
           </Metric>
 
