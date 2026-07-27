@@ -18,7 +18,7 @@ import {
   getRateLadder,
   monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
-import { tiersFrom } from "@/lib/constants/targets";
+import { tiersFrom, specTiersFrom } from "@/lib/constants/targets";
 import { RateLadder } from "@/components/dashboard/RateLadder";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
@@ -203,6 +203,7 @@ const ExpensesPage = () => {
       ? rateBasis.costPerTotalMile / linehaulTake
       : null;
   const rateLadder = getRateLadder(bookingBase, tiersFrom(schedule));
+  const specRateLadder = getRateLadder(bookingBase, specTiersFrom(schedule));
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -325,7 +326,7 @@ const ExpensesPage = () => {
                   <span className="text-muted-text">to book</span>
                 </span>
               </div>
-              <RateLadder ladder={rateLadder} rpm={rateBasis.grossPerTotalMile} />
+              <RateLadder ladder={rateLadder} rpm={rateBasis.grossPerTotalMile} spec={specRateLadder} />
               <p className="text-[11px] text-muted-text mt-2">
                 walk-away = your cost/mile ÷ your{" "}
                 {Math.round(linehaulTake * 100)}% keep. Book above it with your

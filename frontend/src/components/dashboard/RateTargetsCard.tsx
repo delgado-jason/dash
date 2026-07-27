@@ -128,6 +128,7 @@ const TargetBurst = () => (
 export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
   const {
     bookingLadder,
+    specLadder,
     grossRate,
     gross,
     weekBooked,
@@ -164,7 +165,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
             <p className="text-xs text-muted-text mb-3">
               Rate to book · gross $/mile driven · marker = your rate
             </p>
-            <RateLadder ladder={bookingLadder} rpm={grossRate} />
+            <RateLadder ladder={bookingLadder} rpm={grossRate} spec={specLadder} />
             <p className="text-[11px] text-muted-text mt-2">
               walk-away = your cost/mile ÷ your{" "}
               {Math.round(linehaulTake * 100)}% keep. Book above it — with your
