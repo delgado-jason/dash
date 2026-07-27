@@ -3,10 +3,12 @@ import { scoreLoad, counterRates } from "./loadScore";
 
 // break-even per driven mile = costPerDrivenMile / payTake = 3.08 / 0.78 ≈ $3.95
 const basis = { costPerDrivenMile: 3.08, payTake: 0.78 };
+// Explicit tiers so verdict thresholds are pinned regardless of the seed defaults.
+const TIERS = { minimum: 0.15, target: 0.35, strong: 0.6 };
 
 describe("scoreLoad", () => {
   it("bakes deadhead into the all-in rate and lands TAKE IT above target", () => {
-    const s = scoreLoad({ rate: 2900, loadedMiles: 460, deadheadMiles: 80 }, basis);
+    const s = scoreLoad({ rate: 2900, loadedMiles: 460, deadheadMiles: 80 }, basis, TIERS);
     expect(s.drivenMiles).toBe(540);
     expect(s.allInRpm).toBeCloseTo(2900 / 540); // ~5.37, over loaded+deadhead
     expect(s.breakevenRpm).toBeCloseTo(3.95, 1);
@@ -24,7 +26,7 @@ describe("scoreLoad", () => {
   });
 
   it("STEALs a load 60%+ over break-even", () => {
-    const s = scoreLoad({ rate: 4200, loadedMiles: 400, deadheadMiles: 60 }, basis);
+    const s = scoreLoad({ rate: 4200, loadedMiles: 400, deadheadMiles: 60 }, basis, TIERS);
     expect(s.allInRpm).toBeCloseTo(4200 / 460); // ~9.13
     expect(s.pctOverBreakeven).toBeGreaterThan(0.6);
     expect(s.verdict).toBe("steal");
@@ -32,10 +34,20 @@ describe("scoreLoad", () => {
 
   it("MEHs a load just above break-even but under target", () => {
     // aim ~15% over break-even: rate ≈ 3.95*1.15 * driven
-    const s = scoreLoad({ rate: 2560, loadedMiles: 500, deadheadMiles: 60 }, basis);
+    const s = scoreLoad({ rate: 2560, loadedMiles: 500, deadheadMiles: 60 }, basis, TIERS);
     expect(s.verdict).toBe("meh");
     expect(s.pctOverBreakeven).toBeGreaterThan(0);
     expect(s.pctOverBreakeven).toBeLessThan(0.35);
+  });
+
+  it("grades the SAME load differently under standard vs specialized tiers", () => {
+    // ~+40% over break-even: a steal on standard (strong +30%), only meh on
+    // specialized (target +45%). This is the whole point of the two sets.
+    const std = { minimum: 0.1, target: 0.2, strong: 0.3 };
+    const spec = { minimum: 0.35, target: 0.45, strong: 0.6 };
+    const load = { rate: 2760, loadedMiles: 500, deadheadMiles: 0 }; // 5.52/mi ≈ +40%
+    expect(scoreLoad(load, basis, std).verdict).toBe("steal");
+    expect(scoreLoad(load, basis, spec).verdict).toBe("meh");
   });
 
   it("returns a null verdict when there's no cost basis or no miles", () => {
@@ -51,7 +63,7 @@ describe("scoreLoad", () => {
 
 describe("counterRates", () => {
   it("prices the floor, TAKE IT (+35%), and STEAL (+60%) on the driven miles", () => {
-    const c = counterRates(4, 500)!; // $4/mi break-even, 500 mi
+    const c = counterRates(4, 500, TIERS)!; // $4/mi break-even, 500 mi
     expect(c.floor).toBeCloseTo(2000, 5); // 4 × 500
     expect(c.take).toBeCloseTo(2700, 5); // 4 × 1.35 × 500
     expect(c.steal).toBeCloseTo(3200, 5); // 4 × 1.60 × 500

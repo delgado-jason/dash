@@ -1,4 +1,4 @@
-import { RATE_TIERS } from "@/lib/constants/targets";
+import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 
 // The "Take It or Leave It" load scorer. Judges ONE offered load by what it
 // actually pays per mile you DRIVE (loaded + deadhead), against your real
@@ -29,7 +29,11 @@ export interface LoadScore {
   verdict: Verdict | null; // null when there's no cost basis yet
 }
 
-export const scoreLoad = (input: ScoreInput, basis: ScoreBasis): LoadScore => {
+export const scoreLoad = (
+  input: ScoreInput,
+  basis: ScoreBasis,
+  tiers: RateTiers = RATE_TIERS,
+): LoadScore => {
   const driven =
     (Number(input.loadedMiles) || 0) + (Number(input.deadheadMiles) || 0);
   const rate = Number(input.rate) || 0;
@@ -65,8 +69,8 @@ export const scoreLoad = (input: ScoreInput, basis: ScoreBasis): LoadScore => {
 
   let verdict: Verdict;
   if (allInRpm < breakevenRpm) verdict = "pass";
-  else if (pctOverBreakeven < RATE_TIERS.target) verdict = "meh";
-  else if (pctOverBreakeven < RATE_TIERS.strong) verdict = "take";
+  else if (pctOverBreakeven < tiers.target) verdict = "meh";
+  else if (pctOverBreakeven < tiers.strong) verdict = "take";
   else verdict = "steal";
 
   return {
@@ -93,12 +97,13 @@ export interface CounterRates {
 export const counterRates = (
   breakevenRpm: number | null,
   drivenMiles: number,
+  tiers: RateTiers = RATE_TIERS,
 ): CounterRates | null => {
   if (breakevenRpm == null || breakevenRpm <= 0 || drivenMiles <= 0) return null;
   return {
     floor: breakevenRpm * drivenMiles,
-    take: breakevenRpm * (1 + RATE_TIERS.target) * drivenMiles,
-    steal: breakevenRpm * (1 + RATE_TIERS.strong) * drivenMiles,
+    take: breakevenRpm * (1 + tiers.target) * drivenMiles,
+    steal: breakevenRpm * (1 + tiers.strong) * drivenMiles,
   };
 };
 

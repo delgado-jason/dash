@@ -14,8 +14,11 @@ import { getTrips } from "@/services/tripsService";
 import { getObligations } from "@/services/obligationsService";
 import { getDrivers } from "@/services/driversService";
 import { getTrophies } from "@/services/trophyService";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { computeGrind } from "@/lib/metrics/grind";
+import { marginGoalFrom } from "@/lib/constants/targets";
 import { loadRevenue } from "@/lib/metrics/rateTargets";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { computeAllStatuses } from "@/lib/trophies/status";
@@ -68,6 +71,7 @@ export const useAwardPops = (
     obligations: Obligation[];
     trophies: Trophy[];
     drivers: Driver[];
+    schedule: SettlementSchedule | null;
   } | null>(null);
   const [done, setDone] = useState(false);
 
@@ -80,9 +84,10 @@ export const useAwardPops = (
       getObligations(),
       getTrophies(),
       getDrivers(),
+      getSettlementSchedule().catch(() => null),
     ])
-      .then(([periods, fuel, trucks, trips, obligations, trophies, drivers]) =>
-        setData({ periods, fuel, trucks, trips, obligations, trophies, drivers }),
+      .then(([periods, fuel, trucks, trips, obligations, trophies, drivers, schedule]) =>
+        setData({ periods, fuel, trucks, trips, obligations, trophies, drivers, schedule }),
       )
       .catch(() => {});
   }, []);
@@ -104,7 +109,7 @@ export const useAwardPops = (
     const obligationsAllActive = data.obligations
       .filter((o) => o.active)
       .reduce((s, o) => s + Number(o.amount), 0);
-    const grind = computeGrind(loads, data.periods, obligationsAllActive, now);
+    const grind = computeGrind(loads, data.periods, obligationsAllActive, now, marginGoalFrom(data.schedule));
     const truckLoan = assetLoanStatus(data.obligations, "truck", now);
     const trailerLoan = assetLoanStatus(data.obligations, "trailer", now);
     const paidPcts = [truckLoan?.ownedPct, trailerLoan?.ownedPct].filter(

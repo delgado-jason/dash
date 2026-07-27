@@ -26,7 +26,13 @@ import {
   getRateLadder,
   loadRevenue,
 } from "@/lib/metrics/rateTargets";
-import { RATE_TIERS } from "@/lib/constants/targets";
+import {
+  RATE_TIERS,
+  MARGIN_GOAL,
+  tiersFrom,
+  marginGoalFrom,
+  type RateTiers,
+} from "@/lib/constants/targets";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import {
   careerRank,
@@ -73,6 +79,8 @@ const DriverDetailPage = () => {
   const [lastHome, setLastHome] = useState<string | null>(null);
   const [hometimeThreshold, setHometimeThreshold] = useState(21);
   const [operation, setOperation] = useState("flatbed");
+  const [tiers, setTiers] = useState<RateTiers>(RATE_TIERS);
+  const [marginGoal, setMarginGoal] = useState(MARGIN_GOAL);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +103,8 @@ const DriverDetailPage = () => {
       .then((s) => {
         setHometimeThreshold(s.hometime_threshold_days);
         setOperation(s.operation);
+        setTiers(tiersFrom(s));
+        setMarginGoal(marginGoalFrom(s));
       })
       .catch(() => {});
   }, []);
@@ -139,7 +149,7 @@ const DriverDetailPage = () => {
       ...driverLoads.map((l) => Number(l.odometer_end) || 0),
     );
     const basis = getCostBasis(periods, obligationsTotal, driverLoads, now);
-    const ladder = getRateLadder(basis.breakEvenRpm, RATE_TIERS);
+    const ladder = getRateLadder(basis.breakEvenRpm, tiers);
     const season = getSeasonStats(periods, driverLoads, driverTrips, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
@@ -160,7 +170,7 @@ const DriverDetailPage = () => {
       winDays > 0
         ? Math.min(1, underLoadDaySet(driverLoads, winStart, nowKey).size / winDays)
         : null;
-    const grind = computeGrind(driverLoads, periods, obligationsTotal, now);
+    const grind = computeGrind(driverLoads, periods, obligationsTotal, now, marginGoal);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => l.load_status === "delivered");
     const paidPcts = [
@@ -192,7 +202,7 @@ const DriverDetailPage = () => {
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation]);
+  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, tiers, marginGoal]);
 
   // Hometime status for the (owner-op) driver — days since their last home mark.
   const hometime = useMemo(

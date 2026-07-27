@@ -8,9 +8,15 @@ import { loadGross, type RateLadder } from "@/lib/metrics/rateTargets";
 import { scoreLoad, type ScoreBasis } from "@/lib/metrics/loadScore";
 import { loadDeadheadPct, loadEmptyMiles } from "@/lib/metrics/deadhead";
 import { onTimeStatus, detentionCollected } from "@/lib/detention";
+import { isSpecializedLoadType } from "@/lib/dimensions";
 import { tiered, type Medal } from "./medals";
 import type { Award } from "@/lib/metrics/awards";
-import { DEADHEAD_TARGET } from "@/lib/constants/targets";
+import {
+  DEADHEAD_TARGET,
+  RATE_TIERS,
+  SPEC_TIERS,
+  type RateTiers,
+} from "@/lib/constants/targets";
 
 export interface DispatcherAwardInput {
   loads: Load[];
@@ -19,6 +25,8 @@ export interface DispatcherAwardInput {
   scoreBasis: ScoreBasis;
   freeHours: number;
   streak: number; // best booking streak in weeks (from the grind)
+  tiers?: RateTiers; // standard markup tiers — the "steal" verdict for legal freight
+  specTiers?: RateTiers; // specialized tiers — for oversize/hazmat/heavy loads
 }
 
 // A grind patch for display: a value that climbs toward milestones.
@@ -84,7 +92,14 @@ interface Stats {
 }
 
 const computeStats = (input: DispatcherAwardInput): Stats => {
-  const { loads, userId, ladder, scoreBasis } = input;
+  const {
+    loads,
+    userId,
+    ladder,
+    scoreBasis,
+    tiers = RATE_TIERS,
+    specTiers = SPEC_TIERS,
+  } = input;
   const mine = loads.filter((l) => l.booked_by === userId && l.load_status !== "cancelled");
   const delivered = mine.filter((l) => l.load_status === "delivered");
   const target = ladder.target ?? Infinity;
@@ -100,6 +115,8 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
         deadheadMiles: loadEmptyMiles(l) ?? (Number(l.deadhead_miles) || 0),
       },
       scoreBasis,
+      // Specialized freight is graded on the higher set, mirroring the Scorer.
+      isSpecializedLoadType(l.load_type) ? specTiers : tiers,
     ).verdict === "steal";
 
   // Deepest single-agent relationship.

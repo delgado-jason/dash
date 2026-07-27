@@ -170,17 +170,22 @@ export const bookedRate = (net: number | null, take: number): number | null =>
 const WEEKS_PER_MONTH = 52 / 12;
 
 export interface GrossTargets {
-  weeklyBreakEven: number | null; // gross needed to cover true cost
-  weeklyTarget: number | null; // + target-tier markup
+  weeklyBreakEven: number | null; // revenue needed to cover true cost
+  weeklyTarget: number | null; // revenue that hits the margin goal
   dailyBreakEven: number | null;
   dailyTarget: number | null;
 }
 
+// Weekly/daily REVENUE targets from your true cost and your target profit margin
+// (profit ÷ revenue). Revenue at margin m = cost ÷ (1 − m). The margin goal is a
+// business KPI set in Settings, deliberately separate from the per-mile rate
+// tiers. Clamped elsewhere to < 1; guarded here so a bad value can't divide by 0.
 export const getGrossTargets = (
   trueMonthlyCost: number | null,
-  targetTier: number,
+  marginGoal: number,
   workingDaysPerMonth: number,
 ): GrossTargets => {
+  const uplift = marginGoal < 1 ? 1 / (1 - Math.max(0, marginGoal)) : 1;
   if (trueMonthlyCost == null || trueMonthlyCost <= 0)
     return {
       weeklyBreakEven: null,
@@ -192,9 +197,9 @@ export const getGrossTargets = (
   const daily = trueMonthlyCost / workingDaysPerMonth;
   return {
     weeklyBreakEven: weekly,
-    weeklyTarget: weekly * (1 + targetTier),
+    weeklyTarget: weekly * uplift,
     dailyBreakEven: daily,
-    dailyTarget: daily * (1 + targetTier),
+    dailyTarget: daily * uplift,
   };
 };
 

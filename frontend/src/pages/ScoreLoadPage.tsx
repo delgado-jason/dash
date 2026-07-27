@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
-import { RATE_TIERS } from "@/lib/constants/targets";
+import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 import {
   getLoadMiles,
   getScoreRoute,
@@ -18,13 +18,18 @@ const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const rpm = (n: number | null) => (n != null ? `$${n.toFixed(2)}` : "—");
 
 // Where the load sits on the PASS | MEH | TAKE IT | STEAL bar (0–100%).
-const markerPct = (pct: number | null, allIn: number | null, be: number | null): number => {
+const markerPct = (
+  pct: number | null,
+  allIn: number | null,
+  be: number | null,
+  tiers: RateTiers = RATE_TIERS,
+): number => {
   if (pct == null || allIn == null || be == null) return 0;
   if (allIn < be) return Math.max(0, Math.min(25, (allIn / be) * 25)); // PASS band
-  if (pct < RATE_TIERS.target) return 25 + (pct / RATE_TIERS.target) * 25; // MEH
-  if (pct < RATE_TIERS.strong)
-    return 50 + ((pct - RATE_TIERS.target) / (RATE_TIERS.strong - RATE_TIERS.target)) * 25; // TAKE
-  return 75 + Math.min(1, (pct - RATE_TIERS.strong) / 0.4) * 25; // STEAL
+  if (pct < tiers.target) return 25 + (pct / tiers.target) * 25; // MEH
+  if (pct < tiers.strong)
+    return 50 + ((pct - tiers.target) / (tiers.strong - tiers.target)) * 25; // TAKE
+  return 75 + Math.min(1, (pct - tiers.strong) / 0.4) * 25; // STEAL
 };
 
 const box = (accent?: boolean) => ({
@@ -175,6 +180,7 @@ const ScoreLoadPage = () => {
   const [hgt, setHgt] = useState<FtIn>({ ft: "", in: "" });
   const [loaded, setLoaded] = useState("");
   const [deadhead, setDeadhead] = useState("");
+  const [hazmat, setHazmat] = useState(false);
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
   const [route, setRoute] = useState<RouteGeo | null>(null);
@@ -209,6 +215,11 @@ const ScoreLoadPage = () => {
     dims.lengthIn != null ||
     dims.grossWeightLb != null;
   const oversize = useMemo(() => classifyOversize(dims), [dims]);
+  // Specialized freight (oversize by dims/weight, OR hazmat) is held to the
+  // higher tier set; everything else uses the standard set. This is the only
+  // thing that decides which tiers grade the load.
+  const specialized = oversize.oversize || hazmat;
+  const activeTiers = specialized ? targets.specTiers : targets.tiers;
 
   const pickupReady = !!(pickup.city && pickup.state);
   const deliveryReady = !!(delivery.city && delivery.state);
@@ -267,12 +278,13 @@ const ScoreLoadPage = () => {
       costPerDrivenMile: targets.basis.costPerTotalMile,
       payTake: targets.basis.payTake,
     },
+    activeTiers,
   );
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
   // Counter ladder — only when the load comes in under target (PASS/MEH).
   const belowTarget = score.verdict === "pass" || score.verdict === "meh";
   const counter =
-    belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles) : null;
+    belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
   const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
   const routeNote = routing
@@ -334,6 +346,22 @@ const ScoreLoadPage = () => {
           <DimField label="Width" val={wid} onChange={setWid} accent={oversize.reasons.some((r) => r.startsWith("width"))} />
           <DimField label="Height" val={hgt} onChange={setHgt} />
         </div>
+
+        <label
+          className="flex items-center gap-2 px-3 py-2 mb-3 cursor-pointer select-none"
+          style={{ background: "#141b28", border: `1px solid ${hazmat ? "#85500b" : "#24304a"}`, borderRadius: 9 }}
+        >
+          <input
+            type="checkbox"
+            checked={hazmat}
+            onChange={(e) => setHazmat(e.target.checked)}
+            className="accent-[#e8940a]"
+          />
+          <span className="text-[12px]" style={{ color: "#cdd8e8" }}>Hazmat</span>
+          <span className="ml-auto text-[10px]" style={{ color: "#5f6b80" }}>
+            premium freight · specialized tiers
+          </span>
+        </label>
 
         {anyDim &&
           (oversize.oversize ? (
@@ -426,6 +454,15 @@ const ScoreLoadPage = () => {
               </div>
             </div>
 
+            <div className="text-center text-[10px] mb-1" style={{ color: "#7c899b" }}>
+              graded on your{" "}
+              <span style={{ color: specialized ? "#f5b03a" : "#7fb2e6" }}>
+                {specialized ? "Specialized" : "Standard"}
+              </span>{" "}
+              tiers · target +{Math.round(activeTiers.target * 100)}% · steal +
+              {Math.round(activeTiers.strong * 100)}%
+            </div>
+
             <div className="grid grid-cols-3 gap-2 mt-3.5">
               <div className="rounded-[9px] py-2 text-center" style={{ background: "#141b28" }}>
                 <div className="text-[9px] text-muted-text tracking-wide">ALL-IN / MI</div>
@@ -460,7 +497,7 @@ const ScoreLoadPage = () => {
                 <div
                   style={{
                     position: "absolute",
-                    left: `${markerPct(score.pctOverBreakeven, score.allInRpm, score.breakevenRpm)}%`,
+                    left: `${markerPct(score.pctOverBreakeven, score.allInRpm, score.breakevenRpm, activeTiers)}%`,
                     top: -3,
                     width: 2,
                     height: 16,

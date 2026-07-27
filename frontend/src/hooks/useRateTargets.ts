@@ -16,7 +16,9 @@ import {
   getWindowRpm,
 } from "@/lib/metrics/rateTargets";
 import {
-  RATE_TIERS,
+  tiersFrom,
+  specTiersFrom,
+  marginGoalFrom,
   WORKING_DAYS_PER_MONTH,
   PAY_WEEK_START_DOW,
 } from "@/lib/constants/targets";
@@ -65,33 +67,30 @@ export const useRateTargets = (loads: Load[]) => {
 
     // Ladder: gross rate to book per mile DRIVEN (deadhead folded into total miles)
     // = cost-per-total-mile ÷ keep, scaled by tiers; marker = your gross rate/mile.
+    // TWO ladders — standard is the app-wide baseline; specialized is what the
+    // Scorer holds oversize/hazmat/heavy freight to.
+    const tiers = tiersFrom(schedule);
+    const specTiers = specTiersFrom(schedule);
+    const marginGoal = marginGoalFrom(schedule);
     const bookingBase =
       basis.costPerTotalMile != null && linehaulTake > 0
         ? basis.costPerTotalMile / linehaulTake
         : null;
-    const bookingLadder = getRateLadder(bookingBase, RATE_TIERS);
+    const bookingLadder = getRateLadder(bookingBase, tiers);
+    const specLadder = getRateLadder(bookingBase, specTiers);
 
-    // Weekly/daily GROSS to book = monthly cost grossed up by your keep, spread over
-    // the pay-week / working day, plus the target markup.
+    // Weekly/daily GROSS revenue targets = monthly cost grossed up by your keep,
+    // spread over the pay-week / working day, lifted to your MARGIN goal. The
+    // margin goal is a total-revenue KPI, independent of the per-mile rate tiers.
     const bookingCost =
       basis.trueMonthlyCost != null && linehaulTake > 0
         ? basis.trueMonthlyCost / linehaulTake
         : null;
     const gross = getGrossTargets(
       bookingCost,
-      RATE_TIERS.target,
+      marginGoal,
       WORKING_DAYS_PER_MONTH,
     );
-    // Weekly MINIMUM (+15%) and STRONG (+60%) tiers — the extra ticks on the pace
-    // bar (floor · min · target · strong).
-    const weeklyMinimum =
-      gross.weeklyBreakEven != null
-        ? gross.weeklyBreakEven * (1 + RATE_TIERS.minimum)
-        : null;
-    const weeklyStrong =
-      gross.weeklyBreakEven != null
-        ? gross.weeklyBreakEven * (1 + RATE_TIERS.strong)
-        : null;
 
     // This week's gross booked (committed) + gross delivered (earned).
     const weekBooked = getWeekGrossCommitted(loads, start, end);
@@ -100,17 +99,19 @@ export const useRateTargets = (loads: Load[]) => {
     const rollingRpm = getWindowRpm(loads, now); // net RPM — the Avg RPM KPI
     return {
       basis,
-      gross, // weekly/daily GROSS dollars to book (break-even + target)
-      weeklyMinimum, // weekly +15% tier (gross)
-      weeklyStrong, // weekly +60% stretch tier (gross)
+      gross, // weekly/daily GROSS revenue targets (break-even + margin goal)
+      marginGoal, // target profit margin driving those revenue targets
       weekBooked, // this week's gross committed (booked + in-transit + delivered)
       weekEarned, // this week's gross earned (delivered only)
       rollingRpm,
       linehaulTake,
-      bookingLadder, // gross rate to book per mile driven (walk-away/target/strong)
+      bookingLadder, // STANDARD gross rate to book per mile driven (walk/target/strong)
+      specLadder, // SPECIALIZED ladder — oversize/hazmat/heavy
       grossRate: basis.grossPerTotalMile, // your gross rate/mile — the ladder marker
       weekStart: start,
       weekEnd: end,
+      tiers, // standard markup tiers (Scorer default + downstream)
+      specTiers, // specialized markup tiers (Scorer, for specialized loads)
       ready: basis.breakEvenRpm != null,
     };
   }, [periods, obligationsMonthly, loads, schedule]);

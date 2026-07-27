@@ -14,7 +14,7 @@ import {
   getTrueMonthly,
 } from "@/lib/metrics/expenses";
 import { getCostBasis, getRateLadder } from "@/lib/metrics/rateTargets";
-import { RATE_TIERS } from "@/lib/constants/targets";
+import { tiersFrom } from "@/lib/constants/targets";
 import { RateLadder } from "@/components/dashboard/RateLadder";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
@@ -191,7 +191,7 @@ const ExpensesPage = () => {
     rateBasis.costPerTotalMile != null && linehaulTake > 0
       ? rateBasis.costPerTotalMile / linehaulTake
       : null;
-  const rateLadder = getRateLadder(bookingBase, RATE_TIERS);
+  const rateLadder = getRateLadder(bookingBase, tiersFrom(schedule));
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">

@@ -10,6 +10,8 @@ import { getFuelEntries } from "@/services/fuelService";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getTrucks } from "@/services/trucksService";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { useLocation } from "react-router-dom";
 import {
   computeRecap,
@@ -18,6 +20,7 @@ import {
   type RecapScope,
   type RecapRange,
 } from "@/lib/metrics/recap";
+import { marginGoalFrom } from "@/lib/constants/targets";
 import { careerRank } from "@/lib/metrics/playerCard";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
@@ -41,6 +44,7 @@ const RecapPage = () => {
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
   const location = useLocation();
   const navScope = (location.state as { scope?: RecapScope } | null)?.scope;
   const [scope, setScope] = useState<RecapScope>(navScope ?? "month");
@@ -55,6 +59,7 @@ const RecapPage = () => {
     getExpensePeriods().then(setPeriods).catch(() => {});
     getObligations().then(setObligations).catch(() => {});
     getTrucks().then(setTrucks).catch(() => {});
+    getSettlementSchedule().then(setSchedule).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -71,9 +76,9 @@ const RecapPage = () => {
     .reduce((s, o) => s + Number(o.amount), 0);
 
   const stats = useMemo(
-    () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now),
+    () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now, marginGoalFrom(schedule)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loads, fuel, periods, obligationsMonthly, range.label, scope],
+    [loads, fuel, periods, obligationsMonthly, range.label, scope, schedule],
   );
 
   const truckAvatarUrl = trucks.find((t) => t.avatar_url)?.avatar_url ?? null;

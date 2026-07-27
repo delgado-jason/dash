@@ -52,6 +52,14 @@ export const LEGAL_HEIGHT_IN = 162; // 13'6"
 export const LEGAL_LENGTH_IN = 636; // 53' overall
 export const LEGAL_GROSS_LB = 80000; // gross vehicle weight
 
+// Load types held to the SPECIALIZED (higher) rate-tier set — the premium bands
+// in Jason's delivered history: oversize, hazmat, and heavy haul. Everything else
+// is graded on the standard set. The Scorer derives "specialized" live from the
+// dims + hazmat toggle; anything working off stored history uses this by type.
+export const SPECIALIZED_LOAD_TYPES = ["oversize", "hazmat", "heavy haul"];
+export const isSpecializedLoadType = (t?: string | null): boolean =>
+  t != null && SPECIALIZED_LOAD_TYPES.includes(t);
+
 export interface TravelDims {
   widthIn?: number | null;
   heightIn?: number | null; // total travel height (deck + load)

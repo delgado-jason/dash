@@ -14,6 +14,13 @@ const DEFAULTS = {
   per_diem_deduct_pct: 0.8,
   hometime_threshold_days: 21,
   operation: "flatbed",
+  rate_tier_std_min: 0.1,
+  rate_tier_std_target: 0.2,
+  rate_tier_std_strong: 0.3,
+  rate_tier_spec_min: 0.35,
+  rate_tier_spec_target: 0.45,
+  rate_tier_spec_strong: 0.6,
+  margin_goal: 0.26,
 };
 
 const OPERATIONS = [
@@ -35,6 +42,20 @@ const PCT_FIELDS = [
   "accessorial_pct",
 ];
 
+// Two rate-tier sets: Standard (all freight) and Specialized (oversize/hazmat/
+// heavy). Each set is a fraction OVER break-even and must ascend internally.
+const STD_TIER_FIELDS = [
+  "rate_tier_std_min",
+  "rate_tier_std_target",
+  "rate_tier_std_strong",
+];
+const SPEC_TIER_FIELDS = [
+  "rate_tier_spec_min",
+  "rate_tier_spec_target",
+  "rate_tier_spec_strong",
+];
+const TIER_FIELDS = [...STD_TIER_FIELDS, ...SPEC_TIER_FIELDS];
+
 const COLUMNS = [
   ...PCT_FIELDS,
   "carrier_name",
@@ -43,6 +64,8 @@ const COLUMNS = [
   "per_diem_deduct_pct",
   "hometime_threshold_days",
   "operation",
+  ...TIER_FIELDS,
+  "margin_goal",
 ];
 
 // ---- GET ---- (always returns a schedule; defaults if none saved yet)
@@ -109,6 +132,21 @@ export async function upsertSettlementSchedule(user_id, data) {
     provided.operation = data.operation;
   }
 
+  for (const f of TIER_FIELDS) {
+    if (data[f] === undefined) continue;
+    const n = Number(data[f]);
+    if (!Number.isFinite(n) || n < 0 || n > 3)
+      throw new ValidationError(`${f} must be a fraction between 0 and 3`);
+    provided[f] = n;
+  }
+
+  if (data.margin_goal !== undefined) {
+    const n = Number(data.margin_goal);
+    if (!Number.isFinite(n) || n < 0 || n >= 1)
+      throw new ValidationError("margin_goal must be a fraction between 0 and 1");
+    provided.margin_goal = n;
+  }
+
   if (Object.keys(provided).length === 0)
     throw new ValidationError("No valid fields to update");
 
@@ -116,36 +154,34 @@ export async function upsertSettlementSchedule(user_id, data) {
   const current = await getSettlementSchedule(user_id);
   const m = { ...current, ...provided };
 
+  // Each tier set must ascend: a "good" load can't be worth less than the minimum.
+  const ascends = (fields) => {
+    const [a, b, c] = fields.map((f) => Number(m[f]));
+    return a <= b && b <= c;
+  };
+  if (!ascends(STD_TIER_FIELDS))
+    throw new ValidationError(
+      "standard rate tiers must ascend: minimum ≤ target ≤ strong",
+    );
+  if (!ascends(SPEC_TIER_FIELDS))
+    throw new ValidationError(
+      "specialized rate tiers must ascend: minimum ≤ target ≤ strong",
+    );
+
+  // Build the upsert from COLUMNS so the field list stays in one place.
+  const cols = ["user_id", ...COLUMNS];
+  const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+  const updates = COLUMNS.map((c) => `${c} = EXCLUDED.${c}`).join(",\n       ");
+  const values = [user_id, ...COLUMNS.map((c) => m[c])];
+
   const result = await db.query(
-    `INSERT INTO settlement_schedules
-       (user_id, linehaul_pct, trailer_pct, fuel_surcharge_pct, accessorial_pct, carrier_name, detention_free_hours, per_diem_rate, per_diem_deduct_pct, hometime_threshold_days, operation)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `INSERT INTO settlement_schedules (${cols.join(", ")})
+     VALUES (${placeholders})
      ON CONFLICT (user_id) DO UPDATE SET
-       linehaul_pct            = EXCLUDED.linehaul_pct,
-       trailer_pct             = EXCLUDED.trailer_pct,
-       fuel_surcharge_pct      = EXCLUDED.fuel_surcharge_pct,
-       accessorial_pct         = EXCLUDED.accessorial_pct,
-       carrier_name            = EXCLUDED.carrier_name,
-       detention_free_hours    = EXCLUDED.detention_free_hours,
-       per_diem_rate           = EXCLUDED.per_diem_rate,
-       per_diem_deduct_pct     = EXCLUDED.per_diem_deduct_pct,
-       hometime_threshold_days = EXCLUDED.hometime_threshold_days,
-       operation               = EXCLUDED.operation,
-       updated_at              = NOW()
+       ${updates},
+       updated_at = NOW()
      RETURNING ${COLUMNS.join(", ")}`,
-    [
-      user_id,
-      m.linehaul_pct,
-      m.trailer_pct,
-      m.fuel_surcharge_pct,
-      m.accessorial_pct,
-      m.carrier_name,
-      m.detention_free_hours,
-      m.per_diem_rate,
-      m.per_diem_deduct_pct,
-      m.hometime_threshold_days,
-      m.operation,
-    ],
+    values,
   );
   return result.rows[0];
 }
