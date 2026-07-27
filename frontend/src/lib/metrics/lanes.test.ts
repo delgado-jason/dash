@@ -7,6 +7,7 @@ import {
   getLanesSummary,
   getRecentLoads,
   getStateMapData,
+  getStateDetail,
 } from "./lanes";
 
 const makeLoad = (over: Partial<Load>): Load => ({
@@ -235,5 +236,38 @@ describe("recency windowing", () => {
     expect(data["Georgia"].avgRpm).toBeCloseTo(3.0, 5); // only the recent load
     expect(data["Texas"].loadCount).toBe(1); // shaded (ran there this year)
     expect(data["Texas"].avgRpm).toBeNull(); // but nothing in the 90-day window
+  });
+});
+
+describe("getStateDetail", () => {
+  const NOW = new Date("2026-06-10T00:00:00Z").getTime();
+  const loads = [
+    makeLoad({ origin_state: "GA", origin_market: "Atlanta", delivery_market: "Dallas", agent_id: "a1", agent: "Mike", linehaul: "2000", loaded_miles: 1000, delivery_date: "2026-06-01" }),
+    makeLoad({ origin_state: "GA", origin_market: "Atlanta", delivery_market: "Dallas", agent_id: "a1", agent: "Mike", linehaul: "2400", loaded_miles: 1000, delivery_date: "2026-06-03" }),
+    makeLoad({ origin_state: "GA", origin_market: "Savannah", delivery_market: "Miami", agent_id: "a2", agent: "Dana", linehaul: "1800", loaded_miles: 1000, delivery_date: "2026-06-04" }),
+    makeLoad({ origin_state: "TX", agent_id: "a3", agent: "Rick", linehaul: "3000", loaded_miles: 1000, delivery_date: "2026-06-05" }),
+    makeLoad({ origin_state: "GA", load_status: "booked", agent_id: "a1", agent: "Mike", delivery_date: "2026-06-06" }),
+  ];
+
+  it("groups your agents out of the state, most-used first; excludes other states + non-delivered", () => {
+    const d = getStateDetail(loads, "Georgia", 3, 90, NOW);
+    expect(d.state).toBe("Georgia");
+    expect(d.loadCount).toBe(3);
+    expect(d.agents.map((a) => a.agent)).toEqual(["Mike", "Dana"]);
+    expect(d.agents[0]).toMatchObject({ agentId: "a1", loadCount: 2 });
+    expect(d.agents[0].medianRpm).toBeCloseTo(2.2); // median of 2.0, 2.4
+    expect(d.agents.find((a) => a.agent === "Rick")).toBeUndefined();
+  });
+
+  it("lists your lanes out of the state, most-run first", () => {
+    const d = getStateDetail(loads, "Georgia", 3, 90, NOW);
+    expect(d.lanes[0]).toMatchObject({ lane: "Atlanta → Dallas", loadCount: 2 });
+    expect(d.lanes.map((l) => l.lane)).toContain("Savannah → Miami");
+  });
+
+  it("empty for a state you haven't run", () => {
+    const d = getStateDetail(loads, "Wyoming", 3, 90, NOW);
+    expect(d.loadCount).toBe(0);
+    expect(d.agents).toHaveLength(0);
   });
 });
