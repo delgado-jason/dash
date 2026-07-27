@@ -73,37 +73,46 @@ export async function renderRouteMap({ deadheadOrigin, pickup, delivery } = {}) 
         : null,
     ]);
     if (pk && dl) {
-      const lines = [];
       const points = [];
-
-      // Deadhead leg first so the loaded haul draws on top of it.
-      if (dh) {
-        const dhPolys = await routePolylines(dh, pk);
-        if (dhPolys)
-          for (const p of dhPolys)
-            lines.push({ polyline: p, color: C_DEADHEAD, width: 4 });
-        else
-          lines.push({ coords: [dh.lat, dh.lng, pk.lat, pk.lng], color: C_DEADHEAD, width: 4 });
-        points.push({ lat: dh.lat, lng: dh.lng, color: C_DH_ORIGIN });
-      }
-
-      const loadedPolys = await routePolylines(pk, dl);
-      if (loadedPolys)
-        for (const p of loadedPolys)
-          lines.push({ polyline: p, color: C_LOADED, width: 5 });
-      else
-        lines.push({ coords: [pk.lat, pk.lng, dl.lat, dl.lng], color: C_LOADED, width: 5 });
+      if (dh) points.push({ lat: dh.lat, lng: dh.lng, color: C_DH_ORIGIN });
       points.push({ lat: pk.lat, lng: pk.lng, color: C_START });
       points.push({ lat: dl.lat, lng: dl.lng, color: C_OBJECTIVE });
 
-      const url = buildMapImageUrl({
-        apiKey: process.env.HERE_API_KEY,
-        width: 640,
-        height: 300,
-        lines,
-        points,
-      });
-      image = await fetchMapDataUri(url);
+      // Straight raw-coord segments — the confirmed-working fallback.
+      const straight = [];
+      if (dh)
+        straight.push({ coords: [dh.lat, dh.lng, pk.lat, pk.lng], color: C_DEADHEAD, width: 4 });
+      straight.push({ coords: [pk.lat, pk.lng, dl.lat, dl.lng], color: C_LOADED, width: 5 });
+
+      // Road-route geometry — the nicer primary, per leg (polyline when HERE
+      // returns it, otherwise that leg's straight segment).
+      const road = [];
+      if (dh) {
+        const p = await routePolylines(dh, pk);
+        if (p) for (const pl of p) road.push({ polyline: pl, color: C_DEADHEAD, width: 4 });
+        else road.push({ coords: [dh.lat, dh.lng, pk.lat, pk.lng], color: C_DEADHEAD, width: 4 });
+      }
+      const lp = await routePolylines(pk, dl);
+      if (lp) for (const pl of lp) road.push({ polyline: pl, color: C_LOADED, width: 5 });
+      else road.push({ coords: [pk.lat, pk.lng, dl.lat, dl.lng], color: C_LOADED, width: 5 });
+
+      // Try the road route; if its image request fails (rejected polyline, URL
+      // too long), fall back to plain straight lines so a map still renders.
+      for (const lines of [road, straight]) {
+        try {
+          const url = buildMapImageUrl({
+            apiKey: process.env.HERE_API_KEY,
+            width: 640,
+            height: 300,
+            lines,
+            points,
+          });
+          image = await fetchMapDataUri(url);
+          if (image) break;
+        } catch {
+          // try the next line style
+        }
+      }
     }
   } catch {
     image = null;

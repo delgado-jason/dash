@@ -137,7 +137,9 @@ export const buildMapImageUrl = ({
     overlays.push(`line:${geom};color=%23${l.color};width=${l.width}`);
   }
   for (const p of points) {
-    overlays.push(`multiPoint:${p.lat},${p.lng};color=%23${p.color};size=large`);
+    // A single pin is `point:` — `multiPoint:` is for a set and 400s on one pair
+    // (confirmed against the live API). Color is accepted; `size` is not passed.
+    overlays.push(`point:${p.lat},${p.lng};color=%23${p.color}`);
   }
   // Overlay values are already URL-safe (polyline is [A-Za-z0-9-_], plus digits,
   // '.', ':', ';', ','); the color '#' is the only reserved char, emitted as %23.
