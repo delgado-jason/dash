@@ -9,6 +9,7 @@
 
 const GEOCODE_URL = "https://geocode.search.hereapi.com/v1/geocode";
 const ROUTER_URL = "https://router.hereapi.com/v8/routes";
+const AUTOCOMPLETE_URL = "https://autocomplete.search.hereapi.com/v1/autocomplete";
 
 // ---- unit conversions (pure) ----
 export const metersToMiles = (m) => m / 1609.344;
@@ -89,4 +90,45 @@ export const routeMiles = async (from, to, dims) => {
   if (!res.ok) throw new Error(`HERE route failed (${res.status})`);
   const meters = parseRouteMeters(await res.json());
   return meters == null ? null : metersToMiles(meters);
+};
+
+// ---- city autocomplete ----
+
+// Pure: HERE autocomplete response → up to `limit` city suggestions
+// [{ city, state, label }]. Keeps any US result that resolves to a city + a
+// 2-letter state, de-duped by "CITY,ST" (so a street and its city collapse to
+// one city suggestion). Robust whether or not the request filtered by type.
+export const parseCitySuggestions = (json, limit = 6) => {
+  const items = json?.items;
+  if (!Array.isArray(items)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const it of items) {
+    const a = it?.address;
+    const city = a?.city?.trim();
+    const state = a?.stateCode?.trim()?.toUpperCase();
+    if (!city || !state || state.length !== 2) continue;
+    const key = `${city.toUpperCase()},${state}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ city, state, label: `${city}, ${state}` });
+    if (out.length >= limit) break;
+  }
+  return out;
+};
+
+// City typeahead suggestions for a partial query (US cities). [] when
+// unconfigured or the query is too short to be worth a call.
+export const citySuggest = async (q) => {
+  if (!hasKey() || !q || q.trim().length < 2) return [];
+  const params = new URLSearchParams({
+    q: q.trim(),
+    in: "countryCode:USA",
+    types: "city",
+    limit: "10",
+    apiKey: process.env.HERE_API_KEY,
+  });
+  const res = await fetch(`${AUTOCOMPLETE_URL}?${params}`);
+  if (!res.ok) throw new Error(`HERE autocomplete failed (${res.status})`);
+  return parseCitySuggestions(await res.json());
 };

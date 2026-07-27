@@ -6,6 +6,7 @@ import {
   poundsToKg,
   parseGeocode,
   parseRouteMeters,
+  parseCitySuggestions,
 } from "./hereProvider.js";
 
 describe("unit conversions", () => {
@@ -54,5 +55,49 @@ describe("parseRouteMeters", () => {
   test("null when a section is missing its length (don't trust a partial total)", () => {
     const json = { routes: [{ sections: [{ summary: { length: 1000 } }, { summary: {} }] }] };
     assert.equal(parseRouteMeters(json), null);
+  });
+});
+
+describe("parseCitySuggestions", () => {
+  test("maps city + stateCode to {city, state, label}", () => {
+    const json = {
+      items: [
+        { address: { city: "Dallas", stateCode: "TX" } },
+        { address: { city: "Dalton", stateCode: "GA" } },
+      ],
+    };
+    assert.deepEqual(parseCitySuggestions(json), [
+      { city: "Dallas", state: "TX", label: "Dallas, TX" },
+      { city: "Dalton", state: "GA", label: "Dalton, GA" },
+    ]);
+  });
+
+  test("trims junk, uppercases the state, and de-dupes by city+state", () => {
+    const json = {
+      items: [
+        { address: { city: "Ferris ", stateCode: "tx" } },
+        { address: { city: "Ferris", stateCode: "TX" } }, // dup after trim/upper
+        { address: { city: "123 Main St", stateCode: "TX" } }, // a street resolving to a city we already have? no — different "city"
+      ],
+    };
+    const out = parseCitySuggestions(json);
+    assert.deepEqual(out[0], { city: "Ferris", state: "TX", label: "Ferris, TX" });
+    // the second Ferris is deduped
+    assert.equal(out.filter((s) => s.city === "Ferris").length, 1);
+  });
+
+  test("skips items without a usable city + 2-letter state; caps at the limit", () => {
+    const json = {
+      items: [
+        { address: { city: "Austin", stateCode: "TX" } },
+        { address: { stateCode: "TX" } }, // no city
+        { address: { city: "Nowhere", stateCode: "Texas" } }, // bad state
+        { title: "junk" },
+      ],
+    };
+    assert.deepEqual(parseCitySuggestions(json, 6), [
+      { city: "Austin", state: "TX", label: "Austin, TX" },
+    ]);
+    assert.deepEqual(parseCitySuggestions({}), []);
   });
 });

@@ -7,7 +7,8 @@ import {
 } from "@/services/tripsService";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, inputClass } from "@/components/ui/input";
+import CityAutocomplete from "@/components/CityAutocomplete";
 import { Panel } from "@/components/ui/Panel";
 import { Label } from "@/components/ui/label";
 import {
@@ -180,11 +181,14 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
         {/* Start location — where the truck currently sits */}
         <div>
           <Label htmlFor="start_city">Start City</Label>
-          <Input
-            name="start_city"
+          <CityAutocomplete
             id="start_city"
-            onChange={handleChange}
             value={formData.start_city ?? ""}
+            onType={(city) => setFormData((prev) => ({ ...prev, start_city: city }))}
+            onSelect={(city, state) =>
+              setFormData((prev) => ({ ...prev, start_city: city, start_state: state }))
+            }
+            inputClassName={inputClass}
           />
           <p className="text-xs text-muted-text mt-1">
             Prefilled from your last known location.
@@ -205,11 +209,14 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
         {/* End location — where the truck ends up (feeds its next last-known spot) */}
         <div>
           <Label htmlFor="end_city">End City</Label>
-          <Input
-            name="end_city"
+          <CityAutocomplete
             id="end_city"
-            onChange={handleChange}
             value={formData.end_city ?? ""}
+            onType={(city) => setFormData((prev) => ({ ...prev, end_city: city }))}
+            onSelect={(city, state) =>
+              setFormData((prev) => ({ ...prev, end_city: city, end_state: state }))
+            }
+            inputClassName={inputClass}
           />
         </div>
 

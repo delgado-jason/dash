@@ -12,6 +12,7 @@ import {
 import { getLastKnownLocation } from "@/services/tripsService";
 import { toInches, classifyOversize } from "@/lib/dimensions";
 import MissionMap from "@/components/MissionMap";
+import CityAutocomplete from "@/components/CityAutocomplete";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const rpm = (n: number | null) => (n != null ? `$${n.toFixed(2)}` : "—");
@@ -97,11 +98,11 @@ const PlaceRow = ({
   <div className="flex gap-2 mb-2.5">
     <div className="flex-[3]">
       <Lbl>{label}</Lbl>
-      <input
-        style={txt}
+      <CityAutocomplete
         value={place.city}
-        placeholder="City"
-        onChange={(e) => onChange({ ...place, city: e.target.value })}
+        onType={(city) => onChange({ ...place, city })}
+        onSelect={(city, state) => onChange({ city, state })}
+        inputStyle={txt}
       />
     </div>
     <div className="flex-1">

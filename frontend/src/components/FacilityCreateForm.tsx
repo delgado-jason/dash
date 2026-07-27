@@ -3,7 +3,8 @@ import type { Facility, FacilityKind } from "@/types/facility";
 import { createFacility } from "@/services/facilitiesService";
 import { findDuplicate, facilityLabel } from "@/lib/facilityMatch";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, inputClass } from "@/components/ui/input";
+import CityAutocomplete from "@/components/CityAutocomplete";
 import { Label } from "@/components/ui/label";
 
 interface Props {
@@ -103,7 +104,18 @@ export const FacilityCreateForm = ({
       )}
 
       <div className="flex gap-2">
-        <Input placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+        <div className="flex-1">
+          <CityAutocomplete
+            value={city}
+            onType={setCity}
+            onSelect={(c, s) => {
+              setCity(c);
+              setState(s);
+            }}
+            placeholder="City"
+            inputClassName={inputClass}
+          />
+        </div>
         <Input
           placeholder="ST"
           maxLength={2}

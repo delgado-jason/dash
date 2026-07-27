@@ -5,6 +5,26 @@ export interface Place {
   state: string;
 }
 
+export interface CitySuggestion {
+  city: string;
+  state: string;
+  label: string; // "Dallas, TX"
+}
+
+// City typeahead suggestions for a partial query. Non-fatal → [] on any failure,
+// so the dropdown just stays quiet and the field types normally.
+export const getCitySuggestions = async (
+  q: string,
+): Promise<CitySuggestion[]> => {
+  if (!q || q.trim().length < 2) return [];
+  try {
+    const res = await api.get("/routing/city-suggest", { params: { q } });
+    return res.data.suggestions ?? [];
+  } catch {
+    return [];
+  }
+};
+
 // Travel dimensions in inches + gross pounds; drives HERE's oversize routing.
 export interface LoadDims {
   widthIn?: number | null;
