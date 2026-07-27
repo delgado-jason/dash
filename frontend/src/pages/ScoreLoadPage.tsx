@@ -3,9 +3,15 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
 import { RATE_TIERS } from "@/lib/constants/targets";
-import { getLoadMiles, getRouteMap, type Place } from "@/services/routingService";
+import {
+  getLoadMiles,
+  getScoreRoute,
+  type Place,
+  type RouteGeo,
+} from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
 import { toInches, classifyOversize } from "@/lib/dimensions";
+import MissionMap from "@/components/MissionMap";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const rpm = (n: number | null) => (n != null ? `$${n.toFixed(2)}` : "—");
@@ -170,7 +176,7 @@ const ScoreLoadPage = () => {
   const [deadhead, setDeadhead] = useState("");
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
-  const [mapImage, setMapImage] = useState<string | null>(null);
+  const [route, setRoute] = useState<RouteGeo | null>(null);
 
   // Prefill "Truck now" (the deadhead origin) with the truck's last-known
   // location. Non-fatal — no data just leaves it blank to fill by hand.
@@ -225,18 +231,18 @@ const ScoreLoadPage = () => {
       setRouting(false);
       if (res.loadedMiles == null && res.deadheadMiles == null) {
         setRouteErr(true);
-        setMapImage(null);
+        setRoute(null);
         return;
       }
       if (res.loadedMiles != null) setLoaded(String(res.loadedMiles));
       if (res.deadheadMiles != null) setDeadhead(String(res.deadheadMiles));
       // The mission map for what was just entered (haul + deadhead leg).
-      getRouteMap({
+      getScoreRoute({
         truckNow: truckNow.city && truckNow.state ? truckNow : null,
         pickup,
         delivery,
-      }).then((img) => {
-        if (!cancelled) setMapImage(img);
+      }).then((r) => {
+        if (!cancelled) setRoute(r);
       });
     }, 600);
     return () => {
@@ -359,13 +365,17 @@ const ScoreLoadPage = () => {
           </div>
         </div>
 
-        {mapImage && (
-          <img
-            src={mapImage}
-            alt="Route map"
-            className="w-full rounded-[9px] mt-2.5 mb-1"
-            style={{ border: "1px solid #2a3347" }}
-          />
+        {route?.pickup && route?.delivery && (
+          <div className="mt-2.5 mb-1 rounded-[9px] overflow-hidden" style={{ border: "1px solid #2a3347" }}>
+            <MissionMap
+              pickup={route.pickup}
+              delivery={route.delivery}
+              deadhead={route.deadhead}
+              loadedMiles={loaded === "" ? null : Number(loaded)}
+              deadheadMiles={deadhead === "" ? null : Number(deadhead)}
+              height={440}
+            />
+          </div>
         )}
 
         {!targets.ready ? (

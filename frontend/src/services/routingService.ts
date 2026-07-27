@@ -38,29 +38,61 @@ export const getLoadMiles = async (body: {
   }
 };
 
-// The mission map (base64 PNG data URI) for a saved load — its haul plus the
-// deadhead leg chained from where the truck sat before it. null → show the text
-// route. Non-fatal.
-export const getLoadMap = async (loadId: string): Promise<string | null> => {
+// A geocoded point for the mission map.
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+  city: string;
+  state: string;
+}
+
+export interface RouteGeo {
+  pickup: GeoPoint | null;
+  delivery: GeoPoint | null;
+  deadhead: GeoPoint | null; // null when unknown (booked load) or ungeocodable
+  loadedMiles: number | null;
+}
+
+const EMPTY_ROUTE: RouteGeo = {
+  pickup: null,
+  delivery: null,
+  deadhead: null,
+  loadedMiles: null,
+};
+
+// Mission-map geometry for a saved load: geocoded pickup/delivery, the deadhead
+// origin (only when the load is active), and the loaded miles. Non-fatal → an
+// empty route just leaves the text route standing.
+export const getLoadRoute = async (loadId: string): Promise<RouteGeo> => {
   try {
-    const res = await api.get(`/routing/load-map/${loadId}`);
-    return res.data.image ?? null;
+    const res = await api.get(`/routing/load-route/${loadId}`);
+    return {
+      pickup: res.data.pickup ?? null,
+      delivery: res.data.delivery ?? null,
+      deadhead: res.data.deadhead ?? null,
+      loadedMiles: res.data.loadedMiles ?? null,
+    };
   } catch {
-    return null;
+    return EMPTY_ROUTE;
   }
 };
 
-// The mission map for a scored (unsaved) load: deadhead (truckNow→pickup) +
-// loaded (pickup→delivery). null → no map. Non-fatal.
-export const getRouteMap = async (body: {
+// Mission-map geometry for a scored (unsaved) load: deadhead (truckNow→pickup)
+// and loaded (pickup→delivery). The Scorer supplies its own miles. Non-fatal.
+export const getScoreRoute = async (body: {
   truckNow?: Place | null;
   pickup: Place;
   delivery: Place;
-}): Promise<string | null> => {
+}): Promise<RouteGeo> => {
   try {
-    const res = await api.post("/routing/map", body);
-    return res.data.image ?? null;
+    const res = await api.post("/routing/route", body);
+    return {
+      pickup: res.data.pickup ?? null,
+      delivery: res.data.delivery ?? null,
+      deadhead: res.data.deadhead ?? null,
+      loadedMiles: null,
+    };
   } catch {
-    return null;
+    return EMPTY_ROUTE;
   }
 };
