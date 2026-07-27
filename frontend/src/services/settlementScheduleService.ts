@@ -17,6 +17,19 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
       ? Number(s.hometime_threshold_days)
       : 21,
   operation: (s.operation as string) ?? "flatbed",
+  rate_tier_std_min:
+    s.rate_tier_std_min != null ? Number(s.rate_tier_std_min) : 0.1,
+  rate_tier_std_target:
+    s.rate_tier_std_target != null ? Number(s.rate_tier_std_target) : 0.2,
+  rate_tier_std_strong:
+    s.rate_tier_std_strong != null ? Number(s.rate_tier_std_strong) : 0.3,
+  rate_tier_spec_min:
+    s.rate_tier_spec_min != null ? Number(s.rate_tier_spec_min) : 0.35,
+  rate_tier_spec_target:
+    s.rate_tier_spec_target != null ? Number(s.rate_tier_spec_target) : 0.45,
+  rate_tier_spec_strong:
+    s.rate_tier_spec_strong != null ? Number(s.rate_tier_spec_strong) : 0.6,
+  margin_goal: s.margin_goal != null ? Number(s.margin_goal) : 0.26,
 });
 
 export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {
@@ -25,7 +38,7 @@ export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {
 };
 
 export const updateSettlementSchedule = async (
-  data: SettlementSchedule,
+  data: Partial<SettlementSchedule>,
 ): Promise<SettlementSchedule> => {
   const res = await api.put("/settlement-schedule", data);
   return coerce(res.data.schedule);

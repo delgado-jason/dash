@@ -3,9 +3,77 @@ import {
   getSettlementSchedule,
   updateSettlementSchedule,
 } from "@/services/settlementScheduleService";
+import { useLoads } from "@/hooks/useLoads";
+import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { Panel } from "@/components/ui/Panel";
+
+type Tier3 = { min: number; target: number; strong: number };
+const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean percent
+
+// Rate-tier set editor: three markup inputs + a live preview at the real
+// break-even. The Scorer's verdict uses target + strong; min is the ladder's
+// lower rung.
+const TierCard = ({
+  label,
+  dot,
+  tiers,
+  onChange,
+  be,
+}: {
+  label: string;
+  dot: string;
+  tiers: Tier3;
+  onChange: (t: Tier3) => void;
+  be: number | null;
+}) => {
+  const at = (m: number) => `$${(be! * (1 + m / 100)).toFixed(2)}`;
+  const keys: (keyof Tier3)[] = ["min", "target", "strong"];
+  const labels = { min: "Min", target: "Target", strong: "Strong" };
+  return (
+    <div className="rounded-lg p-3.5" style={{ background: "#0d1119" }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="inline-block rounded-full"
+          style={{ width: 9, height: 9, background: dot }}
+        />
+        <span className="text-sm font-medium text-light">{label}</span>
+      </div>
+      <div className="flex gap-2.5">
+        {keys.map((k) => (
+          <label key={k} className="flex-1 min-w-0">
+            <span className="text-[11px] text-muted-text">{labels[k]}</span>
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-muted-text text-xs">+</span>
+              <input
+                type="number"
+                min={0}
+                max={300}
+                step={1}
+                value={Number.isFinite(tiers[k]) ? tiers[k] : ""}
+                onChange={(e) => onChange({ ...tiers, [k]: Number(e.target.value) })}
+                className="w-full bg-steel rounded px-1.5 py-1 text-light text-right text-sm tabular-nums"
+              />
+              <span className="text-muted-text text-xs">%</span>
+            </div>
+          </label>
+        ))}
+      </div>
+      <div className="text-[11px] text-muted-text mt-2.5">
+        {be != null ? (
+          <>
+            ${be.toFixed(2)} → <span className="text-light">{at(tiers.min)}</span>{" "}
+            · <span style={{ color: "#e8940a" }}>{at(tiers.target)}</span> ·{" "}
+            <span style={{ color: "#4ade80" }}>{at(tiers.strong)}</span>
+          </>
+        ) : (
+          "add a few months of P&L to preview the rates"
+        )}
+      </div>
+    </div>
+  );
+};
 
 const money = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -58,9 +126,19 @@ const SettingsPage = () => {
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [hometimeThresh, setHometimeThresh] = useState(21);
   const [operation, setOperation] = useState("flatbed");
+  const [stdTiers, setStdTiers] = useState<Tier3>({ min: 10, target: 20, strong: 30 });
+  const [specTiers, setSpecTiers] = useState<Tier3>({ min: 35, target: 45, strong: 60 });
+  const [marginGoal, setMarginGoal] = useState(26);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Real break-even for the tier previews + weekly-target preview (cost-based,
+  // so it's independent of the tier values being edited).
+  const { loads } = useLoads(0);
+  const targets = useRateTargets(loads);
+  const be = targets.bookingLadder.walkAway;
+  const weeklyBE = targets.gross.weeklyBreakEven;
 
   useEffect(() => {
     getSettlementSchedule()
@@ -77,6 +155,17 @@ const SettingsPage = () => {
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
         setHometimeThresh(s.hometime_threshold_days);
         setOperation(s.operation);
+        setStdTiers({
+          min: pct(s.rate_tier_std_min),
+          target: pct(s.rate_tier_std_target),
+          strong: pct(s.rate_tier_std_strong),
+        });
+        setSpecTiers({
+          min: pct(s.rate_tier_spec_min),
+          target: pct(s.rate_tier_spec_target),
+          strong: pct(s.rate_tier_spec_strong),
+        });
+        setMarginGoal(pct(s.margin_goal));
       })
       .catch(() => setErr("Couldn't load your settlement schedule."));
   }, []);
@@ -86,8 +175,15 @@ const SettingsPage = () => {
     setPcts((p) => (p ? { ...p, [k]: v } : p));
   };
 
+  const ascends = (t: Tier3) => t.min <= t.target && t.target <= t.strong;
+  const tierErr = !ascends(stdTiers)
+    ? "Standard tiers must climb: min ≤ target ≤ strong."
+    : !ascends(specTiers)
+      ? "Specialized tiers must climb: min ≤ target ≤ strong."
+      : null;
+
   const save = async () => {
-    if (!pcts) return;
+    if (!pcts || tierErr) return;
     setSaving(true);
     setErr(null);
     setMsg(null);
@@ -103,6 +199,13 @@ const SettingsPage = () => {
         per_diem_deduct_pct: perDiemPct / 100,
         hometime_threshold_days: hometimeThresh,
         operation,
+        rate_tier_std_min: stdTiers.min / 100,
+        rate_tier_std_target: stdTiers.target / 100,
+        rate_tier_std_strong: stdTiers.strong / 100,
+        rate_tier_spec_min: specTiers.min / 100,
+        rate_tier_spec_target: specTiers.target / 100,
+        rate_tier_spec_strong: specTiers.strong / 100,
+        margin_goal: marginGoal / 100,
       });
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
@@ -121,6 +224,10 @@ const SettingsPage = () => {
       SAMPLE_FSC * (pcts.fsc / 100)
     : gross;
   const effLinehaul = pcts ? pcts.linehaul + pcts.trailer : 100;
+  const weeklyTarget =
+    weeklyBE != null && marginGoal < 100
+      ? weeklyBE / (1 - marginGoal / 100)
+      : null;
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -209,16 +316,96 @@ const SettingsPage = () => {
               <p className="text-status-positive-text text-sm mt-4">{msg}</p>
             )}
             {err && <p className="text-destructive text-sm mt-4">{err}</p>}
+            {tierErr && (
+              <p className="text-destructive text-sm mt-4">
+                {tierErr} (in Rate tiers below)
+              </p>
+            )}
 
             <button
               onClick={save}
-              disabled={saving}
+              disabled={saving || !!tierErr}
               className="mt-4 bg-amber text-steel px-4 py-2 rounded font-semibold disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save schedule"}
             </button>
           </>
         )}
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Rate tiers</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Your markup over break-even, per driven mile. Two sets — the load Scorer
+          grades <span className="text-light">specialized</span> freight (oversize,
+          hazmat, heavy haul) on the higher set and everything else on{" "}
+          <span className="text-light">standard</span>. Drives the Scorer's verdict,
+          counter-rate ladder, and the rate ladders across the app.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          <TierCard
+            label="Standard"
+            dot="#4a90d9"
+            tiers={stdTiers}
+            onChange={(t) => {
+              setMsg(null);
+              setStdTiers(t);
+            }}
+            be={be}
+          />
+          <TierCard
+            label="Specialized"
+            dot="#e05a3a"
+            tiers={specTiers}
+            onChange={(t) => {
+              setMsg(null);
+              setSpecTiers(t);
+            }}
+            be={be}
+          />
+        </div>
+        {tierErr ? (
+          <p className="text-destructive text-xs mt-3">{tierErr}</p>
+        ) : (
+          <p className="text-xs text-muted-text mt-3">
+            Each set must climb: min ≤ target ≤ strong. Saved with the schedule
+            above.
+          </p>
+        )}
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Margin goal</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Your target profit margin (profit ÷ revenue). Sets your weekly and daily
+          revenue targets — the grind streak and recap. Independent of the rate
+          tiers above.
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={95}
+              step={1}
+              value={Number.isFinite(marginGoal) ? marginGoal : ""}
+              onChange={(e) => {
+                setMsg(null);
+                setMarginGoal(Number(e.target.value));
+              }}
+              className="w-20 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+            />
+            <span className="text-muted-text">%</span>
+          </label>
+          <span className="text-xs text-muted-text">
+            {weeklyTarget != null
+              ? `weekly revenue target ≈ ${money(weeklyTarget)}`
+              : "add a few months of P&L to preview your weekly target"}
+          </span>
+        </div>
+        <span className="text-xs text-muted-text mt-3 block">
+          Saved with the schedule above.
+        </span>
       </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">

@@ -107,6 +107,8 @@ const DispatcherPage = () => {
     },
     freeHours,
     streak: grind?.bestStreak ?? 0,
+    tiers: targets.tiers,
+    specTiers: targets.specTiers,
   };
   const medals = dispatcherMedals(awardInput);
   const patches = dispatcherPatches(awardInput);

@@ -13,8 +13,8 @@ import {
 import { mpgWindows } from "./fuelEconomy";
 import { classify, bestStreakOf, type WeekStatus } from "./grind";
 import {
+  MARGIN_GOAL,
   PAY_WEEK_START_DOW,
-  RATE_TIERS,
   WORKING_DAYS_PER_MONTH,
 } from "@/lib/constants/targets";
 
@@ -131,6 +131,7 @@ export const computeRecap = (
   range: RecapRange,
   scope: RecapScope,
   now: Date,
+  marginGoal: number = MARGIN_GOAL,
 ): RecapStats => {
   const mine = loads.filter((l) => l.load_status === "delivered" && inRange(l.delivery_date, range));
 
@@ -198,7 +199,7 @@ export const computeRecap = (
   // weekly gross → best week + best target-beating streak in the range
   const targets = getGrossTargets(
     getCostBasis(periods, obligationsMonthly, loads, now).trueMonthlyCost,
-    RATE_TIERS.target,
+    marginGoal,
     WORKING_DAYS_PER_MONTH,
   );
   let bestWeek: number | null = null;

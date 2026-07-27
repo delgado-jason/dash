@@ -245,7 +245,7 @@ const MiniLadder = () => (
       className="flex h-3 rounded overflow-hidden"
       style={{ background: TRACK }}
     >
-      <div style={{ width: "58%", background: AMBER, opacity: 0.55 }} />
+      <div style={{ width: "67%", background: AMBER, opacity: 0.55 }} />
       <div style={{ flex: 1, background: GREEN, opacity: 0.55 }} />
     </div>
     <div className="relative h-9 mt-1 text-xs text-muted-text">
@@ -254,15 +254,15 @@ const MiniLadder = () => (
         <br />
         <span className="text-light">$4.34</span>
       </span>
-      <span className="absolute left-[58%] -translate-x-1/2 text-center">
+      <span className="absolute left-[67%] -translate-x-1/2 text-center">
         target
         <br />
-        <span className="text-light">$5.86</span>
+        <span className="text-light">$5.21</span>
       </span>
       <span className="absolute right-0 text-right">
         strong
         <br />
-        <span className="text-light">$6.94</span>
+        <span className="text-light">$5.64</span>
       </span>
     </div>
   </div>
@@ -577,13 +577,19 @@ const GuidePage = () => {
           >
             <MiniLadder />
             <Formula>
-              walk-away = break-even · minimum = ×1.15 · target = ×1.35 · strong
-              = ×1.60
+              walk-away = break-even · minimum / target / strong = break-even ×
+              (1 + your tier %)
             </Formula>
             <Why>
-              The tiers mark up your break-even by 15 / 35 / 60%. The marker on
-              the dashboard is your actual gross rate per mile — where you're
-              really pricing.
+              There are <span className="text-light">two tier sets</span>, both
+              editable in Settings.{" "}
+              <span className="text-light">Standard</span> (seeded +10 / 20 / 30%,
+              shown above) is your everyday freight and drives the dashboard
+              ladder. <span className="text-light">Specialized</span> (+35 / 45 /
+              60%) is the higher bar for oversize, hazmat, and heavy-haul loads —
+              they command a real premium, so they're judged against it. The
+              marker on the dashboard is your actual gross rate per mile — where
+              you're really pricing.
             </Why>
           </Metric>
 
@@ -606,11 +612,14 @@ const GuidePage = () => {
               <span className="text-light">driven</span> mile (your cost/mile ÷
               your Landstar take), so it's apples-to-apples with the all-in rate
               — a lower number than the dashboard's per-loaded-mile ladder, by
-              design. The stamp maps to your tiers:{" "}
+              design. The stamp maps to whichever tier set fits the load:{" "}
               <span style={{ color: "#f87171" }}>PASS</span> below break-even,{" "}
-              <span style={{ color: "#e8940a" }}>MEH</span> under +35%,{" "}
-              <span style={{ color: "#4ade80" }}>TAKE IT</span> at +35%,{" "}
-              <span style={{ color: "#fbbf24" }}>STEAL</span> at +60%.
+              <span style={{ color: "#e8940a" }}>MEH</span> under target,{" "}
+              <span style={{ color: "#4ade80" }}>TAKE IT</span> at target,{" "}
+              <span style={{ color: "#fbbf24" }}>STEAL</span> at strong. A legal
+              load hits those at your Standard tiers (+20 / +30%); an
+              oversize, hazmat, or heavy load has to reach the Specialized ones
+              (+45 / +60%). A line under the verdict names which set graded it.
             </Why>
             <Why>
               Miles come from truck routing (HERE), not a straight line — the
@@ -619,9 +628,12 @@ const GuidePage = () => {
               delivery, fuel stop, or trip). Enter the load's dimensions and it
               flags <span className="text-light">legal vs oversize</span> and
               routes an oversize load around the clearances it can't make, so the
-              miles are honest. It's an estimate for the decision; the odometer is
-              still truth once you run it. Every mile field stays editable if you'd
-              rather type your own.
+              miles are honest. Oversize and overweight are read straight from the
+              dimensions; hazmat isn't dimensional, so there's a{" "}
+              <span className="text-light">Hazmat toggle</span> — flip it and the
+              load is graded on the Specialized tiers too. It's an estimate for
+              the decision; the odometer is still truth once you run it. Every
+              mile field stays editable if you'd rather type your own.
             </Why>
             <Why>
               It also shows this route's{" "}
@@ -640,15 +652,25 @@ const GuidePage = () => {
             sources={[{ label: "Dashboard", to: "/dashboard" }]}
           >
             <Formula>
-              weekly = (true cost ÷ your keep) ÷ 4.33 weeks
+              weekly break-even = (true cost ÷ your keep) ÷ 4.33 weeks
               <br />
-              daily = (true cost ÷ your keep) ÷ 22 working days · × tiers for
-              target/strong
+              weekly target = weekly break-even ÷ (1 − your margin goal)
             </Formula>
             <Why>
-              Same idea as the ladder, in dollars instead of per-mile — and all
-              in <span className="text-light">gross booking dollars</span>, the
-              number you track when you take a load.
+              A total-dollars goal, not a per-mile one: cover your true monthly
+              cost, spread over the pay week, then lift it to your{" "}
+              <span className="text-light">margin goal</span> (profit ÷ revenue,
+              set in Settings). It's the line the grind meter and pace bar grade
+              you against, in gross booking dollars.
+            </Why>
+            <Why>
+              Two things it does <span className="text-light">not</span> ride.
+              Your <span className="text-light">rate tiers</span> — those judge a
+              load's per-mile rate, a different question. And your{" "}
+              <span className="text-light">miles</span> — drive more and your
+              per-mile targets drop, but you cover more miles, so the weekly
+              dollars you need don't move. Only your cost and your margin goal
+              change this number.
             </Why>
           </Metric>
 

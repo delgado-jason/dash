@@ -8,40 +8,33 @@ const RED = "#e24b4a";
 const AMBER = "#e8940a";
 const GREEN = "#1d9e75";
 const GREEN_TICK = "#35c47a"; // brighter than the fill, so the target tick reads on top of it
-const GOLD = "#f5b03a";
-const GRAY = "#5b6b82";
 const TRACK = "#232c3f";
 
 const money = (n: number | null): string =>
   n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
 
-// This week's gross vs floor (break-even), target, and strong. The bar spans to
-// STRONG; solid fill is EARNED (delivered), the faded extension is COMMITTED
-// (booked/in-transit) still to haul. Floor + target are ticks. Color grades off
-// earned vs the floor/target thresholds.
+// This week's gross vs floor (break-even) and target (your margin goal). The bar
+// spans past target for headroom; solid fill is EARNED (delivered), the faded
+// extension is COMMITTED (booked/in-transit) still to haul. Color grades off
+// earned vs the floor/target thresholds. The weekly target is a total-REVENUE
+// goal (margin goal) — the per-mile rate tiers don't belong on this bar.
 const PaceBar = ({
   earned,
   committed,
   floor,
-  minimum,
   target,
-  strong,
 }: {
   earned: number;
   committed: number;
   floor: number;
-  minimum: number;
   target: number;
-  strong: number;
 }) => {
-  // Headroom past `strong` so it sits inside the bar as a milestone, not flush
+  // Headroom past target so it sits inside the bar as a milestone, not flush
   // at the right edge.
-  const top = strong > 0 ? strong : target;
-  const max = top > 0 ? top * 1.12 : target;
+  const max = target > 0 ? target * 1.15 : 1;
   const frac = (v: number) => (max > 0 ? Math.max(0, Math.min(1, v / max)) : 0);
   const color = earned >= target ? GREEN : earned >= floor ? AMBER : RED;
-  // Floor/min are quiet reference ticks; target (green) and strong (gold) are the
-  // goals — taller, glowing, and color-coded to the theme.
+  // Floor is a quiet reference tick; target (green) is the goal — taller, glowing.
   const tick = (v: number, c: string, goal: boolean, title: string) => (
     <div
       className="absolute"
@@ -70,9 +63,7 @@ const PaceBar = ({
         style={{ width: `${frac(earned) * 100}%`, background: color }}
       />
       {tick(floor, AMBER, false, "break-even floor")}
-      {tick(minimum, GRAY, false, "minimum")}
       {tick(target, GREEN_TICK, true, "target")}
-      {strong > 0 && tick(strong, GOLD, true, "strong")}
     </div>
   );
 };
@@ -139,8 +130,6 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
     bookingLadder,
     grossRate,
     gross,
-    weeklyMinimum,
-    weeklyStrong,
     weekBooked,
     weekEarned,
     basis,
@@ -193,23 +182,14 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
               earned={weekEarned}
               committed={weekBooked}
               floor={gross.weeklyBreakEven ?? 0}
-              minimum={weeklyMinimum ?? 0}
               target={gross.weeklyTarget ?? 0}
-              strong={weeklyStrong ?? 0}
             />
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-text">
               <LegendItem color={AMBER} label="floor" value={money(gross.weeklyBreakEven)} />
-              <LegendItem color={GRAY} label="min" value={money(weeklyMinimum)} />
               <LegendItem
                 color={GREEN_TICK}
                 label="target"
                 value={money(gross.weeklyTarget)}
-                emphasize
-              />
-              <LegendItem
-                color={GOLD}
-                label="strong"
-                value={money(weeklyStrong)}
                 emphasize
               />
             </div>

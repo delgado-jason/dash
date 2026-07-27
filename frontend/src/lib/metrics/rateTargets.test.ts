@@ -172,12 +172,20 @@ describe("bookedRate", () => {
 });
 
 describe("getGrossTargets", () => {
-  it("weekly + daily floors and target-markup", () => {
-    const g = getGrossTargets(26000, 0.35, 22);
+  it("weekly + daily floors and margin-goal target", () => {
+    // 2nd arg is the target profit margin (profit ÷ revenue). At 20% margin the
+    // target = break-even ÷ (1 − 0.20) = break-even × 1.25.
+    const g = getGrossTargets(26000, 0.2, 22);
     expect(g.weeklyBreakEven).toBeCloseTo(26000 / (52 / 12), 5); // 6000
-    expect(g.weeklyTarget).toBeCloseTo((26000 / (52 / 12)) * 1.35, 5);
+    expect(g.weeklyTarget).toBeCloseTo((26000 / (52 / 12)) / 0.8, 5);
     expect(g.dailyBreakEven).toBeCloseTo(26000 / 22, 5);
-    expect(g.dailyTarget).toBeCloseTo((26000 / 22) * 1.35, 5);
+    expect(g.dailyTarget).toBeCloseTo((26000 / 22) / 0.8, 5);
+  });
+
+  it("a 0% margin target equals break-even", () => {
+    const g = getGrossTargets(26000, 0, 22);
+    expect(g.weeklyTarget).toBeCloseTo(g.weeklyBreakEven!, 5);
+    expect(g.dailyTarget).toBeCloseTo(g.dailyBreakEven!, 5);
   });
 
   it("null when there's no cost basis", () => {

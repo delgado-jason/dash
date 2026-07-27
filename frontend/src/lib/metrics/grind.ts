@@ -15,8 +15,8 @@ import {
   type GrossTargets,
 } from "./rateTargets";
 import {
+  MARGIN_GOAL,
   PAY_WEEK_START_DOW,
-  RATE_TIERS,
   WORKING_DAYS_PER_MONTH,
 } from "@/lib/constants/targets";
 
@@ -78,12 +78,13 @@ export const computeGrind = (
   periods: ExpensePeriod[],
   obligationsMonthly: number,
   now: Date,
+  marginGoal: number = MARGIN_GOAL,
   weeksToShow = 14,
 ): Grind => {
   const basis = getCostBasis(periods, obligationsMonthly, loads, now);
   const targets = getGrossTargets(
     basis.trueMonthlyCost,
-    RATE_TIERS.target,
+    marginGoal,
     WORKING_DAYS_PER_MONTH,
   );
   const hasLadder = targets.weeklyTarget != null;

@@ -12,4 +12,16 @@ export interface SettlementSchedule {
   per_diem_deduct_pct: number; // deductible share (0.80 for DOT drivers)
   hometime_threshold_days: number; // flag the driver page past this many days out
   operation: string; // equipment/discipline — tailors which achievements apply
+  // Rate markup tiers — the fraction over break-even for a minimum / good
+  // (TAKE IT) / great (STEAL) load, per driven mile. TWO sets: the Scorer grades
+  // oversize/hazmat/heavy freight on Specialized, everything else on Standard.
+  rate_tier_std_min: number;
+  rate_tier_std_target: number;
+  rate_tier_std_strong: number;
+  rate_tier_spec_min: number;
+  rate_tier_spec_target: number;
+  rate_tier_spec_strong: number;
+  // Target profit margin (profit ÷ revenue) → weekly/daily REVENUE targets.
+  // Independent of the rate tiers above.
+  margin_goal: number;
 }
