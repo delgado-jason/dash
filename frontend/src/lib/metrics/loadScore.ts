@@ -81,6 +81,27 @@ export const scoreLoad = (input: ScoreInput, basis: ScoreBasis): LoadScore => {
   };
 };
 
+export interface CounterRates {
+  floor: number; // break-even rate for these miles — a loss below it
+  take: number; // rate that reaches TAKE IT (target tier)
+  steal: number; // rate that reaches STEAL (strong tier)
+}
+
+// What to counter with when a load comes in under target: the break-even floor,
+// the TAKE-IT rate, and the STEAL rate — priced on THIS load's driven miles from
+// the same break-even and tiers the verdict uses. null without a cost basis.
+export const counterRates = (
+  breakevenRpm: number | null,
+  drivenMiles: number,
+): CounterRates | null => {
+  if (breakevenRpm == null || breakevenRpm <= 0 || drivenMiles <= 0) return null;
+  return {
+    floor: breakevenRpm * drivenMiles,
+    take: breakevenRpm * (1 + RATE_TIERS.target) * drivenMiles,
+    steal: breakevenRpm * (1 + RATE_TIERS.strong) * drivenMiles,
+  };
+};
+
 export const VERDICT_META: Record<
   Verdict,
   { label: string; fg: string; bg: string }

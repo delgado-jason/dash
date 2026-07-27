@@ -1,7 +1,7 @@
 // Load-scoring mileage + route geometry, provider-agnostic. Talks to hereProvider
 // today; swap that import to change providers. Everything here is an ESTIMATE for
 // scoring/visualizing a load — the odometer stays the single source of truth.
-import { geocode, routeMiles } from "./hereProvider.js";
+import { geocode, routeMiles, routeMilesAndTolls } from "./hereProvider.js";
 
 // One leg's miles: geocode both ends, then route between them with the load's
 // dims. Self-contained try/catch so a failure on one leg never sinks the other
@@ -21,14 +21,36 @@ async function legMiles(from, to, dims) {
   }
 }
 
-// The two legs of a scored load: loaded (pickup → delivery) and, when we know
-// where the truck is, deadhead (truck → pickup). Either can be null.
+// The loaded leg, with estimated tolls (billed as a 100% accessorial, so the
+// Scorer can prompt the ask). Self-contained try/catch like legMiles.
+async function legMilesAndTolls(from, to, dims) {
+  try {
+    if (!from?.city || !from?.state || !to?.city || !to?.state)
+      return { miles: null, tollUsd: null };
+    const [a, b] = await Promise.all([
+      geocode(from.city, from.state),
+      geocode(to.city, to.state),
+    ]);
+    if (!a || !b) return { miles: null, tollUsd: null };
+    const { miles, tollUsd } = await routeMilesAndTolls(a, b, dims);
+    return { miles: miles == null ? null : Math.round(miles * 10) / 10, tollUsd };
+  } catch {
+    return { miles: null, tollUsd: null };
+  }
+}
+
+// The two legs of a scored load: loaded (pickup → delivery, with tolls) and,
+// when we know where the truck is, deadhead (truck → pickup). Any can be null.
 export async function loadMiles({ truckNow, pickup, delivery, dims } = {}) {
-  const [loadedMiles, deadheadMiles] = await Promise.all([
-    legMiles(pickup, delivery, dims),
+  const [loaded, deadheadMiles] = await Promise.all([
+    legMilesAndTolls(pickup, delivery, dims),
     truckNow ? legMiles(truckNow, pickup, dims) : Promise.resolve(null),
   ]);
-  return { loadedMiles, deadheadMiles };
+  return {
+    loadedMiles: loaded.miles,
+    deadheadMiles,
+    tollUsd: loaded.tollUsd,
+  };
 }
 
 // ---- route geometry for the "mission map" ----

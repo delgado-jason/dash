@@ -63,13 +63,22 @@ export const geocode = async (city, state) => {
   return coords;
 };
 
-// Driving miles between two { lat, lng } points as a truck. Optional dims
-// (inches + gross pounds) turn on PHYSICAL restrictions — the oversize routing
-// that reroutes around low bridges, narrow roads, and weight-limited segments.
-// null when unconfigured or no route.
+// Apply the load's dims to a routing request — HERE wants centimeters + kg.
+// Turns on PHYSICAL restrictions (the oversize reroute around low bridges,
+// narrow roads, weight limits) and, for tolls, the correct vehicle toll class.
+const setVehicleDims = (params, dims) => {
+  if (!dims) return;
+  if (dims.widthIn) params.set("vehicle[width]", String(inchesToCm(dims.widthIn)));
+  if (dims.heightIn) params.set("vehicle[height]", String(inchesToCm(dims.heightIn)));
+  if (dims.lengthIn) params.set("vehicle[length]", String(inchesToCm(dims.lengthIn)));
+  if (dims.grossWeightLb)
+    params.set("vehicle[grossWeight]", String(poundsToKg(dims.grossWeightLb)));
+};
+
+// Driving miles between two { lat, lng } points as a truck. null when
+// unconfigured or no route.
 export const routeMiles = async (from, to, dims) => {
   if (!hasKey() || !from || !to) return null;
-
   const params = new URLSearchParams({
     transportMode: "truck",
     origin: `${from.lat},${from.lng}`,
@@ -77,19 +86,57 @@ export const routeMiles = async (from, to, dims) => {
     return: "summary",
     apiKey: process.env.HERE_API_KEY,
   });
-
-  if (dims) {
-    if (dims.widthIn) params.set("vehicle[width]", String(inchesToCm(dims.widthIn)));
-    if (dims.heightIn) params.set("vehicle[height]", String(inchesToCm(dims.heightIn)));
-    if (dims.lengthIn) params.set("vehicle[length]", String(inchesToCm(dims.lengthIn)));
-    if (dims.grossWeightLb)
-      params.set("vehicle[grossWeight]", String(poundsToKg(dims.grossWeightLb)));
-  }
-
+  setVehicleDims(params, dims);
   const res = await fetch(`${ROUTER_URL}?${params}`);
   if (!res.ok) throw new Error(`HERE route failed (${res.status})`);
   const meters = parseRouteMeters(await res.json());
   return meters == null ? null : metersToMiles(meters);
+};
+
+// Pure: HERE route (return=…,tolls) → total toll cost, summing every fare in
+// every section. null when there's no toll data (or a toll-free route).
+export const parseRouteTolls = (json) => {
+  const sections = json?.routes?.[0]?.sections;
+  if (!Array.isArray(sections)) return null;
+  let total = 0;
+  let found = false;
+  for (const s of sections) {
+    if (!Array.isArray(s?.tolls)) continue;
+    for (const t of s.tolls) {
+      if (!Array.isArray(t?.fares)) continue;
+      for (const f of t.fares) {
+        const v = Number(f?.price?.value);
+        if (Number.isFinite(v)) {
+          total += v;
+          found = true;
+        }
+      }
+    }
+  }
+  return found ? Math.round(total * 100) / 100 : null;
+};
+
+// Miles AND estimated toll cost for a leg in one call, with the truck's dims so
+// the toll class is right. { miles, tollUsd }, either possibly null.
+export const routeMilesAndTolls = async (from, to, dims) => {
+  if (!hasKey() || !from || !to) return { miles: null, tollUsd: null };
+  const params = new URLSearchParams({
+    transportMode: "truck",
+    origin: `${from.lat},${from.lng}`,
+    destination: `${to.lat},${to.lng}`,
+    return: "summary,tolls",
+    currency: "USD",
+    apiKey: process.env.HERE_API_KEY,
+  });
+  setVehicleDims(params, dims);
+  const res = await fetch(`${ROUTER_URL}?${params}`);
+  if (!res.ok) throw new Error(`HERE route(tolls) failed (${res.status})`);
+  const json = await res.json();
+  const meters = parseRouteMeters(json);
+  return {
+    miles: meters == null ? null : metersToMiles(meters),
+    tollUsd: parseRouteTolls(json),
+  };
 };
 
 // ---- city autocomplete ----

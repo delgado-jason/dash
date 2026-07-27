@@ -36,6 +36,7 @@ export interface LoadDims {
 export interface LoadMiles {
   loadedMiles: number | null;
   deadheadMiles: number | null;
+  tollUsd: number | null; // estimated tolls on the loaded leg (bill as accessorial)
 }
 
 // Routed miles for a scored load — loaded (pickup → delivery) and deadhead
@@ -52,9 +53,10 @@ export const getLoadMiles = async (body: {
     return {
       loadedMiles: res.data.loadedMiles ?? null,
       deadheadMiles: res.data.deadheadMiles ?? null,
+      tollUsd: res.data.tollUsd ?? null,
     };
   } catch {
-    return { loadedMiles: null, deadheadMiles: null };
+    return { loadedMiles: null, deadheadMiles: null, tollUsd: null };
   }
 };
 
