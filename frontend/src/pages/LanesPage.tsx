@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import {
   getRecentLoads,
   getRegionRollup,
   getLanesSummary,
   getStateMapData,
+  getStateDetail,
 } from "@/lib/metrics/lanes";
 import { LanesKpis } from "@/components/lanes/LanesKpis";
 import { LanesMap } from "@/components/lanes/LanesMap";
 import { LanesTable } from "@/components/lanes/LanesTable";
+import { StateDetailPanel } from "@/components/lanes/StateDetailPanel";
 import { Panel } from "@/components/ui/Panel";
 
 const WINDOWS = [30, 60, 90];
@@ -16,7 +20,13 @@ const WINDOWS = [30, 60, 90];
 const LanesPage = () => {
   const [refreshKey] = useState(0);
   const [windowDays, setWindowDays] = useState(90);
+  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
   const { loads, isLoading, error } = useLoads(refreshKey);
+
+  useEffect(() => {
+    getSettlementSchedule().then(setSchedule).catch(() => {});
+  }, []);
 
   if (isLoading)
     return (
@@ -37,6 +47,10 @@ const LanesPage = () => {
   const rollup = getRegionRollup(windowLoads);
   const summary = getLanesSummary(windowLoads);
   const mapData = getStateMapData(loads, windowDays);
+  const freeHours = schedule?.detention_free_hours ?? 3;
+  const stateDetail = selectedState
+    ? getStateDetail(loads, selectedState, freeHours, windowDays)
+    : null;
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
@@ -62,15 +76,29 @@ const LanesPage = () => {
       <LanesKpis summary={summary} />
 
       <div className="mt-6">
-        <LanesMap data={mapData} windowDays={windowDays} />
+        <LanesMap
+          data={mapData}
+          windowDays={windowDays}
+          selected={selectedState}
+          onSelect={setSelectedState}
+        />
       </div>
 
-      <Panel className="mt-6 p-4">
-        <p className="text-xs text-muted-text mb-2">
-          By region · last {windowDays} days · expand a market for its lanes
-        </p>
-        <LanesTable rollup={rollup} />
-      </Panel>
+      {stateDetail ? (
+        <StateDetailPanel
+          detail={stateDetail}
+          windowDays={windowDays}
+          onClear={() => setSelectedState(null)}
+        />
+      ) : (
+        <Panel className="mt-6 p-4">
+          <p className="text-xs text-muted-text mb-2">
+            By region · last {windowDays} days · expand a market for its lanes ·
+            or click a state on the map
+          </p>
+          <LanesTable rollup={rollup} />
+        </Panel>
+      )}
     </div>
   );
 };

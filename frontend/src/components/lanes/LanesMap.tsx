@@ -10,7 +10,13 @@ import type { StateMapDatum } from "@/lib/metrics/lanes";
 interface Props {
   data: Record<string, StateMapDatum>;
   windowDays: number;
+  selected: string | null;
+  onSelect: (state: string) => void;
 }
+
+type Mode = "rate" | "volume";
+// Below this, a state shades dim in rate mode — one lucky run shouldn't light it up.
+const MIN_STATE_LOADS = 2;
 
 // Parsed once at module load — the topology never changes.
 const usStates = feature(
@@ -21,9 +27,12 @@ const usStates = feature(
 const projection = geoAlbersUsa().scale(1100).translate([450, 280]);
 const pathGen = geoPath(projection);
 
-// Dark-theme amber ramp: dim → bright as origin load count rises.
-const RAMP = ["#6b4e12", "#9a6c0e", "#c8890a", "#e8940a", "#f5b03a"];
+// Volume ramp (amber) → brighter as origin load count rises. Rate ramp (teal→green)
+// → brighter as your median $/mi rises. Distinct hues so the toggle reads clearly.
+const VOL_RAMP = ["#6b4e12", "#9a6c0e", "#c8890a", "#e8940a", "#f5b03a"];
+const RATE_RAMP = ["#134e3a", "#1a6b4e", "#26855f", "#35b07a", "#4ade80"];
 const NO_DATA = "#2a3347";
+const DIM = "#243b33"; // thin state in rate mode (low confidence)
 
 // lucide "flame" path, filled solid for a comic pin on your best-paying states.
 const FLAME_PATH =
@@ -37,12 +46,23 @@ interface HoverState {
   datum: StateMapDatum;
 }
 
-export const LanesMap = ({ data, windowDays }: Props) => {
+export const LanesMap = ({ data, windowDays, selected, onSelect }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
+  const [mode, setMode] = useState<Mode>("rate");
 
   const maxLoads = useMemo(
     () => Math.max(1, ...Object.values(data).map((d) => d.loadCount)),
+    [data],
+  );
+  const maxRate = useMemo(
+    () =>
+      Math.max(
+        0.01,
+        ...Object.values(data)
+          .filter((d) => d.loadCount >= MIN_STATE_LOADS && d.medianRpm != null)
+          .map((d) => d.medianRpm as number),
+      ),
     [data],
   );
 
@@ -65,32 +85,61 @@ export const LanesMap = ({ data, windowDays }: Props) => {
   const colorFor = (name: string): string => {
     const datum = data[name];
     if (!datum) return NO_DATA;
+    if (mode === "volume") {
+      const idx = Math.min(
+        VOL_RAMP.length - 1,
+        Math.floor((datum.loadCount / maxLoads) * VOL_RAMP.length),
+      );
+      return VOL_RAMP[idx];
+    }
+    if (datum.medianRpm == null) return NO_DATA;
+    if (datum.loadCount < MIN_STATE_LOADS) return DIM;
     const idx = Math.min(
-      RAMP.length - 1,
-      Math.floor((datum.loadCount / maxLoads) * RAMP.length),
+      RATE_RAMP.length - 1,
+      Math.floor((datum.medianRpm / maxRate) * RATE_RAMP.length),
     );
-    return RAMP[idx];
+    return RATE_RAMP[idx];
   };
+
+  const toggle = (m: Mode, label: string) => (
+    <button
+      onClick={() => setMode(m)}
+      className="text-[11px] rounded-full px-2.5 py-0.5"
+      style={
+        mode === m
+          ? { background: m === "rate" ? "#2e9e6b" : "#e8940a", color: "#0d1119", fontWeight: 600 }
+          : { border: "1px solid #2a3347", color: "#8b93a3" }
+      }
+    >
+      {label}
+    </button>
+  );
 
   return (
     <Panel ref={containerRef} className="p-4 relative">
-      <p className="text-xs text-muted-text mb-2 flex items-center gap-1 flex-wrap">
-        Footprint · shaded by loads ·
-        <Flame size={12} style={{ color: "#e8621e" }} /> best-paying states ·
-        hover for RPM ({windowDays}d)
-      </p>
+      <div className="text-xs text-muted-text mb-2 flex items-center gap-2 flex-wrap">
+        <span>Shade by</span>
+        {toggle("rate", "your $/mi")}
+        {toggle("volume", "volume")}
+        <span className="flex items-center gap-1">
+          · <Flame size={12} style={{ color: "#e8621e" }} /> best-paying
+        </span>
+        <span>· click a state to drill in</span>
+      </div>
       <svg viewBox="0 0 900 560" className="w-full">
         {usStates.features.map((f, i) => {
           const name = f.properties.name;
           const datum = data[name];
+          const isSel = selected === name;
           return (
             <path
               key={i}
               d={pathGen(f) ?? undefined}
               fill={colorFor(name)}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth={0.6}
+              stroke={isSel ? "#f4f7fb" : "rgba(255,255,255,0.15)"}
+              strokeWidth={isSel ? 2 : 0.6}
               style={{ cursor: datum ? "pointer" : "default" }}
+              onClick={() => datum && onSelect(name)}
               onMouseMove={(e) => {
                 const rect = containerRef.current?.getBoundingClientRect();
                 if (datum && rect) {

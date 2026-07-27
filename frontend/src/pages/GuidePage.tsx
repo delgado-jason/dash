@@ -766,6 +766,15 @@ const GuidePage = () => {
               high-accessorial run. The median asks "what does a normal load
               here pay," which is the honest basis for deciding where to book.
             </Why>
+            <Why>
+              The <span className="text-light">map</span> shades states by your
+              own median $/mi (toggle to volume for footprint) — thin states dim
+              so one fluke doesn't light one up. <span className="text-light">Click
+              a state</span> to see the agents you've booked out of it (rate,
+              volume, on-time, each linking to their page) and your top lanes from
+              it. It's all your own history — who to call for freight out of a
+              region, and how they've paid.
+            </Why>
           </Metric>
 
           <Metric

@@ -1,6 +1,7 @@
 import type { Load } from "@/types/load";
 import { getRegion, getStateName } from "@/lib/constants/states";
 import { median } from "./stats";
+import { agentStops, scoreStops } from "./stopScore";
 
 // Minimum loads before a lane/market can win an RPM-based KPI — keeps a single
 // lucky run from crowning a corridor. Volume KPIs ignore this.
@@ -38,6 +39,7 @@ export interface StateLoadStat {
   state: string; // full name, e.g. "Georgia"
   loadCount: number;
   avgRpm: number | null;
+  medianRpm: number | null;
   markets: string[];
 }
 
@@ -187,6 +189,7 @@ export const getStateLoadMap = (
       state: name,
       loadCount: stateLoads.length,
       avgRpm: avgRpm(stateLoads),
+      medianRpm: medianRpm(stateLoads),
       markets: [...new Set(stateLoads.map((l) => l.origin_market))],
     };
   }
@@ -196,8 +199,9 @@ export const getStateLoadMap = (
 
 export interface StateMapDatum {
   state: string;
-  loadCount: number; // footprint window (drives the shading)
+  loadCount: number; // footprint window (drives the volume shading)
   avgRpm: number | null; // rpm window (null when nothing recent)
+  medianRpm: number | null; // footprint median $/mi (drives the rate shading)
   markets: string[];
 }
 
@@ -222,9 +226,86 @@ export const getStateMapData = (
       loadCount: fp.loadCount,
       markets: fp.markets,
       avgRpm: windowed[name]?.avgRpm ?? null,
+      medianRpm: fp.medianRpm,
     };
   }
   return out;
+};
+
+// ---- STATE DRILL-DOWN ----
+export interface AgentStat {
+  agentId: string;
+  agent: string;
+  loadCount: number;
+  medianRpm: number | null;
+  onTimePct: number | null; // 0..1 of graded stops on time; null when none graded
+}
+
+export interface StateDetail {
+  state: string;
+  loadCount: number;
+  avgRpm: number | null;
+  medianRpm: number | null;
+  agents: AgentStat[]; // who you've booked out of here, most-used first
+  lanes: LaneStat[]; // your lanes out of here, most-run first
+}
+
+// Everything you'd want when you click a state: the agents you've booked freight
+// out of it (rate / volume / on-time) and your top lanes from it — all from your
+// delivered loads inside the window. `freeHours` drives on-time (from settlement).
+export const getStateDetail = (
+  loads: Load[],
+  stateName: string,
+  freeHours: number,
+  days: number,
+  now: number = Date.now(),
+): StateDetail => {
+  const recent = getRecentLoads(deliveredOnly(loads), days, now);
+  const stateLoads = recent.filter(
+    (l) => getStateName(l.origin_state) === stateName,
+  );
+
+  const agents: AgentStat[] = [];
+  for (const [agentId, agentLoads] of groupBy(stateLoads, (l) => l.agent_id)) {
+    agents.push({
+      agentId,
+      agent: agentLoads[0].agent,
+      loadCount: agentLoads.length,
+      medianRpm: medianRpm(agentLoads),
+      onTimePct: scoreStops(agentStops(agentLoads, freeHours)).onTimePct,
+    });
+  }
+  agents.sort(
+    (a, b) => b.loadCount - a.loadCount || (b.medianRpm ?? 0) - (a.medianRpm ?? 0),
+  );
+
+  const lanes: LaneStat[] = [];
+  for (const [, laneLoads] of groupBy(
+    stateLoads,
+    (l) => `${l.origin_market} → ${l.delivery_market}`,
+  )) {
+    const first = laneLoads[0];
+    lanes.push({
+      lane: `${first.origin_market} → ${first.delivery_market}`,
+      origin: first.origin_market,
+      destination: first.delivery_market,
+      loadCount: laneLoads.length,
+      avgRpm: avgRpm(laneLoads),
+      medianRpm: medianRpm(laneLoads),
+    });
+  }
+  lanes.sort(
+    (a, b) => b.loadCount - a.loadCount || (b.medianRpm ?? 0) - (a.medianRpm ?? 0),
+  );
+
+  return {
+    state: stateName,
+    loadCount: stateLoads.length,
+    avgRpm: avgRpm(stateLoads),
+    medianRpm: medianRpm(stateLoads),
+    agents,
+    lanes,
+  };
 };
 
 // ---- TOP-LANE KPIs ----
