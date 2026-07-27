@@ -37,3 +37,30 @@ export const getLoadMiles = async (body: {
     return { loadedMiles: null, deadheadMiles: null };
   }
 };
+
+// The mission map (base64 PNG data URI) for a saved load — its haul plus the
+// deadhead leg chained from where the truck sat before it. null → show the text
+// route. Non-fatal.
+export const getLoadMap = async (loadId: string): Promise<string | null> => {
+  try {
+    const res = await api.get(`/routing/load-map/${loadId}`);
+    return res.data.image ?? null;
+  } catch {
+    return null;
+  }
+};
+
+// The mission map for a scored (unsaved) load: deadhead (truckNow→pickup) +
+// loaded (pickup→delivery). null → no map. Non-fatal.
+export const getRouteMap = async (body: {
+  truckNow?: Place | null;
+  pickup: Place;
+  delivery: Place;
+}): Promise<string | null> => {
+  try {
+    const res = await api.post("/routing/map", body);
+    return res.data.image ?? null;
+  } catch {
+    return null;
+  }
+};

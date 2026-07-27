@@ -148,6 +148,37 @@ export async function getLastKnownLocation(user_id) {
   return result.rows[0] ?? null; // { city, state } | null
 }
 
+// ---- WHERE THE TRUCK WAS BEFORE A GIVEN LOAD ----
+// The located record (a load's destination or a trip's end) with the greatest
+// odometer_end at or below this load's odometer_start — i.e. where the truck
+// sat just before it rolled on this load. Powers the deadhead leg on a load's
+// mission map. Falls back to the current last-known location when the load has
+// no start odometer yet (not run); null when nothing precedes it.
+export async function precedingLocation(user_id, load) {
+  if (!user_id || !load) return null;
+  const start = load.odometer_start;
+  if (start == null) return getLastKnownLocation(user_id);
+
+  const query = `
+        SELECT city, state FROM (
+            SELECT destination_city AS city, destination_state AS state, odometer_end AS odo
+                FROM loads
+                WHERE user_id = $1 AND load_id <> $2
+                  AND odometer_end IS NOT NULL AND odometer_end <= $3
+            UNION ALL
+            SELECT end_city AS city, end_state AS state, odometer_end AS odo
+                FROM trips
+                WHERE user_id = $1 AND end_city IS NOT NULL
+                  AND odometer_end IS NOT NULL AND odometer_end <= $3
+        ) prev
+        ORDER BY odo DESC
+        LIMIT 1;
+    `;
+
+  const result = await db.query(query, [user_id, load.load_id, start]);
+  return result.rows[0] ?? null; // { city, state } | null
+}
+
 // ---- CREATE TRIP SERVICE ----
 export async function createTrip(user_id, data) {
   // Reject missing user_id
