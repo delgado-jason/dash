@@ -1,4 +1,16 @@
 import { useMemo } from "react";
+import {
+  ScatterChart,
+  Scatter,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+} from "recharts";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { Panel } from "@/components/ui/Panel";
@@ -16,12 +28,18 @@ const COLOR: Record<RatePoint["bucket"], string> = {
   specialized: "#e05a3a",
 };
 const BE = "#e0533a";
+const GRID = "#2a3347";
+const MUTED = "#9daabb";
 const money2 = (n: number) => `$${n.toFixed(2)}`;
-const shortMonth = (ym: string) =>
+const monthTick = (ym: string) =>
   new Date(ym + "-01T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
     timeZone: "UTC",
   });
+const tsMonth = (ms: number) =>
+  new Date(ms).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+
+const ts = (d: string) => new Date(d + "T00:00:00Z").getTime();
 
 // ---- Scatter: every delivered load, rate/driven-mile over time, by type ----
 const RateScatter = ({
@@ -33,87 +51,71 @@ const RateScatter = ({
   ladder: RateLadder;
   specLadder: RateLadder;
 }) => {
-  const W = 680;
-  const H = 320;
-  const L = 40;
-  const R = 12;
-  const T = 14;
-  const B = 40;
-  const t = (d: string) => new Date(d + "T00:00:00Z").getTime();
-  const tMin = t(points[0].date);
-  const tMax = Math.max(t(points[points.length - 1].date), tMin + 86400000);
-  // Scale to the LOADS, not the tier lines — so tiers that sit far above every
-  // load (a very soft market, or a high break-even) never squash the points.
-  // Overlay lines above the range clamp to the top edge (see `line`).
-  const yMax = Math.ceil(Math.max(...points.map((p) => p.rate), 1) + 0.5);
-  const x = (d: string) => L + ((t(d) - tMin) / (tMax - tMin)) * (W - L - R);
-  const y = (r: number) => T + (1 - r / yMax) * (H - T - B);
-  const yClamp = (r: number) => Math.max(T, Math.min(H - B, y(r)));
+  const series = (b: RatePoint["bucket"]) =>
+    points.filter((p) => p.bucket === b).map((p) => ({ x: ts(p.date), y: p.rate }));
 
-  // month gridline dates spanning the range
-  const months: string[] = [];
-  const cur = new Date(tMin);
+  // Monthly ticks across the data range.
+  const t0 = ts(points[0].date);
+  const t1 = ts(points[points.length - 1].date);
+  const ticks: number[] = [];
+  const cur = new Date(t0);
   cur.setUTCDate(1);
-  while (cur.getTime() <= tMax) {
-    months.push(cur.toISOString().slice(0, 7));
+  while (cur.getTime() <= t1) {
+    ticks.push(cur.getTime());
     cur.setUTCMonth(cur.getUTCMonth() + 1);
   }
 
-  const yTicks = Array.from({ length: yMax / 2 + 1 }, (_, i) => i * 2);
-  // `slot` staggers the label when a line is pinned to the top (above every
-  // load) so break-even + both tier lines don't collide in a deep-downturn view.
-  const line = (
-    v: number | null,
-    color: string,
-    dash: string,
-    label: string,
-    slot: number,
-  ) => {
-    if (v == null) return null;
-    const yy = yClamp(v);
-    const above = v > yMax;
-    return (
-      <g key={label}>
-        <line x1={L} y1={yy} x2={W - R} y2={yy} stroke={color} strokeWidth={1.4} strokeDasharray={dash} />
-        <text x={W - R} y={above ? T + 9 + slot * 11 : yy - 3} textAnchor="end" fontSize={9} fill={color}>
-          {label} {money2(v)}
-          {above ? " ↑" : ""}
-        </text>
-      </g>
+  const refLine = (v: number | null, color: string, label: string) =>
+    v == null ? null : (
+      <ReferenceLine
+        y={v}
+        stroke={color}
+        strokeWidth={label === "break-even" ? 1.6 : 1.2}
+        strokeDasharray={label === "break-even" ? undefined : "5 3"}
+        ifOverflow="extendDomain"
+        label={{ value: `${label} ${money2(v)}`, position: "right", fill: color, fontSize: 10 }}
+      />
     );
-  };
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Scatter of every delivered load's gross rate per driven mile over time, colored by load type, with break-even and tier overlays">
-      {yTicks.map((v) => (
-        <g key={v}>
-          <line x1={L} y1={y(v)} x2={W - R} y2={y(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} />
-          <text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize={9} fill="#5f6b80">
-            ${v}
-          </text>
-        </g>
-      ))}
-      {months.map((m) => (
-        <text key={m} x={x(m + "-01")} y={H - 24} textAnchor="middle" fontSize={9} fill="#5f6b80">
-          {shortMonth(m)}
-        </text>
-      ))}
-      {line(ladder.walkAway, BE, "0", "break-even", 0)}
-      {line(ladder.target, "#7fb2e6", "4 3", "std target", 1)}
-      {line(specLadder.target, "#e05a3a", "4 3", "spec target", 2)}
-      {points.map((p, i) => (
-        <circle
-          key={i}
-          cx={x(p.date).toFixed(1)}
-          cy={y(p.rate).toFixed(1)}
-          r={5}
-          fill={COLOR[p.bucket]}
-          fillOpacity={0.78}
-          stroke={COLOR[p.bucket]}
-          strokeWidth={1}
+    <ResponsiveContainer width="100%" height={360}>
+      <ScatterChart margin={{ top: 10, right: 96, bottom: 4, left: 4 }}>
+        <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+        <XAxis
+          type="number"
+          dataKey="x"
+          domain={["dataMin", "dataMax"]}
+          ticks={ticks}
+          tickFormatter={tsMonth}
+          stroke={MUTED}
+          fontSize={11}
+          tickLine={false}
+          axisLine={{ stroke: GRID }}
         />
-      ))}
-    </svg>
+        <YAxis
+          type="number"
+          dataKey="y"
+          domain={[0, "auto"]}
+          tickFormatter={(v) => `$${v}`}
+          stroke={MUTED}
+          fontSize={11}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip
+          cursor={{ stroke: GRID }}
+          contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
+          formatter={(value, name) => [money2(Number(value)), name === "y" ? "rate/mi" : String(name)]}
+          labelFormatter={(v) => new Date(v as number).toLocaleDateString("en-US", { timeZone: "UTC" })}
+        />
+        {refLine(ladder.walkAway, BE, "break-even")}
+        {refLine(ladder.target, "#7fb2e6", "std target")}
+        {refLine(specLadder.target, "#e05a3a", "spec target")}
+        <Scatter name="standard" data={series("standard")} fill={COLOR.standard} fillOpacity={0.8} />
+        <Scatter name="hazmat" data={series("hazmat")} fill={COLOR.hazmat} fillOpacity={0.85} />
+        <Scatter name="specialized" data={series("specialized")} fill={COLOR.specialized} fillOpacity={0.85} />
+      </ScatterChart>
+    </ResponsiveContainer>
   );
 };
 
@@ -124,53 +126,45 @@ const Barometer = ({
 }: {
   monthly: { month: string; median: number; n: number }[];
   breakEven: number | null;
-}) => {
-  const W = 680;
-  const H = 200;
-  const L = 40;
-  const R = 12;
-  const T = 14;
-  const B = 34;
-  const yMax = Math.ceil(
-    Math.max(...monthly.map((m) => m.median), breakEven ?? 0, 1) + 0.5,
-  );
-  const x = (i: number) =>
-    L + (monthly.length <= 1 ? 0.5 : i / (monthly.length - 1)) * (W - L - R);
-  const y = (r: number) => T + (1 - r / yMax) * (H - T - B);
-  const path = monthly
-    .map((m, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(m.median).toFixed(1)}`)
-    .join(" ");
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Line of your monthly median rate per driven mile against your break-even">
-      {[0, yMax / 2, yMax].map((v) => (
-        <g key={v}>
-          <line x1={L} y1={y(v)} x2={W - R} y2={y(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={0.5} />
-          <text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize={9} fill="#5f6b80">
-            ${v}
-          </text>
-        </g>
-      ))}
+}) => (
+  <ResponsiveContainer width="100%" height={240}>
+    <LineChart data={monthly} margin={{ top: 10, right: 84, bottom: 0, left: 4 }}>
+      <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+      <XAxis
+        dataKey="month"
+        tickFormatter={monthTick}
+        stroke={MUTED}
+        fontSize={11}
+        tickLine={false}
+        axisLine={{ stroke: GRID }}
+      />
+      <YAxis
+        domain={[0, "auto"]}
+        tickFormatter={(v) => `$${v}`}
+        stroke={MUTED}
+        fontSize={11}
+        tickLine={false}
+        axisLine={false}
+      />
+      <Tooltip
+        contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
+        labelFormatter={(m) => monthTick(m as string)}
+        formatter={(v) => [money2(Number(v)), "median"]}
+      />
       {breakEven != null && (
-        <g>
-          <line x1={L} y1={y(breakEven)} x2={W - R} y2={y(breakEven)} stroke={BE} strokeWidth={1.4} strokeDasharray="4 3" />
-          <text x={W - R} y={y(breakEven) - 3} textAnchor="end" fontSize={9} fill={BE}>
-            break-even {money2(breakEven)}
-          </text>
-        </g>
+        <ReferenceLine
+          y={breakEven}
+          stroke={BE}
+          strokeWidth={1.4}
+          strokeDasharray="4 3"
+          ifOverflow="extendDomain"
+          label={{ value: `break-even ${money2(breakEven)}`, position: "right", fill: BE, fontSize: 10 }}
+        />
       )}
-      <path d={path} fill="none" stroke="#4ade80" strokeWidth={2.5} />
-      {monthly.map((m, i) => (
-        <g key={m.month}>
-          <circle cx={x(i)} cy={y(m.median)} r={3.5} fill="#4ade80" />
-          <text x={x(i)} y={H - 18} textAnchor="middle" fontSize={9} fill="#5f6b80">
-            {shortMonth(m.month)}
-          </text>
-        </g>
-      ))}
-    </svg>
-  );
-};
+      <Line type="monotone" dataKey="median" stroke="#4ade80" strokeWidth={2.5} dot={{ fill: "#4ade80", r: 3 }} />
+    </LineChart>
+  </ResponsiveContainer>
+);
 
 const MarketPage = () => {
   const { loads } = useLoads(0);
@@ -197,7 +191,7 @@ const MarketPage = () => {
       </p>
 
       {points.length === 0 ? (
-        <Panel className="mt-6 max-w-[720px] p-6">
+        <Panel className="mt-6 p-6">
           <p className="text-muted-text">
             No delivered loads with rate + mileage yet. Once you've run some
             freight, your rate history shows up here.
@@ -205,12 +199,12 @@ const MarketPage = () => {
         </Panel>
       ) : (
         <>
-          <Panel className="mt-6 max-w-[720px] p-5">
+          <Panel className="mt-6 p-5">
             <div className="flex justify-between items-baseline flex-wrap gap-2">
               <h2 className="text-lg font-medium text-light">Every load · rate vs the year</h2>
               <span className="text-xs text-muted-text">gross $/driven mile</span>
             </div>
-            <div className="flex gap-4 text-[11px] text-muted-text mt-1 mb-1">
+            <div className="flex gap-4 text-[11px] text-muted-text mt-1 mb-2">
               <span><span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.standard }} />standard</span>
               <span><span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.hazmat }} />hazmat</span>
               <span><span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.specialized }} />oversize/heavy</span>
@@ -225,7 +219,7 @@ const MarketPage = () => {
             )}
           </Panel>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 mt-4 max-w-[720px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mt-4">
             <Panel className="p-5">
               <h2 className="text-lg font-medium text-light">Market barometer</h2>
               <p className="text-xs text-muted-text mt-0.5 mb-2">
