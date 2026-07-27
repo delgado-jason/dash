@@ -717,7 +717,19 @@ const GuidePage = () => {
               days? A target sitting at the 40th percentile means the market
               clears it easily (hot — room to raise); one at the 90th means it's
               barely gettable (soft — trim). That turns "when do I adjust my
-              tiers" into a number you read instead of a gut call.
+              tiers" into a number you read instead of a gut call — and it now
+              factors the macro trend, so it won't tell you to raise into a market
+              that's already turning down.
+            </Why>
+            <Why>
+              <span className="text-light">You vs. the market</span> (under the
+              barometer) compares your rate's move to the freight index's over the
+              last six months. If the market's up and you're flat, that's money on
+              the table you can chase — lanes, agents, negotiation. If you're both
+              down, it's the cycle, not you. And a small{" "}
+              <span className="text-light">freight-market chip</span> rides on the
+              dashboard header so you catch the trend at a glance. All of it is a
+              national read — your own lane heat still comes from your own loads.
             </Why>
           </Metric>
 
