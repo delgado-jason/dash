@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { getFreightIndex, type FreightIndexPoint } from "@/services/marketService";
 import { Panel } from "@/components/ui/Panel";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import {
@@ -21,6 +22,8 @@ import {
   tierGauge,
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
+
+const MACRO = "#7fb2e6"; // FRED PPI overlay line
 
 const COLOR: Record<RatePoint["bucket"], string> = {
   standard: "#4a90d9",
@@ -119,16 +122,25 @@ const RateScatter = ({
   );
 };
 
-// ---- Barometer: monthly median rate over time vs break-even ----
+// ---- Barometer: your monthly median rate vs break-even, with the FRED macro
+// index overlaid on a second axis (units differ — $/mile vs index points — so
+// the read is "do the two trends move together", not absolute levels). ----
+interface BaroPoint {
+  month: string;
+  median: number | null;
+  ppi: number | null;
+}
 const Barometer = ({
-  monthly,
+  data,
   breakEven,
+  hasPpi,
 }: {
-  monthly: { month: string; median: number; n: number }[];
+  data: BaroPoint[];
   breakEven: number | null;
+  hasPpi: boolean;
 }) => (
   <ResponsiveContainer width="100%" height={240}>
-    <LineChart data={monthly} margin={{ top: 10, right: 84, bottom: 0, left: 4 }}>
+    <LineChart data={data} margin={{ top: 10, right: hasPpi ? 6 : 84, bottom: 0, left: 4 }}>
       <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
       <XAxis
         dataKey="month"
@@ -139,6 +151,7 @@ const Barometer = ({
         axisLine={{ stroke: GRID }}
       />
       <YAxis
+        yAxisId="rate"
         domain={[0, "auto"]}
         tickFormatter={(v) => `$${v}`}
         stroke={MUTED}
@@ -146,22 +159,58 @@ const Barometer = ({
         tickLine={false}
         axisLine={false}
       />
+      {hasPpi && (
+        <YAxis
+          yAxisId="ppi"
+          orientation="right"
+          domain={["auto", "auto"]}
+          tickFormatter={(v) => `${Math.round(Number(v))}`}
+          stroke={MACRO}
+          fontSize={11}
+          tickLine={false}
+          axisLine={false}
+          width={40}
+        />
+      )}
       <Tooltip
         contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
         labelFormatter={(m) => monthTick(m as string)}
-        formatter={(v) => [money2(Number(v)), "median"]}
+        formatter={(v, name) =>
+          name === "ppi" ? [`${Number(v).toFixed(1)} idx`, "FRED PPI"] : [money2(Number(v)), "your median"]
+        }
       />
       {breakEven != null && (
         <ReferenceLine
+          yAxisId="rate"
           y={breakEven}
           stroke={BE}
           strokeWidth={1.4}
           strokeDasharray="4 3"
           ifOverflow="extendDomain"
-          label={{ value: `break-even ${money2(breakEven)}`, position: "right", fill: BE, fontSize: 10 }}
+          label={{ value: `break-even ${money2(breakEven)}`, position: "insideTopLeft", fill: BE, fontSize: 10 }}
         />
       )}
-      <Line type="monotone" dataKey="median" stroke="#4ade80" strokeWidth={2.5} dot={{ fill: "#4ade80", r: 3 }} />
+      {hasPpi && (
+        <Line
+          yAxisId="ppi"
+          type="monotone"
+          dataKey="ppi"
+          stroke={MACRO}
+          strokeWidth={1.8}
+          strokeDasharray="5 3"
+          dot={false}
+          connectNulls
+        />
+      )}
+      <Line
+        yAxisId="rate"
+        type="monotone"
+        dataKey="median"
+        stroke="#4ade80"
+        strokeWidth={2.5}
+        dot={{ fill: "#4ade80", r: 3 }}
+        connectNulls
+      />
     </LineChart>
   </ResponsiveContainer>
 );
@@ -170,9 +219,28 @@ const MarketPage = () => {
   const { loads } = useLoads(0);
   const targets = useRateTargets(loads);
   const now = useMemo(() => new Date(), []);
+  const [freightIndex, setFreightIndex] = useState<FreightIndexPoint[]>([]);
+
+  useEffect(() => {
+    getFreightIndex().then(setFreightIndex).catch(() => {});
+  }, []);
 
   const points = useMemo(() => ratePoints(loads), [loads]);
   const monthly = useMemo(() => monthlyMedianRate(points), [points]);
+
+  // Merge the owner's monthly median with the FRED macro index on a shared month
+  // axis (union of months). Either line can gap where the other has no value.
+  const baroData = useMemo(() => {
+    const map = new Map<string, BaroPoint>();
+    for (const m of monthly) map.set(m.month, { month: m.month, median: m.median, ppi: null });
+    for (const f of freightIndex) {
+      const e = map.get(f.month) ?? { month: f.month, median: null, ppi: null };
+      e.ppi = f.value;
+      map.set(f.month, e);
+    }
+    return [...map.values()].sort((a, b) => (a.month < b.month ? -1 : 1));
+  }, [monthly, freightIndex]);
+  const hasPpi = freightIndex.length > 0;
   const gauge = useMemo(
     () => tierGauge(points, targets.bookingLadder, targets.specLadder, now),
     [points, targets.bookingLadder, targets.specLadder, now],
@@ -226,7 +294,15 @@ const MarketPage = () => {
                 your median rate per driven mile, by month
               </p>
               {monthly.length > 0 ? (
-                <Barometer monthly={monthly} breakEven={targets.bookingLadder.walkAway} />
+                <>
+                  <Barometer data={baroData} breakEven={targets.bookingLadder.walkAway} hasPpi={hasPpi} />
+                  <div className="flex gap-4 text-[11px] text-muted-text mt-1">
+                    <span><span style={{ color: "#4ade80" }}>▬</span> you (median $/mi)</span>
+                    {hasPpi && (
+                      <span><span style={{ color: MACRO }}>╌</span> PPI specialized freight (FRED)</span>
+                    )}
+                  </div>
+                </>
               ) : (
                 <p className="text-xs text-muted-text py-6 text-center">No data yet.</p>
               )}

@@ -29,6 +29,7 @@ import trophyRouter from "./routes/trophyRoutes.js";
 import settlementScheduleRouter from "./routes/settlementScheduleRoutes.js";
 import accessorialRateRouter from "./routes/accessorialRateRoutes.js";
 import routingRouter from "./routes/routingRoutes.js";
+import freightIndexRouter from "./routes/freightIndexRoutes.js";
 
 const app = express();
 
@@ -79,6 +80,7 @@ app.use("/avatars", avatarRouter);
 app.use("/settlement-schedule", settlementScheduleRouter);
 app.use("/accessorial-rates", accessorialRateRouter);
 app.use("/routing", routingRouter);
+app.use("/freight-index", freightIndexRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");

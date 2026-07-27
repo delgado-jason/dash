@@ -707,7 +707,12 @@ const GuidePage = () => {
             <Why>
               The <span className="text-light">barometer</span> is your own median
               rate per driven mile by month — your personal read on where the
-              market is. The <span className="text-light">tier gauge</span> then
+              market is — with the national{" "}
+              <span className="text-light">PPI for specialized freight trucking</span>{" "}
+              (from the Fed's FRED data) overlaid on a second axis. Your own rate
+              lags; when that macro line turns down first, it's an early nudge the
+              market's softening before your own loads show it. The{" "}
+              <span className="text-light">tier gauge</span> then
               asks the useful question: where do your tiers land in the last 90
               days? A target sitting at the 40th percentile means the market
               clears it easily (hot — room to raise); one at the 90th means it's
