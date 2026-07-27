@@ -103,13 +103,12 @@ export const useAwardPops = (
       maxFuelOdometer(data.fuel) ?? 0,
       ...loads.map((l) => Number(l.odometer_end) || 0),
     );
+    // Break-even excludes owner draws, so the grind's pace targets use the
+    // debt-only obligation sum (not "all active").
     const obligationsDebtMonthly = data.obligations
       .filter((o) => o.active && !o.is_draw)
       .reduce((s, o) => s + Number(o.amount), 0);
-    const obligationsAllActive = data.obligations
-      .filter((o) => o.active)
-      .reduce((s, o) => s + Number(o.amount), 0);
-    const grind = computeGrind(loads, data.periods, obligationsAllActive, now, marginGoalFrom(data.schedule));
+    const grind = computeGrind(loads, data.periods, obligationsDebtMonthly, now, marginGoalFrom(data.schedule));
     const truckLoan = assetLoanStatus(data.obligations, "truck", now);
     const trailerLoan = assetLoanStatus(data.obligations, "trailer", now);
     const paidPcts = [truckLoan?.ownedPct, trailerLoan?.ownedPct].filter(

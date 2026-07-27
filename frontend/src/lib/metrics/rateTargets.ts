@@ -1,8 +1,20 @@
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
+import type { Obligation } from "@/types/obligation";
 
 // Rate & pace targets, all derived live from the P&L + loads. Pure functions
 // take `now` explicitly so they're testable without touching the clock.
+
+// Monthly obligation cash that belongs in break-even / pace targets: active
+// obligations only, EXCLUDING owner draws. A draw (is_draw) is a distribution of
+// profit, not a cost of operating — folding it into break-even would treat paying
+// yourself out as an expense and inflate the rate you "need". Mirrors how True Net
+// already excludes draws. (The Expenses page keeps a separate cash-out view that
+// intentionally includes draws.)
+export const monthlyObligationCost = (obligations: Obligation[]): number =>
+  obligations
+    .filter((o) => o.active && !o.is_draw)
+    .reduce((s, o) => s + Number(o.amount), 0);
 
 // The full customer rate (gross) = linehaul + fuel surcharge + accessorials. Used
 // for pricing guidance, where the rate you actually book is what matters.

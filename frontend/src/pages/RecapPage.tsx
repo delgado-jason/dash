@@ -21,6 +21,7 @@ import {
   type RecapRange,
 } from "@/lib/metrics/recap";
 import { marginGoalFrom } from "@/lib/constants/targets";
+import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { careerRank } from "@/lib/metrics/playerCard";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
@@ -71,9 +72,7 @@ const RecapPage = () => {
 
   const now = new Date();
   const range = resolvePeriod(scope, ago, now);
-  const obligationsMonthly = obligations
-    .filter((o) => o.active)
-    .reduce((s, o) => s + Number(o.amount), 0);
+  const obligationsMonthly = monthlyObligationCost(obligations);
 
   const stats = useMemo(
     () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now, marginGoalFrom(schedule)),

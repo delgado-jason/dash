@@ -14,6 +14,7 @@ import {
   getWeekGrossCommitted,
   getWeekGrossEarned,
   getWindowRpm,
+  monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
 import {
   tiersFrom,
@@ -49,7 +50,7 @@ export const useRateTargets = (loads: Load[]) => {
   }, []);
 
   const obligationsMonthly = useMemo(
-    () => obligations.filter((o) => o.active).reduce((s, o) => s + o.amount, 0),
+    () => monthlyObligationCost(obligations),
     [obligations],
   );
 

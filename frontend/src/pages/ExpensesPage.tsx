@@ -13,7 +13,11 @@ import {
   getCashMetrics,
   getTrueMonthly,
 } from "@/lib/metrics/expenses";
-import { getCostBasis, getRateLadder } from "@/lib/metrics/rateTargets";
+import {
+  getCostBasis,
+  getRateLadder,
+  monthlyObligationCost,
+} from "@/lib/metrics/rateTargets";
 import { tiersFrom } from "@/lib/constants/targets";
 import { RateLadder } from "@/components/dashboard/RateLadder";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -165,6 +169,13 @@ const ExpensesPage = () => {
     () => obligations.filter((o) => o.active).reduce((s, o) => s + o.amount, 0),
     [obligations],
   );
+  // Break-even / rate-ladder basis excludes owner draws (a draw is a profit
+  // distribution, not an operating cost); the cash-out "true cost" above keeps
+  // them. Equal until a draw is active.
+  const obligationsCost = useMemo(
+    () => monthlyObligationCost(obligations),
+    [obligations],
+  );
   const trueMonthly =
     metrics && selected
       ? getTrueMonthly(metrics.monthlyCost, obligationsTotal, selected.income_total)
@@ -179,8 +190,8 @@ const ExpensesPage = () => {
   // Rate targets anchored to today (last 3 complete months, NOT the selected
   // month) — forward pricing guidance, same basis as the dashboard card.
   const rateBasis = useMemo(
-    () => getCostBasis(periods, obligationsTotal, loads, new Date()),
-    [periods, obligationsTotal, loads],
+    () => getCostBasis(periods, obligationsCost, loads, new Date()),
+    [periods, obligationsCost, loads],
   );
   const linehaulTake = schedule
     ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)

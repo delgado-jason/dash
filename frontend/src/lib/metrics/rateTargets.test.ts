@@ -14,7 +14,9 @@ import {
   getWeekEarnedGross,
   getWeekRpm,
   getWindowRpm,
+  monthlyObligationCost,
 } from "./rateTargets";
+import type { Obligation } from "@/types/obligation";
 
 const load = (over: Partial<Load>): Load =>
   ({
@@ -295,5 +297,54 @@ describe("getWindowRpm", () => {
 
   it("null when there are no loaded miles in the window", () => {
     expect(getWindowRpm([], now)).toBeNull();
+  });
+});
+
+describe("monthlyObligationCost", () => {
+  const ob = (over: Partial<Obligation>): Obligation =>
+    ({
+      obligation_id: "o",
+      label: "x",
+      amount: 0,
+      active: true,
+      is_draw: false,
+      original_balance: null,
+      current_balance: null,
+      balance_as_of: null,
+      payoff_date: null,
+      asset_type: null,
+      asset_id: null,
+      ...over,
+    }) as Obligation;
+
+  it("sums active debt obligations", () => {
+    expect(
+      monthlyObligationCost([
+        ob({ amount: 1575 }),
+        ob({ amount: 475.19 }),
+        ob({ amount: 358 }),
+      ]),
+    ).toBeCloseTo(2408.19, 2);
+  });
+
+  it("excludes owner draws — a distribution is not a cost", () => {
+    const cost = monthlyObligationCost([
+      ob({ amount: 1575 }),
+      ob({ amount: 1000, is_draw: true }), // active draw must NOT count
+    ]);
+    expect(cost).toBe(1575);
+  });
+
+  it("excludes inactive obligations", () => {
+    expect(
+      monthlyObligationCost([
+        ob({ amount: 1575 }),
+        ob({ amount: 900, active: false }),
+      ]),
+    ).toBe(1575);
+  });
+
+  it("is 0 for an empty list", () => {
+    expect(monthlyObligationCost([])).toBe(0);
   });
 });
