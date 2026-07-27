@@ -83,7 +83,9 @@ describe("buildMapImageUrl", () => {
     assert.ok(url.startsWith("https://image.maps.hereapi.com/mia/v3/base/mc/overlay:padding=40/640x300/png"));
     assert.ok(url.includes("apiKey=K"));
     assert.ok(url.includes("overlay=line:ABC;color=%23f5b03a;width=5"));
-    assert.ok(url.includes("overlay=multiPoint:32.5,-96.6;color=%234ade80;size=large"));
+    // a single pin is `point:` (not `multiPoint:`, which 400s on one pair)
+    assert.ok(url.includes("overlay=point:32.5,-96.6;color=%234ade80"));
+    assert.ok(!url.includes("multiPoint"));
     // the raw '#' must never appear (it would truncate the URL at the fragment)
     assert.ok(!url.includes("#"));
   });
