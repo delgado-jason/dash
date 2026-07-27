@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useLoad } from "@/hooks/useLoad";
+import { getLoadMap } from "@/services/routingService";
 import { formatLoadDims } from "@/lib/dimensions";
 import { useAccessorials } from "@/hooks/useAccessorials";
 import { useBrokers } from "@/hooks/useBrokers";
@@ -165,6 +166,7 @@ export const LoadDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [accRefreshKey, setAccRefreshKey] = useState(0);
   const { load, isLoading, error } = useLoad(refreshKey);
+  const [mapImage, setMapImage] = useState<string | null>(null);
   const { accessorials } = useAccessorials(accRefreshKey);
 
   const [newType, setNewType] = useState("");
@@ -229,6 +231,19 @@ export const LoadDetailPage = () => {
       setPaymentSel(load.payment_status);
     }
   }, [load]);
+
+  // Fetch the mission map for this load (haul + deadhead leg). Non-fatal: null
+  // just leaves the text route to stand on its own.
+  useEffect(() => {
+    if (!load?.load_id) return;
+    let active = true;
+    getLoadMap(load.load_id).then((img) => {
+      if (active) setMapImage(img);
+    });
+    return () => {
+      active = false;
+    };
+  }, [load?.load_id]);
 
   useEffect(() => {
     getAccessorialRates()
@@ -595,6 +610,13 @@ export const LoadDetailPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <Panel className="p-4">
           <p className={cardLbl}>Route</p>
+          {mapImage && (
+            <img
+              src={mapImage}
+              alt={`Route from ${load.origin_city} to ${load.destination_city}`}
+              className="w-full rounded-lg mb-3 border border-steel"
+            />
+          )}
           <div className="flex gap-3">
             <div className="flex flex-col items-center pt-1.5">
               <div className="w-2 h-2 rounded-full bg-muted-text" />

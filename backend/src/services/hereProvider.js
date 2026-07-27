@@ -9,6 +9,7 @@
 
 const GEOCODE_URL = "https://geocode.search.hereapi.com/v1/geocode";
 const ROUTER_URL = "https://router.hereapi.com/v8/routes";
+const MAP_IMAGE_URL = "https://image.maps.hereapi.com/mia/v3/base/mc";
 
 // ---- unit conversions (pure) ----
 export const metersToMiles = (m) => m / 1609.344;
@@ -89,4 +90,66 @@ export const routeMiles = async (from, to, dims) => {
   if (!res.ok) throw new Error(`HERE route failed (${res.status})`);
   const meters = parseRouteMeters(await res.json());
   return meters == null ? null : metersToMiles(meters);
+};
+
+// ---- static route map (for the "mission map") ----
+
+// HERE route response → the flexible polyline(s), one per section, for drawing
+// the route on a static map. null when there's no geometry.
+export const parseRoutePolylines = (json) => {
+  const sections = json?.routes?.[0]?.sections;
+  if (!Array.isArray(sections)) return null;
+  const polys = sections.map((s) => s?.polyline).filter(Boolean);
+  return polys.length ? polys : null;
+};
+
+// The route's drawable geometry (flexible polylines) between two points. Plain
+// truck mode — the map line is illustrative, so we skip dims here for speed and
+// robustness (the Scorer's MILES are where dims matter). null when no route.
+export const routePolylines = async (from, to) => {
+  if (!hasKey() || !from || !to) return null;
+  const params = new URLSearchParams({
+    transportMode: "truck",
+    origin: `${from.lat},${from.lng}`,
+    destination: `${to.lat},${to.lng}`,
+    return: "polyline",
+    apiKey: process.env.HERE_API_KEY,
+  });
+  const res = await fetch(`${ROUTER_URL}?${params}`);
+  if (!res.ok) throw new Error(`HERE route(polyline) failed (${res.status})`);
+  return parseRoutePolylines(await res.json());
+};
+
+// Pure: assemble a Map Image v3 URL. `lines` = [{ polyline | coords[], color,
+// width }], `points` = [{ lat, lng, color }] (colors are 6-hex, no '#'). HERE's
+// overlay syntax needs ':' ';' ',' kept literal, so we build the query by hand
+// and only encode the color '#' as %23. `overlay:padding` auto-fits the view.
+export const buildMapImageUrl = ({
+  apiKey,
+  width = 640,
+  height = 300,
+  lines = [],
+  points = [],
+}) => {
+  const overlays = [];
+  for (const l of lines) {
+    const geom = l.polyline ? l.polyline : l.coords.join(",");
+    overlays.push(`line:${geom};color=%23${l.color};width=${l.width}`);
+  }
+  for (const p of points) {
+    overlays.push(`multiPoint:${p.lat},${p.lng};color=%23${p.color};size=large`);
+  }
+  // Overlay values are already URL-safe (polyline is [A-Za-z0-9-_], plus digits,
+  // '.', ':', ';', ','); the color '#' is the only reserved char, emitted as %23.
+  const qs = overlays.map((o) => `overlay=${o}`).join("&");
+  return `${MAP_IMAGE_URL}/overlay:padding=40/${width}x${height}/png?apiKey=${apiKey}&${qs}`;
+};
+
+// Fetch a Map Image URL and return it as a base64 PNG data URI — so it rides
+// authenticated JSON to the browser and the key never leaves the server.
+export const fetchMapDataUri = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HERE map image failed (${res.status})`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  return `data:image/png;base64,${buf.toString("base64")}`;
 };

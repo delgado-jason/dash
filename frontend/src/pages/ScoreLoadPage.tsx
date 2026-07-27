@@ -3,7 +3,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
 import { RATE_TIERS } from "@/lib/constants/targets";
-import { getLoadMiles, type Place } from "@/services/routingService";
+import { getLoadMiles, getRouteMap, type Place } from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
 import { toInches, classifyOversize } from "@/lib/dimensions";
 
@@ -170,6 +170,7 @@ const ScoreLoadPage = () => {
   const [deadhead, setDeadhead] = useState("");
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
+  const [mapImage, setMapImage] = useState<string | null>(null);
 
   // Prefill "Truck now" (the deadhead origin) with the truck's last-known
   // location. Non-fatal — no data just leaves it blank to fill by hand.
@@ -224,10 +225,19 @@ const ScoreLoadPage = () => {
       setRouting(false);
       if (res.loadedMiles == null && res.deadheadMiles == null) {
         setRouteErr(true);
+        setMapImage(null);
         return;
       }
       if (res.loadedMiles != null) setLoaded(String(res.loadedMiles));
       if (res.deadheadMiles != null) setDeadhead(String(res.deadheadMiles));
+      // The mission map for what was just entered (haul + deadhead leg).
+      getRouteMap({
+        truckNow: truckNow.city && truckNow.state ? truckNow : null,
+        pickup,
+        delivery,
+      }).then((img) => {
+        if (!cancelled) setMapImage(img);
+      });
     }, 600);
     return () => {
       cancelled = true;
@@ -348,6 +358,15 @@ const ScoreLoadPage = () => {
             <Field label="Deadhead" value={deadhead} onChange={setDeadhead} accent suffix="mi" />
           </div>
         </div>
+
+        {mapImage && (
+          <img
+            src={mapImage}
+            alt="Route map"
+            className="w-full rounded-[9px] mt-2.5 mb-1"
+            style={{ border: "1px solid #2a3347" }}
+          />
+        )}
 
         {!targets.ready ? (
           <p className="text-xs text-muted-text mt-4 text-center">
