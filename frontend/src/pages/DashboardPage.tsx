@@ -230,7 +230,7 @@ const OwnerDashboard = () => {
         <div className="lg:col-span-2">
           <RpmChart data={monthlyRpm} breakEven={liveBreakEven} />
         </div>
-        <Panel className="p-4">
+        <Panel noir className="p-4">
           <p className="text-xs text-muted-text mb-2">What's next · booked</p>
           <WhatsNext loads={upcoming} />
         </Panel>
@@ -238,7 +238,7 @@ const OwnerDashboard = () => {
 
       {/* Recent loads + outstanding */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
-        <Panel className="p-4">
+        <Panel noir className="p-4">
           <p className="text-xs text-muted-text mb-2">Recent loads</p>
           <RecentLoads loads={recentLoads} />
         </Panel>

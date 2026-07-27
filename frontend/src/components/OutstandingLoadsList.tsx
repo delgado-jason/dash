@@ -29,7 +29,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
     getOutstandingSummary(loads);
 
   return (
-    <Panel variant="panel" className="p-4">
+    <Panel variant="panel" noir className="p-4">
       <div className="flex items-baseline justify-between mb-4">
         <h3 className="text-sm font-medium text-light">Outstanding loads</h3>
         <span className="text-sm text-status-aware-text font-medium">

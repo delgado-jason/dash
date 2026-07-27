@@ -144,7 +144,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
     weekEarned >= gross.weeklyTarget;
 
   return (
-    <Panel className="p-4">
+    <Panel noir className="p-4">
       <div className="flex justify-between items-baseline mb-3">
         <p className="text-sm font-medium text-light">Rate &amp; pace targets</p>
         <p className="text-xs text-muted-text">

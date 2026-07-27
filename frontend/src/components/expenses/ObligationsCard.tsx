@@ -53,7 +53,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
     .reduce((s, o) => s + o.amount, 0);
 
   return (
-    <Panel className="p-4 mb-6">
+    <Panel noir className="p-4 mb-6">
       <div className="flex justify-between items-start mb-1">
         <p className="text-xs text-muted-text">
           Monthly obligations · cash out that's not on your P&amp;L

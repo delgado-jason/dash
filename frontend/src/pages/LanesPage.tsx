@@ -96,7 +96,7 @@ const LanesPage = () => {
           onClear={() => setSelectedState(null)}
         />
       ) : (
-        <Panel className="mt-6 p-4">
+        <Panel noir className="mt-6 p-4">
           <p className="text-xs text-muted-text mb-2">
             By region · last {windowDays} days · expand a market for its lanes ·
             or click a state on the map

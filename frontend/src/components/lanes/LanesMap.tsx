@@ -116,7 +116,7 @@ export const LanesMap = ({ data, windowDays, selected, onSelect }: Props) => {
   );
 
   return (
-    <Panel ref={containerRef} className="p-4 relative">
+    <Panel ref={containerRef} noir className="p-4 relative">
       <div className="text-xs text-muted-text mb-2 flex items-center gap-2 flex-wrap">
         <span>Shade by</span>
         {toggle("rate", "your $/mi")}
