@@ -134,11 +134,8 @@ const DriverDetailPage = () => {
   const card = useMemo(() => {
     if (driverLoads.length === 0) return null;
     const now = new Date();
-    // All active obligations (incl. the owner draw) drive break-even/rate; only
-    // the debt ones (draws excluded) subtract from True Net.
-    const obligationsTotal = obligations
-      .filter((o) => o.active)
-      .reduce((s, o) => s + Number(o.amount), 0);
+    // Active DEBT obligations (owner draws excluded) drive break-even/rate and
+    // subtract from True Net — a draw is a profit distribution, not a cost.
     const obligationsDebt = obligations
       .filter((o) => o.active && !o.is_draw)
       .reduce((s, o) => s + Number(o.amount), 0);
@@ -148,7 +145,7 @@ const DriverDetailPage = () => {
       maxFuelOdometer(fuel) ?? 0,
       ...driverLoads.map((l) => Number(l.odometer_end) || 0),
     );
-    const basis = getCostBasis(periods, obligationsTotal, driverLoads, now);
+    const basis = getCostBasis(periods, obligationsDebt, driverLoads, now);
     const ladder = getRateLadder(basis.breakEvenRpm, tiers);
     const season = getSeasonStats(periods, driverLoads, driverTrips, now, 3, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
@@ -170,7 +167,7 @@ const DriverDetailPage = () => {
       winDays > 0
         ? Math.min(1, underLoadDaySet(driverLoads, winStart, nowKey).size / winDays)
         : null;
-    const grind = computeGrind(driverLoads, periods, obligationsTotal, now, marginGoal);
+    const grind = computeGrind(driverLoads, periods, obligationsDebt, now, marginGoal);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => l.load_status === "delivered");
     const paidPcts = [

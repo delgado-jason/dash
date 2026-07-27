@@ -7,6 +7,7 @@ import { getObligations } from "@/services/obligationsService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { computeGrind, type Grind } from "@/lib/metrics/grind";
+import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { marginGoalFrom } from "@/lib/constants/targets";
 
 // Fetches the P&L + obligations the rate ladder needs, then grades every pay-week
@@ -24,9 +25,7 @@ export const useGrind = (loads: Load[]): Grind | null => {
 
   return useMemo(() => {
     if (!periods || !obligations || loads.length === 0) return null;
-    const obligationsMonthly = obligations
-      .filter((o) => o.active)
-      .reduce((s, o) => s + Number(o.amount), 0);
+    const obligationsMonthly = monthlyObligationCost(obligations);
     return computeGrind(loads, periods, obligationsMonthly, new Date(), marginGoalFrom(schedule));
   }, [periods, obligations, loads, schedule]);
 };
