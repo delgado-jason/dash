@@ -19,7 +19,7 @@ import { useTrips } from "@/hooks/useTrips";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
-import { formatDate } from "@/lib/format";
+import { formatDate, money } from "@/lib/format";
 import { Panel } from "@/components/ui/Panel";
 import {
   getCostBasis,
@@ -51,8 +51,6 @@ import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { PlayerCard } from "@/components/playercard/PlayerCard";
 import { RecordBook, driverRecordChips } from "@/components/awards/RecordBook";
 import { PatchBoard } from "@/components/awards/PatchBoard";
-
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 const Spec = ({
   label,

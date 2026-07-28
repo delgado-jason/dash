@@ -1,10 +1,10 @@
 import { Truck, MapPin, Star, Crown, Leaf } from "lucide-react";
 import type { RecapStats } from "@/lib/metrics/recap";
 import { RECAP_TIERS } from "@/lib/constants/recapTiers";
+import { money } from "@/lib/format";
 
 const kMoney = (n: number) =>
   n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`;
-const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
 const Pips = ({ n, color }: { n: number; color: string }) => (
@@ -165,7 +165,7 @@ export const RecapPoster = ({
 
         {rich && stats.netProfit != null && (
           <div className="flex gap-2 mb-2">
-            <Tile value={money0(stats.netProfit)} label="NET PROFIT" color="#4ade80" />
+            <Tile value={money(stats.netProfit)} label="NET PROFIT" color="#4ade80" />
             {stats.bestMonth && <Tile value={stats.bestMonth.label.split(" ")[0]} label="BEST MONTH" color="#4ade80" />}
             {stats.hardestMonth && <Tile value={stats.hardestMonth.label.split(" ")[0]} label="HARDEST" color="#f87171" />}
           </div>

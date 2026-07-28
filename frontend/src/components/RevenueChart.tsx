@@ -10,6 +10,7 @@ import {
   Cell,
 } from "recharts";
 import { Panel } from "@/components/ui/Panel";
+import { money } from "@/lib/format";
 
 interface MonthlyRevenue {
   month: string; // "2026-06"
@@ -27,13 +28,6 @@ const formatMonthLabel = (month: string): string => {
   const date = new Date(Date.UTC(Number(year), Number(m) - 1, 1));
   return date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 };
-
-const formatCurrency = (n: number): string =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
 
 const AMBER = "#e8940a";
 const AMBER_BRIGHT = "#f5b03a";
@@ -75,7 +69,7 @@ export const RevenueChart = ({ data, target }: Props) => {
               fontSize: 12,
             }}
             labelFormatter={(label) => formatMonthLabel(label as string)}
-            formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
+            formatter={(value) => [money(Number(value)), "Revenue"]}
           />
           {target && (
             <ReferenceLine
@@ -83,7 +77,7 @@ export const RevenueChart = ({ data, target }: Props) => {
               stroke={MUTED}
               strokeDasharray="4 4"
               label={{
-                value: `Target ${formatCurrency(target)}`,
+                value: `Target ${money(target)}`,
                 fill: MUTED,
                 fontSize: 10,
                 position: "right",

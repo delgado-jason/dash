@@ -1,8 +1,7 @@
 import type { NationalDiesel } from "@/types/fuelEntry";
 import { Stamp } from "@/components/Stamp";
 import { Panel } from "@/components/ui/Panel";
-
-const money3 = (n: number) => `$${n.toFixed(3)}`;
+import { dieselPrice } from "@/lib/format";
 
 const fmtWeek = (d: string) =>
   new Date(d + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -46,13 +45,13 @@ export const DieselCompareCard = ({
         <div>
           <p className="text-xs text-muted-text">National avg</p>
           <p className="text-2xl font-condensed mt-1 text-light">
-            {money3(national.value)}
+            {dieselPrice(national.value)}
           </p>
         </div>
         <div>
           <p className="text-xs text-muted-text">Your avg / gal</p>
           <p className="text-2xl font-condensed mt-1 text-light">
-            {yourCostPerGallon == null ? "—" : money3(yourCostPerGallon)}
+            {yourCostPerGallon == null ? "—" : dieselPrice(yourCostPerGallon)}
           </p>
         </div>
         <div>

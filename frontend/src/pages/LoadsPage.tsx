@@ -25,13 +25,7 @@ import {
   detentionCollected,
   type LoadFlag,
 } from "@/lib/detention";
-
-const money = (n: number) =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+import { money } from "@/lib/format";
 
 // Date-only, UTC-safe (Postgres dates would otherwise shift a day in local tz).
 const fmtDate = (d: string) =>

@@ -10,8 +10,8 @@ import {
 } from "recharts";
 import type { DieselMonth } from "@/lib/metrics/fuelEconomy";
 import { Panel } from "@/components/ui/Panel";
+import { dieselPrice } from "@/lib/format";
 
-const money3 = (n: number) => `$${n.toFixed(3)}`;
 const label = (key: string) => (key === "you" ? "Your avg" : "National (EIA)");
 
 // You vs. national retail diesel, monthly. Your line is gallon-weighted from the
@@ -57,7 +57,7 @@ export const DieselPriceChart = ({ data }: { data: DieselMonth[] }) => (
               fontSize: 12,
             }}
             formatter={(v, name) => [
-              v == null ? "—" : money3(Number(v)),
+              v == null ? "—" : dieselPrice(Number(v)),
               label(String(name)),
             ]}
           />

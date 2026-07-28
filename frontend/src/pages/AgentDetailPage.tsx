@@ -40,13 +40,7 @@ import { loadRevenue } from "@/lib/metrics/loads";
 import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
-
-const money0 = (n: number) =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+import { money } from "@/lib/format";
 
 const fmtDate = (d?: string | null) =>
   d
@@ -224,7 +218,7 @@ const AgentDetailPage = () => {
         <Kpi label="Loads" value={String(getLoadCount(loads))} />
         <Kpi
           label="Gross revenue"
-          value={grossRev == null ? "—" : money0(grossRev)}
+          value={grossRev == null ? "—" : money(grossRev)}
         />
         <Kpi
           label="Avg rate/mile"
@@ -317,7 +311,7 @@ const AgentDetailPage = () => {
                       {fmtDate(load.pickup_date)}
                     </td>
                     <td className="py-2 pr-4 text-right whitespace-nowrap">
-                      {money0(loadRevenue(load))}
+                      {money(loadRevenue(load))}
                     </td>
                     <td className="py-2">
                       <StatusBadge value={load.payment_status} />

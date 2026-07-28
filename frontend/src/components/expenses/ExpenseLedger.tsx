@@ -6,6 +6,7 @@ import {
   deleteExpenseLine,
   addExpenseLine,
 } from "@/services/expensesService";
+import { money, rpm } from "@/lib/format";
 
 interface Props {
   period: ExpensePeriod;
@@ -14,9 +15,6 @@ interface Props {
   onChange: () => void;
 }
 
-const money = (n: number): string =>
-  `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-const perMile = (n: number | null): string => (n == null ? "—" : `$${n.toFixed(2)}`);
 const pct = (n: number | null): string => (n == null ? "—" : `${(n * 100).toFixed(0)}%`);
 
 export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) => {
@@ -71,7 +69,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
             )}
           </td>
           <td className="p-2 text-right text-muted-text">
-            {perMile(totalMiles > 0 ? l.amount / totalMiles : null)}
+            {rpm(totalMiles > 0 ? l.amount / totalMiles : null)}
           </td>
           <td className="p-2 text-right text-muted-text">
             {pct(income && income > 0 ? l.amount / income : null)}

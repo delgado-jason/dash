@@ -8,6 +8,7 @@ import type {
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
 import { RatingMedallion } from "./RatingMedallion";
 import { PrestigeBadge, PRESTIGE_META } from "./PrestigeBadge";
+import { money } from "@/lib/format";
 
 // Short live blurb — only shown on the card when the agent is currently on the
 // board this quarter, so it stays a highlight rather than clutter.
@@ -17,13 +18,6 @@ const liveBlurb = (live: LiveStanding): string | null => {
   if (live.result === "board") return `#${live.boardRank} this quarter`;
   return null;
 };
-
-const money0 = (n: number) =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
 
 const fmtDate = (d: string | null) =>
   d
@@ -96,7 +90,7 @@ export const AgentCard = ({
       )}
 
       <div className="mt-2.5 pt-2 border-t border-[#3b4660] text-xs text-muted-text">
-        {stats?.loadCount ?? 0} loads · {money0(stats?.revenue ?? 0)} ·{" "}
+        {stats?.loadCount ?? 0} loads · {money(stats?.revenue ?? 0)} ·{" "}
         {fmtDate(stats?.lastWorked ?? null)}
       </div>
     </Link>

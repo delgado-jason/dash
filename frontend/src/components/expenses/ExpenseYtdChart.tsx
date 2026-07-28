@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import type { ExpensePeriod } from "@/types/expense";
 import { Panel } from "@/components/ui/Panel";
+import { money } from "@/lib/format";
 
 interface Datum {
   month: string;
@@ -17,9 +18,6 @@ interface Datum {
   cost: number;
   profit: number;
 }
-
-const money = (n: number): string =>
-  `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 // Two clean lines (income + cost); the gap is the margin, spelled out on hover.
 const ChartTooltip = ({

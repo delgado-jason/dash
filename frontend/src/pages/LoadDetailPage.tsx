@@ -65,15 +65,7 @@ import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { getFuelEntries } from "@/services/fuelService";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
-
-const money0 = (n: number) =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
-const money2 = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+import { money, moneyCents } from "@/lib/format";
 
 const fmtDate = (d?: string | null) =>
   d
@@ -492,7 +484,7 @@ export const LoadDetailPage = () => {
           <Ban size={20} style={{ color: "#f2a6a3" }} />
           <div className="flex-1 min-w-[180px]">
             <p className="font-condensed text-lg" style={{ color: "#f2a6a3" }}>
-              TONU fee owed · {money0(revenue)}
+              TONU fee owed · {money(revenue)}
             </p>
             <p className="text-[11px] text-muted-text">
               Truck ordered, not used. Collect the fee, then mark it.
@@ -586,7 +578,7 @@ export const LoadDetailPage = () => {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Kpi label="Total revenue" value={money0(revenue)} />
+        <Kpi label="Total revenue" value={money(revenue)} />
         <Kpi
           label="Rate / mile"
           value={fmtRpm(rpm)}
@@ -705,25 +697,25 @@ export const LoadDetailPage = () => {
 
         <Panel className="p-4">
           <p className={cardLbl}>Revenue</p>
-          <Row label="Linehaul" value={money2(Number(load.linehaul))} />
+          <Row label="Linehaul" value={moneyCents(Number(load.linehaul))} />
           <Row
             label="Fuel surcharge"
-            value={money2(Number(load.fuel_surcharge))}
+            value={moneyCents(Number(load.fuel_surcharge))}
           />
           <Row
             label="Accessorials"
-            value={money2(Number(load.total_accessorials))}
+            value={moneyCents(Number(load.total_accessorials))}
           />
           <div className="flex justify-between border-t border-steel mt-1.5 pt-1.5 text-sm">
             <span>Total rate</span>
-            <span className="font-condensed text-base">{money2(revenue)}</span>
+            <span className="font-condensed text-base">{moneyCents(revenue)}</span>
           </div>
           {Math.abs(net - revenue) > 0.005 && (
             <>
               <div className="flex justify-between mt-1 text-sm">
                 <span className="text-status-positive-text">Your net</span>
                 <span className="font-condensed text-base text-status-positive-text">
-                  {money2(net)}
+                  {moneyCents(net)}
                 </span>
               </div>
               <p className="text-[11px] text-muted-text mt-1">
@@ -880,7 +872,7 @@ export const LoadDetailPage = () => {
           </div>
           {fuel ? (
             <>
-              <Row label="Fuel cost" value={money2(fuel.cost)} />
+              <Row label="Fuel cost" value={moneyCents(fuel.cost)} />
               <Row
                 label="Miles"
                 value={`${fuel.miles.toLocaleString("en-US")} mi`}
@@ -963,7 +955,7 @@ export const LoadDetailPage = () => {
         <div className="flex justify-between items-center mb-2">
           <p className={`${cardLbl} mb-0`}>Accessorials</p>
           <span className="text-xs text-muted-text">
-            Total {money2(accTotal)}
+            Total {moneyCents(accTotal)}
           </span>
         </div>
 
@@ -1005,7 +997,7 @@ export const LoadDetailPage = () => {
                           }
                         />
                       ) : (
-                        money2(Number(a.amount))
+                        moneyCents(Number(a.amount))
                       )}
                     </td>
                     <td className="py-2">

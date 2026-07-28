@@ -9,8 +9,8 @@ import { fmtMiles } from "@/lib/metrics/mileClub";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { MedalBadge } from "@/components/awards/MedalBadge";
+import { money } from "@/lib/format";
 
-const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const pct1 = (n: number) => `${(n * 100).toFixed(1)}%`;
 const pct0 = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -358,9 +358,9 @@ export const PlayerCard = ({
         <span className="text-[11px] text-muted-text">· {season.label} · your last 3 complete months</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat label="Net revenue" value={money0(season.netRevenue)} sub="net of carrier cut" />
-        <Stat label="Operating profit" value={money0(season.netProfit)} color={profitColor(season.netProfit)} sub="before obligations" />
-        <Stat label="True net" value={money0(season.trueNet)} color={profitColor(season.trueNet)} sub="what you keep, before draw" />
+        <Stat label="Net revenue" value={money(season.netRevenue)} sub="net of carrier cut" />
+        <Stat label="Operating profit" value={money(season.netProfit)} color={profitColor(season.netProfit)} sub="before obligations" />
+        <Stat label="True net" value={money(season.trueNet)} color={profitColor(season.trueNet)} sub="what you keep, before draw" />
         <Stat label="Loads" value={String(season.loads)} />
         <Stat label="Miles" value={Math.round(season.totalMiles).toLocaleString("en-US")} />
         <Stat label="Deadhead" value={season.deadheadPct != null ? pct1(season.deadheadPct) : "—"} color={deadheadColor(season.deadheadPct)} />

@@ -21,6 +21,7 @@ import { computeMedals } from "@/lib/awards/medals";
 import type { TrophyDef } from "@/lib/trophies/catalog";
 import type { TrophyStatus } from "@/lib/trophies/status";
 import type { Trophy } from "@/types/trophy";
+import { money } from "@/lib/format";
 
 // Grandest → smallest. trophy = career Hall monument; medal = a tier-up; recap = a
 // period close; patch = a stacked hard feat; record = a new personal best.
@@ -37,7 +38,6 @@ export interface Award {
   medalTier?: number; // medal tier — drives the medallion metal (1/2/3)
 }
 
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const kMoney = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`);
 
 export interface AwardInputs {

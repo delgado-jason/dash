@@ -1,6 +1,7 @@
 import type { useRateTargets } from "@/hooks/useRateTargets";
 import { RateLadder } from "./RateLadder";
 import { Panel } from "@/components/ui/Panel";
+import { money } from "@/lib/format";
 
 type Targets = ReturnType<typeof useRateTargets>;
 
@@ -9,9 +10,6 @@ const AMBER = "#e8940a";
 const GREEN = "#1d9e75";
 const GREEN_TICK = "#35c47a"; // brighter than the fill, so the target tick reads on top of it
 const TRACK = "#232c3f";
-
-const money = (n: number | null): string =>
-  n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
 
 // This week's gross vs floor (break-even) and target (your margin goal). The bar
 // spans past target for headroom; solid fill is EARNED (delivered), the faded

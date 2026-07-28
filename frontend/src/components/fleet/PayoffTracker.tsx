@@ -1,8 +1,8 @@
 import { Truck, Container, Flag } from "lucide-react";
 import type { Obligation } from "@/types/obligation";
 import { computePayoff } from "@/lib/metrics/payoff";
+import { money } from "@/lib/format";
 
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthYear = (iso: string) => {
   const d = new Date(iso.slice(0, 10) + "T00:00:00Z");

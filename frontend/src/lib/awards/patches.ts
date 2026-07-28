@@ -8,6 +8,7 @@ import type { FuelEntry } from "@/types/fuelEntry";
 import { loadGross, loadRevenue } from "@/lib/metrics/rateTargets";
 import { formatInches } from "@/lib/dimensions";
 import { computeStack, type BarOpts } from "./adaptiveBar";
+import { money } from "@/lib/format";
 
 export interface Patch {
   key: string;
@@ -80,8 +81,6 @@ const ADAPTIVE: {
   { key: "big-ticket", name: "Big Ticket", icon: "cash", unit: "money", opts: { n: 5, floor: 7000 }, value: (l) => loadGross(l) },
   { key: "long-hauler", name: "Long Hauler", icon: "road", unit: "miles", opts: { n: 5, floor: 1200 }, value: (l) => Number(l.loaded_miles) || 0 },
 ];
-
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
 export const computePatches = (
   loads: Load[],

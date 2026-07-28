@@ -1,8 +1,8 @@
 import type { FuelVsRevenue, FuelMonth } from "@/lib/metrics/fuelRevenue";
 import { Panel } from "@/components/ui/Panel";
 import { Stamp } from "@/components/Stamp";
+import { money } from "@/lib/format";
 
-const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const pct0 = (n: number) => `${Math.round(n * 100)}%`;
 
 const monthLabel = (ym: string, opts: Intl.DateTimeFormatOptions) =>
@@ -103,8 +103,8 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
             {m.fuelPctNet == null ? "—" : pct0(m.fuelPctNet)}
           </p>
           <p className="text-[11px] text-muted-text mt-0.5">
-            {money0(m.fuelSpend)}
-            {m.net > 0 ? ` of ${money0(m.net)} net` : ""}
+            {money(m.fuelSpend)}
+            {m.net > 0 ? ` of ${money(m.net)} net` : ""}
           </p>
         </div>
 
@@ -131,8 +131,8 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
             className="text-[11px] mt-0.5"
             style={{ color: covered ? "#9daabb" : "#f2a6a3" }}
           >
-            {money0(m.fsc)} FSC vs {money0(m.fuelSpend)} fuel
-            {gap != null && gap < 0 ? ` · ${money0(gap)} from linehaul` : ""}
+            {money(m.fsc)} FSC vs {money(m.fuelSpend)} fuel
+            {gap != null && gap < 0 ? ` · ${money(gap)} from linehaul` : ""}
           </p>
         </div>
       </div>

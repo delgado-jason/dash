@@ -1,4 +1,6 @@
 import type { RateLadder as Ladder } from "@/lib/metrics/rateTargets";
+// The rpm formatter, aliased — `rpm` is already a prop name in this component.
+import { rpm as rate } from "@/lib/format";
 
 interface Props {
   ladder: Ladder;
@@ -13,7 +15,6 @@ const GREEN_BRIGHT = "#4ade80"; // reads as text on dark, unlike the fill green
 const CORAL = "#e05a3a"; // Specialized — matches the Scorer/Settings dot
 const TRACK = "#232c3f";
 
-const rate = (n: number | null): string => (n == null ? "—" : `$${n.toFixed(2)}`);
 
 // Horizontal ladder from walk-away → strong, split at the target tier. A marker
 // shows where the current rate lands: red at/below walk-away (losing money),
