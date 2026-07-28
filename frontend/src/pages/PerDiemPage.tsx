@@ -16,11 +16,10 @@ import {
 } from "@/lib/perDiem";
 import type { PerDiemStatus } from "@/types/perDiem";
 import { Panel } from "@/components/ui/Panel";
+import { money, moneyCents } from "@/lib/format";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = (n: number) => String(n).padStart(2, "0");
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const money2 = (n: number) => `$${n.toFixed(2)}`;
 
 const AMBER = "#e8940a";
 const HALF_BG = `linear-gradient(135deg, ${AMBER} 0 50%, #2a3347 50% 100%)`;
@@ -161,7 +160,7 @@ const PerDiemPage = () => {
             style={{ background: "#0d1119", border: "1px solid #22304a" }}
           >
             ({summary.fullDays} × {money(rate)} + {summary.halfDays} ×{" "}
-            {money2(rate * 0.75)}) × {Math.round(deductPct * 100)}%
+            {moneyCents(rate * 0.75)}) × {Math.round(deductPct * 100)}%
           </div>
 
           <p className="text-[11px] text-muted-text mt-2">

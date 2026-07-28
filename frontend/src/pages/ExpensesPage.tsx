@@ -29,9 +29,7 @@ import { ObligationsCard } from "@/components/expenses/ObligationsCard";
 import { Panel } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
-
-const money = (n: number): string =>
-  `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+import { money } from "@/lib/format";
 
 // That month's miles from loads (drives cost-per-mile + break-even).
 const monthMiles = (loads: Load[], periodMonth: string) => {

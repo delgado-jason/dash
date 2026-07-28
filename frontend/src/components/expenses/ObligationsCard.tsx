@@ -7,14 +7,12 @@ import {
   deleteObligation,
 } from "@/services/obligationsService";
 import { Panel } from "@/components/ui/Panel";
+import { money } from "@/lib/format";
 
 interface Props {
   items: Obligation[];
   onChange: () => void; // refetch at the page level after a mutation
 }
-
-const money = (n: number): string =>
-  `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 // Manages the obligations list. Their dollar/break-even impact now shows in the
 // page's headline KPIs (obligations are folded into true cost); this card is

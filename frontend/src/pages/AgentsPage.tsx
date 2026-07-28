@@ -13,13 +13,7 @@ import {
   rosterKpis,
   currentQuarterStandings,
 } from "@/lib/metrics/agentLeaderboard";
-
-const money0 = (n: number) =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+import { money } from "@/lib/format";
 
 type SortKey = "rating" | "revenue" | "recent";
 const SORTS: [SortKey, string][] = [
@@ -131,7 +125,7 @@ const AgentsPage = () => {
             <Kpi
               label="Top earner"
               value={`${top.first_name.charAt(0)}. ${top.last_name}`}
-              sub={`${money0(kpis.topEarner!.revenue)} · 90 days`}
+              sub={`${money(kpis.topEarner!.revenue)} · 90 days`}
             />
           </Link>
         ) : (

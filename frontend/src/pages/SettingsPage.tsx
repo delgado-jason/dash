@@ -8,6 +8,7 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { Panel } from "@/components/ui/Panel";
+import { money } from "@/lib/format";
 
 type Tier3 = { min: number; target: number; strong: number };
 const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean percent
@@ -74,9 +75,6 @@ const TierCard = ({
     </div>
   );
 };
-
-const money = (n: number) =>
-  `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 // A sample load for the live preview, so the effect of the percentages is visible.
 const SAMPLE_LINEHAUL = 2000;

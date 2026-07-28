@@ -33,10 +33,9 @@ import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { MileClub } from "@/components/fleet/MileClub";
 import { TRAILER_FIELDS, toFormValues } from "@/lib/fleetFields";
-import { formatDate } from "@/lib/format";
+import { formatDate, money } from "@/lib/format";
 import { Panel } from "@/components/ui/Panel";
 
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
 // One tile in the trailer-metrics strip.

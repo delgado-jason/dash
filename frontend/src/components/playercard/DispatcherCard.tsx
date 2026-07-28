@@ -5,6 +5,7 @@ import { RANK_TIERS } from "@/lib/metrics/dispatcherCard";
 import type { Grade } from "@/lib/metrics/playerCard";
 import type { Medal } from "@/lib/awards/medals";
 import { MedalBadge } from "@/components/awards/MedalBadge";
+import { rpm } from "@/lib/format";
 
 interface Props {
   name: string;
@@ -20,7 +21,6 @@ const gross = (n: number): string => {
   const k = n / 1000;
   return `$${k < 100 ? k.toFixed(1) : Math.round(k)}k`;
 };
-const rpm = (n: number | null): string => (n == null ? "—" : `$${n.toFixed(2)}`);
 const hrs = (min: number): string => `${(min / 60).toFixed(1)}h`;
 const pct = (r: number | null): string => (r == null ? "—" : `${Math.round(r * 100)}%`);
 

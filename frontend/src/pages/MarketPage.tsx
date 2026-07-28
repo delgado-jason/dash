@@ -23,6 +23,7 @@ import {
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
 import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
+import { rpm } from "@/lib/format";
 
 const MACRO = "#7fb2e6"; // FRED PPI overlay line
 
@@ -34,7 +35,6 @@ const COLOR: Record<RatePoint["bucket"], string> = {
 const BE = "#e0533a";
 const GRID = "#2a3347";
 const MUTED = "#9daabb";
-const money2 = (n: number) => `$${n.toFixed(2)}`;
 const monthTick = (ym: string) =>
   new Date(ym + "-01T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
@@ -77,7 +77,7 @@ const RateScatter = ({
         strokeWidth={label === "break-even" ? 1.6 : 1.2}
         strokeDasharray={label === "break-even" ? undefined : "5 3"}
         ifOverflow="extendDomain"
-        label={{ value: `${label} ${money2(v)}`, position: "right", fill: color, fontSize: 10 }}
+        label={{ value: `${label} ${rpm(v)}`, position: "right", fill: color, fontSize: 10 }}
       />
     );
 
@@ -109,7 +109,7 @@ const RateScatter = ({
         <Tooltip
           cursor={{ stroke: GRID }}
           contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
-          formatter={(value, name) => [money2(Number(value)), name === "y" ? "rate/mi" : String(name)]}
+          formatter={(value, name) => [rpm(Number(value)), name === "y" ? "rate/mi" : String(name)]}
           labelFormatter={(v) => new Date(v as number).toLocaleDateString("en-US", { timeZone: "UTC" })}
         />
         {refLine(ladder.walkAway, BE, "break-even")}
@@ -177,7 +177,7 @@ const Barometer = ({
         contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
         labelFormatter={(m) => monthTick(m as string)}
         formatter={(v, name) =>
-          name === "ppi" ? [`${Number(v).toFixed(1)} idx`, "FRED PPI"] : [money2(Number(v)), "your median"]
+          name === "ppi" ? [`${Number(v).toFixed(1)} idx`, "FRED PPI"] : [rpm(Number(v)), "your median"]
         }
       />
       {breakEven != null && (
@@ -188,7 +188,7 @@ const Barometer = ({
           strokeWidth={1.4}
           strokeDasharray="4 3"
           ifOverflow="extendDomain"
-          label={{ value: `break-even ${money2(breakEven)}`, position: "insideTopLeft", fill: BE, fontSize: 10 }}
+          label={{ value: `break-even ${rpm(breakEven)}`, position: "insideTopLeft", fill: BE, fontSize: 10 }}
         />
       )}
       {hasPpi && (
@@ -382,7 +382,7 @@ const MarketPage = () => {
                         <div className="flex justify-between text-xs">
                           <span className="text-light">
                             {r.label}{" "}
-                            <span className="text-muted-text">{money2(r.value)}</span>
+                            <span className="text-muted-text">{rpm(r.value)}</span>
                           </span>
                           <span className="tabular-nums" style={{ color: toneColor }}>
                             {Math.round(r.pctile * 100)}

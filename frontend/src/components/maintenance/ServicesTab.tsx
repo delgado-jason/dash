@@ -9,17 +9,13 @@ import {
 import { ServiceForm } from "./ServiceForm";
 import { Stamp } from "@/components/Stamp";
 import { Panel } from "@/components/ui/Panel";
+import { moneyCents } from "@/lib/format";
 
 interface Props {
   services: MaintenanceService[];
   items: MaintenanceItem[];
   onChange: () => void;
 }
-
-const money = (n: number | null): string =>
-  n == null
-    ? "—"
-    : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const num = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
 
@@ -210,7 +206,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
           ))}
           <span className="text-xs text-muted-text ml-auto">
             {filtered.length} service{filtered.length !== 1 ? "s" : ""} ·{" "}
-            {money(rangeTotal)}
+            {moneyCents(rangeTotal)}
           </span>
         </div>
         {mode === "custom" && (
@@ -264,9 +260,9 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
                 <tr key={vendor} className="border-t border-steel">
                   <td className="py-1.5">{vendor}</td>
                   <td className="py-1.5 text-right text-muted-text">{v.count}</td>
-                  <td className="py-1.5 text-right">{money(v.total)}</td>
+                  <td className="py-1.5 text-right">{moneyCents(v.total)}</td>
                   <td className="py-1.5 text-right text-muted-text">
-                    {v.priced ? money(v.total / v.priced) : "—"}
+                    {v.priced ? moneyCents(v.total / v.priced) : "—"}
                   </td>
                 </tr>
               ))}
@@ -326,7 +322,7 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
                       </span>
                     )}
                   </td>
-                  <td className="py-2 text-right whitespace-nowrap">{money(s.cost)}</td>
+                  <td className="py-2 text-right whitespace-nowrap">{moneyCents(s.cost)}</td>
                   <td className="py-2 text-right">
                     <Trash2
                       size={15}

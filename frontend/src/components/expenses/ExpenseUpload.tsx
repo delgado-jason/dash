@@ -11,14 +11,12 @@ import {
 } from "@/services/expensesService";
 import type { ExpenseType } from "@/types/expense";
 import { Panel } from "@/components/ui/Panel";
+import { money } from "@/lib/format";
 
 interface Props {
   onSaved: () => void;
   onCancel: () => void;
 }
-
-const money = (n: number | null): string =>
-  n == null ? "—" : `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
   const [proposed, setProposed] = useState<ProposedPeriod | null>(null);

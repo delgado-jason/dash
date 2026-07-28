@@ -42,16 +42,9 @@ import { WhatsNext } from "@/components/dashboard/WhatsNext";
 import { RecentLoads } from "@/components/dashboard/RecentLoads";
 import { isDispatcher } from "@/lib/roles";
 import DispatchDashboard from "./DispatchDashboard";
+import { money, rpm } from "@/lib/format";
 
 // helpers
-const formatCurrency = (n: number | null): string =>
-  n === null
-    ? "—"
-    : n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-
-const formatRpm = (n: number | null): string =>
-  n === null ? "—" : `$${n.toFixed(2)}`;
-
 const formatPercent = (ratio: number | null): string =>
   ratio === null ? "—" : `${(ratio * 100).toFixed(1)}%`;
 
@@ -171,17 +164,17 @@ const OwnerDashboard = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KpiCard
           label="Net revenue · MTD"
-          value={formatCurrency(revenueMTD)}
+          value={money(revenueMTD)}
           delta={mtdDelta}
         />
         <KpiCard
           label="Net revenue · YTD"
-          value={formatCurrency(revenueYTD)}
+          value={money(revenueYTD)}
           trend={revenueTrend}
         />
         <KpiCard
           label="Net RPM · 3mo"
-          value={formatRpm(avgRpm)}
+          value={rpm(avgRpm)}
           status={rpmStatus}
           trend={rpmTrend}
           subtext={

@@ -10,3 +10,25 @@ export const formatDate = (v: string | null | undefined): string | null => {
     timeZone: "UTC",
   });
 };
+
+// ---- Money ----
+// The app's default: whole-dollar money for aggregates, totals, and per-load
+// amounts shown in lists. null/undefined → "—".
+export const money = (n: number | null | undefined): string =>
+  n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
+
+// Full currency WITH cents — reserved for an individual load's detail line items
+// and receipt-level amounts (fuel). null/undefined → "—".
+export const moneyCents = (n: number | null | undefined): string =>
+  n == null
+    ? "—"
+    : n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+// A per-mile rate ($/mi) — always two decimals. null/undefined → "—".
+export const rpm = (n: number | null | undefined): string =>
+  n == null ? "—" : `$${n.toFixed(2)}`;
+
+// A diesel pump price ($/gal) — three decimals, the fuel-industry convention
+// (e.g. "$3.859"). null/undefined → "—".
+export const dieselPrice = (n: number | null | undefined): string =>
+  n == null ? "—" : `$${n.toFixed(3)}`;

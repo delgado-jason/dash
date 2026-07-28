@@ -9,6 +9,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Panel } from "@/components/ui/Panel";
+import { rpm } from "@/lib/format";
 
 interface MonthlyRpm {
   month: string; // "2026-06"
@@ -26,8 +27,6 @@ const formatMonthLabel = (month: string): string => {
   const date = new Date(Date.UTC(Number(year), Number(m) - 1, 1));
   return date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 };
-
-const formatRpm = (n: number): string => `$${n.toFixed(2)}`;
 
 const GREEN = "#1d9e75";
 const RED = "#e24b4a";
@@ -73,7 +72,7 @@ export const RpmChart = ({ data, breakEven }: Props) => {
             }}
             labelFormatter={(label) => formatMonthLabel(label as string)}
             formatter={(value) => [
-              value === null ? "No data" : formatRpm(Number(value)),
+              value === null ? "No data" : rpm(Number(value)),
               "RPM",
             ]}
           />

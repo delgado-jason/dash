@@ -5,17 +5,11 @@ import {
 } from "@/lib/metrics/dashboard";
 import { Panel } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { money } from "@/lib/format";
 
 interface Props {
   loads: OutstandingLoad[];
 }
-
-const formatCurrency = (n: number): string =>
-  n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
 
 // Color the aging: older = more urgent
 const ageColor = (days: number): string => {
@@ -33,7 +27,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
       <div className="flex items-baseline justify-between mb-4">
         <h3 className="text-sm font-medium text-light">Outstanding loads</h3>
         <span className="text-sm text-status-aware-text font-medium">
-          {formatCurrency(total)} owed
+          {money(total)} owed
           {medianDaysOutstanding !== null && (
             <span className="text-muted-text font-normal">
               {" "}
@@ -68,7 +62,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
                 </p>
               </div>
               <span className="text-sm text-status-aware-text font-medium">
-                {formatCurrency(load.revenue)}
+                {money(load.revenue)}
               </span>
             </Link>
           ))}

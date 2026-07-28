@@ -26,10 +26,8 @@ import { MpgChart } from "@/components/fuel/MpgChart";
 import { DieselPriceChart } from "@/components/fuel/DieselPriceChart";
 import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
 import { FuelVsRevenueCard } from "@/components/fuel/FuelVsRevenueCard";
+import { money, moneyCents } from "@/lib/format";
 
-const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const money2 = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const fmtDate = (d: string) =>
   new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
@@ -239,14 +237,14 @@ const FuelEntriesPage = () => {
         <Kpi
           label="Avg weekly · 90d"
           value={
-            stats.avgWeeklyCost90 == null ? "—" : money0(stats.avgWeeklyCost90)
+            stats.avgWeeklyCost90 == null ? "—" : money(stats.avgWeeklyCost90)
           }
         />
         <Kpi
           label="Total gallons"
           value={Math.round(stats.totalGallons).toLocaleString("en-US")}
         />
-        <Kpi label="Total spend" value={money0(stats.totalSpend)} />
+        <Kpi label="Total spend" value={money(stats.totalSpend)} />
       </div>
 
       <DieselCompareCard
@@ -468,7 +466,7 @@ const FuelEntriesPage = () => {
                       ${e.price_per_gallon.toFixed(3)}
                     </td>
                     <td className="py-2 pr-4 text-right whitespace-nowrap">
-                      {money2(entryCost(e))}
+                      {moneyCents(entryCost(e))}
                     </td>
                     <td className="py-2 pr-4 text-right whitespace-nowrap">
                       {full && mpg != null ? mpg.toFixed(2) : "—"}

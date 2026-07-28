@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { Panel } from "@/components/ui/Panel";
 import type { StateDetail } from "@/lib/metrics/lanes";
+import { rpm } from "@/lib/format";
 
-const rpm = (n: number | null) => (n == null ? "—" : `$${n.toFixed(2)}`);
 const pct = (n: number | null) => (n == null ? "—" : `${Math.round(n * 100)}%`);
 const otColor = (n: number | null) =>
   n == null ? "#8b93a3" : n >= 0.9 ? "#4ade80" : n >= 0.7 ? "#e0a020" : "#f87171";

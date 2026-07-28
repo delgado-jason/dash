@@ -13,9 +13,7 @@ import { getLastKnownLocation } from "@/services/tripsService";
 import { toInches, classifyOversize } from "@/lib/dimensions";
 import MissionMap from "@/components/MissionMap";
 import CityAutocomplete from "@/components/CityAutocomplete";
-
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const rpm = (n: number | null) => (n != null ? `$${n.toFixed(2)}` : "—");
+import { money, rpm } from "@/lib/format";
 
 // Where the load sits on the PASS | MEH | TAKE IT | STEAL bar (0–100%).
 const markerPct = (
@@ -285,8 +283,6 @@ const ScoreLoadPage = () => {
   const belowTarget = score.verdict === "pass" || score.verdict === "meh";
   const counter =
     belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
-  const money0 = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-
   const routeNote = routing
     ? "routing…"
     : routeErr
@@ -405,7 +401,7 @@ const ScoreLoadPage = () => {
         {toll != null && (
           <div className="flex items-center gap-2 mt-2 mb-1 px-3 py-2 rounded-[9px]" style={{ background: "#141b28" }}>
             <span className="text-[13px]" style={{ color: "#cdd8e8" }}>
-              Est. tolls <span style={{ color: "#f4f7fb", fontWeight: 600 }}>≈ {money0(toll)}</span>
+              Est. tolls <span style={{ color: "#f4f7fb", fontWeight: 600 }}>≈ {money(toll)}</span>
             </span>
             <span className="ml-auto text-[10px]" style={{ color: "#5f6b80" }}>
               bill as accessorial · Landstar pays 100%
@@ -521,17 +517,17 @@ const ScoreLoadPage = () => {
                 <div className="flex gap-2">
                   <div className="flex-1 text-center rounded-[8px] py-2" style={{ background: "#141b28" }}>
                     <div className="text-[9px]" style={{ color: "#f87171" }}>FLOOR</div>
-                    <div className="text-base font-semibold" style={{ color: "#cdd8e8" }}>{money0(counter.floor)}</div>
+                    <div className="text-base font-semibold" style={{ color: "#cdd8e8" }}>{money(counter.floor)}</div>
                     <div className="text-[8.5px]" style={{ color: "#5f6b80" }}>break-even</div>
                   </div>
                   <div className="flex-1 text-center rounded-[8px] py-2" style={{ background: "#12261a", border: "1px solid #1a5c3a" }}>
                     <div className="text-[9px]" style={{ color: "#4ade80" }}>TAKE IT</div>
-                    <div className="text-base font-semibold" style={{ color: "#4ade80" }}>{money0(counter.take)}</div>
+                    <div className="text-base font-semibold" style={{ color: "#4ade80" }}>{money(counter.take)}</div>
                     <div className="text-[8.5px]" style={{ color: "#5f8a6e" }}>fair</div>
                   </div>
                   <div className="flex-1 text-center rounded-[8px] py-2" style={{ background: "#231d06", border: "1px solid #6b5410" }}>
                     <div className="text-[9px]" style={{ color: "#fbbf24" }}>STEAL</div>
-                    <div className="text-base font-semibold" style={{ color: "#fbbf24" }}>{money0(counter.steal)}</div>
+                    <div className="text-base font-semibold" style={{ color: "#fbbf24" }}>{money(counter.steal)}</div>
                     <div className="text-[8.5px]" style={{ color: "#9a7f2e" }}>open here</div>
                   </div>
                 </div>
