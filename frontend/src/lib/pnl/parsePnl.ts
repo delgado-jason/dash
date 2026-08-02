@@ -26,6 +26,14 @@ export interface ParsedPnl {
 
 const SECTIONS = ["Income", "Cost of Goods Sold", "Expenses", "Other Income"];
 
+// Month name (abbrev or full) + 4-digit year, e.g. "Jul 2026" / "July 2026".
+// Used to recover the period from the title block of single-period exports —
+// QuickBooks omits the ",Jul 2026,Jun 2026 (PP)" column header and instead puts
+// "July 2026" in the title's first cell. Won't match "August 02, 2026" (the
+// export-timestamp footer): a day number sits between the month and the year.
+const MONTH_YEAR_RE =
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}\b/i;
+
 // "$2,547.70" → 2547.7 · "-10,936.24" → -10936.24 · "" → null
 export const cleanNum = (raw: string | undefined): number | null => {
   if (raw == null) return null;
@@ -115,6 +123,26 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
     // Standalone leaf: only a top-level (depth 0) row with an amount counts.
     if (inCost && depth === 0 && cur != null) {
       lines.push({ name, current: cur, prior: pri, section: sectionKey });
+    }
+  }
+
+  // Single-period exports (no comparison column) omit the "…,Jul 2026,…" header
+  // and instead label the period only in the title block ("July 2026", first
+  // cell). If the header scan above found nothing, recover it from the rows
+  // above the first section — scoped there so the export-timestamp footer can
+  // never win.
+  if (!currentLabel) {
+    const firstSection = rows.findIndex((r) =>
+      SECTIONS.includes((r[0] ?? "").trim()),
+    );
+    const end = firstSection < 0 ? rows.length : firstSection;
+    for (let i = 0; i < end && !currentLabel; i++) {
+      for (const cell of rows[i]) {
+        if (MONTH_YEAR_RE.test((cell ?? "").trim())) {
+          currentLabel = (cell ?? "").trim();
+          break;
+        }
+      }
     }
   }
 
