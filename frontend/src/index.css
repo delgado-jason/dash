@@ -366,11 +366,17 @@
   pointer-events: none;
 }
 
-/* No number spinners — the desktop up/down steppers are visual noise. */
+/* No number spinners — the desktop up/down steppers are visual noise. App-wide,
+   on any number input as well as the affix control. */
 .ds-num::-webkit-outer-spin-button,
-.ds-num::-webkit-inner-spin-button {
+.ds-num::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 /* The native date-picker calendar icon is a near-black glyph, invisible on the
