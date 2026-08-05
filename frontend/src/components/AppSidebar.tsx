@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Trophy,
   BookOpen,
+  Volume2,
+  VolumeX,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "react-router-dom";
 import { isDispatcher } from "@/lib/roles";
+import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 
 // `adminOnly` items are owner-only; a dispatcher's nav filters them out (and the
 // route guard bounces her if she types the URL). Keep these flags in lockstep
@@ -99,6 +102,7 @@ const navFor = (dispatcher: boolean): Entry[] => {
 const AppSidebar = () => {
   const { pathname } = useLocation();
   const dispatcher = isDispatcher();
+  const [sfxOn, setSfxOn] = useState(sfxEnabled());
   const navItems = navFor(dispatcher);
   const active = (to: string) =>
     pathname === to || pathname.startsWith(to + "/");
@@ -215,6 +219,23 @@ const AppSidebar = () => {
             </Link>
           </div>
         )}
+        <div className="px-4 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !sfxOn;
+              setSfxOn(next);
+              setSfxEnabled(next);
+              if (next) playSfx("pow"); // hear it come on
+            }}
+            className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-light"
+            aria-label={sfxOn ? "Turn sound effects off" : "Turn sound effects on"}
+            title={sfxOn ? "Sound on" : "Sound off"}
+          >
+            {sfxOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>Sound {sfxOn ? "on" : "off"}</span>
+          </button>
+        </div>
         <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground">
           v{__APP_VERSION__}
         </div>

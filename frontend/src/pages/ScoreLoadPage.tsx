@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
+import { playSfx } from "@/lib/sfx";
 import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 import {
   getLoadMiles,
@@ -279,6 +280,10 @@ const ScoreLoadPage = () => {
     activeTiers,
   );
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
+  // A ka-ching when a load scores a "steal".
+  useEffect(() => {
+    if (score.verdict === "steal") playSfx("kaching");
+  }, [score.verdict]);
   // Counter ladder — only when the load comes in under target (PASS/MEH).
   const belowTarget = score.verdict === "pass" || score.verdict === "meh";
   const counter =

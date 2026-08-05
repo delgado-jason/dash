@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
+import { playSfx } from "@/lib/sfx";
 
 // Users who ask for less motion get the value straight away — no odometer roll.
 const prefersReducedMotion = () =>
@@ -58,20 +59,27 @@ export const RollingValue = ({
   text: string;
   className?: string;
   style?: CSSProperties;
-}) => (
-  <span
-    className={className}
-    style={{ display: "inline-flex", fontVariantNumeric: "tabular-nums", ...style }}
-  >
-    {text.split("").map((c, i) =>
-      /\d/.test(c) ? (
-        <Digit key={i} target={Number(c)} delay={80 + i * 45} />
-      ) : (
-        <span key={i}>{c}</span>
-      ),
-    )}
-  </span>
-);
+}) => {
+  // A soft odometer tick as the digits roll — the debounce collapses sibling
+  // values (the five KPIs firing together) into a single tick.
+  useEffect(() => {
+    playSfx("odometer");
+  }, [text]);
+  return (
+    <span
+      className={className}
+      style={{ display: "inline-flex", fontVariantNumeric: "tabular-nums", ...style }}
+    >
+      {text.split("").map((c, i) =>
+        /\d/.test(c) ? (
+          <Digit key={i} target={Number(c)} delay={80 + i * 45} />
+        ) : (
+          <span key={i}>{c}</span>
+        ),
+      )}
+    </span>
+  );
+};
 
 // A number whose digits roll up into place — rounds to an integer, commas added.
 // Reusable for the truck odometer.
