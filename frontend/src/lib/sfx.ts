@@ -26,20 +26,12 @@ const audio = (): { c: AudioContext; out: GainNode } | null => {
   if (!ctx) {
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.5; // keep the whole thing quiet
+    master.gain.value = 1; // matches the approved sound-board volume (per-cue gains already run quiet)
     master.connect(ctx.destination);
   }
   if (ctx.state === "suspended") void ctx.resume();
   return master ? { c: ctx, out: master } : null;
 };
-
-// Unlock on the first interaction so cues that fire without a direct gesture
-// (count-ups, award pops) work for the rest of the session.
-if (typeof window !== "undefined") {
-  const unlock = () => audio();
-  window.addEventListener("pointerdown", unlock, { once: true });
-  window.addEventListener("keydown", unlock, { once: true });
-}
 
 interface ToneOpts {
   freq: number;
@@ -147,15 +139,44 @@ const CUES: Record<Cue, (c: AudioContext, out: GainNode) => void> = {
 };
 
 const lastPlayed: Record<string, number> = {};
+const play = (cue: Cue, a: { c: AudioContext; out: GainNode }) => {
+  const now = Date.now();
+  if (now - (lastPlayed[cue] ?? 0) < 300) return; // collapse rapid repeats
+  lastPlayed[cue] = now;
+  CUES[cue](a.c, a.out);
+};
 
-// Play a cue if sound is enabled and the context is unlocked. Collapses rapid
-// repeats (e.g. five KPI count-ups firing together = one tick).
+// A cue that fires before the context is unlocked (a count-up on a fresh page
+// load, before any click) can't play — browsers block audio until a gesture.
+// Remember the last such cue and play it the moment the user first interacts, so
+// a reload still lands the sound on the first click instead of dropping it.
+let pending: Cue | null = null;
+const unlock = () => {
+  const a = audio();
+  if (!a) return;
+  void a.c.resume().then(() => {
+    const cue = pending;
+    pending = null;
+    const a2 = audio();
+    if (cue && sfxEnabled() && a2 && a2.c.state === "running") play(cue, a2);
+  });
+};
+if (typeof window !== "undefined") {
+  const opts = { once: true } as const;
+  window.addEventListener("pointerdown", unlock, opts);
+  window.addEventListener("touchstart", unlock, opts); // older mobile Safari
+  window.addEventListener("keydown", unlock, opts);
+}
+
+// Play a cue if sound is enabled. If the context isn't unlocked yet, defer it to
+// the first gesture rather than dropping it.
 export const playSfx = (cue: Cue): void => {
   if (!sfxEnabled()) return;
   const a = audio();
-  if (!a || a.c.state !== "running") return; // suspended (no gesture yet) → skip
-  const now = Date.now();
-  if (now - (lastPlayed[cue] ?? 0) < 300) return;
-  lastPlayed[cue] = now;
-  CUES[cue](a.c, a.out);
+  if (!a) return;
+  if (a.c.state !== "running") {
+    pending = cue;
+    return;
+  }
+  play(cue, a);
 };

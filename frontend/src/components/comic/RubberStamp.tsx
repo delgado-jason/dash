@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { playSfx } from "@/lib/sfx";
+
 // A distressed, rotated ink stamp that slams down on a load's "won" state —
 // DELIVERED / PAID / CANCELLED / TONU. Pure CSS, no dependency.
 const STAMP_META: Record<string, string> = {
@@ -27,7 +30,12 @@ export const RubberStamp = ({
   value: string | null;
   size?: number;
 }) => {
-  if (!value || !(value in STAMP_META)) return null;
+  const shown = !!value && value in STAMP_META;
+  // The stamp thud when it slams down.
+  useEffect(() => {
+    if (shown) playSfx("stamp");
+  }, [shown]);
+  if (!shown || !value) return null;
   const color = STAMP_META[value];
   return (
     <span
