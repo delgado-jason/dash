@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
+import { VendorRatingMedallion } from "@/components/vendors/VendorRatingMedallion";
 import {
   PrestigeBurst,
   PRESTIGE_META,
@@ -367,6 +368,10 @@ const NAV: { group: string; items: string[] }[] = [
       "Trophies",
       "Career rank",
     ],
+  },
+  {
+    group: "Vendors",
+    items: ["Vendor ratings", "Best per category", "Shop spend"],
   },
   {
     group: "Team &amp; roles",
@@ -1548,6 +1553,88 @@ const GuidePage = () => {
               The full record — every board, gold, and silver by quarter — lives
               on each agent's own page.
             </p>
+          </Section>
+
+          <div
+            className="my-6 border-t"
+            style={{ borderColor: "#22304a" }}
+            aria-hidden="true"
+          />
+          <GroupHeading>Vendors</GroupHeading>
+
+          <Section
+            title="Vendor ratings"
+            sources={[{ label: "Vendors", to: "/vendors" }]}
+          >
+            <p className="text-sm text-muted-text mb-4">
+              Vendors are the flip side of agents — the shops, escorts, permit
+              services, and tire shops you <span className="text-light">pay</span>
+              . You grade each one by hand, 1–5, worst to best. The grade rides
+              along as a medallion everywhere. Change it and dash asks why,
+              keeping a history on the vendor's page — same as agents.
+            </p>
+            <div className="flex flex-col gap-3">
+              {(
+                [
+                  [5, "Your first call. Trusted with a tight window or a heavy load."],
+                  [4, "Solid. No complaints — you'd use them again."],
+                  [3, "Fine. Gets the job done."],
+                  [2, "Last resort. Only when nobody better is free."],
+                  [1, "Avoid. Burned you — steer around them."],
+                ] as [number, string][]
+              ).map(([r, desc]) => (
+                <div key={r} className="flex items-center gap-4">
+                  <div className="w-32 shrink-0">
+                    <VendorRatingMedallion rating={r} />
+                  </div>
+                  <p className="text-sm text-muted-text">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section
+            title="Best per category"
+            sources={[{ label: "Vendors", to: "/vendors" }]}
+          >
+            <p className="text-sm text-muted-text">
+              Every vendor sits in one category — Shop, Escort / Pilot Car,
+              Permits, and so on. Within each, dash ranks them by the grade you
+              gave and pins a crown on the top one. That crown is the quick
+              answer to “who's my best escort?” — no digging.
+            </p>
+            <Formula>
+              champion = highest-rated vendor in the category (ties broken by
+              name)
+            </Formula>
+            <Why>
+              It's ranked on <span className="text-light">your</span> grades,
+              nothing automatic — an honest “best of what I've got,” even when a
+              category is thin. Use the chips up top to filter to a single
+              category's board.
+            </Why>
+          </Section>
+
+          <Section
+            title="Shop spend"
+            sources={[
+              { label: "Vendors", to: "/vendors" },
+              { label: "Maintenance", to: "/maintenance" },
+            ]}
+          >
+            <p className="text-sm text-muted-text">
+              For <span className="text-light">shops</span>, dash pulls what
+              you've already spent with them straight from your maintenance log —
+              the total and how many services — and shows it on the list and
+              their page.
+            </p>
+            <Why>
+              It's matched by <span className="text-light">name</span>: a shop's
+              spend links when the vendor name on a maintenance service matches
+              the vendor's name here. Escorts, permits, and the rest just carry
+              the rating for now — the spend score grows from the shops, where
+              the data already lives.
+            </Why>
           </Section>
 
           <div

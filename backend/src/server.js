@@ -30,6 +30,7 @@ import settlementScheduleRouter from "./routes/settlementScheduleRoutes.js";
 import accessorialRateRouter from "./routes/accessorialRateRoutes.js";
 import routingRouter from "./routes/routingRoutes.js";
 import freightIndexRouter from "./routes/freightIndexRoutes.js";
+import vendorRouter from "./routes/vendorRoutes.js";
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use("/settlement-schedule", settlementScheduleRouter);
 app.use("/accessorial-rates", accessorialRateRouter);
 app.use("/routing", routingRouter);
 app.use("/freight-index", freightIndexRouter);
+app.use("/vendors", vendorRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");

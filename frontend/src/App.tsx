@@ -17,6 +17,8 @@ import PerDiemPage from "@/pages/PerDiemPage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
+import VendorsPage from "@/pages/VendorsPage";
+import VendorDetailPage from "@/pages/VendorDetailPage";
 import FuelEntriesPage from "@/pages/FuelEntriesPage";
 import TrucksPage from "@/pages/TrucksPage";
 import TruckDetailPage from "@/pages/TruckDetailPage";
@@ -73,6 +75,8 @@ const App = () => {
           <Route path="/compliance" element={<CompliancePage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
+          <Route path="/vendors" element={<VendorsPage />} />
+          <Route path="/vendors/:vendor_id" element={<VendorDetailPage />} />
           <Route path="/trucks" element={<TrucksPage />} />
           <Route path="/trucks/:id" element={<TruckDetailPage />} />
           <Route path="/drivers" element={<DriversPage />} />
