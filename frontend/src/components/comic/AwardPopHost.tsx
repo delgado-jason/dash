@@ -5,6 +5,7 @@ import { BurstAward } from "./BurstAward";
 import { RecapCeremony } from "./RecapCeremony";
 import { TrophyCeremony } from "./TrophyCeremony";
 import { MedalAward } from "./MedalAward";
+import { playSfx } from "@/lib/sfx";
 
 // Orchestrates the celebration. Takeovers own the screen one at a time, ranked
 // trophy > recap > medal; corner slide-ins (a stacked patch, a beaten record) fade
@@ -33,9 +34,17 @@ export const AwardPopHost = ({
     ? []
     : visible.filter((p) => p.tier === "patch" || p.tier === "record").slice(0, 4);
 
+  // Sound: a takeover gets the fanfare (trophy/recap) or the sting (medal); the
+  // corner slide-ins (patches, beaten records) get the POW.
+  useEffect(() => {
+    if (!takeover) return;
+    playSfx(takeover.tier === "medal" ? "pow" : "rankup");
+  }, [takeover?.id, takeover?.tier]);
+
   const slideKey = slideIns.map((b) => b.id).join(",");
   useEffect(() => {
     if (!slideKey) return;
+    playSfx("pow");
     const ids = slideKey.split(",");
     // Records/patches hold ~3.5s so they can be read, then slide back out.
     const timers = ids.map((id, idx) => setTimeout(() => dismiss(id), 3500 + idx * 600));

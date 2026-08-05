@@ -7,6 +7,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 import { TeamCard } from "@/components/settings/TeamCard";
+import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
@@ -130,6 +131,7 @@ const SettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [sfx, setSfx] = useState(sfxEnabled());
 
   // Real break-even for the tier previews + weekly-target preview (cost-based,
   // so it's independent of the tier values being edited).
@@ -232,6 +234,38 @@ const SettingsPage = () => {
       <h1 className="text-3xl font-condensed">Settings</h1>
 
       {localStorage.getItem("role") === "admin" && <TeamCard />}
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Sound effects</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Short comic-book cues on the earned moments — an award pop, a load that
+          scores a steal, the KPI count-up. Turning this off silences them
+          everywhere on this device.
+        </p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={sfx}
+          onClick={() => {
+            const next = !sfx;
+            setSfx(next);
+            setSfxEnabled(next);
+            if (next) playSfx("pow"); // let them hear it come on
+          }}
+          className="mt-4 inline-flex items-center gap-3"
+        >
+          <span
+            className="relative inline-block h-6 w-11 rounded-full transition-colors"
+            style={{ background: sfx ? "#e8940a" : "#3a4459" }}
+          >
+            <span
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
+              style={{ left: 2, transform: sfx ? "translateX(20px)" : "translateX(0)" }}
+            />
+          </span>
+          <span className="text-sm text-light">{sfx ? "On" : "Off"}</span>
+        </button>
+      </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Settlement schedule</h2>
