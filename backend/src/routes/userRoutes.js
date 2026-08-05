@@ -8,14 +8,16 @@ import {
 
 const router = express.Router();
 
-// Team management is owner/admin only.
+// Team MANAGEMENT (create/remove dispatchers) is owner/admin only.
 const adminOnly = (req, res, next) =>
   req.user?.role === "admin"
     ? next()
     : res.status(403).json({ error: "Admin only" });
 
-// ---- LIST the account's team ---- (owner + its dispatchers)
-router.get("/", requireAuth, adminOnly, async (req, res) => {
+// ---- LIST the account's team ---- (owner + its dispatchers). Any member may
+// read it — it's scoped to their own account_id — so a dispatcher's forms can
+// offer booking-credit options (e.g. "Booked by"). Mutations stay adminOnly.
+router.get("/", requireAuth, async (req, res) => {
   try {
     const team = await listAccountUsers(req.user.account_id);
     return res.status(200).json({ team });

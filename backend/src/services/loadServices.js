@@ -238,9 +238,11 @@ export async function getLoad(user_id, load_id) {
 }
 
 // ---- CREATE LOAD SERVICE ----
-// `self_id` is the logged-in person; a load's booker defaults to them so the
-// dispatcher who enters it gets the credit. The client may override booked_by
-// (e.g. the owner crediting a dispatcher for a load they sourced).
+// A load's booker defaults to the ACCOUNT OWNER (user_id === account_id), not
+// whoever enters it: in this owner-operator shop the owner does the booking and
+// a training dispatcher just logs the loads. The client sends booked_by
+// explicitly (the "Booked by" picker, default = owner) and anyone can reassign
+// it per-load. `self_id` (the logged-in person) is accepted for caller parity.
 export async function createLoad(user_id, data, self_id) {
   // Reject missing user_id
   if (!user_id) throw new ValidationError("Missing user_id");
@@ -304,8 +306,8 @@ export async function createLoad(user_id, data, self_id) {
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
 
-  // Booker: explicit override, else the logged-in creator.
-  const booker = data.booked_by ?? self_id ?? user_id;
+  // Booker: explicit override (the "Booked by" picker), else the account owner.
+  const booker = data.booked_by ?? user_id;
   let fields = ["user_id", "booked_by"];
   let values = [user_id, booker];
   let placeholders = ["$1", "$2"];

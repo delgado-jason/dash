@@ -214,8 +214,8 @@ const LoadForm = ({
           truck_id: null,
           driver_id: null,
           trailer_id: null,
-          // Default credit to the creator; the owner can reassign below.
-          booked_by: localStorage.getItem("user_id") ?? null,
+          // Booker defaults to the account owner once the team loads (below).
+          booked_by: null,
         },
   );
 
@@ -224,14 +224,27 @@ const LoadForm = ({
   const [marketList, setMarketList] = useState<Market[]>(markets);
   const [facilityList, setFacilityList] = useState<Facility[]>(facilities);
 
-  // Booking credit: the owner (admin) can attribute a load to a dispatcher. A
-  // dispatcher's loads auto-credit to them (server default), so no picker for her.
+  // Booking credit. Anyone on the account (owner or a dispatcher) can attribute
+  // a load; the picker below defaults to the account owner, since in this shop
+  // the owner does the booking and a training dispatcher just logs the loads.
   const selfId = localStorage.getItem("user_id");
-  const isAdmin = localStorage.getItem("role") === "admin";
   const [team, setTeam] = useState<TeamMember[]>([]);
   useEffect(() => {
-    if (isAdmin) getTeam().then(setTeam).catch(() => {});
-  }, [isAdmin]);
+    getTeam().then(setTeam).catch(() => {});
+  }, []);
+  // New load: once the team loads, default the booker to the account owner
+  // (role "admin"). Edit mode keeps the load's existing booker; a manual pick
+  // wins (we only fill a still-empty booked_by).
+  useEffect(() => {
+    if (initialData) return;
+    // The account owner is the first row — listAccountUsers sorts owner-first.
+    const owner = team[0];
+    if (owner) {
+      setFormData((prev) =>
+        prev.booked_by ? prev : { ...prev, booked_by: owner.user_id },
+      );
+    }
+  }, [team, initialData]);
 
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -492,8 +505,8 @@ const LoadForm = ({
                 </SelectContent>
               </Select>
             </div>
-            {/* Booked by — owner only; credits a dispatcher for the booking */}
-            {isAdmin && team.length > 1 && (
+            {/* Booked by — anyone on the account; defaults to the owner */}
+            {team.length > 1 && (
               <div>
                 <Label htmlFor="booked_by">Booked by</Label>
                 <Select
