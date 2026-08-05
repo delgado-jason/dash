@@ -27,6 +27,8 @@ import { DieselPriceChart } from "@/components/fuel/DieselPriceChart";
 import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
 import { FuelVsRevenueCard } from "@/components/fuel/FuelVsRevenueCard";
 import { money, moneyCents } from "@/lib/format";
+import CityAutocomplete from "@/components/CityAutocomplete";
+import { Field, AffixInput, SelectControl } from "@/components/ui/FormControls";
 
 const fmtDate = (d: string) =>
   new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -36,8 +38,9 @@ const fmtDate = (d: string) =>
     timeZone: "UTC",
   });
 
-const inputCls = "bg-steel rounded px-2 py-1.5 text-sm w-full text-light";
-const lbl = "text-xs text-muted-text mb-1 block";
+// Strip commas / $ / spaces so "1,378" or "$555.90" parse cleanly (mobile
+// keyboards and habit add them; parseFloat/parseInt otherwise truncate).
+const numOf = (s: string) => s.replace(/[$,\s]/g, "");
 
 // Remember the last vendor + state so the next fill-up defaults to them.
 const LS_VENDOR = "dash.fuel.lastVendor";
@@ -55,6 +58,7 @@ const FuelEntriesPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errs, setErrs] = useState<Record<string, string>>({});
 
   const [truckId, setTruckId] = useState("");
   const [date, setDate] = useState("");
@@ -127,23 +131,43 @@ const FuelEntriesPage = () => {
 
   // Price/gallon is derived from the total paid ÷ gallons — the numbers on the
   // receipt — rounded to the 3-decimal cents diesel is quoted in.
-  const g = parseFloat(gallons);
-  const t = parseFloat(total);
+  const g = parseFloat(numOf(gallons));
+  const t = parseFloat(numOf(total));
   const computedPpg =
     g > 0 && t > 0 && isFinite(g) && isFinite(t) ? t / g : null;
+  const ppgOver = computedPpg != null && computedPpg > 10;
+
+  // Clear a field's error the moment the user edits it.
+  const clr = (k: string) =>
+    setErrs((p) => (p[k] ? { ...p, [k]: "" } : p));
+
+  // Field-level validation mirroring the server rules, so a bad value is caught
+  // inline (named on the field) before it ever hits the network.
+  const validate = (): Record<string, string> => {
+    const e: Record<string, string> = {};
+    if (!date) e.date = "Pick a date.";
+    const od = parseInt(numOf(odometer), 10);
+    if (!odometer.trim()) e.odometer = "Required.";
+    else if (!Number.isInteger(od) || od < 1 || od > 5_000_000)
+      e.odometer = "Enter a whole number up to 5,000,000.";
+    if (!gallons.trim()) e.gallons = "Required.";
+    else if (!(g >= 1 && g <= 400))
+      e.gallons = "Must be between 1 and 400 gal.";
+    if (!total.trim()) e.total = "Required.";
+    else if (ppgOver)
+      e.total = `That's $${computedPpg!.toFixed(2)}/gal — over the $10 limit. Check gallons.`;
+    else if (computedPpg == null) e.total = "Enter gallons and total.";
+    if (!stateCode.trim()) e.state = "Pick a state.";
+    return e;
+  };
 
   const save = async () => {
     setError(null);
+    const e = validate();
+    setErrs(e);
+    if (Object.keys(e).length > 0) return;
     if (!truckId) {
       setError("Add a truck first (Fleet → Trucks).");
-      return;
-    }
-    if (!date || !odometer || !gallons || !total || !stateCode.trim()) {
-      setError("Date, odometer, gallons, total, and state are required.");
-      return;
-    }
-    if (computedPpg == null) {
-      setError("Enter gallons and total so price/gallon can be calculated.");
       return;
     }
     setBusy(true);
@@ -151,9 +175,9 @@ const FuelEntriesPage = () => {
       await createFuelEntry({
         truck_id: truckId,
         fuel_date: date,
-        gallons: parseFloat(gallons),
-        price_per_gallon: Number(computedPpg.toFixed(3)),
-        odometer_reading: parseInt(odometer, 10),
+        gallons: parseFloat(numOf(gallons)),
+        price_per_gallon: Number(computedPpg!.toFixed(3)),
+        odometer_reading: parseInt(numOf(odometer), 10),
         company_name: company.trim() || null,
         fuel_city: city.trim() || null,
         fuel_state: stateCode.trim().toUpperCase(),
@@ -166,12 +190,20 @@ const FuelEntriesPage = () => {
       setGallons("");
       setTotal("");
       setCity("");
+      setErrs({});
       setShowForm(false);
       await load();
-    } catch (e) {
+    } catch (err) {
+      // Surface the server's specific reason (validation details) rather than a
+      // generic "could not save" — a rejected fill-up should say what to fix.
+      const data = (
+        err as { response?: { data?: { error?: string; details?: string[] } } }
+      )?.response?.data;
+      const reason = data?.details?.[0] || data?.error;
       setError(
-        (e as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error || "Could not save the fill-up",
+        reason && reason !== "Validation failed"
+          ? reason
+          : "Couldn't save the fill-up — check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -255,57 +287,84 @@ const FuelEntriesPage = () => {
       <FuelVsRevenueCard data={fuelRev} />
 
       {showForm && (
-        <Panel className="p-4 mt-4">
-          <p className="text-sm font-medium mb-3">Add fill-up</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <label className={lbl}>Date</label>
+        <Panel className="p-5 mt-4">
+          <p className="text-base font-condensed text-light">Log a fill-up</p>
+          <p className="text-xs text-muted-text mb-4">
+            Vendor &amp; state remember your last stop.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Date" error={errs.date}>
               <input
                 type="date"
-                className={inputCls}
+                className={`ds-input ${errs.date ? "ds-input--err" : ""}`}
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  clr("date");
+                }}
               />
-            </div>
-            <div>
-              <label className={lbl}>Odometer</label>
-              <input
-                className={inputCls}
-                value={odometer}
+            </Field>
+            <Field label="Odometer" error={errs.odometer}>
+              <AffixInput
+                suffix="mi"
                 inputMode="numeric"
-                placeholder="582450"
-                onChange={(e) => setOdometer(e.target.value)}
+                placeholder="582,450"
+                value={odometer}
+                invalid={!!errs.odometer}
+                onChange={(e) => {
+                  setOdometer(e.target.value);
+                  clr("odometer");
+                }}
               />
-            </div>
-            <div>
-              <label className={lbl}>Gallons</label>
-              <input
-                className={inputCls}
-                value={gallons}
+            </Field>
+            <Field label="Gallons" error={errs.gallons}>
+              <AffixInput
+                suffix="gal"
                 inputMode="decimal"
                 placeholder="137.8"
-                onChange={(e) => setGallons(e.target.value)}
+                value={gallons}
+                invalid={!!errs.gallons}
+                onChange={(e) => {
+                  setGallons(e.target.value);
+                  clr("gallons");
+                }}
               />
-            </div>
-            <div>
-              <label className={lbl}>Total $</label>
-              <input
-                className={inputCls}
-                value={total}
+            </Field>
+            <Field label="Total paid" error={errs.total}>
+              <AffixInput
+                prefix="$"
                 inputMode="decimal"
                 placeholder="555.90"
-                onChange={(e) => setTotal(e.target.value)}
+                value={total}
+                invalid={!!errs.total}
+                onChange={(e) => {
+                  setTotal(e.target.value);
+                  clr("total");
+                }}
               />
-              <p className="text-[11px] mt-1 text-amber-light">
-                {computedPpg == null
-                  ? "= —/gal"
-                  : `= $${computedPpg.toFixed(3)}/gal`}
-              </p>
+            </Field>
+            <div
+              className="sm:col-span-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+              style={{
+                background: ppgOver ? "#331414" : "#12331f",
+                border: `1px solid ${ppgOver ? "#5b2020" : "#1f5636"}`,
+              }}
+            >
+              <span className="text-muted-text text-xs">Price / gallon</span>
+              <span
+                className="font-semibold tabular-nums"
+                style={{ color: ppgOver ? "#f0857a" : "#4ade80" }}
+              >
+                {computedPpg == null ? "—" : `$${computedPpg.toFixed(3)} / gal`}
+              </span>
+              {ppgOver && (
+                <span className="text-[11px] text-[#f0857a]">
+                  over the $10 limit — check gallons
+                </span>
+              )}
             </div>
-            <div>
-              <label className={lbl}>Vendor</label>
-              <select
-                className={inputCls}
+            <Field label="Vendor">
+              <SelectControl
                 value={vendorIsOther ? OTHER_VENDOR : company}
                 onChange={(e) => {
                   if (e.target.value === OTHER_VENDOR) {
@@ -324,44 +383,19 @@ const FuelEntriesPage = () => {
                   </option>
                 ))}
                 <option value={OTHER_VENDOR}>Other…</option>
-              </select>
+              </SelectControl>
               {vendorIsOther && (
                 <input
-                  className={`${inputCls} mt-1`}
+                  className="ds-input mt-1.5"
                   value={company}
                   placeholder="Vendor name"
                   onChange={(e) => setCompany(e.target.value)}
                 />
               )}
-            </div>
-            <div>
-              <label className={lbl}>City</label>
-              <input
-                className={inputCls}
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={lbl}>State</label>
-              <select
-                className={inputCls}
-                value={stateCode}
-                onChange={(e) => setStateCode(e.target.value)}
-              >
-                <option value="">Select…</option>
-                {US_STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
+            </Field>
             {trucks.length > 1 && (
-              <div>
-                <label className={lbl}>Truck</label>
-                <select
-                  className={inputCls}
+              <Field label="Truck">
+                <SelectControl
                   value={truckId}
                   onChange={(e) => setTruckId(e.target.value)}
                 >
@@ -371,27 +405,58 @@ const FuelEntriesPage = () => {
                       Unit {t.unit_number}
                     </option>
                   ))}
-                </select>
-              </div>
+                </SelectControl>
+              </Field>
             )}
+            <Field label="City">
+              <CityAutocomplete
+                value={city}
+                onType={setCity}
+                onSelect={(c, s) => {
+                  setCity(c);
+                  setStateCode(s);
+                  clr("state");
+                }}
+                placeholder="City"
+                inputClassName="ds-input"
+              />
+            </Field>
+            <Field label="State" hint="· fills from city" error={errs.state}>
+              <SelectControl
+                value={stateCode}
+                invalid={!!errs.state}
+                onChange={(e) => {
+                  setStateCode(e.target.value);
+                  clr("state");
+                }}
+              >
+                <option value="">Select…</option>
+                {US_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </SelectControl>
+            </Field>
           </div>
-          <p className="text-[11px] text-muted-text mt-2">
+          <p className="text-[11px] text-muted-text mt-3">
             120+ gallons counts as a full tank; anything less is a partial.
           </p>
           {error && <p className="text-destructive text-sm mt-2">{error}</p>}
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-5">
             <button
-              className="bg-amber text-steel px-3 py-1.5 rounded text-sm font-semibold disabled:opacity-50"
+              className="bg-amber text-steel px-4 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50"
               onClick={save}
               disabled={busy}
             >
-              {busy ? "Saving…" : "Save fill-up"}
+              {busy ? "Saving…" : "Log fill-up"}
             </button>
             <button
-              className="bg-steel text-light px-3 py-1.5 rounded text-sm"
+              className="text-muted-text px-4 py-2.5 rounded-lg text-sm border border-steel"
               onClick={() => {
                 setShowForm(false);
                 setError(null);
+                setErrs({});
               }}
             >
               Cancel

@@ -286,3 +286,101 @@
   animation: ds-shimmer 1.4s ease-in-out infinite;
   border-radius: 6px;
 }
+
+/* ---- Form fields — the shared control style (label + boxed control + unit
+   affix). Defined once here so every form across the app reads the same. ---- */
+.ds-input,
+.ds-ctrl {
+  height: 44px;
+  background: #141b28;
+  border: 1px solid #2a3347;
+  border-radius: 10px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.ds-input {
+  width: 100%;
+  color: #f4f7fb;
+  font-size: 15px;
+  padding: 0 12px;
+  outline: none;
+  font-family: inherit;
+}
+.ds-input::placeholder,
+.ds-ctrl > input::placeholder {
+  color: #5f6b80;
+}
+.ds-input:focus,
+.ds-ctrl:focus-within {
+  border-color: var(--color-amber);
+  box-shadow: 0 0 0 3px rgba(232, 148, 10, 0.18);
+}
+.ds-input--err,
+.ds-ctrl--err {
+  border-color: #e0533a;
+  box-shadow: 0 0 0 3px rgba(224, 83, 58, 0.16);
+}
+.ds-ctrl {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.ds-ctrl > input,
+.ds-ctrl > select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #f4f7fb;
+  font-size: 15px;
+  font-family: inherit;
+  padding: 0 12px;
+}
+.ds-ctrl > input.ds-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.ds-ctrl > select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.ds-affix {
+  padding: 0 13px;
+  color: #7f8ca6;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ds-affix--pre {
+  border-right: 1px solid #22304a;
+}
+.ds-affix--suf {
+  border-left: 1px solid #22304a;
+}
+.ds-chev {
+  padding: 0 12px;
+  color: #7f8ca6;
+  pointer-events: none;
+}
+
+/* No number spinners — the desktop up/down steppers are visual noise. */
+.ds-num::-webkit-outer-spin-button,
+.ds-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* The native date-picker calendar icon is a near-black glyph, invisible on the
+   dark field — you have to KNOW it's there. Light it up and make it clearly
+   clickable, on every date input across the app. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  opacity: 0.85;
+  cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
