@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input, inputClass } from "@/components/ui/input";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { Label } from "@/components/ui/label";
+import { formatPhone } from "@/lib/phone";
 import {
   Select,
   SelectContent,
@@ -615,8 +616,12 @@ const LoadForm = ({
                   <Input
                     name="phone"
                     id="new_broker_phone"
+                    value={newBroker.phone ?? ""}
                     onChange={(e) =>
-                      setNewBroker({ ...newBroker, phone: e.target.value })
+                      setNewBroker({
+                        ...newBroker,
+                        phone: formatPhone(e.target.value),
+                      })
                     }
                   />
                 </div>
@@ -727,8 +732,12 @@ const LoadForm = ({
                   <Label htmlFor="new_agent_phone">Phone</Label>
                   <Input
                     id="new_agent_phone"
+                    value={newAgent.phone ?? ""}
                     onChange={(e) =>
-                      setNewAgent({ ...newAgent, phone: e.target.value })
+                      setNewAgent({
+                        ...newAgent,
+                        phone: formatPhone(e.target.value),
+                      })
                     }
                   />
                 </div>

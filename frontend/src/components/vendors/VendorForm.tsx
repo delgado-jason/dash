@@ -8,6 +8,7 @@ import { VENDOR_CATEGORIES } from "@/lib/constants/vendorCategories";
 import { VENDOR_RATING_OPTIONS } from "@/lib/metrics/vendorRatingLabels";
 import { Field, SelectControl } from "@/components/ui/FormControls";
 import CityAutocomplete from "@/components/CityAutocomplete";
+import { formatPhone } from "@/lib/phone";
 
 interface VendorFormProps {
   vendor?: Vendor; // present → edit mode
@@ -189,7 +190,7 @@ const VendorForm = ({ vendor, onSuccess, onClose }: VendorFormProps) => {
             className="ds-input"
             placeholder="(956) 555-0142"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(formatPhone(e.target.value))}
           />
         </Field>
 
