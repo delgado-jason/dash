@@ -14,6 +14,7 @@ import { getTrucks } from "@/services/trucksService";
 import {
   fuelStats,
   dieselChartData,
+  latestTankRecap,
   isFull,
   entryCost,
 } from "@/lib/metrics/fuelEconomy";
@@ -26,6 +27,7 @@ import { MpgChart } from "@/components/fuel/MpgChart";
 import { DieselPriceChart } from "@/components/fuel/DieselPriceChart";
 import { DieselCompareCard } from "@/components/fuel/DieselCompareCard";
 import { FuelVsRevenueCard } from "@/components/fuel/FuelVsRevenueCard";
+import { LatestTankCard } from "@/components/fuel/LatestTankCard";
 import { money, moneyCents } from "@/lib/format";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { Field, AffixInput, SelectControl } from "@/components/ui/FormControls";
@@ -109,6 +111,24 @@ const FuelEntriesPage = () => {
 
   const now = new Date();
   const stats = useMemo(() => fuelStats(entries, now), [entries]);
+  // The latest completed tank, scored against his history (the "last tank" card).
+  const recap = useMemo(
+    () => latestTankRecap(stats, nationalSeries),
+    [stats, nationalSeries],
+  );
+  // Where that tank closed — the city/state on its closing fill-up.
+  const recapPlace = useMemo(() => {
+    if (!recap) return null;
+    const closing = entries.find(
+      (e) => e.odometer_reading === recap.tank.toOdometer,
+    );
+    if (!closing) return null;
+    // "--" is the import placeholder for an unknown state — treat it as blank.
+    const parts = [closing.fuel_city, closing.fuel_state].filter(
+      (p) => p && p !== "--",
+    );
+    return parts.join(", ") || null;
+  }, [recap, entries]);
   const fuelRev = useMemo(
     () => fuelVsRevenue(entries, loads),
     [entries, loads],
@@ -246,6 +266,8 @@ const FuelEntriesPage = () => {
           </button>
         )}
       </div>
+
+      <LatestTankCard recap={recap} place={recapPlace} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         <Kpi

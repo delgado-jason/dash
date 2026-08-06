@@ -317,6 +317,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Per diem — the meal-allowance deduction",
       "Deadhead",
       "Fuel economy (MPG)",
+      "Latest tank — last fill-up scored",
       "Diesel price — you vs national",
       "Fuel vs revenue — is the surcharge covering your fuel?",
     ],
@@ -889,6 +890,28 @@ const GuidePage = () => {
               full tank; smaller top-offs roll into the next full. Measuring
               full-to-full is why it's honest — actual pump gallons against
               actual odometer miles.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Latest tank — last fill-up scored"
+            answers="How your most recent full tank did against your own history."
+            sources={[{ label: "Fuel", to: "/fuel-entries" }]}
+          >
+            <Why>
+              The card at the top of the Fuel page scores your latest full tank:{" "}
+              <span className="text-light">MPG</span> against your average (with
+              vs-last-tank as a side note),{" "}
+              <span className="text-light">fuel cost per mile</span> — the number
+              that feeds your break-even, $/gal ÷ MPG — and the tank's{" "}
+              <span className="text-light">$/gal versus the national price</span>.
+              Green is better, red is worse. It leans on your{" "}
+              <span className="text-light">average</span> rather than just the
+              last tank on purpose, so one heavy oversize run doesn't read as a
+              slump. Beat your best MPG and it stamps a{" "}
+              <span style={{ color: "#f5a623" }}>NEW BEST</span> (with a sound);
+              string together tanks at or above your average and it tallies the
+              streak.
             </Why>
           </Metric>
 

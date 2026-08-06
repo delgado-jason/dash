@@ -8,6 +8,7 @@ import {
   monthlyFuelPrice,
   dieselChartData,
   maxFuelOdometer,
+  latestTankRecap,
 } from "./fuelEconomy";
 
 const e = (
@@ -117,5 +118,57 @@ describe("maxFuelOdometer", () => {
   });
   it("returns null with no fill-ups", () => {
     expect(maxFuelOdometer([])).toBeNull();
+  });
+});
+
+describe("latestTankRecap", () => {
+  const now = new Date("2026-08-01T00:00:00Z");
+  // Fulls only (120 gal each, ≥ the threshold) so each closes a window with
+  // mpg = miles / 120. Pass the per-tank MPGs you want; the opener is implicit.
+  const tanks = (mpgs: number[], price = 5) => {
+    const gal = 120;
+    let odo = 100000;
+    const es = [e(odo, gal, price, "2026-06-01")]; // opening full
+    mpgs.forEach((m, i) => {
+      odo += m * gal;
+      es.push(e(odo, gal, price, `2026-06-${String(2 + i).padStart(2, "0")}`));
+    });
+    return es;
+  };
+
+  it("returns null before any full tank has closed", () => {
+    const stats = fuelStats([e(100000, 130, 5, "2026-06-01")], now); // opens, never closes
+    expect(latestTankRecap(stats, [])).toBeNull();
+  });
+
+  it("scores the latest tank vs average and vs last tank", () => {
+    const r = latestTankRecap(fuelStats(tanks([5, 7, 7, 7]), now), [])!; // avg 6.5
+    expect(r.tank.mpg).toBeCloseTo(7, 5);
+    expect(r.mpgVsAvg).toBeCloseTo(0.5, 5);
+    expect(r.mpgVsLast).toBeCloseTo(0, 5);
+    expect(r.streak).toBe(3); // 7,7,7 ≥ avg; the 5 breaks it
+  });
+
+  it("flags a record only when it strictly beats every prior tank", () => {
+    const r = latestTankRecap(fuelStats(tanks([5.5, 5.5, 6.5]), now), [])!;
+    expect(r.isRecord).toBe(true);
+    expect(r.mpgVsLast).toBeCloseTo(1.0, 5);
+  });
+
+  it("does not flag a record on a tie, nor on the first completed tank", () => {
+    expect(latestTankRecap(fuelStats(tanks([7, 7]), now), [])!.isRecord).toBe(false);
+    const first = latestTankRecap(fuelStats(tanks([6]), now), [])!;
+    expect(first.isRecord).toBe(false);
+    expect(first.mpgVsLast).toBeNull();
+  });
+
+  it("compares tank $/gal to the national price for its month, null when absent", () => {
+    const stats = fuelStats(tanks([6], 5.0), now); // tank ppg = 5.00, month 2026-06
+    expect(
+      latestTankRecap(stats, [{ month: "2026-06", value: 5.2 }])!.ppgVsNational,
+    ).toBeCloseTo(-0.2, 5);
+    expect(
+      latestTankRecap(stats, [{ month: "2020-01", value: 3 }])!.ppgVsNational,
+    ).toBeNull();
   });
 });
