@@ -4,6 +4,7 @@ import {
   dispatcherEarnedAwards,
   type DispatcherAwardInput,
 } from "@/lib/awards/dispatcherAwards";
+import { dispatcherSeasonAwards } from "@/lib/metrics/dispatcherSeason";
 
 // The dispatcher's awards keep their OWN per-device seen store, separate from the
 // driver's — so a device that already baselined the driver set doesn't flood a
@@ -42,7 +43,18 @@ export const useDispatcherAwardPops = (
     if (!input || input.loads.length === 0 || done) return;
     setDone(true);
 
-    const earned = dispatcherEarnedAwards(input);
+    // Patches + medals (incl. Backhaul Boss) plus the current-period season
+    // trophies — all through one seen-store so day-one baselines silently.
+    const earned = [
+      ...dispatcherEarnedAwards(input),
+      ...dispatcherSeasonAwards(
+        input.loads,
+        input.userId,
+        input.ladder,
+        input.freeHours,
+        new Date(),
+      ),
+    ];
     const currentIds = earned.map((a) => a.id);
     const store = read();
 

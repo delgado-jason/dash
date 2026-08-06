@@ -383,6 +383,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Agents &amp; lanes are graded on gross",
       "The Dispatcher Card",
       "Dispatcher achievements — patches &amp; medals",
+      "Dispatcher season &amp; trophies",
     ],
   },
 ];
@@ -1773,8 +1774,9 @@ const GuidePage = () => {
               way the driver's do. <span className="text-light">Patches</span>{" "}
               are the everyday grind — Deal Closer, Rainmaker, Rate Hawk,
               Clockwork (on-time), Quick Turn, Oversize Ace, Lean Machine,
-              Bounty Hunter, Right Hand, Iron Booker — each climbs a ×count and
-              celebrates at milestones as she books.{" "}
+              Bounty Hunter, Right Hand, Iron Booker, and Backhaul&nbsp;Boss
+              (loads booked out of the market where the last one delivered) —
+              each climbs a ×count and celebrates at milestones as she books.{" "}
               <span className="text-light">Medals</span> are the rare, hard
               feats you can't just grind out — Steal (a load the scorer rates a
               steal), Double-Up (2× break-even), Superload, Whale (a huge single
@@ -1803,6 +1805,42 @@ const GuidePage = () => {
                 Deadhead
               </a>
               ).
+            </Why>
+          </Section>
+
+          <Section
+            title="Dispatcher season &amp; trophies"
+            sources={[{ label: "Dispatch board", to: "/dashboard" }]}
+          >
+            <p className="text-sm text-muted-text">
+              Her page also carries a{" "}
+              <span className="text-light">season card</span> — a month, quarter,
+              or year recap of the loads she booked (gross, on her bookings
+              only): loads, gross, average rate against target, on-time, and her
+              best load. Three <span className="text-light">period trophies</span>{" "}
+              sit under it, each tracked against a personal bar:
+            </p>
+            <div className="flex flex-col gap-1.5 mt-3">
+              <p className="text-sm text-muted-text">
+                <span className="text-light">Booking Champion</span> — a
+                big-volume period (8 loads a month, 24 a quarter, 90 a year).
+              </p>
+              <p className="text-sm text-muted-text">
+                <span className="text-light">Rate Champion</span> — the period
+                averaged at or above your target rate.
+              </p>
+              <p className="text-sm text-muted-text">
+                <span className="text-light">Perfect Period</span> — every load
+                in the period at or above target. The hard one.
+              </p>
+            </div>
+            <Why>
+              A locked trophy shows what's still missing ("3 loads under
+              target"), so it reads as a goal, not a scold. They're personal on
+              purpose: with one person booking most of the freight, a
+              head-to-head "champion" would just be the same name every period —
+              these reward your own best month instead. Earn one and it pops like
+              a patch does.
             </Why>
           </Section>
         </main>

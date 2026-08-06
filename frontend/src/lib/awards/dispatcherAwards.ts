@@ -89,6 +89,7 @@ interface Stats {
   perfectWeeks: number;
   grandSlam: number;
   bestWeekLoads: number;
+  backhaul: number;
 }
 
 const computeStats = (input: DispatcherAwardInput): Stats => {
@@ -150,6 +151,19 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
     if (w.length > 0 && w.every((l) => rpm(l) >= target)) perfectWeeks++;
   }
 
+  // Backhaul chains: booked loads whose origin market is where the PREVIOUS
+  // booked load delivered — a booked return leg, not a deadhead reset. Market
+  // (metro) match, since exact-city never lines up. Sequenced by pickup.
+  const seq = [...mine]
+    .filter((l) => l.pickup_date)
+    .sort((a, b) => (a.pickup_date < b.pickup_date ? -1 : 1));
+  let backhaul = 0;
+  for (let i = 1; i < seq.length; i++) {
+    const prevDest = seq[i - 1].destination_market_id;
+    const origin = seq[i].origin_market_id;
+    if (origin && prevDest && origin === prevDest) backhaul++;
+  }
+
   return {
     loadsBooked: mine.length,
     gross: mine.reduce((s, l) => s + loadGross(l), 0),
@@ -172,6 +186,7 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
       (l) => isSteal(l) && bothOnTime(l) && (deadheadPct(l) ?? 1) <= 0.1,
     ).length,
     bestWeekLoads,
+    backhaul,
   };
 };
 
@@ -228,6 +243,7 @@ export const dispatcherPatches = (input: DispatcherAwardInput): GrindPatch[] => 
     grindPatch("disp-quick-turn", "Quick Turn", "arrows-horizontal", s.quickTurn, [15, 50, 125], x),
     grindPatch("disp-oversize", "Oversize Ace", "truck", s.oversize, [5, 15, 40], x),
     grindPatch("disp-lean", "Lean Machine", "route", s.lean, [25, 75, 200], x),
+    grindPatch("disp-backhaul-boss", "Backhaul Boss", "road", s.backhaul, [3, 10, 25, 50], x),
   ];
 };
 
