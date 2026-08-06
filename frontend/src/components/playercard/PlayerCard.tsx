@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Truck, Maximize2, Weight, Home, Gauge } from "lucide-react";
 import type { Grade, CareerRank, SeasonStats, Lever } from "@/lib/metrics/playerCard";
+import type { QuarterPace } from "@/lib/metrics/quarterPace";
+import { QuarterPaceCard } from "./QuarterPaceCard";
 import { bottleneckLevers, allLeversOnTarget } from "@/lib/metrics/playerCard";
 import { STRIP_MIN_COUNT, type TypeMix } from "@/lib/metrics/loadMix";
 import type { Hometime } from "@/lib/metrics/hometime";
@@ -203,6 +205,7 @@ export interface PlayerCardProps {
   oversize?: TypeMix; // oversize equipment mix; strip hidden when count is 0
   heavyHaul?: TypeMix; // heavy-haul mix — a distinct discipline from oversize
   hometime?: Hometime; // days-since-home status; strip hidden when not provided
+  pace?: QuarterPace | null; // current-quarter-vs-previous pace; hidden when absent
 }
 
 export const PlayerCard = ({
@@ -220,6 +223,7 @@ export const PlayerCard = ({
   oversize,
   heavyHaul,
   hometime,
+  pace,
 }: PlayerCardProps) => {
   const stars = "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
 
@@ -351,11 +355,13 @@ export const PlayerCard = ({
         </div>
       </div>
 
+      {pace && <QuarterPaceCard pace={pace} />}
+
       <div className="flex items-baseline gap-2 mt-5 mb-2">
         <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
           LAST SEASON
         </span>
-        <span className="text-[11px] text-muted-text">· {season.label} · your last 3 complete months</span>
+        <span className="text-[11px] text-muted-text">· {season.label} · the last complete quarter</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Stat label="Net revenue" value={money(season.netRevenue)} sub="net of carrier cut" />

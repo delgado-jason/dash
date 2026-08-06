@@ -42,6 +42,7 @@ import {
   utilizationGrade,
   personalBests,
 } from "@/lib/metrics/playerCard";
+import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { computeGrind } from "@/lib/metrics/grind";
 import { loadTypeMix } from "@/lib/metrics/loadMix";
 import { underLoadDaySet, firstDeliveredPickup } from "@/lib/metrics/underLoad";
@@ -145,7 +146,7 @@ const DriverDetailPage = () => {
     );
     const basis = getCostBasis(periods, obligationsDebt, driverLoads, now);
     const ladder = getRateLadder(basis.breakEvenRpm, tiers);
-    const season = getSeasonStats(periods, driverLoads, driverTrips, now, 3, obligationsDebt);
+    const season = getSeasonStats(periods, driverLoads, driverTrips, now, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
     const marginG = marginGrade(season.netMargin);
     // Driver utilization (days-based) — under-load days ÷ days since first load.
@@ -185,6 +186,7 @@ const DriverDetailPage = () => {
     return {
       rank: careerRank(lifetimeMiles),
       season,
+      pace: getQuarterPace(driverLoads, now),
       rpmGrade: rpmG,
       marginGrade: marginG,
       utilization,
@@ -263,6 +265,7 @@ const DriverDetailPage = () => {
             avatar={avatar}
             rank={card.rank}
             season={card.season}
+            pace={card.pace}
             rpmGrade={card.rpmGrade}
             marginGrade={card.marginGrade}
             utilization={card.utilization}

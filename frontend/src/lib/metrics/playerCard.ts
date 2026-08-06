@@ -7,11 +7,8 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { deadheadPctOver } from "./deadhead";
-import {
-  loadRevenue,
-  completeMonthsBefore,
-  type RateLadder,
-} from "./rateTargets";
+import { loadRevenue, type RateLadder } from "./rateTargets";
+import { resolvePeriod } from "./recap";
 import { mileMilestone } from "./mileClub";
 import { fuelStats } from "./fuelEconomy";
 import { RANK_TIERS, MARGIN_BANDS } from "@/lib/constants/playerCard";
@@ -147,17 +144,26 @@ const inWindow = (
   );
 };
 
+// A "season" is always a calendar QUARTER — the last COMPLETE one (Q1 Jan–Mar,
+// Q2 Apr–Jun, Q3 Jul–Sep, Q4 Oct–Dec), matching the recap. Never a rolling
+// window that drifts across a quarter line.
+const lastQuarterMonths = (now: Date): { year: number; month: number }[] => {
+  const start = resolvePeriod("quarter", 0, now).start;
+  const y = start.getUTCFullYear();
+  const m = start.getUTCMonth();
+  return [0, 1, 2].map((i) => ({ year: y, month: m + i }));
+};
+
 export const getSeasonStats = (
   periods: ExpensePeriod[],
   loads: Load[],
   trips: Trip[],
   now: Date,
-  monthsBack = 3,
   // Monthly DEBT obligations (owner draws excluded) — subtracted from operating
   // profit to get True Net over the same months the P&L covers.
   obligationsDebtMonthly = 0,
 ): SeasonStats => {
-  const months = completeMonthsBefore(now, monthsBack);
+  const months = lastQuarterMonths(now);
 
   let income = 0;
   let cost = 0;
