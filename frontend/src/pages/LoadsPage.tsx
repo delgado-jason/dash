@@ -18,6 +18,7 @@ import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   loadFlag,
   detentionOwed,
@@ -291,21 +292,12 @@ const LoadsPage = () => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div className="flex gap-1 bg-steel rounded-lg p-1">
-          {STATUS_FILTERS.map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setStatusFilter(key)}
-              className={`px-2.5 py-1 rounded text-sm ${
-                statusFilter === key
-                  ? "bg-amber text-steel font-semibold"
-                  : "text-muted-text"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          ariaLabel="Load status filter"
+          tabs={STATUS_FILTERS.map(([value, label]) => ({ value, label }))}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
         <select
           className="bg-steel rounded px-2 py-1.5 text-sm text-light"
           value={paymentFilter}

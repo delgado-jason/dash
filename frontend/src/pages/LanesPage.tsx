@@ -16,6 +16,7 @@ import { StateDetailPanel } from "@/components/lanes/StateDetailPanel";
 import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 
 const WINDOWS = [30, 60, 90];
 
@@ -61,21 +62,12 @@ const LanesPage = () => {
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-condensed text-light">Lanes</h1>
-        <div className="flex gap-1 bg-steel rounded-lg p-1">
-          {WINDOWS.map((w) => (
-            <button
-              key={w}
-              onClick={() => setWindowDays(w)}
-              className={`px-3 py-1 rounded text-sm ${
-                windowDays === w
-                  ? "bg-amber text-steel font-semibold"
-                  : "text-muted-text"
-              }`}
-            >
-              {w}d
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          ariaLabel="Lane window"
+          tabs={WINDOWS.map((w) => ({ value: w, label: `${w}d` }))}
+          value={windowDays}
+          onChange={setWindowDays}
+        />
       </div>
 
       <LanesKpis summary={summary} />
