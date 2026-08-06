@@ -4,23 +4,23 @@ import { useAgents } from "@/hooks/useAgents";
 import { useLoads } from "@/hooks/useLoads";
 import { Kpi } from "@/components/Kpi";
 import { AgentCard } from "@/components/agents/AgentCard";
+import { AgentTable } from "@/components/agents/AgentTable";
+import { TIER_META } from "@/components/agents/agentDisplay";
 import { useCarrierName } from "@/hooks/useCarrierName";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   computeHonors,
   perAgentStats,
-  rosterKpis,
   currentQuarterStandings,
 } from "@/lib/metrics/agentLeaderboard";
-import { money } from "@/lib/format";
+import {
+  buildAgentScorecards,
+  agentRosterAnalytics,
+} from "@/lib/metrics/agentScorecard";
+import { money, rpm as fmtRpm } from "@/lib/format";
 
-type SortKey = "rating" | "revenue" | "recent";
-const SORTS: [SortKey, string][] = [
-  ["rating", "Rating"],
-  ["revenue", "Revenue"],
-  ["recent", "Recently worked"],
-];
+type Filter = "all" | "oversize" | "specialty" | "standard" | "call-first" | "cold";
 
 const plural = (n: number) => (n !== 1 ? "s" : "");
 
@@ -29,48 +29,61 @@ const AgentsPage = () => {
   const { loads, isLoading: loadsLoading } = useLoads(0);
 
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("rating");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [view, setView] = useState<"table" | "cards">("table");
   const carrierName = useCarrierName();
+  const now = useMemo(() => new Date(), []);
 
-  const honors = useMemo(() => computeHonors(loads ?? [], new Date()), [loads]);
+  const honors = useMemo(() => computeHonors(loads ?? [], now), [loads, now]);
   const stats = useMemo(() => perAgentStats(loads ?? []), [loads]);
-  const standings = useMemo(
-    () => currentQuarterStandings(loads ?? [], new Date()),
-    [loads],
+  const standings = useMemo(() => currentQuarterStandings(loads ?? [], now), [loads, now]);
+  const scorecards = useMemo(
+    () => buildAgentScorecards(agents ?? [], loads ?? [], now),
+    [agents, loads, now],
   );
-  const kpis = useMemo(
-    () => rosterKpis(agents ?? [], loads ?? [], new Date()),
-    [agents, loads],
+  const roster = useMemo(() => agentRosterAnalytics(scorecards), [scorecards]);
+
+  const byId = useMemo(
+    () => new Map((agents ?? []).map((a) => [a.agent_id, a])),
+    [agents],
   );
 
-  const shown = useMemo(() => {
+  const counts = useMemo(() => {
+    const c = { all: 0, oversize: 0, specialty: 0, standard: 0, "call-first": 0, cold: 0 };
+    for (const card of scorecards.values()) {
+      c.all += 1;
+      c[card.specialty.tag] += 1;
+      if (card.tier === "call-first") c["call-first"] += 1;
+      if (card.tier === "cold") c.cold += 1;
+    }
+    return c;
+  }, [scorecards]);
+
+  const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filtered = (agents ?? []).filter(
-      (a) =>
-        !q ||
-        `${a.first_name} ${a.last_name} ${a.broker_name}`
-          .toLowerCase()
-          .includes(q),
-    );
-    const rev = (id: string) => stats.get(id)?.revenue ?? 0;
-    const worked = (id: string) => stats.get(id)?.lastWorked ?? "";
-    // Break rating ties by career achievement so the more decorated agent
-    // (e.g. the Champion) leads within a tier.
-    const honorScore = (id: string) => {
-      const h = honors.get(id);
-      return h ? h.gold * 10000 + h.silver * 100 + h.board : 0;
-    };
-    return [...filtered].sort((a, b) => {
-      if (sort === "revenue") return rev(b.agent_id) - rev(a.agent_id);
-      if (sort === "recent")
-        return worked(b.agent_id).localeCompare(worked(a.agent_id));
-      return (
-        (b.rating ?? -1) - (a.rating ?? -1) ||
-        honorScore(b.agent_id) - honorScore(a.agent_id) ||
-        rev(b.agent_id) - rev(a.agent_id)
+    return (agents ?? [])
+      .map((a) => ({ agent: a, card: scorecards.get(a.agent_id)! }))
+      .filter(({ agent, card }) => {
+        if (!card) return false;
+        if (
+          q &&
+          !`${agent.first_name} ${agent.last_name} ${agent.broker_name}`
+            .toLowerCase()
+            .includes(q)
+        )
+          return false;
+        if (filter === "oversize" || filter === "specialty" || filter === "standard")
+          return card.specialty.tag === filter;
+        if (filter === "call-first") return card.tier === "call-first";
+        if (filter === "cold") return card.tier === "cold";
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          TIER_META[b.card.tier].rank - TIER_META[a.card.tier].rank ||
+          b.card.revenue - a.card.revenue,
       );
-    });
-  }, [agents, stats, honors, search, sort]);
+  }, [agents, scorecards, search, filter]);
 
   if (isLoading || loadsLoading)
     return (
@@ -92,94 +105,126 @@ const AgentsPage = () => {
       </div>
     );
 
-  const top = kpis.topEarner
-    ? (agents ?? []).find((a) => a.agent_id === kpis.topEarner!.agentId)
-    : null;
+  const rateLeader = roster.rateLeader ? byId.get(roster.rateLeader.agentId) : null;
+  const cold = roster.goingCold ? byId.get(roster.goingCold.agentId) : null;
+
+  const CHIPS: [Filter, string, number][] = [
+    ["all", "All", counts.all],
+    ["oversize", "Oversize", counts.oversize],
+    ["specialty", "Specialty", counts.specialty],
+    ["standard", "Standard", counts.standard],
+    ["call-first", "Top pick", counts["call-first"]],
+    ["cold", "Cold", counts.cold],
+  ];
 
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex justify-between items-baseline mb-6">
         <h1 className="text-3xl font-condensed text-light">Agents</h1>
-        <Link
-          to="/guide"
-          className="text-xs text-muted-text hover:text-amber-light"
-        >
+        <Link to="/guide" className="text-xs text-muted-text hover:text-amber-light">
           How this works →
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Kpi
-          label="Roster"
-          value={String(kpis.total)}
-          sub={`${kpis.rated} rated`}
-        />
-        <Kpi
-          label="Go-to bench"
-          value={String(kpis.callFirst)}
-          valueClass="text-amber"
-          sub={`call first · ${kpis.avoid} to avoid`}
-        />
-        {top ? (
-          <Link to={`/agents/${top.agent_id}`}>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {rateLeader && roster.rateLeader ? (
+          <Link to={`/agents/${rateLeader.agent_id}`}>
             <Kpi
-              label="Top earner"
-              value={`${top.first_name.charAt(0)}. ${top.last_name}`}
-              sub={`${money(kpis.topEarner!.revenue)} · 90 days`}
+              label="Rate leader"
+              value={fmtRpm(roster.rateLeader.medianRpm)}
+              valueClass="text-status-good-text"
+              sub={`${rateLeader.first_name.charAt(0)}. ${rateLeader.last_name} · $/mi`}
             />
           </Link>
         ) : (
-          <Kpi label="Top earner" value="—" sub="no delivered loads · 90 days" />
+          <Kpi label="Rate leader" value="—" sub="need 2+ loads" />
         )}
         <Kpi
-          label="Active agents"
-          value={String(kpis.activeCount)}
-          sub="worked · last 90 days"
+          label="Oversize bench"
+          value={String(roster.oversizeBench)}
+          valueClass="text-amber"
+          sub={`specialists · ${roster.specCapable} spec-capable`}
         />
+        <Kpi
+          label="Concentration"
+          value={roster.concentrationPct != null ? `${Math.round(roster.concentrationPct * 100)}%` : "—"}
+          sub="top 3 of your revenue"
+        />
+        {cold && roster.goingCold ? (
+          <Link to={`/agents/${cold.agent_id}`}>
+            <Kpi
+              label="Going cold"
+              value={`${cold.first_name.charAt(0)}. ${cold.last_name}`}
+              valueClass="text-amber"
+              sub={`${money(roster.goingCold.revenue)} · ${roster.goingCold.daysSince}d quiet`}
+            />
+          </Link>
+        ) : (
+          <Kpi label="Going cold" value="—" sub="all recently active" />
+        )}
+        <Kpi label="Roster" value={String(counts.all)} sub={`${roster.oversizeBench + counts.specialty} specialty`} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mt-4 mb-4">
-        <input
-          className="bg-plate rounded px-3 py-2 text-sm flex-1 min-w-[180px] text-light placeholder:text-muted-text"
-          placeholder="Search name or broker"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <div className="flex gap-1 bg-plate rounded-lg p-1">
-          {SORTS.map(([key, label]) => (
+      <div className="flex flex-wrap items-center justify-between gap-2 mt-5 mb-4">
+        <div className="flex flex-wrap gap-1.5">
+          {CHIPS.map(([key, label, n]) => (
             <button
               key={key}
-              onClick={() => setSort(key)}
-              className={`px-2.5 py-1 rounded text-sm ${
-                sort === key
-                  ? "bg-amber text-steel font-semibold"
-                  : "text-muted-text"
+              onClick={() => setFilter(key)}
+              className="text-[11.5px] rounded-full px-2.5 py-1 border transition-colors"
+              style={
+                filter === key
+                  ? { background: "#e8940a", borderColor: "#e8940a", color: "#12151b", fontWeight: 700 }
+                  : { borderColor: "#2a3347", color: "#9aa4b5" }
+              }
+            >
+              {label} <span className="opacity-70">{n}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 bg-plate rounded-lg p-1">
+          {(["table", "cards"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-2.5 py-1 rounded text-sm capitalize ${
+                view === v ? "bg-steel text-light font-semibold" : "text-muted-text"
               }`}
             >
-              {label}
+              {v}
             </button>
           ))}
         </div>
       </div>
 
-      {shown.length === 0 ? (
+      <input
+        className="bg-plate rounded px-3 py-2 text-sm w-full max-w-md text-light placeholder:text-muted-text mb-4"
+        placeholder="Search name or broker"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {rows.length === 0 ? (
         (agents ?? []).length === 0 ? (
           <EmptyState
             title="No agents yet"
             hint="Add an agent to track who books your freight and how they pay."
           />
         ) : (
-          <p className="text-muted-text text-sm">No agents match your search.</p>
+          <p className="text-muted-text text-sm">No agents match.</p>
         )
+      ) : view === "table" ? (
+        <AgentTable rows={rows} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {shown.map((agent) => (
+          {rows.map(({ agent, card }) => (
             <AgentCard
               key={agent.agent_id}
               agent={agent}
               stats={stats.get(agent.agent_id)}
               honors={honors.get(agent.agent_id)}
               live={standings.get(agent.agent_id)}
+              card={card}
               carrierName={carrierName}
             />
           ))}
@@ -187,7 +232,8 @@ const AgentsPage = () => {
       )}
 
       <p className="text-xs text-muted-text mt-6">
-        {shown.length} agent{plural(shown.length)}
+        {rows.length} agent{plural(rows.length)}
+        {filter !== "all" ? ` · ${filter}` : ""}
       </p>
     </div>
   );

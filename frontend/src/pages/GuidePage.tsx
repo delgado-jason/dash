@@ -366,6 +366,7 @@ const NAV: { group: string; items: string[] }[] = [
     group: "Agents",
     items: [
       "Agent ratings",
+      "Reading the roster — the Go-to score",
       "The quarterly leaderboard",
       "Trophies",
       "Career rank",
@@ -1515,6 +1516,53 @@ const GuidePage = () => {
                 </div>
               ))}
             </div>
+          </Section>
+
+          <Section
+            title="Reading the roster — the Go-to score"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
+            <p className="text-sm text-muted-text mb-3">
+              Your stars are your gut. The <span className="text-light">Go-to
+              score</span> is the data's read, sitting right next to them —{" "}
+              <span className="text-light">Top pick · Solid · Watch · Cold</span>{" "}
+              — built from three axes:
+            </p>
+            <ul className="text-sm text-muted-text space-y-2 mb-3 list-disc pl-5">
+              <li>
+                <span className="text-light">Rate</span> — the typical $/mi they
+                pay, graded <span className="text-light">within specialty type</span>{" "}
+                (oversize pays more per mile, so an oversize agent is measured
+                against other oversize agents — a strong standard-freight agent
+                isn't buried under them).
+              </li>
+              <li>
+                <span className="text-light">Volume</span> — loads and gross, with
+                an up/down trend vs the prior 90 days.
+              </li>
+              <li>
+                <span className="text-light">Dwell</span> — money lost to sitting.
+                This counts detention you <span className="text-light">confirmed
+                billable but never collected</span> — not raw wait time. Priced-in
+                oversize crane time (which you never confirm billable) stays a
+                candidate and <span className="text-light">never dings the agent</span>.
+              </li>
+            </ul>
+            <p className="text-sm text-muted-text mb-3">
+              The <span className="text-light">specialty label</span> is derived
+              from each agent's load mix — an oversize / heavy-haul majority earns{" "}
+              <span className="text-light">OVERSIZE</span>, other non-standard
+              (hazmat) earns <span className="text-light">SPECIALTY</span> — so you
+              can filter straight to your oversize bench. And a{" "}
+              <span style={{ color: "#f5a623" }}>⚠ flag</span> marks where your
+              stars and the data disagree: a low-rated agent the numbers like, or a
+              high-rated one they don't.
+            </p>
+            <p className="text-sm text-muted-text">
+              An agent stays <span className="text-light">"thin data" (unscored)</span>{" "}
+              until they've run 2+ delivered loads, so one lucky run never crowns
+              anyone — the same restraint the lane and rate metrics use.
+            </p>
           </Section>
 
           <Section
