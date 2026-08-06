@@ -111,6 +111,18 @@ describe("dispatcherPatches", () => {
     const deal = dispatcherPatches(input(loads)).find((p) => p.key === "disp-deal-closer")!;
     expect(deal.badge).toBe("×1"); // only the one non-cancelled load she booked
   });
+
+  it("Backhaul Boss chains loads whose origin market = the prior load's delivery market", () => {
+    const loads = [
+      mk({ load_id: "1", pickup_date: "2026-06-01T04:00:00.000Z", origin_market_id: "m", destination_market_id: "m2" }),
+      mk({ load_id: "2", pickup_date: "2026-06-05T04:00:00.000Z", origin_market_id: "m2", destination_market_id: "m3" }), // chains off #1
+      mk({ load_id: "3", pickup_date: "2026-06-10T04:00:00.000Z", origin_market_id: "m3", destination_market_id: "m4" }), // chains off #2
+      mk({ load_id: "4", pickup_date: "2026-06-15T04:00:00.000Z", origin_market_id: "zzz", destination_market_id: "m5" }), // breaks it
+    ];
+    const bh = dispatcherPatches(input(loads)).find((p) => p.key === "disp-backhaul-boss")!;
+    expect(bh.badge).toBe("×2"); // two consecutive market matches
+    expect(bh.reached).toBe(0); // 2 < first milestone (3)
+  });
 });
 
 describe("dispatcherEarnedAwards", () => {

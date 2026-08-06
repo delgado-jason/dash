@@ -12,6 +12,7 @@ import {
   type DispatcherAwardInput,
 } from "@/lib/awards/dispatcherAwards";
 import { DispatcherCard } from "@/components/playercard/DispatcherCard";
+import { DispatcherSeasonCard } from "@/components/dispatch/DispatcherSeasonCard";
 import { DispatcherPatchBoard } from "@/components/awards/DispatcherPatchBoard";
 import { MedalBadge } from "@/components/awards/MedalBadge";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
@@ -141,6 +142,13 @@ const DispatcherPage = () => {
           avatar={avatar}
           card={card}
           medals={earnedMedals}
+        />
+
+        <DispatcherSeasonCard
+          loads={loads}
+          userId={id}
+          ladder={targets.bookingLadder}
+          freeHours={freeHours}
         />
 
         {/* Career ladder */}
