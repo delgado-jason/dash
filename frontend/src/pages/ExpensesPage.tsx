@@ -29,6 +29,7 @@ import { ObligationsCard } from "@/components/expenses/ObligationsCard";
 import { Panel } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { money } from "@/lib/format";
 
 // That month's miles from loads (drives cost-per-mile + break-even).
@@ -245,21 +246,16 @@ const ExpensesPage = () => {
       ) : selected && metrics && trueMonthly ? (
         <>
           {periods.length > 1 && (
-            <div className="flex gap-1 mb-4 flex-wrap">
-              {[...periods].reverse().map((p) => (
-                <button
-                  key={p.period_id}
-                  onClick={() => setSelectedId(p.period_id)}
-                  className={`px-2 py-1 rounded text-xs ${
-                    selectedId === p.period_id
-                      ? "bg-amber text-steel"
-                      : "bg-plate text-muted-text"
-                  }`}
-                >
-                  {p.period_label}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs
+              size="sm"
+              className="mb-4"
+              ariaLabel="P&L period"
+              tabs={[...periods]
+                .reverse()
+                .map((p) => ({ value: p.period_id, label: p.period_label }))}
+              value={selectedId ?? ""}
+              onChange={setSelectedId}
+            />
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">

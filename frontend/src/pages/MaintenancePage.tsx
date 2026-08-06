@@ -18,6 +18,7 @@ import {
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { ScheduleTab } from "@/components/maintenance/ScheduleTab";
 import { ServicesTab } from "@/components/maintenance/ServicesTab";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 
 const MaintenancePage = () => {
@@ -87,19 +88,6 @@ const MaintenancePage = () => {
 
   const milesPerMonth = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
 
-  const tabBtn = (key: "schedule" | "services", label: string) => (
-    <button
-      onClick={() => setTab(key)}
-      className={`px-3 py-2 text-sm border-b-2 ${
-        tab === key
-          ? "border-amber text-light font-medium"
-          : "border-transparent text-muted-text"
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <h1 className="text-3xl font-condensed mb-1">Maintenance</h1>
@@ -109,10 +97,16 @@ const MaintenancePage = () => {
           ` · ${currentMiles.tractor.toLocaleString("en-US")} mi`}
       </p>
 
-      <div className="flex gap-1 border-b border-steel mb-5">
-        {tabBtn("schedule", "Schedule")}
-        {tabBtn("services", "Services")}
-      </div>
+      <SegmentedTabs
+        className="mb-5"
+        tabs={[
+          { value: "schedule", label: "Schedule" },
+          { value: "services", label: "Services" },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+
 
       {loading ? (
         <RowsSkeleton rows={6} />

@@ -25,6 +25,7 @@ import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { careerRank } from "@/lib/metrics/playerCard";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 
 const SCOPES: { key: RecapScope; label: string }[] = [
   { key: "month", label: "Month" },
@@ -100,19 +101,12 @@ const RecapPage = () => {
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <h1 className="text-3xl font-condensed">Recap</h1>
-        <div className="flex gap-1 bg-steel rounded-lg p-1">
-          {SCOPES.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => pick(s.key)}
-              className={`px-3 py-1 rounded text-sm font-condensed ${
-                scope === s.key ? "bg-amber text-steel" : "text-muted-text"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          ariaLabel="Recap period"
+          tabs={SCOPES.map((s) => ({ value: s.key, label: s.label }))}
+          value={scope}
+          onChange={pick}
+        />
       </div>
 
       <div className="flex items-center justify-center gap-4 mb-4">
