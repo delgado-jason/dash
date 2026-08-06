@@ -8,11 +8,12 @@ import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { MilestoneBurst } from "@/components/fleet/MilestoneBurst";
 import { mileMilestone } from "@/lib/metrics/mileClub";
 import { useLoads } from "@/hooks/useLoads";
+import { formatPhone } from "@/lib/phone";
 
 const FIELDS: FormField[] = [
   { name: "first_name", label: "First name", required: true },
   { name: "last_name", label: "Last name", required: true },
-  { name: "phone", label: "Phone" },
+  { name: "phone", label: "Phone", format: formatPhone },
   { name: "email", label: "Email" },
   { name: "cdl_number", label: "CDL #" },
   { name: "cdl_state", label: "CDL state", placeholder: "AL" },

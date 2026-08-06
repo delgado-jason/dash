@@ -9,6 +9,7 @@ export interface FormField {
   options?: string[];
   required?: boolean;
   placeholder?: string;
+  format?: (value: string) => string; // normalize on input (e.g. phone)
 }
 
 interface Props {
@@ -78,7 +79,9 @@ export const EntityForm = ({
                 type={f.type === "date" ? "date" : "text"}
                 inputMode={f.type === "number" ? "numeric" : undefined}
                 value={values[f.name] ?? ""}
-                onChange={(e) => set(f.name, e.target.value)}
+                onChange={(e) =>
+                  set(f.name, f.format ? f.format(e.target.value) : e.target.value)
+                }
                 placeholder={f.placeholder}
               />
             )}
