@@ -1171,7 +1171,13 @@ const GuidePage = () => {
               updates in real time), not the P&amp;L profit (which lags a monthly
               upload) — and for the first couple weeks it reads{" "}
               <span className="text-light">"too early to call"</span> rather than
-              swing on a single big load.
+              swing on a single big load. Because it's summed straight from your
+              loads, these figures won't always match the{" "}
+              <span className="text-light">Net revenue</span> in{" "}
+              <span className="text-light">Last Season</span> — that number is
+              your monthly P&amp;L income, so any month you haven't entered yet
+              (or income booked under a different month than the load delivered)
+              will move the two apart.
             </Why>
           </Metric>
 

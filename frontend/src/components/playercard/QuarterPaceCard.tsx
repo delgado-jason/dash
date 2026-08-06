@@ -89,7 +89,7 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
       <div className="flex items-end gap-2 flex-wrap">
         <span className="text-[30px] font-condensed leading-none">{k(currentNet)}</span>
         <span className="text-sm text-muted-text mb-1">
-          net so far · {currentLoads} loads
+          net so far · {currentLoads} delivered loads
         </span>
         {hasProjection && pacePct != null && (
           <span
@@ -162,6 +162,11 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
               sub={`vs ${prevLabel}`}
             />
           </div>
+          <p className="text-[10.5px] text-muted-text mt-2.5 leading-snug">
+            Counted from your delivered loads (each load's settlement net) so it
+            can track day by day — which is why these figures won't always match
+            the P&amp;L net revenue in Last Season below.
+          </p>
         </>
       ) : (
         <p className="text-xs text-muted-text mt-2">
