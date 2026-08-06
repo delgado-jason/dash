@@ -133,6 +133,73 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
   };
 };
 
+// A recap of the most recently COMPLETED tank (the latest full-to-full window),
+// scored against his own history — the "how did my last fill-up do?" card. All
+// deltas are signed so the UI colors them: MPG up is good, cost/mile and price
+// under national are good. Returns null until at least one full tank has closed.
+export interface TankRecap {
+  tank: MpgWindow; // the latest completed tank
+  costPerMile: number; // this tank's fuel $/mile
+  pricePerGallon: number; // this tank's blended $/gal
+  mpgVsAvg: number | null; // tank MPG − overall avg MPG (+ = better)
+  mpgVsLast: number | null; // tank MPG − previous tank's MPG (+ = better)
+  cpmVsAvg: number | null; // tank $/mile − avg $/mile (− = better/cheaper)
+  ppgVsNational: number | null; // tank $/gal − national that month (− = under market)
+  isRecord: boolean; // strictly beat every prior tank's MPG (needs a prior)
+  streak: number; // consecutive most-recent tanks at/above avg MPG
+}
+
+export const latestTankRecap = (
+  stats: FuelStats,
+  national: { month: string; value: number }[],
+): TankRecap | null => {
+  const w = stats.windows;
+  if (w.length === 0) return null;
+
+  const tank = w[w.length - 1];
+  const prior = w.length >= 2 ? w[w.length - 2] : null;
+  const costPerMile = tank.cost / tank.miles;
+  const pricePerGallon = tank.cost / tank.gallons;
+
+  const mpgVsAvg = stats.avgMpg != null ? tank.mpg - stats.avgMpg : null;
+  const mpgVsLast = prior ? tank.mpg - prior.mpg : null;
+  const cpmVsAvg =
+    stats.costPerMile != null ? costPerMile - stats.costPerMile : null;
+
+  // National price for the tank's month (best-effort — null when EIA has none).
+  const month = String(tank.date).slice(0, 7);
+  const nat = national.find((n) => n.month === month);
+  const ppgVsNational = nat ? pricePerGallon - nat.value : null;
+
+  // A record only counts if it strictly beats every earlier tank — so the very
+  // first tank is never a "record", and a tie doesn't re-trigger it.
+  const priorBest = prior
+    ? Math.max(...w.slice(0, -1).map((x) => x.mpg))
+    : null;
+  const isRecord = priorBest != null && tank.mpg > priorBest;
+
+  // How many of the most-recent tanks, unbroken, ran at or above the average.
+  let streak = 0;
+  if (stats.avgMpg != null) {
+    for (let i = w.length - 1; i >= 0; i--) {
+      if (w[i].mpg >= stats.avgMpg) streak++;
+      else break;
+    }
+  }
+
+  return {
+    tank,
+    costPerMile,
+    pricePerGallon,
+    mpgVsAvg,
+    mpgVsLast,
+    cpmVsAvg,
+    ppgVsNational,
+    isRecord,
+    streak,
+  };
+};
+
 // Gallon-weighted average price/gallon per calendar month, ascending — his own
 // line on the you-vs-national diesel chart.
 export interface MonthPrice {
