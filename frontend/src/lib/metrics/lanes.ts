@@ -1,5 +1,11 @@
 import type { Load } from "@/types/load";
-import { getRegion, getStateName } from "@/lib/constants/states";
+import {
+  getRegion,
+  getStateName,
+  getMacro,
+  getStateAbbr,
+  UNKNOWN_REGION,
+} from "@/lib/constants/states";
 import { median } from "./stats";
 import { agentStops, scoreStops } from "./stopScore";
 
@@ -197,36 +203,79 @@ export const getStateLoadMap = (
   return out;
 };
 
-export interface StateMapDatum {
-  state: string;
-  loadCount: number; // footprint window (drives the volume shading)
-  avgRpm: number | null; // rpm window (null when nothing recent)
-  medianRpm: number | null; // footprint median $/mi (drives the rate shading)
-  markets: string[];
+// ---- GRANULARITY-AWARE MAP DATA ----
+// The map's spatial resolution follows the window: a short (sparse) window
+// groups coarsely so it still reads, a longer window can afford fine detail.
+// State ⊂ freight-region ⊂ macro-region — each level is just a grouping of the
+// same origin-state geography, so no coordinates/geocoding are needed.
+export type MapLevel = "macro" | "region" | "state";
+
+// 30d → macro (≈4 blobs), 60d → freight region (≈9), 90d → state (48).
+export const levelForWindow = (days: number): MapLevel =>
+  days <= 30 ? "macro" : days <= 60 ? "region" : "state";
+
+// The group a load's origin state belongs to at a given level. State level uses
+// the full state NAME (the map topology keys on names); region/macro use the
+// freight-region / macro label. null = unrecognized origin state (skip it).
+export const groupKeyForState = (
+  originStateAbbr: string | null | undefined,
+  level: MapLevel,
+): string | null => {
+  const name = getStateName(originStateAbbr);
+  if (!name) return null;
+  if (level === "state") return name;
+  const key = level === "macro" ? getMacro(originStateAbbr) : getRegion(originStateAbbr);
+  return key === UNKNOWN_REGION ? null : key;
+};
+
+// Same, but from a full state name (what the topology gives the map component).
+export const groupKeyForStateName = (
+  name: string,
+  level: MapLevel,
+): string | null => {
+  if (level === "state") return name;
+  return groupKeyForState(getStateAbbr(name), level);
+};
+
+export interface AreaMapDatum {
+  key: string; // state name, or region / macro label
+  loadCount: number; // delivered loads in the window
+  avgRpm: number | null; // blended gross ÷ loaded mile
+  medianRpm: number | null; // typical single-load $/mi (drives rate shading)
+  members: string[]; // origin markets (state level) or member states (grouped)
 }
 
-// Choropleth data with two windows: load-count "footprint" over a long window
-// (default 1 year) for the shading + markets, but avg RPM over the shorter
-// selected window so the hover rate stays current. A state can be shaded (ran
-// there this year) yet have null avgRpm (nothing in the recent window) — that's
-// meaningful ("run here, not lately"), not a gap to hide.
-export const getStateMapData = (
+// Choropleth data at the level the window implies, over the window itself (no
+// separate footprint — the tab drives both time and grouping). Keyed by group
+// key so the map can shade each shape and list its members on hover.
+export const getAreaMapData = (
   loads: Load[],
-  rpmDays: number,
-  footprintDays: number = 365,
+  days: number,
+  level: MapLevel,
   now: number = Date.now(),
-): Record<string, StateMapDatum> => {
-  const footprint = getStateLoadMap(getRecentLoads(loads, footprintDays, now));
-  const windowed = getStateLoadMap(getRecentLoads(loads, rpmDays, now));
+): Record<string, AreaMapDatum> => {
+  const recent = getRecentLoads(deliveredOnly(loads), days, now);
+  const out: Record<string, AreaMapDatum> = {};
 
-  const out: Record<string, StateMapDatum> = {};
-  for (const [name, fp] of Object.entries(footprint)) {
-    out[name] = {
-      state: name,
-      loadCount: fp.loadCount,
-      markets: fp.markets,
-      avgRpm: windowed[name]?.avgRpm ?? null,
-      medianRpm: fp.medianRpm,
+  for (const [key, group] of groupBy(
+    recent,
+    (l) => groupKeyForState(l.origin_state, level) ?? " ",
+  )) {
+    if (key === " ") continue; // unrecognized origin states
+    const members =
+      level === "state"
+        ? [...new Set(group.map((l) => l.origin_market))]
+        : [
+            ...new Set(
+              group.map((l) => getStateName(l.origin_state)).filter((n): n is string => !!n),
+            ),
+          ];
+    out[key] = {
+      key,
+      loadCount: group.length,
+      avgRpm: avgRpm(group),
+      medianRpm: medianRpm(group),
+      members,
     };
   }
   return out;
@@ -250,23 +299,16 @@ export interface StateDetail {
   lanes: LaneStat[]; // your lanes out of here, most-run first
 }
 
-// Everything you'd want when you click a state: the agents you've booked freight
-// out of it (rate / volume / on-time) and your top lanes from it — all from your
-// delivered loads inside the window. `freeHours` drives on-time (from settlement).
-export const getStateDetail = (
-  loads: Load[],
-  stateName: string,
+// Shared drill-down builder: the agents you've booked out of an already-scoped
+// set of delivered loads (rate / volume / on-time) and your top lanes from it.
+// `freeHours` drives on-time (from settlement). `label` names the area.
+const buildDetail = (
+  scopedLoads: Load[],
+  label: string,
   freeHours: number,
-  days: number,
-  now: number = Date.now(),
 ): StateDetail => {
-  const recent = getRecentLoads(deliveredOnly(loads), days, now);
-  const stateLoads = recent.filter(
-    (l) => getStateName(l.origin_state) === stateName,
-  );
-
   const agents: AgentStat[] = [];
-  for (const [agentId, agentLoads] of groupBy(stateLoads, (l) => l.agent_id)) {
+  for (const [agentId, agentLoads] of groupBy(scopedLoads, (l) => l.agent_id)) {
     agents.push({
       agentId,
       agent: agentLoads[0].agent,
@@ -281,7 +323,7 @@ export const getStateDetail = (
 
   const lanes: LaneStat[] = [];
   for (const [, laneLoads] of groupBy(
-    stateLoads,
+    scopedLoads,
     (l) => `${l.origin_market} → ${l.delivery_market}`,
   )) {
     const first = laneLoads[0];
@@ -299,13 +341,46 @@ export const getStateDetail = (
   );
 
   return {
-    state: stateName,
-    loadCount: stateLoads.length,
-    avgRpm: avgRpm(stateLoads),
-    medianRpm: medianRpm(stateLoads),
+    state: label,
+    loadCount: scopedLoads.length,
+    avgRpm: avgRpm(scopedLoads),
+    medianRpm: medianRpm(scopedLoads),
     agents,
     lanes,
   };
+};
+
+// Drill-down for a clicked origin STATE (the 90d level).
+export const getStateDetail = (
+  loads: Load[],
+  stateName: string,
+  freeHours: number,
+  days: number,
+  now: number = Date.now(),
+): StateDetail => {
+  const recent = getRecentLoads(deliveredOnly(loads), days, now);
+  const stateLoads = recent.filter(
+    (l) => getStateName(l.origin_state) === stateName,
+  );
+  return buildDetail(stateLoads, stateName, freeHours);
+};
+
+// Drill-down for a clicked region / macro blob (the 60d / 30d levels): the same
+// agents-and-lanes read, scoped to every origin state inside that group.
+export const getAreaDetail = (
+  loads: Load[],
+  level: MapLevel,
+  key: string,
+  freeHours: number,
+  days: number,
+  now: number = Date.now(),
+): StateDetail => {
+  if (level === "state") return getStateDetail(loads, key, freeHours, days, now);
+  const recent = getRecentLoads(deliveredOnly(loads), days, now);
+  const areaLoads = recent.filter(
+    (l) => groupKeyForState(l.origin_state, level) === key,
+  );
+  return buildDetail(areaLoads, key, freeHours);
 };
 
 // ---- TOP-LANE KPIs ----

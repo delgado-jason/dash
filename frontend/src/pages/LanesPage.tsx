@@ -6,8 +6,9 @@ import {
   getRecentLoads,
   getRegionRollup,
   getLanesSummary,
-  getStateMapData,
-  getStateDetail,
+  getAreaMapData,
+  getAreaDetail,
+  levelForWindow,
 } from "@/lib/metrics/lanes";
 import { LanesKpis } from "@/components/lanes/LanesKpis";
 import { LanesMap } from "@/components/lanes/LanesMap";
@@ -23,7 +24,7 @@ const WINDOWS = [30, 60, 90];
 const LanesPage = () => {
   const [refreshKey] = useState(0);
   const [windowDays, setWindowDays] = useState(90);
-  const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
   const { loads, isLoading, error } = useLoads(refreshKey);
 
@@ -48,14 +49,17 @@ const LanesPage = () => {
       </div>
     );
 
-  // Window feeds RPM/rankings; the map applies its own 1-year footprint window.
+  // The tab drives both the time window and the map's spatial granularity:
+  // 30d → macro-regions, 60d → freight regions, 90d → states. Coarser on the
+  // sparser window so it still reads; finer once there's data to justify it.
+  const level = levelForWindow(windowDays);
   const windowLoads = getRecentLoads(loads, windowDays);
   const rollup = getRegionRollup(windowLoads);
   const summary = getLanesSummary(windowLoads);
-  const mapData = getStateMapData(loads, windowDays);
+  const mapData = getAreaMapData(loads, windowDays, level);
   const freeHours = schedule?.detention_free_hours ?? 3;
-  const stateDetail = selectedState
-    ? getStateDetail(loads, selectedState, freeHours, windowDays)
+  const detail = selected
+    ? getAreaDetail(loads, level, selected, freeHours, windowDays)
     : null;
 
   return (
@@ -66,7 +70,10 @@ const LanesPage = () => {
           ariaLabel="Lane window"
           tabs={WINDOWS.map((w) => ({ value: w, label: `${w}d` }))}
           value={windowDays}
-          onChange={setWindowDays}
+          onChange={(w) => {
+            setWindowDays(w);
+            setSelected(null); // a state/region key won't exist at the new level
+          }}
         />
       </div>
 
@@ -75,23 +82,24 @@ const LanesPage = () => {
       <div className="mt-6">
         <LanesMap
           data={mapData}
+          level={level}
           windowDays={windowDays}
-          selected={selectedState}
-          onSelect={setSelectedState}
+          selected={selected}
+          onSelect={setSelected}
         />
       </div>
 
-      {stateDetail ? (
+      {detail ? (
         <StateDetailPanel
-          detail={stateDetail}
+          detail={detail}
           windowDays={windowDays}
-          onClear={() => setSelectedState(null)}
+          onClear={() => setSelected(null)}
         />
       ) : (
         <Panel noir className="mt-6 p-4">
           <p className="text-xs text-muted-text mb-2">
             By region · last {windowDays} days · expand a market for its lanes ·
-            or click a state on the map
+            or click the map to drill in
           </p>
           <LanesTable rollup={rollup} />
         </Panel>

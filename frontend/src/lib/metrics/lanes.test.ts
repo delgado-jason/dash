@@ -6,7 +6,9 @@ import {
   getStateLoadMap,
   getLanesSummary,
   getRecentLoads,
-  getStateMapData,
+  getAreaMapData,
+  getAreaDetail,
+  levelForWindow,
   getStateDetail,
 } from "./lanes";
 
@@ -206,36 +208,90 @@ describe("recency windowing", () => {
     expect(getRecentLoads(loads, 365)).toHaveLength(3);
   });
 
-  it("getStateMapData shades by footprint but rates by the RPM window", () => {
+  it("getAreaMapData windows the loads (no separate footprint)", () => {
     const loads = [
-      // Georgia: one recent load (in the 90-day window) + one old (footprint only)
-      makeLoad({
-        origin_state: "GA",
-        delivery_date: d10,
-        linehaul: "3000",
-        loaded_miles: 1000,
-      }),
-      makeLoad({
-        origin_state: "GA",
-        delivery_date: d200,
-        linehaul: "3000",
-        loaded_miles: 1000,
-      }),
-      // Texas: only an old load — shaded (footprint) but no recent rate
-      makeLoad({
-        origin_state: "TX",
-        origin_market: "Dallas",
-        delivery_date: d200,
-        linehaul: "2000",
-        loaded_miles: 1000,
-      }),
+      makeLoad({ origin_state: "GA", delivery_date: d10, linehaul: "3000", loaded_miles: 1000 }),
+      makeLoad({ origin_state: "GA", delivery_date: d200, linehaul: "3000", loaded_miles: 1000 }),
+      makeLoad({ origin_state: "TX", origin_market: "Dallas", delivery_date: d200, linehaul: "2000", loaded_miles: 1000 }),
     ];
-    const data = getStateMapData(loads, 90, 365);
+    // 90-day window: only GA's recent load counts; TX (200d ago) drops out entirely.
+    const data = getAreaMapData(loads, 90, "state");
+    expect(data["Georgia"].loadCount).toBe(1);
+    expect(data["Georgia"].medianRpm).toBeCloseTo(3.0, 5);
+    expect(data["Texas"]).toBeUndefined();
+  });
+});
 
-    expect(data["Georgia"].loadCount).toBe(2); // footprint = past year
-    expect(data["Georgia"].avgRpm).toBeCloseTo(3.0, 5); // only the recent load
-    expect(data["Texas"].loadCount).toBe(1); // shaded (ran there this year)
-    expect(data["Texas"].avgRpm).toBeNull(); // but nothing in the 90-day window
+describe("granularity map (levelForWindow / getAreaMapData / getAreaDetail)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-08T12:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const recent = "2026-06-28"; // 10d (in 30/60/90)
+  const mid = "2026-05-20"; // ~49d (in 60/90, out of 30)
+  const old = "2026-04-25"; // ~74d (in 90 only)
+
+  const loads = [
+    makeLoad({ origin_state: "GA", origin_market: "Atlanta", delivery_market: "Dallas", delivery_date: recent, linehaul: "2000", loaded_miles: 1000 }), // Southeast/South, 2.0
+    makeLoad({ origin_state: "TX", origin_market: "Dallas", delivery_market: "Atlanta", delivery_date: recent, linehaul: "3000", loaded_miles: 1000 }), // Gulf/South, 3.0
+    makeLoad({ origin_state: "IL", origin_market: "Chicago", delivery_market: "Miami", delivery_date: mid, linehaul: "2500", loaded_miles: 1000 }), // Midwest, 2.5
+    makeLoad({ origin_state: "CA", origin_market: "LA", delivery_market: "Reno", delivery_date: old, linehaul: "4000", loaded_miles: 1000 }), // Pacific/West, 4.0
+    makeLoad({ origin_state: "GA", delivery_date: recent, load_status: "booked" }), // not delivered → excluded
+  ];
+
+  it("maps each window to a granularity level", () => {
+    expect(levelForWindow(30)).toBe("macro");
+    expect(levelForWindow(60)).toBe("region");
+    expect(levelForWindow(90)).toBe("state");
+  });
+
+  it("30d → macro-regions, over the 30-day window", () => {
+    const d = getAreaMapData(loads, 30, "macro");
+    // only the two 10-day-old loads are in-window; both roll up to South
+    expect(Object.keys(d)).toEqual(["South"]);
+    expect(d["South"].loadCount).toBe(2);
+    expect([...d["South"].members].sort()).toEqual(["Georgia", "Texas"]);
+    expect(d["South"].avgRpm).toBeCloseTo(2.5, 5); // (2000+3000)/2000
+  });
+
+  it("60d → freight regions (adds the 49-day-old Midwest load)", () => {
+    const d = getAreaMapData(loads, 60, "region");
+    expect(new Set(Object.keys(d))).toEqual(new Set(["Southeast", "Gulf", "Midwest"]));
+    expect(d["Midwest"].members).toEqual(["Illinois"]);
+    expect(d["Southeast"].loadCount).toBe(1);
+  });
+
+  it("90d → states; members are origin markets; excludes non-delivered", () => {
+    const d = getAreaMapData(loads, 90, "state");
+    expect(new Set(Object.keys(d))).toEqual(
+      new Set(["Georgia", "Texas", "Illinois", "California"]),
+    );
+    expect(d["Georgia"].loadCount).toBe(1); // booked one excluded
+    expect(d["Georgia"].members).toEqual(["Atlanta"]); // markets, not states
+  });
+
+  it("skips unrecognized origin states", () => {
+    const d = getAreaMapData([makeLoad({ origin_state: "ZZ", delivery_date: recent })], 90, "state");
+    expect(Object.keys(d)).toHaveLength(0);
+  });
+
+  it("getAreaDetail scopes agents + lanes to the clicked group", () => {
+    const region = getAreaDetail(loads, "region", "Gulf", 3, 90);
+    expect(region.state).toBe("Gulf");
+    expect(region.loadCount).toBe(1); // TX only
+    expect(region.lanes[0].lane).toBe("Dallas → Atlanta");
+
+    const macro = getAreaDetail(loads, "macro", "South", 3, 60);
+    expect(macro.loadCount).toBe(2); // GA + TX
+
+    // level 'state' delegates to the state detail
+    const state = getAreaDetail(loads, "state", "Illinois", 3, 90);
+    expect(state.state).toBe("Illinois");
+    expect(state.loadCount).toBe(1);
   });
 });
 

@@ -76,3 +76,37 @@ export const getStateName = (
   if (!stateAbbr) return null;
   return STATES[stateAbbr.toUpperCase()]?.name ?? null;
 };
+
+// The 9 freight regions roll up into 4 macro-regions (Census-style super-
+// regions). The lanes map uses this to show coarser geography on shorter
+// windows: macro (≈4) on 30d, region (≈9) on 60d, state (48) on 90d.
+export const REGION_TO_MACRO: Record<string, string> = {
+  Pacific: "West",
+  Mountain: "West",
+  Midwest: "Midwest",
+  Plains: "Midwest",
+  Southeast: "South",
+  Gulf: "South",
+  "Mid-South": "South",
+  Northeast: "Northeast",
+  "New England": "Northeast",
+};
+
+// Macro-region for a 2-letter state code. Unrecognized / blank → UNKNOWN_REGION.
+export const getMacro = (stateAbbr: string | null | undefined): string => {
+  const region = getRegion(stateAbbr);
+  return region === UNKNOWN_REGION
+    ? UNKNOWN_REGION
+    : (REGION_TO_MACRO[region] ?? UNKNOWN_REGION);
+};
+
+const NAME_TO_ABBR: Record<string, string> = Object.fromEntries(
+  Object.entries(STATES).map(([abbr, info]) => [info.name, abbr]),
+);
+
+// 2-letter code for a full state name (inverse of getStateName). The map
+// topology keys on full names; this recovers the code to look up region/macro.
+export const getStateAbbr = (name: string | null | undefined): string | null => {
+  if (!name) return null;
+  return NAME_TO_ABBR[name] ?? null;
+};

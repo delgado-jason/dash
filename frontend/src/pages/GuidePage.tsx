@@ -775,13 +775,16 @@ const GuidePage = () => {
               here pay," which is the honest basis for deciding where to book.
             </Why>
             <Why>
-              The <span className="text-light">map</span> shades states by your
-              own median $/mi (toggle to volume for footprint) — thin states dim
-              so one fluke doesn't light one up. <span className="text-light">Click
-              a state</span> to see the agents you've booked out of it (rate,
-              volume, on-time, each linking to their page) and your top lanes from
-              it. It's all your own history — who to call for freight out of a
-              region, and how they've paid.
+              The <span className="text-light">map</span> shades by your own
+              median $/mi (toggle to volume for load count) — thin areas dim so
+              one fluke doesn't light one up, and a flame marks your best-paying
+              spots. Its <span className="text-light">detail follows the tab</span>:
+              30d groups the country into a few big macro-regions, 60d into
+              freight regions, 90d down to individual states — coarser when the
+              window's sparse so it still reads, finer once there's enough data to
+              trust. <span className="text-light">Click any area</span> to see the
+              agents you've booked out of it (rate, volume, on-time, each linking
+              to their page) and your top lanes from it — all your own history.
             </Why>
           </Metric>
 
