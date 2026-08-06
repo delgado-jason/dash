@@ -338,6 +338,7 @@ const NAV: { group: string; items: string[] }[] = [
     group: "The driver card",
     items: [
       "Bottleneck — your three profit levers",
+      "This quarter — on track to beat last?",
       "Equipment mix — oversize &amp; heavy haul",
       "Hometime — days since you were home",
     ],
@@ -1142,6 +1143,35 @@ const GuidePage = () => {
               still nets mediocre — so the card names whichever is lagging and
               what to do about it. When all three reach Target, it reads{" "}
               <span style={{ color: "#4ade80" }}>Firing on all cylinders</span>.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="This quarter — on track to beat last?"
+            answers="Whether the quarter you're in is pacing ahead of or behind the last one — projected, not just the raw running total."
+            sources={[{ label: "Driver card", to: "/drivers" }]}
+          >
+            <Formula>
+              projected finish = last quarter's final × (this quarter so far ÷
+              last quarter by the same day)
+            </Formula>
+            <Why>
+              A season is a calendar quarter (Q1 Jan–Mar … Q4 Oct–Dec). The{" "}
+              <span className="text-light">This Quarter</span> card paces the one
+              you're in against the last complete one — but not by flat day-math,
+              because freight isn't earned evenly. It compares where you sit now
+              to where you sat by the{" "}
+              <span className="text-light">same day of last quarter</span> and
+              projects the finish by scaling last quarter's final by that ratio.
+              Ahead of pace →{" "}
+              <span style={{ color: "#4ade80" }}>on track to beat</span>; behind →{" "}
+              <span style={{ color: "#f87171" }}>on track to finish under</span>.
+              It paces your{" "}
+              <span className="text-light">net from delivered loads</span> (which
+              updates in real time), not the P&amp;L profit (which lags a monthly
+              upload) — and for the first couple weeks it reads{" "}
+              <span className="text-light">"too early to call"</span> rather than
+              swing on a single big load.
             </Why>
           </Metric>
 

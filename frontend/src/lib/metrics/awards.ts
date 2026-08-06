@@ -85,7 +85,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
 
   // ---- Medals (tier-up): the fixed milestone ladder + a career rank-up ----
   const del = i.loads.filter((l) => l.load_status === "delivered");
-  const season = getSeasonStats(i.periods, i.loads, i.trips, i.now, 3, i.obligationsDebtMonthly);
+  const season = getSeasonStats(i.periods, i.loads, i.trips, i.now, i.obligationsDebtMonthly);
   const medals = computeMedals({
     lifetimeMiles: i.lifetimeMiles,
     deliveredCount: del.length,

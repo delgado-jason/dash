@@ -155,7 +155,7 @@ describe("getSeasonStats", () => {
     mkLoad({ load_id: "c", delivery_date: "2026-07-05", loaded_miles: 500, linehaul: "9999" }), // in-progress month — excluded
   ];
 
-  it("blends the 3 complete months, excludes the in-progress one", () => {
+  it("is the last complete calendar quarter (Q2 = Apr–Jun), not a rolling window", () => {
     const s = getSeasonStats(periods, loads, [], NOW);
     expect(s.months).toBe(3);
     expect(s.netRevenue).toBeCloseTo(79346.84, 2);
@@ -163,8 +163,17 @@ describe("getSeasonStats", () => {
     expect(s.loads).toBe(2);
     expect(s.label).toBe("Apr–Jun 2026");
   });
+  it("stays on the completed quarter deep into the next one (Aug → Q2, not May–Jul)", () => {
+    // A rolling 3-month window would drift to May–Jul and straddle the quarter
+    // line; the season must hold on Q2 (Apr–Jun) until Q3 finishes.
+    const AUG = new Date("2026-08-15T00:00:00Z");
+    const s = getSeasonStats(periods, loads, [], AUG);
+    expect(s.label).toBe("Apr–Jun 2026");
+    expect(s.loads).toBe(2); // the Jul load is excluded
+    expect(s.netRevenue).toBeCloseTo(79346.84, 2);
+  });
   it("subtracts only debt obligations for True Net (draws excluded upstream)", () => {
-    const s = getSeasonStats(periods, loads, [], NOW, 3, 2411); // $2,411/mo debt
+    const s = getSeasonStats(periods, loads, [], NOW, 2411); // $2,411/mo debt
     expect(s.netProfit).toBeCloseTo(18774.33, 2); // operating unchanged
     expect(s.trueNet).toBeCloseTo(18774.33 - 2411 * 3, 2); // − 3 months of debt
     expect(s.trueNetMargin).toBeCloseTo((18774.33 - 7233) / 79346.84, 4);
