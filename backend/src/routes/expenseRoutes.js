@@ -4,6 +4,7 @@ import {
   saveExpensePeriod,
   getExpensePeriods,
   getExpensePeriod,
+  getExpenseCategoryRollup,
   getCategoryDefaults,
   addExpenseLine,
   patchExpenseLine,
@@ -30,6 +31,17 @@ router.get("/defaults", async (req, res) => {
   try {
     const defaults = await getCategoryDefaults(req.user.user_id);
     return res.status(200).json({ defaults });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// ---- YTD CATEGORY ROLLUP ---- (before "/:period_id" so it isn't matched as one)
+router.get("/categories", async (req, res) => {
+  try {
+    const year = req.query.year ?? new Date().getUTCFullYear();
+    const categories = await getExpenseCategoryRollup(req.user.user_id, year);
+    return res.status(200).json({ categories });
   } catch (err) {
     return handleError(res, err);
   }

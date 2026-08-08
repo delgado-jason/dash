@@ -153,6 +153,32 @@ export async function getExpensePeriod(user_id, period_id) {
   return { ...periodRes.rows[0], lines: linesRes.rows };
 }
 
+// ---- GET YTD CATEGORY ROLLUP ----
+// Spending by category across one calendar year (all sections). One GROUP BY so
+// the dashboard's "where it goes" card doesn't have to pull every month's lines
+// and re-sum them client-side. Amount comes back as a numeric string — coerce.
+export async function getExpenseCategoryRollup(user_id, year) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const y = Number(year);
+  if (!Number.isInteger(y) || y < 2000 || y > 3000)
+    throw new ValidationError("year must be a 4-digit year");
+
+  const start = `${y}-01-01`;
+  const end = `${y + 1}-01-01`;
+  const result = await db.query(
+    `SELECT l.category, l.section, SUM(l.amount) AS amount
+       FROM expense_lines l
+       JOIN expense_periods p ON p.period_id = l.period_id
+      WHERE l.user_id = $1
+        AND p.period_month >= $2::date
+        AND p.period_month <  $3::date
+      GROUP BY l.category, l.section
+      ORDER BY SUM(l.amount) DESC`,
+    [user_id, start, end],
+  );
+  return result.rows;
+}
+
 // ---- GET CATEGORY DEFAULTS ---- (category → type, for upload auto-classify)
 export async function getCategoryDefaults(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");

@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
-import type { ExpensePeriod, ExpenseLine } from "@/types/expense";
+import type {
+  ExpensePeriod,
+  ExpenseLine,
+  CategorySpend,
+} from "@/types/expense";
 import {
   getExpenseMetrics,
   pctOfRevenue,
+  topCategoriesWithOther,
   getCashMetrics,
   getTrueMonthly,
 } from "./expenses";
@@ -104,5 +109,48 @@ describe("getTrueMonthly", () => {
     const t = getTrueMonthly(8000, 0, 0);
     expect(t.trueMonthlyCost).toBe(8000);
     expect(t.trueNetMargin).toBeNull();
+  });
+});
+
+describe("topCategoriesWithOther", () => {
+  const cat = (category: string, amount: number): CategorySpend => ({
+    category,
+    amount,
+    section: "expenses",
+  });
+  const cats = [
+    cat("Payroll", 7644),
+    cat("Repairs", 4990),
+    cat("Fuel", 4128),
+    cat("Loan fee", 1040),
+    cat("Insurance", 795),
+    cat("Utilities", 748),
+    cat("Tolls", 300),
+    cat("Supplies", 120),
+  ];
+
+  it("keeps the top n and folds the rest into one Other slice", () => {
+    const c = topCategoriesWithOther(cats, 6);
+    expect(c.map((x) => x.category)).toEqual([
+      "Payroll", "Repairs", "Fuel", "Loan fee", "Insurance", "Utilities", "Other",
+    ]);
+    // Other = Tolls + Supplies = 420
+    expect(c[6]).toMatchObject({ category: "Other", amount: 420 });
+  });
+
+  it("adds no Other slice when categories already fit", () => {
+    const c = topCategoriesWithOther(cats.slice(0, 4), 6);
+    expect(c).toHaveLength(4);
+    expect(c.some((x) => x.category === "Other")).toBe(false);
+  });
+
+  it("sorts defensively before slicing", () => {
+    const c = topCategoriesWithOther([cat("a", 10), cat("b", 90), cat("c", 50)], 1);
+    expect(c[0]).toMatchObject({ category: "b", amount: 90 });
+    expect(c[1]).toMatchObject({ category: "Other", amount: 60 });
+  });
+
+  it("empty in, empty out", () => {
+    expect(topCategoriesWithOther([], 6)).toEqual([]);
   });
 });

@@ -1,4 +1,20 @@
-import type { ExpensePeriod } from "@/types/expense";
+import type { ExpensePeriod, CategorySpend } from "@/types/expense";
+
+// Keep the biggest `n` categories and fold everything smaller into one "Other"
+// slice, so the "where it goes" bar always sums to the whole — no unlabeled gap
+// for the long tail. Sorts defensively (the API already sends largest-first).
+export const topCategoriesWithOther = (
+  cats: CategorySpend[],
+  n: number,
+): CategorySpend[] => {
+  const sorted = [...cats].sort((a, b) => b.amount - a.amount);
+  if (sorted.length <= n) return sorted;
+  const otherAmount = sorted.slice(n).reduce((s, c) => s + c.amount, 0);
+  return [
+    ...sorted.slice(0, n),
+    { category: "Other", amount: otherAmount, section: "expenses" },
+  ];
+};
 
 // Derived numbers for the Expenses page. Cost comes from the stored month's
 // lines; miles + income come from loads (passed in) so this stays pure.

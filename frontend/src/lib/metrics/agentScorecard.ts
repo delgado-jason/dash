@@ -264,3 +264,85 @@ export const agentRosterAnalytics = (
     moneyLostAgents: list.filter((c) => c.moneyLostLoads > 0).length,
   };
 };
+
+// ---- revenue concentration (WINDOWED — current dependency, not lifetime) ----
+// Healthy guideline for a one-truck bench: no single agent over ~30% of your
+// book, top-3 under ~65%. Tunable in settings.
+export const SINGLE_CAP = 0.3;
+export const TOP3_CAP = 0.65;
+
+export interface ConcentrationShare {
+  agentId: string;
+  revenue: number;
+  share: number; // 0..1 of the windowed book
+}
+export interface Concentration {
+  windowDays: number;
+  total: number;
+  shares: ConcentrationShare[]; // every contributing agent, revenue desc
+  top3Pct: number | null;
+  singleMax: ConcentrationShare | null;
+  overSingleCap: boolean; // any single agent over the cap
+  singleCap: number;
+}
+
+// ---- momentum (booking velocity: recent 90d vs the prior 90d) ----
+// Per-agent gross-revenue % change, recent-vs-prior. null = no activity either
+// window; +1 (capped) when they're new/surging from a zero prior. Feeds the
+// diverging momentum bars — who's heating up, who's falling off.
+export const agentMomentum = (
+  loads: Load[],
+  now: Date = new Date(),
+): Map<string, number | null> => {
+  const nowMs = now.getTime();
+  const recentCut = nowMs - 90 * MS_DAY;
+  const priorCut = nowMs - 180 * MS_DAY;
+  const acc = new Map<string, { r: number; p: number }>();
+  for (const l of loads) {
+    if (l.load_status !== "delivered" || !l.agent_id || !l.delivery_date) continue;
+    const t = new Date(l.delivery_date).getTime();
+    const cur = acc.get(l.agent_id) ?? { r: 0, p: 0 };
+    if (t >= recentCut && t <= nowMs) cur.r += loadRevenue(l);
+    else if (t >= priorCut && t < recentCut) cur.p += loadRevenue(l);
+    acc.set(l.agent_id, cur);
+  }
+  const out = new Map<string, number | null>();
+  for (const [id, { r, p }] of acc) {
+    if (r === 0 && p === 0) out.set(id, null);
+    else if (p === 0) out.set(id, 1); // new / surging from nothing
+    else out.set(id, r / p - 1);
+  }
+  return out;
+};
+
+// Concentration over a RECENT window (default 90d, matching the "cold" line) so
+// an agent who's gone quiet drops out — a dependency you haven't felt in months
+// isn't a dependency. Per-agent shares let you watch the single-agent cap.
+export const concentrationAnalytics = (
+  loads: Load[],
+  now: Date = new Date(),
+  windowDays = COLD_DAYS,
+  singleCap = SINGLE_CAP,
+): Concentration => {
+  const cutoff = now.getTime() - windowDays * MS_DAY;
+  const rev = new Map<string, number>();
+  for (const l of loads) {
+    if (l.load_status !== "delivered" || !l.agent_id || !l.delivery_date) continue;
+    if (new Date(l.delivery_date).getTime() < cutoff) continue;
+    rev.set(l.agent_id, (rev.get(l.agent_id) ?? 0) + loadRevenue(l));
+  }
+  const total = [...rev.values()].reduce((a, b) => a + b, 0);
+  const shares: ConcentrationShare[] = [...rev.entries()]
+    .map(([agentId, revenue]) => ({ agentId, revenue, share: total > 0 ? revenue / total : 0 }))
+    .sort((a, b) => b.revenue - a.revenue);
+  const singleMax = shares[0] ?? null;
+  return {
+    windowDays,
+    total,
+    shares,
+    top3Pct: total > 0 ? shares.slice(0, 3).reduce((s, x) => s + x.share, 0) : null,
+    singleMax,
+    overSingleCap: !!singleMax && singleMax.share > singleCap,
+    singleCap,
+  };
+};

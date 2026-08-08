@@ -2,27 +2,7 @@ import { useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
 import { Link } from "react-router-dom";
-import { KpiCard } from "@/components/KpiCard";
-import { Panel } from "@/components/ui/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BREAK_EVEN_RPM, DEADHEAD_TARGET } from "@/lib/constants/targets";
-import {
-  getRevenueMTD,
-  getRevenueLastMonth,
-  getRevenueYTD,
-  getMonthlyDeadhead,
-  getMonthlyRevenue,
-  getMonthlyRPM,
-  getOutstandingLoads,
-  getLoadsMonthly,
-  getTopAgentsByRevenue,
-  getUpcomingLoads,
-  getRecentDeliveredLoads,
-} from "@/lib/metrics/dashboard";
-import {
-  computeHonors,
-  currentQuarterStandings,
-} from "@/lib/metrics/agentLeaderboard";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
@@ -30,32 +10,22 @@ import { useAwardPops } from "@/hooks/useAwardPops";
 import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { latestRecapWithData } from "@/lib/metrics/recap";
-import { RateTargetsCard } from "@/components/dashboard/RateTargetsCard";
 import { MarketChip } from "@/components/dashboard/MarketChip";
-import { GrindMeter } from "@/components/dashboard/GrindMeter";
-import { RevenueChart } from "@/components/RevenueChart";
-import { RpmChart } from "@/components/RpmChart";
-import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
-import { AlertBanners } from "@/components/dashboard/AlertBanners";
-import { TopAgents } from "@/components/dashboard/TopAgents";
-import { WhatsNext } from "@/components/dashboard/WhatsNext";
-import { RecentLoads } from "@/components/dashboard/RecentLoads";
+import { DashboardShell, TabStub, type DashTab } from "@/components/dashboard/DashboardShell";
+import { AgentsTab } from "@/components/dashboard/agents/AgentsTab";
+import { PulseTab } from "@/components/dashboard/PulseTab";
+import { MoneyTab } from "@/components/dashboard/MoneyTab";
+import { LanesTab } from "@/components/dashboard/LanesTab";
 import { isDispatcher } from "@/lib/roles";
 import DispatchDashboard from "./DispatchDashboard";
-import { money, rpm } from "@/lib/format";
 
-// helpers
-const formatPercent = (ratio: number | null): string =>
-  ratio === null ? "—" : `${(ratio * 100).toFixed(1)}%`;
-
-const computeDelta = (current: number | null, previous: number | null) => {
-  if (current === null || previous === null || previous === 0) return null;
-  const percent = ((current - previous) / previous) * 100;
-  return {
-    percent,
-    direction: percent >= 0 ? ("up" as const) : ("down" as const),
-  };
-};
+const DASH_TABS: DashTab[] = [
+  { key: "pulse", label: "Pulse" },
+  { key: "money", label: "Money" },
+  { key: "lanes", label: "Lanes" },
+  { key: "agents", label: "Agents" },
+  { key: "fleet", label: "Fleet" },
+];
 
 const OwnerDashboard = () => {
   const [refreshKey] = useState(0);
@@ -104,139 +74,45 @@ const OwnerDashboard = () => {
       </div>
     );
 
-  // ---- compute KPI values ----
-  const revenueMTD = getRevenueMTD(loads);
-  const revenueLastMonth = getRevenueLastMonth(loads);
-  const revenueYTD = getRevenueYTD(loads);
-  const avgRpm = targets.rollingRpm; // rolling 3-complete-month blended RPM
-  const deadhead = getMonthlyDeadhead(loads, trips);
-  const loadsMonthly = getLoadsMonthly(loads);
-
-  const mtdDelta = computeDelta(revenueMTD, revenueLastMonth);
-  const loadsDelta = computeDelta(loadsMonthly.thisMonth, loadsMonthly.lastMonth);
-  const monthlyRevenue = getMonthlyRevenue(loads);
-  const monthlyRpm = getMonthlyRPM(loads);
-  const revenueTrend = monthlyRevenue.map((d) => d.revenue);
-  const rpmTrend = monthlyRpm
-    .map((d) => d.rpm)
-    .filter((r): r is number => r != null);
-  const outstanding = getOutstandingLoads(loads);
-  const topAgents = getTopAgentsByRevenue(loads);
-  const now = new Date();
-  const agentHonors = computeHonors(loads, now);
-  const agentStandings = currentQuarterStandings(loads, now);
-  const upcoming = getUpcomingLoads(loads);
-  const recentLoads = getRecentDeliveredLoads(loads);
-
-  // ---- threshold-based status ----
-  // Live break-even (true cost ÷ loaded miles, last 3 complete months); falls
-  // back to the constant until there's enough P&L history.
-  const liveBreakEven = targets.basis.breakEvenRpm ?? BREAK_EVEN_RPM;
-  const rpmStatus =
-    avgRpm === null ? "neutral" : avgRpm >= liveBreakEven ? "good" : "bad";
-  const deadheadStatus =
-    deadhead.thisMonth === null
-      ? "neutral"
-      : deadhead.thisMonth <= DEADHEAD_TARGET
-        ? "good"
-        : "bad"; // inverted: low is good
-
   return (
-    <div className="p-6 bg-iron text-light min-h-screen font-body">
+    <div className="p-6 bg-iron text-light min-h-screen font-body lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
-
-      <div className="flex items-center justify-between mb-6 gap-3">
-        <h1 className="text-3xl font-condensed">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <MarketChip />
-          <Link
-            to="/recap"
-            className="text-sm text-status-info-text hover:underline whitespace-nowrap"
-          >
-            Your {latestRecap ? `${latestRecap.label} ` : ""}recap →
-          </Link>
-        </div>
-      </div>
-
-      <AlertBanners alerts={alerts} />
-
-      {/* KPI STRIP */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <KpiCard
-          label="Net revenue · MTD"
-          value={money(revenueMTD)}
-          delta={mtdDelta}
-        />
-        <KpiCard
-          label="Net revenue · YTD"
-          value={money(revenueYTD)}
-          trend={revenueTrend}
-        />
-        <KpiCard
-          label="Net RPM · 3mo"
-          value={rpm(avgRpm)}
-          status={rpmStatus}
-          trend={rpmTrend}
-          subtext={
-            avgRpm === null
-              ? undefined
-              : `${avgRpm >= liveBreakEven ? "above" : "below"} $${liveBreakEven.toFixed(2)} break-even`
-          }
-        />
-        <KpiCard
-          label="Deadhead · MTD"
-          value={formatPercent(deadhead.thisMonth)}
-          status={deadheadStatus}
-          subtext={`Last month: ${formatPercent(deadhead.lastMonth)}`}
-        />
-        <KpiCard
-          label="Loads · MTD"
-          value={String(loadsMonthly.thisMonth)}
-          delta={loadsDelta}
-        />
-      </div>
-
-      {/* Rate & pace targets */}
-      <div className="mt-6">
-        <RateTargetsCard targets={targets} />
-      </div>
-
-      {/* The grind — weekly target-beating streak */}
-      <div className="mt-6">
-        <GrindMeter loads={loads} />
-      </div>
-
-      {/* Revenue chart + top agents */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        <div className="lg:col-span-2">
-          <RevenueChart data={monthlyRevenue} />
-        </div>
-        <TopAgents
-          agents={topAgents}
-          honors={agentHonors}
-          standings={agentStandings}
-        />
-      </div>
-
-      {/* RPM chart + what's next */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-        <div className="lg:col-span-2">
-          <RpmChart data={monthlyRpm} breakEven={liveBreakEven} />
-        </div>
-        <Panel noir className="p-4">
-          <p className="text-xs text-muted-text mb-2">What's next · booked</p>
-          <WhatsNext loads={upcoming} />
-        </Panel>
-      </div>
-
-      {/* Recent loads + outstanding */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
-        <Panel noir className="p-4">
-          <p className="text-xs text-muted-text mb-2">Recent loads</p>
-          <RecentLoads loads={recentLoads} />
-        </Panel>
-        <OutstandingLoadsList loads={outstanding} />
-      </div>
+      <DashboardShell
+        tabs={DASH_TABS}
+        right={
+          <>
+            <MarketChip />
+            <Link
+              to="/recap"
+              className="text-sm text-status-info-text hover:underline whitespace-nowrap"
+            >
+              {latestRecap ? `${latestRecap.label} ` : ""}recap →
+            </Link>
+          </>
+        }
+      >
+        {(active) =>
+          active === "pulse" ? (
+            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} />
+          ) : active === "money" ? (
+            <MoneyTab loads={loads} marginGoal={targets.marginGoal ?? null} />
+          ) : active === "lanes" ? (
+            <LanesTab loads={loads} />
+          ) : active === "agents" ? (
+            <AgentsTab loads={loads} />
+          ) : (
+            <TabStub
+              title="Fleet"
+              blurb="Asset health."
+              points={[
+                "Truck / driver utilization",
+                "Fuel MPG trend",
+                "Next service due",
+              ]}
+            />
+          )
+        }
+      </DashboardShell>
     </div>
   );
 };
