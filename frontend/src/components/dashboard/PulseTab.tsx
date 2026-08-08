@@ -76,7 +76,7 @@ export const PulseTab = ({
   // Your delivery punctuality — did YOU hit the appointment at the dock — over the
   // last 90 days of delivered loads. freeHours doesn't affect on-time (it grades
   // detention, not the appointment), so a default is fine here. null until 3 graded.
-  const onTimePct = useMemo(() => {
+  const onTime = useMemo(() => {
     const cutoff = now.getTime() - 90 * 86_400_000;
     const recent = loads.filter(
       (l) =>
@@ -84,7 +84,7 @@ export const PulseTab = ({
         l.delivery_date &&
         new Date(l.delivery_date).getTime() >= cutoff,
     );
-    return scoreStops(agentStops(recent, 3)).onTimePct;
+    return scoreStops(agentStops(recent, 3));
   }, [loads, now]);
 
   // Last 8 pay-weeks of gross earned, anchored to the configured week start.
@@ -160,9 +160,9 @@ export const PulseTab = ({
         <Tile label="Pipeline" value={money(pipeline)} sub="delivered, not yet settled" />
         <Tile
           label="On-time"
-          value={onTimePct != null ? `${Math.round(onTimePct * 100)}%` : "—"}
-          sub={onTimePct != null ? "you hit the appointment · 90d" : "needs 3+ timed stops"}
-          color={onTimePct == null ? undefined : onTimePct >= 0.9 ? "#4ade80" : onTimePct >= 0.75 ? undefined : "#f5a623"}
+          value={onTime.onTimePct != null ? `${Math.round(onTime.onTimePct * 100)}%` : "—"}
+          sub={onTime.onTimePct != null ? `${onTime.gradedStops} timed stops · 90d` : "needs 3+ timed stops"}
+          color={onTime.onTimePct == null ? undefined : onTime.onTimePct >= 0.9 ? "#4ade80" : onTime.onTimePct >= 0.75 ? undefined : "#f5a623"}
         />
       </div>
 

@@ -48,11 +48,12 @@ describe("computeTruckMetrics — days-based utilization", () => {
     expect(m.underLoadDays).toBe(2); // only 01-06 and 01-07
   });
 
-  it("does not count a home day that was also under a load", () => {
+  it("a home mark WINS over a load span that covers it", () => {
     const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
-    const loads = [load("2026-01-05", "2026-01-07")];
-    const m = run(truck, loads, ["2026-01-06"]); // home marked mid-haul
-    expect(m.homeDays).toBe(0); // 01-06 is under load, not a home gap
+    const loads = [load("2026-01-05", "2026-01-07")]; // span 05–07
+    const m = run(truck, loads, ["2026-01-06"]); // you marked 01-06 home
+    expect(m.homeDays).toBe(1); // it counts as home, not hauling
+    expect(m.underLoadDays).toBe(2); // 01-05 + 01-07 only — 01-06 removed
   });
 });
 

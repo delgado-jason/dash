@@ -136,7 +136,11 @@ export const scoreStops = (stops: Stop[]): StopScore => {
   const timed = stops.filter((s) => s.dwellMin != null);
   const dwells = timed.map((s) => s.dwellMin as number);
   const graded = stops.filter((s) => s.onTime != null);
-  const onTimeN = graded.filter((s) => s.onTime === "on-time").length;
+  // "waited" = you arrived BEFORE the window opened — early. You still made the
+  // appointment, so it counts as on-time; only genuine "late" counts against.
+  const onTimeN = graded.filter(
+    (s) => s.onTime === "on-time" || s.onTime === "waited",
+  ).length;
   const detStops = timed.filter((s) => s.detentionMin > 0);
   const enough = timed.length >= MIN_STOPS;
 

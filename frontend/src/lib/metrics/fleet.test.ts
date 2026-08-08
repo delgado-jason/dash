@@ -64,24 +64,30 @@ const load = (pickup: string, delivery: string): Load =>
   ({ load_status: "delivered", pickup_date: pickup, delivery_date: delivery } as Load);
 
 describe("fleetHeatmap", () => {
-  it("returns weeks*7 days, oldest→newest, classifying each", () => {
-    // a 2-day haul ending yesterday, and a home mark
-    const loads = [load("2026-08-13", "2026-08-14")];
-    const homeDays = ["2026-08-10"];
-    const grid = fleetHeatmap(loads, homeDays, NOW, 4); // 28 days, ends 2026-08-15
-    expect(grid).toHaveLength(28);
-    // last entry = today (idle — no load, no home mark)
-    expect(grid.at(-1)).toBe("idle");
-    // the two haul days
-    expect(grid.at(-2)).toBe("underload"); // 08-14
-    expect(grid.at(-3)).toBe("underload"); // 08-13
-    // the home mark (08-10) is 5 days before today → index 27-5 = 22
-    expect(grid[22]).toBe("home");
+  const cellFor = (h: ReturnType<typeof fleetHeatmap>, date: string) =>
+    h.cells.find((c) => c.date === date);
+
+  it("returns 7×weeks cells, classifies each, labels months", () => {
+    const loads = [load("2026-08-13", "2026-08-14")]; // 2-day haul
+    const h = fleetHeatmap(loads, ["2026-08-10"], NOW, 4);
+    expect(h.cells).toHaveLength(28);
+    expect(h.weeks).toBe(4);
+    expect(h.months.length).toBeGreaterThan(0);
+    expect(cellFor(h, "2026-08-14")?.status).toBe("underload");
+    expect(cellFor(h, "2026-08-13")?.status).toBe("underload");
+    expect(cellFor(h, "2026-08-10")?.status).toBe("home");
+    expect(cellFor(h, "2026-08-15")?.status).toBe("idle"); // today, nothing
   });
 
-  it("under-load beats a home mark on the same day", () => {
-    const loads = [load("2026-08-14", "2026-08-14")];
-    const grid = fleetHeatmap(loads, ["2026-08-14"], NOW, 4);
-    expect(grid.at(-2)).toBe("underload");
+  it("an explicit home mark WINS over a load span covering it", () => {
+    const loads = [load("2026-08-10", "2026-08-14")]; // span covers 08-14
+    const h = fleetHeatmap(loads, ["2026-08-14"], NOW, 4);
+    expect(cellFor(h, "2026-08-14")?.status).toBe("home"); // home overrides under-load
+    expect(cellFor(h, "2026-08-13")?.status).toBe("underload"); // still hauling
+  });
+
+  it("marks days after today as future (blank)", () => {
+    const h = fleetHeatmap([], [], NOW, 4);
+    h.cells.filter((c) => c.future).forEach((c) => expect(c.date > "2026-08-15").toBe(true));
   });
 });
