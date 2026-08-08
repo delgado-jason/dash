@@ -92,6 +92,7 @@
     slice-by-slice; v1 tokens are pruned in the cleanup slice.
   -----------------------------------------------------------*/
   --color-canvas: #070a10;
+  --color-rail: #05080d; /* sidebar/nav — one step below canvas */
   --color-panel: #0c111a;
   --color-well: #090d15;
   --color-hairline: #1c2637;
@@ -172,7 +173,9 @@
   -----------------------------------------------------------*/
 
 .dark {
-  --background: var(--color-steel);
+  /* v2: the app frame is Night Cab canvas; unmigrated pages still paint
+     their own bg-iron wrappers on top until their slice lands. */
+  --background: var(--color-canvas);
   --foreground: var(--color-light);
   --card: var(--color-iron);
   --card-foreground: var(--color-light);
@@ -195,13 +198,14 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: var(--color-iron);
-  --sidebar-foreground: var(--color-light);
+  /* v2 shell — Night Cab rail */
+  --sidebar: var(--color-rail);
+  --sidebar-foreground: var(--color-dim);
   --sidebar-primary: var(--color-amber);
-  --sidebar-primary-foreground: var(--color-steel);
-  --sidebar-accent: var(--color-amber-light);
-  --sidebar-accent-foreground: var(--color-steel);
-  --sidebar-border: var(--color-plate);
+  --sidebar-primary-foreground: var(--color-canvas);
+  --sidebar-accent: #0a0f18;
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-hairline-lo);
   --sidebar-ring: var(--color-amber);
 }
 
@@ -431,4 +435,85 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
+}
+
+/* ===== Design System v2 — primitive styles (gate-3 spec §04) =====
+   Consumed by ui/Board, ui/ForgedPlate, and the app shell. Motion always
+   plays — no reduced-motion gates, by owner's decision (2026-08-08). */
+.ds2-board {
+  background: var(--color-panel);
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+}
+.ds2-cell-rule {
+  border-color: var(--color-hairline-lo);
+}
+.ds2-label {
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+.ds2-forged {
+  position: relative;
+  border-radius: 14px;
+  background: linear-gradient(
+    178deg,
+    var(--color-plate-a),
+    var(--color-plate-b) 55%,
+    var(--color-plate-lo)
+  );
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  will-change: transform;
+}
+.ds2-forged::before {
+  /* brushed texture */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    93deg,
+    rgba(255, 255, 255, 0.015) 0 1px,
+    transparent 1px 3px
+  );
+}
+.ds2-forged--amber {
+  border-left: 1px solid rgba(232, 148, 10, 0.5);
+  border-right: 1px solid rgba(232, 148, 10, 0.5);
+}
+.ds2-forged--chamfer {
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%);
+  border-radius: 14px 0 14px 14px;
+}
+.ds2-well {
+  background: var(--color-well);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+}
+/* Active nav destination — amber glow rail off the link's left edge. */
+.ds2-nav-active {
+  color: var(--color-amber-light) !important;
+  font-weight: 600;
+  position: relative;
+}
+.ds2-nav-active::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--color-amber);
+  box-shadow: 0 0 8px rgba(232, 148, 10, 0.8);
 }

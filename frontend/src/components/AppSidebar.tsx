@@ -134,14 +134,14 @@ const AppSidebar = () => {
 
   const linkCls = (to: string) =>
     active(to)
-      ? "!text-sidebar-primary font-semibold"
-      : "!text-sidebar-foreground";
+      ? "ds2-nav-active"
+      : "!text-sidebar-foreground hover:!text-ink transition-colors";
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="p-4 font-bold text-sidebar-foreground text-xl">
-          Dash
+        <div className="px-4 pt-4 pb-2 font-display text-[22px] tracking-[.05em] leading-none text-ink">
+          DASH <span className="text-amber">/</span> DTS
         </div>
       </SidebarHeader>
 
@@ -153,7 +153,7 @@ const AppSidebar = () => {
                 <SidebarMenuItem key={e.label}>
                   <SidebarMenuButton
                     onClick={() => toggleGroup(e.label)}
-                    className="!bg-transparent hover:!bg-transparent justify-between !text-sidebar-foreground"
+                    className="!bg-transparent hover:!bg-transparent justify-between !text-sidebar-foreground hover:!text-ink transition-colors"
                   >
                     <span className="flex items-center gap-2.5">
                       <e.icon size={16} className="shrink-0" />
@@ -229,7 +229,7 @@ const AppSidebar = () => {
               setSfxEnabled(next);
               if (next) playSfx("pow"); // hear it come on
             }}
-            className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-light"
+            className="flex items-center gap-2 text-sm text-faint transition-colors hover:text-ink"
             aria-label={sfxOn ? "Turn sound effects off" : "Turn sound effects on"}
             title={sfxOn ? "Sound on" : "Sound off"}
           >
@@ -237,7 +237,7 @@ const AppSidebar = () => {
             <span>Sound {sfxOn ? "on" : "off"}</span>
           </button>
         </div>
-        <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground">
+        <div className="px-4 pb-4 pt-1 text-sm text-faint">
           v{__APP_VERSION__}
         </div>
       </SidebarFooter>
