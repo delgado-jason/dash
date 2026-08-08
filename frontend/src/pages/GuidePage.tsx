@@ -567,9 +567,11 @@ const GuidePage = () => {
                 the live quarter board, revenue concentration (so no one agent owns
                 too much of your book), and who's going cold.
               </TabLine>
-              <TabLine name="Fleet" q="Asset health">
-                Truck and driver utilization, fuel MPG trend, and next service due.
-                <span style={{ color: AMBER }}> Coming soon.</span>
+              <TabLine name="Fleet" q="Is my rig ready to roll?">
+                Your rig at a glance — utilization (how hard the truck runs), home
+                time (days out), fuel economy, and what's due for service or
+                compliance. Plus shop spend across the year, cost-to-run per mile,
+                and a day-by-day heatmap of earning vs. home vs. idle.
               </TabLine>
             </div>
           </Section>
