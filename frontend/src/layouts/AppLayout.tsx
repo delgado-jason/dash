@@ -17,7 +17,7 @@ const AppLayout = () => {
               scroller, so this only clips true page-level overflow, never a table.
               overflow-y stays auto, so vertical scroll and sticky children work. */}
           <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-background text-foreground">
-            <div className="p-3 border-b border-border">
+            <div className="p-3 border-b border-hairline-lo">
               <SidebarTrigger />
             </div>
 
