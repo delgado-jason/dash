@@ -141,7 +141,21 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const uHome = metrics ? (metrics.homeDays / wd) * 100 : 0;
   const uIdle = metrics ? (metrics.idleDays / wd) * 100 : 0;
 
-  const mmin = Math.min(...mpgSeries, 0), mmax = Math.max(...mpgSeries, 1);
+  // Auto-fit the y-axis to the actual tanks (± 0.3 padding) so real variance reads
+  // instead of hugging a zero baseline — with a minimum span so a genuinely steady
+  // week doesn't get blown up into a dramatic zigzag.
+  let mmin = 0;
+  let mmax = 1;
+  if (mpgSeries.length > 0) {
+    mmin = Math.min(...mpgSeries) - 0.3;
+    mmax = Math.max(...mpgSeries) + 0.3;
+    const MIN_SPAN = 1.5;
+    if (mmax - mmin < MIN_SPAN) {
+      const mid = (mmin + mmax) / 2;
+      mmin = mid - MIN_SPAN / 2;
+      mmax = mid + MIN_SPAN / 2;
+    }
+  }
   const mpgPts = mpgSeries
     .map((m, i) => `${8 + (i / Math.max(1, mpgSeries.length - 1)) * 304},${44 - ((m - mmin) / Math.max(0.1, mmax - mmin)) * 34}`)
     .join(" ");

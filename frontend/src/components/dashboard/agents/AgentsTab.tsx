@@ -7,10 +7,14 @@ import {
   buildAgentScorecards,
   agentRosterAnalytics,
   concentrationAnalytics,
-  agentMomentum,
-  MIN_SCORE_LOADS,
 } from "@/lib/metrics/agentScorecard";
-import { currentQuarterStandings, quarterKey } from "@/lib/metrics/agentLeaderboard";
+import {
+  quarterStandings,
+  quarterContenders,
+  currentQuarterKey,
+  lastCompleteQuarterKey,
+  type BoardStanding,
+} from "@/lib/metrics/agentLeaderboard";
 import { SPECIALTY_META, flagText } from "@/components/agents/agentDisplay";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { AgentScatter, type ScatterPoint } from "./AgentScatter";
@@ -45,24 +49,31 @@ const KpiTile = ({
   </div>
 );
 
-const MomBar = ({ pct }: { pct: number | null }) => {
-  if (pct == null) return <div className="h-4" />;
-  const up = pct >= 0;
-  const w = Math.min(48, Math.abs(pct) * 50);
-  return (
-    <div className="relative h-4 rounded" style={{ background: "#0c1119", border: "1px solid #1c2536" }}>
-      <div className="absolute top-0 bottom-0" style={{ left: "50%", width: 1, background: "#2f3b52" }} />
-      <div
-        className="absolute top-[2px] bottom-[2px]"
-        style={
-          up
-            ? { left: "50%", width: `${w}%`, background: "#2f7d55", borderRadius: "0 3px 3px 0" }
-            : { right: "50%", width: `${w}%`, background: "#8a3b3b", borderRadius: "3px 0 0 3px" }
-        }
-      />
-    </div>
-  );
-};
+const FRESH = (d: number | null): string =>
+  d == null ? "#8b93a3" : d <= 14 ? "#4ade80" : d <= 45 ? "#f5b03a" : "#8b93a3";
+
+const MEDAL = ["#f5b03a", "#c3ccd6", "#c78a3a"]; // gold · silver · bronze
+
+// "2026-Q2" → "Q2 2026"
+const qLabel = (q: string): string => q.split("-").reverse().join(" ");
+
+const BoardRow = ({ s, label }: { s: BoardStanding; label: string }) => (
+  <Link
+    to={`/agents/${s.agentId}`}
+    className="flex items-center gap-2.5 py-1.5 border-t first:border-t-0"
+    style={{ borderColor: "#1a2233" }}
+  >
+    <span
+      className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-none"
+      style={{ background: MEDAL[s.rank - 1] ?? "#5b6577", color: "#0d1119" }}
+    >
+      {s.rank}
+    </span>
+    <span className="flex-1 font-semibold text-light truncate">{label}</span>
+    <span className="text-[10px] text-muted-text whitespace-nowrap">{s.loads} loads</span>
+    <span className="font-bold whitespace-nowrap">{money(s.revenue)}</span>
+  </Link>
+);
 
 const Badge = ({ tag }: { tag: "oversize" | "specialty" }) => {
   const m = SPECIALTY_META[tag];
@@ -86,8 +97,11 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
   );
   const roster = useMemo(() => agentRosterAnalytics(scorecards), [scorecards]);
   const conc = useMemo(() => concentrationAnalytics(loads, now), [loads, now]);
-  const momentum = useMemo(() => agentMomentum(loads, now), [loads, now]);
-  const standings = useMemo(() => currentQuarterStandings(loads, now), [loads, now]);
+  const liveQ = currentQuarterKey(now);
+  const lastQ = lastCompleteQuarterKey(now);
+  const liveBoard = useMemo(() => quarterStandings(loads, liveQ), [loads, liveQ]);
+  const liveContenders = useMemo(() => quarterContenders(loads, liveQ), [loads, liveQ]);
+  const lastBoard = useMemo(() => quarterStandings(loads, lastQ), [loads, lastQ]);
   const byId = useMemo(
     () => new Map((agents ?? []).map((a) => [a.agent_id, a])),
     [agents],
@@ -107,22 +121,24 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
     return a ? `${a.first_name} ${a.last_name}` : "—";
   };
 
-  // momentum: top agents by revenue that have a reading
-  const momRows = useMemo(
+  // "Running with lately" — recent 90-day gross per agent (from the concentration
+  // window), joined to their days-since-last-load. Sorted by recency: who you're
+  // actually working with now, newest at the top. The quiet ones are the "going
+  // cold" card's job, so this stays the active bench.
+  const rev90 = useMemo(
+    () => new Map(conc.shares.map((s) => [s.agentId, s.revenue])),
+    [conc],
+  );
+  const recentRows = useMemo(
     () =>
       rows
-        .filter((r) => r.card.loadCount >= MIN_SCORE_LOADS && momentum.get(r.agent.agent_id) != null)
-        .sort((a, b) => b.card.revenue - a.card.revenue)
+        // Within the 90-day window this card is scoped to (matches the "90d $"
+        // header, and guarantees a real recent-$). Quieter agents are the "going
+        // cold" card's job, so they don't show here as a stale $0 row.
+        .filter((r) => r.card.daysSince != null && r.card.daysSince <= 90)
+        .sort((a, b) => (a.card.daysSince ?? 0) - (b.card.daysSince ?? 0))
         .slice(0, 6),
-    [rows, momentum],
-  );
-
-  const board = useMemo(
-    () =>
-      [...standings.entries()]
-        .sort((a, b) => b[1].revenue - a[1].revenue)
-        .slice(0, 3),
-    [standings],
+    [rows],
   );
 
   const cold = useMemo(
@@ -138,7 +154,6 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
 
   const rateLeader = roster.rateLeader ? byId.get(roster.rateLeader.agentId) : null;
   const coldTop = roster.goingCold ? byId.get(roster.goingCold.agentId) : null;
-  const RANK = ["#f5b03a", "#c3ccd6", "#c78a3a"];
   const topShares = conc.shares.slice(0, 3);
   const elseShare = Math.max(0, 1 - topShares.reduce((s, x) => s + x.share, 0));
 
@@ -147,7 +162,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
       <div className="flex items-baseline justify-between">
         <h2 className="text-xl font-condensed text-light">Your agent bench</h2>
         <span className="text-xs text-muted-text">
-          who pays · who volumes · who to call — {quarterKey(now.toISOString())}
+          who pays · who volumes · who to call
         </span>
       </div>
 
@@ -203,62 +218,66 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
         </div>
       </div>
 
-      {/* momentum + live board */}
+      {/* running-lately + quarterly board */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="rounded-xl p-3.5" style={C.card}>
-          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2.5">
-            Momentum — last 90d vs prior
+          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2.5 flex justify-between items-center">
+            Running with lately
+            <span className="normal-case tracking-normal font-normal text-muted-text">last worked · 90d $</span>
           </h3>
-          {momRows.length === 0 ? (
-            <p className="text-xs text-muted-text">Not enough recent history to trend yet.</p>
+          {recentRows.length === 0 ? (
+            <p className="text-xs text-muted-text">No delivered loads in the last 90 days.</p>
           ) : (
-            momRows.map(({ agent, card }) => {
-              const pct = momentum.get(agent.agent_id)!;
-              const up = (pct ?? 0) >= 0;
-              return (
-                <div key={agent.agent_id} className="grid items-center gap-2 py-[3px]" style={{ gridTemplateColumns: "108px 1fr 46px" }}>
-                  <span className="text-[11.5px] truncate">
-                    {agent.first_name.charAt(0)}. {agent.last_name}
-                    {card.specialty.tag !== "standard" && <> <Badge tag={card.specialty.tag} /></>}
-                  </span>
-                  <MomBar pct={pct} />
-                  <span className="text-[11px] font-bold text-right" style={{ color: up ? "#4ade80" : "#f87171" }}>
-                    {up ? "+" : "−"}
-                    {Math.round(Math.abs(pct ?? 0) * 100)}%
-                  </span>
-                </div>
-              );
-            })
+            recentRows.map(({ agent, card }) => (
+              <Link
+                key={agent.agent_id}
+                to={`/agents/${agent.agent_id}`}
+                className="grid items-center gap-2 py-[5px] border-t first:border-t-0"
+                style={{ gridTemplateColumns: "1fr 62px 66px", borderColor: "#1a2233" }}
+              >
+                <span className="text-[12px] truncate flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: FRESH(card.daysSince) }} />
+                  {agent.first_name} {agent.last_name}
+                  {card.specialty.tag !== "standard" && <Badge tag={card.specialty.tag} />}
+                </span>
+                <span className="text-[11px] text-right" style={{ color: FRESH(card.daysSince) }}>
+                  {card.daysSince}d ago
+                </span>
+                <span className="text-[11.5px] font-semibold text-right">{money(rev90.get(agent.agent_id) ?? 0)}</span>
+              </Link>
+            ))
           )}
         </div>
 
         <div className="rounded-xl p-3.5" style={C.card}>
-          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2.5 flex justify-between">
-            Live board · {quarterKey(now.toISOString())}
+          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-1.5 flex justify-between items-center">
+            <span>This quarter · {qLabel(liveQ)}</span>
             <span className="inline-flex items-center gap-1.5 text-[9.5px]" style={{ color: "#f5a623" }}>
               <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#f5a623" }} />
               LIVE
             </span>
           </h3>
-          {board.length === 0 ? (
-            <p className="text-xs text-muted-text">No delivered loads this quarter yet.</p>
+          {liveBoard.length === 0 ? (
+            <p className="text-[11.5px] text-muted-text">No one's hit 2 loads yet — the board opens at a second load.</p>
           ) : (
-            board.map(([id, s], i) => (
-              <Link
-                key={id}
-                to={`/agents/${id}`}
-                className="flex items-center gap-2.5 py-1.5 border-t first:border-t-0"
-                style={{ borderColor: "#1a2233" }}
-              >
-                <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-extrabold" style={{ background: RANK[i], color: "#0d1119" }}>
-                  {i + 1}
-                </span>
-                <span className="flex-1 font-semibold text-light truncate">{name(id)}</span>
-                <span className="font-bold">{money(s.revenue)}</span>
-              </Link>
-            ))
+            liveBoard.slice(0, 3).map((s) => <BoardRow key={s.agentId} s={s} label={name(s.agentId)} />)
           )}
-          <p className="text-[10.5px] text-muted-text mt-2">Provisional — the board agents earn medals on, not yet official.</p>
+          {liveContenders.length > 0 && (
+            <p className="text-[10.5px] text-muted-text mt-1.5">
+              One more load to qualify: {liveContenders.slice(0, 3).map((c) => `${byId.get(c.agentId)?.last_name ?? "—"} ${money(c.revenue)}`).join(" · ")}
+            </p>
+          )}
+
+          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mt-3 pt-2.5 mb-1.5 border-t flex justify-between items-center" style={{ borderColor: "#1a2233" }}>
+            <span>Last quarter · {qLabel(lastQ)}</span>
+            <span className="normal-case tracking-normal font-normal text-[9.5px]">final</span>
+          </h3>
+          {lastBoard.length === 0 ? (
+            <p className="text-[11.5px] text-muted-text">No qualifying agents last quarter.</p>
+          ) : (
+            lastBoard.slice(0, 3).map((s) => <BoardRow key={s.agentId} s={s} label={name(s.agentId)} />)
+          )}
+          <p className="text-[10px] text-muted-text mt-2">Top 3 earners by gross · 2+ loads to qualify · ties break on revenue per load. Formal trophies (each agent's page) use a stricter rule.</p>
         </div>
       </div>
 
@@ -277,6 +296,15 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
                 <div className="h-full flex items-center justify-center text-[9px]" style={{ width: `${elseShare * 100}%`, background: "#2a3347", color: "#9aa4b5" }}>
                   rest
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-x-3.5 gap-y-1 mb-2">
+                {topShares.map((s, i) => (
+                  <Link key={s.agentId} to={`/agents/${s.agentId}`} className="text-[11.5px] flex items-center gap-1.5 hover:underline">
+                    <span className="inline-block w-2 h-2 rounded-sm flex-none" style={{ background: ["#e8940a", "#f5b03a", "#c8890a"][i] }} />
+                    <span className="text-light">{name(s.agentId)}</span>
+                    <span className="text-muted-text">{Math.round(s.share * 100)}%</span>
+                  </Link>
+                ))}
               </div>
               <p className="text-[11px] text-muted-text">
                 Top 3 = <b style={{ color: conc.overSingleCap ? "#f5a623" : "#f5b03a" }}>{Math.round((conc.top3Pct ?? 0) * 100)}%</b> of your recent book.

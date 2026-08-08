@@ -21,9 +21,10 @@ export const quarterKey = (dateStr: string): string => {
 interface QAgg {
   revenue: number;
   loads: number;
+  lastWorked: string; // latest delivery day this quarter ('YYYY-MM-DD')
 }
 
-// Delivered loads → quarter → agent → { revenue, loads }.
+// Delivered loads → quarter → agent → { revenue, loads, lastWorked }.
 const byQuarterAgent = (loads: Load[]): Map<string, Map<string, QAgg>> => {
   const out = new Map<string, Map<string, QAgg>>();
   for (const l of loads) {
@@ -34,18 +35,27 @@ const byQuarterAgent = (loads: Load[]): Map<string, Map<string, QAgg>> => {
       agents = new Map();
       out.set(q, agents);
     }
-    const cur = agents.get(l.agent_id) ?? { revenue: 0, loads: 0 };
+    const cur = agents.get(l.agent_id) ?? { revenue: 0, loads: 0, lastWorked: "" };
     cur.revenue += loadRevenue(l);
     cur.loads += 1;
+    const dd = l.delivery_date.slice(0, 10);
+    if (dd > cur.lastWorked) cur.lastWorked = dd;
     agents.set(l.agent_id, cur);
   }
   return out;
 };
 
-// Revenue desc, then agent_id asc so ties resolve deterministically.
-const rankByRevenue = (entries: [string, QAgg][]): [string, QAgg][] =>
+// Rank by gross revenue, then a stated tie-break cascade (never a coin-flip on id):
+// 1) gross revenue  2) revenue per load — same money in fewer loads = richer freight
+// 3) most recent load — the still-active agent  4) agent_id, only so it's deterministic.
+const revPerLoad = (a: QAgg) => (a.loads > 0 ? a.revenue / a.loads : 0);
+const rankAgents = (entries: [string, QAgg][]): [string, QAgg][] =>
   [...entries].sort(
-    (a, b) => b[1].revenue - a[1].revenue || a[0].localeCompare(b[0]),
+    (a, b) =>
+      b[1].revenue - a[1].revenue ||
+      revPerLoad(b[1]) - revPerLoad(a[1]) ||
+      b[1].lastWorked.localeCompare(a[1].lastWorked) ||
+      a[0].localeCompare(b[0]),
   );
 
 export const computeHonors = (
@@ -66,13 +76,13 @@ export const computeHonors = (
     if (quarter >= currentQ) continue;
     const entries = [...agents.entries()];
     // Board: 2+ loads, top 5 by revenue.
-    const board = rankByRevenue(entries.filter(([, a]) => a.loads >= 2)).slice(
+    const board = rankAgents(entries.filter(([, a]) => a.loads >= 2)).slice(
       0,
       5,
     );
     for (const [agentId] of board) bump(agentId, "board");
     // Podium: 3+ loads, #1 gold, #2 silver.
-    const podium = rankByRevenue(entries.filter(([, a]) => a.loads >= 3));
+    const podium = rankAgents(entries.filter(([, a]) => a.loads >= 3));
     if (podium[0]) bump(podium[0][0], "gold");
     if (podium[1]) bump(podium[1][0], "silver");
   }
@@ -117,8 +127,8 @@ export const agentSeasonLog = (
     const mine = agents.get(agentId);
     if (!mine) continue;
     const entries = [...agents.entries()];
-    const podium = rankByRevenue(entries.filter(([, a]) => a.loads >= 3));
-    const board = rankByRevenue(entries.filter(([, a]) => a.loads >= 2))
+    const podium = rankAgents(entries.filter(([, a]) => a.loads >= 3));
+    const board = rankAgents(entries.filter(([, a]) => a.loads >= 2))
       .slice(0, 5)
       .map(([id]) => id);
     let result: SeasonEntry["result"] = "ran";
@@ -153,8 +163,8 @@ export const currentQuarterStandings = (
   if (!agents) return out;
 
   const entries = [...agents.entries()];
-  const boardRanked = rankByRevenue(entries.filter(([, a]) => a.loads >= 2));
-  const podium = rankByRevenue(entries.filter(([, a]) => a.loads >= 3));
+  const boardRanked = rankAgents(entries.filter(([, a]) => a.loads >= 2));
+  const podium = rankAgents(entries.filter(([, a]) => a.loads >= 3));
 
   for (const [agentId, agg] of entries) {
     const idx = boardRanked.findIndex(([id]) => id === agentId);
@@ -179,6 +189,56 @@ export const currentQuarterStanding = (
   now: Date,
 ): LiveStanding | null =>
   currentQuarterStandings(loads, now).get(agentId) ?? null;
+
+// ---- dashboard quarterly board (live current quarter + last complete quarter) ----
+
+// One agent's finish in a given quarter's board race. Podium = top 3 (the
+// dashboard shows gold/silver/bronze by position), board = top 5. Only 2+-load
+// agents qualify, so a one-off single load doesn't land a medal position.
+export interface BoardStanding {
+  agentId: string;
+  rank: number; // 1-based among 2+-load agents
+  revenue: number;
+  loads: number;
+  podium: boolean; // top 3
+  onBoard: boolean; // top 5
+}
+
+export const quarterStandings = (loads: Load[], quarter: string): BoardStanding[] => {
+  const agents = byQuarterAgent(loads).get(quarter);
+  if (!agents) return [];
+  return rankAgents([...agents.entries()].filter(([, a]) => a.loads >= 2)).map(
+    ([agentId, a], i) => ({
+      agentId,
+      rank: i + 1,
+      revenue: a.revenue,
+      loads: a.loads,
+      podium: i < 3,
+      onBoard: i < 5,
+    }),
+  );
+};
+
+// Agents who ran this quarter but are short of the 2-load board minimum — the
+// "one more load to qualify" contenders, ranked by gross.
+export const quarterContenders = (loads: Load[], quarter: string): BoardStanding[] => {
+  const agents = byQuarterAgent(loads).get(quarter);
+  if (!agents) return [];
+  return rankAgents([...agents.entries()].filter(([, a]) => a.loads < 2)).map(
+    ([agentId, a], i) => ({ agentId, rank: i + 1, revenue: a.revenue, loads: a.loads, podium: false, onBoard: false }),
+  );
+};
+
+export const currentQuarterKey = (now: Date): string => quarterKey(now.toISOString());
+
+// The last COMPLETE calendar quarter — the app's "season" convention, never the
+// in-progress one. Today (2026-08-08, Q3) → "2026-Q2".
+export const lastCompleteQuarterKey = (now: Date): string => {
+  const qStartMonth = Math.floor(now.getUTCMonth() / 3) * 3;
+  // Day 0 of the current quarter's first month = the last day of the prior quarter.
+  const prevQEnd = new Date(Date.UTC(now.getUTCFullYear(), qStartMonth, 0));
+  return quarterKey(prevQEnd.toISOString());
+};
 
 // ---- per-agent card stats ----
 

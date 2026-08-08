@@ -96,7 +96,7 @@ const OwnerDashboard = () => {
           active === "pulse" ? (
             <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} />
           ) : active === "money" ? (
-            <MoneyTab loads={loads} marginGoal={targets.marginGoal ?? null} />
+            <MoneyTab loads={loads} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
           ) : active === "lanes" ? (
             <LanesTab loads={loads} />
           ) : active === "agents" ? (
