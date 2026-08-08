@@ -17,6 +17,7 @@ import {
 import {
   buildAgentScorecards,
   agentRosterAnalytics,
+  concentrationAnalytics,
 } from "@/lib/metrics/agentScorecard";
 import { money, rpm as fmtRpm } from "@/lib/format";
 
@@ -42,6 +43,13 @@ const AgentsPage = () => {
     [agents, loads, now],
   );
   const roster = useMemo(() => agentRosterAnalytics(scorecards), [scorecards]);
+  // Concentration is WINDOWED (recent 90d) so a cold agent isn't counted as a
+  // current dependency; per-agent shares feed the table's "% book" column.
+  const conc = useMemo(() => concentrationAnalytics(loads ?? [], now), [loads, now]);
+  const shareByAgent = useMemo(
+    () => new Map(conc.shares.map((s) => [s.agentId, s.share])),
+    [conc],
+  );
 
   const byId = useMemo(
     () => new Map((agents ?? []).map((a) => [a.agent_id, a])),
@@ -147,8 +155,13 @@ const AgentsPage = () => {
         />
         <Kpi
           label="Concentration"
-          value={roster.concentrationPct != null ? `${Math.round(roster.concentrationPct * 100)}%` : "—"}
-          sub="top 3 of your revenue"
+          value={conc.top3Pct != null ? `${Math.round(conc.top3Pct * 100)}%` : "—"}
+          valueClass={conc.overSingleCap ? "text-amber" : undefined}
+          sub={
+            conc.overSingleCap && conc.singleMax
+              ? `⚠ ${byId.get(conc.singleMax.agentId)?.last_name ?? "one agent"} ${Math.round(conc.singleMax.share * 100)}% — over 30%`
+              : "top 3 · last 90 days"
+          }
         />
         {cold && roster.goingCold ? (
           <Link to={`/agents/${cold.agent_id}`}>
@@ -214,7 +227,7 @@ const AgentsPage = () => {
           <p className="text-muted-text text-sm">No agents match.</p>
         )
       ) : view === "table" ? (
-        <AgentTable rows={rows} />
+        <AgentTable rows={rows} shareByAgent={shareByAgent} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {rows.map(({ agent, card }) => (

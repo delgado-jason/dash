@@ -5,6 +5,7 @@ import {
   classifySpecialty,
   buildAgentScorecards,
   agentRosterAnalytics,
+  concentrationAnalytics,
 } from "./agentScorecard";
 
 const load = (over: Partial<Load>): Load =>
@@ -151,5 +152,37 @@ describe("agentRosterAnalytics", () => {
     expect(r.oversizeBench).toBe(2); // a and b
     expect(r.goingCold?.agentId).toBe("a"); // the cold, high-value one
     expect(r.concentrationPct).toBeGreaterThan(0.5);
+  });
+});
+
+describe("concentrationAnalytics (windowed + per-agent)", () => {
+  const NOW = new Date("2026-08-06T12:00:00Z");
+  it("windows out cold agents and flags a single agent over the cap", () => {
+    const loads = [
+      load({ agent_id: "big", linehaul: "10000" }), // in-window $10k
+      load({ agent_id: "big", linehaul: "6000" }), //  in-window $6k  → big = $16k
+      load({ agent_id: "s1", linehaul: "4000" }), //   in-window $4k
+      load({ agent_id: "s2", linehaul: "3000" }), //   in-window $3k
+      load({ agent_id: "cold", linehaul: "20000", delivery_date: "2026-04-01" }), // 127d → dropped
+    ];
+    const c = concentrationAnalytics(loads, NOW); // default 90d window
+    expect(c.total).toBe(23000); // cold's $20k excluded
+    expect(c.shares.find((s) => s.agentId === "cold")).toBeUndefined();
+    expect(c.singleMax?.agentId).toBe("big");
+    expect(c.singleMax?.share).toBeCloseTo(16000 / 23000, 5); // ~0.70
+    expect(c.overSingleCap).toBe(true); // 70% > 30%
+    expect(c.top3Pct).toBeCloseTo(1, 5); // only 3 agents in-window
+  });
+
+  it("no over-cap when revenue is spread", () => {
+    const loads = [
+      load({ agent_id: "a", linehaul: "5000" }),
+      load({ agent_id: "b", linehaul: "5000" }),
+      load({ agent_id: "c", linehaul: "5000" }),
+      load({ agent_id: "d", linehaul: "5000" }),
+    ];
+    const c = concentrationAnalytics(loads, NOW);
+    expect(c.overSingleCap).toBe(false); // each 25% < 30%
+    expect(c.singleMax?.share).toBeCloseTo(0.25, 5);
   });
 });

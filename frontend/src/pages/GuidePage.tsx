@@ -1563,6 +1563,16 @@ const GuidePage = () => {
               until they've run 2+ delivered loads, so one lucky run never crowns
               anyone — the same restraint the lane and rate metrics use.
             </p>
+            <p className="text-sm text-muted-text mt-3">
+              <span className="text-light">Concentration</span> is measured over
+              your <span className="text-light">last 90 days</span>, not your
+              lifetime — an agent who's gone cold isn't a dependency you still feel,
+              so they drop out. Each agent's <span className="text-light">% of
+              book</span> is shown in the table; the rule of thumb is no single
+              agent over <span className="text-light">~30%</span> and your top 3
+              under <span className="text-light">~65%</span>, so losing one wouldn't
+              sink you.
+            </p>
           </Section>
 
           <Section

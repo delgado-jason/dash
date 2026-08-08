@@ -38,6 +38,15 @@ import { RpmChart } from "@/components/RpmChart";
 import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { TopAgents } from "@/components/dashboard/TopAgents";
+import { DashboardShell, TabStub, type DashTab } from "@/components/dashboard/DashboardShell";
+
+const DASH_TABS: DashTab[] = [
+  { key: "pulse", label: "Pulse" },
+  { key: "money", label: "Money" },
+  { key: "lanes", label: "Lanes" },
+  { key: "agents", label: "Agents" },
+  { key: "fleet", label: "Fleet" },
+];
 import { WhatsNext } from "@/components/dashboard/WhatsNext";
 import { RecentLoads } from "@/components/dashboard/RecentLoads";
 import { isDispatcher } from "@/lib/roles";
@@ -144,21 +153,24 @@ const OwnerDashboard = () => {
   return (
     <div className="p-6 bg-iron text-light min-h-screen font-body">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
-
-      <div className="flex items-center justify-between mb-6 gap-3">
-        <h1 className="text-3xl font-condensed">Dashboard</h1>
-        <div className="flex items-center gap-3">
-          <MarketChip />
-          <Link
-            to="/recap"
-            className="text-sm text-status-info-text hover:underline whitespace-nowrap"
-          >
-            Your {latestRecap ? `${latestRecap.label} ` : ""}recap →
-          </Link>
-        </div>
-      </div>
-
-      <AlertBanners alerts={alerts} />
+      <DashboardShell
+        tabs={DASH_TABS}
+        right={
+          <>
+            <MarketChip />
+            <Link
+              to="/recap"
+              className="text-sm text-status-info-text hover:underline whitespace-nowrap"
+            >
+              {latestRecap ? `${latestRecap.label} ` : ""}recap →
+            </Link>
+          </>
+        }
+      >
+        {(active) =>
+          active === "pulse" ? (
+            <>
+              <AlertBanners alerts={alerts} />
 
       {/* KPI STRIP */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -237,6 +249,50 @@ const OwnerDashboard = () => {
         </Panel>
         <OutstandingLoadsList loads={outstanding} />
       </div>
+            </>
+          ) : active === "money" ? (
+            <TabStub
+              title="Money"
+              blurb="Your profitability at a glance."
+              points={[
+                "Pay-week earned vs target + settlement pipeline (no aging)",
+                "Revenue trend vs target",
+                "Rate vs your break-even floor",
+              ]}
+            />
+          ) : active === "lanes" ? (
+            <TabStub
+              title="Lanes"
+              blurb="Where your freight comes from."
+              points={[
+                "The granularity map (macro / region / state)",
+                "Best lanes and regions",
+                "Load-type mix",
+              ]}
+            />
+          ) : active === "agents" ? (
+            <TabStub
+              title="Agents"
+              blurb="Who to call."
+              points={[
+                "Rate × volume 'who to call' scatter",
+                "Momentum + the live quarterly board",
+                "Windowed concentration + gut-vs-data flags",
+              ]}
+            />
+          ) : (
+            <TabStub
+              title="Fleet"
+              blurb="Asset health."
+              points={[
+                "Truck / driver utilization",
+                "Fuel MPG trend",
+                "Next service due",
+              ]}
+            />
+          )
+        }
+      </DashboardShell>
     </div>
   );
 };

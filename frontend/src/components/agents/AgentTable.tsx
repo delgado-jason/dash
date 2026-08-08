@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import type { Agent } from "@/types/agent";
-import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
+import { type AgentScorecard, SINGLE_CAP } from "@/lib/metrics/agentScorecard";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import {
   TIER_META,
@@ -17,7 +17,7 @@ export interface AgentRow {
   card: AgentScorecard;
 }
 
-type SortKey = "goto" | "rate" | "dwell" | "loads" | "revenue" | "last" | "rating";
+type SortKey = "goto" | "rate" | "dwell" | "loads" | "revenue" | "book" | "last" | "rating";
 
 const COLS: { key: SortKey; label: string; l?: boolean }[] = [
   { key: "rating", label: "Rating" },
@@ -26,6 +26,7 @@ const COLS: { key: SortKey; label: string; l?: boolean }[] = [
   { key: "dwell", label: "Dwell" },
   { key: "loads", label: "Loads" },
   { key: "revenue", label: "Rev" },
+  { key: "book", label: "% book" },
   { key: "last", label: "Last" },
 ];
 
@@ -63,13 +64,26 @@ const compare = (a: AgentRow, b: AgentRow, key: SortKey): number => {
   }
 };
 
-export const AgentTable = ({ rows }: { rows: AgentRow[] }) => {
+export const AgentTable = ({
+  rows,
+  shareByAgent,
+}: {
+  rows: AgentRow[];
+  shareByAgent?: Map<string, number>;
+}) => {
   const navigate = useNavigate();
   const [sort, setSort] = useState<SortKey>("goto");
+  const shareOf = (id: string) => shareByAgent?.get(id) ?? 0;
 
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => compare(a, b, sort)),
-    [rows, sort],
+    () =>
+      [...rows].sort((a, b) =>
+        sort === "book"
+          ? (shareByAgent?.get(b.agent.agent_id) ?? 0) -
+            (shareByAgent?.get(a.agent.agent_id) ?? 0)
+          : compare(a, b, sort),
+      ),
+    [rows, sort, shareByAgent],
   );
 
   return (
@@ -153,6 +167,13 @@ export const AgentTable = ({ rows }: { rows: AgentRow[] }) => {
                 </td>
                 <td className="text-right py-2 px-2 text-muted-text tabular-nums">{card.loadCount}</td>
                 <td className="text-right py-2 px-2 tabular-nums">{money(card.revenue)}</td>
+                <td
+                  className="text-right py-2 px-2 tabular-nums"
+                  style={{ color: shareOf(agent.agent_id) > SINGLE_CAP ? "#f5a623" : "#8b93a3" }}
+                  title="share of your last-90-day book"
+                >
+                  {shareOf(agent.agent_id) > 0 ? `${Math.round(shareOf(agent.agent_id) * 100)}%` : "—"}
+                </td>
                 <td className="text-right py-2 px-2 whitespace-nowrap">
                   {trend ? <span style={{ color: trend.fg }}>{trend.glyph}</span> : <span className="text-muted-text">·</span>}{" "}
                   <span className="text-muted-text text-xs">{shortDate(card.lastWorked)}</span>

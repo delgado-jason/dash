@@ -264,3 +264,56 @@ export const agentRosterAnalytics = (
     moneyLostAgents: list.filter((c) => c.moneyLostLoads > 0).length,
   };
 };
+
+// ---- revenue concentration (WINDOWED — current dependency, not lifetime) ----
+// Healthy guideline for a one-truck bench: no single agent over ~30% of your
+// book, top-3 under ~65%. Tunable in settings.
+export const SINGLE_CAP = 0.3;
+export const TOP3_CAP = 0.65;
+
+export interface ConcentrationShare {
+  agentId: string;
+  revenue: number;
+  share: number; // 0..1 of the windowed book
+}
+export interface Concentration {
+  windowDays: number;
+  total: number;
+  shares: ConcentrationShare[]; // every contributing agent, revenue desc
+  top3Pct: number | null;
+  singleMax: ConcentrationShare | null;
+  overSingleCap: boolean; // any single agent over the cap
+  singleCap: number;
+}
+
+// Concentration over a RECENT window (default 90d, matching the "cold" line) so
+// an agent who's gone quiet drops out — a dependency you haven't felt in months
+// isn't a dependency. Per-agent shares let you watch the single-agent cap.
+export const concentrationAnalytics = (
+  loads: Load[],
+  now: Date = new Date(),
+  windowDays = COLD_DAYS,
+  singleCap = SINGLE_CAP,
+): Concentration => {
+  const cutoff = now.getTime() - windowDays * MS_DAY;
+  const rev = new Map<string, number>();
+  for (const l of loads) {
+    if (l.load_status !== "delivered" || !l.agent_id || !l.delivery_date) continue;
+    if (new Date(l.delivery_date).getTime() < cutoff) continue;
+    rev.set(l.agent_id, (rev.get(l.agent_id) ?? 0) + loadRevenue(l));
+  }
+  const total = [...rev.values()].reduce((a, b) => a + b, 0);
+  const shares: ConcentrationShare[] = [...rev.entries()]
+    .map(([agentId, revenue]) => ({ agentId, revenue, share: total > 0 ? revenue / total : 0 }))
+    .sort((a, b) => b.revenue - a.revenue);
+  const singleMax = shares[0] ?? null;
+  return {
+    windowDays,
+    total,
+    shares,
+    top3Pct: total > 0 ? shares.slice(0, 3).reduce((s, x) => s + x.share, 0) : null,
+    singleMax,
+    overSingleCap: !!singleMax && singleMax.share > singleCap,
+    singleCap,
+  };
+};
