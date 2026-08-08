@@ -143,7 +143,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
   const elseShare = Math.max(0, 1 - topShares.reduce((s, x) => s + x.share, 0));
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-1 lg:min-h-0">
+    <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
         <h2 className="text-xl font-condensed text-light">Your agent bench</h2>
         <span className="text-xs text-muted-text">
@@ -190,7 +190,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
       </div>
 
       {/* hero scatter */}
-      <div className="rounded-xl p-3 flex flex-col lg:flex-1 lg:min-h-0" style={C.card}>
+      <div className="rounded-xl p-3" style={C.card}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-[13px] font-bold text-light">Who to call — rate × volume</span>
           <span className="text-[11px] text-muted-text">bubble = revenue · click to open an agent</span>
