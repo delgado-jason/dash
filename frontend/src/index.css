@@ -84,6 +84,48 @@
 
   --color-status-info-bg: #1a2a3a;
   --color-status-info-text: #60a5fa;
+
+  /* --------------------------------------------------------
+    DESIGN SYSTEM v2 — "Night Cab, forged reserve"
+    (gate-3 spec approved 2026-08-08)
+    Coexists with the v1 kit above while pages migrate
+    slice-by-slice; v1 tokens are pruned in the cleanup slice.
+  -----------------------------------------------------------*/
+  --color-canvas: #070a10;
+  --color-panel: #0c111a;
+  --color-well: #090d15;
+  --color-hairline: #1c2637;
+  --color-hairline-lo: #141c2a;
+  --color-ink: #e6ecf7;
+  --color-dim: #8494ab;
+  --color-faint: #5a6880;
+  --color-amber-hi: #f5b03a;
+  --color-hot: #ffcf7a;
+  --color-plate-a: #2b3448;
+  --color-plate-b: #1f2737;
+  --color-plate-lo: #171e2c;
+  /* Data marks only — brand amber sits above the dark-surface lightness
+     band, so charts use these validated steps (CVD ΔE 24.5, ≥3:1). */
+  --color-chart-amber: #c87f0a;
+  --color-chart-blue: #4f8cd6;
+
+  /* The Forge — game-layer voice. Game surfaces only, never operational
+     UI. Replaces Bangers when the last comic surface migrates. */
+  --font-forge: "Big Shoulders Stencil", "Barlow Condensed", sans-serif;
+}
+
+/* Design System v2 — motion tokens, mirrored in src/theme/motion.ts for
+   GSAP. Motion always plays: the app deliberately does not honor
+   prefers-reduced-motion (owner's decision, 2026-08-08). */
+:root {
+  --t-fast: 120ms;
+  --t-quick: 240ms;
+  --t-base: 500ms;
+  --t-slow: 900ms;
+  --ease-mech: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-settle: cubic-bezier(0.22, 1.4, 0.36, 1);
+  --ease-strike-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-slam: cubic-bezier(0.2, 1.6, 0.4, 1);
 }
 
 /* --------------------------------------------------------
