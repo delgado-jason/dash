@@ -24,6 +24,8 @@ export interface TruckMetrics {
   fuelPerMile: number | null;
   revPerMile: number | null;
   costToRunPerMile: number | null; // (fuel + maintenance) ÷ miles
+  fuelSpend: number; // fuel $ over the window (for the fuel-vs-maintenance split)
+  maintSpend: number; // maintenance $ attributable to the truck
   milesPerMonth: number | null;
   totalMiles: number;
   netRevenue: number;
@@ -133,6 +135,8 @@ export const computeTruckMetrics = (
     fuelPerMile: fs.costPerMile,
     revPerMile: totalMiles > 0 ? netRevenue / totalMiles : null,
     costToRunPerMile: totalMiles > 0 ? (fuelSpend + maintSpend) / totalMiles : null,
+    fuelSpend,
+    maintSpend,
     milesPerMonth: monthsInService ? totalMiles / monthsInService : null,
     totalMiles,
     netRevenue,

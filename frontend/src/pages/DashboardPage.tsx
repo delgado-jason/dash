@@ -11,11 +11,12 @@ import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { latestRecapWithData } from "@/lib/metrics/recap";
 import { MarketChip } from "@/components/dashboard/MarketChip";
-import { DashboardShell, TabStub, type DashTab } from "@/components/dashboard/DashboardShell";
+import { DashboardShell, type DashTab } from "@/components/dashboard/DashboardShell";
 import { AgentsTab } from "@/components/dashboard/agents/AgentsTab";
 import { PulseTab } from "@/components/dashboard/PulseTab";
 import { MoneyTab } from "@/components/dashboard/MoneyTab";
 import { LanesTab } from "@/components/dashboard/LanesTab";
+import { FleetTab } from "@/components/dashboard/FleetTab";
 import { isDispatcher } from "@/lib/roles";
 import DispatchDashboard from "./DispatchDashboard";
 
@@ -101,15 +102,7 @@ const OwnerDashboard = () => {
           ) : active === "agents" ? (
             <AgentsTab loads={loads} />
           ) : (
-            <TabStub
-              title="Fleet"
-              blurb="Asset health."
-              points={[
-                "Truck / driver utilization",
-                "Fuel MPG trend",
-                "Next service due",
-              ]}
-            />
+            <FleetTab loads={loads} />
           )
         }
       </DashboardShell>
