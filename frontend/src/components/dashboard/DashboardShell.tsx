@@ -30,7 +30,7 @@ export const DashboardShell = ({
 
   return (
     <div
-      className="rounded-2xl overflow-hidden lg:flex-1 lg:flex lg:flex-col lg:min-h-0"
+      className="rounded-2xl overflow-hidden"
       style={{ background: "#0b111b", border: "1px solid #26304a" }}
     >
       <div
@@ -56,9 +56,7 @@ export const DashboardShell = ({
         ))}
         {right && <div className="ml-auto flex items-center gap-3">{right}</div>}
       </div>
-      <div className="p-4 sm:p-5 lg:flex-1 lg:flex lg:flex-col lg:min-h-0">
-        {children(active)}
-      </div>
+      <div className="p-4 sm:p-5">{children(active)}</div>
     </div>
   );
 };
@@ -75,8 +73,8 @@ export const TabStub = ({
   points: string[];
 }) => (
   <div
-    className="rounded-xl p-6 text-center flex flex-col items-center justify-center lg:flex-1 lg:min-h-0"
-    style={{ background: "#0f1622", border: "1px dashed #2a3347", minHeight: 260 }}
+    className="rounded-xl p-6 text-center flex flex-col items-center justify-center"
+    style={{ background: "#0f1622", border: "1px dashed #2a3347", minHeight: 360 }}
   >
     <p className="font-condensed text-2xl text-light">{title}</p>
     <p className="text-sm text-muted-text mt-1 mb-4">{blurb}</p>

@@ -58,7 +58,7 @@ export const LanesTab = ({ loads }: { loads: Load[] }) => {
   const rate = summary.topRpmLane;
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-1 lg:min-h-0">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-condensed text-light leading-none">The lanes</h2>
@@ -96,9 +96,9 @@ export const LanesTab = ({ loads }: { loads: Load[] }) => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 lg:flex-1 lg:min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
         {/* the map (real shipped component, flat for the dashboard) */}
-        <div className="min-h-0 min-w-0">
+        <div className="min-w-0">
           <LanesMap
             data={mapData}
             level={level}
@@ -109,13 +109,13 @@ export const LanesTab = ({ loads }: { loads: Load[] }) => {
           />
         </div>
 
-        <div className="flex flex-col gap-3 lg:min-h-0">
+        <div className="flex flex-col gap-3">
           {/* top lanes by gross */}
-          <div className="rounded-xl p-3.5 flex flex-col lg:flex-1 lg:min-h-0" style={C}>
+          <div className="rounded-xl p-3.5 flex flex-col" style={C}>
             <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-1 flex justify-between">
               Top lanes <span className="normal-case tracking-normal font-normal">by gross · {windowDays}d</span>
             </h3>
-            <div className="flex-1 min-h-0 flex flex-col justify-between py-1">
+            <div className="flex flex-col">
               {topLanes.length === 0 ? (
                 <p className="text-xs text-muted-text py-4">No delivered lanes in this window.</p>
               ) : (

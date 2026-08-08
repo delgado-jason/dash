@@ -96,7 +96,7 @@ export const PulseTab = ({
   const paceMeta = PACE[pace.verdict];
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-1 lg:min-h-0">
+    <div className="flex flex-col gap-3">
       <AlertBanners alerts={alerts} />
 
       {/* hero — the pay week */}
@@ -149,13 +149,13 @@ export const PulseTab = ({
         <Tile label="Earned · MTD" value={money(mtd)} sub="gross delivered" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3 lg:flex-1 lg:min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3">
         {/* weekly earnings */}
-        <div className="rounded-xl p-3.5 flex flex-col" style={C}>
+        <div className="rounded-xl p-3.5" style={C}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2 flex justify-between">
             Weekly earnings <span className="normal-case tracking-normal">last 8 weeks · gross</span>
           </h3>
-          <svg viewBox="0 0 620 150" className="w-full lg:flex-1 lg:min-h-0" preserveAspectRatio="xMidYMid meet">
+          <svg viewBox="0 0 620 150" className="w-full">
             {weeklyTarget && (
               <>
                 <line x1="0" y1={140 - (weeklyTarget / weekMax) * 120} x2="620" y2={140 - (weeklyTarget / weekMax) * 120} stroke="#4ade80" strokeWidth={1} strokeDasharray="4 4" opacity={0.6} />
@@ -179,7 +179,7 @@ export const PulseTab = ({
         </div>
 
         {/* rate vs floor gauge */}
-        <div className="rounded-xl p-3.5 flex flex-col justify-center" style={C}>
+        <div className="rounded-xl p-3.5" style={C}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-4">Rate vs your floor</h3>
           <div className="relative h-6 rounded-md" style={{ background: "linear-gradient(90deg,#3a1a1a,#3a2a0a 40%,#12261a)", border: "1px solid #26304a" }}>
             {(["walkAway", "target", "strong"] as const).map((k, i) =>
@@ -214,8 +214,8 @@ export const PulseTab = ({
       </div>
 
       {/* what's next + the grind */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-3 lg:flex-1 lg:min-h-0">
-        <div className="rounded-xl p-4 flex flex-col" style={C}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-3">
+        <div className="rounded-xl p-4" style={C}>
           <p className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2">What's next · booked</p>
           <WhatsNext loads={upcoming} />
         </div>

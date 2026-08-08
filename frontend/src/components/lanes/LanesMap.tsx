@@ -176,7 +176,7 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
   const drillHint = level === "state" ? "click a state to drill in" : "click a region to drill in";
 
   return (
-    <Panel ref={containerRef} noir={noir} className="p-4 relative h-full flex flex-col">
+    <Panel ref={containerRef} noir={noir} className="p-4 relative">
       <div className="text-xs text-muted-text mb-2 flex items-center gap-2 flex-wrap">
         <span>Shade by</span>
         {toggle("rate", "your $/mi")}
@@ -186,7 +186,7 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
         </span>
         <span>· grouped by {levelWord} · {drillHint}</span>
       </div>
-      <svg viewBox="0 0 900 560" className="w-full flex-1 min-h-0" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 900 560" className="w-full">
         {shapes.map((s, i) => {
           const datum = data[s.key];
           const isSel = selected === s.key;

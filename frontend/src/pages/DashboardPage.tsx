@@ -75,7 +75,7 @@ const OwnerDashboard = () => {
     );
 
   return (
-    <div className="p-6 bg-iron text-light min-h-screen font-body lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
+    <div className="p-6 bg-iron text-light min-h-screen font-body">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
       <DashboardShell
         tabs={DASH_TABS}
