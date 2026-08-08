@@ -7,6 +7,8 @@ import {
   agentPrestige,
   agentSeasonLog,
   currentQuarterStanding,
+  quarterStandings,
+  lastCompleteQuarterKey,
 } from "./agentLeaderboard";
 
 // Minimal delivered-load factory. Revenue = linehaul (fsc/accessorials 0).
@@ -207,5 +209,53 @@ describe("rosterKpis", () => {
     expect(k.topEarner?.agentId).toBe("A");
     expect(k.topEarner?.revenue).toBe(9000);
     expect(k.activeCount).toBe(2);
+  });
+});
+
+describe("quarterStandings — board rules + tie-break", () => {
+  it("ranks 2+-load agents by gross; single-load agents are off the board", () => {
+    const loads = [
+      mk("A", "2026-05-01", 5000),
+      mk("A", "2026-06-01", 4000), // A: 2 loads, $9k, $4.5k/load
+      mk("B", "2026-05-10", 8000), // B: 1 load — excluded
+      mk("C", "2026-04-15", 3000),
+      mk("C", "2026-05-20", 3000),
+      mk("C", "2026-06-20", 3000), // C: 3 loads, $9k, $3k/load
+    ];
+    const board = quarterStandings(loads, "2026-Q2");
+    const ids = board.map((s) => s.agentId);
+    expect(ids).not.toContain("B"); // single load
+    // A and C tie on $9k gross → revenue-per-load breaks it: A ($4.5k) over C ($3k)
+    expect(ids).toEqual(["A", "C"]);
+    expect(board[0]).toMatchObject({ rank: 1, podium: true, loads: 2 });
+  });
+
+  it("tie on gross AND revenue-per-load falls to the most recent load", () => {
+    const loads = [
+      mk("A", "2026-05-01", 5000),
+      mk("A", "2026-05-02", 5000), // $10k / 2, last 05-02
+      mk("B", "2026-06-29", 5000),
+      mk("B", "2026-06-30", 5000), // $10k / 2, last 06-30 (more recent)
+    ];
+    expect(quarterStandings(loads, "2026-Q2").map((s) => s.agentId)).toEqual(["B", "A"]);
+  });
+
+  it("podium is top 3, board is top 5", () => {
+    const loads: ReturnType<typeof mk>[] = [];
+    ([["A", 6000], ["B", 5000], ["C", 4000], ["D", 3000], ["E", 2000], ["F", 1000]] as [string, number][]).forEach(
+      ([id, rev]) => loads.push(mk(id, "2026-05-01", rev), mk(id, "2026-05-02", rev)),
+    );
+    const board = quarterStandings(loads, "2026-Q2");
+    expect(board.filter((s) => s.podium).map((s) => s.agentId)).toEqual(["A", "B", "C"]);
+    expect(board.filter((s) => s.onBoard).map((s) => s.agentId)).toEqual(["A", "B", "C", "D", "E"]);
+    expect(board[5].onBoard).toBe(false);
+  });
+});
+
+describe("lastCompleteQuarterKey", () => {
+  it("returns the prior complete quarter, crossing the year boundary", () => {
+    expect(lastCompleteQuarterKey(new Date("2026-08-08T12:00:00Z"))).toBe("2026-Q2");
+    expect(lastCompleteQuarterKey(new Date("2026-05-15T12:00:00Z"))).toBe("2026-Q1");
+    expect(lastCompleteQuarterKey(new Date("2026-02-10T12:00:00Z"))).toBe("2025-Q4");
   });
 });

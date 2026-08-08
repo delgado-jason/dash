@@ -552,9 +552,12 @@ const GuidePage = () => {
                 rest fold behind a tap.
               </TabLine>
               <TabLine name="Money" q="Am I profitable?">
-                Year-to-date income, operating profit and margin against your goal,
-                the monthly P&amp;L, your margin trend, where the money goes by
-                expense category, and what's delivered but not yet settled.
+                Year-to-date income and two margins — operating, and your
+                after-notes (owner's take) margin, which is the one graded
+                against your goal since it's what's actually left after the truck,
+                trailer, and loan notes. Plus the monthly P&amp;L, the margin
+                trend, where the money goes by category, and what's delivered but
+                not yet settled.
               </TabLine>
               <TabLine name="Lanes" q="Where does my freight run?">
                 The U.S. map shaded by your $/mi (fire marks your best-paying
@@ -563,8 +566,9 @@ const GuidePage = () => {
                 window and how finely the map groups.
               </TabLine>
               <TabLine name="Agents" q="Who should I call?">
-                Your bench plotted by rate × volume, momentum vs the prior 90 days,
-                the live quarter board, revenue concentration (so no one agent owns
+                Your bench plotted by rate × volume, who you're running with lately
+                (by last worked), quarterly standings — this quarter live plus last
+                quarter's top earners — revenue concentration (so no one agent owns
                 too much of your book), and who's going cold.
               </TabLine>
               <TabLine name="Fleet" q="Is my rig ready to roll?">

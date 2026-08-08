@@ -24,10 +24,22 @@ const Tile = ({ label, value, sub, color }: { label: string; value: string; sub:
   </div>
 );
 
-export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: number | null }) => {
+export const MoneyTab = ({
+  loads,
+  marginGoal,
+  obligationsMonthly,
+}: {
+  loads: Load[];
+  marginGoal: number | null;
+  obligationsMonthly: number; // active, non-draw monthly notes (principal) — interest is already in the P&L
+}) => {
   const { periods, categoriesYTD, loading } = useExpensePeriods();
   const year = new Date().getUTCFullYear();
 
+  // Two margins per month: OPERATING (income − COGS − expenses; interest lives in
+  // those expense lines) and CASH / after-notes (operating minus the monthly note
+  // principal — the money that actually leaves the account). No interest double-
+  // count: the notes carry principal only, interest is already in the P&L.
   const rows = useMemo(
     () =>
       [...periods]
@@ -36,14 +48,24 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
         .map((p) => {
           const income = p.income_total ?? 0;
           const cost = (p.cogs_total ?? 0) + (p.expense_total ?? 0);
-          return { month: p.period_month, income, cost, profit: income - cost, margin: income > 0 ? (income - cost) / income : 0 };
+          const profit = income - cost;
+          return {
+            month: p.period_month,
+            income,
+            cost,
+            profit,
+            margin: income > 0 ? profit / income : 0,
+            cashMargin: income > 0 ? (profit - obligationsMonthly) / income : 0,
+          };
         }),
-    [periods],
+    [periods, obligationsMonthly],
   );
   const ytd = useMemo(() => rows.filter((r) => r.month.startsWith(String(year))), [rows, year]);
   const ytdIncome = ytd.reduce((s, r) => s + r.income, 0);
   const ytdProfit = ytd.reduce((s, r) => s + r.profit, 0);
   const ytdMargin = ytdIncome > 0 ? ytdProfit / ytdIncome : null;
+  // After-notes: subtract the monthly note once per P&L month in the window.
+  const ytdCashMargin = ytdIncome > 0 ? (ytdProfit - obligationsMonthly * ytd.length) / ytdIncome : null;
   const best = ytd.reduce<(typeof ytd)[number] | null>((b, r) => (!b || r.margin > b.margin ? r : b), null);
 
   // "Where it goes" — the year's spending by category (backend rollup), top 6 +
@@ -88,10 +110,16 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
         <Tile label={`Income · ${year}`} value={money(ytdIncome)} sub={`${ytd.length} months · net of carrier cut`} />
         <Tile label="Operating profit" value={money(ytdProfit)} color="#4ade80" sub="income − COGS − expenses" />
         <Tile
-          label="Margin"
-          value={ytdMargin != null ? `${Math.round(ytdMargin * 100)}%` : "—"}
-          color={ytdMargin != null && marginGoal != null ? (ytdMargin >= marginGoal ? "#4ade80" : "#f5a623") : undefined}
-          sub={marginGoal != null ? `${ytdMargin != null && ytdMargin >= marginGoal ? "▲ above" : "vs"} ${Math.round(marginGoal * 100)}% goal` : "operating margin"}
+          label="Margin · after notes"
+          value={ytdCashMargin != null ? `${Math.round(ytdCashMargin * 100)}%` : "—"}
+          color={ytdCashMargin != null && marginGoal != null ? (ytdCashMargin >= marginGoal ? "#4ade80" : "#f5a623") : undefined}
+          sub={
+            marginGoal != null && ytdCashMargin != null
+              ? `${ytdCashMargin >= marginGoal ? "▲ above" : "under"} ${Math.round(marginGoal * 100)}% goal${ytdMargin != null ? ` · ${Math.round(ytdMargin * 100)}% op` : ""}`
+              : ytdMargin != null
+                ? `${Math.round(ytdMargin * 100)}% operating`
+                : "after truck/trailer notes"
+          }
         />
         <Tile label="Best month" value={best ? `${monthShort(best.month)} · ${Math.round(best.margin * 100)}%` : "—"} sub={best ? `${money(best.profit)} profit` : ""} />
       </div>
@@ -131,9 +159,15 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
           </div>
         </div>
 
-        {/* margin trend */}
+        {/* margin trend — operating vs after-notes, against the goal */}
         <div className="rounded-xl p-3" style={C}>
-          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2">Margin trend</h3>
+          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2 flex justify-between items-center">
+            Margin trend
+            <span className="normal-case tracking-normal font-normal flex gap-2.5 text-[10px]">
+              <span style={{ color: "#f5b03a" }}>● operating</span>
+              <span style={{ color: "#5fd0e0" }}>● after notes</span>
+            </span>
+          </h3>
           <svg viewBox="0 0 320 140" className="w-full">
             {marginGoal != null && (
               <>
@@ -147,11 +181,17 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
               strokeWidth={2}
               points={rows.map((r, i) => `${8 + (i / Math.max(1, rows.length - 1)) * 304},${120 - Math.max(0, r.margin) * 220}`).join(" ")}
             />
+            <polyline
+              fill="none"
+              stroke="#5fd0e0"
+              strokeWidth={2}
+              points={rows.map((r, i) => `${8 + (i / Math.max(1, rows.length - 1)) * 304},${120 - Math.max(0, r.cashMargin) * 220}`).join(" ")}
+            />
             {rows.map((r, i) => (
-              <circle key={r.month} cx={8 + (i / Math.max(1, rows.length - 1)) * 304} cy={120 - Math.max(0, r.margin) * 220} r={3} fill={r.margin < 0.2 ? "#f87171" : i === rows.length - 1 ? "#4ade80" : "#f5b03a"} />
+              <circle key={r.month} cx={8 + (i / Math.max(1, rows.length - 1)) * 304} cy={120 - Math.max(0, r.cashMargin) * 220} r={2.5} fill={marginGoal != null && r.cashMargin < marginGoal ? "#f5a623" : "#5fd0e0"} />
             ))}
           </svg>
-          <p className="text-[11px] text-muted-text mt-1">Your operating margin, month by month{best ? ` — best was ${monthShort(best.month)} at ${Math.round(best.margin * 100)}%` : ""}.</p>
+          <p className="text-[11px] text-muted-text mt-1">Operating vs after-notes margin (owner's take), month by month{marginGoal != null ? ` — dashed line is your ${Math.round(marginGoal * 100)}% goal` : ""}.</p>
         </div>
       </div>
 

@@ -102,6 +102,7 @@ export const useRateTargets = (loads: Load[]) => {
       basis,
       gross, // weekly/daily GROSS revenue targets (break-even + margin goal)
       marginGoal, // target profit margin driving those revenue targets
+      obligationsMonthly, // active, non-draw monthly notes (principal) — for cash margin
       weekBooked, // this week's gross committed (booked + in-transit + delivered)
       weekEarned, // this week's gross earned (delivered only)
       rollingRpm,
