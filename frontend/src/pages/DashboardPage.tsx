@@ -39,6 +39,7 @@ import { OutstandingLoadsList } from "@/components/OutstandingLoadsList";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { TopAgents } from "@/components/dashboard/TopAgents";
 import { DashboardShell, TabStub, type DashTab } from "@/components/dashboard/DashboardShell";
+import { AgentsTab } from "@/components/dashboard/agents/AgentsTab";
 
 const DASH_TABS: DashTab[] = [
   { key: "pulse", label: "Pulse" },
@@ -271,15 +272,7 @@ const OwnerDashboard = () => {
               ]}
             />
           ) : active === "agents" ? (
-            <TabStub
-              title="Agents"
-              blurb="Who to call."
-              points={[
-                "Rate × volume 'who to call' scatter",
-                "Momentum + the live quarterly board",
-                "Windowed concentration + gut-vs-data flags",
-              ]}
-            />
+            <AgentsTab loads={loads} />
           ) : (
             <TabStub
               title="Fleet"

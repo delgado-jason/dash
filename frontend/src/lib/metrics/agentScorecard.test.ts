@@ -6,6 +6,7 @@ import {
   buildAgentScorecards,
   agentRosterAnalytics,
   concentrationAnalytics,
+  agentMomentum,
 } from "./agentScorecard";
 
 const load = (over: Partial<Load>): Load =>
@@ -184,5 +185,21 @@ describe("concentrationAnalytics (windowed + per-agent)", () => {
     const c = concentrationAnalytics(loads, NOW);
     expect(c.overSingleCap).toBe(false); // each 25% < 30%
     expect(c.singleMax?.share).toBeCloseTo(0.25, 5);
+  });
+});
+
+describe("agentMomentum", () => {
+  const NOW = new Date("2026-08-06T12:00:00Z");
+  it("computes recent-vs-prior % change; surging-from-zero caps at +1", () => {
+    const loads = [
+      load({ agent_id: "up", delivery_date: "2026-07-15", linehaul: "8000" }), // recent
+      load({ agent_id: "up", delivery_date: "2026-03-15", linehaul: "4000" }), // prior
+      load({ agent_id: "new", delivery_date: "2026-07-15", linehaul: "5000" }), // recent only
+      load({ agent_id: "gone", delivery_date: "2026-03-15", linehaul: "5000" }), // prior only
+    ];
+    const m = agentMomentum(loads, NOW);
+    expect(m.get("up")).toBeCloseTo(1.0, 5); // 8k/4k − 1
+    expect(m.get("new")).toBe(1); // from zero prior
+    expect(m.get("gone")).toBeCloseTo(-1, 5); // 0/5k − 1
   });
 });
