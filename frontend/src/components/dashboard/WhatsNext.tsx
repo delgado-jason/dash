@@ -1,17 +1,28 @@
 import { Link } from "react-router-dom";
 import type { UpcomingLoad } from "@/lib/metrics/dashboard";
+import { money } from "@/lib/format";
 
 interface Props {
   loads: UpcomingLoad[];
 }
 
-// Format in UTC to avoid the local-timezone day-shift on date-only strings.
+// Weekday + date, in UTC to avoid the local-timezone day-shift on date-only strings.
 const fmtDate = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-US", {
+    weekday: "short",
     month: "short",
     day: "numeric",
     timeZone: "UTC",
   });
+
+const OVR = () => (
+  <span
+    className="text-[8px] font-extrabold tracking-wide px-1.5 py-0.5 rounded"
+    style={{ color: "#f5b03a", background: "#3a2408", border: "1px solid #85560b" }}
+  >
+    OVR
+  </span>
+);
 
 export const WhatsNext = ({ loads }: Props) => {
   if (loads.length === 0)
@@ -23,13 +34,19 @@ export const WhatsNext = ({ loads }: Props) => {
         <Link
           key={load.load_id}
           to={`/loads/${load.load_id}`}
-          className="flex justify-between text-sm py-1.5 border-t border-steel first:border-t-0 hover:opacity-80"
+          className="flex items-start justify-between gap-2 py-1.5 hover:opacity-80 border-t first:border-t-0"
+          style={{ borderColor: "#1a2233" }}
         >
-          <span className="text-light truncate">
-            #{load.load_number} · {load.lane}
+          <span className="min-w-0 flex flex-col">
+            <span className="text-[12px] text-light truncate flex items-center gap-1.5">
+              {load.lane}
+              {load.oversize && <OVR />}
+            </span>
+            <span className="text-[10px] text-muted-text truncate">{load.agent}</span>
           </span>
-          <span className="text-muted-text whitespace-nowrap ml-2">
-            {fmtDate(load.pickup_date)}
+          <span className="shrink-0 text-right flex flex-col">
+            <span className="text-[12px] font-bold">{money(load.gross)}</span>
+            <span className="text-[10px] text-muted-text">{fmtDate(load.pickup_date)}</span>
           </span>
         </Link>
       ))}

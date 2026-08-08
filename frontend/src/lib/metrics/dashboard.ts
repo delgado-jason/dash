@@ -468,6 +468,9 @@ export interface UpcomingLoad {
   load_number: string;
   lane: string;
   pickup_date: string;
+  agent: string; // who booked it
+  gross: number; // all-in booked value (market rate, matches "committed & booked")
+  oversize: boolean; // load_type reads oversize → OVR badge
 }
 
 export const getUpcomingLoads = (loads: Load[], limit = 5): UpcomingLoad[] => {
@@ -484,6 +487,12 @@ export const getUpcomingLoads = (loads: Load[], limit = 5): UpcomingLoad[] => {
     load_number: load.load_number,
     lane: `${load.origin_market} → ${load.delivery_market}`,
     pickup_date: load.pickup_date,
+    agent: load.agent,
+    gross:
+      Number(load.linehaul) +
+      Number(load.fuel_surcharge) +
+      Number(load.total_accessorials),
+    oversize: /over/i.test(load.load_type ?? ""),
   }));
 };
 
