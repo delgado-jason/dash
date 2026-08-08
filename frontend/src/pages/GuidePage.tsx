@@ -1377,20 +1377,24 @@ const GuidePage = () => {
 
           <Metric
             title="Cost to run per mile — what the truck costs you"
-            answers="The truck's own operating cost per mile — fuel plus maintenance. The truck note isn't here; it lives on the payoff tracker, so it's never double-counted."
+            answers="What the rig costs per mile, all-in: fuel, maintenance, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into the whole rig."
             sources={[{ label: "Garage", to: "/garage" }]}
           >
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <ChainBox top="$0.58" bottom="fuel / mi" />
+              <ChainBox top="$0.28" bottom="fuel / mi" />
               <span className="text-muted-text">+</span>
-              <ChainBox top="$0.14" bottom="maintenance / mi" />
+              <ChainBox top="$0.12" bottom="maintenance / mi" />
+              <span className="text-muted-text">+</span>
+              <ChainBox top="$0.50" bottom="note / mi" />
               <span className="text-muted-text">=</span>
-              <ChainBox top="$0.72" bottom="cost to run / mi" />
+              <ChainBox top="$0.90" bottom="cost to run / mi" />
             </div>
-            <Formula>(fuel spend + maintenance spend) ÷ miles driven</Formula>
+            <Formula>(fuel + maintenance) ÷ miles driven + note ÷ miles per month</Formula>
             <Why>
-              The real cost of keeping this truck rolling, kept separate from
-              financing.
+              The real cost of keeping the rig rolling — the note included, so the
+              number reflects what actually leaves your pocket each mile. The same
+              payment also shows on the payoff tracker, but as balance paid down, not
+              a per-mile cost.
             </Why>
           </Metric>
 

@@ -4,7 +4,7 @@ import type { Load } from "@/types/load";
 import { useFleetData } from "@/hooks/useFleetData";
 import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
 import { computeDue, fleetHealth, type Due, type DueLevel } from "@/lib/metrics/maintenance";
-import { shopSpend, fleetHeatmap, type DayStatus } from "@/lib/metrics/fleet";
+import { shopSpend, fleetHeatmap, lastHomeDay, type DayStatus } from "@/lib/metrics/fleet";
 import { hometimeStatus } from "@/lib/metrics/hometime";
 import { itemToCheckable, cdlToCheckable, computeComplianceDue, type ComplianceLevel } from "@/lib/metrics/compliance";
 import { mpgWindows, monthlyFuelPrice } from "@/lib/metrics/fuelEconomy";
@@ -56,16 +56,16 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
   // single owner-operator: all loads are this truck's
   const metrics = useMemo(
-    () => (truck ? computeTruckMetrics(truck, loads, fleet.fuel, fleet.services, now, fleet.homeDays) : null),
-    [truck, loads, fleet.fuel, fleet.services, fleet.homeDays, now],
+    () => (truck ? computeTruckMetrics(truck, loads, fleet.fuel, fleet.services, now, fleet.homeDays, fleet.travelDays) : null),
+    [truck, loads, fleet.fuel, fleet.services, fleet.homeDays, fleet.travelDays, now],
   );
   const shop = useMemo(() => shopSpend(fleet.services, now, 12), [fleet.services, now]);
-  const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, now, 26), [loads, fleet.homeDays, now]);
+  const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, fleet.travelDays, now, 26), [loads, fleet.homeDays, fleet.travelDays, now]);
 
-  const home = useMemo(
-    () => hometimeStatus(fleet.lastHome, fleet.hometimeThreshold ?? HOME_TARGET_FALLBACK, now),
-    [fleet.lastHome, fleet.hometimeThreshold, now],
-  );
+  const home = useMemo(() => {
+    const lh = lastHomeDay(loads, fleet.homeDays, fleet.travelDays, now);
+    return hometimeStatus(lh, fleet.hometimeThreshold ?? HOME_TARGET_FALLBACK, now);
+  }, [loads, fleet.homeDays, fleet.travelDays, fleet.hometimeThreshold, now]);
 
   const dues = useMemo(() => {
     const cur = truck ? Number(truck.current_odometer) || null : null;
@@ -102,14 +102,23 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const mpgSeries = useMemo(() => mpgWindows(fleet.fuel).slice(-8).map((w) => w.mpg), [fleet.fuel]);
   const paidPerGal = useMemo(() => monthlyFuelPrice(fleet.fuel).at(-1)?.avgPrice ?? null, [fleet.fuel]);
 
-  // Split fuel vs maintenance from the SPEND components (both dollars) so the
-  // shares always sit in 0–100% and the per-mile figures share one denominator.
-  const costPerMile = metrics?.costToRunPerMile ?? null; // (fuel + maint) ÷ total miles
-  const runSpend = (metrics?.fuelSpend ?? 0) + (metrics?.maintSpend ?? 0);
+  // Cost to run, all-in: fuel + maintenance (spend ÷ total miles) PLUS the rig's
+  // own note (monthly truck + trailer payment ÷ miles/month). Shares are by
+  // per-mile component so they always sum to 100%.
   const tMiles = metrics?.totalMiles ?? 0;
+  const mpm = metrics?.milesPerMonth ?? null;
   const fuelPerMile = tMiles > 0 ? (metrics?.fuelSpend ?? 0) / tMiles : null;
   const maintPerMile = tMiles > 0 ? (metrics?.maintSpend ?? 0) / tMiles : null;
-  const fuelPct = runSpend > 0 ? Math.round(((metrics?.fuelSpend ?? 0) / runSpend) * 100) : null;
+  const notePerMile = mpm && mpm > 0 && fleet.assetNote > 0 ? fleet.assetNote / mpm : null;
+  const costParts = (
+    [
+      { key: "fuel", label: "fuel", v: fuelPerMile, color: "#c8890a" },
+      { key: "maint", label: "maintenance", v: maintPerMile, color: "#5f7fd0" },
+      { key: "note", label: "truck + trailer note", v: notePerMile, color: "#a06ad0" },
+    ] as { key: string; label: string; v: number | null; color: string }[]
+  ).filter((p): p is { key: string; label: string; v: number; color: string } => p.v != null);
+  const costPerMile = costParts.length ? costParts.reduce((s, p) => s + p.v, 0) : null;
+  const costPct = (v: number) => (costPerMile && costPerMile > 0 ? Math.round((v / costPerMile) * 100) : 0);
   const dieselGap = paidPerGal != null && fleet.nationalDiesel != null ? paidPerGal - fleet.nationalDiesel : null;
 
   if (fleet.loading)
@@ -217,8 +226,8 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           {dues.length === 0 ? (
             <p className="text-xs text-muted-text">No maintenance schedule yet.</p>
           ) : (
-            dues.slice(0, 4).map((d) => (
-              <div key={d.name} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
+            dues.slice(0, 4).map((d, i) => (
+              <div key={`${d.name}-${i}`} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DUE_DOT[d.due.level] }} />
                 <span className="truncate">{d.name}</span>
                 <span className="ml-auto text-[11px] whitespace-nowrap" style={{ color: d.due.level === "overdue" ? "#f87171" : d.due.level === "soon" ? "#f5a623" : "#8b93a3" }}>
@@ -232,8 +241,8 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
             <div className="border-t mt-3 pt-2.5" style={{ borderColor: "#1a2233" }}>
               <p className="text-[10px] uppercase tracking-wide text-muted-text font-bold mb-1.5">Compliance</p>
               <div className="flex flex-wrap gap-1.5">
-                {chips.map((c) => (
-                  <span key={c.label} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${COMP[c.level].cls}`} style={{ background: "#0e1420", border: "1px solid #26304a" }}>
+                {chips.map((c, i) => (
+                  <span key={`${c.label}-${i}`} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${COMP[c.level].cls}`} style={{ background: "#0e1420", border: "1px solid #26304a" }}>
                     {c.label} · {c.level === "expired" ? `expired ${Math.abs(c.daysRemaining ?? 0)}d` : c.level === "expiring" ? `${c.daysRemaining}d` : "ok"}
                   </span>
                 ))}
@@ -288,12 +297,22 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           ) : (
             <>
               <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid #26304a" }}>
-                {fuelPct != null && <div className="flex items-center justify-center text-[10px] font-bold" style={{ width: `${fuelPct}%`, background: "#c8890a", color: "#0d1119" }}>Fuel {fuelPct}%</div>}
-                {fuelPct != null && <div className="flex items-center justify-center text-[10px] font-bold" style={{ width: `${100 - fuelPct}%`, background: "#5f7fd0", color: "#0d1119" }}>Maint {100 - fuelPct}%</div>}
+                {costParts.map((p) => (
+                  <div key={p.key} className="flex items-center justify-center text-[9px] font-bold" style={{ width: `${costPct(p.v)}%`, background: p.color, color: "#0d1119" }}>
+                    {costPct(p.v) >= 14 ? `${costPct(p.v)}%` : ""}
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between text-[11.5px] py-0.5"><span><b style={{ color: "#c8890a" }}>{rpm(fuelPerMile)}</b> fuel / mi</span></div>
-              <div className="flex justify-between text-[11.5px] py-0.5"><span><b style={{ color: "#5f7fd0" }}>{rpm(maintPerMile)}</b> maintenance / mi</span><span className="text-muted-text">{fuelPct != null ? `${100 - fuelPct}% of the cost` : ""}</span></div>
-              <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "#1a2233" }}><span className="font-bold">{rpm(costPerMile)} total / mi</span><span className="text-muted-text">to keep her rolling</span></div>
+              {costParts.map((p) => (
+                <div key={p.key} className="flex justify-between text-[11.5px] py-0.5">
+                  <span><b style={{ color: p.color }}>{rpm(p.v)}</b> {p.label} / mi</span>
+                  <span className="text-muted-text">{costPct(p.v)}%</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "#1a2233" }}>
+                <span className="font-bold">{rpm(costPerMile)} total / mi</span>
+                <span className="text-muted-text">all-in to keep her rolling</span>
+              </div>
             </>
           )}
           {paidPerGal != null && (

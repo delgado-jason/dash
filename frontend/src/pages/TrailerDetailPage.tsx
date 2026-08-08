@@ -109,6 +109,18 @@ const TrailerDetailPage = () => {
       isPayoffTracked(o),
   );
 
+  // The trailer's monthly note — folded into cost-to-run (all-in). Active, non-draw,
+  // trailer-scoped, mirroring the truck page.
+  const trailerNote = obligations
+    .filter(
+      (o) =>
+        o.active &&
+        !o.is_draw &&
+        o.asset_type === "trailer" &&
+        (o.asset_id === id || o.asset_id == null),
+    )
+    .reduce((s, o) => s + (Number(o.amount) || 0), 0);
+
   // Latest hub reading, derived from the app: stored + newest trailer service.
   const hub = useMemo(() => {
     if (!trailer) return 0;
@@ -174,7 +186,7 @@ const TrailerDetailPage = () => {
     );
 
   const now = new Date();
-  const metrics = computeTrailerMetrics(trailer, trailerLoads, services, now);
+  const metrics = computeTrailerMetrics(trailer, trailerLoads, services, now, trailerNote);
   const trailerMedals = earnedMedals(
     computeTrailerMedals({
       hubMiles: hub,
@@ -309,7 +321,7 @@ const TrailerDetailPage = () => {
           <Kpi
             value={metrics.costToRunPerMile != null ? `$${metrics.costToRunPerMile.toFixed(2)}` : "—"}
             label="COST TO RUN / MI"
-            sub="maintenance only"
+            sub={metrics.notePerMile != null ? "maintenance + note" : "maintenance only"}
           />
           <Kpi value={metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—"} label="MI / MONTH" />
         </div>

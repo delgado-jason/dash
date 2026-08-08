@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from "vitest";
 import type { Load } from "@/types/load";
 import type { MaintenanceService } from "@/types/maintenance";
-import { shopSpend, fleetHeatmap } from "./fleet";
+import { shopSpend, fleetHeatmap, lastHomeDay } from "./fleet";
 
 const NOW = new Date("2026-08-15T12:00:00Z");
 beforeEach(() => {
@@ -67,27 +67,61 @@ describe("fleetHeatmap", () => {
   const cellFor = (h: ReturnType<typeof fleetHeatmap>, date: string) =>
     h.cells.find((c) => c.date === date);
 
-  it("returns 7×weeks cells, classifies each, labels months", () => {
+  it("classifies days: under-load, explicit home, travel=idle, unmarked=home", () => {
     const loads = [load("2026-08-13", "2026-08-14")]; // 2-day haul
-    const h = fleetHeatmap(loads, ["2026-08-10"], NOW, 4);
+    const h = fleetHeatmap(loads, ["2026-08-10"], ["2026-08-05"], NOW, 4);
     expect(h.cells).toHaveLength(28);
-    expect(h.weeks).toBe(4);
     expect(h.months.length).toBeGreaterThan(0);
     expect(cellFor(h, "2026-08-14")?.status).toBe("underload");
-    expect(cellFor(h, "2026-08-13")?.status).toBe("underload");
-    expect(cellFor(h, "2026-08-10")?.status).toBe("home");
-    expect(cellFor(h, "2026-08-15")?.status).toBe("idle"); // today, nothing
+    expect(cellFor(h, "2026-08-10")?.status).toBe("home"); // explicit mark
+    expect(cellFor(h, "2026-08-05")?.status).toBe("idle"); // travel, not loaded
+    expect(cellFor(h, "2026-08-12")?.status).toBe("home"); // unmarked → home
   });
 
   it("an explicit home mark WINS over a load span covering it", () => {
     const loads = [load("2026-08-10", "2026-08-14")]; // span covers 08-14
-    const h = fleetHeatmap(loads, ["2026-08-14"], NOW, 4);
-    expect(cellFor(h, "2026-08-14")?.status).toBe("home"); // home overrides under-load
-    expect(cellFor(h, "2026-08-13")?.status).toBe("underload"); // still hauling
+    const h = fleetHeatmap(loads, ["2026-08-14"], [], NOW, 4);
+    expect(cellFor(h, "2026-08-14")?.status).toBe("home");
+    expect(cellFor(h, "2026-08-13")?.status).toBe("underload");
   });
 
   it("marks days after today as future (blank)", () => {
-    const h = fleetHeatmap([], [], NOW, 4);
+    const h = fleetHeatmap([], [], [], NOW, 4);
     h.cells.filter((c) => c.future).forEach((c) => expect(c.date > "2026-08-15").toBe(true));
+  });
+});
+
+describe("lastHomeDay", () => {
+  it("most recent home day, counting unmarked as home", () => {
+    const loads = [load("2026-08-13", "2026-08-15")]; // out (loaded) 13–15
+    const travel = ["2026-08-11", "2026-08-12"]; // on the road 11–12
+    // 08-10 and back are unmarked → home; most recent home is 08-10
+    expect(lastHomeDay(loads, [], travel, NOW)).toBe("2026-08-10");
+  });
+
+  it("returns today when today is unmarked and not under load", () => {
+    expect(lastHomeDay([], [], [], NOW)).toBe("2026-08-15");
+  });
+});
+
+// Regression: the operator's per-diem calendar is in LOCAL days, so "today" must be
+// the local day. On a US evening the UTC date is already tomorrow — an unmarked day
+// that would read as home and falsely reset the counter to "home today."
+describe("lastHomeDay — local-day anchor (timezone)", () => {
+  const orig = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = "America/Chicago";
+  });
+  afterAll(() => {
+    process.env.TZ = orig;
+  });
+
+  it("uses the operator's local 'today', not the UTC date", () => {
+    // 2026-08-09T01:00Z = 2026-08-08 20:00 CDT — local day is the 8th, UTC day the 9th.
+    const now = new Date("2026-08-09T01:00:00Z");
+    expect(now.toISOString().slice(0, 10)).toBe("2026-08-09"); // sanity: UTC really is the 9th
+    // nothing marked/loaded → every day is home; the most recent home is TODAY, and
+    // "today" is the operator's local day (the 8th), matching the per-diem calendar.
+    expect(lastHomeDay([], [], [], now)).toBe("2026-08-08");
   });
 });

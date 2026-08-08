@@ -1,6 +1,6 @@
 // Trailer-scoped metrics. A trailer has no engine, so there's no fuel line — its
-// cost to run is maintenance alone, and it earns on its own 8% slice of the loads it
-// carried. Pure; take `now` explicitly.
+// cost to run is maintenance plus its own note (passed in as `assetNote`), and it
+// earns on its own 8% slice of the loads it carried. Pure; take `now` explicitly.
 import type { Load } from "@/types/load";
 import type { MaintenanceService } from "@/types/maintenance";
 import type { Trailer } from "@/types/trailer";
@@ -9,7 +9,8 @@ import { loadTrailerNet } from "./rateTargets";
 export interface TrailerMetrics {
   utilization: number | null; // active weeks ÷ weeks in service
   earningsPerMile: number | null; // its 8% share ÷ miles carried
-  costToRunPerMile: number | null; // maintenance ÷ miles (no fuel)
+  costToRunPerMile: number | null; // (maintenance + note) ÷ miles (no fuel) — all-in
+  notePerMile: number | null; // trailer note ÷ miles/month (null when no note passed)
   milesPerMonth: number | null;
   totalMiles: number;
   earnings: number; // cumulative 8% share
@@ -44,6 +45,7 @@ export const computeTrailerMetrics = (
   trailerLoads: Load[],
   services: MaintenanceService[],
   now: Date,
+  assetNote = 0, // monthly trailer note — folds into cost-to-run
 ): TrailerMetrics => {
   const earnedLoads = trailerLoads.filter(
     (l) => l.load_status === "delivered" && l.payment_status === "paid",
@@ -66,12 +68,22 @@ export const computeTrailerMetrics = (
   const monthsInService = inService
     ? Math.max(1, (now.getTime() - inService.getTime()) / (30.44 * DAY))
     : null;
+  const milesPerMonth = monthsInService ? totalMiles / monthsInService : null;
+
+  // All-in: maintenance ÷ miles plus the trailer's own note spread over its monthly
+  // miles. Mirrors the truck's cost-to-run so the label means the same thing.
+  const notePerMile =
+    milesPerMonth && milesPerMonth > 0 && assetNote > 0 ? assetNote / milesPerMonth : null;
+  const operatingPerMile = totalMiles > 0 ? maintSpend / totalMiles : null;
+  const costToRunPerMile =
+    operatingPerMile != null ? operatingPerMile + (notePerMile ?? 0) : null;
 
   return {
     utilization,
     earningsPerMile: totalMiles > 0 ? earnings / totalMiles : null,
-    costToRunPerMile: totalMiles > 0 ? maintSpend / totalMiles : null,
-    milesPerMonth: monthsInService ? totalMiles / monthsInService : null,
+    costToRunPerMile,
+    notePerMile,
+    milesPerMonth,
     totalMiles,
     earnings,
     loads: earnedLoads.length,
