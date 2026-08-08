@@ -63,7 +63,7 @@ export const AgentScatter = ({ points }: { points: ScatterPoint[] }) => {
     );
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full lg:flex-1 lg:min-h-0" preserveAspectRatio="xMidYMid meet">
       {/* gridlines */}
       {geom.yTicks.map((t, i) => (
         <g key={i}>

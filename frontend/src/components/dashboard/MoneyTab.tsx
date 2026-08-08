@@ -78,13 +78,13 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
   const x0 = (620 - colW * bars.length) / 2;
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between mb-3">
+    <div className="flex flex-col gap-3 lg:flex-1 lg:min-h-0">
+      <div className="flex items-baseline justify-between">
         <h2 className="text-xl font-condensed text-light">The money</h2>
         <span className="text-xs text-muted-text">P&amp;L · margin · where it goes — {year} to date</span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         <Tile label={`Income · ${year}`} value={money(ytdIncome)} sub={`${ytd.length} months · net of carrier cut`} />
         <Tile label="Operating profit" value={money(ytdProfit)} color="#4ade80" sub="income − COGS − expenses" />
         <Tile
@@ -96,13 +96,13 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
         <Tile label="Best month" value={best ? `${monthShort(best.month)} · ${Math.round(best.margin * 100)}%` : "—"} sub={best ? `${money(best.profit)} profit` : ""} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 lg:flex-1 lg:min-h-0">
         {/* monthly P&L */}
-        <div className="rounded-xl p-3 pb-2.5" style={C}>
+        <div className="rounded-xl p-3 pb-2.5 flex flex-col" style={C}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-1 flex justify-between">
             Monthly P&amp;L <span className="normal-case tracking-normal text-muted-text font-normal">income = kept + spent</span>
           </h3>
-          <svg viewBox="0 0 620 168" className="w-full">
+          <svg viewBox="0 0 620 168" className="w-full lg:flex-1 lg:min-h-0" preserveAspectRatio="xMidYMid meet">
             <line x1="0" y1="140" x2="620" y2="140" stroke="#1c2536" />
             {bars.map((r, i) => {
               const incH = Math.max(2, (r.income / barMax) * H);
@@ -132,9 +132,9 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
         </div>
 
         {/* margin trend */}
-        <div className="rounded-xl p-3" style={C}>
+        <div className="rounded-xl p-3 flex flex-col" style={C}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2">Margin trend</h3>
-          <svg viewBox="0 0 320 140" className="w-full">
+          <svg viewBox="0 0 320 140" className="w-full lg:flex-1 lg:min-h-0" preserveAspectRatio="xMidYMid meet">
             {marginGoal != null && (
               <>
                 <line x1="8" y1={120 - marginGoal * 220} x2="312" y2={120 - marginGoal * 220} stroke="#4ade80" strokeDasharray="4 4" opacity={0.5} />
@@ -156,8 +156,8 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
       </div>
 
       {/* where it goes (year to date, by category) + pipeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3">
-        <div className="rounded-xl p-3.5" style={C}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 lg:flex-1 lg:min-h-0">
+        <div className="rounded-xl p-3.5 flex flex-col" style={C}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2.5 flex justify-between">
             Where it goes · {year}
             <span className="normal-case tracking-normal font-normal">{money(ytdIncome)} income</span>
@@ -193,7 +193,7 @@ export const MoneyTab = ({ loads, marginGoal }: { loads: Load[]; marginGoal: num
           )}
         </div>
 
-        <div className="rounded-xl p-3.5" style={C}>
+        <div className="rounded-xl p-3.5 flex flex-col justify-center" style={C}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2">Settlement pipeline</h3>
           <p className="text-[26px] font-extrabold" style={{ color: "#4ade80" }}>{money(pipeline)}</p>
           <p className="text-[11px] text-muted-text mt-1">Delivered, POD in, not yet settled — landing on your upcoming weekly settlement(s). No aging: it clears every week.</p>

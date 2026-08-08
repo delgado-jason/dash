@@ -16,7 +16,7 @@ const AppLayout = () => {
               sideways. Wide content that must scroll keeps its own overflow-x-auto
               scroller, so this only clips true page-level overflow, never a table.
               overflow-y stays auto, so vertical scroll and sticky children work. */}
-          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-background text-foreground">
+          <main className="flex-1 min-w-0 flex flex-col overflow-y-auto overflow-x-hidden bg-background text-foreground">
             <div className="p-3 border-b border-border">
               <SidebarTrigger />
             </div>

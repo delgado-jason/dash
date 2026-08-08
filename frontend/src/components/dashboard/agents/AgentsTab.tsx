@@ -143,8 +143,8 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
   const elseShare = Math.max(0, 1 - topShares.reduce((s, x) => s + x.share, 0));
 
   return (
-    <div>
-      <div className="flex items-baseline justify-between mb-3">
+    <div className="flex flex-col gap-3 lg:flex-1 lg:min-h-0">
+      <div className="flex items-baseline justify-between">
         <h2 className="text-xl font-condensed text-light">Your agent bench</h2>
         <span className="text-xs text-muted-text">
           who pays · who volumes · who to call — {quarterKey(now.toISOString())}
@@ -152,7 +152,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
         <KpiTile
           label="Rate leader"
           value={roster.rateLeader ? `${fmtRpm(roster.rateLeader.medianRpm)}/mi` : "—"}
@@ -190,7 +190,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
       </div>
 
       {/* hero scatter */}
-      <div className="rounded-xl p-3 mb-3" style={C.card}>
+      <div className="rounded-xl p-3 flex flex-col lg:flex-1 lg:min-h-0" style={C.card}>
         <div className="flex items-center justify-between mb-1">
           <span className="text-[13px] font-bold text-light">Who to call — rate × volume</span>
           <span className="text-[11px] text-muted-text">bubble = revenue · click to open an agent</span>
@@ -204,7 +204,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
       </div>
 
       {/* momentum + live board */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="rounded-xl p-3.5" style={C.card}>
           <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2.5">
             Momentum — last 90d vs prior

@@ -91,6 +91,26 @@ const Section = ({
   </section>
 );
 
+// One dashboard tab in the overview: its name, the question it answers, and what
+// lives on it.
+const TabLine = ({
+  name,
+  q,
+  children,
+}: {
+  name: string;
+  q: string;
+  children: ReactNode;
+}) => (
+  <div className="rounded-md p-3" style={{ background: "#0d1119", border: "1px solid #22304a" }}>
+    <p className="text-sm">
+      <span className="font-condensed font-bold" style={{ color: AMBER_HI }}>{name}</span>
+      <span className="text-muted-text"> — {q}</span>
+    </p>
+    <p className="text-xs text-muted-text mt-1">{children}</p>
+  </div>
+);
+
 // One row in the award catalog: emblem + name + how to earn it.
 const AwardLine = ({
   icon,
@@ -302,6 +322,10 @@ const GroupHeading = ({ children }: { children: string }) => (
 // section anchors. Keep this in step with the sections as the guide grows.
 const NAV: { group: string; items: string[] }[] = [
   {
+    group: "The dashboard",
+    items: ["The tabbed dashboard — five views of your operation"],
+  },
+  {
     group: "The money",
     items: [
       "Your net revenue — what you actually keep",
@@ -507,8 +531,52 @@ const GuidePage = () => {
 
         <main className="flex-1 min-w-0 max-w-3xl">
           <h2
-            id={slug("The money")}
+            id={slug("The dashboard")}
             className="font-condensed text-2xl mb-3 scroll-mt-6"
+            style={{ color: AMBER_HI }}
+          >
+            The dashboard
+          </h2>
+
+          <Section title="The tabbed dashboard — five views of your operation">
+            <p className="text-sm text-muted-text mb-3">
+              The dashboard is split into tabs, each answering one question at a
+              glance. Pick a tab and it stays put — dash remembers where you left
+              off next time you open it.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <TabLine name="Pulse" q="How's my day going?">
+                This pay week's earnings vs your target, your booking rate against
+                your floor, what's booked next, the settlement pipeline, and any
+                overdue maintenance or compliance — the two most urgent show, the
+                rest fold behind a tap.
+              </TabLine>
+              <TabLine name="Money" q="Am I profitable?">
+                Year-to-date income, operating profit and margin against your goal,
+                the monthly P&amp;L, your margin trend, where the money goes by
+                expense category, and what's delivered but not yet settled.
+              </TabLine>
+              <TabLine name="Lanes" q="Where does my freight run?">
+                The U.S. map shaded by your $/mi (fire marks your best-paying
+                markets), your top lanes by gross, and your load-type mix —
+                oversize, flatbed, specialized. The 30/60/90 toggle sets both the
+                window and how finely the map groups.
+              </TabLine>
+              <TabLine name="Agents" q="Who should I call?">
+                Your bench plotted by rate × volume, momentum vs the prior 90 days,
+                the live quarter board, revenue concentration (so no one agent owns
+                too much of your book), and who's going cold.
+              </TabLine>
+              <TabLine name="Fleet" q="Asset health">
+                Truck and driver utilization, fuel MPG trend, and next service due.
+                <span style={{ color: AMBER }}> Coming soon.</span>
+              </TabLine>
+            </div>
+          </Section>
+
+          <h2
+            id={slug("The money")}
+            className="font-condensed text-2xl mb-3 mt-8 scroll-mt-6"
             style={{ color: AMBER_HI }}
           >
             The money

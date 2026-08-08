@@ -21,6 +21,7 @@ export interface LaneStat {
   origin: string;
   destination: string;
   loadCount: number;
+  gross: number; // all-in gross over the lane's loads (market value)
   avgRpm: number | null;
   medianRpm: number | null;
 }
@@ -152,6 +153,7 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
           origin: first.origin_market,
           destination: first.delivery_market,
           loadCount: laneLoads.length,
+          gross: grossRevenue(laneLoads),
           avgRpm: avgRpm(laneLoads),
           medianRpm: medianRpm(laneLoads),
         });
@@ -240,6 +242,7 @@ export const groupKeyForStateName = (
 export interface AreaMapDatum {
   key: string; // state name, or region / macro label
   loadCount: number; // delivered loads in the window
+  gross: number; // all-in gross originating here (market value)
   avgRpm: number | null; // blended gross ÷ loaded mile
   medianRpm: number | null; // typical single-load $/mi (drives rate shading)
   members: string[]; // origin markets (state level) or member states (grouped)
@@ -273,12 +276,54 @@ export const getAreaMapData = (
     out[key] = {
       key,
       loadCount: group.length,
+      gross: grossRevenue(group),
       avgRpm: avgRpm(group),
       medianRpm: medianRpm(group),
       members,
     };
   }
   return out;
+};
+
+// ---- LOAD-TYPE MIX ---- (delivered loads grouped by load_type, by gross)
+export interface LoadTypeSlice {
+  type: string;
+  gross: number;
+  loadCount: number;
+  share: number; // 0..1 of total gross
+}
+export const getLoadTypeMix = (loads: Load[]): LoadTypeSlice[] => {
+  const delivered = deliveredOnly(loads);
+  const total = grossRevenue(delivered);
+  const slices: LoadTypeSlice[] = [];
+  for (const [type, ls] of groupBy(delivered, (l) => l.load_type?.trim() || "Other")) {
+    const g = grossRevenue(ls);
+    slices.push({ type, gross: g, loadCount: ls.length, share: total > 0 ? g / total : 0 });
+  }
+  return slices.sort((a, b) => b.gross - a.gross);
+};
+
+// The single origin area (state / region / macro) contributing the most gross in
+// the window, with its share of the book — for the "top origin" KPI.
+export interface TopOrigin {
+  key: string;
+  gross: number;
+  loadCount: number;
+  loadShare: number; // 0..1 of delivered loads in the window
+}
+export const getTopOrigin = (
+  mapData: Record<string, AreaMapDatum>,
+): TopOrigin | null => {
+  const areas = Object.values(mapData);
+  if (areas.length === 0) return null;
+  const totalLoads = areas.reduce((s, a) => s + a.loadCount, 0);
+  const top = areas.reduce((b, a) => (a.gross > b.gross ? a : b));
+  return {
+    key: top.key,
+    gross: top.gross,
+    loadCount: top.loadCount,
+    loadShare: totalLoads > 0 ? top.loadCount / totalLoads : 0,
+  };
 };
 
 // ---- STATE DRILL-DOWN ----
@@ -332,6 +377,7 @@ const buildDetail = (
       origin: first.origin_market,
       destination: first.delivery_market,
       loadCount: laneLoads.length,
+      gross: grossRevenue(laneLoads),
       avgRpm: avgRpm(laneLoads),
       medianRpm: medianRpm(laneLoads),
     });

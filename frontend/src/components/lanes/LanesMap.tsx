@@ -15,6 +15,7 @@ interface Props {
   windowDays: number;
   selected: string | null;
   onSelect: (key: string) => void;
+  noir?: boolean; // the standalone page uses the comic-noir panel; the dashboard tab is flat
 }
 
 type Mode = "rate" | "volume";
@@ -58,7 +59,7 @@ interface HoverState {
   datum: AreaMapDatum;
 }
 
-export const LanesMap = ({ data, level, windowDays, selected, onSelect }: Props) => {
+export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = true }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
   const [mode, setMode] = useState<Mode>("rate");
@@ -175,7 +176,7 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect }: Props)
   const drillHint = level === "state" ? "click a state to drill in" : "click a region to drill in";
 
   return (
-    <Panel ref={containerRef} noir className="p-4 relative">
+    <Panel ref={containerRef} noir={noir} className="p-4 relative h-full flex flex-col">
       <div className="text-xs text-muted-text mb-2 flex items-center gap-2 flex-wrap">
         <span>Shade by</span>
         {toggle("rate", "your $/mi")}
@@ -185,7 +186,7 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect }: Props)
         </span>
         <span>· grouped by {levelWord} · {drillHint}</span>
       </div>
-      <svg viewBox="0 0 900 560" className="w-full">
+      <svg viewBox="0 0 900 560" className="w-full flex-1 min-h-0" preserveAspectRatio="xMidYMid meet">
         {shapes.map((s, i) => {
           const datum = data[s.key];
           const isSel = selected === s.key;

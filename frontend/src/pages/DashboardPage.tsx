@@ -15,6 +15,7 @@ import { DashboardShell, TabStub, type DashTab } from "@/components/dashboard/Da
 import { AgentsTab } from "@/components/dashboard/agents/AgentsTab";
 import { PulseTab } from "@/components/dashboard/PulseTab";
 import { MoneyTab } from "@/components/dashboard/MoneyTab";
+import { LanesTab } from "@/components/dashboard/LanesTab";
 import { isDispatcher } from "@/lib/roles";
 import DispatchDashboard from "./DispatchDashboard";
 
@@ -74,7 +75,7 @@ const OwnerDashboard = () => {
     );
 
   return (
-    <div className="p-6 bg-iron text-light min-h-screen font-body">
+    <div className="p-6 bg-iron text-light min-h-screen font-body lg:flex lg:flex-col lg:flex-1 lg:min-h-0">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
       <DashboardShell
         tabs={DASH_TABS}
@@ -96,15 +97,7 @@ const OwnerDashboard = () => {
           ) : active === "money" ? (
             <MoneyTab loads={loads} marginGoal={targets.marginGoal ?? null} />
           ) : active === "lanes" ? (
-            <TabStub
-              title="Lanes"
-              blurb="Where your freight comes from."
-              points={[
-                "The granularity map (macro / region / state)",
-                "Best lanes and regions",
-                "Load-type mix",
-              ]}
-            />
+            <LanesTab loads={loads} />
           ) : active === "agents" ? (
             <AgentsTab loads={loads} />
           ) : (
