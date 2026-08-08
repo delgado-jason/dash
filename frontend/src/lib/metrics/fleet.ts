@@ -74,32 +74,54 @@ export const shopSpend = (
   return { months: buckets, total, serviceCount, recent };
 };
 
-// ---- THE YEAR IN DAYS ---- (per-day status for the utilization heatmap)
+// ---- THE YEAR IN DAYS ---- (calendar heatmap of how the truck ran)
 export type DayStatus = "underload" | "home" | "idle";
+export interface HeatCell {
+  date: string; // 'YYYY-MM-DD'
+  status: DayStatus;
+  future: boolean; // after today — rendered blank
+}
+export interface Heatmap {
+  cells: HeatCell[]; // 7 × weeks, column-major: each column is a week, row = weekday (Sun→Sat)
+  weeks: number;
+  months: { col: number; label: string }[]; // a label at the column where each month begins
+}
 
-// One entry per day for the last `weeks` weeks, oldest → newest. under-load wins
-// over home (you were working), home wins over idle (chosen time off vs. no
-// freight) — the same honest hierarchy utilization uses.
+// A GitHub-style calendar: columns are weeks (aligned to Sunday so rows are real
+// weekdays), oldest on the left, this week on the right. A "home" mark WINS over
+// a load's pickup→delivery envelope — if you said you were home, you weren't
+// hauling — then under-load, then idle.
 export const fleetHeatmap = (
   loads: Load[],
   homeDays: string[],
   now: Date,
   weeks = 26,
-): DayStatus[] => {
-  const total = weeks * 7;
-  const end = new Date(
+): Heatmap => {
+  const today = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
-  const start = new Date(end.getTime() - (total - 1) * DAY);
-  const under = underLoadDaySet(loads, dayKey(start), dayKey(end));
+  const thisWeekSunday = new Date(today.getTime() - today.getUTCDay() * DAY);
+  const start = new Date(thisWeekSunday.getTime() - (weeks - 1) * 7 * DAY);
+  const todayKey = dayKey(today);
+  const under = underLoadDaySet(loads, dayKey(start), todayKey);
   const home = new Set(homeDays);
 
-  const out: DayStatus[] = [];
+  const cells: HeatCell[] = [];
+  const months: { col: number; label: string }[] = [];
   const cur = new Date(start);
-  for (let i = 0; i < total; i++) {
+  let lastMonth = -1;
+  for (let i = 0; i < weeks * 7; i++) {
     const k = dayKey(cur);
-    out.push(under.has(k) ? "underload" : home.has(k) ? "home" : "idle");
+    const future = k > todayKey;
+    const status: DayStatus = future
+      ? "idle"
+      : home.has(k) ? "home" : under.has(k) ? "underload" : "idle";
+    cells.push({ date: k, status, future });
+    if (i % 7 === 0 && cur.getUTCMonth() !== lastMonth) {
+      months.push({ col: i / 7, label: cur.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }) });
+      lastMonth = cur.getUTCMonth();
+    }
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
-  return out;
+  return { cells, weeks, months };
 };

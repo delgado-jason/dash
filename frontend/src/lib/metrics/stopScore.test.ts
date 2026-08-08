@@ -46,6 +46,18 @@ describe("facilityStops + scoreStops", () => {
     expect(score.gradedStops).toBe(3); // the no-appt stop isn't graded
     expect(score.onTimePct).toBeCloseTo(2 / 3, 5); // 2 of 3 graded were on-time
   });
+
+  it("counts an early arrival (before the window) as on-time, not against", () => {
+    // window 09:00–12:00: early / within = made it; only after-the-end is late
+    const loads = [
+      shipLoad({ shipper_in: "07:00", shipper_out: "10:00", pickup_appt_start: "09:00", pickup_appt_end: "12:00" }), // early → waited
+      shipLoad({ shipper_in: "10:00", shipper_out: "11:00", pickup_appt_start: "09:00", pickup_appt_end: "12:00" }), // within → on-time
+      shipLoad({ shipper_in: "13:00", shipper_out: "14:00", pickup_appt_start: "09:00", pickup_appt_end: "12:00" }), // after end → late
+    ];
+    const score = scoreStops(facilityStops(loads, "FAC", 3));
+    expect(score.gradedStops).toBe(3);
+    expect(score.onTimePct).toBeCloseTo(2 / 3, 5); // early + within count; only the true-late one drags it
+  });
 });
 
 describe("agentStops", () => {

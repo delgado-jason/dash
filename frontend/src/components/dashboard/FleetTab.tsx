@@ -12,7 +12,7 @@ import { money, rpm, dieselPrice } from "@/lib/format";
 
 const C = { background: "#0f1622", border: "1px solid #26304a" } as const;
 const TILE = { background: "#121a27", border: "1px solid #26304a" } as const;
-const HOME_TARGET = 14;
+const HOME_TARGET_FALLBACK = 42; // only if the settlement-schedule setting is missing
 
 const DAY_FILL: Record<DayStatus, string> = { underload: "#2f7d55", home: "#3a5170", idle: "#232c3d" };
 const DUE_DOT: Record<DueLevel, string> = { overdue: "#f87171", soon: "#f5a623", ok: "#2f7d55", unknown: "#5b6577" };
@@ -62,11 +62,10 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const shop = useMemo(() => shopSpend(fleet.services, now, 12), [fleet.services, now]);
   const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, now, 26), [loads, fleet.homeDays, now]);
 
-  const home = useMemo(() => {
-    const todayKey = now.toISOString().slice(0, 10);
-    const lastHome = fleet.homeDays.filter((d) => d <= todayKey).sort().at(-1) ?? null;
-    return hometimeStatus(lastHome, HOME_TARGET, now);
-  }, [fleet.homeDays, now]);
+  const home = useMemo(
+    () => hometimeStatus(fleet.lastHome, fleet.hometimeThreshold ?? HOME_TARGET_FALLBACK, now),
+    [fleet.lastHome, fleet.hometimeThreshold, now],
+  );
 
   const dues = useMemo(() => {
     const cur = truck ? Number(truck.current_odometer) || null : null;
@@ -74,7 +73,11 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
     return fleet.items
       .filter((i) => i.active)
       .map((i) => ({ name: i.name, due: computeDue(i, cur, now, mpm) }))
-      .sort((a, b) => DUE_RANK[a.due.level] - DUE_RANK[b.due.level] || (a.due.etaDate ?? "9") < (b.due.etaDate ?? "9") ? -1 : 1);
+      .sort(
+        (a, b) =>
+          DUE_RANK[a.due.level] - DUE_RANK[b.due.level] ||
+          (a.due.etaDate ?? "9999").localeCompare(b.due.etaDate ?? "9999"),
+      );
   }, [fleet.items, truck, metrics, now]);
 
   const counts = {
@@ -304,15 +307,26 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
       {/* the year in days */}
       <div className="rounded-xl p-3.5" style={C}>
-        <H3 right={<span className="normal-case tracking-normal font-normal">every day, last 26 weeks — the rhythm of the run</span>}>The year in days</H3>
-        <div className="grid gap-[3px] overflow-x-auto" style={{ gridTemplateRows: "repeat(7, 10px)", gridAutoFlow: "column", gridAutoColumns: "10px" }}>
-          {heat.map((s, i) => <span key={i} className="w-2.5 h-2.5 rounded-sm" style={{ background: DAY_FILL[s] }} />)}
+        <H3 right={<span className="normal-case tracking-normal font-normal">each column = one week (Sun→Sat) · oldest left → this week right</span>}>The year in days</H3>
+        <div className="overflow-x-auto">
+          <div style={{ width: heat.weeks * 13 }}>
+            <div className="relative h-3.5 mb-1">
+              {heat.months.map((m) => (
+                <span key={m.col} className="absolute text-[9px] text-muted-text" style={{ left: m.col * 13 }}>{m.label}</span>
+              ))}
+            </div>
+            <div className="grid gap-[3px]" style={{ gridTemplateRows: "repeat(7, 10px)", gridAutoFlow: "column", gridAutoColumns: "10px", width: heat.weeks * 13 }}>
+              {heat.cells.map((c) => (
+                <span key={c.date} title={`${c.date} · ${c.future ? "—" : c.status}`} className="w-2.5 h-2.5 rounded-sm"
+                  style={{ background: c.future ? "transparent" : DAY_FILL[c.status] }} />
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-2.5">
+        <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-2.5 flex-wrap">
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#2f7d55" }} />under a load (earning)</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#3a5170" }} />home</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#232c3d" }} />idle</span>
-          <span className="ml-auto">← 26 weeks · today →</span>
         </div>
       </div>
     </div>

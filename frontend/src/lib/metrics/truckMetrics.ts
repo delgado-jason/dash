@@ -103,21 +103,18 @@ export const computeTruckMetrics = (
     : 0;
 
   const underLoadSet = underLoadDaySet(truckLoads, windowStart, nowDay);
-  const underLoadDays = underLoadSet.size;
+  // An explicit "home" mark wins over a load's pickup→delivery envelope: if you
+  // said you were home that day, you weren't hauling — even if a multi-day load's
+  // span technically covers it. So home days are removed from under-load, not the
+  // other way around. Home still counts against utilization (costs accrue) — this
+  // only labels why the truck wasn't earning.
+  const homeSet = new Set(
+    homeDays.filter((d) => (!windowStart || d >= windowStart) && d <= nowDay),
+  );
+  const underLoadDays = [...underLoadSet].filter((d) => !homeSet.has(d)).length;
+  const homeDayCount = homeSet.size;
   const utilization =
     windowDays > 0 ? Math.min(1, underLoadDays / windowDays) : null;
-
-  // Split the non-working days: home (marked home, not under load) vs truly idle.
-  // Home days still count against utilization (the truck's costs accrue) — this
-  // only labels why it wasn't earning.
-  const homeDayCount = new Set(
-    homeDays.filter(
-      (d) =>
-        (!windowStart || d >= windowStart) &&
-        d <= nowDay &&
-        !underLoadSet.has(d),
-    ),
-  ).size;
   const idleDays = Math.max(0, windowDays - underLoadDays - homeDayCount);
 
   const monthsInService = inService
