@@ -1,7 +1,8 @@
 // Truck-scoped operating metrics: how hard the truck runs (utilization, miles),
 // how thirsty it is (fuel economy, fuel $/mi), how much it earns per mile, and what
-// it costs to run (fuel + maintenance per mile — what the truck costs the owner, NOT
-// counting the note, which lives in the payoff tracker). Pure; take `now` explicitly.
+// it costs to run ALL-IN (fuel + maintenance + the rig's note per mile — the true
+// cost of keeping it rolling). The note is passed in (`assetNote`); callers without
+// one get operating cost (fuel + maintenance) only. Pure; take `now` explicitly.
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { MaintenanceService } from "@/types/maintenance";
@@ -23,9 +24,10 @@ export interface TruckMetrics {
   bestTank: number | null;
   fuelPerMile: number | null;
   revPerMile: number | null;
-  costToRunPerMile: number | null; // (fuel + maintenance) ÷ miles
+  costToRunPerMile: number | null; // (fuel + maintenance + note) ÷ miles — all-in
   fuelSpend: number; // fuel $ over the window (for the fuel-vs-maintenance split)
   maintSpend: number; // maintenance $ attributable to the truck
+  notePerMile: number | null; // asset note ÷ miles/month (null when no note passed)
   milesPerMonth: number | null;
   totalMiles: number;
   netRevenue: number;
@@ -56,7 +58,9 @@ export const computeTruckMetrics = (
   truckFuel: FuelEntry[],
   services: MaintenanceService[],
   now: Date,
-  homeDays: string[] = [], // "YYYY-MM-DD" home marks, for the week breakdown
+  homeDays: string[] = [], // explicit per-diem "home" marks ("YYYY-MM-DD")
+  travelDays: string[] = [], // per-diem "full"/"half" (on-the-road) marks
+  assetNote = 0, // monthly note for this rig (truck + trailer) — folds into cost-to-run
 ): TruckMetrics => {
   // Earned freight — delivered AND paid — matches the truck's net revenue elsewhere.
   const earned = truckLoads.filter(
@@ -91,9 +95,12 @@ export const computeTruckMetrics = (
   const windowStart =
     [inServiceDay, firstPickup].filter((d): d is string => !!d).sort().at(-1) ??
     null;
+  // Half-open [windowStart, now) — 0 on the very first day (windowStart === today),
+  // which keeps the per-day loop below summing exactly to windowDays. Floor at 0,
+  // not 1, so a same-day/future window doesn't claim a phantom day the loop can't fill.
   const windowDays = windowStart
     ? Math.max(
-        1,
+        0,
         Math.round(
           (Date.parse(`${nowDay}T00:00:00Z`) -
             Date.parse(`${windowStart}T00:00:00Z`)) /
@@ -102,24 +109,46 @@ export const computeTruckMetrics = (
       )
     : 0;
 
+  // Categorize every window day. The per-diem default is HOME (an unmarked day
+  // means you were home), so home = explicit "home" mark OR unmarked, unless you
+  // were under a load. "full"/"half" (travel) days you weren't loaded are idle
+  // (out, not earning). An explicit home mark wins over a load's date envelope.
   const underLoadSet = underLoadDaySet(truckLoads, windowStart, nowDay);
-  // An explicit "home" mark wins over a load's pickup→delivery envelope: if you
-  // said you were home that day, you weren't hauling — even if a multi-day load's
-  // span technically covers it. So home days are removed from under-load, not the
-  // other way around. Home still counts against utilization (costs accrue) — this
-  // only labels why the truck wasn't earning.
-  const homeSet = new Set(
-    homeDays.filter((d) => (!windowStart || d >= windowStart) && d <= nowDay),
-  );
-  const underLoadDays = [...underLoadSet].filter((d) => !homeSet.has(d)).length;
-  const homeDayCount = homeSet.size;
+  const homeSet = new Set(homeDays);
+  const travelSet = new Set(travelDays);
+  let underLoadDays = 0;
+  let homeDayCount = 0;
+  let idleDays = 0;
+  if (windowStart) {
+    // [windowStart, now) — windowDays days, so the three counts sum to windowDays.
+    const cur = new Date(`${windowStart}T00:00:00Z`);
+    const end = new Date(`${nowDay}T00:00:00Z`);
+    while (cur < end) {
+      const k = cur.toISOString().slice(0, 10);
+      if (homeSet.has(k)) homeDayCount++;
+      else if (underLoadSet.has(k)) underLoadDays++;
+      else if (travelSet.has(k)) idleDays++;
+      else homeDayCount++; // unmarked → home
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  }
   const utilization =
     windowDays > 0 ? Math.min(1, underLoadDays / windowDays) : null;
-  const idleDays = Math.max(0, windowDays - underLoadDays - homeDayCount);
 
   const monthsInService = inService
     ? Math.max(1, (now.getTime() - inService.getTime()) / (30.44 * DAY))
     : null;
+  const milesPerMonth = monthsInService ? totalMiles / monthsInService : null;
+
+  // All-in cost to run: fuel + maintenance (spend ÷ miles driven) plus the rig's own
+  // note spread over the miles it runs a month. The note is a per-mile rate on a
+  // different time base than fuel/maint, but each piece is a valid $/mi, so they add.
+  const notePerMile =
+    milesPerMonth && milesPerMonth > 0 && assetNote > 0 ? assetNote / milesPerMonth : null;
+  const operatingPerMile =
+    totalMiles > 0 ? (fuelSpend + maintSpend) / totalMiles : null;
+  const costToRunPerMile =
+    operatingPerMile != null ? operatingPerMile + (notePerMile ?? 0) : null;
 
   return {
     utilization,
@@ -131,10 +160,11 @@ export const computeTruckMetrics = (
     bestTank: fs.bestMpg,
     fuelPerMile: fs.costPerMile,
     revPerMile: totalMiles > 0 ? netRevenue / totalMiles : null,
-    costToRunPerMile: totalMiles > 0 ? (fuelSpend + maintSpend) / totalMiles : null,
+    costToRunPerMile,
     fuelSpend,
     maintSpend,
-    milesPerMonth: monthsInService ? totalMiles / monthsInService : null,
+    notePerMile,
+    milesPerMonth,
     totalMiles,
     netRevenue,
     loads: delivered.length,

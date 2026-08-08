@@ -10,7 +10,7 @@ import {
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { getFuelEntries } from "@/services/fuelService";
-import { getHomeDays } from "@/services/perDiemService";
+import { getPerDiemDays } from "@/services/perDiemService";
 import { useLoads } from "@/hooks/useLoads";
 import {
   computeDue,
@@ -92,6 +92,7 @@ const TruckDetailPage = () => {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [homeDays, setHomeDays] = useState<string[]>([]);
+  const [travelDays, setTravelDays] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,8 +117,17 @@ const TruckDetailPage = () => {
     getTrips()
       .then(setTrips)
       .catch(() => {});
-    getHomeDays()
-      .then(setHomeDays)
+    // Per-diem drives the day split: explicit "home" marks plus "full"/"half"
+    // (on-the-road) days; unmarked days default to home inside computeTruckMetrics.
+    const year = new Date().getUTCFullYear();
+    Promise.all([getPerDiemDays(year), getPerDiemDays(year - 1).catch(() => [])])
+      .then(([a, b]) => {
+        const days = [...a, ...b];
+        setHomeDays(days.filter((d) => d.status === "home").map((d) => d.day));
+        setTravelDays(
+          days.filter((d) => d.status === "full" || d.status === "half").map((d) => d.day),
+        );
+      })
       .catch(() => {});
   }, [id]);
 
@@ -128,6 +138,18 @@ const TruckDetailPage = () => {
       (o.asset_id === id || o.asset_id == null) &&
       isPayoffTracked(o),
   );
+
+  // The truck's monthly note — folded into cost-to-run (all-in). Active, non-draw,
+  // truck-scoped; a personal loan (no asset) isn't a cost of running the rig.
+  const truckNote = obligations
+    .filter(
+      (o) =>
+        o.active &&
+        !o.is_draw &&
+        o.asset_type === "truck" &&
+        (o.asset_id === id || o.asset_id == null),
+    )
+    .reduce((s, o) => s + (Number(o.amount) || 0), 0);
 
   const truckLoads = useMemo(
     () => loads.filter((l) => l.truck_id === id),
@@ -212,7 +234,7 @@ const TruckDetailPage = () => {
   const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
   const now = new Date();
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
-  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays);
+  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote);
   const truckMedals = earnedMedals(
     computeTruckMedals({
       odometer,
@@ -340,7 +362,7 @@ const TruckDetailPage = () => {
           <Kpi
             value={metrics.costToRunPerMile != null ? `$${metrics.costToRunPerMile.toFixed(2)}` : "—"}
             label="COST TO RUN / MI"
-            sub="fuel + maintenance"
+            sub={metrics.notePerMile != null ? "fuel + maint + note" : "fuel + maintenance"}
           />
           <Kpi value={metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—"} label="MI / MONTH" />
         </div>

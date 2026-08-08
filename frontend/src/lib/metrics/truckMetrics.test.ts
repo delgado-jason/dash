@@ -19,23 +19,40 @@ const load = (pickup_date: string, delivery_date: string): Load =>
   }) as unknown as Load;
 
 const now = new Date("2026-02-01T00:00:00Z");
-const run = (truck: Truck, loads: Load[], homeDays: string[]) =>
-  computeTruckMetrics(truck, loads, [] as FuelEntry[], [] as MaintenanceService[], now, homeDays);
+const run = (
+  truck: Truck,
+  loads: Load[],
+  homeDays: string[] = [],
+  travelDays: string[] = [],
+  assetNote = 0,
+) =>
+  computeTruckMetrics(
+    truck,
+    loads,
+    [] as FuelEntry[],
+    [] as MaintenanceService[],
+    now,
+    homeDays,
+    travelDays,
+    assetNote,
+  );
 
 describe("computeTruckMetrics — days-based utilization", () => {
-  it("is under-load days ÷ window days, split into under-load / home / idle", () => {
+  it("splits days: under-load / home (incl. unmarked) / idle (travel, unloaded)", () => {
     const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
     const loads = [
       load("2026-01-05", "2026-01-07"), // 3 under-load days
       load("2026-01-10", "2026-01-10"), // 1 under-load day
     ];
-    const m = run(truck, loads, ["2026-01-15"]); // 1 home day, not under load
+    // 1 explicit home mark + 2 travel (full/half) days you weren't loaded
+    const m = run(truck, loads, ["2026-01-15"], ["2026-01-20", "2026-01-21"]);
 
-    // window starts at the first pickup (later than in-service), runs to now.
-    expect(m.windowDays).toBe(27); // 2026-01-05 → 2026-02-01
+    // window 2026-01-05 → 2026-02-01 = 27 days. under-load 4, idle 2 (travel-unloaded),
+    // home 21 (1 explicit + 20 unmarked days — the per-diem default).
+    expect(m.windowDays).toBe(27);
     expect(m.underLoadDays).toBe(4);
-    expect(m.homeDays).toBe(1);
-    expect(m.idleDays).toBe(22);
+    expect(m.idleDays).toBe(2);
+    expect(m.homeDays).toBe(21);
     expect(m.underLoadDays + m.homeDays + m.idleDays).toBe(m.windowDays);
     expect(m.utilization).toBeCloseTo(4 / 27);
   });
@@ -48,12 +65,43 @@ describe("computeTruckMetrics — days-based utilization", () => {
     expect(m.underLoadDays).toBe(2); // only 01-06 and 01-07
   });
 
+  it("windowStart === today → 0-day window, split stays consistent (no phantom day)", () => {
+    // Brand-new rig, first (same-day) load: window is [today, today) = 0 days. The
+    // floored-to-1 window used to leave the 3-way split summing to 0 ≠ 1.
+    const truck = { in_service_date: "2026-02-01", current_odometer: 0 } as Truck; // == now's day
+    const m = run(truck, [load("2026-02-01", "2026-02-01")]);
+    expect(m.windowDays).toBe(0);
+    expect(m.underLoadDays + m.homeDays + m.idleDays).toBe(0);
+    expect(m.utilization).toBeNull();
+  });
+
   it("a home mark WINS over a load span that covers it", () => {
     const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
     const loads = [load("2026-01-05", "2026-01-07")]; // span 05–07
     const m = run(truck, loads, ["2026-01-06"]); // you marked 01-06 home
-    expect(m.homeDays).toBe(1); // it counts as home, not hauling
-    expect(m.underLoadDays).toBe(2); // 01-05 + 01-07 only — 01-06 removed
+    expect(m.underLoadDays).toBe(2); // 01-05 + 01-07 only — 01-06 removed from hauling
+    expect(m.idleDays).toBe(0); // no travel marks → no idle
+    expect(m.homeDays).toBe(m.windowDays - 2); // 01-06 + every unmarked day is home
+  });
+});
+
+describe("computeTruckMetrics — all-in cost to run (note)", () => {
+  const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
+  const loads = [load("2026-01-05", "2026-01-07")]; // 500 loaded miles, delivered+paid
+
+  it("no note passed → notePerMile is null, cost is operating only", () => {
+    const m = run(truck, loads);
+    expect(m.notePerMile).toBeNull();
+    // no fuel/maintenance in the fixtures → operating cost is 0, not the note
+    expect(m.costToRunPerMile).toBe(0);
+  });
+
+  it("folds the monthly note in as note ÷ miles-per-month", () => {
+    const m = run(truck, loads, [], [], 1000); // $1,000/mo note
+    expect(m.milesPerMonth).not.toBeNull();
+    expect(m.notePerMile).toBeCloseTo(1000 / m.milesPerMonth!, 6);
+    // operating (fuel+maint) is 0 here, so the all-in total equals the note slice
+    expect(m.costToRunPerMile).toBeCloseTo(m.notePerMile!, 6);
   });
 });
 
