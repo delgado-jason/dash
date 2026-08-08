@@ -1,6 +1,11 @@
 import api from "./api";
 import { dedupe } from "@/lib/dedupe";
-import type { ExpensePeriod, ExpenseLine, ExpenseType } from "@/types/expense";
+import type {
+  ExpensePeriod,
+  ExpenseLine,
+  ExpenseType,
+  CategorySpend,
+} from "@/types/expense";
 
 // NUMERIC columns arrive as strings — coerce at the boundary.
 const num = (v: unknown): number | null =>
@@ -43,6 +48,24 @@ export const getExpensePeriod = async (id: string): Promise<ExpensePeriod> => {
     return coercePeriod(res.data.period);
   } catch {
     throw new Error("Unable to fetch expense period");
+  }
+};
+
+// Spending by category across a calendar year (all sections, largest first) —
+// the backend does the GROUP BY, we just coerce the numeric amount.
+export const getExpenseCategoryRollup = async (
+  year: number,
+): Promise<CategorySpend[]> => {
+  try {
+    const res = await api.get("/expenses/categories", { params: { year } });
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    return res.data.categories.map((c: any) => ({
+      category: c.category,
+      amount: Number(c.amount),
+      section: c.section,
+    }));
+  } catch {
+    throw new Error("Unable to fetch category spending");
   }
 };
 

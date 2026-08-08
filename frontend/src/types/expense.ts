@@ -18,3 +18,10 @@ export interface ExpensePeriod {
   expense_total: number | null;
   lines?: ExpenseLine[];
 }
+
+// One category's total spend over some window (a month, or a year's rollup).
+export interface CategorySpend {
+  category: string;
+  amount: number;
+  section: ExpenseSection;
+}

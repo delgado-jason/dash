@@ -14,6 +14,7 @@ import { MarketChip } from "@/components/dashboard/MarketChip";
 import { DashboardShell, TabStub, type DashTab } from "@/components/dashboard/DashboardShell";
 import { AgentsTab } from "@/components/dashboard/agents/AgentsTab";
 import { PulseTab } from "@/components/dashboard/PulseTab";
+import { MoneyTab } from "@/components/dashboard/MoneyTab";
 import { isDispatcher } from "@/lib/roles";
 import DispatchDashboard from "./DispatchDashboard";
 
@@ -93,15 +94,7 @@ const OwnerDashboard = () => {
           active === "pulse" ? (
             <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} />
           ) : active === "money" ? (
-            <TabStub
-              title="Money"
-              blurb="Your profitability at a glance."
-              points={[
-                "Pay-week earned vs target + settlement pipeline (no aging)",
-                "Revenue trend vs target",
-                "Rate vs your break-even floor",
-              ]}
-            />
+            <MoneyTab loads={loads} marginGoal={targets.marginGoal ?? null} />
           ) : active === "lanes" ? (
             <TabStub
               title="Lanes"
