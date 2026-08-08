@@ -10,6 +10,7 @@ import {
 } from "@/lib/metrics/dashboard";
 import { loadRevenue } from "@/lib/metrics/loads";
 import { getQuarterPace } from "@/lib/metrics/quarterPace";
+import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import type { Alert } from "@/types/alert";
 import { GrindMeter } from "@/components/dashboard/GrindMeter";
@@ -72,6 +73,20 @@ export const PulseTab = ({
     [loads],
   );
 
+  // Your delivery punctuality — did YOU hit the appointment at the dock — over the
+  // last 90 days of delivered loads. freeHours doesn't affect on-time (it grades
+  // detention, not the appointment), so a default is fine here. null until 3 graded.
+  const onTimePct = useMemo(() => {
+    const cutoff = now.getTime() - 90 * 86_400_000;
+    const recent = loads.filter(
+      (l) =>
+        l.load_status === "delivered" &&
+        l.delivery_date &&
+        new Date(l.delivery_date).getTime() >= cutoff,
+    );
+    return scoreStops(agentStops(recent, 3)).onTimePct;
+  }, [loads, now]);
+
   // Last 8 pay-weeks of gross earned, anchored to the configured week start.
   const weeks = useMemo(() => {
     const anchor: Date = targets.weekStart ? new Date(targets.weekStart) : now;
@@ -117,9 +132,6 @@ export const PulseTab = ({
             ) : null}
             <b style={{ color: "#4ade80" }}>{money(committed)}</b> committed & booked ahead
           </p>
-          <p className="text-[11.5px] text-muted-text mt-1.5">
-            Landing on settlement: <b style={{ color: "#4ade80" }}>{money(pipeline)}</b> (delivered, POD in)
-          </p>
         </div>
         <div className="md:border-l md:pl-4 flex flex-col justify-center gap-2.5" style={{ borderColor: "#26304a" }}>
           <div>
@@ -146,7 +158,12 @@ export const PulseTab = ({
         <Tile label="Deadhead" value={deadhead != null ? `${Math.round(deadhead * 100)}%` : "—"} sub="odometer-true" color={deadhead != null && deadhead <= 0.2 ? "#4ade80" : "#f5a623"} />
         <Tile label="Avg net $/mi" value={targets.rollingRpm != null ? fmtRpm(targets.rollingRpm) : "—"} sub={targets.basis?.breakEvenRpm != null ? `break-even ${fmtRpm(targets.basis.breakEvenRpm)}` : "3-mo blended"} />
         <Tile label="Pipeline" value={money(pipeline)} sub="delivered, not yet settled" />
-        <Tile label="Earned · MTD" value={money(mtd)} sub="gross delivered" />
+        <Tile
+          label="On-time"
+          value={onTimePct != null ? `${Math.round(onTimePct * 100)}%` : "—"}
+          sub={onTimePct != null ? "you hit the appointment · 90d" : "needs 3+ timed stops"}
+          color={onTimePct == null ? undefined : onTimePct >= 0.9 ? "#4ade80" : onTimePct >= 0.75 ? undefined : "#f5a623"}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3">
@@ -216,7 +233,9 @@ export const PulseTab = ({
       {/* what's next + the grind */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-3">
         <div className="rounded-xl p-4" style={C}>
-          <p className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2">What's next · booked</p>
+          <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2 flex justify-between">
+            What's next <span className="normal-case tracking-normal font-normal">booked · picking up</span>
+          </h3>
           <WhatsNext loads={upcoming} />
         </div>
         <GrindMeter loads={loads} />

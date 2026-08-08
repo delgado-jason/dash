@@ -347,6 +347,35 @@ describe("getUpcomingLoads", () => {
     expect(up.map((u) => u.load_number)).toEqual(["A", "B"]);
     expect(up[0].pickup_date).toBe("2026-07-05");
   });
+
+  it("carries agent, all-in gross, and the oversize flag", () => {
+    const loads = [
+      makeLoad({
+        load_number: "X",
+        load_status: "booked",
+        pickup_date: "2026-07-20",
+        agent: "Jane Doe",
+        load_type: "Oversize / permit",
+        linehaul: "2000.00",
+        fuel_surcharge: "300.00",
+        total_accessorials: "150.00",
+      }),
+      makeLoad({
+        load_number: "Y",
+        load_status: "booked",
+        pickup_date: "2026-07-21",
+        agent: "Bob Roe",
+        load_type: "standard flatbed",
+        linehaul: "1000",
+        fuel_surcharge: "0",
+        total_accessorials: "0",
+      }),
+    ];
+    const up = getUpcomingLoads(loads, 5);
+    // gross = linehaul + fuel_surcharge + accessorials (numeric strings coerced)
+    expect(up[0]).toMatchObject({ agent: "Jane Doe", gross: 2450, oversize: true });
+    expect(up[1]).toMatchObject({ agent: "Bob Roe", gross: 1000, oversize: false });
+  });
 });
 
 // ---- GET REVENUE MTD TEST ----
