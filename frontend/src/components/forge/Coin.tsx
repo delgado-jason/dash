@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 // The Forge — a struck challenge coin: radial metal, reeded edge, engraved
 // face. First minted for the agent trophy case (S10); the driver card and
 // ceremonies inherit it.
-export type CoinMetal = "gold" | "silver" | "bronze";
+export type CoinMetal = "gold" | "silver" | "bronze" | "platinum";
 
 const METAL: Record<CoinMetal, { bg: string; ink: string }> = {
   gold: {
@@ -17,6 +17,11 @@ const METAL: Record<CoinMetal, { bg: string; ink: string }> = {
   bronze: {
     bg: "radial-gradient(circle at 35% 28%, #e8b083, #b5713a 55%, #6e401a)",
     ink: "#3a2008",
+  },
+  // The top tier keeps the holographic foil finish — unmistakably above gold.
+  platinum: {
+    bg: "linear-gradient(120deg, #f7d774, #ef7ea4 34%, #9b8cf0 67%, #5ecbe0)",
+    ink: "#241a36",
   },
 };
 
