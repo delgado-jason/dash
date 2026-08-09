@@ -9,12 +9,20 @@ import { hometimeStatus } from "@/lib/metrics/hometime";
 import { itemToCheckable, cdlToCheckable, computeComplianceDue, type ComplianceLevel } from "@/lib/metrics/compliance";
 import { mpgWindows, monthlyFuelPrice } from "@/lib/metrics/fuelEconomy";
 import { money, rpm, dieselPrice } from "@/lib/format";
+import { Board, BoardCell } from "@/components/ui/Board";
+import { ForgedPlate } from "@/components/ui/ForgedPlate";
+import { PaceMeter } from "@/components/ui/PaceMeter";
+import { GaugeDial } from "@/components/ui/GaugeDial";
+import { CountUp } from "@/components/ui/CountUp";
+import { mileMilestone, fmtMiles } from "@/lib/metrics/mileClub";
 
-const C = { background: "#0f1622", border: "1px solid #26304a" } as const;
-const TILE = { background: "#121a27", border: "1px solid #26304a" } as const;
 const HOME_TARGET_FALLBACK = 42; // only if the settlement-schedule setting is missing
 
-const DAY_FILL: Record<DayStatus, string> = { underload: "#2f7d55", home: "#3a5170", idle: "#232c3d" };
+const DAY_FILL: Record<DayStatus, string> = {
+  underload: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+  home: "var(--color-plate-b)",
+  idle: "#5a4218",
+};
 const DUE_DOT: Record<DueLevel, string> = { overdue: "#f87171", soon: "#f5a623", ok: "#2f7d55", unknown: "#5b6577" };
 const DUE_RANK: Record<DueLevel, number> = { overdue: 0, soon: 1, ok: 2, unknown: 3 };
 const COMP: Record<ComplianceLevel, { cls: string }> = {
@@ -22,16 +30,8 @@ const COMP: Record<ComplianceLevel, { cls: string }> = {
   valid: { cls: "text-status-positive-text" }, unknown: { cls: "text-muted-text" },
 };
 
-const Tile = ({ label, value, sub, color, warn }: { label: string; value: string; sub: string; color?: string; warn?: boolean }) => (
-  <div className="rounded-xl px-3.5 py-3" style={warn ? { background: "#1c1408", border: "1px solid #7a3b12" } : TILE}>
-    <p className="text-[9.5px] uppercase tracking-wide text-muted-text">{label}</p>
-    <p className="text-[17px] font-bold mt-0.5 leading-tight truncate" style={{ color }}>{value}</p>
-    <p className="text-[10px] text-muted-text mt-0.5 truncate">{sub}</p>
-  </div>
-);
-
 const H3 = ({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) => (
-  <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2.5 flex justify-between items-center">
+  <h3 className="ds2-label mb-2.5 flex justify-between items-center">
     {children}
     {right}
   </h3>
@@ -60,7 +60,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
     [truck, loads, fleet.fuel, fleet.services, fleet.homeDays, fleet.travelDays, now],
   );
   const shop = useMemo(() => shopSpend(fleet.services, now, 12), [fleet.services, now]);
-  const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, fleet.travelDays, now, 26), [loads, fleet.homeDays, fleet.travelDays, now]);
+  const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, fleet.travelDays, now, 8), [loads, fleet.homeDays, fleet.travelDays, now]);
 
   const home = useMemo(() => {
     const lh = lastHomeDay(loads, fleet.homeDays, fleet.travelDays, now);
@@ -112,9 +112,9 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const notePerMile = mpm && mpm > 0 && fleet.assetNote > 0 ? fleet.assetNote / mpm : null;
   const costParts = (
     [
-      { key: "fuel", label: "fuel", v: fuelPerMile, color: "#c8890a" },
-      { key: "maint", label: "maintenance", v: maintPerMile, color: "#5f7fd0" },
-      { key: "note", label: "truck + trailer note", v: notePerMile, color: "#a06ad0" },
+      { key: "fuel", label: "fuel", v: fuelPerMile, color: "var(--color-cat1)" },
+      { key: "maint", label: "maintenance", v: maintPerMile, color: "var(--color-cat5)" },
+      { key: "note", label: "truck + trailer note", v: notePerMile, color: "var(--color-cat3)" },
     ] as { key: string; label: string; v: number | null; color: string }[]
   ).filter((p): p is { key: string; label: string; v: number; color: string } => p.v != null);
   const costPerMile = costParts.length ? costParts.reduce((s, p) => s + p.v, 0) : null;
@@ -165,45 +165,127 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-condensed text-light">The fleet</h2>
-        <span className="text-xs text-muted-text">your rig — how hard it runs, how thirsty it is, what it needs</span>
-      </div>
+      {/* THE RIG — the tab's forged surface: the odometer and the club it's chasing */}
+      {(() => {
+        const odo = Number(truck.current_odometer) || 0;
+        const club = mileMilestone(odo);
+        const prev = club.crossed ?? 0;
+        return (
+          <ForgedPlate chamfer tilt className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6">
+              <div>
+                <p className="ds2-label">Truck {truck.unit_number} — the rig</p>
+                <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
+                  <CountUp value={odo} format={(n) => Math.round(n).toLocaleString("en-US")} />{" "}
+                  <span className="text-[15px] text-dim font-condensed tracking-normal">miles on the clock</span>
+                </p>
+                <PaceMeter
+                  filled={Math.max(0, odo - prev)}
+                  target={Math.max(1, club.next - prev)}
+                  markers={[{ value: Math.max(1, club.next - prev), label: `${fmtMiles(club.next)} club` }]}
+                />
+                <p className="text-[11.5px] text-faint mt-1.5">
+                  <b className="text-ink">{club.toNext.toLocaleString("en-US")} miles</b> to the {fmtMiles(club.next)} club
+                  {mpm ? <> — about <b className="text-ink">{Math.max(1, Math.round(club.toNext / (mpm / 4.345)))} weeks</b> at your pace</> : null}
+                  {club.title ? <> · wearing the {club.title}</> : null}.
+                </p>
+              </div>
+              <div className="md:border-l md:border-white/10 md:pl-6 flex flex-col justify-center gap-3">
+                <div>
+                  <p className="ds2-label">Service</p>
+                  <p className={`font-condensed font-semibold text-[17px] mt-1 ${counts.overdue > 0 ? "text-status-negative-text" : nextSoon ? "text-amber-light" : "text-ink"}`}>
+                    {counts.overdue > 0 ? `${counts.overdue} overdue` : nextSoon ? `${nextSoon.name} · ${remain(nextSoon.due)}` : counts.ok > 0 ? "all good" : "no schedule yet"}
+                  </p>
+                </div>
+                {chips[0] && (
+                  <div>
+                    <p className="ds2-label">Compliance</p>
+                    <p className={`font-condensed font-semibold text-[17px] mt-1 ${COMP[chips[0].level].cls}`}>
+                      {chips[0].label} · {chips[0].level === "expired" ? `expired ${Math.abs(chips[0].daysRemaining ?? 0)}d` : chips[0].level === "expiring" ? `${chips[0].daysRemaining}d` : "ok"}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="ds2-label">Days out</p>
+                  <p className={`font-condensed font-semibold text-[17px] mt-1 tabular-nums ${home.state === "over" ? "text-amber-light" : "text-ink"}`}>
+                    {home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut ?? "—"}`}
+                    {home.state !== "none" && (home.daysOut ?? 0) > 0 && <span className="text-[12px] text-faint"> · threshold {home.threshold}</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </ForgedPlate>
+        );
+      })()}
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-        <Tile label="Utilization" value={util != null ? pct(util) : "—"}
-          sub={metrics ? `truck under a load · ${metrics.idleDays} idle days` : "no loads yet"}
-          color={util != null && util >= 0.8 ? "#4ade80" : undefined} />
-        <Tile label="Home time"
+      {/* the cluster — two speedometers + two doors */}
+      <Board className="grid grid-cols-2 md:grid-cols-4">
+        <div className="relative px-[18px] py-4 border-b md:border-b-0 md:border-r ds2-cell-rule">
+          <p className="ds2-label">Fuel economy</p>
+          <div className="flex items-center gap-3 mt-1">
+            <GaugeDial value={metrics?.avgMpg ?? 0} min={4} max={9} size={104} />
+            <div>
+              <p className="font-condensed font-semibold text-[26px] leading-none tabular-nums">
+                {metrics?.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"}
+                <span className="text-[13px] text-dim"> mpg</span>
+              </p>
+              <p className="text-[10.5px] text-faint mt-1">
+                {metrics?.bestTank != null ? `best tank ${metrics.bestTank.toFixed(1)}` : "log a full tank"}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="relative px-[18px] py-4 border-b md:border-b-0 md:border-r ds2-cell-rule">
+          <p className="ds2-label">Utilization</p>
+          <div className="flex items-center gap-3 mt-1">
+            <GaugeDial value={util != null ? util * 100 : 0} min={0} max={100} size={104} />
+            <div>
+              <p className={`font-condensed font-semibold text-[26px] leading-none tabular-nums ${util != null && util >= 0.8 ? "text-status-positive-text" : ""}`}>
+                {util != null ? pct(util) : "—"}
+              </p>
+              <p className="text-[10.5px] text-faint mt-1">
+                {metrics ? `${metrics.idleDays} idle days in window` : "no loads yet"}
+              </p>
+            </div>
+          </div>
+        </div>
+        <BoardCell
+          className="md:border-r ds2-cell-rule"
+          label="Home time"
           value={home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut} days out`}
+          valueClassName={`text-[22px] ${home.state === "over" ? "text-amber-light" : ""}`}
           sub={home.state === "none" ? "no home marks yet" : home.state === "over" ? `past your ${home.threshold}-day target` : `${home.toTarget} left to your ${home.threshold}-day target`}
-          color={home.state === "over" ? "#f5a623" : undefined} warn={home.state === "over"} />
-        <Tile label="Fuel economy" value={metrics?.avgMpg != null ? `${metrics.avgMpg.toFixed(1)} mpg` : "—"}
-          sub={metrics?.bestTank != null ? `best tank ${metrics.bestTank.toFixed(1)}` : "log a full tank"} />
-        <Tile label="Next service"
-          value={counts.overdue > 0 ? `${counts.overdue} overdue` : nextSoon ? "due soon" : counts.ok > 0 ? "all good" : "—"}
-          sub={nextSoon ? `${nextSoon.name} ${remain(nextSoon.due)}` : counts.overdue > 0 ? "see road-ready" : "nothing due"}
-          color={counts.overdue > 0 ? "#f5a623" : counts.soon > 0 ? "#f5a623" : undefined} warn={counts.overdue > 0} />
-      </div>
+          tone={home.state === "over" ? "amb" : "none"}
+          to="/drivers"
+          go="drivers"
+        />
+        <BoardCell
+          label="Shop spend · 12 mo"
+          value={money(shop.total)}
+          valueClassName="text-[22px]"
+          sub={`${shop.serviceCount} services · ${money(shop.total / 12)} / mo`}
+          tone={counts.overdue > 0 ? "amb" : "none"}
+          to="/maintenance"
+          go="maintenance"
+        />
+      </Board>
 
       {/* the rig + road-ready */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
-        <div className="rounded-xl p-3.5 relative overflow-hidden" style={C}>
-          <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none" style={{ backgroundImage: "radial-gradient(#e8940a 1.1px,transparent 1.2px)", backgroundSize: "8px 8px", opacity: 0.06 }} />
-          <H3 right={<span className="normal-case tracking-normal font-normal">under-load · home · idle, {metrics?.windowDays ?? 0}d</span>}>The rig</H3>
+        <div className="ds2-board p-4">
+          <H3 right={<span className="normal-case tracking-normal font-normal">under-load · home · idle, {metrics?.windowDays ?? 0}d</span>}>How hard she runs</H3>
           <p className="text-[13px] font-bold">{rigName} <span className="text-muted-text font-normal text-[11.5px]">· #{truck.unit_number} · {Number(truck.current_odometer).toLocaleString()} mi</span></p>
           {trailerName && <p className="text-[11px] text-muted-text mt-0.5">pulling a {trailerName} {trailer?.trailer_type} · #{trailer?.unit_number}</p>}
 
           <div className="flex h-[22px] rounded-md overflow-hidden my-2.5" style={{ border: "1px solid #26304a" }}>
-            {uUL > 0 && <div className="flex items-center justify-center text-[9.5px] font-bold" style={{ width: `${uUL}%`, background: "#2f7d55", color: "#0d1119" }}>{util != null ? pct(util) : ""} rolling</div>}
-            {uHome > 0 && <div style={{ width: `${uHome}%`, background: "#3a5170" }} />}
-            {uIdle > 0 && <div style={{ width: `${uIdle}%`, background: "#8a5a1a" }} />}
+            {uUL > 0 && <div className="flex items-center justify-center text-[9.5px] font-bold" style={{ width: `${uUL}%`, background: "linear-gradient(180deg,var(--color-hot),var(--color-amber))", color: "var(--color-canvas)" }}>{util != null ? pct(util) : ""} rolling</div>}
+            {uHome > 0 && <div style={{ width: `${uHome}%`, background: "var(--color-plate-b)" }} />}
+            {uIdle > 0 && <div style={{ width: `${uIdle}%`, background: "#5a4218" }} />}
           </div>
           <div className="flex gap-3.5 text-[10px] text-muted-text">
-            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "#2f7d55" }} />{metrics?.underLoadDays ?? 0} under load</span>
-            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "#3a5170" }} />{metrics?.homeDays ?? 0} home</span>
-            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "#8a5a1a" }} />{metrics?.idleDays ?? 0} idle</span>
+            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "var(--color-amber)" }} />{metrics?.underLoadDays ?? 0} under load</span>
+            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />{metrics?.homeDays ?? 0} home</span>
+            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "#5a4218" }} />{metrics?.idleDays ?? 0} idle</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 my-3">
@@ -223,10 +305,10 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
             <div>
               <div className="flex justify-between text-[10px] uppercase tracking-wide text-muted-text"><span>Fuel economy — last {mpgSeries.length} tanks</span><span className="text-status-positive-text">{metrics?.avgMpg?.toFixed(1)} avg</span></div>
               <svg viewBox="0 0 320 50" className="w-full mt-1">
-                <polyline fill="none" stroke="#5fd0e0" strokeWidth={2} points={mpgPts} />
+                <polyline fill="none" stroke="var(--color-chart-blue)" strokeWidth={2} points={mpgPts} />
                 {mpgSeries.map((_, i) => {
                   const [x, y] = mpgPts.split(" ")[i].split(",");
-                  return <circle key={i} cx={x} cy={y} r={i === mpgSeries.length - 1 ? 3 : 2.5} fill={i === mpgSeries.length - 1 ? "#4ade80" : "#5fd0e0"} />;
+                  return <circle key={i} cx={x} cy={y} r={i === mpgSeries.length - 1 ? 3 : 2.5} fill={i === mpgSeries.length - 1 ? "var(--color-amber-hi)" : "var(--color-chart-blue)"} />;
                 })}
               </svg>
             </div>
@@ -235,7 +317,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
         </div>
 
         {/* road-ready */}
-        <div className="rounded-xl p-3.5" style={C}>
+        <div className="ds2-board p-4">
           <H3 right={<span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full" style={{ color: health.color, background: "#1c1408", border: `1px solid ${health.color}55` }}>{health.label}</span>}>Road-ready</H3>
           {dues.length === 0 ? (
             <p className="text-xs text-muted-text">No maintenance schedule yet.</p>
@@ -269,7 +351,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
       {/* shop spend + cost to run */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
-        <div className="rounded-xl p-3.5" style={C}>
+        <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">keeping her running · last 12 months</span>}>Shop spend</H3>
           <div className="flex items-baseline gap-2.5 mb-1">
             <span className="text-[28px] font-extrabold leading-none">{money(shop.total)}</span>
@@ -280,13 +362,13 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           ) : (
             <>
               <svg viewBox="0 0 400 96" className="w-full my-1">
-                <line x1="0" y1="76" x2="400" y2="76" stroke="#1c2536" />
+                <line x1="0" y1="76" x2="400" y2="76" stroke="var(--color-hairline-lo)" />
                 {shop.months.map((m, i) => {
                   const h = m.spend > 0 ? Math.max(3, (m.spend / smax) * 68) : 2;
                   const x = i * bw + 5, w = bw - 10, big = m.spend === smax && m.spend > 0;
                   return (
                     <g key={m.month}>
-                      <rect x={x} y={76 - h} width={w} height={h} rx={2} fill={big ? "#f5b03a" : m.spend > 0 ? "#c8890a" : "#2a3347"} />
+                      <rect x={x} y={76 - h} width={w} height={h} rx={2} fill={big ? "var(--color-amber-hi)" : m.spend > 0 ? "var(--color-chart-amber)" : "var(--color-plate-b)"} />
                       <text x={x + w / 2} y={90} textAnchor="middle" fontSize={8} fill="#5b6577">{m.label.charAt(0)}</text>
                     </g>
                   );
@@ -304,7 +386,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           <Link to="/maintenance" className="text-[11px] text-status-info-text hover:underline mt-2 inline-block">Maintenance →</Link>
         </div>
 
-        <div className="rounded-xl p-3.5" style={C}>
+        <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">per mile</span>}>Cost to run</H3>
           {costPerMile == null ? (
             <p className="text-xs text-muted-text">Not enough miles + fuel logged yet.</p>
@@ -339,8 +421,8 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
       </div>
 
       {/* the year in days */}
-      <div className="rounded-xl p-3.5" style={C}>
-        <H3 right={<span className="normal-case tracking-normal font-normal">each column = one week (Sun→Sat) · oldest left → this week right</span>}>The year in days</H3>
+      <div className="ds2-board p-4">
+        <H3 right={<span className="normal-case tracking-normal font-normal">each column = one week (Sun→Sat) · oldest left → this week right</span>}>The last eight weeks, day by day</H3>
         <div className="overflow-x-auto">
           <div style={{ width: heat.weeks * 13 }}>
             <div className="relative h-3.5 mb-1">
@@ -357,9 +439,9 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           </div>
         </div>
         <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-2.5 flex-wrap">
-          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#2f7d55" }} />under a load (earning)</span>
-          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#3a5170" }} />home</span>
-          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#232c3d" }} />idle</span>
+          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "linear-gradient(180deg,var(--color-hot),var(--color-amber))" }} />under a load (earning)</span>
+          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />home</span>
+          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#5a4218" }} />idle</span>
         </div>
       </div>
     </div>

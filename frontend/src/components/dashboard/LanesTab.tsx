@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { Load } from "@/types/load";
 import {
   getRecentLoads,
@@ -11,33 +11,29 @@ import {
   levelForWindow,
   type LaneStat,
 } from "@/lib/metrics/lanes";
-import { LanesMap } from "@/components/lanes/LanesMap";
+import { LanesMapThumb } from "@/components/lanes/LanesMapThumb";
+import { Board, BoardCell } from "@/components/ui/Board";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { money, rpm as fmtRpm } from "@/lib/format";
 
-const C = { background: "#0f1622", border: "1px solid #26304a" } as const;
-const TILE = { background: "#121a27", border: "1px solid #26304a" } as const;
+// Option C (Jason's pick): the tab is the GLANCE — KPIs, a pure map
+// thumbnail, top lanes, and the load-type mix. The situation board with its
+// windows, modes, and drill-downs stays singular on /lanes.
 const WINDOWS = [30, 60, 90];
-// oversize forced to amber (his specialty); the rest cycle a steel/cyan/violet set.
-const MIX_COLORS = ["#6f7b93", "#5fd0e0", "#a06ad0", "#5f7fd0"];
+// Oversize is his specialty — it always wears amber; the rest follow the
+// validated fixed-order categorical set. "Other" is a neutral bucket.
+const MIX_VARS = ["var(--color-cat2)", "var(--color-cat3)", "var(--color-cat5)", "var(--color-cat4)"];
 const mixColor = (type: string, i: number) =>
-  /over/i.test(type) ? "#e8940a" : MIX_COLORS[i % MIX_COLORS.length];
-
-const Tile = ({ label, value, sub, color }: { label: string; value: string; sub: string; color?: string }) => (
-  <div className="rounded-xl px-3.5 py-3" style={TILE}>
-    <p className="text-[9.5px] uppercase tracking-wide text-muted-text">{label}</p>
-    <p className="text-[15px] font-bold mt-0.5 leading-tight truncate" style={{ color }}>{value}</p>
-    <p className="text-[10px] text-muted-text mt-0.5 truncate">{sub}</p>
-  </div>
-);
+  /over/i.test(type) ? "var(--color-cat1)" : MIX_VARS[i % MIX_VARS.length];
 
 export const LanesTab = ({ loads }: { loads: Load[] }) => {
-  const navigate = useNavigate();
   const [windowDays, setWindowDays] = useState(90);
 
   const level = levelForWindow(windowDays);
   const windowLoads = useMemo(() => getRecentLoads(loads, windowDays), [loads, windowDays]);
   const mapData = useMemo(() => getAreaMapData(loads, windowDays, level), [loads, windowDays, level]);
+  // The thumbnail always shades per-state — it's a picture, not an instrument.
+  const thumbData = useMemo(() => getAreaMapData(loads, windowDays, "state"), [loads, windowDays]);
   const summary = useMemo(() => getLanesSummary(windowLoads), [windowLoads]);
   const topOrigin = useMemo(() => getTopOrigin(mapData), [mapData]);
   const mix = useMemo(() => getLoadTypeMix(windowLoads), [windowLoads]);
@@ -59,11 +55,7 @@ export const LanesTab = ({ loads }: { loads: Load[] }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-xl font-condensed text-light leading-none">The lanes</h2>
-          <p className="text-[11.5px] text-muted-text mt-1">where your freight runs — last {windowDays} days</p>
-        </div>
+      <div className="flex items-center justify-end">
         <SegmentedTabs
           ariaLabel="Lane window"
           tabs={WINDOWS.map((w) => ({ value: w, label: `${w}d` }))}
@@ -72,103 +64,171 @@ export const LanesTab = ({ loads }: { loads: Load[] }) => {
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-        <Tile
+      {/* the glance — four doors */}
+      <Board className="grid grid-cols-2 md:grid-cols-4">
+        <BoardCell
+          className="border-b md:border-b-0 md:border-r ds2-cell-rule"
           label="Top origin"
           value={topOrigin ? topOrigin.key : "—"}
-          sub={topOrigin ? `${money(topOrigin.gross)} · ${Math.round(topOrigin.loadShare * 100)}% of loads` : "no loads in window"}
+          valueClassName="text-[19px]"
+          sub={
+            topOrigin
+              ? `${topOrigin.loadCount} load${topOrigin.loadCount === 1 ? "" : "s"} · ${windowDays}d`
+              : "no delivered loads in window"
+          }
+          tone={topOrigin ? "amb" : "none"}
+          to="/lanes"
+          go="lanes"
         />
-        <Tile
+        <BoardCell
+          className="border-b md:border-b-0 md:border-r ds2-cell-rule"
           label="Busiest lane"
           value={busy ? busy.lane : "—"}
-          sub={busy ? `${busy.loadCount} loads · ${fmtRpm(busy.medianRpm)}/mi` : "no loads in window"}
+          valueClassName="text-[15px] leading-snug"
+          sub={busy ? `${busy.loadCount} loads · ${money(busy.gross / busy.loadCount)} avg` : "—"}
+          to="/lanes"
+          go="lanes"
         />
-        <Tile
+        <BoardCell
+          className="md:border-r ds2-cell-rule"
           label="Top $/mi lane"
           value={rate ? rate.lane : "—"}
-          sub={rate ? `${fmtRpm(rate.medianRpm)} typical · ${rate.loadCount} loads` : "needs 3+ loads on a lane"}
+          valueClassName="text-[15px] leading-snug"
+          sub={rate && rate.medianRpm != null ? `${fmtRpm(rate.medianRpm)}/mi median` : "—"}
+          tone={rate ? "pos" : "none"}
+          to="/lanes"
+          go="lanes"
         />
-        <Tile
+        <BoardCell
           label={mixKpi && /over/i.test(mixKpi.type) ? "Oversize share" : "Top load type"}
-          value={mixKpi ? `${Math.round((mixKpi.gross / (mixTotal || 1)) * 100)}% of gross` : "—"}
-          sub={mixKpi ? (/over/i.test(mixKpi.type) ? "your specialty" : mixKpi.type) : "no loads in window"}
-          color={mixKpi && /over/i.test(mixKpi.type) ? "#e8940a" : undefined}
+          value={mixKpi ? `${Math.round(mixKpi.share * 100)}%` : "—"}
+          sub={mixKpi ? `${mixKpi.type} · of ${windowDays}d gross` : "no delivered loads"}
+          tone={mixKpi ? "amb" : "none"}
+          to="/loads"
+          go="loads"
         />
-      </div>
+      </Board>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
-        {/* the map (real shipped component, flat for the dashboard) */}
-        <div className="min-w-0">
-          <LanesMap
-            data={mapData}
-            level={level}
-            windowDays={windowDays}
-            selected={null}
-            onSelect={() => navigate("/lanes")}
-            noir={false}
-          />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] gap-3">
+        {/* Option C: pure thumbnail — one door, zero interactions */}
+        <Link to="/lanes" className="ds2-board p-4 block hover:border-amber/40 transition-colors">
+          <h3 className="ds2-label flex justify-between">
+            Where the freight lives
+            <span className="normal-case tracking-normal font-normal text-faint">
+              thumbnail — the board lives on Lanes
+            </span>
+          </h3>
+          <div className="mt-2.5">
+            <LanesMapThumb data={thumbData} />
+          </div>
+          <span className="inline-flex mt-2 font-condensed font-semibold text-[12.5px] text-amber-hi tracking-[.05em]">
+            Open the situation board →
+          </span>
+        </Link>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 min-w-0">
           {/* top lanes by gross */}
-          <div className="rounded-xl p-3.5 flex flex-col" style={C}>
-            <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-1 flex justify-between">
-              Top lanes <span className="normal-case tracking-normal font-normal">by gross · {windowDays}d</span>
+          <Board className="p-4">
+            <h3 className="ds2-label mb-1 flex justify-between">
+              Top lanes{" "}
+              <span className="normal-case tracking-normal font-normal text-faint">
+                by gross · {windowDays}d
+              </span>
             </h3>
             <div className="flex flex-col">
               {topLanes.length === 0 ? (
-                <p className="text-xs text-muted-text py-4">No delivered lanes in this window.</p>
+                <p className="text-xs text-faint py-4">No delivered lanes in this window.</p>
               ) : (
                 topLanes.map((l) => (
-                  <div key={l.lane} className="flex items-center justify-between py-[7px] text-[12px]" style={{ borderBottom: "1px solid #1a2233" }}>
-                    <span className="truncate pr-2">{l.lane}</span>
-                    <span className="text-muted-text whitespace-nowrap">
-                      <b style={{ color: "#4ade80" }}>{money(l.gross)}</b> · {l.loadCount} · {fmtRpm(l.medianRpm)}
+                  <div
+                    key={l.lane}
+                    className="flex items-center justify-between py-[7px] text-[12px] border-b ds2-cell-rule last:border-b-0"
+                  >
+                    <span className="truncate pr-2 text-ink">{l.lane}</span>
+                    <span className="text-faint whitespace-nowrap">
+                      <b className="text-status-positive-text">{money(l.gross)}</b> · {l.loadCount} ·{" "}
+                      <span className="font-condensed font-semibold text-dim tabular-nums">
+                        {fmtRpm(l.medianRpm)}
+                      </span>
                     </span>
                   </div>
                 ))
               )}
             </div>
-            <button onClick={() => navigate("/lanes")} className="text-[11px] text-status-info-text hover:underline mt-1.5 text-left">
+            <Link
+              to="/lanes"
+              className="inline-block mt-2 font-condensed font-semibold text-[12.5px] text-amber-hi tracking-[.05em]"
+            >
               All lanes →
-            </button>
-          </div>
+            </Link>
+          </Board>
 
           {/* load-type mix */}
-          <div className="rounded-xl p-3.5 flex flex-col" style={C}>
-            <h3 className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-2 flex justify-between">
-              Load-type mix <span className="normal-case tracking-normal font-normal">{money(mixTotal)} gross</span>
+          <Board className="p-4">
+            <h3 className="ds2-label mb-2 flex justify-between">
+              Load-type mix{" "}
+              <span className="normal-case tracking-normal font-normal text-faint num">
+                {money(mixTotal)} gross
+              </span>
             </h3>
             {mix.length === 0 ? (
-              <p className="text-xs text-muted-text">No delivered loads in this window.</p>
+              <p className="text-xs text-faint">No delivered loads in this window.</p>
             ) : (
               <>
-                <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid #26304a" }}>
+                <div className="flex gap-[2px] h-6 rounded-md overflow-hidden mb-2 bg-canvas">
                   {mixShown.map((m, i) => (
-                    <div key={m.type} style={{ width: `${(m.gross / (mixTotal || 1)) * 100}%`, background: mixColor(m.type, i) }} title={`${m.type} ${money(m.gross)}`} />
+                    <div
+                      key={m.type}
+                      style={{
+                        width: `${(m.gross / (mixTotal || 1)) * 100}%`,
+                        background: mixColor(m.type, i),
+                      }}
+                      title={`${m.type} ${money(m.gross)}`}
+                    />
                   ))}
-                  {mixOther > 0 && <div style={{ width: `${(mixOther / (mixTotal || 1)) * 100}%`, background: "#2a3347" }} title={`Other ${money(mixOther)}`} />}
+                  {mixOther > 0 && (
+                    <div
+                      style={{
+                        width: `${(mixOther / (mixTotal || 1)) * 100}%`,
+                        background: "var(--color-plate-a)",
+                      }}
+                      title={`Other ${money(mixOther)}`}
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col gap-0.5">
                   {mixShown.map((m, i) => (
-                    <div key={m.type} className="flex items-center justify-between text-[11.5px]">
+                    <div key={m.type} className="flex items-center justify-between text-[11.5px] text-dim">
                       <span className="truncate flex items-center gap-1.5">
-                        <span className="inline-block w-2 h-2 rounded-sm" style={{ background: mixColor(m.type, i) }} />
+                        <span
+                          className="inline-block w-2 h-2 rounded-sm"
+                          style={{ background: mixColor(m.type, i) }}
+                        />
                         {m.type}
                       </span>
-                      <span className="text-muted-text whitespace-nowrap">{money(m.gross)} · {Math.round(m.share * 100)}%</span>
+                      <span className="whitespace-nowrap font-condensed font-semibold text-ink tabular-nums">
+                        {money(m.gross)} · {Math.round(m.share * 100)}%
+                      </span>
                     </div>
                   ))}
                   {mixOther > 0 && (
-                    <div className="flex items-center justify-between text-[11.5px]">
-                      <span className="flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-sm" style={{ background: "#2a3347" }} />Other</span>
-                      <span className="text-muted-text">{money(mixOther)} · {Math.round((mixOther / (mixTotal || 1)) * 100)}%</span>
+                    <div className="flex items-center justify-between text-[11.5px] text-dim">
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="inline-block w-2 h-2 rounded-sm"
+                          style={{ background: "var(--color-plate-a)" }}
+                        />
+                        Other
+                      </span>
+                      <span className="whitespace-nowrap font-condensed font-semibold text-ink tabular-nums">
+                        {money(mixOther)} · {Math.round((mixOther / (mixTotal || 1)) * 100)}%
+                      </span>
                     </div>
                   )}
                 </div>
               </>
             )}
-          </div>
+          </Board>
         </div>
       </div>
     </div>
