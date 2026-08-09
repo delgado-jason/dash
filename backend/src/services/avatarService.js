@@ -15,12 +15,16 @@ const ENTITY = {
   trailer: { table: "trailers", idCol: "trailer_id" },
 };
 
-// Locked house style: comic-illustration, steel-blue + amber, dark depot,
-// clean front 3/4 (the truck-0 / driver-0 look Jason signed off on).
+// Locked house style — re-briefed to the Forge world (2026-08-09), matching
+// lib/trophies/style.ts so avatars and trophy art read as one set: grounded
+// premium render, machined steel + amber, no comic. Per-kind constraints below
+// are battle-tested against real generation failures — change the style, not them.
 const STYLE =
-  "comic book digital illustration, cel shaded, bold clean line art, " +
-  "dark steel-blue and amber color palette, dark industrial background, " +
-  "cinematic rim lighting";
+  "premium cinematic character render, grounded and realistic, dark " +
+  "machined-steel industrial depot setting, brushed gunmetal and warm amber " +
+  "palette, glowing amber rim lighting, dramatic workshop light, adult and " +
+  "iconic — no comic style, no cel shading, no halftone, no cartoon, no " +
+  "illustration outlines";
 
 const buildPrompt = (kind, row, variant) => {
   if (kind === "truck") {
