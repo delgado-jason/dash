@@ -34,19 +34,18 @@ export const WhatsNext = ({ loads }: Props) => {
         <Link
           key={load.load_id}
           to={`/loads/${load.load_id}`}
-          className="flex items-start justify-between gap-2 py-1.5 hover:opacity-80 border-t first:border-t-0"
-          style={{ borderColor: "#1a2233" }}
+          className="flex items-start justify-between gap-2 py-1.5 hover:opacity-80 border-t first:border-t-0 ds2-cell-rule"
         >
           <span className="min-w-0 flex flex-col">
-            <span className="text-[12px] text-light truncate flex items-center gap-1.5">
+            <span className="text-[12px] text-ink truncate flex items-center gap-1.5">
               {load.lane}
               {load.oversize && <OVR />}
             </span>
-            <span className="text-[10px] text-muted-text truncate">{load.agent}</span>
+            <span className="text-[10px] text-dim truncate">{load.agent}</span>
           </span>
           <span className="shrink-0 text-right flex flex-col">
             <span className="text-[12px] font-bold">{money(load.gross)}</span>
-            <span className="text-[10px] text-muted-text">{fmtDate(load.pickup_date)}</span>
+            <span className="text-[10px] text-dim">{fmtDate(load.pickup_date)}</span>
           </span>
         </Link>
       ))}

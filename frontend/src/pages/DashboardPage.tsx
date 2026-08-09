@@ -11,6 +11,7 @@ import { AwardPopHost } from "@/components/comic/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { latestRecapWithData } from "@/lib/metrics/recap";
 import { MarketChip } from "@/components/dashboard/MarketChip";
+import { OpsStatusbar } from "@/components/dashboard/OpsStatusbar";
 import { DashboardShell, type DashTab } from "@/components/dashboard/DashboardShell";
 import { AgentsTab } from "@/components/dashboard/agents/AgentsTab";
 import { PulseTab } from "@/components/dashboard/PulseTab";
@@ -53,7 +54,7 @@ const OwnerDashboard = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink min-h-screen font-body">
         <Skeleton className="h-8 w-40 mb-6" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -70,15 +71,20 @@ const OwnerDashboard = () => {
 
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen">
+      <div className="p-6 text-ink min-h-screen">
         <p className="text-destructive">{error}</p>
       </div>
     );
 
+  // Full-bleed per the approved mockup: canvas to the very top, the sidebar
+  // trigger inside the statusbar, content in the 1180px operations column.
   return (
-    <div className="p-6 bg-iron text-light min-h-screen font-body">
+    <div className="min-h-screen text-ink font-body">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
-      <DashboardShell
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <OpsStatusbar loads={loads} trips={trips} targets={targets} />
+        <div className="mt-4">
+          <DashboardShell
         tabs={DASH_TABS}
         right={
           <>
@@ -105,7 +111,9 @@ const OwnerDashboard = () => {
             <FleetTab loads={loads} />
           )
         }
-      </DashboardShell>
+          </DashboardShell>
+        </div>
+      </div>
     </div>
   );
 };

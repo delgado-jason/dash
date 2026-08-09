@@ -29,27 +29,20 @@ export const DashboardShell = ({
   };
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ background: "#0b111b", border: "1px solid #26304a" }}
-    >
-      <div
-        className="flex items-center gap-1 px-4 py-2.5 flex-wrap"
-        style={{ background: "#0d131f", borderBottom: "1px solid #26304a" }}
-      >
-        <span className="font-condensed font-bold text-[15px] mr-3 tracking-wide text-light">
+    <div className="ds2-board overflow-hidden">
+      <div className="flex items-center gap-1 px-4 py-2.5 flex-wrap bg-well border-b border-hairline">
+        <span className="font-condensed font-bold text-[15px] mr-3 tracking-wide text-ink">
           Dashboard
         </span>
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => pick(t.key)}
-            className="text-[12.5px] font-semibold px-3.5 py-1.5 rounded-lg transition-colors"
-            style={
+            className={`text-[12.5px] font-semibold px-3.5 py-1.5 rounded-lg transition-colors ${
               active === t.key
-                ? { background: "#e8940a", color: "#12151b" }
-                : { color: "#8b93a3" }
-            }
+                ? "bg-amber text-canvas"
+                : "text-dim hover:text-ink"
+            }`}
           >
             {t.label}
           </button>
@@ -73,19 +66,19 @@ export const TabStub = ({
   points: string[];
 }) => (
   <div
-    className="rounded-xl p-6 text-center flex flex-col items-center justify-center"
-    style={{ background: "#0f1622", border: "1px dashed #2a3347", minHeight: 360 }}
+    className="rounded-xl p-6 text-center flex flex-col items-center justify-center bg-panel border border-dashed border-hairline"
+    style={{ minHeight: 360 }}
   >
-    <p className="font-condensed text-2xl text-light">{title}</p>
-    <p className="text-sm text-muted-text mt-1 mb-4">{blurb}</p>
+    <p className="font-condensed text-2xl text-ink">{title}</p>
+    <p className="text-sm text-dim mt-1 mb-4">{blurb}</p>
     <div className="inline-flex flex-col gap-1.5 text-left">
       {points.map((p) => (
-        <span key={p} className="text-[12.5px] text-muted-text">
-          <span style={{ color: "#e8940a" }}>•</span> {p}
+        <span key={p} className="text-[12.5px] text-dim">
+          <span className="text-amber">•</span> {p}
         </span>
       ))}
     </div>
-    <p className="text-[11px] mt-5" style={{ color: "#5b6577" }}>
+    <p className="text-[11px] mt-5 text-faint">
       building this next — the mockup you approved
     </p>
   </div>
