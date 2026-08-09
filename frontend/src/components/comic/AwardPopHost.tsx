@@ -38,13 +38,13 @@ export const AwardPopHost = ({
   // corner slide-ins (patches, beaten records) get the POW.
   useEffect(() => {
     if (!takeover) return;
-    playSfx(takeover.tier === "medal" ? "pow" : "rankup");
+    if (takeover.tier !== "medal") playSfx("rankup"); // the coin strike plays its own press hit
   }, [takeover?.id, takeover?.tier]);
 
   const slideKey = slideIns.map((b) => b.id).join(",");
   useEffect(() => {
     if (!slideKey) return;
-    playSfx("pow");
+    playSfx("stamp");
     const ids = slideKey.split(",");
     // Records/patches hold ~3.5s so they can be read, then slide back out.
     const timers = ids.map((id, idx) => setTimeout(() => dismiss(id), 3500 + idx * 600));
