@@ -10,8 +10,8 @@ interface Props {
 
 const styleFor = (severity: Alert["severity"]): string =>
   severity === "critical"
-    ? "bg-status-negative-bg text-status-negative-text"
-    : "bg-status-aware-bg text-status-aware-text";
+    ? "bg-status-negative-bg text-status-negative-text border border-status-negative-text/20"
+    : "bg-status-aware-bg text-status-aware-text border border-amber/25";
 
 const IconFor = ({ kind }: { kind: Alert["kind"] }) =>
   kind === "maintenance" ? (
@@ -57,8 +57,7 @@ export const AlertBanners = ({ alerts, collapsedCount = 2 }: Props) => {
       {(hidden > 0 || open) && (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center justify-center gap-1.5 text-[11.5px] text-muted-text hover:text-light rounded-lg py-1"
-          style={{ background: "#131a27", border: "1px solid #26304a" }}
+          className="flex items-center justify-center gap-1.5 text-[11.5px] text-dim hover:text-ink rounded-lg py-1 bg-well border border-hairline transition-colors"
         >
           <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
           {open
