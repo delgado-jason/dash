@@ -117,18 +117,18 @@ export const DispatchLoadsTable = ({
   return (
     <Panel className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+        <span className="font-comic text-lg" style={{ color: "var(--color-amber-hi)" }}>
           LOADS
         </span>
       </div>
 
       <div className="flex items-center gap-2 bg-[#141a26] border border-[#2a3347] rounded-md px-2.5 py-1.5 mb-2.5">
-        <Search size={13} className="text-muted-text shrink-0" />
+        <Search size={13} className="text-dim shrink-0" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search # · lane · city"
-          className="bg-transparent outline-none text-sm text-light placeholder:text-muted-text w-full"
+          className="bg-transparent outline-none text-sm text-ink placeholder:text-dim w-full"
         />
       </div>
 
@@ -148,11 +148,11 @@ export const DispatchLoadsTable = ({
                 >
                   <Truck size={11} /> ON THE ROAD
                 </span>
-                <span className="text-[10px] text-muted-text">
+                <span className="text-[10px] text-dim">
                   del {fmtDate(l.delivery_date)}
                 </span>
               </div>
-              <div className="text-sm text-light truncate">
+              <div className="text-sm text-ink truncate">
                 #{l.load_number} · {lane(l)}
               </div>
             </Link>
@@ -177,7 +177,7 @@ export const DispatchLoadsTable = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-[46px_1fr_66px_46px] text-[10px] text-muted-text uppercase tracking-wide px-1 pb-1.5 border-b border-steel">
+      <div className="grid grid-cols-[46px_1fr_66px_46px] text-[10px] text-dim uppercase tracking-wide px-1 pb-1.5 border-b border-steel">
         <span>Load</span>
         <span>Lane</span>
         <span>Status</span>
@@ -185,7 +185,7 @@ export const DispatchLoadsTable = ({
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-muted-text text-sm py-4 text-center">
+        <p className="text-dim text-sm py-4 text-center">
           No loads match.
         </p>
       ) : (
@@ -201,7 +201,7 @@ export const DispatchLoadsTable = ({
               <span style={{ color: "#8fb9ff" }} className="underline">
                 #{l.load_number}
               </span>
-              <span className="text-light truncate flex items-center gap-1.5">
+              <span className="text-ink truncate flex items-center gap-1.5">
                 <span className="truncate">{lane(l)}</span>
                 {owed && (
                   <span
@@ -223,7 +223,7 @@ export const DispatchLoadsTable = ({
               <span className="text-[11px]">
                 <StatusChip status={l.load_status} />
               </span>
-              <span className="text-right text-muted-text">
+              <span className="text-right text-dim">
                 {fmtDate(rowDate(l))}
               </span>
             </Link>
@@ -232,7 +232,7 @@ export const DispatchLoadsTable = ({
       )}
 
       <div className="flex items-center justify-between mt-2.5">
-        <span className="text-[11px] text-muted-text">
+        <span className="text-[11px] text-dim">
           {filtered.length === 0
             ? "0 loads"
             : `${start + 1}–${start + shown.length} of ${filtered.length}`}

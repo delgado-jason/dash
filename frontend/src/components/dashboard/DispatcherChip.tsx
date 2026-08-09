@@ -46,8 +46,8 @@ export const DispatcherChip = () => {
           <AvatarFallback kind="user" />
         </span>
       )}
-      <span className="text-sm text-light font-semibold">{name}</span>
-      <ChevronRight size={13} className="text-muted-text" />
+      <span className="text-sm text-ink font-semibold">{name}</span>
+      <ChevronRight size={13} className="text-dim" />
     </Link>
   );
 };

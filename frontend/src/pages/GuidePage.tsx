@@ -1887,7 +1887,12 @@ const GuidePage = () => {
               <span className="text-light">hours</span>, not dollars — the rate
               per hour isn't settled until it lands on your statement, so the
               board tracks the wait you're owed and lets you mark it paid once
-              collected. Below the rate ladder and the grind streak sit two
+              collected. Your rank rides the top bar — it climbs on lifetime
+              loads booked, and the next tier is always shown. The booking
+              floor and week pace share the same meter as the owner's board:
+              the target sits at about three-quarters of the track with
+              overdrive room past it for the weeks you beat it. Below the
+              pace plate and the heat streak sit two
               searchable, paginated tables —{" "}
               <span className="text-light">Loads</span> (with the load on the
               road pulled out on top, and filters for booked / in&#8209;transit

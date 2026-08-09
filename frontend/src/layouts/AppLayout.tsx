@@ -13,7 +13,7 @@ import { isDispatcher } from "@/lib/roles";
 // component, so only the owner's dashboard is full-bleed. Migrated pages that
 // both roles share (like /lanes) are full-bleed for everyone.
 const FULL_BLEED_PREFIXES = [
-  { prefix: "/dashboard", ownerOnly: true },
+  { prefix: "/dashboard", ownerOnly: false }, // both boards carry their own trigger now
   { prefix: "/lanes", ownerOnly: false },
 ];
 const isFullBleed = (pathname: string) =>
