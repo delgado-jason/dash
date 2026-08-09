@@ -365,6 +365,15 @@ const TrophyHallPage = () => {
       className={`relative min-h-screen text-light font-body ${hallBg ? "" : "bg-iron"}`}
       style={roomStyle}
     >
+      {/* atmosphere — two soft spotlight cones wash the racks; pure CSS, no cost */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background:
+            "radial-gradient(42% 34% at 22% 0%, rgba(232,148,10,.07), transparent 70%), radial-gradient(42% 34% at 78% 0%, rgba(232,148,10,.05), transparent 70%)",
+        }}
+      />
       <div className="max-w-[1120px] mx-auto px-5 pb-20">
         <div className="flex justify-between items-center pt-4">
           <SidebarTrigger className="text-dim hover:text-ink" style={{ textShadow: "0 1px 4px rgba(0,0,0,.8)" }} />

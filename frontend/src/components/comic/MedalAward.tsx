@@ -3,7 +3,8 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { LucideIcon } from "lucide-react";
 import type { Award } from "@/lib/metrics/awards";
-import { Coin, type CoinMetal } from "@/components/forge/Coin";
+import { type CoinMetal } from "@/components/forge/Coin";
+import { Coin3D } from "@/components/forge/Coin3D";
 import { playSfx } from "@/lib/sfx";
 import { DUR, GSAP_EASE } from "@/theme/motion";
 
@@ -100,9 +101,7 @@ export const MedalAward = ({
           }}
         />
         <div data-coin className="mt-6" style={{ filter: "brightness(2.2)" }}>
-          <Coin metal={METALS[tier]} size={116}>
-            {ROMAN[tier]}
-          </Coin>
+          <Coin3D metal={METALS[tier]} size={132} label={ROMAN[tier]} />
         </div>
         <div className="text-center mt-7">
           <div
