@@ -24,7 +24,7 @@ const Emblem = ({ p }: { p: GrindPatch }) => {
       </div>
       {p.earned && (
         <span
-          className="font-comic"
+          className="font-forge font-bold"
           style={{
             position: "absolute",
             top: -3,
@@ -62,7 +62,7 @@ export const DispatcherPatchBoard = ({ patches }: { patches: GrindPatch[] }) => 
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-3">
-        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+        <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
           PATCHES
         </span>
         <span className="text-[11px] text-muted-text">the grind · they climb as she books</span>

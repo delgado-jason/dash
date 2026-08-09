@@ -194,7 +194,7 @@ const DispatcherPage = () => {
         {/* Medals — rare feats */}
         <div className={panel} style={panelStyle}>
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+            <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
               MEDALS
             </span>
             <span className="text-[11px] text-muted-text">

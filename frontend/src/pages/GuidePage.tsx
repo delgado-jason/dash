@@ -1742,7 +1742,7 @@ const GuidePage = () => {
                   <PrestigeBurst tier={tier} size={54} />
                   <div>
                     <p
-                      className="font-comic text-lg"
+                      className="font-forge font-bold text-lg"
                       style={{ color: PRESTIGE_META[tier].fill }}
                     >
                       {PRESTIGE_META[tier].label}

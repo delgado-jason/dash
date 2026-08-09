@@ -24,7 +24,7 @@ export const driverRecordChips = (b: PersonalBests): RecordChip[] => [
 export const RecordBook = ({ records }: { records: RecordChip[] }) => (
   <div className="mt-6">
     <div className="flex items-baseline gap-2 mb-2">
-      <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+      <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
         RECORD BOOK
       </span>
       <span className="text-[11px] text-muted-text">your bests — they climb as you beat them</span>
@@ -35,7 +35,7 @@ export const RecordBook = ({ records }: { records: RecordChip[] }) => (
         return (
           <div key={r.label} className="flex-1 min-w-[92px] rounded-[10px] px-2 py-2 text-center" style={{ background: "#1c2333" }}>
             <Icon size={16} style={{ color: r.color }} />
-            <div className="font-comic leading-none mt-1" style={{ color: "#f5e6c8", fontSize: 19 }}>
+            <div className="font-forge font-bold leading-none mt-1" style={{ color: "#f5e6c8", fontSize: 19 }}>
               {r.value}
             </div>
             <div className="text-[9px] text-muted-text mt-1 tracking-wide">{r.label}</div>
