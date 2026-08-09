@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { RatingStamp } from "@/components/agents/RatingStamp";
 import { TrophyCase } from "@/components/agents/TrophyCase";
 import { PRESTIGE_META } from "@/components/agents/PrestigeBadge";
+import { Coin, type CoinMetal } from "@/components/forge/Coin";
 import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
 
 import {
@@ -109,7 +110,7 @@ const AgentDetailPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-ink min-h-screen font-body">
+      <div className="p-6 text-ink min-h-screen font-body">
         <Skeleton className="h-8 w-48 mb-2" />
         <Skeleton className="h-4 w-32 mb-6" />
         <StatCardsSkeleton count={4} />
@@ -118,7 +119,7 @@ const AgentDetailPage = () => {
     );
   if (error)
     return (
-      <div className="p-6 bg-iron text-ink min-h-screen font-body">
+      <div className="p-6 text-ink min-h-screen font-body">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -200,12 +201,19 @@ const AgentDetailPage = () => {
               {carrierName ? ` · ${carrierName} Agent` : ""}
             </p>
             {prestige.label && (
-              <p
-                className="text-xs font-medium uppercase tracking-wide mt-1"
-                style={{ color: prestige.fill }}
-              >
-                {prestige.label}
-              </p>
+              <span className="inline-flex items-center gap-2 mt-1.5">
+                <Coin
+                  metal={
+                    ({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"
+                  }
+                  size={22}
+                >
+                  {agent.first_name.charAt(0)}
+                </Coin>
+                <span className="text-xs font-condensed font-semibold uppercase tracking-[.1em] text-dim">
+                  {prestige.label} agent
+                </span>
+              </span>
             )}
           </div>
         </div>
@@ -320,7 +328,7 @@ const AgentDetailPage = () => {
               </thead>
               <tbody>
                 {agentLoads.map((load) => (
-                  <tr key={load.load_id} className="border-t border-[#3b4660]">
+                  <tr key={load.load_id} className="border-t ds2-cell-rule">
                     <td className="py-2 pr-4 whitespace-nowrap">
                       <Link
                         to={`/loads/${load.load_id}`}

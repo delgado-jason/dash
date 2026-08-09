@@ -9,7 +9,8 @@ import type {
 import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
 import { RatingMedallion } from "./RatingMedallion";
-import { PrestigeBadge } from "./PrestigeBadge";
+import { PRESTIGE_META } from "./PrestigeBadge";
+import { Coin, type CoinMetal } from "@/components/forge/Coin";
 import {
   TIER_META,
   SPECIALTY_META,
@@ -64,9 +65,23 @@ export const AgentCard = ({
   return (
     <Link
       to={`/agents/${agent.agent_id}`}
-      className="relative overflow-hidden block ds-panel ds-panel--default ds-panel--interactive border border-[#3b4660] p-3.5 hover:border-amber transition-colors"
+      className="relative overflow-hidden block ds2-board p-3.5 hover:border-amber/60 transition-colors"
     >
-      <PrestigeBadge tier={tier} />
+      {PRESTIGE_META[tier].label && (
+        <span
+          className="absolute top-2.5 right-2.5"
+          title={`${PRESTIGE_META[tier].label} agent`}
+        >
+          <Coin
+            metal={
+              ({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"
+            }
+            size={26}
+          >
+            {agent.first_name.charAt(0)}
+          </Coin>
+        </span>
+      )}
 
       <div className="flex gap-3 items-center">
         <div className="size-11 rounded-full bg-well border-2 border-amber flex items-center justify-center font-condensed font-semibold text-lg text-amber-light shrink-0">
@@ -121,7 +136,7 @@ export const AgentCard = ({
         </div>
       )}
 
-      <div className="mt-2.5 pt-2 border-t border-[#3b4660] text-xs">
+      <div className="mt-2.5 pt-2 border-t ds2-cell-rule text-xs">
         <div className="flex items-center justify-between">
           <span className="text-dim">
             {stats?.loadCount ?? 0} loads · {money(stats?.revenue ?? 0)}
