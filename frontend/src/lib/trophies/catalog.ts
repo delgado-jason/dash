@@ -50,7 +50,7 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     kind: "manual",
     blurb: "The trailer, paid off.",
     promptIdea:
-      "a massive golden padlock bursting open with a broken shackle, resting on a flatbed trailer in warm light",
+      "a heavy-duty steel flatbed semi-trailer built for a Class 8 truck — long drop-deck with wooden deck boards, tandem axles with dual wheels, winch tracks and chain tie-downs along the rail, fifth-wheel kingpin plate visible — a massive golden padlock bursting open with a broken shackle standing on the deck, warm amber light, no truck attached, no small utility trailer",
   },
   {
     key: "second-driver",
@@ -95,7 +95,7 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     kind: "auto",
     blurb: "$1,000,000 gross hauled.",
     promptIdea:
-      "a towering golden mountain of stacked freight crates and cargo on a flatbed, gleaming like treasure",
+      "an oversize mountain of gleaming solid-gold ingots strapped down on a flatbed semi-trailer like a permitted heavy-haul load — heavy chains, ratchet binders and edge protectors over the gold, red oversize-load flags on the corners, low camera angle so the load towers like a monument",
   },
   {
     key: "highway-legend",
@@ -103,6 +103,7 @@ export const TROPHY_CATALOG: TrophyDef[] = [
     form: "cup",
     kind: "capstone",
     blurb: "The capstone — own authority, truck free-and-clear, and the million miles.",
-    promptIdea: "a chromed-out legend rig in golden-hour light, a halo of road behind it",
+    promptIdea:
+      "a fully custom long-nose American show semi truck in the style of a Peterbilt 389 or Kenworth W900 — long square hood, tall dual chrome exhaust stacks, full chrome front bumper and grille, drop visor, rows of glowing amber marker lights (chicken lights) outlining the cab, visor, and fenders, custom paint, show-truck stance at night in golden light with a halo of highway behind it — a semi tractor only, no motorcycle, no car",
   },
 ];
