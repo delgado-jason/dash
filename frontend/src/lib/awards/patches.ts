@@ -99,26 +99,26 @@ export const computePatches = (
     out.push({ key: d.key, name: d.name, icon: d.icon, count: s.count, bar: s.bar, unit: d.unit, hint: `clear ${barText}` });
   }
 
-  // ---- Rainmaker: adaptive over per-month net ----
+  // ---- Big Month: adaptive over per-month net ----
   const monthlyNet = bucketed(dl, (l) => monthKey(l.delivery_date!), (ls) => ls.reduce((s, l) => s + loadRevenue(l), 0));
   const rain = computeStack(monthlyNet, { n: 5, floor: 12000 });
-  out.push({ key: "rainmaker", name: "Rainmaker", icon: "coins", count: rain.count, bar: rain.bar, unit: "money", hint: `${money(rain.bar)} net in a month` });
+  out.push({ key: "rainmaker", name: "Big Month", icon: "coins", count: rain.count, bar: rain.bar, unit: "money", hint: `${money(rain.bar)} net in a month` });
 
-  // ---- Iron Week: adaptive over loads-per-week ----
+  // ---- Big Week: adaptive over loads-per-week ----
   const weeklyLoads = bucketed(dl, (l) => weekKey(l.delivery_date!), (ls) => ls.length);
   const iron = computeStack(weeklyLoads, { n: 5, floor: 5 });
-  out.push({ key: "iron-week", name: "Iron Week", icon: "barbell", count: iron.count, bar: iron.bar, unit: null, hint: `${Math.round(iron.bar)}+ loads in a week` });
+  out.push({ key: "iron-week", name: "Big Week", icon: "barbell", count: iron.count, bar: iron.bar, unit: null, hint: `${Math.round(iron.bar)}+ loads in a week` });
 
   // (Deadhead is a structural cost of oversize work, not a feat to chase, so
   // there's no weekly-deadhead patch — removed 2026-07-25 at Jason's call.)
 
-  // ---- Trailblazer (structural): distinct states touched — the count IS the map ----
+  // ---- 48 States (structural): distinct states touched — the count IS the map ----
   const states = new Set<string>();
   for (const l of dl) {
     if (l.origin_state) states.add(l.origin_state);
     if (l.destination_state) states.add(l.destination_state);
   }
-  out.push({ key: "trailblazer", name: "Trailblazer", icon: "map-pin", count: states.size, bar: null, unit: null, hint: `${states.size} / 48 states` });
+  out.push({ key: "trailblazer", name: "48 States", icon: "map-pin", count: states.size, bar: null, unit: null, hint: `${states.size} / 48 states` });
 
   // ---- Coast to Coast (structural): a single run spanning West ↔ East ----
   const coast = dl.filter((l) => spansCoasts(l.origin_state, l.destination_state)).length;
@@ -165,9 +165,9 @@ export const PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
   { name: "Long Load", icon: "ruler", how: "An 80'+ load by cargo length — the long stuff. (Open-deck operations.)" },
   { name: "Mountain Mover", icon: "mountain", how: "One of your heaviest loads. (Open-deck operations.)" },
   { name: "Super Load", icon: "crown", how: "A true superload — 16' wide/high, 150' long, or 200k lb. A career milestone." },
-  { name: "Rainmaker", icon: "coins", how: "A top-tier net month." },
-  { name: "Iron Week", icon: "barbell", how: "One of your busiest pay-weeks by load count." },
-  { name: "Trailblazer", icon: "map-pin", how: "Deliver to a new state — the ×count is your states-conquered map." },
+  { name: "Big Month", icon: "coins", how: "A top-tier net month." },
+  { name: "Big Week", icon: "barbell", how: "One of your busiest pay-weeks by load count." },
+  { name: "48 States", icon: "map-pin", how: "Deliver to a new state — the ×count is your states-conquered map." },
   { name: "Coast to Coast", icon: "arrows-horizontal", how: "A single run spanning the West and East coasts." },
   { name: "Doubleheader", icon: "layers-subtract", how: "Deliver two or more loads in one day." },
 ];

@@ -40,29 +40,29 @@ export const computeTruckPatches = (truckLoads: Load[], truckFuel: FuelEntry[]):
   const windows = mpgWindows(truckFuel); // already chronological (by closing fill)
   const out: Patch[] = [];
 
-  // Feather Foot — a tank clearing your top MPG bar.
+  // High-MPG Tank — a tank clearing your top MPG bar.
   const mpgs = windows.map((w) => w.mpg).filter((m) => m > 0);
   const ff = computeStack(mpgs, { n: 5, floor: 6.8 });
-  out.push({ key: "feather-foot", name: "Feather Foot", icon: "feather", count: ff.count, bar: ff.bar, unit: null, hint: `tank over ${ff.bar.toFixed(1)} mpg` });
+  out.push({ key: "feather-foot", name: "High-MPG Tank", icon: "feather", count: ff.count, bar: ff.bar, unit: null, hint: `tank over ${ff.bar.toFixed(1)} mpg` });
 
-  // Iron Horse — a workhorse month of miles.
+  // Big-Mile Month — a workhorse month of miles.
   const monthMiles = byMonth(dl, (ls) => ls.reduce((s, l) => s + loadMiles(l), 0));
   const ih = computeStack(monthMiles, { n: 5, floor: 8000 });
-  out.push({ key: "iron-horse", name: "Iron Horse", icon: "road", count: ih.count, bar: ih.bar, unit: "miles", hint: `${num(ih.bar)}+ mi month` });
+  out.push({ key: "iron-horse", name: "Big-Mile Month", icon: "road", count: ih.count, bar: ih.bar, unit: "miles", hint: `${num(ih.bar)}+ mi month` });
 
-  // Marathon — one of your longest single hauls.
+  // Big Haul — one of your longest single hauls.
   const hauls = dl.map((l) => Number(l.loaded_miles) || 0).filter((m) => m > 0);
   const mar = computeStack(hauls, { n: 5, floor: 1200 });
-  out.push({ key: "marathon", name: "Marathon", icon: "flag", count: mar.count, bar: mar.bar, unit: "miles", hint: `${num(mar.bar)}+ mi haul` });
+  out.push({ key: "marathon", name: "Big Haul", icon: "flag", count: mar.count, bar: mar.bar, unit: "miles", hint: `${num(mar.bar)}+ mi haul` });
 
-  // Thrifty — a tank under your best fuel cost per mile.
+  // Cheap Tank — a tank under your best fuel cost per mile.
   const costPerMi = windows.filter((w) => w.miles > 0).map((w) => w.cost / w.miles);
   const th = computeStack(costPerMi, { n: 5, floor: 0.6, lowerIsBetter: true });
-  out.push({ key: "thrifty", name: "Thrifty", icon: "coins", count: th.count, bar: th.bar, unit: "money", hint: `tank under $${th.bar.toFixed(2)}/mi` });
+  out.push({ key: "thrifty", name: "Cheap Tank", icon: "coins", count: th.count, bar: th.bar, unit: "money", hint: `tank under $${th.bar.toFixed(2)}/mi` });
 
-  // Relentless — a run among your longest of consecutive days under a load.
+  // Days Under Load — a run among your longest of consecutive days under a load.
   const rel = computeStack(underLoadRuns(truckLoads), { n: 5, floor: 7 });
-  out.push({ key: "relentless", name: "Relentless", icon: "flame", count: rel.count, bar: rel.bar, unit: null, hint: `${Math.round(rel.bar)}-day run under load` });
+  out.push({ key: "relentless", name: "Days Under Load", icon: "flame", count: rel.count, bar: rel.bar, unit: null, hint: `${Math.round(rel.bar)}-day run under load` });
 
   return out;
 };
@@ -117,11 +117,11 @@ export const truckRecords = (truckLoads: Load[], truckFuel: FuelEntry[]): TruckR
 
 // Static catalog for the Guide's award-system reference.
 export const TRUCK_PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
-  { name: "Feather Foot", icon: "feather", how: "A tank clearing your top MPG bar — light-footed and climbing." },
-  { name: "Iron Horse", icon: "road", how: "A workhorse month — one of your highest for miles driven." },
-  { name: "Marathon", icon: "flag", how: "One of your longest single hauls." },
-  { name: "Thrifty", icon: "coins", how: "A tank under your best fuel cost per mile." },
-  { name: "Relentless", icon: "flame", how: "A run among your longest of consecutive days under a load." },
+  { name: "High-MPG Tank", icon: "feather", how: "A tank clearing your top MPG bar — light-footed and climbing." },
+  { name: "Big-Mile Month", icon: "road", how: "A workhorse month — one of your highest for miles driven." },
+  { name: "Big Haul", icon: "flag", how: "One of your longest single hauls." },
+  { name: "Cheap Tank", icon: "coins", how: "A tank under your best fuel cost per mile." },
+  { name: "Days Under Load", icon: "flame", how: "A run among your longest of consecutive days under a load." },
 ];
 
 export const TRUCK_MEDAL_GUIDE: { name: string; icon: string; tiers: string }[] = [

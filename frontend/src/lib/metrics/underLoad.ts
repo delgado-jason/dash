@@ -37,7 +37,7 @@ export const firstDeliveredPickup = (loads: Load[]): string | null =>
     .sort()[0] ?? null;
 
 // Lengths of each consecutive-day run of under-load days (gaps-and-islands) — the
-// stretches the truck rolled without a break. Feeds the Relentless patch.
+// stretches the truck rolled without a break. Feeds the Days Under Load patch.
 export const underLoadRuns = (loads: Load[]): number[] => {
   const days = [...underLoadDaySet(loads, null, "9999-12-31")].sort();
   const runs: number[] = [];

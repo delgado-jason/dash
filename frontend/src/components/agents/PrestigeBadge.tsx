@@ -9,12 +9,12 @@ export const PRESTIGE_META: Record<
   { label: string; fill: string; ink: string; icon: LucideIcon | null }
 > = {
   rookie: { label: "", fill: "", ink: "", icon: null },
-  contender: { label: "Contender", fill: "#c77b3e", ink: "#2a1a0a", icon: ChevronUp },
-  "all-star": { label: "All-Star", fill: "#aeb8c7", ink: "#141a26", icon: Star },
-  champion: { label: "Champion", fill: "#f5b03a", ink: "#3a2400", icon: Crown },
+  contender: { label: "Bronze", fill: "#c77b3e", ink: "#2a1a0a", icon: ChevronUp },
+  "all-star": { label: "Silver", fill: "#aeb8c7", ink: "#141a26", icon: Star },
+  champion: { label: "Gold", fill: "#f5b03a", ink: "#3a2400", icon: Crown },
   // Legend renders as a holographic foil (below) — this fill is only its label
   // colour. Foil + a slightly larger emblem mark it unmistakably as the top tier.
-  legend: { label: "Legend", fill: "#cbb6ff", ink: "#241a36", icon: Flame },
+  legend: { label: "Platinum", fill: "#cbb6ff", ink: "#241a36", icon: Flame },
 };
 
 const POINTS =

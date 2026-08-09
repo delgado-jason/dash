@@ -333,7 +333,7 @@ export const earnedTrophies = (opts: {
     out.push({ key: "strong-season", name: "Strong Season", icon: "trophy", detail: "Margin ≥ 27%" });
 
   if (opts.bestMpg != null)
-    out.push({ key: "feather-foot", name: "Feather Foot", icon: "flame", detail: `${opts.bestMpg.toFixed(1)} mpg best` });
+    out.push({ key: "feather-foot", name: "High-MPG Tank", icon: "flame", detail: `${opts.bestMpg.toFixed(1)} mpg best` });
 
   return out;
 };

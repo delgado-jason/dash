@@ -1956,7 +1956,7 @@ const GuidePage = () => {
             <p className="text-sm text-muted-text">
               Her page carries two kinds of earned awards, and they pop the same
               way the driver's do. <span className="text-light">Patches</span>{" "}
-              are the everyday grind — Deal Closer, Rainmaker, Rate Hawk,
+              are the everyday grind — Deal Closer, Big Month, Rate Hawk,
               Clockwork (on-time), Quick Turn, Oversize Ace, Lean Machine,
               Bounty Hunter, Right Hand, Iron Booker, and Backhaul&nbsp;Boss
               (loads booked out of the market where the last one delivered) —

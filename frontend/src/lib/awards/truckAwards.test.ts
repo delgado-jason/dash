@@ -32,7 +32,7 @@ describe("computeTruckMedals", () => {
 });
 
 describe("computeTruckPatches", () => {
-  it("earns Marathon on a long haul against the floor", () => {
+  it("earns Big Haul on a long haul against the floor", () => {
     const loads = [
       L({ delivery_date: "2026-05-01", loaded_miles: 1500 }),
       L({ delivery_date: "2026-05-08", loaded_miles: 800 }),

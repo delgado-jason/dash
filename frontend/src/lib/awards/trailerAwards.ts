@@ -42,10 +42,10 @@ export const computeTrailerPatches = (trailerLoads: Load[]): Patch[] => {
   const bh = computeStack(weights, { n: 5, floor: 46_000 });
   out.push({ key: "big-hauler", name: "Big Hauler", icon: "weight", count: bh.count, bar: bh.bar, unit: null, hint: `${num(bh.bar)}+ lb load` });
 
-  // Marathon — one of your longest single hauls.
+  // Big Haul — one of your longest single hauls.
   const hauls = dl.map((l) => Number(l.loaded_miles) || 0).filter((m) => m > 0);
   const mar = computeStack(hauls, { n: 5, floor: 1200 });
-  out.push({ key: "marathon", name: "Marathon", icon: "flag", count: mar.count, bar: mar.bar, unit: "miles", hint: `${num(mar.bar)}+ mi haul` });
+  out.push({ key: "marathon", name: "Big Haul", icon: "flag", count: mar.count, bar: mar.bar, unit: "miles", hint: `${num(mar.bar)}+ mi haul` });
 
   // Payday — a strong month for the trailer's cut.
   const monthEarn = byMonth(dl, (ls) => ls.reduce((s, l) => s + loadTrailerNet(l), 0));
@@ -102,7 +102,7 @@ export const trailerRecords = (trailerLoads: Load[]): TrailerRecords => {
 // Static catalog for the Guide's award-system reference.
 export const TRAILER_PATCH_GUIDE: { name: string; icon: string; how: string }[] = [
   { name: "Big Hauler", icon: "weight", how: "A load near the heaviest you carry — the bar climbs as you haul heavier." },
-  { name: "Marathon", icon: "flag", how: "One of your longest single hauls." },
+  { name: "Big Haul", icon: "flag", how: "One of your longest single hauls." },
   { name: "Payday", icon: "cash", how: "A strong month for the trailer's own cut of the freight." },
   { name: "Road Grind", icon: "road", how: "A workhorse month — one of your highest for miles." },
 ];
