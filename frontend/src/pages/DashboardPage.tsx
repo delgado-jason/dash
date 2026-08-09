@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRateTargets } from "@/hooks/useRateTargets";
@@ -43,6 +44,13 @@ const OwnerDashboard = () => {
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
+  // Settlement day drives the "next settlement lands Wed…" beat on Pulse.
+  const [settlementDay, setSettlementDay] = useState<number | null>(null);
+  useEffect(() => {
+    getSettlementSchedule()
+      .then((s) => setSettlementDay(s.settlement_day))
+      .catch(() => {});
+  }, []);
   const { pops, truckAvatarUrl } = useAwardPops(loads);
   // The latest FINISHED recap that actually has data — never the in-progress one.
   const latestRecap = latestRecapWithData(loads, new Date());
@@ -100,9 +108,9 @@ const OwnerDashboard = () => {
       >
         {(active) =>
           active === "pulse" ? (
-            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} />
+            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} settlementDay={settlementDay} />
           ) : active === "money" ? (
-            <MoneyTab loads={loads} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
+            <MoneyTab loads={loads} trips={trips} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
           ) : active === "lanes" ? (
             <LanesTab loads={loads} />
           ) : active === "agents" ? (

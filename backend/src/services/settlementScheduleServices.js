@@ -10,6 +10,7 @@ const DEFAULTS = {
   accessorial_pct: 1,
   carrier_name: null,
   detention_free_hours: 3,
+  settlement_day: 3, // Wednesday — day of week the weekly settlement lands
   per_diem_rate: 69,
   per_diem_deduct_pct: 0.8,
   hometime_threshold_days: 21,
@@ -60,6 +61,7 @@ const COLUMNS = [
   ...PCT_FIELDS,
   "carrier_name",
   "detention_free_hours",
+  "settlement_day",
   "per_diem_rate",
   "per_diem_deduct_pct",
   "hometime_threshold_days",
@@ -101,6 +103,15 @@ export async function upsertSettlementSchedule(user_id, data) {
     if (!Number.isFinite(n) || n < 0 || n > 24)
       throw new ValidationError("detention_free_hours must be between 0 and 24");
     provided.detention_free_hours = n;
+  }
+
+  if (data.settlement_day !== undefined) {
+    const n = Number(data.settlement_day);
+    if (!Number.isInteger(n) || n < 0 || n > 6)
+      throw new ValidationError(
+        "settlement_day must be a day of week, 0 (Sunday) through 6 (Saturday)",
+      );
+    provided.settlement_day = n;
   }
 
   if (data.per_diem_rate !== undefined) {

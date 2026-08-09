@@ -30,6 +30,7 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   rate_tier_spec_strong:
     s.rate_tier_spec_strong != null ? Number(s.rate_tier_spec_strong) : 0.6,
   margin_goal: s.margin_goal != null ? Number(s.margin_goal) : 0.26,
+  settlement_day: s.settlement_day != null ? Number(s.settlement_day) : 3,
 });
 
 export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {

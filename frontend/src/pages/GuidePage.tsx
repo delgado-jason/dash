@@ -546,18 +546,22 @@ const GuidePage = () => {
             </p>
             <div className="flex flex-col gap-2.5">
               <TabLine name="Pulse" q="How's my day going?">
-                This pay week's earnings vs your target, your booking rate against
-                your floor, what's booked next, the settlement pipeline, and any
-                overdue maintenance or compliance — the two most urgent show, the
-                rest fold behind a tap.
+                This pay week's earnings vs your target — with overdrive room past
+                the target and your best week marked on the chart — your booking
+                rate against your floor, and the Next rail: your next delivery,
+                pickup, settlement day, and maintenance/compliance clocks in one
+                list. The two most urgent alerts show, the rest fold behind a tap.
               </TabLine>
               <TabLine name="Money" q="Am I profitable?">
                 Year-to-date income and two margins — operating, and your
                 after-notes (owner's take) margin, which is the one graded
                 against your goal since it's what's actually left after the truck,
                 trailer, and loan notes. Plus the monthly P&amp;L, the margin
-                trend, where the money goes by category, and what's delivered but
-                not yet settled.
+                trend, where the money goes by category, your realized profit per
+                mile, and the notes tracker — how much of this month's notes are
+                covered and the day you're on pace to clear them. (Delivered-but-
+                unsettled money shows on Pulse as your next settlement — it clears
+                every week.)
               </TabLine>
               <TabLine name="Lanes" q="Where does my freight run?">
                 The U.S. map shaded by your $/mi (fire marks your best-paying

@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { Load } from "@/types/load";
@@ -13,13 +14,14 @@ import {
 import { loadRevenue } from "@/lib/metrics/loads";
 import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
+import { nextSettlementDate } from "@/lib/metrics/settlement";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import type { Alert } from "@/types/alert";
 import { GrindMeter } from "@/components/dashboard/GrindMeter";
-import { WhatsNext } from "@/components/dashboard/WhatsNext";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { ForgedPlate } from "@/components/ui/ForgedPlate";
 import { CountUp } from "@/components/ui/CountUp";
+import { PaceMeter, paceMarker } from "@/components/ui/PaceMeter";
 import { DUR, GSAP_EASE, STAGGER } from "@/theme/motion";
 import { money, rpm as fmtRpm } from "@/lib/format";
 
@@ -36,80 +38,55 @@ const PACE = {
   "no-prior": { text: "first quarter — no", color: "#9fb0c9", glyph: "·" },
 } as const;
 
-// The pay week as LED segments (gate-3 spec, §04/§06): earned cells solid with
-// a hot tip, committed cells dimmed, floor/target as tick markers. Purely a
-// re-presentation of numbers the targets hook already provides.
-const SEG_CELLS = 26;
-const PaceSegments = ({
-  earned,
-  committed,
-  target,
-  floor,
+// Weekday + date in UTC — date-only strings must never shift a day locally.
+const fmtDay = (d: Date): string =>
+  d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+const fmtDayIso = (iso: string): string => fmtDay(new Date(iso));
+
+// "Jun 18–24" / "Jun 29 – Jul 5" for a pay week starting at `s`.
+const weekRangeLabel = (s: Date): string => {
+  const e = new Date(s);
+  e.setUTCDate(s.getUTCDate() + 6);
+  const m = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+  return m(s) === m(e)
+    ? `${m(s)} ${s.getUTCDate()}–${e.getUTCDate()}`
+    : `${m(s)} ${s.getUTCDate()} – ${m(e)} ${e.getUTCDate()}`;
+};
+
+// The record tag on the pace plate — plain words only. Shows when this week's
+// projection is at or near the best completed week in the window.
+const RecordTag = ({
+  projected,
+  best,
 }: {
-  earned: number;
-  committed: number;
-  target: number;
-  floor: number | null;
+  projected: number;
+  best: number;
 }) => {
-  const scale = Math.max(target, earned + committed) || 1;
-  const cellVal = scale / SEG_CELLS;
-  const earnedCells = Math.min(SEG_CELLS, Math.round(earned / cellVal));
-  const commitCells = Math.min(
-    SEG_CELLS,
-    Math.round((earned + committed) / cellVal),
-  );
-
-  const Marker = ({ left, label }: { left: number; label: string }) => (
-    <div
-      className="absolute -top-1.5 w-px h-[31px] bg-dim"
-      style={{ left: `${left}%` }}
-    >
-      <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 text-[9px] font-semibold tracking-[.08em] uppercase text-faint whitespace-nowrap">
-        {label}
-      </span>
-    </div>
-  );
-
+  if (best <= 0 || projected < best * 0.9) return null;
+  const beats = projected >= best;
   return (
-    <div className="relative mt-7 mb-1">
-      <div className="flex gap-[3px] h-[20px]">
-        {Array.from({ length: SEG_CELLS }, (_, i) => {
-          const on = i < earnedCells;
-          const com = !on && i < commitCells;
-          const hotTip = on && i === earnedCells - 1;
-          return (
-            <span
-              key={i}
-              className="flex-1 rounded-[2px]"
-              style={
-                on
-                  ? {
-                      background: hotTip
-                        ? "var(--color-amber-hi)"
-                        : "var(--color-chart-amber)",
-                      boxShadow: hotTip
-                        ? "0 0 7px rgba(245,176,58,.5)"
-                        : "inset 0 1px 0 rgba(255,255,255,.15)",
-                    }
-                  : com
-                    ? { background: "rgba(200,127,10,.3)" }
-                    : {
-                        background: "var(--color-well)",
-                        boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)",
-                      }
-              }
-            />
-          );
-        })}
-      </div>
-      {floor != null && floor > 0 && floor <= scale && (
-        <Marker left={(floor / scale) * 100} label={`floor ${money(floor)}`} />
-      )}
-      <Marker
-        left={Math.min(100, (target / scale) * 100)}
-        label={`target ${money(target)}`}
-      />
-    </div>
+    <span
+      className="inline-flex items-center gap-2 ml-3.5 px-2.5 py-1 rounded-[7px] align-[6px] bg-well"
+      style={{
+        boxShadow:
+          "inset 0 2px 4px rgba(0,0,0,.55), 0 0 12px rgba(245,176,58,.18)",
+      }}
+    >
+      <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-light">
+        {beats ? "NEW BEST WEEK IN REACH" : "BEST WEEK IN REACH"}
+      </span>
+      <span className="font-condensed font-semibold text-[12px] text-dim tabular-nums">
+        {beats
+          ? `projected ${money(projected)} beats your ${money(best)} record`
+          : `${money(best - projected)} more passes your ${money(best)} record`}
+      </span>
+    </span>
   );
 };
 
@@ -118,11 +95,13 @@ export const PulseTab = ({
   trips,
   targets,
   alerts,
+  settlementDay,
 }: {
   loads: Load[];
   trips: Trip[];
   targets: Targets;
   alerts: Alert[];
+  settlementDay: number | null;
 }) => {
   const now = useMemo(() => new Date(), []);
 
@@ -130,7 +109,9 @@ export const PulseTab = ({
   const committed = targets.weekBooked ?? 0;
   const weeklyTarget: number | null = targets.gross?.weeklyTarget ?? null;
   const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
-  const progress = weeklyTarget && weeklyTarget > 0 ? Math.min(1, earned / weeklyTarget) : null;
+  const progress =
+    weeklyTarget && weeklyTarget > 0 ? Math.min(1, earned / weeklyTarget) : null;
+  const projected = earned + committed;
 
   const mtd = getRevenueMTD(loads);
   const deadhead = getMonthlyDeadhead(loads, trips).thisMonth;
@@ -138,15 +119,21 @@ export const PulseTab = ({
   const upcoming = getUpcomingLoads(loads);
   const pace = useMemo(() => getQuarterPace(loads, now), [loads, now]);
 
-  // Settlement pipeline: delivered but not yet paid = landing on the next
-  // settlement(s). No aging — POD-in (delivered) is the gate, and it clears weekly.
-  const pipeline = useMemo(
+  // Landing on the next weekly settlement: delivered, POD in, not yet paid.
+  // Timing, not receivables — the carrier clears it every settlement day.
+  const pipelineLoads = useMemo(
     () =>
-      loads
-        .filter((l) => l.load_status === "delivered" && l.payment_status !== "paid")
-        .reduce((s, l) => s + loadRevenue(l), 0),
+      loads.filter(
+        (l) => l.load_status === "delivered" && l.payment_status !== "paid",
+      ),
     [loads],
   );
+  const pipeline = useMemo(
+    () => pipelineLoads.reduce((s, l) => s + loadRevenue(l), 0),
+    [pipelineLoads],
+  );
+  const settleDate =
+    settlementDay != null ? nextSettlementDate(now, settlementDay) : null;
 
   // Your delivery punctuality — did YOU hit the appointment at the dock — over the
   // last 90 days of delivered loads. freeHours doesn't affect on-time (it grades
@@ -165,17 +152,25 @@ export const PulseTab = ({
   // Last 8 pay-weeks of gross earned, anchored to the configured week start.
   const weeks = useMemo(() => {
     const anchor: Date = targets.weekStart ? new Date(targets.weekStart) : now;
-    const out: { earned: number; now: boolean }[] = [];
+    const out: { earned: number; now: boolean; start: Date }[] = [];
     for (let i = 7; i >= 0; i--) {
       const s = new Date(anchor);
       s.setUTCDate(anchor.getUTCDate() - i * 7);
       const e = new Date(s);
       e.setUTCDate(s.getUTCDate() + 7);
-      out.push({ earned: getWeekGrossEarned(loads, s, e), now: i === 0 });
+      out.push({ earned: getWeekGrossEarned(loads, s, e), now: i === 0, start: s });
     }
     return out;
   }, [loads, targets.weekStart, now]);
   const weekMax = Math.max(weeklyTarget ?? 0, ...weeks.map((w) => w.earned), 1);
+
+  // The best COMPLETED week in the window — the one to beat.
+  const bestWeek = useMemo(() => {
+    const done = weeks.filter((w) => !w.now);
+    if (done.length === 0) return null;
+    const top = done.reduce((b, w) => (w.earned > b.earned ? w : b), done[0]);
+    return top.earned > 0 ? top : null;
+  }, [weeks]);
 
   const ladder = targets.bookingLadder ?? {};
   const cur: number | null = targets.grossRate ?? null;
@@ -194,6 +189,70 @@ export const PulseTab = ({
   const overFloor = cur != null && ladder.walkAway != null ? cur - ladder.walkAway : null;
 
   const paceMeta = PACE[pace.verdict];
+
+  // The Next rail — every clock that matters, one list. Rows self-omit when
+  // there's nothing on that clock; each row is a door.
+  const nextRows = useMemo(() => {
+    const rows: {
+      kind: string;
+      cls: string;
+      title: string;
+      detail: string;
+      amount?: number;
+      to: string;
+    }[] = [];
+    const inTransit = loads
+      .filter((l) => l.load_status === "in_transit" && l.delivery_date)
+      .sort((a, b) =>
+        (a.delivery_date as string) < (b.delivery_date as string) ? -1 : 1,
+      )[0];
+    if (inTransit)
+      rows.push({
+        kind: "Delivery",
+        cls: "text-amber-light",
+        title: `${inTransit.origin_city}, ${inTransit.origin_state} → ${inTransit.destination_city}, ${inTransit.destination_state}`,
+        detail: fmtDayIso(inTransit.delivery_date as string),
+        amount: loadRevenue(inTransit),
+        to: `/loads/${inTransit.load_id}`,
+      });
+    const nextUp = upcoming[0];
+    if (nextUp)
+      rows.push({
+        kind: "Pickup",
+        cls: "text-[#7ab0e8]",
+        title: nextUp.lane,
+        detail: `${fmtDayIso(nextUp.pickup_date)} · ${nextUp.agent}`,
+        amount: nextUp.gross,
+        to: `/loads/${nextUp.load_id}`,
+      });
+    if (pipeline > 0)
+      rows.push({
+        kind: "Settlement",
+        cls: "text-status-positive-text",
+        title: `${money(pipeline)} landing`,
+        detail: `${settleDate ? fmtDay(settleDate) + " · " : ""}${pipelineLoads.length} load${pipelineLoads.length === 1 ? "" : "s"} · POD in`,
+        to: "/loads",
+      });
+    const maint = alerts.find((a) => a.kind === "maintenance");
+    if (maint)
+      rows.push({
+        kind: "Maintenance",
+        cls: "text-amber-light",
+        title: maint.message,
+        detail: "",
+        to: maint.actionHref ?? "/maintenance",
+      });
+    const comp = alerts.find((a) => a.kind !== "maintenance");
+    if (comp)
+      rows.push({
+        kind: "Compliance",
+        cls: "text-dim",
+        title: comp.message,
+        detail: "",
+        to: comp.actionHref ?? "/compliance",
+      });
+    return rows;
+  }, [loads, upcoming, pipeline, pipelineLoads, settleDate, alerts]);
 
   // Boot sequence — the view's one orchestrated moment (gate-3 spec §06).
   const scope = useRef<HTMLDivElement>(null);
@@ -241,71 +300,102 @@ export const PulseTab = ({
             <span className="text-[15px] text-dim font-condensed tracking-normal">
               earned
             </span>
+            {bestWeek && (
+              <RecordTag projected={projected} best={bestWeek.earned} />
+            )}
           </p>
           {weeklyTarget ? (
-            <PaceSegments
-              earned={earned}
-              committed={committed}
+            <PaceMeter
+              filled={earned}
+              ghost={committed}
               target={weeklyTarget}
-              floor={weeklyFloor}
+              markers={[
+                ...(weeklyFloor ? [paceMarker("floor", weeklyFloor)] : []),
+                paceMarker("target", weeklyTarget),
+              ]}
             />
           ) : null}
           <p className="text-[11.5px] text-faint mt-1.5">
             {progress != null && weeklyTarget ? (
               <>
                 <b className="text-ink">{Math.round(progress * 100)}%</b> of your{" "}
-                <b className="text-ink">{money(weeklyTarget)}</b> weekly target ·{" "}
+                <b className="text-ink">{money(weeklyTarget)}</b> target earned ·{" "}
               </>
             ) : null}
-            <b className="text-dim">{money(committed)}</b> committed & booked ahead
+            <b className="text-dim">{money(committed)}</b> booked ahead — projected{" "}
+            <b
+              className={
+                weeklyTarget && projected > weeklyTarget
+                  ? "text-amber-light"
+                  : "text-dim"
+              }
+            >
+              {money(projected)}
+            </b>
+            {weeklyTarget && projected > weeklyTarget
+              ? ", past target into overdrive"
+              : ""}
           </p>
         </div>
         <div className="md:border-l md:border-white/10 md:pl-5 flex flex-col justify-center gap-3">
           <div>
-            <p
-              className="font-condensed font-semibold text-[22px] leading-none tabular-nums"
-              style={{
-                color:
-                  overFloor != null && overFloor >= 0
-                    ? "var(--color-status-positive-text)"
-                    : "var(--color-ink)",
-              }}
-            >
-              {cur != null ? `${fmtRpm(cur)}/mi` : "—"}
+            <p className="ds2-label">Earned month-to-date</p>
+            <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums mt-1">
+              {money(mtd)}
             </p>
-            <p className="ds2-label mt-1">
-              gross rate
-              {overFloor != null
-                ? ` · ${overFloor >= 0 ? "+" : "−"}${fmtRpm(Math.abs(overFloor))} vs floor`
-                : ""}
+            <p className="text-[11px] text-faint mt-0.5">
+              {loadsM.thisMonth} load{loadsM.thisMonth === 1 ? "" : "s"} delivered
             </p>
           </div>
           <div>
-            <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums">
-              {money(mtd)}
+            <p className="ds2-label">Quarter pace</p>
+            <p
+              className="text-[12px] font-bold mt-1"
+              style={{ color: paceMeta.color }}
+            >
+              {paceMeta.glyph} {pace.label} {paceMeta.text} {pace.prevLabel}
             </p>
-            <p className="ds2-label mt-1">earned month-to-date</p>
           </div>
-          <p className="text-[11px] font-bold" style={{ color: paceMeta.color }}>
-            {paceMeta.glyph} {pace.label} {paceMeta.text} {pace.prevLabel}
-          </p>
+          <div>
+            <p className="ds2-label">Next settlement</p>
+            {pipeline > 0 ? (
+              <>
+                <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums mt-1 text-status-positive-text">
+                  {money(pipeline)}
+                </p>
+                <p className="text-[11px] text-faint mt-0.5">
+                  {settleDate ? `lands ${fmtDay(settleDate)} · ` : ""}
+                  {pipelineLoads.length} load
+                  {pipelineLoads.length === 1 ? "" : "s"} · POD in
+                </p>
+              </>
+            ) : (
+              <p className="text-[12px] text-faint mt-1">
+                nothing waiting — all settled up
+              </p>
+            )}
+          </div>
         </div>
       </ForgedPlate>
 
-      {/* vital signs — the etched board (flat = read) */}
+      {/* vitals — five doors (flat = read) */}
       <Board className="ds2-boot grid grid-cols-2 md:grid-cols-5">
         <BoardCell
           className="border-b md:border-b-0 md:border-r ds2-cell-rule"
           label="Loads · MTD"
           value={String(loadsM.thisMonth)}
           sub={`last month ${loadsM.lastMonth}`}
+          to="/loads"
+          go="loads"
         />
         <BoardCell
           className="border-b md:border-b-0 md:border-r ds2-cell-rule"
           label="Deadhead"
           value={deadhead != null ? `${Math.round(deadhead * 100)}%` : "—"}
-          sub="odometer-true"
+          sub="odometer-true · target ≤ 20%"
           tone={deadhead == null ? "none" : deadhead <= 0.2 ? "pos" : "amb"}
+          to="/trips"
+          go="trips"
         />
         <BoardCell
           className="border-b md:border-b-0 md:border-r ds2-cell-rule"
@@ -316,17 +406,16 @@ export const PulseTab = ({
               ? `break-even ${fmtRpm(targets.basis.breakEvenRpm)}`
               : "3-mo blended"
           }
+          to="/settings"
+          go="cost basis"
         />
         <BoardCell
           className="md:border-r ds2-cell-rule"
-          label="Pipeline"
-          value={money(pipeline)}
-          sub="delivered, not yet settled"
-        />
-        <BoardCell
           label="On-time"
           value={
-            onTime.onTimePct != null ? `${Math.round(onTime.onTimePct * 100)}%` : "—"
+            onTime.onTimePct != null
+              ? `${Math.round(onTime.onTimePct * 100)}%`
+              : "—"
           }
           sub={
             onTime.onTimePct != null
@@ -342,40 +431,72 @@ export const PulseTab = ({
                   ? "none"
                   : "amb"
           }
+          to="/loads"
+          go="loads"
+        />
+        <BoardCell
+          label="Best week"
+          value={bestWeek ? money(bestWeek.earned) : "—"}
+          valueClassName="text-amber-light"
+          sub={
+            bestWeek
+              ? `${weekRangeLabel(bestWeek.start)} · the one to beat`
+              : "first full weeks build it"
+          }
+          tone={bestWeek ? "amb" : "none"}
+          to="/recap"
+          go="recap"
         />
       </Board>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3">
-        {/* weekly earnings */}
+        {/* weekly earnings — history + the record line */}
         <Board className="ds2-boot p-4">
           <h3 className="ds2-label mb-2 flex justify-between">
             Weekly earnings{" "}
             <span className="normal-case tracking-normal font-normal text-faint">
-              last 8 weeks · gross
+              last 8 weeks · gross ·{" "}
+              <span className="text-amber-light">— best week</span>{" "}
+              <span className="text-status-positive-text">-- target</span>
             </span>
           </h3>
           <svg viewBox="0 0 620 150" className="w-full">
             {weeklyTarget && (
+              <line
+                x1="0"
+                y1={140 - (weeklyTarget / weekMax) * 120}
+                x2="620"
+                y2={140 - (weeklyTarget / weekMax) * 120}
+                stroke="var(--color-status-positive-text)"
+                strokeWidth={1}
+                strokeDasharray="4 4"
+                opacity={0.55}
+              />
+            )}
+            {bestWeek && (
               <>
                 <line
                   x1="0"
-                  y1={140 - (weeklyTarget / weekMax) * 120}
+                  y1={140 - (bestWeek.earned / weekMax) * 120}
                   x2="620"
-                  y2={140 - (weeklyTarget / weekMax) * 120}
-                  stroke="var(--color-status-positive-text)"
+                  y2={140 - (bestWeek.earned / weekMax) * 120}
+                  stroke="var(--color-amber-light)"
                   strokeWidth={1}
-                  strokeDasharray="4 4"
-                  opacity={0.55}
+                  opacity={0.6}
                 />
-                <text
-                  x="616"
-                  y={140 - (weeklyTarget / weekMax) * 120 - 4}
-                  textAnchor="end"
-                  fontSize={9}
-                  fill="var(--color-status-positive-text)"
-                >
-                  target {money(weeklyTarget)}
-                </text>
+                {/* label only when it clears the target label's lane */}
+                {(!weeklyTarget ||
+                  Math.abs(bestWeek.earned - weeklyTarget) / weekMax > 0.1) && (
+                  <text
+                    x="616"
+                    y={140 - (bestWeek.earned / weekMax) * 120 - 4}
+                    textAnchor="end"
+                    fontSize={9}
+                    fill="var(--color-amber-light)"
+                  >
+                    best week {money(bestWeek.earned)}
+                  </text>
+                )}
               </>
             )}
             {weeks.map((w, i) => {
@@ -413,7 +534,7 @@ export const PulseTab = ({
           </svg>
         </Board>
 
-        {/* rate vs floor — the scale instrument */}
+        {/* rate vs floor — the one and only rate surface */}
         <Board className="ds2-boot p-4">
           <h3 className="ds2-label flex justify-between">
             Rate vs your floor
@@ -496,16 +617,47 @@ export const PulseTab = ({
         </Board>
       </div>
 
-      {/* what's next + the grind */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-3">
+      {/* the Next rail + the grind */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-3">
         <Board className="ds2-boot p-4">
-          <h3 className="ds2-label mb-2 flex justify-between">
-            What's next{" "}
+          <h3 className="ds2-label mb-1 flex justify-between">
+            Next{" "}
             <span className="normal-case tracking-normal font-normal text-faint">
-              booked · picking up
+              every clock that matters
             </span>
           </h3>
-          <WhatsNext loads={upcoming} />
+          {nextRows.length === 0 ? (
+            <p className="text-sm text-dim mt-2">Nothing on the clock.</p>
+          ) : (
+            nextRows.map((r) => (
+              <Link
+                key={r.kind + r.title}
+                to={r.to}
+                className="flex items-baseline gap-3 py-[9px] border-b ds2-cell-rule last:border-b-0 hover:opacity-85"
+              >
+                <span
+                  className={`flex-none w-[86px] text-[9px] font-semibold tracking-[.12em] uppercase pt-px ${r.cls}`}
+                >
+                  {r.kind}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold text-ink truncate">
+                    {r.title}
+                  </span>
+                  {r.detail && (
+                    <span className="block text-[11px] text-faint mt-px">
+                      {r.detail}
+                    </span>
+                  )}
+                </span>
+                {r.amount != null && (
+                  <span className="ml-auto font-condensed font-semibold text-[14.5px] text-dim tabular-nums whitespace-nowrap">
+                    {money(r.amount)}
+                  </span>
+                )}
+              </Link>
+            ))
+          )}
         </Board>
         <div className="ds2-boot">
           <GrindMeter loads={loads} />

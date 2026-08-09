@@ -109,6 +109,14 @@
      band, so charts use these validated steps (CVD ΔE 24.5, ≥3:1). */
   --color-chart-amber: #c87f0a;
   --color-chart-blue: #4f8cd6;
+  /* Categorical set (cost categories) — fixed order, never cycled. Validated
+     2026-08-09: all six dark-band checks pass in THIS adjacency order. */
+  --color-cat1: #c87f0a; /* amber */
+  --color-cat2: #35a08c; /* teal */
+  --color-cat3: #8f7ad0; /* violet */
+  --color-cat4: #c65f7d; /* rose */
+  --color-cat5: #4f8cd6; /* blue */
+  --color-cat6: #8a8f28; /* olive */
 
   /* The Forge — game-layer voice. Game surfaces only, never operational
      UI. Replaces Bangers when the last comic surface migrates. */
