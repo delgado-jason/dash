@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Trophy, Sparkles } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Coin, type CoinMetal } from "@/components/forge/Coin";
+
 import type { Trophy as TrophyRecord } from "@/types/trophy";
 import type { Driver } from "@/types/driver";
 import type { Truck } from "@/types/truck";
@@ -14,12 +14,16 @@ import { getDrivers } from "@/services/driversService";
 import { getTrucks } from "@/services/trucksService";
 import { getFuelEntries } from "@/services/fuelService";
 import { getObligations } from "@/services/obligationsService";
-import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadRevenue, loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
 import { computeAllStatuses, type TrophyStatus } from "@/lib/trophies/status";
 import { computeMedals } from "@/lib/awards/medals";
+import { computeTruckPatches, computeTruckMedals, truckRecords } from "@/lib/awards/truckAwards";
+import { computeTrailerPatches, computeTrailerMedals, trailerRecords } from "@/lib/awards/trailerAwards";
+import { fuelStats } from "@/lib/metrics/fuelEconomy";
+import { CoinRack, TagRack, PlateRack, RackHeader } from "@/components/forge/Racks";
 import { computePatches } from "@/lib/awards/patches";
 import { personalBests, marginGrade, careerRank } from "@/lib/metrics/playerCard";
 import { useGrind } from "@/hooks/useGrind";
@@ -306,6 +310,41 @@ const TrophyHallPage = () => {
     };
   }, [loads, trucks, fuel, obligations, grind, periods, operation]);
 
+  // Truck & trailer racks — the iron earns its own hardware.
+  const rig = useMemo(() => {
+    const now = new Date();
+    const truck0 = trucks[0] ?? null;
+    const truckLoads = truck0
+      ? loads.filter((l) => l.truck_id === truck0.truck_id)
+      : [];
+    const truckFuel = truck0
+      ? fuel.filter((f) => f.truck_id === truck0.truck_id)
+      : [];
+    const trailerLoads = loads.filter((l) => l.trailer_id != null);
+    const tDel = trailerLoads.filter((l) => l.load_status === "delivered");
+    return {
+      truckMedals: truck0
+        ? computeTruckMedals({
+            odometer: Number(truck0.current_odometer) || 0,
+            avgMpg: fuelStats(truckFuel, now).avgMpg,
+            deliveredCount: truckLoads.filter((l) => l.load_status === "delivered").length,
+            loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
+            utilization: null,
+          })
+        : [],
+      truckPatches: truck0 ? computeTruckPatches(truckLoads, truckFuel) : [],
+      truckRecs: truck0 ? truckRecords(truckLoads, truckFuel) : null,
+      trailerMedals: computeTrailerMedals({
+        hubMiles: tDel.reduce((s2, l) => s2 + (Number(l.loaded_miles) || 0), 0),
+        earnings: tDel.reduce((s2, l) => s2 + loadTrailerNet(l), 0),
+        deliveredCount: tDel.length,
+        loanPaidPct: assetLoanStatus(obligations, "trailer", now)?.ownedPct ?? null,
+      }),
+      trailerPatches: computeTrailerPatches(trailerLoads),
+      trailerRecs: trailerRecords(trailerLoads),
+    };
+  }, [loads, trucks, fuel, obligations]);
+
   const hallBg = byKey["hall-background"]?.image_url ?? null;
   const driver = drivers.find((d) => d.avatar_url) ?? drivers[0];
   const truck = trucks.find((t) => t.avatar_url) ?? trucks[0];
@@ -422,99 +461,58 @@ const TrophyHallPage = () => {
               </div>
             </header>
 
-            {/* ---- COINS · TAGS · PLATES — the driver racks, ghost-ruled ---- */}
+            {/* ---- the racks: driver, truck, trailer — ghost-ruled ---- */}
             <section className="mb-10">
-              <div className="flex items-center gap-3.5 mb-4">
-                <span className="font-forge font-bold text-[19px] whitespace-nowrap" style={{ color: "#f5b03a" }}>
-                  COINS — STRUCK AT THE PRESS
-                </span>
-                <span className="h-px flex-1" style={{ background: "linear-gradient(to right,rgba(232,148,10,.5),transparent)" }} />
-                <span className="text-[11px] text-dim">Bronze → Silver → Gold → Platinum</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {forged.medals.map((m) => {
-                  const earned = m.tier > 0;
-                  const metals = ["", "bronze", "silver", "gold", "platinum"] as const;
-                  return (
-                    <div key={m.key} className={`rounded-xl p-3.5 bg-[#0c111af2] border ${earned ? "border-hairline" : "border-dashed border-[#232d40]"}`}>
-                      <div className="flex items-center gap-3">
-                        {earned ? (
-                          <Coin metal={metals[Math.min(m.tier, 4)] as CoinMetal} size={46}>{m.tierLabel}</Coin>
-                        ) : (
-                          <span className="w-[46px] h-[46px] rounded-full border-2 border-dashed border-[#39445e] flex items-center justify-center text-[13px] font-forge font-bold text-faint shrink-0">I</span>
-                        )}
-                        <div className="min-w-0">
-                          <div className="font-forge font-bold text-[14px] tracking-[.08em] uppercase">{m.name}{earned ? ` ${m.tierLabel}` : ""}</div>
-                          <div className="text-[10.5px] text-faint truncate">{earned ? (m.next != null ? `next tier at ${m.hint.split(" / ")[1]}` : "topped out — the trophy is next") : "first strike ahead"}</div>
-                        </div>
-                        <span className={`ml-auto text-[8.5px] font-semibold tracking-[.14em] uppercase ${earned ? "text-status-positive-text" : "text-faint"}`}>{earned ? "struck" : "in the die"}</span>
-                      </div>
-                      {m.next != null && (
-                        <>
-                          <div className="relative h-[7px] rounded-[4px] bg-well mt-2.5 overflow-hidden" style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.6)" }}>
-                            <span className="absolute left-0 top-0 bottom-0 rounded-[4px]" style={{ width: `${Math.round(m.progress * 100)}%`, background: "linear-gradient(90deg,var(--color-chart-amber),var(--color-amber-light))" }} />
-                          </div>
-                          <div className="flex justify-between text-[9.5px] text-faint mt-1 tabular-nums"><span>{m.name}{earned ? ` ${"·"} toward ${metals[Math.min(m.tier + 1, 4)]}` : ""}</span><span>{m.hint}</span></div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+              <RackHeader title="COINS — STRUCK AT THE PRESS" right="Bronze → Silver → Gold → Platinum" />
+              <CoinRack medals={forged.medals} />
+            </section>
+            <section className="mb-10">
+              <RackHeader title="TAGS — PUNCHED EVERY RE-EARN" />
+              <TagRack patches={forged.patches} />
+            </section>
+            <section className="mb-10">
+              <RackHeader title="PLATES — BEATEN AND RE-ENGRAVED" />
+              <PlateRack
+                plates={[
+                  { k: "Best week", v: forged.bests.bestWeekRevenue, f: (n) => `$${Math.round(n).toLocaleString("en-US")}` },
+                  { k: "Best tank", v: forged.bests.bestMpg, f: (n) => `${n.toFixed(1)} MPG` },
+                  { k: "Biggest load", v: forged.bests.biggestLoad, f: (n) => `$${Math.round(n).toLocaleString("en-US")}` },
+                  { k: "Most loads in a week", v: forged.bests.mostLoadsInWeek, f: (n) => `${Math.round(n)} LOADS` },
+                ]}
+              />
+            </section>
+
+            <section className="mb-10">
+              <RackHeader title="THE TRUCK'S RACK" right={trucks[0] ? `Unit ${trucks[0].unit_number}` : undefined} />
+              <div className="flex flex-col gap-6">
+                <CoinRack medals={rig.truckMedals} />
+                <TagRack patches={rig.truckPatches} />
+                {rig.truckRecs && (
+                  <PlateRack
+                    plates={[
+                      { k: "Best tank", v: rig.truckRecs.bestTank, f: (n) => `${n.toFixed(1)} MPG` },
+                      { k: "Big-mile month", v: rig.truckRecs.bigMonthMiles, f: (n) => `${Math.round(n).toLocaleString("en-US")} MI` },
+                      { k: "Best $/mi month", v: rig.truckRecs.bestRevPerMile, f: (n) => `$${n.toFixed(2)} / MI` },
+                      { k: "Longest haul", v: rig.truckRecs.longestHaul, f: (n) => `${Math.round(n).toLocaleString("en-US")} MI` },
+                    ]}
+                  />
+                )}
               </div>
             </section>
 
             <section className="mb-10">
-              <div className="flex items-center gap-3.5 mb-4">
-                <span className="font-forge font-bold text-[19px] whitespace-nowrap" style={{ color: "#f5b03a" }}>
-                  TAGS — PUNCHED EVERY RE-EARN
-                </span>
-                <span className="h-px flex-1" style={{ background: "linear-gradient(to right,rgba(232,148,10,.5),transparent)" }} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {forged.patches.map((pt) => {
-                  const earned = pt.count > 0;
-                  return (
-                    <div key={pt.key} className={`rounded-xl p-3.5 bg-[#0c111af2] border ${earned ? "border-hairline" : "border-dashed border-[#232d40]"}`}>
-                      <div className={`rounded-lg px-3.5 py-2.5 pl-8 relative ${earned ? "" : "opacity-55 grayscale"}`} style={{ background: "linear-gradient(168deg,#323c52,#212a3c)", borderTop: "1px solid rgba(255,255,255,.11)", borderBottom: "2px solid rgba(0,0,0,.5)" }}>
-                        <span className="absolute left-2.5 top-3 w-2.5 h-2.5 rounded-full" style={{ background: "#070a10", boxShadow: "inset 0 1px 2px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.12)" }} />
-                        <div className="font-forge font-bold text-[13.5px] tracking-[.08em] uppercase" style={{ color: "#dfe6f2", textShadow: "0 -1px 0 rgba(0,0,0,.7)" }}>{pt.name}</div>
-                        <div className="flex gap-[5px] mt-1.5 items-center">
-                          {Array.from({ length: 6 }, (_, i) => (
-                            <span key={i} className="w-[9px] h-[9px] rounded-full" style={ i < Math.min(pt.count, 6) ? { background: "radial-gradient(circle at 40% 35%, #0a0e15 40%, #05070b)", boxShadow: "inset 0 2px 3px rgba(0,0,0,1), inset 0 -1px 1px rgba(245,176,58,.3)" } : { background: "#151c29", boxShadow: "inset 0 1.5px 2.5px rgba(0,0,0,.85)" } } />
-                          ))}
-                          {earned && <span className="font-forge font-bold text-[12px] text-amber-light ml-1">×{pt.count}</span>}
-                        </div>
-                      </div>
-                      <div className="text-[10.5px] text-faint mt-2">{earned ? pt.hint : `to stamp it: ${pt.hint}`}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="mb-10">
-              <div className="flex items-center gap-3.5 mb-4">
-                <span className="font-forge font-bold text-[19px] whitespace-nowrap" style={{ color: "#f5b03a" }}>
-                  PLATES — BEATEN AND RE-ENGRAVED
-                </span>
-                <span className="h-px flex-1" style={{ background: "linear-gradient(to right,rgba(232,148,10,.5),transparent)" }} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { k: "Best week", v: forged.bests.bestWeekRevenue, f: (n: number) => `$${Math.round(n).toLocaleString("en-US")}` },
-                  { k: "Best tank", v: forged.bests.bestMpg, f: (n: number) => `${n.toFixed(1)} MPG` },
-                  { k: "Biggest load", v: forged.bests.biggestLoad, f: (n: number) => `$${Math.round(n).toLocaleString("en-US")}` },
-                  { k: "Most loads in a week", v: forged.bests.mostLoadsInWeek, f: (n: number) => `${Math.round(n)} LOADS` },
-                ].map((r) => (
-                  <div key={r.k} className={`rounded-xl p-3.5 bg-[#0c111af2] border ${r.v != null ? "border-hairline" : "border-dashed border-[#232d40]"}`}>
-                    <div className={`rounded-lg px-3.5 py-2.5 relative ${r.v != null ? "" : "opacity-55"}`} style={{ background: "linear-gradient(178deg,#2c3549,#1e2636)", borderTop: "1px solid rgba(255,255,255,.1)", borderBottom: "1.5px solid rgba(0,0,0,.5)" }}>
-                      <div className="text-[8px] font-semibold tracking-[.16em] uppercase text-faint">{r.k}</div>
-                      <div className="font-forge font-bold text-[18px] tracking-[.05em] mt-0.5 tabular-nums" style={{ color: "#dfe6f2", textShadow: "0 -1px 0 rgba(0,0,0,.7)" }}>{r.v != null ? r.f(r.v) : "— AWAITING —"}</div>
-                      {r.v != null && <div className="h-px mt-1.5" style={{ background: "linear-gradient(90deg,var(--color-amber),transparent)", boxShadow: "0 0 6px rgba(232,148,10,.5)" }} />}
-                    </div>
-                    <div className="text-[10.5px] text-faint mt-2">{r.v != null ? "beat it and the plate re-cuts itself" : "set the first mark and the plate engraves"}</div>
-                  </div>
-                ))}
+              <RackHeader title="THE TRAILER'S RACK" />
+              <div className="flex flex-col gap-6">
+                <CoinRack medals={rig.trailerMedals} />
+                <TagRack patches={rig.trailerPatches} />
+                <PlateRack
+                  plates={[
+                    { k: "Best payday", v: rig.trailerRecs.bestPayday, f: (n) => `$${Math.round(n).toLocaleString("en-US")}` },
+                    { k: "Heaviest load", v: rig.trailerRecs.heaviestLoad, f: (n) => `${Math.round(n).toLocaleString("en-US")} LB` },
+                    { k: "Big-mile month", v: rig.trailerRecs.bigMonthMiles, f: (n) => `${Math.round(n).toLocaleString("en-US")} MI` },
+                    { k: "Longest haul", v: rig.trailerRecs.longestHaul, f: (n) => `${Math.round(n).toLocaleString("en-US")} MI` },
+                  ]}
+                />
               </div>
             </section>
 
