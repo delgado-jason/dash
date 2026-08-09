@@ -16,6 +16,7 @@ const FULL_BLEED_PREFIXES = [
   { prefix: "/dashboard", ownerOnly: false }, // both boards carry their own trigger now
   { prefix: "/lanes", ownerOnly: false },
   { prefix: "/loads", ownerOnly: false },
+  { prefix: "/agents", ownerOnly: false },
 ];
 const isFullBleed = (pathname: string) =>
   FULL_BLEED_PREFIXES.some(

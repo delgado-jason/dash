@@ -38,6 +38,8 @@ import {
 } from "@/lib/metrics/agent";
 import { loadRevenue } from "@/lib/metrics/loads";
 import { Panel } from "@/components/ui/Panel";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useRateTargets } from "@/hooks/useRateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money } from "@/lib/format";
@@ -57,6 +59,10 @@ const AgentDetailPage = () => {
   const { agent, loads, notes, ratingHistory, isLoading, error } =
     useAgent(refreshKey);
   const { loads: allLoads } = useLoads(0);
+  // "Your rate with them vs your overall" — the overall comes from the same
+  // rolling engine every other surface uses, over the full load history the
+  // page already fetches.
+  const overallTargets = useRateTargets(allLoads);
 
   const [noteText, setNoteText] = useState("");
   const [noteInitials, setNoteInitials] = useState("");
@@ -103,7 +109,7 @@ const AgentDetailPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 bg-iron text-ink min-h-screen font-body">
         <Skeleton className="h-8 w-48 mb-2" />
         <Skeleton className="h-4 w-32 mb-6" />
         <StatCardsSkeleton count={4} />
@@ -112,7 +118,7 @@ const AgentDetailPage = () => {
     );
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 bg-iron text-ink min-h-screen font-body">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -156,14 +162,15 @@ const AgentDetailPage = () => {
   };
 
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10 pt-5">
       {showRatingForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowRatingForm(false)}
           />
-          <div className="relative w-full max-w-[450px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
+          <div className="relative w-full max-w-[450px] mx-4 max-h-[90vh] bg-panel text-ink overflow-y-auto shadow-xl rounded-xl p-4 sm:p-6 border border-hairline">
             <RatingForm
               agent={agent}
               onSuccess={handleSuccess}
@@ -173,21 +180,22 @@ const AgentDetailPage = () => {
         </div>
       )}
 
-      <Link to="/agents" className="text-xs text-muted-text hover:text-light">
-        ← Agents
-      </Link>
+      <div className="flex items-center gap-3 mb-1">
+        <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+        <Link to="/agents" className="text-xs text-dim hover:text-ink">← Agents</Link>
+      </div>
 
       <div className="flex flex-col gap-4 mt-3 mb-6 sm:flex-row sm:justify-between sm:items-start">
         <div className="flex gap-4 items-center min-w-0">
-          <div className="size-16 rounded-full bg-steel border-2 border-amber flex items-center justify-center font-condensed font-semibold text-2xl text-amber-light shrink-0">
+          <div className="size-16 rounded-full bg-well border-2 border-amber flex items-center justify-center font-condensed font-semibold text-2xl text-amber-light shrink-0">
             {agent.first_name.charAt(0)}
             {agent.last_name.charAt(0)}
           </div>
           <div className="min-w-0">
-            <h1 className="text-3xl font-condensed leading-none">
+            <h1 className="font-display text-[27px] tracking-[.05em] leading-none">
               {agent.first_name} {agent.last_name}
             </h1>
-            <p className="text-sm text-muted-text mt-1">
+            <p className="text-sm text-dim mt-1">
               {agent.broker_name}
               {carrierName ? ` · ${carrierName} Agent` : ""}
             </p>
@@ -206,7 +214,7 @@ const AgentDetailPage = () => {
           <div className="mt-3">
             <button
               onClick={() => setShowRatingForm(true)}
-              className="bg-steel text-light px-3 py-1.5 rounded text-sm border border-[#3b4660]"
+              className="h-8 px-3.5 rounded-[9px] border border-hairline text-dim hover:text-ink text-sm font-condensed font-semibold"
             >
               Edit rating
             </button>
@@ -224,6 +232,11 @@ const AgentDetailPage = () => {
           label="Avg rate/mile"
           value={fmtRpm(rpm)}
           valueClass={rpmTextClass(rpm)}
+          sub={
+            rpm != null && overallTargets.rollingRpm != null
+              ? `${rpm >= overallTargets.rollingRpm ? "▲" : "▼"} ${fmtRpm(Math.abs(rpm - overallTargets.rollingRpm))} vs your overall`
+              : undefined
+          }
         />
         <Kpi label="Cancelled" value={String(getCancelledCount(loads))} />
         <Kpi
@@ -232,8 +245,25 @@ const AgentDetailPage = () => {
         />
       </div>
 
+      {(() => {
+        const best = loads.reduce<(typeof loads)[number] | null>(
+          (b, l) => (!b || loadRevenue(l) > loadRevenue(b) ? l : b),
+          null,
+        );
+        if (!best) return null;
+        return (
+          <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap" style={{ background: "linear-gradient(178deg,#2c3549,#1e2636)", borderTop: "1px solid rgba(255,255,255,.1)", borderBottom: "1.5px solid rgba(0,0,0,.5)" }}>
+            <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">BEST LOAD TOGETHER</span>
+            <span className="font-condensed font-semibold text-[13.5px] text-ink tabular-nums">
+              {money(loadRevenue(best))} · {best.origin_city}, {best.origin_state} → {best.destination_city}, {best.destination_state}
+            </span>
+            <span className="text-[11px] text-faint">the one to beat</span>
+          </div>
+        );
+      })()}
+
       <Panel className="p-4 mt-4">
-        <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
+        <p className="text-xs text-dim uppercase tracking-wider mb-3">
           Time on the dock · this agent's freight
         </p>
         <StopScorecard
@@ -242,14 +272,14 @@ const AgentDetailPage = () => {
           countValue={getLoadCount(loads)}
         />
         {det.claimable > 0 && (
-          <div className="mt-3 pt-3 border-t border-plate flex items-baseline gap-2 flex-wrap">
+          <div className="mt-3 pt-3 border-t border-hairline flex items-baseline gap-2 flex-wrap">
             <span
               className="font-condensed text-lg"
               style={{ color: "#f5c37a" }}
             >
               {det.paid} / {det.claimable}
             </span>
-            <span className="text-xs text-muted-text">
+            <span className="text-xs text-dim">
               detention loads collected vs claimable
               {det.claimable - det.paid > 0 && (
                 <>
@@ -270,16 +300,16 @@ const AgentDetailPage = () => {
       </div>
 
       <Panel className="p-4 mt-4">
-        <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
+        <p className="text-xs text-dim uppercase tracking-wider mb-3">
           Loads with this agent
         </p>
         {agentLoads.length === 0 ? (
-          <p className="text-sm text-muted-text">No loads yet.</p>
+          <p className="text-sm text-dim">No loads yet.</p>
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full text-sm min-w-[560px]">
               <thead>
-                <tr className="text-xs text-muted-text text-left">
+                <tr className="text-xs text-dim text-left">
                   <th className="font-normal pb-2 pr-4">Load #</th>
                   <th className="font-normal pb-2 pr-4">Status</th>
                   <th className="font-normal pb-2 pr-4">Lane</th>
@@ -304,10 +334,10 @@ const AgentDetailPage = () => {
                     </td>
                     <td className="py-2 pr-4 whitespace-nowrap">
                       {load.origin_city}, {load.origin_state}{" "}
-                      <span className="text-muted-text">→</span>{" "}
+                      <span className="text-dim">→</span>{" "}
                       {load.destination_city}, {load.destination_state}
                     </td>
-                    <td className="py-2 pr-4 text-muted-text whitespace-nowrap">
+                    <td className="py-2 pr-4 text-dim whitespace-nowrap">
                       {fmtDate(load.pickup_date)}
                     </td>
                     <td className="py-2 pr-4 text-right whitespace-nowrap">
@@ -326,12 +356,12 @@ const AgentDetailPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <Panel className="md:col-span-2 p-4">
-          <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
+          <p className="text-xs text-dim uppercase tracking-wider mb-3">
             Activity
           </p>
-          <div className="bg-steel/40 rounded p-3 mb-4">
+          <div className="bg-well rounded p-3 mb-4">
             <textarea
-              className="bg-steel rounded px-2 py-1.5 text-sm w-full text-light placeholder:text-muted-text"
+              className="bg-well rounded px-2 py-1.5 text-sm w-full text-ink placeholder:text-dim"
               placeholder="Add a note about this agent…"
               rows={2}
               value={noteText}
@@ -339,7 +369,7 @@ const AgentDetailPage = () => {
             />
             <div className="flex items-center gap-2 mt-2">
               <input
-                className="bg-steel rounded px-2 py-1.5 text-sm w-24 text-light placeholder:text-muted-text"
+                className="bg-well rounded px-2 py-1.5 text-sm w-24 text-ink placeholder:text-dim"
                 placeholder="Initials"
                 maxLength={5}
                 value={noteInitials}
@@ -359,7 +389,7 @@ const AgentDetailPage = () => {
           </div>
 
           {logs.length === 0 ? (
-            <p className="text-sm text-muted-text italic px-1 py-2">
+            <p className="text-sm text-dim italic px-1 py-2">
               No activity yet
             </p>
           ) : (
@@ -368,12 +398,12 @@ const AgentDetailPage = () => {
                 log.type === "rating" ? (
                   <div
                     key={log.data.id}
-                    className="border-l-2 border-l-amber bg-steel/40 px-3 py-2 rounded-sm"
+                    className="border-l-2 border-l-amber bg-well px-3 py-2 rounded-sm"
                   >
                     <p className="text-sm">
                       <Star size={13} className="inline text-amber -mt-0.5" />{" "}
                       Rating changed{" "}
-                      <span className="text-muted-text">
+                      <span className="text-dim">
                         {log.data.old_rating ?? "—"}
                       </span>{" "}
                       →{" "}
@@ -382,27 +412,27 @@ const AgentDetailPage = () => {
                       </span>
                     </p>
                     {log.data.reason && (
-                      <p className="text-sm text-muted-text">
+                      <p className="text-sm text-dim">
                         {log.data.reason}
                       </p>
                     )}
-                    <p className="text-xs text-muted-text mt-1">
+                    <p className="text-xs text-dim mt-1">
                       {fmtDate(log.timestamp)} · {log.data.changed_by}
                     </p>
                   </div>
                 ) : (
                   <div
                     key={log.data.id}
-                    className="border-l-2 border-l-[#3b4660] bg-steel/20 px-3 py-2 rounded-sm"
+                    className="border-l-2 border-l-[#3b4660] bg-well/20 px-3 py-2 rounded-sm"
                   >
                     <p className="text-sm">
                       <StickyNote
                         size={13}
-                        className="inline text-muted-text -mt-0.5"
+                        className="inline text-dim -mt-0.5"
                       />{" "}
                       {log.data.note}
                     </p>
-                    <p className="text-xs text-muted-text mt-1">
+                    <p className="text-xs text-dim mt-1">
                       {fmtDate(log.timestamp)} · {log.data.created_by}
                     </p>
                   </div>
@@ -413,23 +443,24 @@ const AgentDetailPage = () => {
         </Panel>
 
         <Panel className="p-4">
-          <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
+          <p className="text-xs text-dim uppercase tracking-wider mb-3">
             Contact
           </p>
           <p className="text-sm mb-2 break-words">
-            <Mail size={14} className="inline text-muted-text mr-1.5 -mt-0.5" />
+            <Mail size={14} className="inline text-dim mr-1.5 -mt-0.5" />
             {agent.email || "No email"}
           </p>
           <p className="text-sm mb-3">
             <Phone
               size={14}
-              className="inline text-muted-text mr-1.5 -mt-0.5"
+              className="inline text-dim mr-1.5 -mt-0.5"
             />
             {agent.phone || "No phone"}
           </p>
-          <p className="text-xs text-muted-text">Preferred</p>
+          <p className="text-xs text-dim">Preferred</p>
           <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
         </Panel>
+      </div>
       </div>
     </div>
   );

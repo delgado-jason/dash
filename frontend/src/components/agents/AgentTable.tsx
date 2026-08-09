@@ -91,14 +91,14 @@ export const AgentTable = ({
       <table className="w-full text-sm border-collapse" style={{ minWidth: 680 }}>
         <thead>
           <tr>
-            <th className="text-left font-normal text-[10px] uppercase tracking-wide text-muted-text py-2 px-2">
+            <th className="text-left font-normal text-[10px] uppercase tracking-wide text-dim py-2 px-2">
               Agent
             </th>
             {COLS.map((c) => (
               <th
                 key={c.key}
                 onClick={() => setSort(c.key)}
-                className="text-right font-normal text-[10px] uppercase tracking-wide py-2 px-2 cursor-pointer select-none whitespace-nowrap hover:text-light"
+                className="text-right font-normal text-[10px] uppercase tracking-wide py-2 px-2 cursor-pointer select-none whitespace-nowrap hover:text-ink"
                 style={{ color: sort === c.key ? "#f5b03a" : undefined }}
               >
                 {c.label}
@@ -124,12 +124,12 @@ export const AgentTable = ({
               <tr
                 key={agent.agent_id}
                 onClick={() => navigate(`/agents/${agent.agent_id}`)}
-                className="cursor-pointer hover:bg-plate/40"
+                className="cursor-pointer hover:bg-well/40"
                 style={{ background: tint, borderTop: "0.5px solid rgba(255,255,255,0.06)" }}
               >
                 <td className="py-2 px-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-medium text-light truncate">
+                    <span className="font-medium text-ink truncate">
                       {agent.first_name} {agent.last_name}
                     </span>
                     {spec && (
@@ -165,18 +165,18 @@ export const AgentTable = ({
                 <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: DWELL_TONE[dwell.tone] }}>
                   {dwell.label}
                 </td>
-                <td className="text-right py-2 px-2 text-muted-text tabular-nums">{card.loadCount}</td>
+                <td className="text-right py-2 px-2 text-dim tabular-nums">{card.loadCount}</td>
                 <td className="text-right py-2 px-2 tabular-nums">{money(card.revenue)}</td>
                 <td
                   className="text-right py-2 px-2 tabular-nums"
-                  style={{ color: shareOf(agent.agent_id) > SINGLE_CAP ? "#f5a623" : "#8b93a3" }}
+                  style={{ color: shareOf(agent.agent_id) > SINGLE_CAP ? "#f5a623" : "var(--color-dim)" }}
                   title="share of your last-90-day book"
                 >
                   {shareOf(agent.agent_id) > 0 ? `${Math.round(shareOf(agent.agent_id) * 100)}%` : "—"}
                 </td>
                 <td className="text-right py-2 px-2 whitespace-nowrap">
-                  {trend ? <span style={{ color: trend.fg }}>{trend.glyph}</span> : <span className="text-muted-text">·</span>}{" "}
-                  <span className="text-muted-text text-xs">{shortDate(card.lastWorked)}</span>
+                  {trend ? <span style={{ color: trend.fg }}>{trend.glyph}</span> : <span className="text-dim">·</span>}{" "}
+                  <span className="text-dim text-xs">{shortDate(card.lastWorked)}</span>
                 </td>
               </tr>
             );

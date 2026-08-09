@@ -69,7 +69,7 @@ export const AgentCard = ({
       <PrestigeBadge tier={tier} />
 
       <div className="flex gap-3 items-center">
-        <div className="size-11 rounded-full bg-steel border-2 border-amber flex items-center justify-center font-condensed font-semibold text-lg text-amber-light shrink-0">
+        <div className="size-11 rounded-full bg-well border-2 border-amber flex items-center justify-center font-condensed font-semibold text-lg text-amber-light shrink-0">
           {agent.first_name.charAt(0)}
           {agent.last_name.charAt(0)}
         </div>
@@ -87,7 +87,7 @@ export const AgentCard = ({
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-text truncate">
+          <p className="text-xs text-dim truncate">
             {agent.broker_name}
             {carrierName ? ` · ${carrierName}` : ""}
           </p>
@@ -117,13 +117,13 @@ export const AgentCard = ({
         <div className="mt-2 flex items-center gap-1.5 text-[11px]">
           <span className="w-1.5 h-1.5 rounded-full bg-amber animate-pulse" />
           <span className="text-amber font-medium">LIVE</span>
-          <span className="text-muted-text">{blurb}</span>
+          <span className="text-dim">{blurb}</span>
         </div>
       )}
 
       <div className="mt-2.5 pt-2 border-t border-[#3b4660] text-xs">
         <div className="flex items-center justify-between">
-          <span className="text-muted-text">
+          <span className="text-dim">
             {stats?.loadCount ?? 0} loads · {money(stats?.revenue ?? 0)}
           </span>
           <span className="font-medium">
@@ -136,7 +136,7 @@ export const AgentCard = ({
           ) : (
             <span />
           )}
-          <span className="text-muted-text">{fmtDate(stats?.lastWorked ?? null)}</span>
+          <span className="text-dim">{fmtDate(stats?.lastWorked ?? null)}</span>
         </div>
       </div>
     </Link>

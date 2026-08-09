@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAgents } from "@/hooks/useAgents";
 import { useLoads } from "@/hooks/useLoads";
-import { Kpi } from "@/components/Kpi";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AgentCard } from "@/components/agents/AgentCard";
 import { AgentTable } from "@/components/agents/AgentTable";
 import { TIER_META } from "@/components/agents/agentDisplay";
@@ -16,7 +16,6 @@ import {
 } from "@/lib/metrics/agentLeaderboard";
 import {
   buildAgentScorecards,
-  agentRosterAnalytics,
   concentrationAnalytics,
 } from "@/lib/metrics/agentScorecard";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -42,18 +41,12 @@ const AgentsPage = () => {
     () => buildAgentScorecards(agents ?? [], loads ?? [], now),
     [agents, loads, now],
   );
-  const roster = useMemo(() => agentRosterAnalytics(scorecards), [scorecards]);
   // Concentration is WINDOWED (recent 90d) so a cold agent isn't counted as a
   // current dependency; per-agent shares feed the table's "% book" column.
   const conc = useMemo(() => concentrationAnalytics(loads ?? [], now), [loads, now]);
   const shareByAgent = useMemo(
     () => new Map(conc.shares.map((s) => [s.agentId, s.share])),
     [conc],
-  );
-
-  const byId = useMemo(
-    () => new Map((agents ?? []).map((a) => [a.agent_id, a])),
-    [agents],
   );
 
   const counts = useMemo(() => {
@@ -95,7 +88,7 @@ const AgentsPage = () => {
 
   if (isLoading || loadsLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink min-h-screen font-body">
         <Skeleton className="h-8 w-32 mb-6" />
         <Skeleton className="h-10 w-full max-w-md mb-6" style={{ borderRadius: 10 }} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -108,13 +101,10 @@ const AgentsPage = () => {
 
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink min-h-screen font-body">
         <p className="text-destructive">{error}</p>
       </div>
     );
-
-  const rateLeader = roster.rateLeader ? byId.get(roster.rateLeader.agentId) : null;
-  const cold = roster.goingCold ? byId.get(roster.goingCold.agentId) : null;
 
   const CHIPS: [Filter, string, number][] = [
     ["all", "All", counts.all],
@@ -125,57 +115,44 @@ const AgentsPage = () => {
     ["cold", "Cold", counts.cold],
   ];
 
+  // The answering line — whatever the filters show, summed live. Story KPIs
+  // (rate leader, concentration, going cold) live on the dashboard Agents tab.
+  const rev90 = rows.reduce((sum, r) => sum + (r.card.revenue || 0), 0);
+  const medians = rows
+    .map((r) => r.card.medianRpm)
+    .filter((v): v is number => v != null)
+    .sort((x, y) => x - y);
+  const medOfMed =
+    medians.length === 0
+      ? null
+      : medians.length % 2
+        ? medians[Math.floor(medians.length / 2)]
+        : (medians[medians.length / 2 - 1] + medians[medians.length / 2]) / 2;
+
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <div className="flex justify-between items-baseline mb-6">
-        <h1 className="text-3xl font-condensed text-light">Agents</h1>
-        <Link to="/guide" className="text-xs text-muted-text hover:text-amber-light">
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+      <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+        <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+        <h1 className="font-display text-[26px] tracking-[.06em] leading-none">AGENTS</h1>
+        <span className="flex-1" />
+        <Link to="/guide" className="text-xs text-dim hover:text-amber-light">
           How this works →
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {rateLeader && roster.rateLeader ? (
-          <Link to={`/agents/${rateLeader.agent_id}`}>
-            <Kpi
-              label="Rate leader"
-              value={fmtRpm(roster.rateLeader.medianRpm)}
-              valueClass="text-status-good-text"
-              sub={`${rateLeader.first_name.charAt(0)}. ${rateLeader.last_name} · $/mi`}
-            />
-          </Link>
-        ) : (
-          <Kpi label="Rate leader" value="—" sub="need 2+ loads" />
+      <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
+        <span className="font-display text-[22px] tracking-[.03em] tabular-nums">
+          {rows.length} agent{plural(rows.length)}
+        </span>
+        <span className="text-[12px] text-faint">in this view ·</span>
+        <b className="font-condensed font-semibold text-ink tabular-nums">{money(rev90)} through them · 90d</b>
+        {medOfMed != null && (
+          <>
+            <span className="text-[12px] text-faint">·</span>
+            <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(medOfMed)}/mi median</b>
+          </>
         )}
-        <Kpi
-          label="Oversize bench"
-          value={String(roster.oversizeBench)}
-          valueClass="text-amber"
-          sub={`specialists · ${roster.specCapable} spec-capable`}
-        />
-        <Kpi
-          label="Concentration"
-          value={conc.top3Pct != null ? `${Math.round(conc.top3Pct * 100)}%` : "—"}
-          valueClass={conc.overSingleCap ? "text-amber" : undefined}
-          sub={
-            conc.overSingleCap && conc.singleMax
-              ? `⚠ ${byId.get(conc.singleMax.agentId)?.last_name ?? "one agent"} ${Math.round(conc.singleMax.share * 100)}% — over 30%`
-              : "top 3 · last 90 days"
-          }
-        />
-        {cold && roster.goingCold ? (
-          <Link to={`/agents/${cold.agent_id}`}>
-            <Kpi
-              label="Going cold"
-              value={`${cold.first_name.charAt(0)}. ${cold.last_name}`}
-              valueClass="text-amber"
-              sub={`${money(roster.goingCold.revenue)} · ${roster.goingCold.daysSince}d quiet`}
-            />
-          </Link>
-        ) : (
-          <Kpi label="Going cold" value="—" sub="all recently active" />
-        )}
-        <Kpi label="Roster" value={String(counts.all)} sub={`${roster.oversizeBench + counts.specialty} specialty`} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 mt-5 mb-4">
@@ -184,24 +161,23 @@ const AgentsPage = () => {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className="text-[11.5px] rounded-full px-2.5 py-1 border transition-colors"
-              style={
+              className={`text-[12px] font-condensed font-semibold rounded-full px-3 py-1.5 border transition-colors ${
                 filter === key
-                  ? { background: "#e8940a", borderColor: "#e8940a", color: "#12151b", fontWeight: 700 }
-                  : { borderColor: "#2a3347", color: "#9aa4b5" }
-              }
+                  ? "bg-amber border-amber text-canvas"
+                  : "border-hairline text-dim hover:text-ink"
+              }`}
             >
               {label} <span className="opacity-70">{n}</span>
             </button>
           ))}
         </div>
-        <div className="flex gap-1 bg-plate rounded-lg p-1">
+        <div className="flex gap-0.5 bg-well rounded-[9px] p-1" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
           {(["table", "cards"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-2.5 py-1 rounded text-sm capitalize ${
-                view === v ? "bg-steel text-light font-semibold" : "text-muted-text"
+              className={`px-3 py-1 rounded-md text-[12.5px] font-condensed font-semibold capitalize ${
+                view === v ? "bg-amber text-canvas" : "text-dim hover:text-ink"
               }`}
             >
               {v}
@@ -211,7 +187,7 @@ const AgentsPage = () => {
       </div>
 
       <input
-        className="bg-plate rounded px-3 py-2 text-sm w-full max-w-md text-light placeholder:text-muted-text mb-4"
+        className="h-9 rounded-[10px] px-3.5 text-sm w-full max-w-md text-ink placeholder:text-faint bg-well border-0 mb-4" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
         placeholder="Search name or broker"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -224,7 +200,7 @@ const AgentsPage = () => {
             hint="Add an agent to track who books your freight and how they pay."
           />
         ) : (
-          <p className="text-muted-text text-sm">No agents match.</p>
+          <p className="text-dim text-sm">No agents match.</p>
         )
       ) : view === "table" ? (
         <AgentTable rows={rows} shareByAgent={shareByAgent} />
@@ -244,10 +220,11 @@ const AgentsPage = () => {
         </div>
       )}
 
-      <p className="text-xs text-muted-text mt-6">
+      <p className="text-xs text-dim mt-6">
         {rows.length} agent{plural(rows.length)}
         {filter !== "all" ? ` · ${filter}` : ""}
       </p>
+      </div>
     </div>
   );
 };
