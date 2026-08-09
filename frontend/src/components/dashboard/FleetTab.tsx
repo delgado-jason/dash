@@ -72,7 +72,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
     const mpm = metrics?.milesPerMonth ?? null;
     return fleet.items
       .filter((i) => i.active)
-      .map((i) => ({ name: i.name, due: computeDue(i, cur, now, mpm) }))
+      .map((i) => ({ name: i.name, item: i, due: computeDue(i, cur, now, mpm) }))
       .sort(
         (a, b) =>
           DUE_RANK[a.due.level] - DUE_RANK[b.due.level] ||
@@ -165,30 +165,59 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* THE RIG — the tab's forged surface: the odometer and the club it's chasing */}
+      {/* THE RIG — the forged surface: what she costs to run, and the next
+          service she's rolling toward. (Mile clubs demoted to a badge — a
+          506-week chase is no chase; clubs stay as trophies.) */}
       {(() => {
         const odo = Number(truck.current_odometer) || 0;
         const club = mileMilestone(odo);
-        const prev = club.crossed ?? 0;
+        const svc = nextSoon ?? dues.find((d) => d.due.level === "overdue") ?? null;
+        const interval = svc?.item?.interval_miles != null ? Number(svc.item.interval_miles) : null;
+        const remaining = svc?.due.milesRemaining ?? null;
+        const consumed =
+          interval != null && remaining != null ? Math.max(0, interval - remaining) : null;
         return (
           <ForgedPlate chamfer tilt className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6">
               <div>
                 <p className="ds2-label">Truck {truck.unit_number} — the rig</p>
                 <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
-                  <CountUp value={odo} format={(n) => Math.round(n).toLocaleString("en-US")} />{" "}
-                  <span className="text-[15px] text-dim font-condensed tracking-normal">miles on the clock</span>
+                  {costPerMile != null ? (
+                    <CountUp value={costPerMile} format={(n) => rpm(n)} />
+                  ) : (
+                    "—"
+                  )}{" "}
+                  <span className="text-[15px] text-dim font-condensed tracking-normal">
+                    to run, per mile
+                  </span>
                 </p>
-                <PaceMeter
-                  filled={Math.max(0, odo - prev)}
-                  target={Math.max(1, club.next - prev)}
-                  markers={[{ value: Math.max(1, club.next - prev), label: `${fmtMiles(club.next)} club` }]}
-                />
-                <p className="text-[11.5px] text-faint mt-1.5">
-                  <b className="text-ink">{club.toNext.toLocaleString("en-US")} miles</b> to the {fmtMiles(club.next)} club
-                  {mpm ? <> — about <b className="text-ink">{Math.max(1, Math.round(club.toNext / (mpm / 4.345)))} weeks</b> at your pace</> : null}
-                  {club.title ? <> · wearing the {club.title}</> : null}.
+                <p className="text-[11.5px] text-faint mt-1">
+                  {costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")}
+                  {" · "}
+                  <span className="text-dim tabular-nums">{odo.toLocaleString("en-US")} on the clock</span>
+                  {club.next ? (
+                    <span className="text-faint"> · {fmtMiles(club.next)} club is {club.toNext.toLocaleString("en-US")} mi out</span>
+                  ) : null}
                 </p>
+                {svc && consumed != null && interval != null ? (
+                  <>
+                    <PaceMeter
+                      filled={consumed}
+                      target={interval}
+                      markers={[{ value: interval, label: `due · ${svc.name.toLowerCase()}` }]}
+                    />
+                    <p className="text-[11.5px] text-faint mt-1.5">
+                      <b className="text-ink">{svc.name}</b> {remain(svc.due)} — past
+                      the marker she's running overdue.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[12px] text-faint mt-4">
+                    {counts.overdue > 0
+                      ? "Service overdue — see road-ready."
+                      : "No mileage-based service tracked yet — add intervals on Maintenance."}
+                  </p>
+                )}
               </div>
               <div className="md:border-l md:border-white/10 md:pl-6 flex flex-col justify-center gap-3">
                 <div>
@@ -206,10 +235,9 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
                   </div>
                 )}
                 <div>
-                  <p className="ds2-label">Days out</p>
-                  <p className={`font-condensed font-semibold text-[17px] mt-1 tabular-nums ${home.state === "over" ? "text-amber-light" : "text-ink"}`}>
-                    {home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut ?? "—"}`}
-                    {home.state !== "none" && (home.daysOut ?? 0) > 0 && <span className="text-[12px] text-faint"> · threshold {home.threshold}</span>}
+                  <p className="ds2-label">Miles / month</p>
+                  <p className="font-condensed font-semibold text-[17px] mt-1 tabular-nums text-ink">
+                    {metrics?.milesPerMonth != null ? Math.round(metrics.milesPerMonth).toLocaleString("en-US") : "—"}
                   </p>
                 </div>
               </div>
@@ -423,16 +451,16 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
       {/* the year in days */}
       <div className="ds2-board p-4">
         <H3 right={<span className="normal-case tracking-normal font-normal">each column = one week (Sun→Sat) · oldest left → this week right</span>}>The last eight weeks, day by day</H3>
-        <div className="overflow-x-auto">
-          <div style={{ width: heat.weeks * 13 }}>
+        <div>
+          <div className="w-full">
             <div className="relative h-3.5 mb-1">
               {heat.months.map((m) => (
-                <span key={m.col} className="absolute text-[9px] text-muted-text" style={{ left: m.col * 13 }}>{m.label}</span>
+                <span key={m.col} className="absolute text-[9px] text-dim" style={{ left: `${(m.col / Math.max(1, heat.weeks)) * 100}%` }}>{m.label}</span>
               ))}
             </div>
-            <div className="grid gap-[3px]" style={{ gridTemplateRows: "repeat(7, 10px)", gridAutoFlow: "column", gridAutoColumns: "10px", width: heat.weeks * 13 }}>
+            <div className="grid gap-[4px] w-full" style={{ gridTemplateRows: "repeat(7, 16px)", gridAutoFlow: "column", gridAutoColumns: "1fr" }}>
               {heat.cells.map((c) => (
-                <span key={c.date} title={`${c.date} · ${c.future ? "—" : c.status}`} className="w-2.5 h-2.5 rounded-sm"
+                <span key={c.date} title={`${c.date} · ${c.future ? "—" : c.status}`} className="w-full h-full rounded-[4px]"
                   style={{ background: c.future ? "transparent" : DAY_FILL[c.status] }} />
               ))}
             </div>

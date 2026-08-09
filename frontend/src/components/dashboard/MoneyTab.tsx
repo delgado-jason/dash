@@ -4,6 +4,7 @@ import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import { useExpensePeriods } from "@/hooks/useExpensePeriods";
 import { topCategoriesWithOther } from "@/lib/metrics/expenses";
+import { getRevenueMTD } from "@/lib/metrics/dashboard";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { ForgedPlate } from "@/components/ui/ForgedPlate";
 import { PaceMeter, paceMarker, type PaceMarker } from "@/components/ui/PaceMeter";
@@ -30,11 +31,6 @@ const segColor = (category: string, i: number) =>
 const monthShort = (m: string) =>
   new Date(m.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
-    timeZone: "UTC",
-  });
-const monthLong = (m: string) =>
-  new Date(m.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
-    month: "long",
     timeZone: "UTC",
   });
 const fmtDay = (d: Date) =>
@@ -131,34 +127,58 @@ export const MoneyTab = ({
   ).getUTCDate();
   const monthProfit = isCurrentMonth ? latest.profit : null;
   const monthIncome = isCurrentMonth ? latest.income : null;
+  // The P&L posts at month end — until it does, the notes tracker runs on an
+  // ESTIMATE: month-to-date net income (loads; same money-kept basis as the
+  // P&L's income) × the median operating margin of the trailing complete
+  // months. Labeled as estimated; the real row takes over the day it posts.
+  const mtdIncome = useMemo(() => getRevenueMTD(loads) ?? 0, [loads]);
+  const medianMargin = useMemo(() => {
+    const nowKey = now.toISOString().slice(0, 7);
+    const complete = rows
+      .filter((r) => r.month.slice(0, 7) !== nowKey)
+      .slice(-6)
+      .map((r) => r.margin)
+      .sort((a, b) => a - b);
+    if (complete.length === 0) return null;
+    const m = Math.floor(complete.length / 2);
+    return complete.length % 2 ? complete[m] : (complete[m - 1] + complete[m]) / 2;
+  }, [rows, now]);
+  const estimated =
+    !isCurrentMonth && medianMargin != null && mtdIncome > 0;
+  const effProfit = isCurrentMonth
+    ? monthProfit
+    : estimated
+      ? mtdIncome * (medianMargin as number)
+      : null;
+  const effIncome = isCurrentMonth ? monthIncome : estimated ? mtdIncome : null;
   const projIncome =
-    monthIncome != null && dayOfMonth > 0
-      ? (monthIncome / dayOfMonth) * daysInMonth
+    effIncome != null && dayOfMonth > 0
+      ? (effIncome / dayOfMonth) * daysInMonth
       : null;
   const goalProfit =
     marginGoal != null && projIncome != null && projIncome > 0
       ? marginGoal * projIncome
       : null;
-  const notesCovered = monthProfit != null && monthProfit >= obligationsMonthly;
+  const notesCovered = effProfit != null && effProfit >= obligationsMonthly;
   const coverage =
-    monthProfit != null && obligationsMonthly > 0
-      ? Math.min(1, Math.max(0, monthProfit / obligationsMonthly))
+    effProfit != null && obligationsMonthly > 0
+      ? Math.min(1, Math.max(0, effProfit / obligationsMonthly))
       : null;
   // Straight-line pace: the day cumulative profit reaches the notes.
   const coverDate = useMemo(() => {
-    if (monthProfit == null || monthProfit <= 0 || notesCovered) return null;
-    const daily = monthProfit / dayOfMonth;
+    if (effProfit == null || effProfit <= 0 || notesCovered) return null;
+    const daily = effProfit / dayOfMonth;
     const day = Math.ceil(obligationsMonthly / daily);
     if (day > daysInMonth) return null;
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day));
-  }, [monthProfit, notesCovered, dayOfMonth, obligationsMonthly, daysInMonth, now]);
+  }, [effProfit, notesCovered, dayOfMonth, obligationsMonthly, daysInMonth, now]);
 
   const meterMarkers: PaceMarker[] = [
     ...(obligationsMonthly > 0 ? [paceMarker("notes", obligationsMonthly)] : []),
     ...(goalProfit != null ? [paceMarker("goal", Math.round(goalProfit))] : []),
   ];
   const meterTarget =
-    goalProfit ?? Math.max(obligationsMonthly * 1.5, monthProfit ?? 0, 1);
+    goalProfit ?? Math.max(obligationsMonthly * 1.5, effProfit ?? 0, 1);
 
   // Months at-or-above the goal, counted back from the latest month.
   const goalStreak = useMemo(() => {
@@ -273,20 +293,21 @@ export const MoneyTab = ({
 
       {/* THE NOTES — Money's one forged surface: the month's chase */}
       <ForgedPlate chamfer tilt className="p-5">
-        {isCurrentMonth && monthProfit != null ? (
+        {effProfit != null ? (
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6">
             <div>
               <p className="ds2-label">
-                {monthLong(latest.month)} — covering the notes
+                {now.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" })} — covering the notes
+                {estimated ? " · estimated" : ""}
               </p>
               <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
-                {money(monthProfit)}{" "}
+                {money(effProfit)}{" "}
                 <span className="text-[15px] text-dim font-condensed tracking-normal">
-                  profit so far
+                  profit so far{estimated ? " · est." : ""}
                 </span>
               </p>
               <PaceMeter
-                filled={Math.max(0, monthProfit)}
+                filled={Math.max(0, effProfit)}
                 target={meterTarget}
                 markers={meterMarkers}
               />
@@ -295,7 +316,7 @@ export const MoneyTab = ({
                   <>
                     Notes <b className="text-status-positive-text">covered</b> —
                     every dollar now rides for the goal
-                    {goalProfit != null && monthProfit >= goalProfit
+                    {goalProfit != null && (effProfit ?? 0) >= goalProfit
                       ? ", and you're past it into overdrive"
                       : ""}
                     .
@@ -316,6 +337,16 @@ export const MoneyTab = ({
                   </>
                 ) : (
                   "No notes configured — every dollar rides for the goal."
+                )}
+                {estimated && (
+                  <>
+                    {" "}
+                    <span className="text-faint">
+                      Estimated from your typical margin (
+                      {Math.round((medianMargin as number) * 100)}% median) —
+                      the real P&amp;L takes over when the month posts.
+                    </span>
+                  </>
                 )}
               </p>
               {best && (
