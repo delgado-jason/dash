@@ -1,42 +1,42 @@
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Truck, Crown, CalendarCheck, Award as AwardIcon } from "lucide-react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { Truck } from "lucide-react";
 import type { Award } from "@/lib/metrics/awards";
 import type { RecapScope } from "@/lib/metrics/recap";
-import { RECAP_TIERS } from "@/lib/constants/recapTiers";
+import { DUR, GSAP_EASE } from "@/theme/motion";
 
-// Confetti scales with the occasion: a couple of flecks for a month, a full
-// multi-color burst for the year.
-const CONFETTI: Record<RecapScope, { left: string; color: string; delay: string }[]> = {
-  month: [
-    { left: "30%", color: "#b3763f", delay: ".1s" },
-    { left: "64%", color: "#c9884a", delay: ".5s" },
-  ],
-  quarter: [
-    { left: "20%", color: "#aab4c4", delay: ".1s" },
-    { left: "42%", color: "#cdd6e3", delay: ".5s" },
-    { left: "60%", color: "#e8940a", delay: ".3s" },
-    { left: "80%", color: "#cdd6e3", delay: ".7s" },
-  ],
-  year: [
-    { left: "16%", color: "#f5b03a", delay: ".1s" },
-    { left: "30%", color: "#4ade80", delay: ".5s" },
-    { left: "46%", color: "#60a5fa", delay: ".9s" },
-    { left: "62%", color: "#f5b03a", delay: ".3s" },
-    { left: "78%", color: "#e8940a", delay: ".7s" },
-    { left: "90%", color: "#4ade80", delay: ".2s" },
-  ],
-};
+gsap.registerPlugin(useGSAP);
 
-const POP_KICKER: Record<RecapScope, string> = {
-  month: "MONTH IN THE BOOKS",
-  quarter: "QUARTER COMPLETE",
-  year: "GRAND FINALE",
-};
-
-const SIZE: Record<RecapScope, { card: number; medal: number; title: number }> = {
-  month: { card: 300, medal: 64, title: 26 },
-  quarter: { card: 322, medal: 74, title: 30 },
-  year: { card: 344, medal: 84, title: 34 },
+// A period closing its books — the season plaque, struck in the period's
+// metal: bronze month, silver quarter, gold year. Same beats as every forge
+// ceremony: strike in, engrave, roll on.
+const PLAQUE: Record<
+  RecapScope,
+  { metal: string; hi: string; ink: string; kicker: string; w: number }
+> = {
+  month: {
+    metal: "linear-gradient(160deg,#e8b083,#b5713a 55%,#6e401a)",
+    hi: "#e8b083",
+    ink: "#3a2008",
+    kicker: "MONTH IN THE BOOKS",
+    w: 310,
+  },
+  quarter: {
+    metal: "linear-gradient(160deg,#eef2f8,#b9c4d4 55%,#6f7c92)",
+    hi: "#cdd6e3",
+    ink: "#2c3546",
+    kicker: "QUARTER COMPLETE",
+    w: 330,
+  },
+  year: {
+    metal: "linear-gradient(160deg,#f8d97b,#dfa32c 55%,#8a5f10)",
+    hi: "#f5b03a",
+    ink: "#4a3305",
+    kicker: "THE YEAR, STRUCK",
+    w: 352,
+  },
 };
 
 export const RecapCeremony = ({
@@ -49,91 +49,114 @@ export const RecapCeremony = ({
   onDismiss: () => void;
 }) => {
   const navigate = useNavigate();
+  const ref = useRef<HTMLDivElement>(null);
   const scope = award.scope ?? "month";
-  const t = RECAP_TIERS[scope];
-  const s = SIZE[scope];
+  const p = PLAQUE[scope];
 
   const open = () => {
     navigate("/recap", { state: { scope } });
     onDismiss();
   };
 
+  useGSAP(
+    () => {
+      const q = gsap.utils.selector(ref);
+      const tl = gsap.timeline();
+      tl.from(ref.current, { autoAlpha: 0, duration: 0.3 })
+        .from(q("[data-plaque]"), {
+          scale: 1.6,
+          autoAlpha: 0,
+          duration: 0.4,
+          ease: GSAP_EASE.slam,
+          delay: 0.15,
+        })
+        .from(
+          q("[data-v]"),
+          {
+            clipPath: "inset(0 100% 0 0)",
+            duration: DUR.base,
+            ease: GSAP_EASE.mech,
+            stagger: 0.16,
+          },
+          "-=0.1",
+        )
+        .from(q("[data-roll]"), { autoAlpha: 0, duration: 0.3 }, "-=0.15");
+    },
+    { scope: ref },
+  );
+
   return (
     <div
+      ref={ref}
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-hidden"
-      style={{ background: "rgba(6,9,15,0.78)" }}
+      style={{ background: "rgba(4,6,10,.94)" }}
     >
-      {CONFETTI[scope].map((c, i) => (
-        <span
-          key={i}
-          className="absolute rounded-[1px]"
-          style={{
-            left: c.left,
-            top: "-10px",
-            width: 7,
-            height: 7,
-            background: c.color,
-            animation: `award-fall 2.4s linear ${c.delay} infinite`,
-          }}
-        />
-      ))}
       <div
-        className="relative rounded-[18px] px-6 pt-5 pb-4 text-center overflow-hidden"
+        data-plaque
+        className="relative rounded-[14px] px-6 pt-6 pb-5 text-center"
         style={{
-          width: s.card,
+          width: p.w,
           maxWidth: "92vw",
-          background: t.cardBg,
-          border: `${t.border}px solid ${t.metal}`,
-          boxShadow: t.inner ? `inset 0 0 0 2px ${t.inner}` : undefined,
-          animation: "award-pop .6s cubic-bezier(.2,.9,.25,1.2) both",
+          background: "linear-gradient(178deg,#333d54,#1c2434)",
+          border: "1px solid #465174",
+          borderTop: "1px solid rgba(255,255,255,.18)",
+          borderBottom: "3px solid rgba(0,0,0,.6)",
+          boxShadow: "0 18px 44px rgba(0,0,0,.6)",
         }}
       >
-        {t.crown && (
-          <div className="mb-1">
-            <Crown size={22} style={{ color: t.metal }} />
-          </div>
-        )}
-        <div className="font-comic tracking-[3px]" style={{ color: t.title, fontSize: 14 }}>
-          {"★ ".repeat(t.stars).trim()}
-        </div>
-
         <div
-          className="relative mx-auto mt-2 rounded-full flex items-center justify-center overflow-hidden"
-          style={{ width: s.medal, height: s.medal, background: t.medalBg, border: `3px solid ${t.metal}`, color: t.medalInk }}
-        >
-          {t.banner && truckAvatarUrl ? (
-            <img src={truckAvatarUrl} alt="Your truck" className="w-full h-full object-cover" />
-          ) : t.banner ? (
-            <Truck size={s.medal * 0.42} />
-          ) : scope === "quarter" ? (
-            <AwardIcon size={s.medal * 0.5} />
-          ) : (
-            <CalendarCheck size={s.medal * 0.42} />
-          )}
-        </div>
-
-        <div className="font-comic tracking-[2px] mt-2.5" style={{ color: t.title, fontSize: 12 }}>
-          {POP_KICKER[scope]}
-        </div>
-        <div className="font-comic leading-none mt-0.5" style={{ color: t.title, fontSize: s.title }}>
-          {award.name}
-        </div>
-        <div className="text-sm text-muted-text mt-2">{award.detail}</div>
-
-        <button
-          onClick={open}
-          className="mt-4 font-comic cursor-pointer"
+          className="mx-auto rounded-full flex items-center justify-center overflow-hidden"
           style={{
-            background: t.metal,
-            color: "#10151f",
-            border: "none",
-            borderRadius: 9,
-            padding: "9px 22px",
-            fontSize: 14,
-            letterSpacing: "1px",
+            width: 74,
+            height: 74,
+            background: p.metal,
+            color: p.ink,
+            boxShadow:
+              "0 4px 10px rgba(0,0,0,.5), inset 0 2px 2px rgba(255,255,255,.4), inset 0 -2px 4px rgba(0,0,0,.35)",
           }}
         >
-          {scope === "year" ? "OPEN YOUR SEASON" : "SEE YOUR RECAP"}
+          {truckAvatarUrl ? (
+            <img src={truckAvatarUrl} alt="Your truck" className="w-full h-full object-cover" />
+          ) : (
+            <Truck size={32} />
+          )}
+        </div>
+        <div
+          data-v
+          className="font-forge font-semibold text-[12px] tracking-[.24em] uppercase mt-4"
+          style={{ color: p.hi }}
+        >
+          {p.kicker}
+        </div>
+        <div
+          data-v
+          className="font-forge font-bold text-[28px] tracking-[.08em] leading-none mt-1.5 uppercase"
+          style={{ color: "#dfe6f2", textShadow: "0 -1px 0 rgba(0,0,0,.7)" }}
+        >
+          {award.name}
+        </div>
+        <div data-v className="text-[12.5px] text-dim mt-2.5">
+          {award.detail}
+        </div>
+        <div
+          className="h-px mt-4"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${p.hi}, transparent)`,
+            boxShadow: "0 0 8px rgba(232,148,10,.4)",
+          }}
+        />
+        <button
+          data-roll
+          onClick={open}
+          className="mt-4 font-forge font-semibold text-[13.5px] tracking-[.16em] rounded-lg px-6 py-2.5 cursor-pointer"
+          style={{
+            background: p.metal,
+            color: p.ink,
+            border: "none",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,.4)",
+          }}
+        >
+          {scope === "year" ? "OPEN YOUR SEASON →" : "SEE YOUR RECAP →"}
         </button>
       </div>
     </div>

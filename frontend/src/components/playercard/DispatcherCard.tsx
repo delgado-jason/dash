@@ -55,7 +55,7 @@ const Stat = ({
     <div className="text-[9px] tracking-wide" style={{ color: accent ? "#f5b03a" : "#7d8ba3" }}>
       {label}
     </div>
-    <div className="font-comic text-2xl" style={{ color: accent ? "#f5b03a" : "#f4f7fb" }}>
+    <div className="font-forge font-bold text-2xl" style={{ color: accent ? "#f5b03a" : "#f4f7fb" }}>
       {value}
     </div>
     {sub && <div className="text-[10px]" style={{ color: "#7d8ba3" }}>{sub}</div>}
@@ -96,7 +96,7 @@ export const DispatcherCard = ({ name, business, avatar, card, medals }: Props) 
       <div className="relative flex gap-4 items-start">
         <div className="shrink-0">{avatar}</div>
         <div className="flex-1 min-w-0">
-          <div className="font-comic text-4xl leading-none" style={{ color: "#f5b03a" }}>
+          <div className="font-forge font-bold text-4xl leading-none" style={{ color: "#f5b03a" }}>
             {name}
           </div>
           {business && (
@@ -122,7 +122,7 @@ export const DispatcherCard = ({ name, business, avatar, card, medals }: Props) 
             </div>
             <div className="flex-1 min-w-0">
               <div
-                className="font-comic text-xl leading-none"
+                className="font-forge font-bold text-xl leading-none"
                 style={{ color: "#f5e6c8", letterSpacing: "1px" }}
               >
                 {card.rank.name}
@@ -142,7 +142,7 @@ export const DispatcherCard = ({ name, business, avatar, card, medals }: Props) 
             </div>
             {grade && (
               <span
-                className="font-comic text-sm tracking-wide rounded px-2.5 py-1 self-center"
+                className="font-forge font-bold text-sm tracking-wide rounded px-2.5 py-1 self-center"
                 style={{ background: grade.bg, border: `1px solid ${grade.border}`, color: grade.fg }}
               >
                 {grade.label}
