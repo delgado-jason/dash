@@ -1,6 +1,6 @@
 import { Panel } from "@/components/ui/Panel";
 import { Sparkline } from "@/components/ui/Sparkline";
-import { RollingValue } from "@/components/comic/RollingNumber";
+import { RollingValue } from "@/components/celebrations/RollingNumber";
 
 type Status = "good" | "bad" | "neutral";
 

@@ -82,7 +82,7 @@ export const RigCard = ({
           }}
         >
           <span
-            className="font-comic"
+            className="font-forge font-bold"
             style={{ fontSize: 15, letterSpacing: 1.5, color: foil.name }}
           >
             {rankName}
@@ -147,7 +147,7 @@ export const RigCard = ({
             {stats.map((s) => (
               <div key={s.label} style={{ background: "#141b28", borderRadius: 7, padding: "6px 8px" }}>
                 <div style={{ fontSize: 8, color: "#7d8ba3", letterSpacing: 0.5 }}>{s.label}</div>
-                <div className="font-comic" style={{ fontSize: 16, color: "#f5b03a" }}>{s.value}</div>
+                <div className="font-forge font-bold" style={{ fontSize: 16, color: "#f5b03a" }}>{s.value}</div>
               </div>
             ))}
           </div>

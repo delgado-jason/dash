@@ -30,7 +30,7 @@ import { getAccessorialRates } from "@/services/accessorialRateService";
 
 import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
-import { loadStamp } from "@/components/comic/RubberStamp";
+import { loadStamp } from "@/components/celebrations/RubberStamp";
 import { DieStamp } from "@/components/ui/DieStamp";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Kpi } from "@/components/Kpi";

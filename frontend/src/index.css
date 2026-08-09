@@ -62,8 +62,6 @@
   --font-display: "Bebas Neue", sans-serif;
   --font-condensed: "Barlow Condensed", sans-serif;
   --font-body: "Barlow", sans-serif;
-  /* Adult-comic accent face — used only on the player card / awards / prestige */
-  --font-comic: "Bangers", system-ui, sans-serif;
 
   /* --------------------------------------------------------
     SEMANTIC TOKENS
@@ -118,8 +116,7 @@
   --color-cat5: #4f8cd6; /* blue */
   --color-cat6: #8a8f28; /* olive */
 
-  /* The Forge — game-layer voice. Game surfaces only, never operational
-     UI. Replaces Bangers when the last comic surface migrates. */
+  /* The Forge — game-layer voice. Game surfaces only, never operational UI. */
   --font-forge: "Big Shoulders Stencil", "Barlow Condensed", sans-serif;
 }
 
@@ -237,25 +234,14 @@
 }
 
 /* --- Award pop animations (player card celebration layer) --- */
-@keyframes award-pop {
-  from { transform: scale(0.82) translateY(10px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
-}
+
 @keyframes award-shine {
   0% { left: -60%; }
   55%, 100% { left: 130%; }
 }
 @keyframes award-spin { to { transform: rotate(360deg); } }
-@keyframes award-fall { to { transform: translateY(240px) rotate(320deg); opacity: 0.2; } }
-@keyframes award-press {
-  0% { transform: scale(0.4) rotate(-12deg); opacity: 0; }
-  60% { transform: scale(1.06) rotate(2deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); }
-}
-@keyframes award-toast-in {
-  from { transform: translateX(40px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
+
+
 
 /* ===== Design system — layered panels + primitives ===== */
 .ds-panel { position: relative; border-radius: 13px; }
@@ -304,11 +290,11 @@
   mask-image: radial-gradient(circle at 100% 0, #000, transparent 70%);
   border-top-right-radius: inherit;
 }
-/* Comic sound-effect lettering — a slanted, ink-shadowed verdict word (Bangers).
+/* Verdict-word lettering — slanted, ink-shadowed (the forge stencil since S13).
    Pair with a tone color inline. */
 .ds-sfx {
   display: inline-block;
-  font-family: "Bangers", var(--font-condensed), system-ui, sans-serif;
+  font-family: var(--font-forge);
   font-weight: 400;
   letter-spacing: 0.045em;
   line-height: 1;

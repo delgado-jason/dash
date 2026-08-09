@@ -16,7 +16,7 @@ import { loadTypeMix } from "@/lib/metrics/loadMix";
 import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { maxOdometer } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
-import { RigCard, type RigCardProps } from "@/components/comic/RigCard";
+import { RigCard, type RigCardProps } from "@/components/celebrations/RigCard";
 
 const kMi = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}K`);
 const num = (n: number) => Math.round(n).toLocaleString("en-US");

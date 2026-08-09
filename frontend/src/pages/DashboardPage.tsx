@@ -8,7 +8,7 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useAwardPops } from "@/hooks/useAwardPops";
-import { AwardPopHost } from "@/components/comic/AwardPopHost";
+import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
 import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { latestRecapWithData } from "@/lib/metrics/recap";
 import { MarketChip } from "@/components/dashboard/MarketChip";

@@ -27,7 +27,7 @@ import type { Obligation } from "@/types/obligation";
 import { isPayoffTracked, assetLoanStatus } from "@/lib/metrics/payoff";
 import { PayoffTracker } from "@/components/fleet/PayoffTracker";
 import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
-import { RollingNumber } from "@/components/comic/RollingNumber";
+import { RollingNumber } from "@/components/celebrations/RollingNumber";
 import {
   computeTruckPatches,
   computeTruckMedals,

@@ -79,7 +79,7 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
           · {label} · day {daysElapsed} of {daysTotal}
         </span>
         <span
-          className="ml-auto inline-flex items-center gap-1.5 font-comic text-sm rounded-md px-2.5 py-1 border-2"
+          className="ml-auto inline-flex items-center gap-1.5 font-forge font-bold text-sm rounded-md px-2.5 py-1 border-2"
           style={{ color: meta.color, borderColor: meta.color }}
         >
           {hasProjection && <Icon size={14} />} {meta.text}
