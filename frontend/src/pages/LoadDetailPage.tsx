@@ -30,7 +30,9 @@ import { getAccessorialRates } from "@/services/accessorialRateService";
 
 import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
-import { RubberStamp, loadStamp } from "@/components/comic/RubberStamp";
+import { loadStamp } from "@/components/comic/RubberStamp";
+import { DieStamp } from "@/components/ui/DieStamp";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Kpi } from "@/components/Kpi";
 import { fmtTime, dwell } from "@/lib/stopTimes";
 import {
@@ -75,11 +77,11 @@ const fmtDate = (d?: string | null) =>
       )
     : "Not set";
 
-const cardLbl = "text-xs text-muted-text uppercase tracking-wider mb-2";
+const cardLbl = "text-xs text-dim uppercase tracking-wider mb-2";
 
 const Row = ({ label, value }: { label: ReactNode; value: ReactNode }) => (
   <div className="flex justify-between gap-3 py-0.5 text-sm">
-    <span className="text-muted-text">{label}</span>
+    <span className="text-dim">{label}</span>
     <span className="text-right">{value}</span>
   </div>
 );
@@ -126,10 +128,10 @@ const StopTimes = ({
   const d = dwell(inTime, outTime);
   return (
     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-iron">
-      <span className="text-xs text-muted-text">In</span>
+      <span className="text-xs text-dim">In</span>
       <span className="text-sm">{fmtTime(inTime)}</span>
-      <span className="text-muted-text">→</span>
-      <span className="text-xs text-muted-text">Out</span>
+      <span className="text-dim">→</span>
+      <span className="text-xs text-dim">Out</span>
       <span className="text-sm">{fmtTime(outTime)}</span>
       {d && (
         <span
@@ -246,13 +248,13 @@ export const LoadDetailPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
-        <p className="text-muted-text">Loading…</p>
+      <div className="p-6 text-ink min-h-screen font-body">
+        <p className="text-dim">Loading…</p>
       </div>
     );
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink min-h-screen font-body">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -353,14 +355,15 @@ export const LoadDetailPage = () => {
   const fleetChip = (n?: string | null) => (n ? n : "—");
 
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10 pt-5">
       {showEditForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowEditForm(false)}
           />
-          <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
+          <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-panel text-ink overflow-y-auto shadow-xl rounded-xl p-4 sm:p-6 border border-hairline">
             <LoadForm
               mode="edit"
               initialData={{
@@ -442,34 +445,33 @@ export const LoadDetailPage = () => {
         </DialogContent>
       </Dialog>
 
-      <Link to="/loads" className="text-xs text-muted-text hover:text-light">
-        ← Loads
-      </Link>
+      <div className="flex items-center gap-3 -mt-1 mb-1">
+        <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+        <Link to="/loads" className="text-xs text-dim hover:text-ink">← Loads</Link>
+      </div>
 
       <div className="flex flex-col gap-3 mt-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-3xl font-condensed">{load.load_number}</h1>
+            <h1 className="font-display text-[27px] tracking-[.05em] leading-none">{load.load_number}</h1>
             <StatusBadge value={load.load_status} />
             <StatusBadge value={load.payment_status} />
-            <RubberStamp
-              value={loadStamp(load.load_status, load.payment_status)}
-            />
+            <DieStamp value={loadStamp(load.load_status, load.payment_status)} />
           </div>
-          <p className="text-muted-text text-sm mt-1">
+          <p className="text-dim text-sm mt-1">
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
           <button
             onClick={() => setShowEditForm(true)}
-            className="bg-steel text-light px-3 py-1.5 rounded text-sm flex items-center gap-1"
+            className="h-8 px-3.5 rounded-[9px] border border-hairline text-dim hover:text-ink text-sm flex items-center gap-1.5 font-condensed font-semibold"
           >
             <Pencil size={14} /> Edit
           </button>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="bg-steel text-destructive px-3 py-1.5 rounded text-sm flex items-center gap-1"
+            className="h-8 px-3.5 rounded-[9px] border border-hairline text-destructive/80 hover:text-destructive text-sm flex items-center gap-1.5 font-condensed font-semibold"
           >
             <Trash2 size={14} /> Delete
           </button>
@@ -486,7 +488,7 @@ export const LoadDetailPage = () => {
             <p className="font-condensed text-lg" style={{ color: "#f2a6a3" }}>
               TONU fee owed · {money(revenue)}
             </p>
-            <p className="text-[11px] text-muted-text">
+            <p className="text-[11px] text-dim">
               Truck ordered, not used. Collect the fee, then mark it.
             </p>
           </div>
@@ -520,7 +522,7 @@ export const LoadDetailPage = () => {
             <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
               Possible detention · {detentionLabel(load, freeHours)}
             </p>
-            <p className="text-[11px] text-muted-text">
+            <p className="text-[11px] text-dim">
               Released past your {freeHours}h free (measured from the
               appointment / window). Whether it pays is the shipper's call —
               clear it with {load.agent || "the agent"} before you count on it.
@@ -554,7 +556,7 @@ export const LoadDetailPage = () => {
             <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
               Detention · {detentionLabel(load, freeHours)} · waiting on payment
             </p>
-            <p className="text-[11px] text-muted-text">
+            <p className="text-[11px] text-dim">
               Confirmed with the agent. Bill it as an accessorial; mark paid
               when it lands.
             </p>
@@ -615,20 +617,20 @@ export const LoadDetailPage = () => {
             <div className="flex gap-3">
               <div className="flex flex-col items-center pt-1.5">
                 <div className="w-2 h-2 rounded-full bg-muted-text" />
-                <div className="w-px flex-1 bg-steel min-h-[24px] my-1" />
+                <div className="w-px flex-1 bg-well min-h-[24px] my-1" />
                 <div className="w-2 h-2 rounded-full bg-amber" />
               </div>
               <div className="text-sm flex-1">
                 <p className="font-medium">
                   {load.origin_city}, {load.origin_state}
                 </p>
-                <p className="text-xs text-muted-text mb-3">
+                <p className="text-xs text-dim mb-3">
                   {load.origin_market}
                 </p>
                 <p className="font-medium">
                   {load.destination_city}, {load.destination_state}
                 </p>
-                <p className="text-xs text-muted-text">{load.delivery_market}</p>
+                <p className="text-xs text-dim">{load.delivery_market}</p>
               </div>
             </div>
           )}
@@ -706,7 +708,7 @@ export const LoadDetailPage = () => {
             label="Accessorials"
             value={moneyCents(Number(load.total_accessorials))}
           />
-          <div className="flex justify-between border-t border-steel mt-1.5 pt-1.5 text-sm">
+          <div className="flex justify-between border-t border-hairline-lo mt-1.5 pt-1.5 text-sm">
             <span>Total rate</span>
             <span className="font-condensed text-base">{moneyCents(revenue)}</span>
           </div>
@@ -718,7 +720,7 @@ export const LoadDetailPage = () => {
                   {moneyCents(net)}
                 </span>
               </div>
-              <p className="text-[11px] text-muted-text mt-1">
+              <p className="text-[11px] text-dim mt-1">
                 After your carrier's cut — what your company keeps.
               </p>
             </>
@@ -775,7 +777,7 @@ export const LoadDetailPage = () => {
           <div className="flex items-baseline justify-between gap-2">
             <p className={`${cardLbl} mb-0`}>Shipper</p>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-text">
+              <span className="text-[11px] text-dim">
                 Pickup · {fmtDate(load.pickup_date)}
               </span>
               <OnTimeBadge
@@ -799,11 +801,11 @@ export const LoadDetailPage = () => {
               load.shipper_name || "—"
             )}
           </p>
-          <p className="text-xs text-muted-text">
+          <p className="text-xs text-dim">
             {load.origin_city}, {load.origin_state}
           </p>
           {schedLabel(load.pickup_appt_start, load.pickup_appt_end) && (
-            <p className="text-[11px] text-muted-text mt-1">
+            <p className="text-[11px] text-dim mt-1">
               Scheduled ·{" "}
               {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
             </p>
@@ -815,7 +817,7 @@ export const LoadDetailPage = () => {
           <div className="flex items-baseline justify-between gap-2">
             <p className={`${cardLbl} mb-0`}>Receiver</p>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-muted-text">
+              <span className="text-[11px] text-dim">
                 Delivery · {fmtDate(load.delivery_date)}
               </span>
               <OnTimeBadge
@@ -839,11 +841,11 @@ export const LoadDetailPage = () => {
               load.receiver_name || "—"
             )}
           </p>
-          <p className="text-xs text-muted-text">
+          <p className="text-xs text-dim">
             {load.destination_city}, {load.destination_state}
           </p>
           {schedLabel(load.delivery_appt_start, load.delivery_appt_end) && (
-            <p className="text-[11px] text-muted-text mt-1">
+            <p className="text-[11px] text-dim mt-1">
               Scheduled ·{" "}
               {schedLabel(load.delivery_appt_start, load.delivery_appt_end)}
             </p>
@@ -885,7 +887,7 @@ export const LoadDetailPage = () => {
                 label={usingRealFuel ? "Your avg" : "Assumed"}
                 value={`${fuelMpg.toFixed(1)} mpg · $${fuelPrice.toFixed(2)}/gal`}
               />
-              <p className="text-xs text-muted-text mt-2">
+              <p className="text-xs text-dim mt-2">
                 {fuel.basis === "actual"
                   ? "Miles from this load's odometer readings."
                   : "Miles estimated from loaded + deadhead — enter odometer start and end for actual."}{" "}
@@ -895,7 +897,7 @@ export const LoadDetailPage = () => {
               </p>
             </>
           ) : (
-            <p className="text-sm text-muted-text">
+            <p className="text-sm text-dim">
               Add loaded miles to estimate fuel.
             </p>
           )}
@@ -904,7 +906,7 @@ export const LoadDetailPage = () => {
         <Panel className="p-4">
           <p className={cardLbl}>Broker · agent</p>
           <p className="text-sm">{load.broker}</p>
-          <p className="text-sm text-muted-text">
+          <p className="text-sm text-dim">
             <Link
               to={`/agents/${load.agent_id}`}
               className="text-amber-light hover:underline"
@@ -919,7 +921,7 @@ export const LoadDetailPage = () => {
           <p className={cardLbl}>Update status</p>
           <div className="flex flex-wrap gap-2 items-center">
             <select
-              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-light"
+              className="bg-well rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-ink"
               value={statusSel}
               onChange={(e) => setStatusSel(e.target.value)}
             >
@@ -930,7 +932,7 @@ export const LoadDetailPage = () => {
               ))}
             </select>
             <select
-              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-light"
+              className="bg-well rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-ink"
               value={paymentSel}
               onChange={(e) => setPaymentSel(e.target.value)}
             >
@@ -954,17 +956,17 @@ export const LoadDetailPage = () => {
       <Panel className="p-4 mt-4">
         <div className="flex justify-between items-center mb-2">
           <p className={`${cardLbl} mb-0`}>Accessorials</p>
-          <span className="text-xs text-muted-text">
+          <span className="text-xs text-dim">
             Total {moneyCents(accTotal)}
           </span>
         </div>
 
         {accessorials.length === 0 ? (
-          <p className="text-sm text-muted-text">No accessorials logged.</p>
+          <p className="text-sm text-dim">No accessorials logged.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-muted-text text-left">
+              <tr className="text-xs text-dim text-left">
                 <th className="font-normal pb-1">Type</th>
                 <th className="font-normal pb-1 text-right">Amount</th>
                 <th className="font-normal pb-1 text-right">Actions</th>
@@ -974,11 +976,11 @@ export const LoadDetailPage = () => {
               {accessorials.map((a) => {
                 const editing = editingId === a.accessorial_id;
                 return (
-                  <tr key={a.accessorial_id} className="border-t border-steel">
+                  <tr key={a.accessorial_id} className="border-t border-hairline-lo">
                     <td className="py-2">
                       {editing ? (
                         <input
-                          className="bg-steel rounded px-2 py-1 text-sm w-full"
+                          className="bg-well rounded px-2 py-1 text-sm w-full"
                           value={editingType}
                           onChange={(e) => setEditingType(e.target.value)}
                         />
@@ -989,7 +991,7 @@ export const LoadDetailPage = () => {
                     <td className="py-2 text-right whitespace-nowrap">
                       {editing ? (
                         <input
-                          className="bg-steel rounded px-2 py-1 text-sm w-24 text-right"
+                          className="bg-well rounded px-2 py-1 text-sm w-24 text-right"
                           value={editingAmount}
                           inputMode="decimal"
                           onChange={(e) =>
@@ -1012,7 +1014,7 @@ export const LoadDetailPage = () => {
                             </button>
                             <button
                               onClick={() => setEditingId("")}
-                              className="text-muted-text text-xs"
+                              className="text-dim text-xs"
                             >
                               Cancel
                             </button>
@@ -1021,7 +1023,7 @@ export const LoadDetailPage = () => {
                           <>
                             <Pencil
                               size={14}
-                              className="text-muted-text hover:text-light cursor-pointer"
+                              className="text-dim hover:text-ink cursor-pointer"
                               onClick={() =>
                                 startEdit(
                                   a.accessorial_id,
@@ -1032,7 +1034,7 @@ export const LoadDetailPage = () => {
                             />
                             <Trash2
                               size={14}
-                              className="text-muted-text hover:text-destructive cursor-pointer"
+                              className="text-dim hover:text-destructive cursor-pointer"
                               onClick={() =>
                                 handleDeleteAccessorial(a.accessorial_id)
                               }
@@ -1051,7 +1053,7 @@ export const LoadDetailPage = () => {
         <div className="flex flex-wrap gap-2 mt-3">
           {otherMode ? (
             <input
-              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-light placeholder:text-muted-text"
+              className="bg-well rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-ink placeholder:text-dim"
               placeholder="New accessorial type"
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
@@ -1059,7 +1061,7 @@ export const LoadDetailPage = () => {
             />
           ) : (
             <select
-              className="bg-steel rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-light"
+              className="bg-well rounded px-2 py-1.5 text-sm flex-1 min-w-[160px] text-ink"
               value={newType}
               onChange={(e) => {
                 if (e.target.value === "__other__") {
@@ -1080,7 +1082,7 @@ export const LoadDetailPage = () => {
             </select>
           )}
           <input
-            className="bg-steel rounded px-2 py-1.5 text-sm w-28 text-light placeholder:text-muted-text"
+            className="bg-well rounded px-2 py-1.5 text-sm w-28 text-ink placeholder:text-dim"
             placeholder="0.00"
             inputMode="decimal"
             value={newAmount}
@@ -1088,12 +1090,13 @@ export const LoadDetailPage = () => {
           />
           <button
             onClick={handleAddAccessorial}
-            className="bg-steel text-light px-4 py-1.5 rounded text-sm border border-plate"
+            className="bg-well text-ink px-4 py-1.5 rounded text-sm border border-hairline"
           >
             Add
           </button>
         </div>
       </Panel>
+      </div>
     </div>
   );
 };

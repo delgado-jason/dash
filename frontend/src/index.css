@@ -260,9 +260,11 @@
 /* ===== Design system — layered panels + primitives ===== */
 .ds-panel { position: relative; border-radius: 13px; }
 .ds-panel--default {
-  background: linear-gradient(180deg, #313b53, #262f42);
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.42);
+  /* v2 transitional: unmigrated pages' cards read as etched boards so the
+     app coheres while slices land. Steel/hero variants keep their depth. */
+  background: var(--color-panel);
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
 }
 .ds-panel--steel {
   background: linear-gradient(160deg, #37415a 0%, #2a3347 45%, #242c3e 100%);

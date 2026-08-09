@@ -8,12 +8,11 @@ import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useFacilities } from "@/hooks/useFacilities";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Kpi } from "@/components/Kpi";
-import { Panel } from "@/components/ui/Panel";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import LoadForm from "../components/LoadForm";
 import { createLoad } from "@/services/createLoadService";
-import { loadsKpis, loadRevenue } from "@/lib/metrics/loads";
-import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
+import { loadRevenue } from "@/lib/metrics/loads";
+import { fmtRpm } from "@/components/lanes/rpmStyle";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -80,7 +79,7 @@ const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
   const tonuPaid = load.load_status === "tonu" && load.tonu_paid;
   return (
     <tr
-      className="border-t border-steel align-top"
+      className="border-t ds2-cell-rule align-top hover:bg-white/[.02] transition-colors"
       style={flag && TINT[flag] ? { background: TINT[flag] } : undefined}
     >
       <td
@@ -112,7 +111,7 @@ const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
         <span className="text-xs block">
           <Link
             to={`/agents/${load.agent_id}`}
-            className="text-muted-text hover:text-amber-light hover:underline"
+            className="text-dim hover:text-amber-light hover:underline"
           >
             {load.agent}
           </Link>
@@ -120,10 +119,10 @@ const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
       </td>
       <td className="py-2 whitespace-nowrap">
         {load.origin_city}, {load.origin_state}
-        <span className="text-muted-text"> → </span>
+        <span className="text-dim"> → </span>
         {load.destination_city}, {load.destination_state}
       </td>
-      <td className="py-2 text-muted-text whitespace-nowrap">
+      <td className="py-2 text-dim whitespace-nowrap">
         {fmtDate(load.pickup_date)}
       </td>
       <td className="py-2 text-right whitespace-nowrap">
@@ -161,8 +160,9 @@ const LoadsPage = () => {
       .catch(() => {});
   }, []);
 
-  // KPIs describe the whole business, so they ignore the table filters.
-  const kpis = useMemo(() => loadsKpis(loads ?? [], new Date()), [loads]);
+  // The answering line: whatever the filters currently show, summed live —
+  // the list as a spreadsheet that answers back. (Story KPIs moved to their
+  // owner tabs: MTD → Pulse, months → Money, settlement timing → Next rail.)
 
   // In-transit loads lift into their own pinned group; the status pill filters
   // only the main table below. The search box + payment filter narrow both.
@@ -206,7 +206,7 @@ const LoadsPage = () => {
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen">
+      <div className="p-6 text-ink min-h-screen">
         <Skeleton className="h-8 w-28 mb-6" />
         <StatCardsSkeleton count={4} />
         <BlockSkeleton className="h-64 mt-6" />
@@ -215,22 +215,26 @@ const LoadsPage = () => {
 
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen">
+      <div className="p-6 text-ink min-h-screen">
         <p className="text-destructive">{error}</p>
       </div>
     );
 
-  const pipeline = kpis.bookedCount + kpis.inTransitCount;
+  const view = [...inTransit, ...rest];
+  const viewNet = view.reduce((sum, l) => sum + loadRevenue(l), 0);
+  const viewMiles = view.reduce((sum, l) => sum + (Number(l.loaded_miles) || 0), 0);
+  const viewRpm = viewMiles > 0 ? viewNet / viewMiles : null;
 
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
       {showCreateForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
             onClick={() => setShowCreateForm(false)}
           />
-          <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
+          <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-panel text-ink overflow-y-auto shadow-xl rounded-xl p-4 sm:p-6 border border-hairline">
             <LoadForm
               mode="create"
               brokers={brokers}
@@ -251,43 +255,37 @@ const LoadsPage = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-condensed text-light">Loads</h1>
+      <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+        <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+        <h1 className="font-display text-[26px] tracking-[.06em] leading-none">LOADS</h1>
+        <span className="flex-1" />
         <button
-          className="bg-amber text-steel px-3 py-2 rounded-lg text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] text-canvas hover:brightness-105"
+          style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))", boxShadow: "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)" }}
           onClick={() => setShowCreateForm(true)}
         >
-          + Create load
+          + CREATE LOAD
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Kpi
-          label="This month · net"
-          value={money(kpis.deliveredNet)}
-          sub={`${kpis.deliveredCount} load${plural(kpis.deliveredCount)} delivered`}
-        />
-        <Kpi
-          label="Avg rate / mile"
-          value={fmtRpm(kpis.rpm)}
-          valueClass={rpmTextClass(kpis.rpm)}
-          sub={`this month · ${kpis.loadedMiles.toLocaleString("en-US")} mi`}
-        />
-        <Kpi
-          label="Outstanding AR"
-          value={money(kpis.arTotal)}
-          sub={`${kpis.arCount} load${plural(kpis.arCount)} · unpaid + invoiced`}
-        />
-        <Kpi
-          label="Pipeline"
-          value={`${pipeline} load${plural(pipeline)}`}
-          sub={`${kpis.bookedCount} booked · ${kpis.inTransitCount} in transit`}
-        />
+      {/* the answering line — sums whatever the filters currently show */}
+      <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
+        <span className="font-display text-[22px] tracking-[.03em] tabular-nums">
+          {view.length} load{plural(view.length)}
+        </span>
+        <span className="text-[12px] text-faint">in this view ·</span>
+        <b className="font-condensed font-semibold text-ink tabular-nums">{money(viewNet)} net</b>
+        {viewRpm != null && (
+          <>
+            <span className="text-[12px] text-faint">·</span>
+            <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(viewRpm)}/mi</b>
+          </>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 bg-plate rounded-lg p-3 mt-4">
+      <div className="flex flex-wrap items-center gap-2.5 mt-3">
         <input
-          className="bg-steel rounded px-3 py-1.5 text-sm flex-1 min-w-[180px] text-light placeholder:text-muted-text"
+          className="h-9 rounded-[10px] px-3.5 text-sm flex-1 min-w-[180px] text-ink placeholder:text-faint bg-well border-0" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
           placeholder="Search load #, broker, city"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -299,7 +297,7 @@ const LoadsPage = () => {
           onChange={setStatusFilter}
         />
         <select
-          className="bg-steel rounded px-2 py-1.5 text-sm text-light"
+          className="h-9 rounded-[10px] px-2.5 text-sm text-ink bg-well border-0" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
           value={paymentFilter}
           onChange={(e) => setPaymentFilter(e.target.value)}
         >
@@ -335,7 +333,7 @@ const LoadsPage = () => {
             >
               {inTransit.length}
             </span>
-            <span className="text-[11px] text-muted-text ml-auto">
+            <span className="text-[11px] text-dim ml-auto">
               what's rolling now
             </span>
           </div>
@@ -355,7 +353,7 @@ const LoadsPage = () => {
         </div>
       )}
 
-      <Panel className="p-4 mt-4 overflow-x-auto">
+      <div className="ds2-board p-4 mt-4 overflow-x-auto">
         {rest.length === 0 ? (
           (loads ?? []).length === 0 ? (
             <EmptyState
@@ -363,7 +361,7 @@ const LoadsPage = () => {
               hint="Log your first load to start tracking revenue, agents, and lanes."
             />
           ) : (
-            <p className="text-muted-text text-sm py-2">
+            <p className="text-dim text-sm py-2">
               {inTransit.length > 0
                 ? "No other loads match these filters."
                 : "No loads match these filters."}
@@ -372,7 +370,7 @@ const LoadsPage = () => {
         ) : (
           <table className="w-full text-sm min-w-[760px] [&_th]:pr-5 [&_td]:pr-5 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
             <thead>
-              <tr className="text-xs text-muted-text text-left">
+              <tr className="text-[10px] uppercase tracking-[.12em] text-faint text-left">
                 <th className="font-normal pb-2">Load #</th>
                 <th className="font-normal pb-2">Status</th>
                 <th className="font-normal pb-2">Broker · agent</th>
@@ -389,7 +387,8 @@ const LoadsPage = () => {
             </tbody>
           </table>
         )}
-      </Panel>
+      </div>
+      </div>
     </div>
   );
 };
