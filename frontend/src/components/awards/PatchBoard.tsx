@@ -24,7 +24,7 @@ const PatchEmblem = ({ p }: { p: Patch }) => {
       </div>
       {earned && (
         <span
-          className="font-comic"
+          className="font-forge font-bold"
           style={{
             position: "absolute",
             top: -3,
@@ -57,7 +57,7 @@ export const PatchBoard = ({ patches }: { patches: Patch[] }) => {
   return (
     <div className="mt-6">
       <div className="flex items-baseline gap-2 mb-2">
-        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+        <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
           PATCHES
         </span>
         <span className="text-[11px] text-muted-text">hard to earn · stack a ×count each time</span>

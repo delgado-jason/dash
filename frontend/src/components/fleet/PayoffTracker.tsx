@@ -11,7 +11,7 @@ const monthYear = (iso: string) => {
 
 const Stat = ({ value, label }: { value: string; label: string }) => (
   <div className="flex-1 rounded-[9px] px-1.5 py-2 text-center" style={{ background: "#1c2333" }}>
-    <div className="font-comic text-[17px] leading-none" style={{ color: "#f5e6c8" }}>
+    <div className="font-forge font-bold text-[17px] leading-none" style={{ color: "#f5e6c8" }}>
       {value}
     </div>
     <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
@@ -44,17 +44,17 @@ export const PayoffTracker = ({
         boxShadow: p.isPaidOff ? "inset 0 0 0 2px #7a5410" : undefined,
       }}
     >
-      <p className="font-comic tracking-[3px] text-[12px]" style={{ color: "#9daabb" }}>
+      <p className="font-forge font-bold tracking-[3px] text-[12px]" style={{ color: "#9daabb" }}>
         OWN THE {label} OUTRIGHT
       </p>
 
       {p.isPaidOff ? (
         <div className="flex items-center gap-3 mt-1 mb-3">
-          <div className="font-comic text-3xl" style={{ color: "#ffe08a" }}>
+          <div className="font-forge font-bold text-3xl" style={{ color: "#ffe08a" }}>
             FREE &amp; CLEAR
           </div>
           <span
-            className="font-comic inline-block"
+            className="font-forge font-bold inline-block"
             style={{ border: "2px solid #4ade80", color: "#4ade80", borderRadius: 8, padding: "1px 10px", transform: "rotate(-4deg)" }}
           >
             PAID OFF
@@ -62,7 +62,7 @@ export const PayoffTracker = ({
         </div>
       ) : (
         <div className="flex items-baseline gap-2 mt-1 mb-3">
-          <div className="font-comic text-3xl" style={{ color: metal }}>
+          <div className="font-forge font-bold text-3xl" style={{ color: metal }}>
             {money(p.owed)}
           </div>
           <div className="text-xs text-muted-text">to free &amp; clear</div>
@@ -98,7 +98,7 @@ export const PayoffTracker = ({
             <Stat value={p.paymentsLeft != null ? String(p.paymentsLeft) : "—"} label="PAYMENTS LEFT" />
           </div>
           {p.paymentsLeft != null && (
-            <p className="font-comic text-center mt-3 text-[13px]" style={{ color: metal, letterSpacing: "1px" }}>
+            <p className="font-forge font-bold text-center mt-3 text-[13px]" style={{ color: metal, letterSpacing: "1px" }}>
               ≈ {p.paymentsLeft} MORE PAYMENT{p.paymentsLeft === 1 ? "" : "S"} TO FREE &amp; CLEAR
             </p>
           )}

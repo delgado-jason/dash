@@ -44,7 +44,7 @@ const StudioItem = ({
       style={{ background: "#10151f", borderColor: preview ? "#e8940a" : "#2a3347" }}
     >
       <div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
-        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+        <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
           {title}
         </span>
         <span className="text-[11px] text-muted-text truncate">{subtitle}</span>
@@ -66,7 +66,7 @@ const StudioItem = ({
           </div>
         )}
         {preview && !busy && (
-          <span className="absolute top-2 left-2 text-[10px] font-comic tracking-wider bg-amber text-steel px-2 py-0.5 rounded">
+          <span className="absolute top-2 left-2 text-[10px] font-forge font-bold tracking-wider bg-amber text-steel px-2 py-0.5 rounded">
             PREVIEW
           </span>
         )}

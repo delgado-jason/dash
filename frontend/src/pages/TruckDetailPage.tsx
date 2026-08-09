@@ -59,7 +59,7 @@ const Kpi = ({
   green?: boolean;
 }) => (
   <div className="flex-1 min-w-[92px] rounded-[10px] px-2 py-2.5 text-center" style={{ background: "#1c2333" }}>
-    <div className="font-comic text-[20px] leading-none" style={{ color: green ? "#4ade80" : "#f5e6c8" }}>
+    <div className="font-forge font-bold text-[20px] leading-none" style={{ color: green ? "#4ade80" : "#f5e6c8" }}>
       {value}
     </div>
     <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
@@ -348,7 +348,7 @@ const TruckDetailPage = () => {
             className="flex-[1.4] min-w-[130px] rounded-[10px] px-3 py-2.5 text-center"
             style={{ background: "#0f2419", border: "1px solid #2f6f52" }}
           >
-            <div className="font-comic text-2xl leading-none" style={{ color: "#4ade80" }}>
+            <div className="font-forge font-bold text-2xl leading-none" style={{ color: "#4ade80" }}>
               {metrics.utilization != null ? `${Math.round(metrics.utilization * 100)}%` : "—"}
             </div>
             <div className="text-[9px] mt-1 tracking-wide" style={{ color: "#8fd6a8" }}>
