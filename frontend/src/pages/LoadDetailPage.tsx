@@ -57,6 +57,9 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/Panel";
 
 import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
+import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
+import { useLoads } from "@/hooks/useLoads";
+import { useRateTargets } from "@/hooks/useRateTargets";
 import { loadEmptyMiles } from "@/lib/metrics/deadhead";
 import {
   estimateLoadFuel,
@@ -163,6 +166,10 @@ export const LoadDetailPage = () => {
   const { load, isLoading, error } = useLoad(refreshKey);
   const [route, setRoute] = useState<RouteGeo | null>(null);
   const { accessorials } = useAccessorials(accRefreshKey);
+  // The booking grade — the Score engine’s verdict, worn by the load forever.
+  // Basis comes from the same rolling cost engine every other surface uses.
+  const { loads: allLoads } = useLoads(0);
+  const targets = useRateTargets(allLoads);
 
   const [newType, setNewType] = useState("");
   const [newAmount, setNewAmount] = useState("");
@@ -457,6 +464,28 @@ export const LoadDetailPage = () => {
             {/* The stamp IS the status once one exists — badges only carry
                 the un-stampable states (booked / in transit), so the verdict
                 keeps its meaning (Jason's call, 2026-08-09). */}
+            {(() => {
+              const basis = targets.basis;
+              if (basis?.costPerTotalMile == null || !load) return null;
+              const g = scoreLoad(
+                {
+                  rate: loadRevenue(load),
+                  loadedMiles: Number(load.loaded_miles) || 0,
+                  deadheadMiles: Number(load.deadhead_miles) || 0,
+                },
+                { costPerDrivenMile: basis.costPerTotalMile, payTake: basis.payTake },
+              );
+              if (!g?.verdict) return null;
+              const meta = VERDICT_META[g.verdict as keyof typeof VERDICT_META];
+              return (
+                <span className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
+                  <span className="font-forge font-bold text-[11px] tracking-[.14em]" style={{ color: meta.fg }}>
+                    {meta.label}
+                  </span>
+                  <span className="font-condensed font-semibold text-[10.5px] text-faint">booked grade</span>
+                </span>
+              );
+            })()}
             {loadStamp(load.load_status, load.payment_status) ? (
               <DieStamp value={loadStamp(load.load_status, load.payment_status)} />
             ) : (
@@ -642,6 +671,113 @@ export const LoadDetailPage = () => {
               </div>
             </div>
           )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-hairline-lo">
+            <div>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className={`${cardLbl} mb-0`}>Shipper</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-dim">
+                Pickup · {fmtDate(load.pickup_date)}
+              </span>
+              <OnTimeBadge
+                status={onTimeStatus(
+                  load.pickup_appt_start,
+                  load.pickup_appt_end,
+                  load.shipper_in,
+                )}
+              />
+            </div>
+          </div>
+          <p className="text-base font-condensed mt-1">
+            {load.shipper_facility_id ? (
+              <Link
+                to={`/facilities/${load.shipper_facility_id}`}
+                className="text-amber-light hover:underline"
+              >
+                {load.shipper_name || "—"}
+              </Link>
+            ) : (
+              load.shipper_name || "—"
+            )}
+          </p>
+          <p className="text-xs text-dim">
+            {load.origin_city}, {load.origin_state}
+          </p>
+          {schedLabel(load.pickup_appt_start, load.pickup_appt_end) && (
+            <p className="text-[11px] text-dim mt-1">
+              Scheduled ·{" "}
+              {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
+            </p>
+          )}
+          <StopTimes inTime={load.shipper_in} outTime={load.shipper_out} />
+            </div>
+            <div>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className={`${cardLbl} mb-0`}>Receiver</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-dim">
+                Delivery · {fmtDate(load.delivery_date)}
+              </span>
+              <OnTimeBadge
+                status={onTimeStatus(
+                  load.delivery_appt_start,
+                  load.delivery_appt_end,
+                  load.receiver_in,
+                )}
+              />
+            </div>
+          </div>
+          <p className="text-base font-condensed mt-1">
+            {load.receiver_facility_id ? (
+              <Link
+                to={`/facilities/${load.receiver_facility_id}`}
+                className="text-amber-light hover:underline"
+              >
+                {load.receiver_name || "—"}
+              </Link>
+            ) : (
+              load.receiver_name || "—"
+            )}
+          </p>
+          <p className="text-xs text-dim">
+            {load.destination_city}, {load.destination_state}
+          </p>
+          {schedLabel(load.delivery_appt_start, load.delivery_appt_end) && (
+            <p className="text-[11px] text-dim mt-1">
+              Scheduled ·{" "}
+              {schedLabel(load.delivery_appt_start, load.delivery_appt_end)}
+            </p>
+          )}
+          <StopTimes inTime={load.receiver_in} outTime={load.receiver_out} />
+            </div>
+            <div>
+          <p className={cardLbl}>Mileage</p>
+          <Row
+            label="Loaded"
+            value={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} mi`}
+          />
+          <Row
+            label="Deadhead (actual)"
+            value={
+              empty == null
+                ? "—"
+                : `${Math.round(empty).toLocaleString("en-US")} mi`
+            }
+          />
+          <Row
+            label="Deadhead (planned)"
+            value={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
+          />
+          <Row
+            label="Odometer"
+            value={
+              load.odometer_start && load.odometer_end
+                ? `${load.odometer_start.toLocaleString("en-US")} → ${load.odometer_end.toLocaleString("en-US")}`
+                : "Not recorded"
+            }
+          />
+            </div>
+          </div>
         </Panel>
 
         <Panel className="p-4 border border-amber">
@@ -703,67 +839,7 @@ export const LoadDetailPage = () => {
               )
             }
           />
-        </Panel>
-
-        <Panel className="p-4">
-          <p className={cardLbl}>Revenue</p>
-          <Row label="Linehaul" value={moneyCents(Number(load.linehaul))} />
-          <Row
-            label="Fuel surcharge"
-            value={moneyCents(Number(load.fuel_surcharge))}
-          />
-          <Row
-            label="Accessorials"
-            value={moneyCents(Number(load.total_accessorials))}
-          />
-          <div className="flex justify-between border-t border-hairline-lo mt-1.5 pt-1.5 text-sm">
-            <span>Total rate</span>
-            <span className="font-condensed text-base">{moneyCents(revenue)}</span>
-          </div>
-          {Math.abs(net - revenue) > 0.005 && (
-            <>
-              <div className="flex justify-between mt-1 text-sm">
-                <span className="text-status-positive-text">Your net</span>
-                <span className="font-condensed text-base text-status-positive-text">
-                  {moneyCents(net)}
-                </span>
-              </div>
-              <p className="text-[11px] text-dim mt-1">
-                After your carrier's cut — what your company keeps.
-              </p>
-            </>
-          )}
-        </Panel>
-
-        <Panel className="p-4">
-          <p className={cardLbl}>Mileage</p>
-          <Row
-            label="Loaded"
-            value={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} mi`}
-          />
-          <Row
-            label="Deadhead (actual)"
-            value={
-              empty == null
-                ? "—"
-                : `${Math.round(empty).toLocaleString("en-US")} mi`
-            }
-          />
-          <Row
-            label="Deadhead (planned)"
-            value={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
-          />
-          <Row
-            label="Odometer"
-            value={
-              load.odometer_start && load.odometer_end
-                ? `${load.odometer_start.toLocaleString("en-US")} → ${load.odometer_end.toLocaleString("en-US")}`
-                : "Not recorded"
-            }
-          />
-        </Panel>
-
-        <Panel className="p-4">
+          <div className="mt-3 pt-3 border-t border-hairline-lo">
           <p className={cardLbl}>Cargo</p>
           <Row label="Commodity" value={load.commodity || "—"} />
           <Row
@@ -779,86 +855,52 @@ export const LoadDetailPage = () => {
               "Legal"
             }
           />
+          </div>
+          <div className="mt-3 pt-3 border-t border-hairline-lo">
+          <p className={cardLbl}>Broker · agent</p>
+          <p className="text-sm">{load.broker}</p>
+          <p className="text-sm text-dim">
+            <Link
+              to={`/agents/${load.agent_id}`}
+              className="text-amber-light hover:underline"
+            >
+              {load.agent}
+            </Link>
+            {load.agent_email ? ` · ${load.agent_email}` : ""}
+          </p>
+          </div>
         </Panel>
 
         <Panel className="p-4">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className={`${cardLbl} mb-0`}>Shipper</p>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-dim">
-                Pickup · {fmtDate(load.pickup_date)}
-              </span>
-              <OnTimeBadge
-                status={onTimeStatus(
-                  load.pickup_appt_start,
-                  load.pickup_appt_end,
-                  load.shipper_in,
-                )}
-              />
-            </div>
+          <p className="font-display text-[15px] tracking-[.08em] text-dim">SETTLEMENT · MANIFEST</p>
+          <div className="mt-2 [&>div]:border-b [&>div]:border-dotted [&>div]:border-white/10 [&>div]:pb-1.5 [&>div]:mb-1.5">
+          <Row label="Linehaul" value={moneyCents(Number(load.linehaul))} />
+          <Row
+            label="Fuel surcharge"
+            value={moneyCents(Number(load.fuel_surcharge))}
+          />
+          <Row
+            label="Accessorials"
+            value={moneyCents(Number(load.total_accessorials))}
+          />
           </div>
-          <p className="text-base font-condensed mt-1">
-            {load.shipper_facility_id ? (
-              <Link
-                to={`/facilities/${load.shipper_facility_id}`}
-                className="text-amber-light hover:underline"
-              >
-                {load.shipper_name || "—"}
-              </Link>
-            ) : (
-              load.shipper_name || "—"
-            )}
-          </p>
-          <p className="text-xs text-dim">
-            {load.origin_city}, {load.origin_state}
-          </p>
-          {schedLabel(load.pickup_appt_start, load.pickup_appt_end) && (
-            <p className="text-[11px] text-dim mt-1">
-              Scheduled ·{" "}
-              {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
-            </p>
-          )}
-          <StopTimes inTime={load.shipper_in} outTime={load.shipper_out} />
-        </Panel>
-
-        <Panel className="p-4">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className={`${cardLbl} mb-0`}>Receiver</p>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-dim">
-                Delivery · {fmtDate(load.delivery_date)}
-              </span>
-              <OnTimeBadge
-                status={onTimeStatus(
-                  load.delivery_appt_start,
-                  load.delivery_appt_end,
-                  load.receiver_in,
-                )}
-              />
-            </div>
+          <div className="flex justify-between border-t border-hairline mt-1 pt-2 text-sm">
+            <span>Customer total</span>
+            <span className="font-condensed font-semibold text-base tabular-nums">{moneyCents(revenue)}</span>
           </div>
-          <p className="text-base font-condensed mt-1">
-            {load.receiver_facility_id ? (
-              <Link
-                to={`/facilities/${load.receiver_facility_id}`}
-                className="text-amber-light hover:underline"
-              >
-                {load.receiver_name || "—"}
-              </Link>
-            ) : (
-              load.receiver_name || "—"
-            )}
-          </p>
-          <p className="text-xs text-dim">
-            {load.destination_city}, {load.destination_state}
-          </p>
-          {schedLabel(load.delivery_appt_start, load.delivery_appt_end) && (
-            <p className="text-[11px] text-dim mt-1">
-              Scheduled ·{" "}
-              {schedLabel(load.delivery_appt_start, load.delivery_appt_end)}
-            </p>
+          {Math.abs(net - revenue) > 0.005 && (
+            <>
+              <div className="ds2-well mt-2.5 px-3.5 py-2.5 flex justify-between items-baseline">
+                <span className="text-[10.5px] font-semibold tracking-[.14em] uppercase text-amber-hi">Your net</span>
+                <span className="font-display text-[24px] text-amber-hi tabular-nums">
+                  {moneyCents(net)}
+                </span>
+              </div>
+              <p className="text-[11px] text-dim mt-1">
+                After your carrier's cut — what your company keeps.
+              </p>
+            </>
           )}
-          <StopTimes inTime={load.receiver_in} outTime={load.receiver_out} />
         </Panel>
 
         <Panel className="p-4">
@@ -911,22 +953,44 @@ export const LoadDetailPage = () => {
           )}
         </Panel>
 
-        <Panel className="p-4">
-          <p className={cardLbl}>Broker · agent</p>
-          <p className="text-sm">{load.broker}</p>
-          <p className="text-sm text-dim">
-            <Link
-              to={`/agents/${load.agent_id}`}
-              className="text-amber-light hover:underline"
-            >
-              {load.agent}
-            </Link>
-            {load.agent_email ? ` · ${load.agent_email}` : ""}
-          </p>
-        </Panel>
-
         <Panel className="p-4 md:col-span-2">
-          <p className={cardLbl}>Update status</p>
+          <p className={cardLbl}>Status — the journey</p>
+          {(() => {
+            const ORDER = ["booked", "in_transit", "delivered"];
+            const reached = (st: string) =>
+              load.load_status === "cancelled" || load.load_status === "tonu"
+                ? false
+                : ORDER.indexOf(load.load_status) >= ORDER.indexOf(st);
+            const paid = load.payment_status === "paid";
+            const stations: [string, boolean][] = [
+              ["Booked", reached("booked")],
+              ["Picked up", reached("in_transit")],
+              ["Delivered", reached("delivered")],
+              ["Paid", paid],
+            ];
+            return (
+              <div className="flex items-center mb-3 mt-1">
+                {stations.map(([nm, on], i) => (
+                  <div key={nm} className="flex items-center flex-1 last:flex-none">
+                    <div className="flex flex-col items-center gap-1">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={
+                          on
+                            ? { background: "var(--color-amber)", boxShadow: "0 0 7px rgba(232,148,10,.6)" }
+                            : { background: "var(--color-well)", boxShadow: "inset 0 1px 3px rgba(0,0,0,.6)" }
+                        }
+                      />
+                      <span className={`text-[9px] font-semibold tracking-[.1em] uppercase ${on ? "text-dim" : "text-faint"}`}>{nm}</span>
+                    </div>
+                    {i < stations.length - 1 && (
+                      <span className={`h-[2px] flex-1 mx-1.5 -mt-3.5 ${stations[i + 1][1] ? "bg-amber/50" : "bg-hairline"}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           <div className="flex flex-wrap gap-2 items-center">
             <select
               className="bg-well rounded px-2 py-1.5 text-sm flex-1 min-w-[140px] text-ink"
@@ -961,9 +1025,9 @@ export const LoadDetailPage = () => {
         </Panel>
       </div>
 
-      <Panel className="p-4 mt-4">
+      <Panel className="p-4 mt-2">
         <div className="flex justify-between items-center mb-2">
-          <p className={`${cardLbl} mb-0`}>Accessorials</p>
+          <p className="font-display text-[13px] tracking-[.08em] text-dim">MANIFEST · ACCESSORIALS</p>
           <span className="text-xs text-dim">
             Total {moneyCents(accTotal)}
           </span>
