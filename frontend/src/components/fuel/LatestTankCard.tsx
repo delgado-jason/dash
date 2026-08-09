@@ -72,7 +72,7 @@ export const LatestTankCard = ({
         </span>
         {isRecord && (
           <span
-            className="ml-auto inline-flex items-center gap-1 font-comic uppercase text-sm"
+            className="ml-auto inline-flex items-center gap-1 font-forge font-bold uppercase text-sm"
             style={{
               border: "3px solid #f5a623",
               color: "#f5a623",

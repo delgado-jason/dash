@@ -39,7 +39,7 @@ export const RubberStamp = ({
   const color = STAMP_META[value];
   return (
     <span
-      className="font-comic select-none"
+      className="font-forge font-bold select-none"
       style={{
         display: "inline-block",
         border: `3px solid ${color}`,

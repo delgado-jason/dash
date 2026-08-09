@@ -81,7 +81,7 @@ export const TrophyCase = ({
       />
       <div className="relative">
         <p
-          className="font-comic text-base mb-3"
+          className="font-forge font-bold text-base mb-3"
           style={{ color: "#f5b03a", letterSpacing: "1px" }}
         >
           TROPHY CASE
@@ -97,7 +97,7 @@ export const TrophyCase = ({
           <div className="flex items-center gap-4 flex-wrap">
             <PrestigeBurst tier={tier} size={56} />
             <div>
-              <p className="font-comic text-2xl leading-none" style={{ color: meta.fill }}>
+              <p className="font-forge font-bold text-2xl leading-none" style={{ color: meta.fill }}>
                 {meta.label}
               </p>
               <div className="flex gap-4 text-sm mt-1">

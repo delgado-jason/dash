@@ -8,7 +8,7 @@ import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useDispatcherAwardPops } from "@/hooks/useDispatcherAwardPops";
 import { useGrind } from "@/hooks/useGrind";
-import { AwardPopHost } from "@/components/comic/AwardPopHost";
+import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";

@@ -8,7 +8,7 @@ const kMoney = (n: number) =>
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
 const Pips = ({ n, color }: { n: number; color: string }) => (
-  <span className="font-comic tracking-[3px]" style={{ color }}>
+  <span className="font-forge font-bold tracking-[3px]" style={{ color }}>
     {"★ ".repeat(n).trim()}
   </span>
 );
@@ -23,7 +23,7 @@ const Tile = ({
   color?: string;
 }) => (
   <div className="flex-1 rounded-[9px] px-1 py-2 text-center" style={{ background: "#1c2333" }}>
-    <div className="font-comic text-[19px] leading-none" style={{ color }}>
+    <div className="font-forge font-bold text-[19px] leading-none" style={{ color }}>
       {value}
     </div>
     <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
@@ -42,7 +42,7 @@ const Hero = ({
   big: boolean;
 }) => (
   <div className="flex-1 rounded-xl text-center" style={{ background: "#0a0d13", padding: big ? "11px 4px" : "9px 4px" }}>
-    <div className="font-comic leading-none" style={{ color, fontSize: big ? 30 : 26 }}>
+    <div className="font-forge font-bold leading-none" style={{ color, fontSize: big ? 30 : 26 }}>
       {value}
     </div>
     <div className="text-[10px] text-muted-text mt-1 tracking-wider">{label}</div>
@@ -82,7 +82,7 @@ const RankChip = ({ rank, t }: { rank: string; t: (typeof RECAP_TIERS)[keyof typ
     style={{ background: t.chipBg, border: `1px solid ${t.chipBorder}` }}
   >
     <Truck size={13} style={{ color: t.chipInk }} />
-    <span className="font-comic tracking-wide text-[13px] uppercase" style={{ color: t.chipInk }}>
+    <span className="font-forge font-bold tracking-wide text-[13px] uppercase" style={{ color: t.chipInk }}>
       {rank}
     </span>
   </div>
@@ -134,13 +134,13 @@ export const RecapPoster = ({
 
       <div className="relative p-5 sm:p-6">
         <div className="text-center mb-5">
-          <div className="font-comic tracking-[3px] text-[11px] flex items-center justify-center gap-1.5" style={{ color: "#9daabb" }}>
+          <div className="font-forge font-bold tracking-[3px] text-[11px] flex items-center justify-center gap-1.5" style={{ color: "#9daabb" }}>
             {t.crown && <Crown size={14} style={{ color: t.metal }} />}
             DELGADO TRUCKING · {t.kicker} · <Pips n={t.stars} color={t.title} />
           </div>
           <div className="flex items-center justify-center gap-2.5 mt-0.5">
             {t.laurels && <Leaf size={titleSize * 0.5} style={{ color: t.metal, transform: "scaleX(-1)" }} />}
-            <div className="font-comic leading-none" style={{ color: t.title, fontSize: titleSize }}>
+            <div className="font-forge font-bold leading-none" style={{ color: t.title, fontSize: titleSize }}>
               {stats.label}
             </div>
             {t.laurels && <Leaf size={titleSize * 0.5} style={{ color: t.metal }} />}
@@ -183,7 +183,7 @@ export const RecapPoster = ({
               <div className="text-[10px] text-muted-text tracking-wide">
                 <MapPin size={12} className="inline -mt-0.5" style={{ color: "#e8940a" }} /> TOP LANE
               </div>
-              <div className="font-comic text-[16px] mt-0.5" style={{ color: "#f5b03a" }}>
+              <div className="font-forge font-bold text-[16px] mt-0.5" style={{ color: "#f5b03a" }}>
                 {stats.topLane ?? "—"}
               </div>
             </div>
@@ -191,7 +191,7 @@ export const RecapPoster = ({
               <div className="text-[10px] text-muted-text tracking-wide">
                 <Star size={12} className="inline -mt-0.5" style={{ color: "#e8940a" }} /> TOP AGENT
               </div>
-              <div className="font-comic text-[16px] mt-0.5" style={{ color: "#f5b03a" }}>
+              <div className="font-forge font-bold text-[16px] mt-0.5" style={{ color: "#f5b03a" }}>
                 {stats.topAgent ?? "—"}
               </div>
             </div>
@@ -199,7 +199,7 @@ export const RecapPoster = ({
         )}
 
         <div className="text-center mt-4 border-t pt-3" style={{ borderColor: stats.scope === "year" ? "#2a2010" : "#1c2333" }}>
-          <span className="font-comic tracking-[2px] text-[12px]" style={{ color: "#9daabb" }}>
+          <span className="font-forge font-bold tracking-[2px] text-[12px]" style={{ color: "#9daabb" }}>
             {rich ? `${stats.states} OF 48 STATES · ` : ""}BEST STREAK {stats.bestStreak} WK · KEEP ROLLING
           </span>
         </div>
