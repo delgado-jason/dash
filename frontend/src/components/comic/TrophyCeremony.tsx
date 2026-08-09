@@ -1,19 +1,16 @@
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Crown } from "lucide-react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { Trophy } from "lucide-react";
 import type { Award } from "@/lib/metrics/awards";
+import { DUR, GSAP_EASE } from "@/theme/motion";
 
-// The grandest celebration — a once-in-a-career Hall trophy. Full gold, a confetti
-// storm, and the approved AI art front and center; its button opens the Hall.
-const CONFETTI = [
-  { left: "12%", color: "#f5b03a", delay: ".1s" },
-  { left: "26%", color: "#4ade80", delay: ".5s" },
-  { left: "40%", color: "#60a5fa", delay: ".9s" },
-  { left: "56%", color: "#f5b03a", delay: ".3s" },
-  { left: "70%", color: "#e8940a", delay: ".7s" },
-  { left: "84%", color: "#4ade80", delay: ".2s" },
-  { left: "92%", color: "#60a5fa", delay: ".6s" },
-];
+gsap.registerPlugin(useGSAP);
 
+// The grandest celebration — a once-in-a-career monument, unveiled: the
+// pedestal rises out of the dark, a headlight sweeps across the piece, the
+// verdict engraves. Confetti died with the comic.
 export const TrophyCeremony = ({
   award,
   onDismiss,
@@ -22,78 +19,122 @@ export const TrophyCeremony = ({
   onDismiss: () => void;
 }) => {
   const navigate = useNavigate();
+  const ref = useRef<HTMLDivElement>(null);
   const open = () => {
     navigate("/trophy-room");
     onDismiss();
   };
 
+  useGSAP(
+    () => {
+      const q = gsap.utils.selector(ref);
+      const tl = gsap.timeline();
+      tl.from(ref.current, { autoAlpha: 0, duration: 0.35 })
+        .from(q("[data-monu]"), {
+          y: 120,
+          autoAlpha: 0,
+          duration: DUR.slow,
+          ease: GSAP_EASE.settle,
+        })
+        .fromTo(
+          q("[data-beam]"),
+          { xPercent: -130, autoAlpha: 0.9 },
+          { xPercent: 130, autoAlpha: 0, duration: 1.1, ease: "power2.inOut" },
+          "-=0.35",
+        )
+        .from(
+          q("[data-v]"),
+          {
+            clipPath: "inset(0 100% 0 0)",
+            duration: DUR.base,
+            ease: GSAP_EASE.mech,
+            stagger: 0.18,
+          },
+          "-=0.7",
+        )
+        .from(q("[data-roll]"), { autoAlpha: 0, duration: 0.35 }, "-=0.2");
+    },
+    { scope: ref },
+  );
+
   return (
     <div
+      ref={ref}
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-hidden"
-      style={{ background: "rgba(6,9,15,0.82)" }}
+      style={{ background: "rgba(4,6,10,.95)" }}
     >
-      {CONFETTI.map((c, i) => (
-        <span
-          key={i}
-          className="absolute rounded-[1px]"
-          style={{
-            left: c.left,
-            top: "-10px",
-            width: 7,
-            height: 7,
-            background: c.color,
-            animation: `award-fall 2.4s linear ${c.delay} infinite`,
-          }}
-        />
-      ))}
-      <div
-        className="relative rounded-[20px] px-6 pt-5 pb-5 text-center overflow-hidden"
-        style={{
-          width: 360,
-          maxWidth: "92vw",
-          background: "#120f08",
-          border: "3px solid #f5b03a",
-          boxShadow: "inset 0 0 0 2px #7a5410",
-          animation: "award-pop .6s cubic-bezier(.2,.9,.25,1.2) both",
-        }}
-      >
-        <div className="mb-1">
-          <Crown size={24} style={{ color: "#ffd873" }} />
-        </div>
-        <div className="font-comic tracking-[3px]" style={{ color: "#ffd873", fontSize: 15 }}>
-          ★ ★ ★
+      <div className="relative flex flex-col items-center w-full max-w-[420px] text-center">
+        <span className="font-forge font-semibold text-[11px] tracking-[.26em] uppercase text-faint">
+          Out of the mill
+        </span>
+        <div data-monu className="relative mt-5">
+          <div
+            className="relative rounded-[14px] p-3 overflow-hidden"
+            style={{
+              background: "linear-gradient(178deg,#333d54,#1c2434)",
+              border: "1px solid #3c4762",
+              borderTop: "1px solid rgba(255,255,255,.16)",
+              borderBottom: "3px solid rgba(0,0,0,.6)",
+              boxShadow:
+                "0 18px 44px rgba(0,0,0,.6), 0 0 34px rgba(232,148,10,.22)",
+            }}
+          >
+            <div
+              className="w-[188px] h-[188px] rounded-[8px] overflow-hidden flex items-center justify-center"
+              style={{ background: "#0a0d13" }}
+            >
+              {award.image ? (
+                <img src={award.image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Trophy size={72} style={{ color: "#f5b03a" }} />
+              )}
+            </div>
+            <div
+              data-beam
+              className="absolute inset-y-0 w-[46%] pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(100deg, transparent, rgba(255,231,180,.34), transparent)",
+              }}
+            />
+          </div>
+          {/* the pedestal */}
+          <div
+            className="mx-auto -mt-px w-[150px] h-[16px] rounded-b-[8px]"
+            style={{
+              background: "linear-gradient(178deg,#2b3448,#151c2a)",
+              borderBottom: "3px solid rgba(0,0,0,.65)",
+            }}
+          />
         </div>
         <div
-          className="mx-auto mt-3 rounded-2xl overflow-hidden flex items-center justify-center"
-          style={{ width: 168, height: 168, background: "#0a0d13", border: "3px solid #f5b03a" }}
+          data-v
+          className="font-forge font-bold text-[30px] tracking-[.14em] text-ink leading-none mt-6"
         >
-          {award.image ? (
-            <img src={award.image} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <Trophy size={72} style={{ color: "#f5b03a" }} />
-          )}
+          MONUMENT UNVEILED
         </div>
-        <div className="font-comic tracking-[3px] mt-3" style={{ color: "#ffd873", fontSize: 13 }}>
-          TROPHY UNLOCKED
-        </div>
-        <div className="font-comic leading-none mt-1" style={{ color: "#ffe08a", fontSize: 30 }}>
+        <div
+          data-v
+          className="font-forge font-semibold text-[18px] tracking-[.18em] text-amber-light mt-2 uppercase"
+        >
           {award.name}
         </div>
-        <div className="text-sm text-muted-text mt-2 px-2">{award.detail}</div>
+        <div data-v className="text-[12.5px] text-dim mt-2 px-3">
+          {award.detail}
+        </div>
         <button
+          data-roll
           onClick={open}
-          className="mt-4 font-comic cursor-pointer"
+          className="mt-6 font-forge font-semibold text-[14px] tracking-[.16em] rounded-lg px-6 py-2.5 cursor-pointer"
           style={{
-            background: "#f5b03a",
-            color: "#3a2708",
+            background: "linear-gradient(178deg,#ffcf7a,#e8940a)",
+            color: "#070a10",
             border: "none",
-            borderRadius: 9,
-            padding: "9px 22px",
-            fontSize: 14,
-            letterSpacing: "1px",
+            boxShadow:
+              "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
           }}
         >
-          VISIT THE TROPHY ROOM
+          SEE IT IN THE FORGE ROOM →
         </button>
       </div>
     </div>

@@ -287,7 +287,7 @@ export const PlayerCard = ({
                 <Truck size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-comic text-xl leading-none" style={{ color: "#f5e6c8", letterSpacing: "1px" }}>
+                <div className="font-forge font-bold text-xl leading-none" style={{ color: "#f5e6c8", letterSpacing: "1px" }}>
                   {rank.name}
                 </div>
                 <div className="text-[10px] text-muted-text mt-0.5">
@@ -358,7 +358,7 @@ export const PlayerCard = ({
       {pace && <QuarterPaceCard pace={pace} />}
 
       <div className="flex items-baseline gap-2 mt-5 mb-2">
-        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+        <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
           LAST SEASON
         </span>
         <span className="text-[11px] text-muted-text">· {season.label} · the last complete quarter</span>
