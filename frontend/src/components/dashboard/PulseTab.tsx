@@ -14,6 +14,7 @@ import {
 import { loadRevenue } from "@/lib/metrics/loads";
 import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
+import { projectWeek } from "@/lib/metrics/weekProjection";
 import { nextSettlementDate } from "@/lib/metrics/settlement";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import type { Alert } from "@/types/alert";
@@ -111,7 +112,16 @@ export const PulseTab = ({
   const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
   const progress =
     weeklyTarget && weeklyTarget > 0 ? Math.min(1, earned / weeklyTarget) : null;
-  const projected = earned + committed;
+  // Smart projection — each load counted once, by its delivery date inside
+  // the pay week. weekBooked can still hold an already-delivered load, which
+  // double-counted the old earned+committed projection (the fake record).
+  const week = useMemo(
+    () =>
+      targets.weekStart ? projectWeek(loads, new Date(targets.weekStart)) : null,
+    [loads, targets.weekStart],
+  );
+  const incoming = week ? week.incoming : committed;
+  const projected = earned + incoming;
 
   const mtd = getRevenueMTD(loads);
   const deadhead = getMonthlyDeadhead(loads, trips).thisMonth;
@@ -307,7 +317,7 @@ export const PulseTab = ({
           {weeklyTarget ? (
             <PaceMeter
               filled={earned}
-              ghost={committed}
+              ghost={incoming}
               target={weeklyTarget}
               markers={[
                 ...(weeklyFloor ? [paceMarker("floor", weeklyFloor)] : []),
@@ -322,7 +332,8 @@ export const PulseTab = ({
                 <b className="text-ink">{money(weeklyTarget)}</b> target earned ·{" "}
               </>
             ) : null}
-            <b className="text-dim">{money(committed)}</b> booked ahead — projected{" "}
+            <b className="text-dim">{money(incoming)}</b>
+            {week ? " still to deliver this week" : " booked ahead"} — projected{" "}
             <b
               className={
                 weeklyTarget && projected > weeklyTarget

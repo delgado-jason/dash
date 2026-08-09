@@ -85,42 +85,42 @@ const MissionMap = ({
       role="img"
       aria-label={`Route from ${label(pickup.city, pickup.state)} to ${label(delivery.city, delivery.state)}`}
     >
-      <rect width={W} height={H} fill="#0e1420" />
+      <rect width={W} height={H} fill="var(--color-well)" />
 
       {/* Faint state borders, zoomed to the run. */}
       {statePaths.map((d, i) => (
-        <path key={i} d={d} fill="#111d2c" stroke="#28384f" strokeWidth={1} strokeLinejoin="round" />
+        <path key={i} d={d} fill="#10161f" stroke="var(--color-hairline-lo)" strokeWidth={1} strokeLinejoin="round" />
       ))}
 
       {/* Deadhead leg (empty) under the loaded haul. */}
       {dh && (
-        <line x1={dh.x} y1={dh.y} x2={pk.x} y2={pk.y} stroke="#7c8899" strokeWidth={3} strokeDasharray="7 6" strokeLinecap="round" />
+        <line x1={dh.x} y1={dh.y} x2={pk.x} y2={pk.y} stroke="var(--color-faint)" strokeWidth={2.5} strokeDasharray="7 6" strokeLinecap="round" />
       )}
       {/* Loaded haul. */}
-      <line x1={pk.x} y1={pk.y} x2={dl.x} y2={dl.y} stroke="#f5b03a" strokeWidth={4} strokeLinecap="round" />
+      <line x1={pk.x} y1={pk.y} x2={dl.x} y2={dl.y} stroke="var(--color-chart-amber)" strokeWidth={4} strokeLinecap="round" />
 
       {/* Pins. */}
-      {dh && <circle cx={dh.x} cy={dh.y} r={6} fill="#8b98a9" />}
-      <circle cx={pk.x} cy={pk.y} r={8} fill="#4ade80" stroke="#0e1420" strokeWidth={2} />
+      {dh && <circle cx={dh.x} cy={dh.y} r={6} fill="var(--color-dim)" />}
+      <circle cx={pk.x} cy={pk.y} r={8} fill="var(--color-amber)" stroke="var(--color-well)" strokeWidth={2} />
 
       {/* Objective — target reticle. */}
-      <circle cx={dl.x} cy={dl.y} r={13} fill="none" stroke="#f87171" strokeWidth={2.5} />
-      <circle cx={dl.x} cy={dl.y} r={4.5} fill="#f87171" />
-      <line x1={dl.x} y1={dl.y - 20} x2={dl.x} y2={dl.y - 13} stroke="#f87171" strokeWidth={2.5} />
-      <line x1={dl.x} y1={dl.y + 13} x2={dl.x} y2={dl.y + 20} stroke="#f87171" strokeWidth={2.5} />
-      <line x1={dl.x - 20} y1={dl.y} x2={dl.x - 13} y2={dl.y} stroke="#f87171" strokeWidth={2.5} />
-      <line x1={dl.x + 13} y1={dl.y} x2={dl.x + 20} y2={dl.y} stroke="#f87171" strokeWidth={2.5} />
+      <circle cx={dl.x} cy={dl.y} r={13} fill="none" stroke="var(--color-amber-hi)" strokeWidth={2.5} />
+      <circle cx={dl.x} cy={dl.y} r={4.5} fill="var(--color-amber-hi)" />
+      <line x1={dl.x} y1={dl.y - 20} x2={dl.x} y2={dl.y - 13} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
+      <line x1={dl.x} y1={dl.y + 13} x2={dl.x} y2={dl.y + 20} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
+      <line x1={dl.x - 20} y1={dl.y} x2={dl.x - 13} y2={dl.y} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
+      <line x1={dl.x + 13} y1={dl.y} x2={dl.x + 20} y2={dl.y} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
 
       {/* Labels. */}
       <g fontFamily="system-ui" fontSize={13} fontWeight={600}>
-        <text x={pk.x} y={clampY(pk.y + 24)} fill="#eaf1f8" textAnchor={anchorFor(pk.x)}>
+        <text x={pk.x} y={clampY(pk.y + 24)} fill="var(--color-ink)" textAnchor={anchorFor(pk.x)}>
           {label(pickup.city, pickup.state)}
         </text>
-        <text x={dl.x} y={clampY(dl.y - 24)} fill="#eaf1f8" textAnchor={anchorFor(dl.x)}>
+        <text x={dl.x} y={clampY(dl.y - 24)} fill="var(--color-ink)" textAnchor={anchorFor(dl.x)}>
           {label(delivery.city, delivery.state)}
         </text>
         {dh && (
-          <text x={dh.x} y={clampY(dh.y + 22)} fill="#8b98a9" textAnchor={anchorFor(dh.x)} fontWeight={400}>
+          <text x={dh.x} y={clampY(dh.y + 22)} fill="var(--color-dim)" textAnchor={anchorFor(dh.x)} fontWeight={400}>
             {label(deadhead!.city, deadhead!.state)}
           </text>
         )}
@@ -132,7 +132,7 @@ const MissionMap = ({
           </text>
         )}
         {dh && deadheadMiles != null && (
-          <text x={(dh.x + pk.x) / 2} y={clampY((dh.y + pk.y) / 2 - 8)} fill="#8b98a9" textAnchor="middle" fontWeight={400}>
+          <text x={(dh.x + pk.x) / 2} y={clampY((dh.y + pk.y) / 2 - 8)} fill="var(--color-dim)" textAnchor="middle" fontWeight={400}>
             {Math.round(deadheadMiles).toLocaleString("en-US")} mi deadhead
           </text>
         )}

@@ -454,9 +454,17 @@ export const LoadDetailPage = () => {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <h1 className="font-display text-[27px] tracking-[.05em] leading-none">{load.load_number}</h1>
-            <StatusBadge value={load.load_status} />
-            <StatusBadge value={load.payment_status} />
-            <DieStamp value={loadStamp(load.load_status, load.payment_status)} />
+            {/* The stamp IS the status once one exists — badges only carry
+                the un-stampable states (booked / in transit), so the verdict
+                keeps its meaning (Jason's call, 2026-08-09). */}
+            {loadStamp(load.load_status, load.payment_status) ? (
+              <DieStamp value={loadStamp(load.load_status, load.payment_status)} />
+            ) : (
+              <>
+                <StatusBadge value={load.load_status} />
+                <StatusBadge value={load.payment_status} />
+              </>
+            )}
           </div>
           <p className="text-dim text-sm mt-1">
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
