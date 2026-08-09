@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
-import { Panel } from "@/components/ui/Panel";
 import type { StateDetail } from "@/lib/metrics/lanes";
 import { rpm } from "@/lib/format";
 
@@ -20,41 +19,41 @@ export const StateDetailPanel = ({
   windowDays: number;
   onClear: () => void;
 }) => (
-  <Panel noir className="mt-6 p-5">
-    <div className="flex items-baseline justify-between border-b border-plate pb-2.5 mb-4">
+  <div className="ds2-board mt-4 p-5">
+    <div className="flex items-baseline justify-between border-b border-hairline pb-2.5 mb-4">
       <div>
-        <span className="text-xl font-condensed text-light">{detail.state}</span>
-        <span className="text-xs text-muted-text ml-3">
+        <span className="text-xl font-condensed text-ink">{detail.state}</span>
+        <span className="text-xs text-dim ml-3">
           last {windowDays} days · {detail.loadCount} load
           {detail.loadCount === 1 ? "" : "s"}
           {detail.medianRpm != null && (
             <>
               {" · "}
-              <span className="text-light">{rpm(detail.medianRpm)}/mi median</span>
+              <span className="text-ink">{rpm(detail.medianRpm)}/mi median</span>
             </>
           )}
         </span>
       </div>
       <button
         onClick={onClear}
-        className="text-xs text-muted-text hover:text-light flex items-center gap-1"
+        className="text-xs text-dim hover:text-ink flex items-center gap-1"
       >
         clear <X size={13} />
       </button>
     </div>
 
     {detail.agents.length === 0 ? (
-      <p className="text-sm text-muted-text">
+      <p className="text-sm text-dim">
         No delivered loads out of {detail.state} in this window.
       </p>
     ) : (
       <>
-        <div className="text-xs text-muted-text mb-2">
+        <div className="text-xs text-dim mb-2">
           Agents you've booked out of {detail.state}
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[10px] text-muted-text text-left">
+            <tr className="text-[10px] text-dim text-left">
               <th className="font-normal py-1">AGENT</th>
               <th className="font-normal text-right">$/MI</th>
               <th className="font-normal text-right">LOADS</th>
@@ -73,7 +72,7 @@ export const StateDetailPanel = ({
                   </Link>
                 </td>
                 <td className="text-right tabular-nums">{rpm(a.medianRpm)}</td>
-                <td className="text-right text-muted-text">{a.loadCount}</td>
+                <td className="text-right text-dim">{a.loadCount}</td>
                 <td
                   className="text-right tabular-nums"
                   style={{ color: otColor(a.onTimePct) }}
@@ -87,14 +86,14 @@ export const StateDetailPanel = ({
 
         {detail.lanes.length > 0 && (
           <>
-            <div className="text-xs text-muted-text mt-5 mb-2">
+            <div className="text-xs text-dim mt-5 mb-2">
               Top lanes out of {detail.state}
             </div>
             <div className="text-sm space-y-1">
               {detail.lanes.slice(0, 6).map((l) => (
                 <div key={l.lane} className="flex justify-between gap-3">
                   <span className="truncate">{l.lane}</span>
-                  <span className="text-muted-text whitespace-nowrap">
+                  <span className="text-dim whitespace-nowrap">
                     {rpm(l.medianRpm)}/mi · {l.loadCount} load
                     {l.loadCount === 1 ? "" : "s"}
                   </span>
@@ -105,5 +104,5 @@ export const StateDetailPanel = ({
         )}
       </>
     )}
-  </Panel>
+  </div>
 );

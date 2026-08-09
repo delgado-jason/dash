@@ -21,7 +21,7 @@ export const LanesTable = ({ rollup }: Props) => {
 
   if (rollup.length === 0)
     return (
-      <p className="text-muted-text text-sm py-6 text-center">
+      <p className="text-dim text-sm py-6 text-center">
         No delivered loads in this window.
       </p>
     );
@@ -29,7 +29,7 @@ export const LanesTable = ({ rollup }: Props) => {
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="text-muted-text text-xs text-left">
+        <tr className="text-dim text-xs text-left">
           <th className="py-2 px-2 font-normal">Region / market / lane</th>
           <th className="py-2 px-2 font-normal text-right w-20">Loads</th>
           <th className="py-2 px-2 font-normal text-right w-24">Typical $/mi</th>
@@ -41,7 +41,7 @@ export const LanesTable = ({ rollup }: Props) => {
           return (
             <Fragment key={region.region}>
               <tr
-                className="bg-plate border-t border-steel cursor-pointer font-semibold"
+                className="bg-well border-t border-hairline cursor-pointer font-semibold"
                 onClick={() => setOpenRegions((s) => toggle(s, region.region))}
               >
                 <td className="py-2 px-2">
@@ -64,7 +64,7 @@ export const LanesTable = ({ rollup }: Props) => {
                   return (
                     <Fragment key={mKey}>
                       <tr
-                        className="cursor-pointer text-muted-text"
+                        className="cursor-pointer text-dim"
                         onClick={() => setOpenMarkets((s) => toggle(s, mKey))}
                       >
                         <td className="py-2 pl-7 pr-2">
@@ -92,14 +92,14 @@ export const LanesTable = ({ rollup }: Props) => {
                               lane.loadCount < MIN_KPI_LOADS ? "opacity-50" : ""
                             }
                           >
-                            <td className="py-1.5 pl-12 pr-2 text-xs border-l-2 border-amber bg-iron">
+                            <td className="py-1.5 pl-12 pr-2 text-xs border-l-2 border-amber bg-[#0a0f18]">
                               {lane.lane}
                             </td>
-                            <td className="py-1.5 px-2 text-right text-xs bg-iron">
+                            <td className="py-1.5 px-2 text-right text-xs bg-[#0a0f18]">
                               {lane.loadCount}
                             </td>
                             <td
-                              className={`py-1.5 px-2 text-right text-xs bg-iron ${rpmTextClass(lane.medianRpm)}`}
+                              className={`py-1.5 px-2 text-right text-xs bg-[#0a0f18] ${rpmTextClass(lane.medianRpm)}`}
                             >
                               {fmtRpm(lane.medianRpm)}
                               {lane.avgRpm !== null && (

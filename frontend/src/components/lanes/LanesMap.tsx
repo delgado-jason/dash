@@ -1,6 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import { Flame } from "lucide-react";
-import { Panel } from "@/components/ui/Panel";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature, merge } from "topojson-client";
 import type { Feature, FeatureCollection, Geometry, MultiPolygon } from "geojson";
@@ -8,6 +6,12 @@ import statesTopo from "us-atlas/states-10m.json";
 import type { AreaMapDatum, MapLevel } from "@/lib/metrics/lanes";
 import { groupKeyForStateName } from "@/lib/metrics/lanes";
 import { rpm as fmtRpm } from "@/lib/format";
+import {
+  colorFor,
+  maxLoadsOf,
+  maxRateOf,
+  type MapMode,
+} from "@/components/lanes/mapColor";
 
 interface Props {
   data: Record<string, AreaMapDatum>;
@@ -15,12 +19,10 @@ interface Props {
   windowDays: number;
   selected: string | null;
   onSelect: (key: string) => void;
-  noir?: boolean; // the standalone page uses the comic-noir panel; the dashboard tab is flat
+  noir?: boolean; // legacy flag, kept for the dashboard tab call site
+  mode?: MapMode; // controlled from the page statusbar; falls back to internal state
+  onModeChange?: (m: MapMode) => void;
 }
-
-type Mode = "rate" | "volume";
-// Below this, a shape shades dim in rate mode — one lucky run shouldn't light it.
-const MIN_SHAPE_LOADS = 2;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const topo = statesTopo as any;
@@ -31,16 +33,6 @@ const usStates = feature(
 
 const projection = geoAlbersUsa().scale(1100).translate([450, 280]);
 const pathGen = geoPath(projection);
-
-const VOL_RAMP = ["#6b4e12", "#9a6c0e", "#c8890a", "#e8940a", "#f5b03a"];
-const RATE_RAMP = ["#134e3a", "#1a6b4e", "#26855f", "#35b07a", "#4ade80"];
-const NO_DATA = "#2a3347";
-const DIM = "#243b33"; // thin shape in rate mode (low confidence)
-
-const FLAME_PATH =
-  "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 " +
-  ".5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 " +
-  "1-3a2.5 2.5 0 0 0 2.5 2.5z";
 
 interface Shape {
   key: string; // group key (state name, or region / macro label)
@@ -59,10 +51,20 @@ interface HoverState {
   datum: AreaMapDatum;
 }
 
-export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = true }: Props) => {
+export const LanesMap = ({
+  data,
+  level,
+  windowDays,
+  selected,
+  onSelect,
+  mode: modeProp,
+  onModeChange,
+}: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
-  const [mode, setMode] = useState<Mode>("rate");
+  const [modeState, setModeState] = useState<MapMode>("rate");
+  const mode = modeProp ?? modeState;
+  const setMode = onModeChange ?? setModeState;
 
   // Every state gets a filled path, tagged with the group it belongs to at this
   // level (state name / region / macro). Geometry is static → memo on level.
@@ -105,20 +107,8 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
     return out;
   }, [level]);
 
-  const maxLoads = useMemo(
-    () => Math.max(1, ...Object.values(data).map((d) => d.loadCount)),
-    [data],
-  );
-  const maxRate = useMemo(
-    () =>
-      Math.max(
-        0.01,
-        ...Object.values(data)
-          .filter((d) => d.loadCount >= MIN_SHAPE_LOADS && d.medianRpm != null)
-          .map((d) => d.medianRpm as number),
-      ),
-    [data],
-  );
+  const maxLoads = useMemo(() => maxLoadsOf(data), [data]);
+  const maxRate = useMemo(() => maxRateOf(data), [data]);
 
   // Top-paying groups (>= 3 loads) get a flame at their centroid.
   const hot = useMemo(() => {
@@ -138,34 +128,17 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
       .filter((h) => Number.isFinite(h.c[0]));
   }, [data, outlines, level]);
 
-  const colorFor = (key: string): string => {
-    const datum = data[key];
-    if (!datum) return NO_DATA;
-    if (mode === "volume") {
-      const idx = Math.min(
-        VOL_RAMP.length - 1,
-        Math.floor((datum.loadCount / maxLoads) * VOL_RAMP.length),
-      );
-      return VOL_RAMP[idx];
-    }
-    if (datum.medianRpm == null) return NO_DATA;
-    if (datum.loadCount < MIN_SHAPE_LOADS) return DIM;
-    const idx = Math.min(
-      RATE_RAMP.length - 1,
-      Math.floor((datum.medianRpm / maxRate) * RATE_RAMP.length),
-    );
-    return RATE_RAMP[idx];
-  };
+  const fillFor = (key: string): string =>
+    colorFor(data[key], mode, maxLoads, maxRate);
 
-  const toggle = (m: Mode, label: string) => (
+  const toggle = (m: MapMode, label: string) => (
     <button
       onClick={() => setMode(m)}
-      className="text-[11px] rounded-full px-2.5 py-0.5"
-      style={
+      className={`text-[11px] rounded-full px-2.5 py-0.5 transition-colors ${
         mode === m
-          ? { background: m === "rate" ? "#2e9e6b" : "#e8940a", color: "#0d1119", fontWeight: 600 }
-          : { border: "1px solid #2a3347", color: "#8b93a3" }
-      }
+          ? "bg-amber text-canvas font-semibold"
+          : "border border-hairline text-dim hover:text-ink"
+      }`}
     >
       {label}
     </button>
@@ -176,15 +149,20 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
   const drillHint = level === "state" ? "click a state to drill in" : "click a region to drill in";
 
   return (
-    <Panel ref={containerRef} noir={noir} className="p-4 relative">
-      <div className="text-xs text-muted-text mb-2 flex items-center gap-2 flex-wrap">
-        <span>Shade by</span>
+    <div ref={containerRef} className="ds2-board p-4 relative">
+      <div className="text-xs text-dim mb-2 flex items-center gap-2 flex-wrap">
+        <span className="ds2-label">Shade by</span>
         {toggle("rate", "your $/mi")}
         {toggle("volume", "volume")}
-        <span className="flex items-center gap-1">
-          · <Flame size={12} style={{ color: "#e8621e" }} /> best-paying
+        <span className="flex items-center gap-1.5">
+          ·{" "}
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-full border-2 border-amber-hi"
+            style={{ boxShadow: "0 0 6px rgba(245,176,58,.7)" }}
+          />{" "}
+          best-paying
         </span>
-        <span>· grouped by {levelWord} · {drillHint}</span>
+        <span className="text-faint">· grouped by {levelWord} · {drillHint}</span>
       </div>
       <svg viewBox="0 0 900 560" className="w-full">
         {shapes.map((s, i) => {
@@ -194,7 +172,7 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
             <path
               key={i}
               d={s.d}
-              fill={colorFor(s.key)}
+              fill={fillFor(s.key)}
               stroke={
                 isSel && level === "state"
                   ? "#f4f7fb"
@@ -254,38 +232,44 @@ export const LanesMap = ({ data, level, windowDays, selected, onSelect, noir = t
             );
           })}
         {hot.map((h) => (
-          <g
+          <circle
             key={h.key}
-            transform={`translate(${h.c[0]},${h.c[1]}) scale(0.95) translate(-12,-12)`}
-            style={{ pointerEvents: "none" }}
-          >
-            <path d={FLAME_PATH} fill="#e8621e" stroke="#0d1117" strokeWidth={1.2} strokeLinejoin="round" />
-          </g>
+            cx={h.c[0]}
+            cy={h.c[1]}
+            r={8}
+            fill="none"
+            stroke="#f5b03a"
+            strokeWidth={2.5}
+            style={{
+              pointerEvents: "none",
+              filter: "drop-shadow(0 0 4px rgba(245,176,58,.8))",
+            }}
+          />
         ))}
       </svg>
       {hover && (
         <div
-          className="absolute pointer-events-none bg-iron border border-plate rounded-md p-2 text-xs text-light z-10"
+          className="absolute pointer-events-none bg-[#040609] border border-hairline rounded-md p-2 text-xs text-dim z-10"
           style={{ left: hover.x + 12, top: hover.y + 12, maxWidth: 220 }}
         >
-          <div className="font-semibold">{hover.datum.key}</div>
-          <div className="text-muted-text">
+          <div className="font-semibold text-ink">{hover.datum.key}</div>
+          <div>
             {hover.datum.loadCount} load{hover.datum.loadCount === 1 ? "" : "s"} · {windowDays}d
           </div>
           <div>
             {hover.datum.medianRpm == null ? (
-              <span className="text-muted-text">no rate</span>
+              <span>no rate</span>
             ) : (
               <>
-                <span className="font-semibold">{fmtRpm(hover.datum.medianRpm)}</span> /mi median
+                <span className="font-semibold text-ink">{fmtRpm(hover.datum.medianRpm)}</span> /mi median
               </>
             )}
           </div>
           {hover.datum.members.length > 0 && (
-            <div className="text-muted-text">{hover.datum.members.join(", ")}</div>
+            <div className="text-faint">{hover.datum.members.join(", ")}</div>
           )}
         </div>
       )}
-    </Panel>
+    </div>
   );
 };
