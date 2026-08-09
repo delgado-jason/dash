@@ -1,4 +1,5 @@
 import { Trophy, Star, Minus } from "lucide-react";
+import { Coin } from "@/components/forge/Coin";
 import type {
   AgentHonors,
   SeasonEntry,
@@ -38,18 +39,18 @@ const Live = ({ standing }: { standing: LiveStanding }) => (
     ) : standing.result === "board" ? (
       <Star size={16} style={{ color: "#e8940a", opacity: 0.7 }} />
     ) : null}
-    <p className="text-sm text-muted-text">
-      <span className="text-light">{qLabel(standing.quarter)} in progress</span>{" "}
+    <p className="text-sm text-dim">
+      <span className="text-ink">{qLabel(standing.quarter)} in progress</span>{" "}
       · {liveText(standing)}
     </p>
   </div>
 );
 
 const resultIcon = (r: SeasonEntry["result"]) => {
-  if (r === "gold") return <Trophy size={18} style={{ color: "#f5b03a" }} />;
-  if (r === "silver") return <Trophy size={18} style={{ color: "#c3cad6" }} />;
+  if (r === "gold") return <Coin metal="gold" size={22}>Q</Coin>;
+  if (r === "silver") return <Coin metal="silver" size={22}>Q</Coin>;
   if (r === "board") return <Star size={18} style={{ color: "#e8940a" }} />;
-  return <Minus size={16} className="text-muted-text" />;
+  return <Minus size={16} className="text-dim" />;
 };
 
 export const TrophyCase = ({
@@ -87,7 +88,7 @@ export const TrophyCase = ({
         </p>
 
         {!boarded ? (
-        <p className="text-sm text-muted-text">
+        <p className="text-sm text-dim">
           No quarterly top-5 finishes yet — takes 2+ delivered loads in a quarter
           to make the board.
         </p>
@@ -119,7 +120,7 @@ export const TrophyCase = ({
           <div className="flex gap-3 mt-4 overflow-x-auto border-t border-[#3b4660] pt-3">
             {log.map((e) => (
               <div key={e.quarter} className="text-center min-w-[54px]">
-                <div className="text-[11px] text-muted-text">
+                <div className="text-[11px] text-dim">
                   {qLabel(e.quarter)}
                 </div>
                 <div className="flex justify-center mt-1">
