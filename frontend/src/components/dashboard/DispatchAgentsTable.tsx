@@ -51,7 +51,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
     <button
       onClick={() => setSort(col)}
       className={`uppercase tracking-wide ${align ?? ""}`}
-      style={{ color: sort === col ? "#f5b03a" : undefined }}
+      style={{ color: sort === col ? "var(--color-amber-hi)" : undefined }}
     >
       {label}
       {sort === col ? " ▾" : ""}
@@ -61,18 +61,18 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
   return (
     <Panel className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-comic text-lg" style={{ color: "#f5b03a" }}>
+        <span className="font-comic text-lg" style={{ color: "var(--color-amber-hi)" }}>
           AGENTS
         </span>
       </div>
 
       <div className="flex items-center gap-2 bg-[#141a26] border border-[#2a3347] rounded-md px-2.5 py-1.5 mb-2.5">
-        <Search size={13} className="text-muted-text shrink-0" />
+        <Search size={13} className="text-dim shrink-0" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search agent name"
-          className="bg-transparent outline-none text-sm text-light placeholder:text-muted-text w-full"
+          className="bg-transparent outline-none text-sm text-ink placeholder:text-dim w-full"
         />
       </div>
 
@@ -85,29 +85,29 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
           <div className="flex items-center justify-between">
             <span
               className="text-[10px] flex items-center gap-1"
-              style={{ color: "#f5b03a" }}
+              style={{ color: "var(--color-amber-hi)" }}
             >
               <Trophy size={11} /> TOP BY GROSS
             </span>
-            <span className="text-[10px] text-muted-text">
+            <span className="text-[10px] text-dim">
               {leader.loadCount} loads
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span
               className="font-comic text-base truncate"
-              style={{ color: "#f5b03a" }}
+              style={{ color: "var(--color-amber-hi)" }}
             >
               {leader.agent}
             </span>
-            <span className="font-comic text-base" style={{ color: "#f5b03a" }}>
+            <span className="font-comic text-base" style={{ color: "var(--color-amber-hi)" }}>
               {fmtK(leader.revenue)}
             </span>
           </div>
         </Link>
       )}
 
-      <div className="grid grid-cols-[22px_1fr_40px_52px] text-[10px] text-muted-text px-1 pb-1.5 border-b border-steel">
+      <div className="grid grid-cols-[22px_1fr_40px_52px] text-[10px] text-dim px-1 pb-1.5 border-b border-steel">
         <span>#</span>
         <SortHead label="Agent" col="name" />
         <SortHead label="Loads" col="loads" align="text-right" />
@@ -115,7 +115,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-muted-text text-sm py-4 text-center">
+        <p className="text-dim text-sm py-4 text-center">
           No agents match.
         </p>
       ) : (
@@ -126,8 +126,8 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
             className="grid grid-cols-[22px_1fr_40px_52px] items-center text-[11px] py-1.5 px-1 border-b border-[#202838] last:border-b-0 hover:opacity-80"
           >
             <span>{rankMark(start + i)}</span>
-            <span className="text-light truncate underline">{a.agent}</span>
-            <span className="text-right text-muted-text">{a.loadCount}</span>
+            <span className="text-ink truncate underline">{a.agent}</span>
+            <span className="text-right text-dim">{a.loadCount}</span>
             <span className="text-right" style={{ color: "#cdd8e8" }}>
               {fmtK(a.revenue)}
             </span>
@@ -136,7 +136,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
       )}
 
       <div className="flex items-center justify-between mt-2.5">
-        <span className="text-[11px] text-muted-text">
+        <span className="text-[11px] text-dim">
           {sorted.length === 0
             ? "0 agents"
             : `${start + 1}–${start + shown.length} of ${sorted.length}`}

@@ -17,7 +17,7 @@ const fmtK = (n: number): string => `$${(n / 1000).toFixed(1)}k`;
 
 // Gold, silver, bronze for the podium (index 0/1/2).
 const MEDAL = [
-  { bg: "#f5b03a", fg: "#3a2400" },
+  { bg: "var(--color-amber-hi)", fg: "#3a2400" },
   { bg: "#c8d0dc", fg: "#2a3040" },
   { bg: "#c9884a", fg: "#2a1808" },
 ];
@@ -39,7 +39,7 @@ const Rank = ({ i }: { i: number }) =>
     </span>
   ) : (
     <span
-      className="font-comic shrink-0 text-center text-muted-text text-[15px]"
+      className="font-comic shrink-0 text-center text-dim text-[15px]"
       style={{ width: 26 }}
     >
       {i + 1}
@@ -68,16 +68,16 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
     />
 
     <div className="relative flex items-center gap-2 mb-2.5">
-      <Trophy size={17} style={{ color: "#f5b03a" }} />
-      <span className="font-comic text-xl" style={{ color: "#f5b03a" }}>
+      <Trophy size={17} style={{ color: "var(--color-amber-hi)" }} />
+      <span className="font-comic text-xl" style={{ color: "var(--color-amber-hi)" }}>
         TOP AGENTS
       </span>
       <span className="flex-1" />
-      <span className="text-[10px] text-muted-text">gross · 90 days</span>
+      <span className="text-[10px] text-dim">gross · 90 days</span>
     </div>
 
     {agents.length === 0 ? (
-      <p className="relative text-muted-text text-sm">
+      <p className="relative text-dim text-sm">
         No agents with 2+ loads in the last 90 days.
       </p>
     ) : (
@@ -102,19 +102,19 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
                 {first ? (
                   <span
                     className="font-comic block truncate leading-none text-[17px]"
-                    style={{ color: "#f5b03a" }}
+                    style={{ color: "var(--color-amber-hi)" }}
                   >
                     {agent.agent}
                   </span>
                 ) : (
-                  <span className="block truncate text-sm text-light">
+                  <span className="block truncate text-sm text-ink">
                     {agent.agent}
                   </span>
                 )}
                 {first && onBoard && (
                   <span className="flex items-center gap-1.5 mt-1">
                     <Pulse />
-                    <span className="text-[9px] text-muted-text">
+                    <span className="text-[9px] text-dim">
                       on the board this quarter
                     </span>
                   </span>
@@ -126,12 +126,12 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
                   className="font-comic block leading-none"
                   style={{
                     fontSize: first ? 19 : 15,
-                    color: first ? "#f5b03a" : i < 3 ? "#e8eef7" : "#9daabb",
+                    color: first ? "var(--color-amber-hi)" : i < 3 ? "#e8eef7" : "#9daabb",
                   }}
                 >
                   {fmtK(agent.revenue)}
                 </span>
-                <span className="block text-[10px] text-muted-text">
+                <span className="block text-[10px] text-dim">
                   {agent.loadCount} loads
                 </span>
               </span>
