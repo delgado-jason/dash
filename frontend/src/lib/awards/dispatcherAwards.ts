@@ -234,7 +234,7 @@ export const dispatcherPatches = (input: DispatcherAwardInput): GrindPatch[] => 
   const x = (n: number) => `×${Math.round(n)}`;
   return [
     grindPatch("disp-deal-closer", "Deal Closer", "package", s.loadsBooked, [25, 75, 150, 300], x),
-    grindPatch("disp-rainmaker", "Rainmaker", "cash", s.gross, [100_000, 350_000, 750_000], kMoney),
+    grindPatch("disp-rainmaker", "Big Month", "cash", s.gross, [100_000, 350_000, 750_000], kMoney),
     grindPatch("disp-rate-hawk", "Rate Hawk", "feather", s.rateHawk, [15, 50, 125], x),
     grindPatch("disp-iron-booker", "Iron Booker", "flame", input.streak, [4, 8, 12], (n) => `${Math.round(n)} wk`),
     grindPatch("disp-bounty", "Bounty Hunter", "coins", s.detentionLoads, [3, 10, 25], x),

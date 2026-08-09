@@ -37,7 +37,7 @@ describe("computeMedals", () => {
     const all = computeMedals({
       ...base,
       lifetimeMiles: 582_450, // Mile Club III
-      streak: 5, // Iron Streak I
+      streak: 5, // Target Streak I
       loanPaidPct: 0.36, // Debt Crusher I
     });
     const earned = earnedMedals(all).map((m) => m.key);

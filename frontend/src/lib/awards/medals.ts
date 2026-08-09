@@ -49,7 +49,7 @@ export const computeMedals = (d: MedalData): Medal[] => {
     tiered("mile-club", "Mile Club", "medal", [100_000, 250_000, 500_000, 1_000_000], d.lifetimeMiles, kMi),
     tiered("freight-hauler", "Freight Hauler", "stack-2", [100, 250, 500], d.deliveredCount, (n) => `${Math.round(n)}`),
     tiered("big-earner", "Big Earner", "coins", [250_000, 500_000, 750_000], d.cumulativeNet, kMoney),
-    tiered("iron-streak", "Iron Streak", "flame", [4, 8, 12], d.streak, (n) => `${Math.round(n)} wk`),
+    tiered("iron-streak", "Target Streak", "flame", [4, 8, 12], d.streak, (n) => `${Math.round(n)} wk`),
   ];
 
   if (d.loanPaidPct != null)
@@ -81,7 +81,7 @@ export const MEDAL_GUIDE: { name: string; icon: string; tiers: string }[] = [
   { name: "Mile Club", icon: "medal", tiers: "100k · 250k · 500k · 1M mi" },
   { name: "Freight Hauler", icon: "stack-2", tiers: "100 · 250 · 500 loads" },
   { name: "Big Earner", icon: "coins", tiers: "$250k · $500k · $750k net" },
-  { name: "Iron Streak", icon: "flame", tiers: "4 · 8 · 12-week streak" },
+  { name: "Target Streak", icon: "flame", tiers: "4 · 8 · 12-week streak" },
   { name: "Debt Crusher", icon: "lock-open", tiers: "25% · 50% · 75% paid off" },
   { name: "Strong Season", icon: "trophy", tiers: "a strong-margin season" },
 ];

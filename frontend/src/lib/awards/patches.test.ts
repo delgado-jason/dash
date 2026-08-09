@@ -17,7 +17,7 @@ const find = (loads: Load[], key: string) =>
   computePatches(loads, [] as FuelEntry[]).find((p) => p.key === key)!;
 
 describe("computePatches", () => {
-  it("Trailblazer counts distinct states touched", () => {
+  it("48 States counts distinct states touched", () => {
     const loads = [
       L({ delivery_date: "2026-05-01", origin_state: "TX", destination_state: "GA", linehaul: "2000" }),
       L({ delivery_date: "2026-05-08", origin_state: "GA", destination_state: "FL", linehaul: "2000" }),
