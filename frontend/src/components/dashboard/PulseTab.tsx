@@ -179,8 +179,18 @@ export const PulseTab = ({
 
   const ladder = targets.bookingLadder ?? {};
   const cur: number | null = targets.grossRate ?? null;
-  const gaugeMax = Math.max(ladder.strong ?? 0, cur ?? 0, ladder.target ?? 0) * 1.15 || 1;
-  const pos = (v: number | null | undefined) => (v == null ? 0 : Math.min(100, (v / gaugeMax) * 100));
+  // Floor-anchored scale, per the approved mockup: the track starts a step
+  // below walk-away and ends a step past the top, so the ladder spreads the
+  // full width instead of cramming into the right third (real ladders sit in
+  // a narrow band — a 0-based domain wastes half the track and collides the
+  // labels). Padding keeps centered labels from clipping at either edge.
+  const gaugeHi = Math.max(ladder.strong ?? 0, cur ?? 0, ladder.target ?? 0) || 1;
+  const gaugeLo = Math.min(ladder.walkAway ?? gaugeHi, cur ?? gaugeHi);
+  const span = Math.max(gaugeHi - gaugeLo, gaugeHi * 0.1);
+  const lo = gaugeLo - span * 0.16;
+  const hi = gaugeHi + span * 0.1;
+  const pos = (v: number | null | undefined) =>
+    v == null ? 0 : Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
   const overFloor = cur != null && ladder.walkAway != null ? cur - ladder.walkAway : null;
 
   const paceMeta = PACE[pace.verdict];
