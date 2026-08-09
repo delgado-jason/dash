@@ -25,7 +25,7 @@ const MEDAL = [
 const Rank = ({ i }: { i: number }) =>
   i < 3 ? (
     <span
-      className="font-comic shrink-0 flex items-center justify-center text-[15px]"
+      className="font-forge font-bold shrink-0 flex items-center justify-center text-[15px]"
       style={{
         width: 26,
         height: 26,
@@ -39,7 +39,7 @@ const Rank = ({ i }: { i: number }) =>
     </span>
   ) : (
     <span
-      className="font-comic shrink-0 text-center text-dim text-[15px]"
+      className="font-forge font-bold shrink-0 text-center text-dim text-[15px]"
       style={{ width: 26 }}
     >
       {i + 1}
@@ -69,7 +69,7 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
 
     <div className="relative flex items-center gap-2 mb-2.5">
       <Trophy size={17} style={{ color: "var(--color-amber-hi)" }} />
-      <span className="font-comic text-xl" style={{ color: "var(--color-amber-hi)" }}>
+      <span className="font-forge font-bold text-xl" style={{ color: "var(--color-amber-hi)" }}>
         TOP AGENTS
       </span>
       <span className="flex-1" />
@@ -101,7 +101,7 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
               <span className="flex-1 min-w-0">
                 {first ? (
                   <span
-                    className="font-comic block truncate leading-none text-[17px]"
+                    className="font-forge font-bold block truncate leading-none text-[17px]"
                     style={{ color: "var(--color-amber-hi)" }}
                   >
                     {agent.agent}
@@ -123,7 +123,7 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
               {!first && onBoard && <Pulse />}
               <span className="text-right shrink-0">
                 <span
-                  className="font-comic block leading-none"
+                  className="font-forge font-bold block leading-none"
                   style={{
                     fontSize: first ? 19 : 15,
                     color: first ? "var(--color-amber-hi)" : i < 3 ? "#e8eef7" : "#9daabb",
