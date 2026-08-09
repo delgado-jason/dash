@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 // Design System v2 — the etched flat surface ("flat = read").
 // Telemetry, charts, tables and forms live on Boards; machined depth is
@@ -28,6 +29,8 @@ export const BoardCell = ({
   tone = "none",
   valueClassName = "",
   className = "",
+  to,
+  go,
 }: {
   label: ReactNode;
   value: ReactNode;
@@ -35,17 +38,36 @@ export const BoardCell = ({
   tone?: Tone;
   valueClassName?: string;
   className?: string;
-}) => (
-  <div className={`relative px-[18px] py-4 ${className}`}>
-    <p className="ds2-label">{label}</p>
-    <p
-      className={`font-condensed font-semibold text-[30px] leading-[1.05] mt-1.5 tabular-nums ${valueClassName}`}
+  to?: string; // drill-down destination — every number is a door
+  go?: string; // hover affordance text, e.g. "loads" → shows "→ loads"
+}) => {
+  const body = (
+    <>
+      <p className="ds2-label">{label}</p>
+      <p
+        className={`font-condensed font-semibold text-[30px] leading-[1.05] mt-1.5 tabular-nums ${valueClassName}`}
+      >
+        {value}
+      </p>
+      {sub && <p className="mt-1 text-[11.5px] text-faint">{sub}</p>}
+      <span
+        className={`absolute left-[18px] bottom-0 h-0.5 w-[34px] rounded-[1px] ${TONE[tone]}`}
+      />
+      {to && go && (
+        <span className="absolute top-3 right-3 text-[10px] text-amber-light opacity-0 group-hover:opacity-100 transition-opacity">
+          → {go}
+        </span>
+      )}
+    </>
+  );
+  return to ? (
+    <Link
+      to={to}
+      className={`group block relative px-[18px] py-4 hover:bg-white/[.02] transition-colors ${className}`}
     >
-      {value}
-    </p>
-    {sub && <p className="mt-1 text-[11.5px] text-faint">{sub}</p>}
-    <span
-      className={`absolute left-[18px] bottom-0 h-0.5 w-[34px] rounded-[1px] ${TONE[tone]}`}
-    />
-  </div>
-);
+      {body}
+    </Link>
+  ) : (
+    <div className={`relative px-[18px] py-4 ${className}`}>{body}</div>
+  );
+};

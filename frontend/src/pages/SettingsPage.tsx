@@ -121,6 +121,7 @@ const SettingsPage = () => {
   const [pcts, setPcts] = useState<Pcts | null>(null);
   const [carrier, setCarrier] = useState("");
   const [freeHours, setFreeHours] = useState(3);
+  const [settlementDay, setSettlementDay] = useState(3); // 0=Sun … 6=Sat; default Wednesday
   const [perDiemRate, setPerDiemRate] = useState(69);
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [hometimeThresh, setHometimeThresh] = useState(21);
@@ -150,6 +151,7 @@ const SettingsPage = () => {
           accessorial: s.accessorial_pct * 100,
         });
         setCarrier(s.carrier_name ?? "");
+        setSettlementDay(s.settlement_day);
         setFreeHours(s.detention_free_hours);
         setPerDiemRate(s.per_diem_rate);
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
@@ -194,6 +196,7 @@ const SettingsPage = () => {
         fuel_surcharge_pct: pcts.fsc / 100,
         accessorial_pct: pcts.accessorial / 100,
         carrier_name: carrier.trim() || null,
+        settlement_day: settlementDay,
         detention_free_hours: freeHours,
         per_diem_rate: perDiemRate,
         per_diem_deduct_pct: perDiemPct / 100,
@@ -290,6 +293,30 @@ const SettingsPage = () => {
           />
           <span className="text-xs text-muted-text mt-1 block">
             Shown on your agents. Leave blank if you run on your own authority.
+          </span>
+        </label>
+
+        <label className="block mt-4">
+          <span className="text-sm text-light">Settlement day</span>
+          <select
+            value={settlementDay}
+            onChange={(e) => {
+              setMsg(null);
+              setSettlementDay(Number(e.target.value));
+            }}
+            className="w-full max-w-xs mt-1 bg-steel rounded px-2 py-1.5 text-light text-sm block"
+          >
+            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
+              (d, i) => (
+                <option key={d} value={i}>
+                  {d}
+                </option>
+              ),
+            )}
+          </select>
+          <span className="text-xs text-muted-text mt-1 block">
+            The day your carrier's weekly settlement lands. Drives the "next
+            settlement" line on the dashboard.
           </span>
         </label>
 
