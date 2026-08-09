@@ -9,11 +9,18 @@ import { isDispatcher } from "@/lib/roles";
 // slice migrates; when every page has, the bar and this list get deleted.
 // The owner/dispatcher split matters because /dashboard serves both — the
 // dispatcher's board is unmigrated until its slice.
-const FULL_BLEED_PREFIXES = ["/dashboard"];
+// ownerOnly: /dashboard serves the dispatcher a different, unmigrated
+// component, so only the owner's dashboard is full-bleed. Migrated pages that
+// both roles share (like /lanes) are full-bleed for everyone.
+const FULL_BLEED_PREFIXES = [
+  { prefix: "/dashboard", ownerOnly: true },
+  { prefix: "/lanes", ownerOnly: false },
+];
 const isFullBleed = (pathname: string) =>
-  !isDispatcher() &&
   FULL_BLEED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/"),
+    ({ prefix, ownerOnly }) =>
+      (pathname === prefix || pathname.startsWith(prefix + "/")) &&
+      (!ownerOnly || !isDispatcher()),
   );
 
 const AppLayout = () => {
