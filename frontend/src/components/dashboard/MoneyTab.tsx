@@ -4,13 +4,13 @@ import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import { useExpensePeriods } from "@/hooks/useExpensePeriods";
 import { topCategoriesWithOther } from "@/lib/metrics/expenses";
-import { getRevenueMTD } from "@/lib/metrics/dashboard";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { ForgedPlate } from "@/components/ui/ForgedPlate";
 import { PaceMeter, paceMarker, type PaceMarker } from "@/components/ui/PaceMeter";
+import { monthCoverage } from "@/lib/metrics/monthCoverage";
 import { money, rpm } from "@/lib/format";
 
-// The month's story: P&L, the two margins, where it goes, and THE NOTES —
+// The month's story: P&L, the two margins, where it goes, and THE MONTH —
 // Money's one forged surface. Pulse chases the week; Money chases the month.
 // No settlement-pipeline section: the carrier clears it weekly (BCO reality),
 // so that beat lives on Pulse's Next rail as timing, not receivables.
@@ -117,68 +117,34 @@ export const MoneyTab = ({
   const profitPerMi =
     revPerMi != null && costPerMi != null ? revPerMi - costPerMi : null;
 
-  // THE NOTES — the month in progress, if it's on the books yet.
+  // COVERING THE MONTH (Jason, 2026-08-10: "one load will cover my notes" —
+  // the real metric is the monthly expense threshold and the margin over it).
+  // Income races the MEAN monthly cost; the notes ride as the last slice under
+  // the threshold. One shared computation with the player card.
   const latest = rows[rows.length - 1] ?? null;
-  const isCurrentMonth =
-    latest != null && latest.month.slice(0, 7) === now.toISOString().slice(0, 7);
+  void latest;
   const dayOfMonth = now.getUTCDate();
   const daysInMonth = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
   ).getUTCDate();
-  const monthProfit = isCurrentMonth ? latest.profit : null;
-  const monthIncome = isCurrentMonth ? latest.income : null;
-  // The P&L posts at month end — until it does, the notes tracker runs on an
-  // ESTIMATE: month-to-date net income (loads; same money-kept basis as the
-  // P&L's income) × the median operating margin of the trailing complete
-  // months. Labeled as estimated; the real row takes over the day it posts.
-  const mtdIncome = useMemo(() => getRevenueMTD(loads) ?? 0, [loads]);
-  const medianMargin = useMemo(() => {
-    const nowKey = now.toISOString().slice(0, 7);
-    const complete = rows
-      .filter((r) => r.month.slice(0, 7) !== nowKey)
-      .slice(-6)
-      .map((r) => r.margin)
-      .sort((a, b) => a - b);
-    if (complete.length === 0) return null;
-    const m = Math.floor(complete.length / 2);
-    return complete.length % 2 ? complete[m] : (complete[m - 1] + complete[m]) / 2;
-  }, [rows, now]);
-  const estimated =
-    !isCurrentMonth && medianMargin != null && mtdIncome > 0;
-  const effProfit = isCurrentMonth
-    ? monthProfit
-    : estimated
-      ? mtdIncome * (medianMargin as number)
-      : null;
-  const effIncome = isCurrentMonth ? monthIncome : estimated ? mtdIncome : null;
+  const cov = useMemo(
+    () => monthCoverage(periods, obligationsMonthly, loads, now),
+    [periods, obligationsMonthly, loads, now],
+  );
   const projIncome =
-    effIncome != null && dayOfMonth > 0
-      ? (effIncome / dayOfMonth) * daysInMonth
+    cov.income > 0 && dayOfMonth > 0 ? (cov.income / dayOfMonth) * daysInMonth : null;
+  const coverDate =
+    cov.coverDay != null
+      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), cov.coverDay))
       : null;
-  const goalProfit =
-    marginGoal != null && projIncome != null && projIncome > 0
-      ? marginGoal * projIncome
-      : null;
-  const notesCovered = effProfit != null && effProfit >= obligationsMonthly;
-  const coverage =
-    effProfit != null && obligationsMonthly > 0
-      ? Math.min(1, Math.max(0, effProfit / obligationsMonthly))
-      : null;
-  // Straight-line pace: the day cumulative profit reaches the notes.
-  const coverDate = useMemo(() => {
-    if (effProfit == null || effProfit <= 0 || notesCovered) return null;
-    const daily = effProfit / dayOfMonth;
-    const day = Math.ceil(obligationsMonthly / daily);
-    if (day > daysInMonth) return null;
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day));
-  }, [effProfit, notesCovered, dayOfMonth, obligationsMonthly, daysInMonth, now]);
 
   const meterMarkers: PaceMarker[] = [
-    ...(obligationsMonthly > 0 ? [paceMarker("notes", obligationsMonthly)] : []),
-    ...(goalProfit != null ? [paceMarker("goal", Math.round(goalProfit))] : []),
+    ...(cov.opEx != null && cov.opEx > 0
+      ? [paceMarker("expenses", Math.round(cov.opEx))]
+      : []),
+    ...(cov.threshold != null ? [paceMarker("month", Math.round(cov.threshold))] : []),
   ];
-  const meterTarget =
-    goalProfit ?? Math.max(obligationsMonthly * 1.5, effProfit ?? 0, 1);
+  const meterTarget = cov.threshold ?? Math.max(cov.income, 1);
 
   // Months at-or-above the goal, counted back from the latest month.
   const goalStreak = useMemo(() => {
@@ -293,58 +259,59 @@ export const MoneyTab = ({
 
       {/* THE NOTES — Money's one forged surface: the month's chase */}
       <ForgedPlate chamfer tilt className="p-5">
-        {effProfit != null ? (
+        {cov.threshold != null ? (
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6">
             <div>
               <p className="ds2-label">
-                {now.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" })} — covering the notes
-                {estimated ? " · estimated" : ""}
+                {cov.monthLabel} — covering the month
+                {cov.estimated ? " · estimated" : ""}
               </p>
               <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
-                {money(effProfit)}{" "}
+                {money(cov.income)}{" "}
                 <span className="text-[15px] text-dim font-condensed tracking-normal">
-                  profit so far{estimated ? " · est." : ""}
+                  income so far{cov.estimated ? " · est." : ""}
                 </span>
               </p>
               <PaceMeter
-                filled={Math.max(0, effProfit)}
+                filled={Math.max(0, cov.income)}
                 target={meterTarget}
                 markers={meterMarkers}
               />
               <p className="text-[11.5px] text-faint mt-1.5">
-                {notesCovered ? (
+                {cov.covered ? (
                   <>
-                    Notes <b className="text-status-positive-text">covered</b> —
-                    every dollar now rides for the goal
-                    {goalProfit != null && (effProfit ?? 0) >= goalProfit
-                      ? ", and you're past it into overdrive"
-                      : ""}
-                    .
+                    Month <b className="text-status-positive-text">covered</b> —{" "}
+                    <b className="text-status-positive-text">
+                      {money(cov.marginOver ?? 0)}
+                    </b>{" "}
+                    margin over the threshold
+                    {cov.notes > 0 ? " — the notes rode inside it" : ""}.
                   </>
-                ) : coverage != null ? (
+                ) : (
                   <>
-                    Truck &amp; trailer notes{" "}
-                    <b className="text-ink">{Math.round(coverage * 100)}% covered</b>
+                    <b className="text-ink">{money(cov.short ?? 0)}</b> short of the{" "}
+                    {money(cov.threshold ?? 0)} month
+                    {cov.notes > 0 ? (
+                      <>
+                        {" "}
+                        (expenses {money(cov.opEx ?? 0)} + notes {money(cov.notes)})
+                      </>
+                    ) : null}
                     {coverDate ? (
                       <>
                         {" "}
-                        · on pace to cover them <b className="text-ink">
-                          {fmtDay(coverDate)}
-                        </b>
+                        · on pace to cover it <b className="text-ink">{fmtDay(coverDate)}</b>
                       </>
-                    ) : null}{" "}
-                    — after that every dollar rides for the goal.
+                    ) : null}
+                    {" "}— past it, every dollar is margin.
                   </>
-                ) : (
-                  "No notes configured — every dollar rides for the goal."
                 )}
-                {estimated && (
+                {cov.estimated && (
                   <>
                     {" "}
                     <span className="text-faint">
-                      Estimated from your typical margin (
-                      {Math.round((medianMargin as number) * 100)}% median) —
-                      the real P&amp;L takes over when the month posts.
+                      Month-to-date income from delivered loads — the real P&amp;L
+                      takes over when the month posts.
                     </span>
                   </>
                 )}
@@ -375,18 +342,18 @@ export const MoneyTab = ({
                   {daysInMonth - dayOfMonth}
                 </p>
               </div>
-              {notesCovered ? (
+              {cov.covered ? (
                 <span
                   className="inline-block self-start px-3.5 py-1.5 rounded-lg font-forge font-bold text-[16px] tracking-[.14em] text-status-positive-text border-2 border-status-positive-text -rotate-3"
                   style={{ boxShadow: "inset 0 0 12px rgba(74,222,128,.15)" }}
                 >
-                  NOTES COVERED
+                  MONTH COVERED
                 </span>
               ) : (
                 <div>
                   <p className="ds2-label">The win moment</p>
                   <span className="inline-block mt-1 px-3.5 py-1 rounded-lg font-forge font-bold text-[14px] tracking-[.14em] text-ink/20 border-2 border-dashed border-white/15 -rotate-3">
-                    NOTES COVERED
+                    MONTH COVERED
                   </span>
                 </div>
               )}
@@ -394,13 +361,10 @@ export const MoneyTab = ({
           </div>
         ) : (
           <div>
-            <p className="ds2-label">
-              {now.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" })}{" "}
-              — covering the notes
-            </p>
+            <p className="ds2-label">{cov.monthLabel} — covering the month</p>
             <p className="text-sm text-dim mt-2">
-              This month isn't on the books yet — the notes tracker lights up once
-              the month exists on Expenses.
+              The threshold forges from your P&L — post a month of expenses and the
+              meter arms against your mean monthly cost.
             </p>
             <Link
               to="/expenses"

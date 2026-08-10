@@ -1,73 +1,107 @@
-import type { ReactNode } from "react";
-import type { Grade, CareerRank, SeasonStats, Lever } from "@/lib/metrics/playerCard";
+import type { CareerRank } from "@/lib/metrics/playerCard";
 import type { QuarterPace } from "@/lib/metrics/quarterPace";
-import { QuarterPaceCard } from "./QuarterPaceCard";
-import { bottleneckLevers, allLeversOnTarget } from "@/lib/metrics/playerCard";
+import type { MonthCoverage } from "@/lib/metrics/monthCoverage";
 import { STRIP_MIN_COUNT, type TypeMix } from "@/lib/metrics/loadMix";
-import type { Hometime } from "@/lib/metrics/hometime";
-import type { Medal } from "@/lib/awards/medals";
 import { fmtMiles } from "@/lib/metrics/mileClub";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
-import { DEADHEAD_TARGET } from "@/lib/constants/targets";
-import { MedalBadge } from "@/components/awards/MedalBadge";
 import { money } from "@/lib/format";
 
-const pct1 = (n: number) => `${(n * 100).toFixed(1)}%`;
+// The forged player card — built to the approved mockup's structure
+// (2026-08-10, after Jason caught the first pass restyling the old shape):
+// stencil head, three-stat career strip, then the meter rows — notes streak,
+// quarter pace with the target notch, mile club, load mix. The profit levers,
+// bottleneck coach, and season grid live in LeversBoard below the hardware;
+// identity (name/avatar/hometime) lives in the page header.
+
+const MIX_COLORS = ["var(--color-amber-hi)", "#4f8cd6", "#c9a86a", "#8494ab", "#7ab0e8"];
+const TARGET_AT = 0.78; // the pace notch — same anchor as the money tab's PaceMeter
+
 const pct0 = (n: number) => `${Math.round(n * 100)}%`;
 
-const GREEN = "#4ade80";
-const RED = "#f87171";
-const AMBER = "#e8940a";
-
-const profitColor = (n: number) => (n < 0 ? RED : GREEN);
-const deadheadColor = (pct: number | null): string | undefined => {
-  if (pct == null) return undefined;
-  if (pct <= DEADHEAD_TARGET) return GREEN;
-  if (pct <= DEADHEAD_TARGET * 1.5) return AMBER;
-  return RED;
-};
-
-const GRADE_META: Record<Grade, { label: string; fg: string; bg: string }> = {
-  below: { label: "BELOW", fg: "#f87171", bg: "#3a1a1a" },
-  minimum: { label: "MINIMUM", fg: "#e8940a", bg: "#3a2a0a" },
-  target: { label: "TARGET", fg: "#4ade80", bg: "#1a3a2a" },
-  strong: { label: "STRONG", fg: "#fbbf24", bg: "#3a300a" },
-};
-
-const gradeColor = (g: Grade | null): string | undefined => (g ? GRADE_META[g].fg : undefined);
-
-const Stat = ({
-  label,
-  value,
-  color,
-  span2,
-  sub,
+const Cells = ({
+  fill, // 0..1 of the runway
+  notch, // optional 0..1 position for a target notch
+  count = 14,
 }: {
-  label: string;
-  value: string;
-  color?: string;
-  span2?: boolean;
-  sub?: string;
+  fill: number;
+  notch?: number;
+  count?: number;
 }) => (
-  <div
-    className={`rounded-[10px] px-3 py-2 ${span2 ? "col-span-2" : ""}`}
-    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)" }}
-  >
-    <p className="font-condensed text-[11px] tracking-[.1em] uppercase text-faint">{label}</p>
-    <p className="text-lg font-condensed font-semibold truncate tabular-nums" style={color ? { color } : undefined}>
-      {value}
-    </p>
-    {sub && <p className="font-condensed text-[10px] text-faint truncate">{sub}</p>}
+  <div className="relative flex gap-[3px]">
+    {Array.from({ length: count }, (_, i) => {
+      const cellPos = (i + 1) / count;
+      const on = cellPos <= fill + 1e-6;
+      const overdrive = notch != null && on && cellPos > notch + 1e-6;
+      return (
+        <i
+          key={i}
+          className="flex-1 h-[11px] rounded-[2.5px]"
+          style={
+            on
+              ? overdrive
+                ? {
+                    background: "linear-gradient(180deg, #ffffff, var(--color-hot))",
+                    border: "1px solid rgba(255,255,255,.5)",
+                    boxShadow: "0 0 7px rgba(255,207,122,.45)",
+                  }
+                : {
+                    background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                    border: "1px solid rgba(245,176,58,.55)",
+                    boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                  }
+              : {
+                  background: "var(--color-well)",
+                  border: "1px solid var(--color-hairline-lo)",
+                  boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                }
+          }
+        />
+      );
+    })}
+    {notch != null && (
+      <span
+        className="absolute -top-[4px] -bottom-[4px] w-[2px] bg-ink opacity-70"
+        style={{ left: `${notch * 100}%` }}
+        aria-hidden
+      >
+        <span className="absolute -top-[13px] -left-[18px] font-condensed text-[9px] tracking-[.1em] text-faint">
+          TARGET
+        </span>
+      </span>
+    )}
   </div>
 );
 
-// An equipment-mix identity strip (oversize / heavy haul). Oversize and heavy
-// haul are DIFFERENT disciplines, so each gets its own strip. The specialist
-// styling only lights when the underlying mix says so.
+const MeterRow = ({
+  label,
+  right,
+  children,
+  last = false,
+}: {
+  label: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+  last?: boolean;
+}) => (
+  <div className={`px-[18px] py-[13px] ${last ? "" : "border-b"} ds2-cell-rule`}>
+    <div className="flex justify-between items-baseline gap-3 mb-[8px]">
+      <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+        {label}
+      </span>
+      {right && (
+        <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums text-right">
+          {right}
+        </span>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
 const TypeStrip = ({ label, mix }: { label: string; mix: TypeMix }) => {
   const spec = mix.specialist;
   return (
-    <div
+    <span
       className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px]"
       style={
         spec
@@ -81,332 +115,212 @@ const TypeStrip = ({ label, mix }: { label: string; mix: TypeMix }) => {
       >
         {spec ? `${label} specialist` : label}
       </span>
-      <span style={{ color: spec ? "#c7935a" : "#7d8ba3" }}>
+      <span style={{ color: spec ? "var(--color-dim)" : "var(--color-faint)" }}>
         {mix.count} {mix.count === 1 ? "load" : "loads"}
         {mix.pct != null ? ` · ${pct0(mix.pct)}` : ""}
       </span>
-    </div>
+    </span>
   );
 };
 
-const shortDate = (key: string): string =>
-  new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-
-// Hometime status strip — reads the days since your last "home" mark and flags
-// when you've been out past your threshold. Four states, calm by default.
-const HometimeChip = ({ hometime }: { hometime: Hometime }) => {
-  const { state, daysOut, toTarget, lastHome } = hometime;
-  const S =
-    state === "over"
-      ? { bg: "#3a1a1a", border: "#a32d2d", fg: "#f87171", sub: "#c98a8a" }
-      : state === "home"
-        ? { bg: "#123020", border: "#1f6e4a", fg: "#4ade80", sub: "#8fb9a4" }
-        : { bg: "var(--color-well)", border: "var(--color-hairline)", fg: "var(--color-ink)", sub: "var(--color-faint)" };
-
-  const title =
-    state === "none"
-      ? "No hometime data yet"
-      : state === "home"
-        ? "Home"
-        : `Out ${daysOut} ${daysOut === 1 ? "day" : "days"}`;
-
-  const sub =
-    state === "none"
-      ? "Mark home days on the per-diem calendar"
-      : state === "home"
-        ? "you're home today"
-        : state === "over"
-          ? `past your ${hometime.threshold}-day target${lastHome ? ` · last home ${shortDate(lastHome)}` : ""}`
-          : `${toTarget} to your ${hometime.threshold}-day target`;
-
-  return (
-    <div
-      className="flex items-center gap-2.5 mt-4 px-3 py-2 rounded-lg"
-      style={{ background: S.bg, border: `1px solid ${S.border}` }}
-    >
-      <div className="min-w-0">
-        <p
-          className="font-condensed text-sm font-bold uppercase tracking-[.1em]"
-          style={{ color: S.fg }}
-        >
-          {title}
-        </p>
-        <p className="text-[10.5px]" style={{ color: S.sub }}>
-          {sub}
-        </p>
-      </div>
-    </div>
-  );
-};
-
-// A short, plain-language nudge for whichever lever is the bottleneck.
-const LEVER_HINTS: Record<string, string> = {
-  rate: "you're booking below target — hold out for better-paying freight.",
-  util: "the truck sitting is what's capping the season — keep it rolling.",
-  margin: "costs are eating the margin — watch deadhead and fuel.",
-};
-
-// One profit lever: its value and grade. Border tints to the grade.
-const LeverTile = ({
-  label,
-  value,
-  grade,
-}: {
+export interface MixRow {
   label: string;
-  value: string;
-  grade: Grade | null;
-}) => {
-  const m = grade ? GRADE_META[grade] : null;
-  return (
-    <div
-      className="rounded-[10px] px-3 py-2.5"
-      style={{ background: "var(--color-well)", border: `1px solid ${m ? m.bg : "var(--color-hairline-lo)"}` }}
-    >
-      <p className="font-condensed text-[10px] tracking-[.12em] text-faint uppercase">{label}</p>
-      <p className="text-lg font-condensed my-0.5 truncate">{value}</p>
-      {m ? (
-        <span
-          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-          style={{ background: m.bg, color: m.fg }}
-        >
-          {m.label}
-        </span>
-      ) : (
-        <span className="text-[10px] text-faint">—</span>
-      )}
-    </div>
-  );
-};
+  count: number;
+  pct: number; // 0..1 of delivered loads
+}
 
 export interface PlayerCardProps {
-  name: string;
-  business: string;
-  avatar: ReactNode;
   rank: CareerRank;
-  season: SeasonStats;
-  rpmGrade: Grade | null;
-  marginGrade: Grade | null;
-  utilization: number | null; // 0..1, days-based; the third profit lever
-  utilGrade: Grade | null;
-  windowRpm: number | null;
-  medals: Medal[]; // earned tiers only — worn by the name
-  oversize?: TypeMix; // oversize equipment mix; strip hidden when count is 0
-  heavyHaul?: TypeMix; // heavy-haul mix — a distinct discipline from oversize
-  hometime?: Hometime; // days-since-home status; strip hidden when not provided
-  pace?: QuarterPace | null; // current-quarter-vs-previous pace; hidden when absent
-  streak?: number | null; // consecutive weeks covering the notes; row hidden when absent
+  seasonLabel: string; // head chip, e.g. "Q3 2026"
+  career: { hauls: number; miles: number; linehaul: number };
+  coverage: MonthCoverage | null; // the month vs the expense threshold
+  pace: QuarterPace | null;
+  mix: MixRow[]; // full delivered-load mix, largest first
+  oversize?: TypeMix;
+  heavyHaul?: TypeMix;
 }
 
 export const PlayerCard = ({
-  name,
-  business,
-  avatar,
   rank,
-  season,
-  rpmGrade,
-  marginGrade,
-  utilization,
-  utilGrade,
-  windowRpm,
-  medals,
+  seasonLabel,
+  career,
+  coverage,
+  pace,
+  mix,
   oversize,
   heavyHaul,
-  hometime,
-  pace,
-  streak,
 }: PlayerCardProps) => {
-  const stars = "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
+  const stars =
+    "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
 
-  // The three profit levers and their bottleneck (weakest, if below/minimum).
-  const levers: Lever[] = [
-    { key: "rate", label: "Rate", grade: rpmGrade },
-    { key: "util", label: "Utilization", grade: utilGrade },
-    { key: "margin", label: "Op margin", grade: marginGrade },
-  ];
-  const bottleneck = bottleneckLevers(levers);
-  const onTarget = allLeversOnTarget(levers);
-  const rateVal = windowRpm != null ? `$${windowRpm.toFixed(2)}/mi` : "—";
-  const utilVal = utilization != null ? pct0(utilization) : "—";
-  const marginVal = season.netMargin != null ? pct1(season.netMargin) : "—";
+  // Quarter pace on the card: current net racing last quarter's finish, the
+  // notch pinned at 78% like every pace meter in the app. Overdrive past it.
+  const paceReady =
+    pace != null &&
+    (pace.verdict === "beat" || pace.verdict === "behind" || pace.verdict === "even");
+  const paceScale = paceReady ? pace.prevFinalNet / TARGET_AT : null;
+  const paceFill =
+    paceReady && paceScale ? Math.min(1, pace.currentNet / paceScale) : 0;
+  const paceRight = paceReady
+    ? pace.pacePct != null
+      ? `${pace.pacePct >= 0 ? "▲ +" : "▼ −"}${Math.abs(Math.round(pace.pacePct * 100))}% vs ${pace.prevLabel}`
+      : pace.label
+    : null;
 
   return (
-    <div>
+    <div
+      className="relative overflow-hidden rounded-[14px] border"
+      style={{
+        background: "linear-gradient(180deg, #0e1420, #0b101a)",
+        borderColor: "var(--color-hairline)",
+        boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+      }}
+    >
+      {/* head */}
       <div
-        className="relative overflow-hidden rounded-[14px] border p-4"
-        style={{
-          background: "linear-gradient(180deg, #0e1420, #0b101a)",
-          borderColor: "var(--color-hairline)",
-          boxShadow: "0 14px 34px rgba(0,0,0,.45)",
-        }}
+        className="flex items-center gap-[14px] px-[18px] py-[14px] border-b ds2-cell-rule"
+        style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
       >
-        <div
-          className="absolute inset-x-0 top-0 h-16 pointer-events-none"
-          style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
-        />
-        <div className="flex gap-4 items-start relative">
-          <div className="shrink-0">{avatar}</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-start gap-3 flex-wrap">
-              <h1 className="font-display text-[30px] tracking-[.04em] leading-none">{name.toUpperCase()}</h1>
-              {medals.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap justify-end">
-                  {medals.map((m) => (
-                    <MedalBadge key={m.key} medal={m} />
-                  ))}
-                </div>
-              )}
-            </div>
-            <p className="font-condensed text-xs text-faint tracking-[.06em] mb-3 mt-1 uppercase">{business}</p>
-            {((oversize && oversize.count >= STRIP_MIN_COUNT) ||
-              (heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT)) && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {oversize && oversize.count >= STRIP_MIN_COUNT && (
-                  <TypeStrip label="Oversize" mix={oversize} />
-                )}
-                {heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT && (
-                  <TypeStrip label="Heavy haul" mix={heavyHaul} />
-                )}
-              </div>
-            )}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="font-forge font-bold text-xl leading-none" style={{ color: "var(--color-ink)", letterSpacing: "1.5px" }}>
-                  {rank.name.toUpperCase()}
-                </div>
-                <div className="font-condensed text-[10px] text-faint tracking-[.08em] mt-0.5 uppercase">
-                  <span style={{ color: "var(--color-amber-hi)", letterSpacing: "1px" }}>{stars}</span> · Career rank — the mile club
-                </div>
-                <div className="flex gap-[3px] mt-1.5">
-                  {Array.from({ length: 10 }, (_, i) => (
-                    <i
-                      key={i}
-                      className="flex-1 h-[9px] rounded-[2px]"
-                      style={
-                        i < Math.round(rank.pct * 10)
-                          ? {
-                              background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                              boxShadow: "0 0 6px rgba(232,148,10,.3)",
-                            }
-                          : {
-                              background: "var(--color-well)",
-                              border: "1px solid var(--color-hairline-lo)",
-                              boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)",
-                            }
-                      }
-                    />
-                  ))}
-                </div>
-                {rank.next && (
-                  <div className="font-condensed text-[10px] text-faint mt-1">
-                    {fmtMiles(rank.toNext)} to {rank.next.name.toUpperCase()}
-                  </div>
-                )}
-              </div>
-            </div>
+        <div className="min-w-0">
+          <div
+            className="font-forge font-bold text-[22px] leading-none"
+            style={{ letterSpacing: "1.5px" }}
+          >
+            {rank.name.toUpperCase()}
+          </div>
+          <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
+            <span style={{ color: "var(--color-amber-hi)", letterSpacing: "1px" }}>{stars}</span>{" "}
+            · the player card · forged
           </div>
         </div>
-
-        {hometime && <HometimeChip hometime={hometime} />}
-
-        <div className="mt-4 pt-3 border-t relative" style={{ borderColor: "var(--color-hairline-lo)" }}>
-          <div className="flex items-baseline gap-2 mb-2.5">
-            <span className="font-condensed font-semibold text-sm tracking-[.14em] text-faint uppercase">
-              Season · {season.label}
-            </span>
-            <span className="font-condensed text-[11px] text-faint">your three profit levers</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2.5">
-            <LeverTile label="Rate" value={rateVal} grade={rpmGrade} />
-            <LeverTile label="Utilization" value={utilVal} grade={utilGrade} />
-            <LeverTile label="Op margin" value={marginVal} grade={marginGrade} />
-          </div>
-          {streak != null && (
-            <div className="mt-3">
-              <div className="flex justify-between items-baseline mb-1.5">
-                <span className="font-condensed font-semibold text-[11px] tracking-[.12em] text-faint uppercase">
-                  Covering the notes — week streak
-                </span>
-                <span className="font-condensed font-semibold text-[13px] tabular-nums">
-                  {streak} week{streak === 1 ? "" : "s"}
-                </span>
-              </div>
-              <div className="flex gap-[3px]">
-                {Array.from({ length: 10 }, (_, i) => (
-                  <i
-                    key={i}
-                    className="flex-1 h-[9px] rounded-[2px]"
-                    style={
-                      i < Math.min(streak, 10)
-                        ? {
-                            background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                            boxShadow: "0 0 6px rgba(232,148,10,.3)",
-                          }
-                        : {
-                            background: "var(--color-well)",
-                            border: "1px solid var(--color-hairline-lo)",
-                            boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)",
-                          }
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          {bottleneck.length > 0 ? (
-            <div
-              className="flex items-center gap-3 mt-3 px-3.5 py-2.5 rounded-[10px]"
-              style={{ background: "rgba(232,148,10,.08)", border: "1px solid rgba(232,148,10,.4)" }}
-            >
-              <div className="min-w-0">
-                <p className="font-condensed text-[13px] font-bold tracking-[.1em] uppercase" style={{ color: "var(--color-amber-hi)" }}>
-                  Bottleneck · {bottleneck.map((l) => l.label).join(" & ")}
-                </p>
-                <p className="font-condensed text-[11px]" style={{ color: "var(--color-dim)" }}>
-                  {bottleneck.length === 1
-                    ? LEVER_HINTS[bottleneck[0].key]
-                    : "two levers are lagging — tackle the weakest first."}
-                </p>
-              </div>
-            </div>
-          ) : onTarget ? (
-            <div
-              className="flex items-center gap-3 mt-3 px-3.5 py-2.5 rounded-[10px]"
-              style={{ background: "#12261a", border: "1px solid #1f6e4a" }}
-            >
-              <p className="font-condensed text-[13px] font-bold tracking-[.1em] uppercase" style={{ color: "#4ade80" }}>
-                Firing on all cylinders
-              </p>
-            </div>
-          ) : (
-            <p className="text-[11px] text-faint mt-3">
-              Grades build over a full month of data.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {pace && <QuarterPaceCard pace={pace} />}
-
-      <div className="flex items-baseline gap-2 mt-5 mb-2">
-        <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
-          LAST SEASON
+        <span className="ml-auto font-condensed font-bold text-[10.5px] tracking-[.12em] px-[8px] py-[3px] rounded-[4px] text-dim border border-hairline whitespace-nowrap">
+          SEASON · {seasonLabel.toUpperCase()}
         </span>
-        <span className="text-[11px] text-faint">· {season.label} · the last complete quarter</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat label="Net revenue" value={money(season.netRevenue)} sub="net of carrier cut" />
-        <Stat label="Operating profit" value={money(season.netProfit)} color={profitColor(season.netProfit)} sub="before obligations" />
-        <Stat label="True net" value={money(season.trueNet)} color={profitColor(season.trueNet)} sub="what you keep, before draw" />
-        <Stat label="Loads" value={String(season.loads)} />
-        <Stat label="Miles" value={Math.round(season.totalMiles).toLocaleString("en-US")} />
-        <Stat label="Deadhead" value={season.deadheadPct != null ? pct1(season.deadheadPct) : "—"} color={deadheadColor(season.deadheadPct)} />
-        <Stat label="Avg RPM" value={season.avgRpm != null ? `$${season.avgRpm.toFixed(2)}` : "—"} color={gradeColor(rpmGrade)} />
-        <Stat label="Best lane" value={season.bestLane?.lane ?? "—"} span2 />
+
+      {/* career strip */}
+      <div className="grid grid-cols-3 border-b ds2-cell-rule">
+        <div className="px-[18px] py-3 border-r ds2-cell-rule">
+          <p className="font-condensed font-semibold text-[23px] tabular-nums">{career.hauls}</p>
+          <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+            Hauls delivered
+          </p>
+        </div>
+        <div className="px-[18px] py-3 border-r ds2-cell-rule">
+          <p className="font-condensed font-semibold text-[23px] tabular-nums">
+            {career.miles.toLocaleString("en-US")}
+          </p>
+          <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+            Miles hauled
+          </p>
+        </div>
+        <div className="px-[18px] py-3">
+          <p className="font-condensed font-semibold text-[23px] tabular-nums">
+            {money(career.linehaul)}
+          </p>
+          <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+            Linehaul · all-time
+          </p>
+        </div>
       </div>
+
+      {/* meter rows */}
+      <MeterRow
+        label={`Covering the month${coverage?.estimated ? " · est." : ""}`}
+        right={
+          coverage && coverage.threshold != null
+            ? coverage.covered
+              ? `▲ +${money(coverage.marginOver ?? 0)} margin`
+              : `${money(coverage.short ?? 0)} short${
+                  coverage.coverDay != null ? ` · covers ~day ${coverage.coverDay}` : ""
+                }`
+            : undefined
+        }
+      >
+        {coverage && coverage.threshold != null ? (
+          <>
+            <Cells
+              fill={Math.min(1, coverage.income / (coverage.threshold / TARGET_AT))}
+              notch={TARGET_AT}
+            />
+            <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+              expenses {money(coverage.opEx ?? 0)} + notes {money(coverage.notes)} — the
+              month is covered at {money(coverage.threshold)}; past it is margin
+              {coverage.covered ? " — you're there" : ""}.
+            </p>
+          </>
+        ) : (
+          <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+            The threshold forges from your P&L — post a month of expenses and the
+            meter arms.
+          </p>
+        )}
+      </MeterRow>
+
+      <MeterRow label="Quarter pace" right={paceRight ?? undefined}>
+        {paceReady ? (
+          <Cells fill={paceFill} notch={TARGET_AT} />
+        ) : (
+          <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+            {pace?.verdict === "no-prior"
+              ? "No prior quarter to race yet — finish this one and the meter arms."
+              : "Pace switches on a couple weeks and a few loads into the quarter."}
+          </p>
+        )}
+      </MeterRow>
+
+      <MeterRow
+        label={
+          rank.next
+            ? `Mile club — next plate at ${fmtMiles(rank.next.min)}`
+            : "Mile club — topped out"
+        }
+        right={
+          rank.next
+            ? `${rank.miles.toLocaleString("en-US")} / ${rank.next.min.toLocaleString("en-US")}`
+            : fmtMiles(rank.miles)
+        }
+      >
+        <Cells fill={rank.pct} count={10} />
+      </MeterRow>
+
+      <MeterRow label={`Load mix — ${career.hauls} delivered`} last>
+        <div className="flex flex-col gap-[6px]">
+          {mix.map((m, i) => (
+            <div key={m.label} className="flex items-center gap-[10px]">
+              <span className="font-condensed text-[13px] text-dim w-[120px] shrink-0 capitalize">
+                {m.label}
+              </span>
+              <span
+                className="flex-1 h-[9px] rounded-[3px] overflow-hidden"
+                style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+              >
+                <i
+                  className="block h-full"
+                  style={{
+                    width: `${Math.max(2, m.pct * 100)}%`,
+                    background: MIX_COLORS[i % MIX_COLORS.length],
+                  }}
+                />
+              </span>
+              <span className="font-condensed font-semibold text-[13px] text-ink w-[70px] text-right tabular-nums">
+                {m.count} · {pct0(m.pct)}
+              </span>
+            </div>
+          ))}
+        </div>
+        {((oversize && oversize.count >= STRIP_MIN_COUNT) ||
+          (heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT)) && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {oversize && oversize.count >= STRIP_MIN_COUNT && (
+              <TypeStrip label="Oversize" mix={oversize} />
+            )}
+            {heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT && (
+              <TypeStrip label="Heavy haul" mix={heavyHaul} />
+            )}
+          </div>
+        )}
+      </MeterRow>
     </div>
   );
 };
