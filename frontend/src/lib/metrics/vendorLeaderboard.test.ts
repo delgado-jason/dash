@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { groupVendorsByCategory, goToCount } from "./vendorLeaderboard";
+import {
+  groupVendorsByCategory,
+  trustCounts,
+  serviceAreaStates,
+} from "./vendorLeaderboard";
 import type { Vendor } from "@/types/vendor";
 
 const v = (over: Partial<Vendor>): Vendor => ({
@@ -65,15 +69,45 @@ describe("groupVendorsByCategory", () => {
   });
 });
 
-describe("goToCount", () => {
-  it("counts only 5-rated vendors", () => {
+describe("trustCounts", () => {
+  it("splits the roster into go-to / steer-clear / unproven; 3-4s count nowhere", () => {
     expect(
-      goToCount([
+      trustCounts([
         v({ rating: 5 }),
         v({ rating: 5 }),
         v({ rating: 4 }),
+        v({ rating: 3 }),
+        v({ rating: 2 }),
+        v({ rating: 1 }),
         v({ rating: null }),
       ]),
-    ).toBe(2);
+    ).toEqual({ goTo: 2, steerClear: 2, unproven: 1 });
+  });
+
+  it("is all zeros for an empty roster", () => {
+    expect(trustCounts([])).toEqual({ goTo: 0, steerClear: 0, unproven: 0 });
+  });
+});
+
+describe("serviceAreaStates", () => {
+  it("parses a messy real-world list — trailing comma and all", () => {
+    expect(serviceAreaStates("TX, AL, GA, SC, NC,")).toEqual([
+      "TX",
+      "AL",
+      "GA",
+      "SC",
+      "NC",
+    ]);
+  });
+
+  it("uppercases, dedupes, and drops non-state tokens instead of guessing", () => {
+    // "and" and "to" are word tokens that must not become chips; the repeat
+    // mention of TX collapses.
+    expect(serviceAreaStates("tx and OK; TX to southeast")).toEqual(["TX", "OK"]);
+  });
+
+  it("returns nothing for null or blank", () => {
+    expect(serviceAreaStates(null)).toEqual([]);
+    expect(serviceAreaStates("  ")).toEqual([]);
   });
 });
