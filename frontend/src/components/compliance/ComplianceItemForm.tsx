@@ -6,8 +6,8 @@ import type {
 } from "@/types/compliance";
 import { Panel } from "@/components/ui/Panel";
 
-const inputCls = "bg-steel rounded px-2 py-1.5 text-sm w-full text-light";
-const lbl = "text-xs text-muted-text mb-1 block";
+const inputCls = "bg-well rounded px-2 py-1.5 text-sm w-full text-ink";
+const lbl = "text-xs text-faint mb-1 block";
 
 export const CATEGORIES = [
   "license",
@@ -162,7 +162,7 @@ export const ComplianceItemForm = ({
         <div className="mb-3">
           <label className={lbl}>
             Start from a common doc{" "}
-            <span className="text-muted-text">
+            <span className="text-faint">
               (optional — or just type your own below)
             </span>
           </label>
@@ -190,7 +190,7 @@ export const ComplianceItemForm = ({
             maxLength={120}
             onChange={(e) => setLabel(e.target.value)}
           />
-          <p className="text-[11px] text-muted-text mt-1">
+          <p className="text-[11px] text-faint mt-1">
             Type anything — it doesn't have to be on the list.
           </p>
         </div>
@@ -276,7 +276,7 @@ export const ComplianceItemForm = ({
           {busy ? "Saving…" : initial ? "Save" : "Add document"}
         </button>
         <button
-          className="bg-plate text-light px-3 py-1.5 rounded text-sm"
+          className="bg-well text-ink px-3 py-1.5 rounded text-sm"
           onClick={onCancel}
         >
           Cancel
