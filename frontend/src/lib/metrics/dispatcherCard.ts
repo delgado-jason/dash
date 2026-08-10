@@ -56,6 +56,8 @@ export interface DispatcherCard {
   overBreakEven: number | null; // avgBookedRate − breakEven
   detentionCollectedMin: number; // detention hours she chased down and got paid
   onTimePct: number | null;
+  onTimeCount: number; // graded stops that hit on-time — raw, never gated
+  gradedStops: number; // stops with an appointment + arrival
   rank: DispatchRank;
   seasonGrade: Grade | null;
 }
@@ -103,7 +105,8 @@ export const getDispatcherCard = (
 
   // On-time only over loads that actually ran.
   const delivered = mine.filter((l) => l.load_status === "delivered");
-  const onTimePct = scoreStops(agentStops(delivered, freeHours)).onTimePct;
+  const stopScore = scoreStops(agentStops(delivered, freeHours));
+  const onTimePct = stopScore.onTimePct;
 
   // Season grade = recent (90-day) booking rate graded against the ladder.
   const cutoff = now.getTime() - 90 * 86_400_000;
@@ -121,6 +124,8 @@ export const getDispatcherCard = (
     overBreakEven,
     detentionCollectedMin,
     onTimePct,
+    onTimeCount: stopScore.onTimeCount,
+    gradedStops: stopScore.gradedStops,
     rank: dispatchRank(mine.length),
     seasonGrade,
   };

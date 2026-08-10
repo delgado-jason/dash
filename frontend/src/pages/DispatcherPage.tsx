@@ -5,7 +5,7 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { useGrind } from "@/hooks/useGrind";
 import { getUser, type TeamMember } from "@/services/teamService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
-import { getDispatcherCard, RANK_TIERS } from "@/lib/metrics/dispatcherCard";
+import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
 import {
   dispatcherMedals,
   dispatcherPatches,
@@ -13,28 +13,11 @@ import {
 } from "@/lib/awards/dispatcherAwards";
 import { DispatcherCard } from "@/components/playercard/DispatcherCard";
 import { DispatcherSeasonCard } from "@/components/dispatch/DispatcherSeasonCard";
-import { DispatcherPatchBoard } from "@/components/awards/DispatcherPatchBoard";
 import { MedalBadge } from "@/components/awards/MedalBadge";
+import { HardwareBoard } from "@/components/awards/HardwareBoard";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const LockedMedal = ({ name }: { name: string }) => (
-  <div style={{ width: 46, textAlign: "center", opacity: 0.4 }}>
-    <div
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: "50%",
-        margin: "11px auto 0",
-        background: "#141a26",
-        border: "2px solid #2a3550",
-      }}
-    />
-    <div style={{ fontSize: 8.5, color: "#7a869a", marginTop: 4, lineHeight: 1.1 }}>
-      {name}
-    </div>
-  </div>
-);
 
 const DispatcherPage = () => {
   const { id = "" } = useParams();
@@ -69,14 +52,14 @@ const DispatcherPage = () => {
 
   if (notFound)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
-        <p className="text-muted-text">Dispatcher not found.</p>
+      <div className="p-6 text-ink font-body min-h-screen">
+        <p className="text-faint font-condensed text-[14px]">Dispatcher not found.</p>
       </div>
     );
 
   if (loadsLoading || !member)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink font-body min-h-screen">
         <Skeleton className="h-4 w-24 mb-4" />
         <Skeleton className="h-56" style={{ borderRadius: 16 }} />
       </div>
@@ -84,7 +67,7 @@ const DispatcherPage = () => {
 
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen">
+      <div className="p-6 text-ink font-body min-h-screen">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -120,101 +103,65 @@ const DispatcherPage = () => {
       kind="user"
       id={id}
       avatarUrl={avatarUrl}
-      size={118}
+      size={64}
       allowVariant
       onUpdated={(u) => setAvatarUrl(u)}
     />
   );
 
-  const panel = "rounded-2xl border p-4 mt-4";
-  const panelStyle = { background: "#141a26", borderColor: "#2a3347" };
-
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <Link to={backTo} className="text-xs text-muted-text hover:text-light">
-        ← Back
-      </Link>
-
-      <div className="mt-3">
-        <DispatcherCard
-          name={name}
-          business="Delgado Trucking Services · Dispatcher"
-          avatar={avatar}
-          card={card}
-          medals={earnedMedals}
-        />
-
-        <DispatcherSeasonCard
-          loads={loads}
-          userId={id}
-          ladder={targets.bookingLadder}
-          freeHours={freeHours}
-        />
-
-        {/* Career ladder */}
-        <div className={panel} style={panelStyle}>
-          <p className="text-[10px] uppercase tracking-widest text-muted-text mb-3">
-            Career ladder
-          </p>
-          <div className="flex items-start gap-1.5">
-            {RANK_TIERS.map((tier, i) => {
-              const current = i === card.rank.index;
-              const reached = card.rank.count >= tier.min;
-              return (
-                <div key={tier.name} className="flex-1 text-center min-w-0">
-                  <div
-                    className="rounded"
-                    style={{
-                      height: current ? 7 : 4,
-                      background: current ? "#e8940a" : reached ? "#7a4718" : "#232c3f",
-                    }}
-                  />
-                  <div
-                    className="text-[10px] mt-1.5 truncate"
-                    style={{
-                      color: current ? "#f5b03a" : reached ? "#cdd8e8" : "#5f6b80",
-                      fontWeight: current ? 600 : 400,
-                    }}
-                  >
-                    {tier.name}
-                  </div>
-                  <div
-                    className="text-[9px]"
-                    style={{ color: current ? "#f5b03a" : "#5f6b80" }}
-                  >
-                    {tier.min}
-                    {current ? " ◄ you" : ""}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">DISPATCHER</h1>
+          <Link
+            to={backTo}
+            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+          >
+            ← back
+          </Link>
         </div>
 
-        {/* Medals — rare feats */}
-        <div className={panel} style={panelStyle}>
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
-              MEDALS
-            </span>
-            <span className="text-[11px] text-muted-text">
-              rare feats · can't be ground out
-            </span>
+        <div className="flex items-center gap-4 flex-wrap mt-[18px]">
+          <div className="shrink-0">{avatar}</div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+              {name.toUpperCase()}
+            </h2>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.07)]">
+                {card.rank.name.toUpperCase()}
+              </span>
+              <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
+                DELGADO TRUCKING SERVICES · DISPATCH
+              </span>
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {medals.map((m) =>
-              m.tier > 0 ? (
+          {earnedMedals.length > 0 && (
+            <span className="ml-auto flex gap-1.5 flex-wrap justify-end">
+              {earnedMedals.map((m) => (
                 <MedalBadge key={m.key} medal={m} />
-              ) : (
-                <LockedMedal key={m.key} name={m.name} />
-              ),
-            )}
-          </div>
+              ))}
+            </span>
+          )}
         </div>
 
-        {/* Patches — the grind */}
-        <div className={panel} style={panelStyle}>
-          <DispatcherPatchBoard patches={patches} />
+        <div className="mt-4">
+          <DispatcherCard card={card} />
+        </div>
+
+        {/* the hardware — coins mostly ghost today, the whole career visible */}
+        <HardwareBoard medals={medals} grindTags={patches} />
+
+        {/* season — her 90-day booking grade */}
+        <div className="mt-4">
+          <DispatcherSeasonCard
+            loads={loads}
+            userId={id}
+            ladder={targets.bookingLadder}
+            freeHours={freeHours}
+          />
         </div>
       </div>
     </div>
