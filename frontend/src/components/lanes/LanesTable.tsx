@@ -1,5 +1,4 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import type { RegionStat } from "@/lib/metrics/lanes";
 import { MIN_KPI_LOADS } from "@/lib/metrics/lanes";
 import { fmtRpm, rpmTextClass } from "./rpmStyle";
@@ -46,9 +45,9 @@ export const LanesTable = ({ rollup }: Props) => {
               >
                 <td className="py-2 px-2">
                   {rOpen ? (
-                    <ChevronDown size={14} className="inline" aria-hidden="true" />
+                    <span className="text-faint mr-1" aria-hidden="true">▾</span>
                   ) : (
-                    <ChevronRight size={14} className="inline" aria-hidden="true" />
+                    <span className="text-faint mr-1" aria-hidden="true">▸</span>
                   )}{" "}
                   {region.region}
                 </td>
@@ -69,9 +68,9 @@ export const LanesTable = ({ rollup }: Props) => {
                       >
                         <td className="py-2 pl-7 pr-2">
                           {mOpen ? (
-                            <ChevronDown size={13} className="inline" aria-hidden="true" />
+                            <span className="text-faint mr-1" aria-hidden="true">▾</span>
                           ) : (
-                            <ChevronRight size={13} className="inline" aria-hidden="true" />
+                            <span className="text-faint mr-1" aria-hidden="true">▸</span>
                           )}{" "}
                           {market.market}
                         </td>
@@ -105,7 +104,7 @@ export const LanesTable = ({ rollup }: Props) => {
                               {lane.avgRpm !== null && (
                                 <span
                                   className="block text-[10px]"
-                                  style={{ color: "#5b6b82" }}
+                                  style={{ color: "var(--color-faint)" }}
                                 >
                                   blended {fmtRpm(lane.avgRpm)}
                                 </span>

@@ -10,6 +10,8 @@ import {
   getAreaDetail,
   levelForWindow,
   getStateDetail,
+  getWindowTotals,
+  getOriginStateRollup,
 } from "./lanes";
 
 const makeLoad = (over: Partial<Load>): Load => ({
@@ -325,5 +327,50 @@ describe("getStateDetail", () => {
     const d = getStateDetail(loads, "Wyoming", 3, 90, NOW);
     expect(d.loadCount).toBe(0);
     expect(d.agents).toHaveLength(0);
+  });
+});
+
+describe("getWindowTotals", () => {
+  it("sums linehaul and blends the rate, coercing numeric strings", () => {
+    const t = getWindowTotals([
+      makeLoad({ linehaul: "1000", loaded_miles: 200 }),
+      makeLoad({ linehaul: "500.50", loaded_miles: 100 }),
+    ]);
+    expect(t.loads).toBe(2);
+    expect(t.linehaul).toBeCloseTo(1500.5, 5);
+    expect(t.blendedRpm).toBeCloseTo(1500.5 / 300, 5);
+  });
+
+  it("blends to null with no miles, and zeros on empty", () => {
+    expect(getWindowTotals([makeLoad({ loaded_miles: 0 })]).blendedRpm).toBeNull();
+    expect(getWindowTotals([])).toEqual({ loads: 0, linehaul: 0, blendedRpm: null });
+  });
+});
+
+describe("getOriginStateRollup", () => {
+  it("ranks repeats by volume then rate, counts singles, crowns the best rate", () => {
+    const r = getOriginStateRollup([
+      makeLoad({ origin_state: "AL", linehaul: "1000", loaded_miles: 500 }),
+      makeLoad({ origin_state: "AL", linehaul: "1000", loaded_miles: 500 }),
+      makeLoad({ origin_state: "AL", linehaul: "1000", loaded_miles: 500 }),
+      makeLoad({ origin_state: "SC", linehaul: "3000", loaded_miles: 250 }),
+      makeLoad({ origin_state: "SC", linehaul: "3000", loaded_miles: 250 }),
+      makeLoad({ origin_state: "NV", linehaul: "900", loaded_miles: 300 }),
+    ]);
+    expect(r.rows.map((x) => x.state)).toEqual(["AL", "SC"]);
+    expect(r.rows[0].name).toBe("Alabama");
+    expect(r.singles).toBe(1);
+    // SC blends $12/mi vs AL $2/mi — best is rate, not volume.
+    expect(r.best?.state).toBe("SC");
+  });
+
+  it("has no best when no origin repeats", () => {
+    const r = getOriginStateRollup([
+      makeLoad({ origin_state: "GA" }),
+      makeLoad({ origin_state: "TX" }),
+    ]);
+    expect(r.rows).toEqual([]);
+    expect(r.singles).toBe(2);
+    expect(r.best).toBeNull();
   });
 });

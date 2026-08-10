@@ -5,12 +5,13 @@ import type { SettlementSchedule } from "@/types/settlementSchedule";
 import {
   getRecentLoads,
   getRegionRollup,
-  getLanesSummary,
+  getWindowTotals,
+  getOriginStateRollup,
   getAreaMapData,
   getAreaDetail,
   levelForWindow,
 } from "@/lib/metrics/lanes";
-import { LanesKpis } from "@/components/lanes/LanesKpis";
+import { OriginMarkets } from "@/components/lanes/OriginMarkets";
 import { LanesMapBoard } from "@/components/lanes/LanesMapBoard";
 import { LanesTable } from "@/components/lanes/LanesTable";
 import { StateDetailPanel } from "@/components/lanes/StateDetailPanel";
@@ -93,7 +94,8 @@ const LanesPage = () => {
   const level = levelForWindow(windowDays);
   const windowLoads = getRecentLoads(loads, windowDays);
   const rollup = getRegionRollup(windowLoads);
-  const summary = getLanesSummary(windowLoads);
+  const totals = getWindowTotals(windowLoads);
+  const origins = getOriginStateRollup(windowLoads);
   const mapData = getAreaMapData(loads, windowDays, level);
   const freeHours = schedule?.detention_free_hours ?? 3;
   const detail = selected
@@ -140,8 +142,25 @@ const LanesPage = () => {
           />
         </div>
 
-        <div className="mt-4">
-          <LanesKpis summary={summary} />
+        {/* answering line — the window in three numbers; the map is the story */}
+        <div className="flex items-baseline gap-3 flex-wrap mt-4">
+          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+            {totals.loads} LOAD{totals.loads === 1 ? "" : "S"}
+          </span>
+          <span className="font-condensed text-[13.5px] text-faint">
+            · <b className="font-semibold text-ink">
+              ${Math.round(totals.linehaul).toLocaleString("en-US")}
+            </b>{" "}
+            linehaul
+            {totals.blendedRpm != null && (
+              <>
+                {" "}
+                · <b className="font-semibold text-ink">${totals.blendedRpm.toFixed(2)}</b>
+                /mi blended
+              </>
+            )}{" "}
+            · click a state to drill
+          </span>
         </div>
 
         <div className="mt-4">
@@ -156,6 +175,8 @@ const LanesPage = () => {
             windowLoads={windowLoads}
           />
         </div>
+
+        <OriginMarkets rollup={origins} windowDays={windowDays} />
 
         {detail ? (
           <StateDetailPanel
