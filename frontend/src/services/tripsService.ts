@@ -55,3 +55,31 @@ export const getLastKnownLocation =
       return null;
     }
   };
+
+// ---- EDIT (S11) ----
+
+export const updateTrip = async (
+  trip_id: string,
+  data: Partial<TripInput>,
+): Promise<Trip> => {
+  try {
+    const res = await api.patch(`/trips/${trip_id}`, data);
+    return res.data.trip;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.data?.error) {
+      throw new Error(err.response.data.error);
+    }
+    throw new Error("Unable to update trip");
+  }
+};
+
+export const deleteTrip = async (trip_id: string): Promise<void> => {
+  try {
+    await api.delete(`/trips/${trip_id}`);
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.data?.error) {
+      throw new Error(err.response.data.error);
+    }
+    throw new Error("Unable to delete trip");
+  }
+};
