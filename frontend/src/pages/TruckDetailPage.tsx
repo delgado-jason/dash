@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Pencil } from "lucide-react";
 import type { Truck } from "@/types/truck";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
@@ -24,8 +23,7 @@ import { getObligations } from "@/services/obligationsService";
 import { getTrips } from "@/services/tripsService";
 import type { Trip } from "@/types/trip";
 import type { Obligation } from "@/types/obligation";
-import { isPayoffTracked, assetLoanStatus } from "@/lib/metrics/payoff";
-import { PayoffTracker } from "@/components/fleet/PayoffTracker";
+import { isPayoffTracked, assetLoanStatus, computePayoff } from "@/lib/metrics/payoff";
 import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
 import { RollingNumber } from "@/components/celebrations/RollingNumber";
 import {
@@ -35,37 +33,18 @@ import {
 } from "@/lib/awards/truckAwards";
 import { earnedMedals } from "@/lib/awards/medals";
 import { MedalBadge } from "@/components/awards/MedalBadge";
-import { RecordBook, type RecordChip } from "@/components/awards/RecordBook";
-import { PatchBoard } from "@/components/awards/PatchBoard";
+import { type RecordChip } from "@/components/awards/RecordBook";
+import { HardwareBoard } from "@/components/awards/HardwareBoard";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
-import { MileClub } from "@/components/fleet/MileClub";
 import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate, money } from "@/lib/format";
-import { Panel } from "@/components/ui/Panel";
+import { mileMilestone } from "@/lib/metrics/mileClub";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BlockSkeleton } from "@/components/ui/PageSkeletons";
 
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
-
-// One tile in the truck-metrics strip.
-const Kpi = ({
-  value,
-  label,
-  sub,
-  green,
-}: {
-  value: string;
-  label: string;
-  sub?: string;
-  green?: boolean;
-}) => (
-  <div className="flex-1 min-w-[92px] rounded-[10px] px-2 py-2.5 text-center" style={{ background: "#1c2333" }}>
-    <div className="font-forge font-bold text-[20px] leading-none" style={{ color: green ? "#4ade80" : "#f5e6c8" }}>
-      {value}
-    </div>
-    <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
-    {sub && <div className="text-[8px] text-muted-text">{sub}</div>}
-  </div>
-);
 
 const Spec = ({
   label,
@@ -195,16 +174,6 @@ const TruckDetailPage = () => {
   }, [truck, truckLoads, services, fuelEntries, trips, id]);
 
   const mpm = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
-  const due = useMemo(() => {
-    let overdue = 0;
-    let soon = 0;
-    for (const it of items.filter((i) => i.truck_id === id)) {
-      const d = computeDue(it, odometer, new Date(), mpm);
-      if (d.level === "overdue") overdue++;
-      else if (d.level === "soon") soon++;
-    }
-    return { overdue, soon };
-  }, [items, id, odometer, mpm]);
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!truck) return;
@@ -226,8 +195,10 @@ const TruckDetailPage = () => {
 
   if (!truck)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
-        <p className="text-muted-text">Loading…</p>
+      <div className="p-6 text-ink font-body min-h-screen">
+        <Skeleton className="h-8 w-56 mb-2" />
+        <Skeleton className="h-4 w-32 mb-6" />
+        <BlockSkeleton className="h-72" />
       </div>
     );
 
@@ -235,15 +206,31 @@ const TruckDetailPage = () => {
   const now = new Date();
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
   const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote);
-  const truckMedals = earnedMedals(
-    computeTruckMedals({
-      odometer,
-      avgMpg: metrics.avgMpg,
-      deliveredCount: earnedLoads.length,
-      loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
-      utilization: metrics.utilization,
-    }),
-  );
+  const allTruckMedals = computeTruckMedals({
+    odometer,
+    avgMpg: metrics.avgMpg,
+    deliveredCount: earnedLoads.length,
+    loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
+    utilization: metrics.utilization,
+  });
+  const truckMedals = earnedMedals(allTruckMedals);
+  const payoff = truckLoan ? computePayoff(truckLoan, now) : null;
+  // Every clock on this tractor, most urgent first — the card's service row.
+  const clocks = items
+    .filter(
+      (i) =>
+        i.active &&
+        (i.truck_id === id || i.truck_id == null) &&
+        (i.unit === "tractor"),
+    )
+    .map((it) => ({ it, d: computeDue(it, odometer, now, mpm) }))
+    .filter(({ d }) => d.progress != null)
+    .sort((a, b) => (b.d.progress ?? 0) - (a.d.progress ?? 0));
+  const nextClock = clocks[0] ?? null;
+  const closeCount = clocks.filter(
+    ({ d }) => d.level === "soon" || d.level === "overdue",
+  ).length;
+  const m = mileMilestone(odometer);
   const patches = computeTruckPatches(truckLoads, truckFuel);
   const recs = truckRecords(truckLoads, truckFuel);
   const recordChips: RecordChip[] = [
@@ -253,50 +240,375 @@ const TruckDetailPage = () => {
     { icon: "arrows-horizontal", color: "#60a5fa", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
   ];
 
-  return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <Link to="/trucks" className="text-xs text-muted-text hover:text-light">
-        ← Trucks
-      </Link>
+  const clockFill = (progress: number | null) =>
+    Math.min(1, Math.max(0, progress ?? 0));
 
-      <div className="flex flex-col md:flex-row gap-6 mt-3 mb-6">
-        <EntityAvatar
-          kind="truck"
-          id={truck.truck_id}
-          avatarUrl={truck.avatar_url}
-          size={180}
-          onUpdated={(u) => setTruck({ ...truck, avatar_url: u })}
-        />
-        <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-condensed">
-                Unit {truck.unit_number}
-              </h1>
-              <p className="text-muted-text text-sm mb-4">
-                {[truck.year, truck.make, truck.model]
-                  .filter(Boolean)
-                  .join(" ")}{" "}
-                · {truck.status}
+  return (
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">TRUCKS</h1>
+          <Link
+            to="/trucks"
+            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+          >
+            ← back to the fleet
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-4 flex-wrap mt-[18px]">
+          <EntityAvatar
+            kind="truck"
+            id={truck.truck_id}
+            avatarUrl={truck.avatar_url}
+            size={84}
+            onUpdated={(u) => setTruck({ ...truck, avatar_url: u })}
+          />
+          <div className="min-w-0">
+            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+              UNIT {truck.unit_number}
+            </h2>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {(truck.year || truck.make || truck.model) && (
+                <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
+                  {[truck.year, truck.make, truck.model].filter(Boolean).join(" ")}
+                </span>
+              )}
+              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)] uppercase">
+                {truck.status.replace(/_/g, " ")}
+              </span>
+            </div>
+            {truckMedals.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {truckMedals.map((md) => (
+                  <MedalBadge key={md.key} medal={md} />
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="ml-auto text-right">
+            <span
+              className="inline-block font-display text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
+              style={{ boxShadow: "inset 0 3px 8px rgba(0,0,0,.6)" }}
+            >
+              <RollingNumber value={odometer} />
+            </span>
+            <p className="font-condensed text-[10.5px] tracking-[.14em] text-faint uppercase mt-1">
+              odometer · one constant
+            </p>
+          </div>
+        </div>
+
+        {/* the rig card */}
+        <div
+          className="relative overflow-hidden rounded-[14px] border mt-4"
+          style={{
+            background: "linear-gradient(180deg, #0e1420, #0b101a)",
+            borderColor: "var(--color-hairline)",
+            boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+          }}
+        >
+          <div
+            className="flex items-center gap-[14px] px-[18px] py-[14px] border-b ds2-cell-rule"
+            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+          >
+            <div className="min-w-0">
+              <div className="font-forge font-bold text-[22px] leading-none" style={{ letterSpacing: "1.5px" }}>
+                {(m.title ?? "THE RIG").toUpperCase()}
+              </div>
+              <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
+                the rig card · forged
+              </div>
+            </div>
+            {m.label && (
+              <span
+                className="ml-auto font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
+                style={{
+                  color: "#f0c24a",
+                  border: "1.5px solid rgba(240,194,74,.55)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,.15), 0 1px 2px rgba(0,0,0,.5)",
+                }}
+              >
+                {m.label} CLUB
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 border-b ds2-cell-rule">
+            <div className="px-[18px] py-3 border-r ds2-cell-rule">
+              <p className="font-condensed font-semibold text-[23px] tabular-nums">{money(revenue)}</p>
+              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+                Earned · full net
               </p>
-              {!editing && truckMedals.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap">
-                  {truckMedals.map((m) => (
-                    <MedalBadge key={m.key} medal={m} />
-                  ))}
-                </div>
+            </div>
+            <div className="px-[18px] py-3 border-r ds2-cell-rule">
+              <p className="font-condensed font-semibold text-[23px] tabular-nums">
+                {deliveredLoads.length}
+              </p>
+              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+                Hauls delivered
+              </p>
+            </div>
+            <div className="px-[18px] py-3">
+              <p className="font-condensed font-semibold text-[23px] tabular-nums">
+                {metrics.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"}
+              </p>
+              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+                Avg MPG
+              </p>
+            </div>
+          </div>
+
+          {/* the payoff */}
+          <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
+            <div className="flex justify-between items-baseline gap-3 mb-[8px]">
+              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+                The payoff — owning the iron
+              </span>
+              {payoff && (
+                <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums">
+                  {payoff.paidPct != null ? `${Math.round(payoff.paidPct * 100)}% yours · ` : ""}
+                  {money(payoff.owed)} to go
+                </span>
               )}
             </div>
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1"
-              >
-                <Pencil size={13} /> Edit
-              </button>
+            {payoff ? (
+              <>
+                <div className="flex gap-[3px]">
+                  {Array.from({ length: 14 }, (_, ci) => (
+                    <i
+                      key={ci}
+                      className="flex-1 h-[11px] rounded-[2.5px]"
+                      style={
+                        payoff.paidPct != null && (ci + 1) / 14 <= payoff.paidPct + 1e-6
+                          ? {
+                              background:
+                                "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                              border: "1px solid rgba(245,176,58,.55)",
+                              boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                            }
+                          : {
+                              background: "var(--color-well)",
+                              border: "1px solid var(--color-hairline-lo)",
+                              boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                            }
+                      }
+                    />
+                  ))}
+                </div>
+                <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                  {payoff.original != null ? `${money(payoff.original)} note · ` : ""}
+                  {money(payoff.monthlyPayment)}/mo — paid off, that payment comes home
+                  every month
+                  {payoff.payoffDate
+                    ? ` · ${payoff.exact ? "payoff" : "on pace for"} ${formatDate(payoff.payoffDate)}`
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+                No tracked note against this truck — free and clear, or add balances on
+                Expenses → obligations to arm the meter.
+              </p>
             )}
           </div>
 
+          {/* next service */}
+          <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
+            <div className="flex justify-between items-baseline gap-3 mb-[8px]">
+              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+                Next service — the clocks
+              </span>
+              {nextClock && (
+                <span
+                  className={`font-condensed font-semibold text-[12.5px] tabular-nums ${
+                    nextClock.d.level === "overdue"
+                      ? "text-[#e05252]"
+                      : nextClock.d.level === "soon"
+                        ? "text-amber-hi"
+                        : "text-dim"
+                  }`}
+                >
+                  {nextClock.it.name.toLowerCase()}
+                  {nextClock.d.milesRemaining != null
+                    ? ` · ${
+                        nextClock.d.milesRemaining >= 0
+                          ? `${Math.round(nextClock.d.milesRemaining).toLocaleString("en-US")} mi out`
+                          : `${Math.abs(Math.round(nextClock.d.milesRemaining)).toLocaleString("en-US")} mi over`
+                      }`
+                    : nextClock.d.daysRemaining != null
+                      ? ` · ${nextClock.d.daysRemaining} days`
+                      : ""}
+                </span>
+              )}
+            </div>
+            {nextClock ? (
+              <>
+                <div className="flex gap-[3px]">
+                  {Array.from({ length: 14 }, (_, ci) => {
+                    const on = (ci + 1) / 14 <= clockFill(nextClock.d.progress) + 1e-6;
+                    const hot = nextClock.d.level !== "ok";
+                    return (
+                      <i
+                        key={ci}
+                        className="flex-1 h-[11px] rounded-[2.5px]"
+                        style={
+                          on
+                            ? hot
+                              ? {
+                                  background: "linear-gradient(180deg, #ff8a8a, #e05252)",
+                                  border: "1px solid rgba(224,82,82,.6)",
+                                  boxShadow: "0 0 7px rgba(224,82,82,.4)",
+                                }
+                              : {
+                                  background:
+                                    "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                  border: "1px solid rgba(245,176,58,.55)",
+                                  boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                                }
+                            : {
+                                background: "var(--color-well)",
+                                border: "1px solid var(--color-hairline-lo)",
+                                boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                              }
+                        }
+                      />
+                    );
+                  })}
+                </div>
+                <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                  {clocks[1]
+                    ? `${clocks[1].it.name.toLowerCase()}${
+                        clocks[1].d.milesRemaining != null
+                          ? ` in ${Math.round(clocks[1].d.milesRemaining).toLocaleString("en-US")} mi`
+                          : ""
+                      } · `
+                    : ""}
+                  {closeCount} clock{closeCount === 1 ? "" : "s"} running close · full
+                  schedule on{" "}
+                  <Link to="/maintenance" className="text-amber-hi hover:text-hot">
+                    Maintenance →
+                  </Link>
+                </p>
+              </>
+            ) : (
+              <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+                No service clocks with a baseline yet — log services on Maintenance and
+                the clocks arm.
+              </p>
+            )}
+          </div>
+
+          {/* mile club */}
+          <div className="px-[18px] py-[13px]">
+            <div className="flex justify-between items-baseline gap-3 mb-[8px]">
+              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+                Mile club — next plate at {m.next.toLocaleString("en-US")}
+              </span>
+              <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums">
+                {odometer.toLocaleString("en-US")} / {m.next.toLocaleString("en-US")}
+              </span>
+            </div>
+            <div className="flex gap-[3px]">
+              {Array.from({ length: 10 }, (_, ci) => (
+                <i
+                  key={ci}
+                  className="flex-1 h-[11px] rounded-[2.5px]"
+                  style={
+                    (ci + 1) / 10 <= m.pct + 1e-6
+                      ? {
+                          background:
+                            "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                          border: "1px solid rgba(245,176,58,.55)",
+                          boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                        }
+                      : {
+                          background: "var(--color-well)",
+                          border: "1px solid var(--color-hairline-lo)",
+                          boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                        }
+                  }
+                />
+              ))}
+            </div>
+            {m.label && (
+              <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                {m.label} plate punched · the million-mile coin is the platinum strike
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* the hardware */}
+        <HardwareBoard medals={allTruckMedals} patches={patches} records={recordChips} />
+
+        {/* the numbers — the full running-cost strip, relocated deliberately */}
+        <div className="ds2-board p-4 mt-4">
+          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            The numbers — what it costs to run
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-3">
+            {[
+              {
+                v: metrics.utilization != null ? `${Math.round(metrics.utilization * 100)}%` : "—",
+                l: "Utilization",
+                pos: true,
+              },
+              { v: metrics.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—", l: "Avg MPG" },
+              { v: metrics.bestTank != null ? metrics.bestTank.toFixed(1) : "—", l: "Best tank" },
+              {
+                v: metrics.fuelPerMile != null ? `$${metrics.fuelPerMile.toFixed(2)}` : "—",
+                l: "Fuel / mi",
+              },
+              {
+                v: metrics.revPerMile != null ? `$${metrics.revPerMile.toFixed(2)}` : "—",
+                l: "Revenue / mi",
+                pos: true,
+              },
+              {
+                v:
+                  metrics.costToRunPerMile != null
+                    ? `$${metrics.costToRunPerMile.toFixed(2)}`
+                    : "—",
+                l: "Cost to run / mi",
+              },
+              {
+                v: metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—",
+                l: "Mi / month",
+              },
+            ].map((k) => (
+              <div
+                key={k.l}
+                className="rounded-[10px] px-3 py-2"
+                style={{
+                  background: "var(--color-well)",
+                  border: "1px solid var(--color-hairline-lo)",
+                }}
+              >
+                <p
+                  className="font-condensed font-semibold text-[19px] tabular-nums"
+                  style={k.pos ? { color: "#4ade80" } : undefined}
+                >
+                  {k.v}
+                </p>
+                <p className="font-condensed text-[10px] tracking-[.1em] uppercase text-faint mt-[2px]">
+                  {k.l}
+                </p>
+              </div>
+            ))}
+          </div>
+          {metrics.windowDays > 0 && (
+            <p className="font-condensed text-[11.5px] text-faint mt-2">
+              {metrics.windowDays.toLocaleString("en-US")} days ·{" "}
+              <span style={{ color: "#4ade80" }}>{metrics.underLoadDays} under load</span> ·{" "}
+              <span style={{ color: "#7ab0e8" }}>{metrics.homeDays} home</span> ·{" "}
+              <span style={{ color: "#e05252" }}>{metrics.idleDays} idle</span>
+            </p>
+          )}
+        </div>
+
+        {/* papers */}
+        <div className="ds2-board p-4 mt-4">
           {editing ? (
             <EntityForm
               title="Edit truck"
@@ -312,15 +624,19 @@ const TruckDetailPage = () => {
             />
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Spec label="Unit #" value={truck.unit_number} />
-                <div>
-                  <p className="text-xs text-muted-text">Odometer · latest</p>
-                  <p className="text-sm">
-                    <RollingNumber value={odometer} />{" "}
-                    <span className="text-muted-text">mi</span>
-                  </p>
-                </div>
+              <div className="flex items-baseline gap-2.5 flex-wrap">
+                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  Papers
+                </span>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
+                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                >
+                  EDIT
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
                 <Spec label="VIN" value={truck.vin} />
                 <Spec
                   label="Plate"
@@ -330,97 +646,54 @@ const TruckDetailPage = () => {
                       : null
                   }
                 />
-                <Spec
-                  label="In service"
-                  value={formatDate(truck.in_service_date)}
-                />
+                <Spec label="In service" value={formatDate(truck.in_service_date)} />
+                <Spec label="Status" value={truck.status.replace(/_/g, " ")} />
               </div>
-              <MileClub miles={odometer} />
+              <p className="font-condensed text-[12px] text-faint mt-3">
+                Service history lives on the{" "}
+                <Link to="/maintenance" className="text-amber-hi hover:text-hot">
+                  Maintenance page
+                </Link>
+                .
+              </p>
             </>
           )}
         </div>
-      </div>
 
-      <div className="mt-1">
-        <p className="text-xs text-muted-text mb-2">Truck metrics</p>
-        <div className="flex gap-2 flex-wrap">
-          <div
-            className="flex-[1.4] min-w-[130px] rounded-[10px] px-3 py-2.5 text-center"
-            style={{ background: "#0f2419", border: "1px solid #2f6f52" }}
-          >
-            <div className="font-forge font-bold text-2xl leading-none" style={{ color: "#4ade80" }}>
-              {metrics.utilization != null ? `${Math.round(metrics.utilization * 100)}%` : "—"}
-            </div>
-            <div className="text-[9px] mt-1 tracking-wide" style={{ color: "#8fd6a8" }}>
-              UTILIZATION · DAYS UNDER LOAD
-            </div>
-          </div>
-          <Kpi value={metrics.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"} label="AVG MPG" />
-          <Kpi value={metrics.bestTank != null ? metrics.bestTank.toFixed(1) : "—"} label="BEST TANK" />
-          <Kpi value={metrics.fuelPerMile != null ? `$${metrics.fuelPerMile.toFixed(2)}` : "—"} label="FUEL / MI" />
-          <Kpi value={metrics.revPerMile != null ? `$${metrics.revPerMile.toFixed(2)}` : "—"} label="REVENUE / MI" green />
-          <Kpi
-            value={metrics.costToRunPerMile != null ? `$${metrics.costToRunPerMile.toFixed(2)}` : "—"}
-            label="COST TO RUN / MI"
-            sub={metrics.notePerMile != null ? "fuel + maint + note" : "fuel + maintenance"}
-          />
-          <Kpi value={metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—"} label="MI / MONTH" />
-        </div>
-        {metrics.windowDays > 0 && (
-          <p className="text-[11px] text-muted-text mt-2">
-            {metrics.windowDays.toLocaleString("en-US")} days ·{" "}
-            <span style={{ color: "#4ade80" }}>
-              {metrics.underLoadDays} under load
-            </span>{" "}
-            · <span style={{ color: "#60a5fa" }}>{metrics.homeDays} home</span> ·{" "}
-            <span style={{ color: "#f87171" }}>{metrics.idleDays} idle</span>
+        {/* recent hauls */}
+        <div className="ds2-board p-4 mt-4">
+          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            Recent hauls — every row links to its load
           </p>
-        )}
+          {earnedLoads.length === 0 ? (
+            <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+              None for this truck yet.
+            </p>
+          ) : (
+            <div className="mt-[6px]">
+              {earnedLoads.slice(0, 6).map((l) => (
+                <div
+                  key={l.load_id}
+                  className="grid grid-cols-[92px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                >
+                  <Link
+                    to={`/loads/${l.load_id}`}
+                    className="font-display text-[15px] tracking-[.05em] text-amber-hi hover:text-hot"
+                  >
+                    {l.load_number}
+                  </Link>
+                  <span className="min-w-0 truncate">
+                    {l.origin_market} → {l.delivery_market}
+                  </span>
+                  <span className="text-right font-semibold text-ink tabular-nums">
+                    {money(loadRevenue(l))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-
-      {truckLoan && <PayoffTracker obligation={truckLoan} kind="truck" />}
-
-      <RecordBook records={recordChips} />
-      <PatchBoard patches={patches} />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-        <Link
-          to="/maintenance"
-          className="ds-panel ds-panel--default ds-panel--interactive p-4"
-        >
-          <p className="text-xs text-muted-text mb-2">Maintenance</p>
-          <div className="flex gap-3 text-sm">
-            <span style={{ color: "#e24b4a" }}>{due.overdue} overdue</span>
-            <span style={{ color: "#e8940a" }}>{due.soon} due soon</span>
-          </div>
-        </Link>
-        <Panel className="p-4">
-          <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-          <p className="text-2xl font-condensed">{deliveredLoads.length}</p>
-        </Panel>
-        <Panel className="p-4">
-          <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
-          <p className="text-2xl font-condensed">{money(revenue)}</p>
-        </Panel>
-      </div>
-
-      <Panel className="p-4 mt-4">
-        <p className="text-xs text-muted-text mb-2">Recent loads</p>
-        {deliveredLoads.length === 0 ? (
-          <p className="text-sm text-muted-text">None on this truck yet.</p>
-        ) : (
-          <div className="text-sm divide-y divide-steel">
-            {deliveredLoads.slice(0, 6).map((l) => (
-              <div key={l.load_id} className="py-2 flex justify-between">
-                <span>
-                  {l.origin_market} → {l.delivery_market}
-                </span>
-                <span className="text-muted-text">{money(loadRevenue(l))}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
     </div>
   );
 };
