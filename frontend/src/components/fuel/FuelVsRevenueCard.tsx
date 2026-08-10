@@ -1,6 +1,4 @@
 import type { FuelVsRevenue, FuelMonth } from "@/lib/metrics/fuelRevenue";
-import { Panel } from "@/components/ui/Panel";
-import { Stamp } from "@/components/Stamp";
 import { money } from "@/lib/format";
 
 const pct0 = (n: number) => `${Math.round(n * 100)}%`;
@@ -28,7 +26,7 @@ const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
   const max = Math.max(1, ...recent.map((m) => m.fscCoverage ?? 0));
   return (
     <div className="mt-4">
-      <p className="text-[11px] text-muted-text mb-2">
+      <p className="text-[11px] text-faint mb-2">
         Surcharge coverage by month — did FSC pay for the fuel?
       </p>
       <div className="flex items-end gap-3 h-20">
@@ -55,7 +53,7 @@ const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
                   }}
                 />
               </div>
-              <span className="text-[10px] text-muted-text">
+              <span className="text-[10px] text-faint">
                 {monthLabel(m.month, { month: "short" })}
               </span>
             </div>
@@ -77,32 +75,32 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
   const gap = m.fscCoverage != null ? m.fsc - m.fuelSpend : null;
 
   return (
-    <Panel className="p-4 mt-4">
+    <div className="ds2-board p-4 mt-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-xs text-muted-text uppercase tracking-wider">
+          <p className="text-xs text-faint uppercase tracking-wider">
             Fuel vs revenue
           </p>
-          <p className="text-[11px] text-muted-text mt-0.5">
+          <p className="text-[11px] text-faint mt-0.5">
             {monthLabel(m.month, { month: "long", year: "numeric" })} · months
             with logged fuel only
           </p>
         </div>
         {m.fscCoverage != null &&
           (covered ? (
-            <Stamp label="Surcharge covers fuel" color="#4ade80" />
+            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#6fd08c] border-2 border-[#6fd08c] rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE COVERS FUEL</span>
           ) : (
-            <Stamp label="Surcharge short" color="#f87171" />
+            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#e05252] border-2 border-[#e05252] rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE SHORT</span>
           ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-        <div className="rounded-md p-3" style={{ background: "#141a26" }}>
-          <p className="text-xs text-muted-text">Fuel · % of net</p>
-          <p className="text-2xl font-condensed mt-1 text-light">
+        <div className="rounded-md p-3" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)" }}>
+          <p className="text-xs text-faint">Fuel · % of net</p>
+          <p className="text-2xl font-condensed mt-1 text-ink">
             {m.fuelPctNet == null ? "—" : pct0(m.fuelPctNet)}
           </p>
-          <p className="text-[11px] text-muted-text mt-0.5">
+          <p className="text-[11px] text-faint mt-0.5">
             {money(m.fuelSpend)}
             {m.net > 0 ? ` of ${money(m.net)} net` : ""}
           </p>
@@ -138,6 +136,6 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
       </div>
 
       <CoverageTrend months={data.months} />
-    </Panel>
+    </div>
   );
 };
