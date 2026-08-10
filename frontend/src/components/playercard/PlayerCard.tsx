@@ -5,6 +5,7 @@ import { STRIP_MIN_COUNT, type TypeMix } from "@/lib/metrics/loadMix";
 import { fmtMiles } from "@/lib/metrics/mileClub";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
 import { money } from "@/lib/format";
+import { loadTypeColor } from "@/lib/constants/loadTypeColors";
 
 // The forged player card — built to the approved mockup's structure
 // (2026-08-10, after Jason caught the first pass restyling the old shape):
@@ -13,7 +14,7 @@ import { money } from "@/lib/format";
 // bottleneck coach, and season grid live in LeversBoard below the hardware;
 // identity (name/avatar/hometime) lives in the page header.
 
-const MIX_COLORS = ["var(--color-amber-hi)", "#4f8cd6", "#c9a86a", "#8494ab", "#7ab0e8"];
+
 const TARGET_AT = 0.78; // the pace notch — same anchor as the money tab's PaceMeter
 
 const pct0 = (n: number) => `${Math.round(n * 100)}%`;
@@ -299,7 +300,7 @@ export const PlayerCard = ({
                   className="block h-full"
                   style={{
                     width: `${Math.max(2, m.pct * 100)}%`,
-                    background: MIX_COLORS[i % MIX_COLORS.length],
+                    background: loadTypeColor(m.label, i),
                   }}
                 />
               </span>
