@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ExpensePeriod } from "@/types/expense";
-import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
 interface Datum {
@@ -33,8 +32,8 @@ const ChartTooltip = ({
   return (
     <div
       style={{
-        background: "#1c2333",
-        border: "1px solid #2a3347",
+        background: "var(--color-panel)",
+        border: "1px solid var(--color-hairline)",
         borderRadius: 8,
         padding: "8px 10px",
         fontSize: 12,
@@ -43,8 +42,8 @@ const ChartTooltip = ({
       <div style={{ color: "#ebedf5", fontWeight: 600, marginBottom: 4 }}>
         {d.month}
       </div>
-      <div style={{ color: "#4ade80" }}>Income {money(d.income)}</div>
-      <div style={{ color: "#f87171" }}>Cost {money(d.cost)}</div>
+      <div style={{ color: "#f5b03a" }}>Income {money(d.income)}</div>
+      <div style={{ color: "#4f8cd6" }}>Cost {money(d.cost)}</div>
       <div style={{ color: "#e8940a" }}>
         Profit {money(d.profit)} · {margin.toFixed(0)}%
       </div>
@@ -75,21 +74,21 @@ export const ExpenseYtdChart = ({
   if (data.length === 0) return null;
 
   return (
-    <Panel noir className="p-4" style={{ height: 280 }}>
-      <p className="text-xs text-muted-text mb-2">
+    <div className="ds2-board p-4 mt-4" style={{ height: 280 }}>
+      <p className="text-xs text-faint mb-2">
         Revenue vs {obligationsTotal > 0 ? "true cost" : "cost"} · year to date
       </p>
       <ResponsiveContainer width="100%" height="88%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2a3347" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#141c2a" vertical={false} />
           <XAxis
             dataKey="month"
-            tick={{ fill: "#9daabb", fontSize: 11 }}
+            tick={{ fill: "#5a6880", fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: "#2a3347" }}
+            axisLine={{ stroke: "#1c2637" }}
           />
           <YAxis
-            tick={{ fill: "#9daabb", fontSize: 11 }}
+            tick={{ fill: "#5a6880", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) => `$${Math.round(v / 1000)}k`}
@@ -100,22 +99,22 @@ export const ExpenseYtdChart = ({
             type="monotone"
             dataKey="income"
             name="Income"
-            stroke="#4ade80"
+            stroke="#f5b03a"
             strokeWidth={2.5}
-            dot={{ r: 3, fill: "#4ade80" }}
+            dot={{ r: 3, fill: "#f5b03a" }}
             activeDot={{ r: 5 }}
           />
           <Line
             type="monotone"
             dataKey="cost"
             name="Cost"
-            stroke="#f87171"
+            stroke="#4f8cd6"
             strokeWidth={2.5}
-            dot={{ r: 3, fill: "#f87171" }}
+            dot={{ r: 3, fill: "#4f8cd6" }}
             activeDot={{ r: 5 }}
           />
         </LineChart>
       </ResponsiveContainer>
-    </Panel>
+    </div>
   );
 };
