@@ -61,8 +61,10 @@ const VendorDetailPage = () => {
     );
   if (!vendor) return null;
 
+  // Backend gates which categories can match maintenance spend
+  // (Shop/Tires/Parts/Towing/Washout); Shop keeps the "nothing matched yet" hint.
   const isShop = vendor.category === "Shop";
-  const hasSpend = isShop && !!vendor.service_count && vendor.service_count > 0;
+  const hasSpend = !!vendor.service_count && vendor.service_count > 0;
   const place = [vendor.city, vendor.state].filter(Boolean).join(", ");
 
   const handleSuccess = () => {
