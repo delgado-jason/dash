@@ -1,29 +1,30 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import {
-  Mail,
-  Phone,
-  Globe,
-  MapPin,
-  Star,
-  Wrench,
-  Crown,
-  Trash2,
-} from "lucide-react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { useVendor } from "@/hooks/useVendor";
-import { useVendors } from "@/hooks/useVendors";
 import { deleteVendor } from "@/services/deleteVendorService";
-import { groupVendorsByCategory } from "@/lib/metrics/vendorLeaderboard";
+import { serviceAreaStates } from "@/lib/metrics/vendorLeaderboard";
 
 import VendorRatingForm from "@/components/vendors/VendorRatingForm";
 import VendorForm from "@/components/vendors/VendorForm";
-import { VendorRatingStamp } from "@/components/vendors/VendorRatingStamp";
-import { Kpi } from "@/components/Kpi";
-import { Panel } from "@/components/ui/Panel";
+import { VendorPips } from "@/components/vendors/VendorPips";
+import { VendorTrustTag } from "@/components/vendors/VendorTrustTag";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money, formatDate } from "@/lib/format";
+
+const CALL_ICON = (
+  <svg viewBox="0 0 24 24" className="w-[13px] h-[13px] fill-current shrink-0" aria-hidden>
+    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" />
+  </svg>
+);
+
+const PlateLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+    {children}
+  </p>
+);
 
 const VendorDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -33,20 +34,10 @@ const VendorDetailPage = () => {
   const navigate = useNavigate();
 
   const { vendor, ratingHistory, isLoading, error } = useVendor(refreshKey);
-  const { vendors: allVendors } = useVendors(refreshKey);
-
-  // Is this vendor the top-rated in its category? (drives the champion ribbon)
-  const isChampion = useMemo(() => {
-    if (!vendor) return false;
-    const group = groupVendorsByCategory(allVendors).find(
-      (g) => g.category === vendor.category,
-    );
-    return group?.champion?.vendor_id === vendor.vendor_id;
-  }, [vendor, allVendors]);
 
   if (isLoading)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink font-body min-h-screen">
         <Skeleton className="h-8 w-48 mb-2" />
         <Skeleton className="h-4 w-32 mb-6" />
         <StatCardsSkeleton count={3} />
@@ -55,7 +46,7 @@ const VendorDetailPage = () => {
     );
   if (error)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
+      <div className="p-6 text-ink font-body min-h-screen">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -66,6 +57,7 @@ const VendorDetailPage = () => {
   const isShop = vendor.category === "Shop";
   const hasSpend = !!vendor.service_count && vendor.service_count > 0;
   const place = [vendor.city, vendor.state].filter(Boolean).join(", ");
+  const states = serviceAreaStates(vendor.service_area);
 
   const handleSuccess = () => {
     setRefreshKey((p) => p + 1);
@@ -86,189 +78,218 @@ const VendorDetailPage = () => {
   };
 
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      {showRating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowRating(false)}
-          />
-          <div className="relative w-full max-w-[450px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
-            <VendorRatingForm
-              vendor={vendor}
-              onSuccess={handleSuccess}
-              onClose={() => setShowRating(false)}
-            />
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        {showRating && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setShowRating(false)} />
+            <div className="relative w-full max-w-[450px] mx-4 max-h-[90vh] bg-canvas text-ink overflow-y-auto shadow-xl rounded-[12px] p-4 sm:p-6 border border-hairline">
+              <VendorRatingForm
+                vendor={vendor}
+                onSuccess={handleSuccess}
+                onClose={() => setShowRating(false)}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {showEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowEdit(false)}
-          />
-          <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
-            <VendorForm
-              vendor={vendor}
-              onSuccess={handleSuccess}
-              onClose={() => setShowEdit(false)}
-            />
+        {showEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setShowEdit(false)} />
+            <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] bg-canvas text-ink overflow-y-auto shadow-xl rounded-[12px] p-4 sm:p-6 border border-hairline">
+              <VendorForm vendor={vendor} onSuccess={handleSuccess} onClose={() => setShowEdit(false)} />
+            </div>
           </div>
+        )}
+
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">VENDORS</h1>
+          <Link
+            to="/vendors"
+            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+          >
+            ← back to the rolodex
+          </Link>
         </div>
-      )}
 
-      <Link to="/vendors" className="text-xs text-muted-text hover:text-light">
-        ← Vendors
-      </Link>
-
-      <div className="flex flex-col gap-4 mt-3 mb-6 sm:flex-row sm:justify-between sm:items-start">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-condensed leading-none">{vendor.name}</h1>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-xs font-semibold uppercase tracking-wide bg-plate text-amber-light px-2 py-0.5 rounded">
-              {vendor.category}
+        <div className="flex items-baseline gap-[14px] flex-wrap mt-[18px]">
+          <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+            {vendor.name.toUpperCase()}
+          </h2>
+          <span className="font-condensed font-semibold text-[13px] tracking-[.12em] text-faint uppercase">
+            {vendor.category}
+            {place ? ` · ${place}` : ""}
+          </span>
+          <VendorTrustTag rating={vendor.rating} />
+          {vendor.status === "inactive" && (
+            <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] text-faint border border-hairline rounded-[4px] px-[6px] py-[1px]">
+              INACTIVE
             </span>
-            {isChampion && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-steel bg-amber px-2 py-0.5 rounded">
-                <Crown size={12} /> #1 {vendor.category}
-              </span>
-            )}
-            {vendor.status === "inactive" && (
-              <span className="text-xs text-muted-text border border-[#3b4660] px-2 py-0.5 rounded">
-                Inactive
-              </span>
-            )}
-          </div>
-          {(place || vendor.service_area) && (
-            <p className="text-sm text-muted-text mt-2">
-              <MapPin size={13} className="inline -mt-0.5 mr-1" />
-              {place}
-              {vendor.service_area ? ` · serves ${vendor.service_area}` : ""}
-            </p>
           )}
+          <span className="ml-auto">
+            <VendorPips rating={vendor.rating} />
+          </span>
         </div>
-        <div className="shrink-0 sm:text-right">
-          <VendorRatingStamp rating={vendor.rating} />
-          <div className="mt-3 flex gap-2 sm:justify-end">
-            <button
-              onClick={() => setShowRating(true)}
-              className="bg-steel text-light px-3 py-1.5 rounded text-sm border border-[#3b4660]"
-            >
-              Edit rating
-            </button>
-            <button
-              onClick={() => setShowEdit(true)}
-              className="bg-steel text-light px-3 py-1.5 rounded text-sm border border-[#3b4660]"
-            >
-              Edit
-            </button>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px] mt-4">
+          <div className="ds2-board p-4">
+            <PlateLabel>Contact</PlateLabel>
+            <p className="font-condensed font-semibold text-[19px] mt-2">
+              {vendor.contact_name || "—"}
+            </p>
+            {vendor.phone && (
+              <p className="font-condensed text-[15px] text-dim mt-[2px] tabular-nums">
+                {vendor.phone}
+              </p>
+            )}
+            {vendor.email && (
+              <p className="font-condensed text-[14px] text-dim mt-[2px] break-words">
+                {vendor.email}
+              </p>
+            )}
+            {vendor.website && (
+              <p className="font-condensed text-[14px] text-dim mt-[2px] break-words">
+                {vendor.website}
+              </p>
+            )}
+            {states.length > 0 && (
+              <p className="font-condensed text-[13px] text-dim mt-2 flex items-center gap-2 flex-wrap">
+                Covers
+                <span className="inline-flex gap-1">
+                  {states.map((s) => (
+                    <i
+                      key={s}
+                      className="not-italic font-condensed font-semibold text-[11px] text-dim bg-well border border-hairline-lo rounded-[4px] px-[5px] py-[1px]"
+                    >
+                      {s}
+                    </i>
+                  ))}
+                </span>
+              </p>
+            )}
+            <div className="mt-[14px] flex gap-[10px] flex-wrap">
+              {vendor.phone && (
+                <a
+                  href={`tel:${vendor.phone.replace(/[^+\d]/g, "")}`}
+                  className="inline-flex items-center gap-[7px] h-10 px-[18px] rounded-[9px] font-condensed font-semibold text-[14.5px] text-amber-hi bg-well border border-amber/35"
+                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                >
+                  {CALL_ICON}
+                  CALL
+                </a>
+              )}
+              <button
+                onClick={() => setShowEdit(true)}
+                className="inline-flex items-center h-10 px-[18px] rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline"
+                style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+              >
+                EDIT
+              </button>
+            </div>
+          </div>
+
+          <div className="ds2-board p-4">
+            <PlateLabel>Your notes — why the rating</PlateLabel>
+            {vendor.notes ? (
+              <div
+                className="bg-well border border-hairline-lo rounded-[10px] px-[14px] py-[13px] mt-[10px]"
+                style={{ boxShadow: "inset 0 2px 6px rgba(0,0,0,.45)" }}
+              >
+                <p className="text-[14px] leading-[1.55] italic whitespace-pre-wrap">
+                  "{vendor.notes}"
+                </p>
+              </div>
+            ) : (
+              <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+                No notes yet. What you write here is what you'll wish you remembered
+                next time you're booking.
+              </p>
+            )}
           </div>
         </div>
-      </div>
 
-      {hasSpend && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-          <Kpi
-            label="Spent here"
-            value={
-              vendor.total_spend != null
-                ? money(Number(vendor.total_spend))
-                : "—"
-            }
-            sub="from maintenance"
-          />
-          <Kpi label="Services" value={String(vendor.service_count)} />
-          <Kpi
-            label="Last service"
-            value={formatDate(vendor.last_service) ?? "—"}
-          />
-        </div>
-      )}
+        {(hasSpend || isShop) && (
+          <div className="ds2-board p-4 mt-[14px]">
+            <PlateLabel>Maintenance spend — from the log</PlateLabel>
+            {hasSpend ? (
+              <div className="flex items-baseline gap-x-8 gap-y-2 flex-wrap mt-2">
+                <span className="font-condensed font-semibold text-[24px] tabular-nums">
+                  {vendor.total_spend != null ? money(Number(vendor.total_spend)) : "—"}
+                  <span className="text-[13px] text-faint font-medium"> spent here</span>
+                </span>
+                <span className="font-condensed font-semibold text-[24px] tabular-nums">
+                  {vendor.service_count}
+                  <span className="text-[13px] text-faint font-medium">
+                    {" "}
+                    service{vendor.service_count === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <span className="font-condensed font-semibold text-[24px] tabular-nums">
+                  {formatDate(vendor.last_service) ?? "—"}
+                  <span className="text-[13px] text-faint font-medium"> last in</span>
+                </span>
+              </div>
+            ) : (
+              <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+                No matched maintenance yet. Spend links when a service's vendor name
+                matches this one exactly.
+              </p>
+            )}
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Panel className="p-4 md:col-span-2">
-          <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
-            Rating history
-          </p>
+        <div className="ds2-board p-4 mt-[14px]">
+          <PlateLabel>Tempering log — every rating change, with the why</PlateLabel>
           {ratingHistory.length === 0 ? (
-            <p className="text-sm text-muted-text italic px-1 py-2">
-              No rating changes yet
+            <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+              No re-rates yet. When you change a rating, it lands here: old → new,
+              the date, and the reason — so a year from now you know exactly why
+              they earned it.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="mt-[6px]">
               {ratingHistory.map((h) => (
                 <div
                   key={h.id}
-                  className="border-l-2 border-l-amber bg-steel/40 px-3 py-2 rounded-sm"
+                  className="flex items-baseline gap-x-[10px] gap-y-1 flex-wrap py-[9px] border-t ds2-cell-rule first:border-t-0"
                 >
-                  <p className="text-sm">
-                    <Star size={13} className="inline text-amber -mt-0.5" />{" "}
-                    Rating changed{" "}
-                    <span className="text-muted-text">
-                      {h.old_rating ?? "—"}
-                    </span>{" "}
-                    → <span className="text-amber font-semibold">{h.new_rating}</span>
-                  </p>
-                  {h.reason && (
-                    <p className="text-sm text-muted-text">{h.reason}</p>
-                  )}
-                  <p className="text-xs text-muted-text mt-1">
+                  <span className="font-condensed font-semibold text-[15px] tabular-nums">
+                    <span className="text-faint">{h.old_rating ?? "—"}</span>
+                    <span className="text-dim"> → </span>
+                    <span className="text-amber-hi">{h.new_rating}</span>
+                  </span>
+                  <span className="font-condensed text-[13px] text-dim">
                     {formatDate(h.changed_at) ?? ""} · {h.changed_by}
-                  </p>
+                  </span>
+                  {h.reason && (
+                    <span className="text-[13px] text-faint italic min-w-0">— "{h.reason}"</span>
+                  )}
                 </div>
               ))}
             </div>
           )}
+          <button
+            onClick={() => setShowRating(true)}
+            className="mt-3 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] text-canvas"
+            style={{
+              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
+              boxShadow: "0 4px 10px rgba(232,148,10,.25)",
+            }}
+          >
+            RE-RATE — SAY WHY
+          </button>
+        </div>
 
-          {vendor.notes && (
-            <>
-              <p className="text-xs text-muted-text uppercase tracking-wider mb-2 mt-5">
-                Notes
-              </p>
-              <p className="text-sm whitespace-pre-wrap">{vendor.notes}</p>
-            </>
-          )}
-        </Panel>
-
-        <Panel className="p-4">
-          <p className="text-xs text-muted-text uppercase tracking-wider mb-3">
-            Contact
-          </p>
-          {vendor.contact_name && (
-            <p className="text-sm mb-2">{vendor.contact_name}</p>
-          )}
-          <p className="text-sm mb-2 break-words">
-            <Phone size={14} className="inline text-muted-text mr-1.5 -mt-0.5" />
-            {vendor.phone || "No phone"}
-          </p>
-          <p className="text-sm mb-2 break-words">
-            <Mail size={14} className="inline text-muted-text mr-1.5 -mt-0.5" />
-            {vendor.email || "No email"}
-          </p>
-          {vendor.website && (
-            <p className="text-sm mb-2 break-words">
-              <Globe size={14} className="inline text-muted-text mr-1.5 -mt-0.5" />
-              {vendor.website}
-            </p>
-          )}
-          {isShop && !hasSpend && (
-            <p className="text-xs text-muted-text mt-3 pt-3 border-t border-plate">
-              <Wrench size={12} className="inline -mt-0.5 mr-1" />
-              No matched maintenance yet. Spend links when a service's vendor name
-              matches this one.
-            </p>
-          )}
-
+        <div className="flex justify-end mt-5">
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="mt-4 text-xs text-[#e0857a] hover:text-[#f0857a] inline-flex items-center gap-1 disabled:opacity-50"
+            className="font-condensed font-semibold text-[12.5px] tracking-[.08em] text-[#e05252]/80 hover:text-[#e05252] disabled:opacity-50"
           >
-            <Trash2 size={13} /> {deleting ? "Deleting…" : "Delete vendor"}
+            {deleting ? "DELETING…" : "DELETE VENDOR"}
           </button>
-        </Panel>
+        </div>
       </div>
     </div>
   );

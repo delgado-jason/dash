@@ -1,4 +1,5 @@
 import type { Vendor } from "@/types/vendor";
+import { STATES } from "@/lib/constants/states";
 
 export interface VendorGroup {
   category: string;
@@ -39,6 +40,29 @@ export const groupVendorsByCategory = (vendors: Vendor[]): VendorGroup[] => {
   return groups;
 };
 
-// How many vendors you've marked a go-to (rated 5) — a roster KPI.
-export const goToCount = (vendors: Vendor[]): number =>
-  vendors.filter((v) => v.rating === 5).length;
+// The trust ledger behind the answering line: go-to's (rated 5), steer-clears
+// (rated ≤2), and the unproven (never rated). 3–4s are solid and need no count.
+export interface TrustCounts {
+  goTo: number;
+  steerClear: number;
+  unproven: number;
+}
+
+export const trustCounts = (vendors: Vendor[]): TrustCounts => ({
+  goTo: vendors.filter((v) => v.rating === 5).length,
+  steerClear: vendors.filter((v) => v.rating != null && v.rating <= 2).length,
+  unproven: vendors.filter((v) => v.rating == null).length,
+});
+
+// Parse a free-text service area ("TX, AL, GA, SC, NC,") into state chips.
+// Tolerates trailing commas, punctuation, and lowercase; a token only becomes
+// a chip if it's a real state code — "to" or "and" can't sneak in as states.
+// Deduped, first-mention order.
+export const serviceAreaStates = (area: string | null | undefined): string[] => [
+  ...new Set(
+    (area ?? "")
+      .split(/[^A-Za-z]+/)
+      .map((s) => s.toUpperCase())
+      .filter((s) => s in STATES),
+  ),
+];

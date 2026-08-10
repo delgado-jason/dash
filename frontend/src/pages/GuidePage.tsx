@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
-import { VendorRatingMedallion } from "@/components/vendors/VendorRatingMedallion";
+import { VendorPips } from "@/components/vendors/VendorPips";
 import {
   PRESTIGE_META,
 } from "@/components/agents/PrestigeBadge";
@@ -1794,7 +1794,7 @@ const GuidePage = () => {
               ).map(([r, desc]) => (
                 <div key={r} className="flex items-center gap-4">
                   <div className="w-32 shrink-0">
-                    <VendorRatingMedallion rating={r} />
+                    <VendorPips rating={r} align="start" />
                   </div>
                   <p className="text-sm text-muted-text">{desc}</p>
                 </div>
@@ -1809,18 +1809,20 @@ const GuidePage = () => {
             <p className="text-sm text-muted-text">
               Every vendor sits in one category — Shop, Escort / Pilot Car,
               Permits, and so on. Within each, dash ranks them by the grade you
-              gave and pins a crown on the top one. That crown is the quick
-              answer to “who's my best escort?” — no digging.
+              gave and stamps GO-TO on the top one, right in the category's
+              header. That stamp is the quick answer to “who's my best escort?”
+              — no digging. The other end shows too: anyone rated 2 or lower
+              wears STEER CLEAR, and an unrated vendor rides as UNPROVEN ghost
+              pips until the first job earns a grade.
             </p>
             <Formula>
-              champion = highest-rated vendor in the category (ties broken by
+              go-to = highest-rated vendor in the category (ties broken by
               name)
             </Formula>
             <Why>
               It's ranked on <span className="text-light">your</span> grades,
               nothing automatic — an honest “best of what I've got,” even when a
-              category is thin. Use the chips up top to filter to a single
-              category's board.
+              category is thin.
             </Why>
           </Section>
 
