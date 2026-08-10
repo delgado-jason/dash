@@ -4,9 +4,9 @@ import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
 import { VendorRatingMedallion } from "@/components/vendors/VendorRatingMedallion";
 import {
-  PrestigeBurst,
   PRESTIGE_META,
 } from "@/components/agents/PrestigeBadge";
+import { Coin, type CoinMetal } from "@/components/forge/Coin";
 import type { PrestigeTier } from "@/lib/metrics/agentLeaderboard";
 import { awardIcon } from "@/components/awards/awardIcons";
 import { PATCH_GUIDE } from "@/lib/awards/patches";
@@ -1731,15 +1731,21 @@ const GuidePage = () => {
             sources={[{ label: "Agents", to: "/agents" }]}
           >
             <p className="text-sm text-muted-text mb-4">
-              Boards and trophies roll up into a single rank — the starburst in
-              the corner of the agent's card. It never clutters and only ever
-              levels up, climbing bronze → silver → gold → the holographic{" "}
-              <span className="text-light">Legend</span> foil at the very top.
+              Boards and trophies roll up into a single rank — the struck coin
+              in the corner of the agent's card. It never clutters and only ever
+              levels up, climbing Bronze → Silver → Gold →{" "}
+              <span className="text-light">Platinum</span>, the foil-finish coin
+              at the very top.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {TIERS.map(([tier, desc]) => (
                 <div key={tier} className="flex items-center gap-3">
-                  <PrestigeBurst tier={tier} size={54} />
+                  <Coin
+                    metal={({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"}
+                    size={44}
+                  >
+                    {PRESTIGE_META[tier].label.charAt(0)}
+                  </Coin>
                   <div>
                     <p
                       className="font-forge font-bold text-lg"

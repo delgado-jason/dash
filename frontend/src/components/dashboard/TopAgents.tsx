@@ -3,7 +3,8 @@ import { Trophy } from "lucide-react";
 import type { AgentRevenue } from "@/lib/metrics/dashboard";
 import type { AgentHonors, LiveStanding } from "@/lib/metrics/agentLeaderboard";
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
-import { PrestigeBurst } from "@/components/agents/PrestigeBadge";
+import { Coin, type CoinMetal } from "@/components/forge/Coin";
+import { PRESTIGE_META } from "@/components/agents/PrestigeBadge";
 
 interface Props {
   agents: AgentRevenue[];
@@ -96,7 +97,14 @@ export const TopAgents = ({ agents, honors, standings }: Props) => (
             <>
               <Rank i={i} />
               <span className="w-[22px] shrink-0 flex justify-center">
-                <PrestigeBurst tier={tier} size={22} />
+                {PRESTIGE_META[tier].label ? (
+                  <span title={`${PRESTIGE_META[tier].label} agent`}>
+                    <Coin
+                      metal={({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"}
+                      size={20}
+                    />
+                  </span>
+                ) : null}
               </span>
               <span className="flex-1 min-w-0">
                 {first ? (
