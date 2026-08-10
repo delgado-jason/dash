@@ -79,12 +79,16 @@ export interface MonthlyDeadhead {
   lastMonth: number | null;
 }
 
-// A load counts toward deadhead only if it delivered with both odometer readings
-// AND a delivery date to place it in time; a trip needs its readings and a date.
-// The odometer math itself lives in metrics/deadhead.ts — the one place actual
-// deadhead is derived, so this KPI and the driver's records can't drift apart.
+// A load counts toward deadhead once it has both odometer readings AND a
+// delivery date to place it in time; a trip needs its readings and a date.
+// The window itself is no longer status-gated (metrics/deadhead.ts — miles are
+// physics), so the KPI's product exclusions live here explicitly: cancelled
+// and TONU loads stay out of the trend, as they always have.
 const deadheadLoad = (load: Load): boolean =>
-  hasOdometerWindow(load) && !!load.delivery_date;
+  hasOdometerWindow(load) &&
+  !!load.delivery_date &&
+  load.load_status !== "cancelled" &&
+  load.load_status !== "tonu";
 const deadheadTrip = (trip: Trip): boolean =>
   trip.odometer_start != null && trip.odometer_end != null && !!trip.trip_date;
 

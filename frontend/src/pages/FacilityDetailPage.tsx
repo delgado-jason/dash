@@ -168,8 +168,6 @@ const FacilityDetailPage = () => {
     );
 
   const notesDirty = notesSeeded && (facility.notes ?? "") !== notes.trim();
-  const onTimeCount =
-    score && score.onTimePct != null ? Math.round(score.onTimePct * score.gradedStops) : 0;
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -227,7 +225,7 @@ const FacilityDetailPage = () => {
                   <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
                     {score.gradedStops > 0 ? (
                       <>
-                        {onTimeCount} of {score.gradedStops}{" "}
+                        {score.onTimeCount} of {score.gradedStops}{" "}
                         <span className="text-[12.5px] text-faint font-medium">you, not them</span>
                       </>
                     ) : (

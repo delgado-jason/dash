@@ -54,9 +54,25 @@ describe("per-load deadhead", () => {
     }
   });
 
-  it("doesn't count a load that hasn't delivered yet", () => {
-    expect(hasOdometerWindow(L({ load_status: "in_transit" }))).toBe(false);
-    expect(loadDeadheadPct(L({ load_status: "booked" }))).toBeNull();
+  it("counts a complete window regardless of status — miles are physics, not paperwork", () => {
+    // In-transit with both readings = finished driving, waiting on the POD.
+    expect(hasOdometerWindow(L({ load_status: "in_transit" }))).toBe(true);
+    expect(
+      loadEmptyMiles(
+        L({
+          load_status: "in_transit",
+          odometer_start: 589624,
+          odometer_end: 590731,
+          loaded_miles: 475,
+        }),
+      ),
+    ).toBe(632);
+    // But a booked load with no readings still contributes nothing.
+    expect(
+      loadDeadheadPct(
+        L({ load_status: "booked", odometer_start: null, odometer_end: null }),
+      ),
+    ).toBeNull();
   });
 });
 

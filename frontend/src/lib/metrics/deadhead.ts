@@ -16,13 +16,13 @@ import type { Trip } from "@/types/trip";
 // Every deadhead figure in the app routes through this file so one number means
 // one thing everywhere.
 
-// A load contributes real miles only once it has run with both odometer
-// readings recorded. Payment status is irrelevant — what matters is that the
-// truck moved.
+// A load contributes real miles once BOTH odometer readings exist — the
+// window is physics, not paperwork. Status doesn't gate it: an in-transit
+// load with both readings has finished driving and is waiting on the POD, and
+// its miles are already real (2026-08: Jason's freshly-updated load showed no
+// actual deadhead because a delivered-only gate hid a complete window).
 export const hasOdometerWindow = (l: Load): boolean =>
-  l.load_status === "delivered" &&
-  l.odometer_start != null &&
-  l.odometer_end != null;
+  l.odometer_start != null && l.odometer_end != null;
 
 const tripHasWindow = (t: Trip): boolean =>
   t.odometer_start != null && t.odometer_end != null;
