@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLoads } from "@/hooks/useLoads";
 import {
   getPerDiemDays,
@@ -15,25 +14,28 @@ import {
   nextStatus,
 } from "@/lib/perDiem";
 import type { PerDiemStatus } from "@/types/perDiem";
-import { Panel } from "@/components/ui/Panel";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { money, moneyCents } from "@/lib/format";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = (n: number) => String(n).padStart(2, "0");
 
-const AMBER = "#e8940a";
-const HALF_BG = `linear-gradient(135deg, ${AMBER} 0 50%, #2a3347 50% 100%)`;
+const AMBER = "var(--color-amber)";
+const HALF_BG = `linear-gradient(135deg, ${AMBER} 0 50%, var(--color-well) 50% 100%)`;
 
 const cellStyle = (
   eff: PerDiemStatus,
   inferred: boolean,
   future: boolean,
 ): CSSProperties => {
-  if (future) return { background: "#212a3d", color: "#39445c" };
-  if (inferred) return { background: "transparent", border: `1.5px solid ${AMBER}`, color: AMBER };
+  if (future)
+    return { background: "transparent", border: "1px dashed var(--color-hairline-lo)", color: "#39445c" };
+  // The ghost rule, applied to data: visible, not yet confirmed, tap to claim.
+  if (inferred)
+    return { background: "transparent", border: "1.5px dashed var(--color-amber-hi)", color: "var(--color-amber-hi)", fontWeight: 600 };
   if (eff === "full") return { background: AMBER, color: "#0d1117", fontWeight: 700 };
-  if (eff === "half") return { background: HALF_BG, color: "#0d1117" };
-  return { background: "#2a3347", color: "#6b7793" }; // home / unmarked
+  if (eff === "half") return { background: HALF_BG, color: "#0d1117", border: "1px solid var(--color-hairline-lo)" };
+  return { background: "var(--color-well)", color: "var(--color-dim)", border: "1px solid var(--color-hairline)" }; // home / unmarked
 };
 
 const Sw = ({ style, label }: { style: CSSProperties; label: string }) => (
@@ -103,92 +105,120 @@ const PerDiemPage = () => {
   };
 
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <h1 className="text-3xl font-condensed mb-1">Per diem</h1>
-      <p className="text-sm text-muted-text mb-6">
-        Days out for the meal-allowance (M&amp;IE) deduction. Tap a day: home →
-        full → half.
-      </p>
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">PER DIEM</h1>
+          <span className="font-condensed font-medium text-[15px] text-dim">
+            the days out — the meal money the IRS gives back
+          </span>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,1fr)_2.4fr] gap-4 items-start">
-        {/* SUMMARY */}
-        <Panel className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-text uppercase tracking-wider">
-              Tax year
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setYear((y) => y - 1)}
-                className="text-muted-text hover:text-light"
-                aria-label="previous year"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="font-condensed text-lg w-12 text-center">{year}</span>
-              <button
-                onClick={() => setYear((y) => Math.min(curYear, y + 1))}
-                disabled={year >= curYear}
-                className="text-muted-text hover:text-light disabled:opacity-30"
-                aria-label="next year"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-
-          <p className="text-4xl font-condensed mt-2" style={{ color: "#4ade80" }}>
-            {money(summary.deductible)}
-          </p>
-          <p className="text-[11px] text-muted-text">
-            deductible per-diem{year === curYear ? " · year to date" : ""}
-          </p>
-
-          <div className="mt-3 text-sm flex flex-col gap-1">
-            <div className="flex justify-between">
-              <span className="text-muted-text">Full days</span>
-              <span className="font-condensed">{summary.fullDays}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-text">Half days</span>
-              <span className="font-condensed">{summary.halfDays}</span>
-            </div>
-          </div>
-
-          <div
-            className="mt-3 rounded-md px-3 py-2 text-[11px] text-muted-text"
-            style={{ background: "#0d1119", border: "1px solid #22304a" }}
-          >
-            ({summary.fullDays} × {money(rate)} + {summary.halfDays} ×{" "}
-            {moneyCents(rate * 0.75)}) × {Math.round(deductPct * 100)}%
-          </div>
-
-          <p className="text-[11px] text-muted-text mt-2">
-            rate <span className="text-light">{money(rate)}/day</span> ·{" "}
-            <span className="text-light">{Math.round(deductPct * 100)}%</span>{" "}
-            deductible ·{" "}
-            <Link to="/settings" className="text-amber-light hover:underline">
-              edit
-            </Link>
-          </p>
-
+        {/* the money first */}
+        <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
+          <span className="font-display text-[21px] tracking-[.03em] tabular-nums" style={{ color: "#6fd08c" }}>
+            {money(summary.deductible)} DEDUCTIBLE
+          </span>
+          <span className="text-[13.5px] text-faint">
+            {year === curYear ? "· year to date " : `· ${year} `}·{" "}
+            <b className="font-semibold text-ink">{summary.fullDays}</b> full ·{" "}
+            <b className="font-semibold text-ink">{summary.halfDays}</b> half ·{" "}
+            <b className="font-semibold text-ink">{money(rate)}</b>/day ·{" "}
+            <b className="font-semibold text-ink">{Math.round(deductPct * 100)}%</b>
+          </span>
           {summary.inferredCount > 0 && (
-            <p
-              className="mt-2 rounded-md px-2 py-1.5 text-[11px]"
-              style={{ background: "#241a0e", border: "1px solid #7a4718", color: "#f5c37a" }}
-            >
-              ⚠ {summary.inferredCount} day{summary.inferredCount === 1 ? "" : "s"}{" "}
-              inferred from your loads — tap to confirm
-            </p>
+            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.08)]">
+              ⚠ {summary.inferredCount} DAY{summary.inferredCount === 1 ? "" : "S"} INFERRED
+              FROM LOADS — TAP TO CONFIRM
+            </span>
           )}
-        </Panel>
+        </div>
 
-        {/* CALENDAR */}
-        <Panel className="p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_2.2fr] gap-4 items-start mt-4">
+          {/* THE DEDUCTION */}
           <div
-            className="grid gap-x-3 gap-y-2"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}
+            className="relative overflow-hidden rounded-[14px] border"
+            style={{
+              background: "linear-gradient(180deg, #0e1420, #0b101a)",
+              borderColor: "var(--color-hairline)",
+              boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+            }}
           >
+            <div
+              className="flex items-center gap-3 px-4 py-3 border-b ds2-cell-rule"
+              style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+            >
+              <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+                THE DEDUCTION
+              </span>
+              <span className="ml-auto flex items-center gap-2 font-condensed">
+                <button
+                  onClick={() => setYear((y) => y - 1)}
+                  className="text-faint hover:text-ink text-[16px]"
+                  aria-label="previous year"
+                >
+                  ‹
+                </button>
+                <span className="font-display text-[18px] tracking-[.04em] w-12 text-center">
+                  {year}
+                </span>
+                <button
+                  onClick={() => setYear((y) => Math.min(curYear, y + 1))}
+                  disabled={year >= curYear}
+                  className="text-faint hover:text-ink disabled:opacity-30 text-[16px]"
+                  aria-label="next year"
+                >
+                  ›
+                </button>
+              </span>
+            </div>
+            <div className="p-4">
+              <p className="font-display text-[44px] tracking-[.02em] leading-none" style={{ color: "#6fd08c" }}>
+                {money(summary.deductible)}
+              </p>
+              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
+                deductible per-diem{year === curYear ? " · year to date" : ""}
+              </p>
+              <div className="flex justify-between font-condensed text-[14px] text-dim mt-3">
+                <span>Full days</span>
+                <b className="text-ink tabular-nums">{summary.fullDays}</b>
+              </div>
+              <div className="flex justify-between font-condensed text-[14px] text-dim mt-1">
+                <span>Half days</span>
+                <b className="text-ink tabular-nums">{summary.halfDays}</b>
+              </div>
+              <div
+                className="mt-3 rounded-[8px] px-3 py-2 font-condensed text-[12px] text-faint tabular-nums"
+                style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+              >
+                ({summary.fullDays} × {money(rate)} + {summary.halfDays} ×{" "}
+                {moneyCents(rate * 0.75)}) × {Math.round(deductPct * 100)}%
+              </div>
+              <p className="font-condensed text-[11.5px] text-faint mt-2.5">
+                rate <b className="text-ink">{money(rate)}/day</b> ·{" "}
+                <b className="text-ink">{Math.round(deductPct * 100)}%</b> deductible ·{" "}
+                <Link to="/settings" className="text-amber-hi hover:text-hot">
+                  edit on Settings →
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          {/* THE YEAR */}
+          <div className="ds2-board overflow-hidden">
+            <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                The year
+              </span>
+              <span className="font-condensed text-[12px] text-faint">
+                · tap a day: home → full → half
+              </span>
+            </div>
+            <div
+              className="grid gap-x-3 gap-y-3 px-4 py-3"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}
+            >
             {MONTHS.map((name, mo) => (
               <div key={mo}>
                 <div className="text-[11px] uppercase tracking-wide text-muted-text mb-1">
@@ -232,18 +262,35 @@ const PerDiemPage = () => {
                 </div>
               </div>
             ))}
+            </div>
+            <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[11px] text-faint">
+              <Sw style={{ background: "var(--color-amber)" }} label="Full day" />
+              <Sw
+                style={{
+                  background: HALF_BG,
+                  border: "1px solid var(--color-hairline-lo)",
+                }}
+                label="Half day"
+              />
+              <Sw
+                style={{ background: "transparent", border: "1.5px dashed var(--color-amber-hi)" }}
+                label="Inferred — tap to confirm"
+              />
+              <Sw
+                style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}
+                label="Home / unmarked"
+              />
+              <Sw
+                style={{ background: "transparent", border: "1px dashed var(--color-hairline-lo)" }}
+                label="Future"
+              />
+            </div>
+            <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+              <b className="text-dim">the wiring:</b> home marks here drive the hometime chip on
+              your driver card — the days-out warning reads this calendar.
+            </div>
           </div>
-
-          <div className="flex gap-x-4 gap-y-1 flex-wrap mt-3 text-[11px] text-muted-text">
-            <Sw style={{ background: AMBER }} label="Full day" />
-            <Sw style={{ background: HALF_BG }} label="Half day" />
-            <Sw
-              style={{ background: "transparent", border: `1.5px solid ${AMBER}` }}
-              label="Inferred (tap to confirm)"
-            />
-            <Sw style={{ background: "#2a3347" }} label="Home" />
-          </div>
-        </Panel>
+        </div>
       </div>
     </div>
   );
