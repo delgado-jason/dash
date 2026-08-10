@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Trophy, Lock } from "lucide-react";
 import type { Load } from "@/types/load";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import type { RecapScope } from "@/lib/metrics/recap";
@@ -23,7 +22,7 @@ const Stat = ({
   sub?: React.ReactNode;
 }) => (
   <div>
-    <p className="text-[10.5px] uppercase tracking-wide text-muted-text">
+    <p className="text-[10.5px] uppercase tracking-wide text-faint">
       {label}
     </p>
     <p className="text-lg font-semibold mt-0.5">{value}</p>
@@ -41,7 +40,13 @@ const TrophyTile = ({ t }: { t: SeasonTrophy }) => (
     }
   >
     <div className="flex justify-center" style={{ color: t.earned ? GOLD : "#586b86" }}>
-      {t.earned ? <Trophy size={22} /> : <Lock size={20} />}
+      <span
+        aria-hidden
+        className={`font-forge font-bold ${t.earned ? "text-amber-hi" : "text-faint"}`}
+        style={{ fontSize: t.earned ? 15 : 13, letterSpacing: "1px" }}
+      >
+        {t.earned ? "WON" : "—"}
+      </span>
     </div>
     <p className="text-[12.5px] font-semibold mt-1.5">{t.name}</p>
     <p
@@ -102,13 +107,13 @@ export const DispatcherSeasonCard = ({
   return (
     <section
       className="rounded-2xl border p-4 mt-4"
-      style={{ background: "#141a26", borderColor: "#2a3347" }}
+      style={{ background: "var(--color-well)", borderColor: "var(--color-hairline-lo)" }}
     >
       <div className="flex items-center gap-2 flex-wrap mb-3">
-        <span className="text-[11px] tracking-[1.5px] text-muted-text uppercase">
+        <span className="text-[11px] tracking-[1.5px] text-faint uppercase">
           Season
         </span>
-        <span className="text-xs text-muted-text">· {season.label}</span>
+        <span className="text-xs text-faint">· {season.label}</span>
         <div className="ml-auto">
           <SegmentedTabs
             size="sm"
@@ -121,7 +126,7 @@ export const DispatcherSeasonCard = ({
       </div>
 
       {!season.hasData ? (
-        <p className="text-sm text-muted-text py-4">
+        <p className="text-sm text-faint py-4">
           No loads booked this {scope} yet — they'll show up here as you book.
         </p>
       ) : (
@@ -165,7 +170,7 @@ export const DispatcherSeasonCard = ({
 
       {log.some((e) => e.loads > 0) && (
         <div className="flex items-center gap-2 flex-wrap mt-4">
-          <span className="text-[11px] tracking-wide text-muted-text uppercase mr-1">
+          <span className="text-[11px] tracking-wide text-faint uppercase mr-1">
             Season log
           </span>
           {log.map((e) => (
@@ -173,8 +178,8 @@ export const DispatcherSeasonCard = ({
               key={e.label}
               className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px]"
               style={{
-                background: "#0f1622",
-                borderColor: "#26304a",
+                background: "var(--color-well)",
+                borderColor: "var(--color-hairline-lo)",
                 color: "#9fb0c9",
               }}
             >
@@ -182,7 +187,7 @@ export const DispatcherSeasonCard = ({
               {e.trophies > 0 && (
                 <span style={{ color: GOLD }} className="inline-flex gap-0.5">
                   {Array.from({ length: e.trophies }, (_, i) => (
-                    <Trophy key={i} size={12} />
+                    <span key={i} aria-hidden className="text-amber-hi" style={{ fontSize: 11 }}>★</span>
                   ))}
                 </span>
               )}

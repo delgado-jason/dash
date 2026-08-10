@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { Medal } from "@/lib/awards/medals";
 import type { Patch } from "@/lib/awards/patches";
 import type { RecordChip } from "@/components/awards/RecordBook";
+import type { GrindPatch } from "@/lib/awards/dispatcherAwards";
 import { Coin, type CoinMetal } from "@/components/forge/Coin";
 
 const METALS: CoinMetal[] = ["bronze", "bronze", "silver", "gold", "platinum"];
@@ -34,14 +35,19 @@ const MeterCells = ({ pct, cells = 4 }: { pct: number; cells?: number }) => (
 export const HardwareBoard = ({
   medals,
   patches,
+  grindTags,
   records,
 }: {
   medals: Medal[];
-  patches: Patch[];
-  records: RecordChip[];
+  patches?: Patch[]; // the driver's hard stackable feats
+  grindTags?: GrindPatch[]; // the dispatcher's milestone grind (badge + progress built in)
+  records?: RecordChip[]; // record plates; section hidden when absent
 }) => {
-  const sortedPatches = [...patches].sort(
+  const sortedPatches = [...(patches ?? [])].sort(
     (a, b) => (b.count > 0 ? 1 : 0) - (a.count > 0 ? 1 : 0) || b.count - a.count,
+  );
+  const sortedTags = [...(grindTags ?? [])].sort(
+    (a, b) => (b.earned ? 1 : 0) - (a.earned ? 1 : 0) || b.progress - a.progress,
   );
   return (
     <div className="ds2-board p-4 mt-4">
@@ -102,6 +108,7 @@ export const HardwareBoard = ({
       </div>
 
       {/* tags */}
+      {sortedPatches.length > 0 && (
       <div className="mt-4">
         <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mb-2">
           Tags — hard to earn · stack a ×count each time
@@ -144,8 +151,39 @@ export const HardwareBoard = ({
           })}
         </div>
       </div>
+      )}
+
+      {/* grind tags — milestone-based, each carrying its own meter */}
+      {sortedTags.length > 0 && (
+        <div className="mt-4">
+          <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mb-2">
+            Tags — the grind, milestone by milestone
+          </p>
+          <div className="flex gap-x-3 gap-y-2 flex-wrap">
+            {sortedTags.map((t) => (
+              <span key={t.key} className="inline-flex flex-col gap-[4px]" title={t.hint}>
+                {t.earned ? (
+                  <span className="font-condensed font-bold text-[11px] tracking-[.08em] px-[9px] py-[4px] rounded-[5px] uppercase text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.07)]">
+                    {t.name} · {t.badge}{" "}
+                    <span className="normal-case tracking-normal text-dim font-medium">
+                      — {t.hint}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="font-condensed font-semibold text-[11px] tracking-[.06em] px-[9px] py-[4px] rounded-[5px] uppercase text-faint border border-dashed border-hairline">
+                    {t.name}{" "}
+                    <span className="normal-case tracking-normal">— {t.hint}</span>
+                  </span>
+                )}
+                <MeterCells pct={t.progress} cells={8} />
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* record plates */}
+      {records && records.length > 0 && (
       <div className="mt-4">
         <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mb-2">
           Record plates — your bests, they climb as you beat them
@@ -166,6 +204,7 @@ export const HardwareBoard = ({
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 };

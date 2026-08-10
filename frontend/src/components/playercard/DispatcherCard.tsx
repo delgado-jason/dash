@@ -1,178 +1,280 @@
-import type { ReactNode } from "react";
-import { Headset } from "lucide-react";
-import type { DispatcherCard as CardData } from "@/lib/metrics/dispatcherCard";
-import { RANK_TIERS } from "@/lib/metrics/dispatcherCard";
-import type { Grade } from "@/lib/metrics/playerCard";
-import type { Medal } from "@/lib/awards/medals";
-import { MedalBadge } from "@/components/awards/MedalBadge";
-import { rpm } from "@/lib/format";
+import {
+  RANK_TIERS,
+  type DispatcherCard as DispatcherCardData,
+} from "@/lib/metrics/dispatcherCard";
+import { money } from "@/lib/format";
 
-interface Props {
-  name: string;
-  business?: string;
-  avatar: ReactNode;
-  card: CardData;
-  medals?: Medal[]; // earned rare-feat medals, worn by the name
-}
+// The forged dispatcher card — same grammar as the driver's card, her metrics:
+// stencil rank head, career strip, then the meter rows. The money row is
+// BOOKING OVER THE FLOOR: the gross $/mi she books racing the walk-away floor,
+// notch at 78%, overdrive past it — the margin she found. Identity (name,
+// avatar, worn medals) lives in the page header.
 
-// Compact gross: "$0", "$840", "$12.4k", "$487k".
-const gross = (n: number): string => {
-  if (n < 1000) return `$${Math.round(n)}`;
-  const k = n / 1000;
-  return `$${k < 100 ? k.toFixed(1) : Math.round(k)}k`;
-};
-const hrs = (min: number): string => `${(min / 60).toFixed(1)}h`;
-const pct = (r: number | null): string => (r == null ? "—" : `${Math.round(r * 100)}%`);
+const TARGET_AT = 0.78;
 
-const GRADE_META: Record<Grade, { label: string; bg: string; border: string; fg: string }> = {
-  strong: { label: "STRONG", bg: "#10241a", border: "#1d6e50", fg: "#4ade80" },
-  target: { label: "ON TARGET", bg: "#10241a", border: "#1d6e50", fg: "#4ade80" },
-  minimum: { label: "COVERING", bg: "#2a1f0a", border: "#85500b", fg: "#f5b03a" },
-  below: { label: "BELOW FLOOR", bg: "#2a1414", border: "#7a2d2d", fg: "#f87171" },
-};
+const fmtRate = (n: number) => `$${n.toFixed(2)}`;
+const fmtHours = (min: number) =>
+  min >= 60 ? `${Math.round(min / 60)}h` : min > 0 ? `${min}m` : "0h";
 
-const Stat = ({
-  label,
-  value,
-  sub,
-  span,
-  accent,
+const Cells = ({
+  fill,
+  notch,
+  notchLabel = "TARGET",
+  count = 14,
 }: {
-  label: string;
-  value: string;
-  sub?: ReactNode;
-  span?: boolean;
-  accent?: boolean;
+  fill: number;
+  notch?: number;
+  notchLabel?: string;
+  count?: number;
 }) => (
-  <div
-    className="rounded-lg px-3 py-2.5"
-    style={{
-      background: "#1c2333",
-      gridColumn: span ? "span 2" : undefined,
-      border: accent ? "1px solid #85500b" : undefined,
-    }}
-  >
-    <div className="text-[9px] tracking-wide" style={{ color: accent ? "#f5b03a" : "#7d8ba3" }}>
-      {label}
-    </div>
-    <div className="font-forge font-bold text-2xl" style={{ color: accent ? "#f5b03a" : "#f4f7fb" }}>
-      {value}
-    </div>
-    {sub && <div className="text-[10px]" style={{ color: "#7d8ba3" }}>{sub}</div>}
+  <div className="relative flex gap-[3px]">
+    {Array.from({ length: count }, (_, i) => {
+      const cellPos = (i + 1) / count;
+      const on = cellPos <= fill + 1e-6;
+      const overdrive = notch != null && on && cellPos > notch + 1e-6;
+      return (
+        <i
+          key={i}
+          className="flex-1 h-[11px] rounded-[2.5px]"
+          style={
+            on
+              ? overdrive
+                ? {
+                    background: "linear-gradient(180deg, #ffffff, var(--color-hot))",
+                    border: "1px solid rgba(255,255,255,.5)",
+                    boxShadow: "0 0 7px rgba(255,207,122,.45)",
+                  }
+                : {
+                    background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                    border: "1px solid rgba(245,176,58,.55)",
+                    boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                  }
+              : {
+                  background: "var(--color-well)",
+                  border: "1px solid var(--color-hairline-lo)",
+                  boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                }
+          }
+        />
+      );
+    })}
+    {notch != null && (
+      <span
+        className="absolute -top-[4px] -bottom-[4px] w-[2px] bg-ink opacity-70"
+        style={{ left: `${notch * 100}%` }}
+        aria-hidden
+      >
+        <span className="absolute -top-[13px] -left-[16px] font-condensed text-[9px] tracking-[.1em] text-faint">
+          {notchLabel}
+        </span>
+      </span>
+    )}
   </div>
 );
 
-export const DispatcherCard = ({ name, business, avatar, card, medals }: Props) => {
-  const grade = card.seasonGrade ? GRADE_META[card.seasonGrade] : null;
+const MeterRow = ({
+  label,
+  right,
+  children,
+  last = false,
+}: {
+  label: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+  last?: boolean;
+}) => (
+  <div className={`px-[18px] py-[13px] ${last ? "" : "border-b"} ds2-cell-rule`}>
+    <div className="flex justify-between items-baseline gap-3 mb-[8px]">
+      <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+        {label}
+      </span>
+      {right && (
+        <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums text-right">
+          {right}
+        </span>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
+const GhostLine = ({ children }: { children: React.ReactNode }) => (
+  <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+    {children}
+  </p>
+);
+
+export const DispatcherCard = ({ card }: { card: DispatcherCardData }) => {
   const stars =
     "★".repeat(card.rank.index + 1) +
     "☆".repeat(RANK_TIERS.length - card.rank.index - 1);
-  const over = card.overBreakEven;
-  const overNode =
-    over == null ? (
-      <span style={{ color: "#7d8ba3" }}>no rated loads yet</span>
-    ) : (
-      <span style={{ color: over >= 0 ? "#4ade80" : "#f87171" }}>
-        {over >= 0 ? "▲" : "▼"} ${Math.abs(over).toFixed(2)}{" "}
-        {over >= 0 ? "over" : "under"} break-even
-      </span>
-    );
+
+  const floorReady = card.avgBookedRate != null && card.breakEven != null;
+  const floorScale = floorReady ? (card.breakEven as number) / TARGET_AT : null;
+  const floorFill =
+    floorReady && floorScale
+      ? Math.min(1, (card.avgBookedRate as number) / floorScale)
+      : 0;
+
+  const next = card.rank.next;
+  const ladderFill = next
+    ? Math.min(1, card.rank.count / next.min)
+    : 1;
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border-2 p-4"
-      style={{ background: "linear-gradient(160deg,#161d2b,#10151f)", borderColor: "#e8940a" }}
+      className="relative overflow-hidden rounded-[14px] border"
+      style={{
+        background: "linear-gradient(180deg, #0e1420, #0b101a)",
+        borderColor: "var(--color-hairline)",
+        boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+      }}
     >
+      {/* head */}
       <div
-        className="absolute top-0 right-0 w-40 h-40 pointer-events-none"
-        style={{
-          backgroundImage: "radial-gradient(#e8940a 1.3px, transparent 1.4px)",
-          backgroundSize: "8px 8px",
-          opacity: 0.1,
-        }}
-      />
-
-      {/* header: avatar left, identity + rank right */}
-      <div className="relative flex gap-4 items-start">
-        <div className="shrink-0">{avatar}</div>
-        <div className="flex-1 min-w-0">
-          <div className="font-forge font-bold text-4xl leading-none" style={{ color: "#f5b03a" }}>
-            {name}
+        className="flex items-center gap-[14px] px-[18px] py-[14px] border-b ds2-cell-rule"
+        style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+      >
+        <div className="min-w-0">
+          <div
+            className="font-forge font-bold text-[22px] leading-none"
+            style={{ letterSpacing: "1.5px" }}
+          >
+            {card.rank.name.toUpperCase()}
           </div>
-          {business && (
-            <div className="text-[11px] mt-1" style={{ color: "#9daabb" }}>
-              {business}
-            </div>
-          )}
-
-          {medals && medals.length > 0 && (
-            <div className="flex gap-1 flex-wrap mt-2">
-              {medals.map((m) => (
-                <MedalBadge key={m.key} medal={m} />
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 mt-3">
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-              style={{ background: "#3a2a0a", border: "2px solid #e8940a", color: "#f5b03a" }}
-            >
-              <Headset size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div
-                className="font-forge font-bold text-xl leading-none"
-                style={{ color: "#f5e6c8", letterSpacing: "1px" }}
-              >
-                {card.rank.name}
-              </div>
-              <div className="text-[10px] mt-0.5" style={{ color: "#7d8ba3" }}>
-                <span style={{ color: "#f5b03a", letterSpacing: "1px" }}>{stars}</span> · Career rank
-              </div>
-              <div className="h-1.5 rounded mt-1 overflow-hidden" style={{ background: "#1c2333" }}>
-                <div className="h-full" style={{ width: `${card.rank.pct * 100}%`, background: "#e8940a" }} />
-              </div>
-              {card.rank.next && (
-                <div className="text-[9.5px] mt-0.5" style={{ color: "#7d8ba3" }}>
-                  {card.rank.toNext} {card.rank.toNext === 1 ? "load" : "loads"} to{" "}
-                  {card.rank.next.name}
-                </div>
-              )}
-            </div>
-            {grade && (
-              <span
-                className="font-forge font-bold text-sm tracking-wide rounded px-2.5 py-1 self-center"
-                style={{ background: grade.bg, border: `1px solid ${grade.border}`, color: grade.fg }}
-              >
-                {grade.label}
-              </span>
-            )}
+          <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
+            <span style={{ color: "var(--color-amber-hi)", letterSpacing: "1px" }}>{stars}</span>{" "}
+            · the dispatcher card · forged
           </div>
+        </div>
+        <span className="ml-auto font-condensed font-bold text-[10.5px] tracking-[.12em] px-[8px] py-[3px] rounded-[4px] text-dim border border-hairline whitespace-nowrap">
+          {card.seasonGrade ? `SEASON · ${card.seasonGrade.toUpperCase()}` : "SEASON"}
+        </span>
+      </div>
+
+      {/* career strip */}
+      <div className="grid grid-cols-3 border-b ds2-cell-rule">
+        <div className="px-[18px] py-3 border-r ds2-cell-rule">
+          <p className="font-condensed font-semibold text-[23px] tabular-nums">
+            {card.loadsBookedLifetime}
+          </p>
+          <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+            Loads booked
+          </p>
+        </div>
+        <div className="px-[18px] py-3 border-r ds2-cell-rule">
+          <p className="font-condensed font-semibold text-[23px] tabular-nums">
+            {money(card.grossBooked)}
+          </p>
+          <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+            Gross booked
+          </p>
+        </div>
+        <div className="px-[18px] py-3">
+          <p className="font-condensed font-semibold text-[23px] tabular-nums">
+            {fmtHours(card.detentionCollectedMin)}
+          </p>
+          <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+            Detention collected
+          </p>
         </div>
       </div>
 
-      {/* wide stat row */}
-      <div
-        className="relative grid grid-cols-2 sm:grid-cols-6 gap-2 mt-4 pt-4 border-t"
-        style={{ borderColor: "#2a3347" }}
+      {/* booking over the floor */}
+      <MeterRow
+        label="Booking over the floor"
+        right={
+          floorReady && card.overBreakEven != null
+            ? `${card.overBreakEven >= 0 ? "▲ +" : "▼ −"}${fmtRate(Math.abs(card.overBreakEven))}/mi ${
+                card.overBreakEven >= 0 ? "over" : "under"
+              } · ${card.loadsBookedLifetime} load${card.loadsBookedLifetime === 1 ? "" : "s"}`
+            : undefined
+        }
       >
-        <Stat
-          label="LOADS BOOKED"
-          value={String(card.loadsBookedLifetime)}
-          sub={`${card.loadsBookedMonth} this month`}
-        />
-        <Stat label="GROSS BOOKED" value={gross(card.grossBooked)} sub="lifetime" />
-        <Stat
-          label="AVG BOOKED RATE · $/MI"
-          value={rpm(card.avgBookedRate)}
-          sub={overNode}
-          span
-          accent
-        />
-        <Stat label="DETENTION" value={hrs(card.detentionCollectedMin)} sub="collected" />
-        <Stat label="ON-TIME" value={pct(card.onTimePct)} />
-      </div>
+        {floorReady ? (
+          <>
+            <Cells fill={floorFill} notch={TARGET_AT} notchLabel="FLOOR" />
+            <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+              she books at {fmtRate(card.avgBookedRate as number)}/mi gross · the floor
+              is the walk-away — {fmtRate(card.breakEven as number)}/mi · past the
+              notch is margin she found
+            </p>
+          </>
+        ) : (
+          <GhostLine>
+            The floor forges from the cost basis — a month of P&L arms this meter.
+          </GhostLine>
+        )}
+      </MeterRow>
+
+      {/* career ladder */}
+      <MeterRow
+        label={
+          next
+            ? `Career ladder — next rung at ${next.min} booked`
+            : "Career ladder — top rung"
+        }
+        right={next ? `${card.rank.count} / ${next.min}` : String(card.rank.count)}
+      >
+        <Cells fill={ladderFill} count={10} />
+        <div className="flex gap-[6px] mt-[10px]">
+          {RANK_TIERS.map((tier, i) => {
+            const current = i === card.rank.index;
+            return (
+              <div key={tier.name} className="flex-1 text-center min-w-0">
+                <div
+                  className="rounded-[2px]"
+                  style={
+                    current
+                      ? {
+                          height: 7,
+                          background:
+                            "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                          boxShadow: "0 0 8px rgba(232,148,10,.35)",
+                        }
+                      : {
+                          height: 4,
+                          background: "var(--color-well)",
+                          border: "1px solid var(--color-hairline-lo)",
+                        }
+                  }
+                />
+                <div
+                  className={`font-condensed text-[10px] mt-[5px] truncate ${
+                    current ? "text-amber-hi font-semibold" : "text-faint"
+                  }`}
+                >
+                  {tier.name}
+                </div>
+                <div className="font-condensed text-[9px] text-faint">
+                  {tier.min}
+                  {current ? " ◄ you" : ""}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </MeterRow>
+
+      {/* on-time */}
+      <MeterRow
+        label="On-time arrivals · her booked loads"
+        right={
+          card.gradedStops > 0
+            ? `${card.onTimeCount} of ${card.gradedStops}`
+            : undefined
+        }
+        last
+      >
+        {card.gradedStops > 0 ? (
+          <Cells fill={card.onTimeCount / card.gradedStops} count={10} />
+        ) : (
+          <GhostLine>
+            No graded stops yet — arms when her loads run with appointments and
+            in/out times.
+          </GhostLine>
+        )}
+      </MeterRow>
     </div>
   );
 };
