@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useVendors } from "@/hooks/useVendors";
 import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
 import {
   createMaintenanceService,
@@ -7,14 +8,13 @@ import {
   type ServiceInput,
 } from "@/services/maintenanceService";
 import { ServiceForm } from "./ServiceForm";
-import { Stamp } from "@/components/Stamp";
-import { Panel } from "@/components/ui/Panel";
 import { moneyCents } from "@/lib/format";
 
 interface Props {
   services: MaintenanceService[];
   items: MaintenanceItem[];
   onChange: () => void;
+  openSignal?: number; // bumping it opens the log-service form (statusbar CTA)
 }
 
 const num = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
@@ -66,7 +66,15 @@ const PRESETS: [RangeMode, string][] = [
   ["custom", "Custom"],
 ];
 
-export const ServicesTab = ({ services, items, onChange }: Props) => {
+export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props) => {
+  // The rolodex, for linking vendor names through the bridge (same name rule
+  // the spend readout uses).
+  const { vendors: rolodex } = useVendors(0);
+  const vendorIdByName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const v of rolodex) m.set(v.name.trim().toLowerCase(), v.vendor_id);
+    return m;
+  }, [rolodex]);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +82,10 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
   // Month range for pulling a window of services (e.g. to re-enter into
   // Landstar's app). Presets cover the common cases; "Custom" reveals dropdowns.
   const [mode, setMode] = useState<RangeMode>("3m");
+
+  useEffect(() => {
+    if (openSignal > 0) setShowForm(true);
+  }, [openSignal]);
   const [customFrom, setCustomFrom] = useState(() => monthKey(-2));
   const [customTo, setCustomTo] = useState(() => monthKey(0));
 
@@ -154,190 +166,204 @@ export const ServicesTab = ({ services, items, onChange }: Props) => {
       window.setTimeout(() => setJustLogged(false), 2600);
     });
 
+  const VendorCell = ({ name, location }: { name: string | null; location?: string | null }) => {
+    if (!name) return <span className="text-faint">—</span>;
+    const id = vendorIdByName.get(name.trim().toLowerCase());
+    return (
+      <span className="min-w-0">
+        {id ? (
+          <Link
+            to={`/vendors/${id}`}
+            className="font-semibold text-amber-hi hover:text-hot"
+          >
+            {name}
+          </Link>
+        ) : (
+          <>
+            <span className="text-dim">{name}</span>{" "}
+            <Link to="/vendors" className="text-[10.5px] text-faint hover:text-amber-hi">
+              · file it →
+            </Link>
+          </>
+        )}
+        {location && <span className="block text-xs text-faint">{location}</span>}
+      </span>
+    );
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-xs text-muted-text">
-          Every service, chronological — cost here tracks vendor pricing, not your
-          P&amp;L.
-        </p>
-        {!showForm && (
-          <button
-            className="bg-amber text-steel px-2 py-1 rounded text-xs font-semibold flex items-center gap-1"
-            onClick={() => setShowForm(true)}
-          >
-            <Plus size={14} /> Log service
-          </button>
-        )}
-      </div>
-
       {justLogged && (
-        <Panel className="flex items-center gap-3 p-3 mb-3">
-          <Stamp label="Done!" color="#1d9e75" />
-          <span className="text-sm text-muted-text">Service logged.</span>
-        </Panel>
+        <div className="ds2-board flex items-center gap-3 px-4 py-3 mt-4">
+          <span className="font-forge font-bold text-[13px] tracking-[.12em] text-[#6fd08c]">
+            SERVICE LOGGED ✓
+          </span>
+          <span className="font-condensed text-[13px] text-dim">
+            the clocks it covered just reset.
+          </span>
+        </div>
       )}
 
-      {error && <p className="text-destructive text-sm mb-3">{error}</p>}
+      {error && <p className="text-destructive text-sm mt-3">{error}</p>}
 
       {showForm && (
-        <ServiceForm
-          items={items}
-          onSave={save}
-          onCancel={() => setShowForm(false)}
-          busy={busy}
-        />
+        <div className="mt-4">
+          <ServiceForm
+            items={items}
+            onSave={save}
+            onCancel={() => setShowForm(false)}
+            busy={busy}
+          />
+        </div>
       )}
 
-      <Panel className="p-3 mb-4">
-        <div className="flex flex-wrap items-center gap-2">
+      {/* range + summary */}
+      <div className="flex items-center gap-3 flex-wrap mt-4">
+        <span className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px]" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
           {PRESETS.map(([key, label]) => (
             <button
               key={key}
               onClick={() => setMode(key)}
-              className={`text-xs px-2.5 py-1 rounded ${
-                mode === key
-                  ? "bg-amber text-steel font-semibold"
-                  : "bg-steel text-muted-text"
+              className={`px-2.5 rounded-md font-condensed font-semibold text-[12px] ${
+                mode === key ? "bg-amber text-canvas" : "text-dim hover:text-ink"
               }`}
             >
               {label}
             </button>
           ))}
-          <span className="text-xs text-muted-text ml-auto">
-            {filtered.length} service{filtered.length !== 1 ? "s" : ""} ·{" "}
-            {moneyCents(rangeTotal)}
-          </span>
-        </div>
+        </span>
         {mode === "custom" && (
-          <div className="flex items-end gap-3 mt-3">
-            <div>
-              <label className="text-xs text-muted-text block mb-1">From</label>
-              <select
-                className="bg-steel rounded px-2 py-1 text-sm"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-              >
-                {monthOptions.map((m) => (
-                  <option key={m} value={m}>
-                    {fmtMonth(m)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-text block mb-1">To</label>
-              <select
-                className="bg-steel rounded px-2 py-1 text-sm"
-                value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-              >
-                {monthOptions.map((m) => (
-                  <option key={m} value={m}>
-                    {fmtMonth(m)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-      </Panel>
-
-      {vendors.length > 0 && (
-        <Panel className="p-4 mb-4">
-          <p className="text-xs text-muted-text mb-2">Vendor pricing</p>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-muted-text text-left">
-                <th className="font-normal pb-1">Vendor</th>
-                <th className="font-normal pb-1 text-right">Visits</th>
-                <th className="font-normal pb-1 text-right">Total</th>
-                <th className="font-normal pb-1 text-right">Avg</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vendors.map(([vendor, v]) => (
-                <tr key={vendor} className="border-t border-steel">
-                  <td className="py-1.5">{vendor}</td>
-                  <td className="py-1.5 text-right text-muted-text">{v.count}</td>
-                  <td className="py-1.5 text-right">{moneyCents(v.total)}</td>
-                  <td className="py-1.5 text-right text-muted-text">
-                    {v.priced ? moneyCents(v.total / v.priced) : "—"}
-                  </td>
-                </tr>
+          <span className="flex items-center gap-2 font-condensed text-[12.5px] text-faint">
+            <select
+              className="h-[30px] px-2 rounded-[8px] bg-well border border-hairline text-ink text-[13px] outline-none"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+            >
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  {fmtMonth(m)}
+                </option>
               ))}
-            </tbody>
-          </table>
-        </Panel>
+            </select>
+            →
+            <select
+              className="h-[30px] px-2 rounded-[8px] bg-well border border-hairline text-ink text-[13px] outline-none"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+            >
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  {fmtMonth(m)}
+                </option>
+              ))}
+            </select>
+          </span>
+        )}
+        <span className="ml-auto font-condensed text-[13px] text-faint">
+          <b className="font-display text-[19px] tracking-[.03em] text-ink font-normal tabular-nums">
+            {filtered.length}
+          </b>{" "}
+          service{filtered.length !== 1 ? "s" : ""} ·{" "}
+          <b className="font-semibold text-ink tabular-nums">{moneyCents(rangeTotal)}</b>
+        </span>
+      </div>
+
+      {/* by vendor — filed names link to their card */}
+      {vendors.length > 0 && (
+        <div className="ds2-board overflow-hidden mt-4">
+          <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              By vendor
+            </span>
+            <span className="font-condensed text-[12px] text-faint">
+              · the range's shop money · filed names link to their card
+            </span>
+          </div>
+          {vendors.map(([vendor, v]) => (
+            <div
+              key={vendor}
+              className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
+            >
+              <span className="font-semibold text-[14.5px] flex-1 min-w-0 truncate">
+                <VendorCell name={vendor} />
+              </span>
+              <span className="text-[12.5px] text-faint w-[80px] text-right">
+                {v.count} visit{v.count === 1 ? "" : "s"}
+              </span>
+              <span className="font-semibold text-[14.5px] w-[100px] text-right tabular-nums">
+                {moneyCents(v.total)}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
 
+      {/* the log */}
       {filtered.length === 0 ? (
-        <p className="text-muted-text text-sm">
+        <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-4">
           {services.length === 0
             ? "No services logged yet."
             : "No services in this month range."}
         </p>
       ) : (
-        <Panel className="p-4 overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px] [&_th]:pr-5 [&_td]:pr-5 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
-            <thead>
-              <tr className="text-xs text-muted-text text-left">
-                <th className="font-normal pb-2">Date</th>
-                <th className="font-normal pb-2">Unit</th>
-                <th className="font-normal pb-2">Vendor</th>
-                <th className="font-normal pb-2 text-right">Odo</th>
-                <th className="font-normal pb-2">Service</th>
-                <th className="font-normal pb-2 text-right">Cost</th>
-                <th className="font-normal pb-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr key={s.service_id} className="border-t border-steel align-top">
-                  <td className="py-2 whitespace-nowrap">{fmtDate(s.service_date)}</td>
-                  <td className="py-2 text-muted-text">{s.unit}</td>
-                  <td className="py-2">
-                    {s.vendor ?? "—"}
-                    {s.location && (
-                      <span className="text-xs text-muted-text block">
-                        {s.location}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 text-right text-muted-text whitespace-nowrap">
-                    {reading(s)}
-                  </td>
-                  <td className="py-2">
-                    {s.description}
-                    {s.item_ids.length > 0 && (
+        <div className="ds2-board overflow-hidden mt-4">
+          <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              The log
+            </span>
+            <span className="font-condensed text-[12px] text-faint">
+              · chronological · cost here tracks vendor pricing, not your P&L
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
+              {filtered.map((sv) => (
+                <div
+                  key={sv.service_id}
+                  className="grid grid-cols-[92px_1fr_190px_130px_90px_30px] gap-3 items-baseline px-4 py-[11px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                >
+                  <span className="text-faint whitespace-nowrap">
+                    {fmtDate(sv.service_date)}
+                  </span>
+                  <span className="min-w-0 text-ink">
+                    {sv.description}
+                    {sv.item_ids.length > 0 && (
                       <span className="flex flex-wrap gap-1 mt-1">
-                        {s.item_ids.map((id) => (
+                        {sv.item_ids.map((iid) => (
                           <span
-                            key={id}
-                            className="text-[11px] bg-steel text-muted-text px-1.5 rounded"
+                            key={iid}
+                            className="text-[10.5px] font-semibold text-faint bg-well border border-hairline-lo px-1.5 rounded-[4px]"
                           >
-                            ✓ {nameById.get(id) ?? "item"}
+                            ✓ {nameById.get(iid) ?? "item"}
                           </span>
                         ))}
                       </span>
                     )}
-                  </td>
-                  <td className="py-2 text-right whitespace-nowrap">{moneyCents(s.cost)}</td>
-                  <td className="py-2 text-right">
-                    <Trash2
-                      size={15}
-                      className="cursor-pointer text-muted-text hover:text-destructive"
-                      aria-label="Delete"
-                      onClick={() =>
-                        !busy && run(() => deleteMaintenanceService(s.service_id))
-                      }
-                    />
-                  </td>
-                </tr>
+                  </span>
+                  <VendorCell name={sv.vendor} location={sv.location} />
+                  <span className="text-right text-faint text-[12.5px] tabular-nums whitespace-nowrap">
+                    {reading(sv)}
+                    <span className="block text-[10px] uppercase tracking-[.08em]">
+                      {sv.unit}
+                    </span>
+                  </span>
+                  <span className="text-right font-semibold text-ink tabular-nums whitespace-nowrap">
+                    {moneyCents(sv.cost)}
+                  </span>
+                  <button
+                    aria-label="Delete"
+                    onClick={() =>
+                      !busy && run(() => deleteMaintenanceService(sv.service_id))
+                    }
+                    className="text-right text-faint hover:text-[#e05252] text-[13px]"
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </Panel>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

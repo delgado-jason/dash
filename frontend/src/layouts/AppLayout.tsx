@@ -25,6 +25,7 @@ const FULL_BLEED_PREFIXES = [
   { prefix: "/dispatcher", ownerOnly: false },
   { prefix: "/trucks", ownerOnly: false },
   { prefix: "/trailers", ownerOnly: false },
+  { prefix: "/maintenance", ownerOnly: false },
 ];
 const isFullBleed = (pathname: string) =>
   FULL_BLEED_PREFIXES.some(

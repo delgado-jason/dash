@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Pencil, Trash2, Plus, LayoutList, Table as TableIcon } from "lucide-react";
 import type { MaintenanceItem, MaintenanceUnit } from "@/types/maintenance";
 import {
   createMaintenanceItem,
@@ -8,11 +7,9 @@ import {
   seedMaintenanceItems,
   type ItemInput,
 } from "@/services/maintenanceService";
-import { computeDue, type Due, type DueLevel } from "@/lib/metrics/maintenance";
+import { computeDue, fleetHealth, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import { MaintenanceItemForm } from "./MaintenanceItemForm";
-import { HealthGauge } from "./HealthGauge";
-import { Stamp } from "@/components/Stamp";
-import { Panel } from "@/components/ui/Panel";
+import { GaugeDial } from "@/components/ui/GaugeDial";
 
 interface Props {
   items: MaintenanceItem[];
@@ -22,10 +19,10 @@ interface Props {
 }
 
 const META: Record<DueLevel, { label: string; color: string }> = {
-  overdue: { label: "Overdue", color: "#e24b4a" },
-  soon: { label: "Due soon", color: "#e8940a" },
-  ok: { label: "OK", color: "#1d9e75" },
-  unknown: { label: "No baseline yet", color: "#9daabb" },
+  overdue: { label: "Overdue", color: "#e05252" },
+  soon: { label: "Due soon", color: "var(--color-amber-hi)" },
+  ok: { label: "Running", color: "#6fd08c" },
+  unknown: { label: "No baseline", color: "var(--color-faint)" },
 };
 
 // Top-level sections. Transmission is physically on the tractor but gets its
@@ -51,7 +48,7 @@ const intervalLabel = (i: MaintenanceItem): string => {
   const p: string[] = [];
   if (i.interval_miles) p.push(`${Math.round(i.interval_miles / 1000)}k mi`);
   if (i.interval_months) p.push(`${i.interval_months} mo`);
-  return p.join(" / ") || "as needed";
+  return p.join(" or ") || "as needed";
 };
 
 const lastDoneLabel = (i: MaintenanceItem): string => {
@@ -67,7 +64,7 @@ const dueLabel = (d: Due): string => {
     p.push(
       d.milesRemaining < 0
         ? `${num(-d.milesRemaining)} mi over`
-        : `${num(d.milesRemaining)} mi left`,
+        : `${num(d.milesRemaining)} mi out`,
     );
   if (d.dueDate && d.daysRemaining != null)
     p.push(
@@ -77,6 +74,47 @@ const dueLabel = (d: Due): string => {
     );
   else if (d.etaDate) p.push(`~${fmtDate(d.etaDate)}`);
   return p.join(" · ") || "—";
+};
+
+// A clock at the door reads hot even before it's technically overdue —
+// presentation cue only (the level still comes from computeDue).
+const AT_THE_DOOR = 0.97;
+
+const ClockCells = ({ due }: { due: Due }) => {
+  const fill = Math.min(1, Math.max(0, due.progress ?? 0));
+  const hot = due.level === "overdue" || fill >= AT_THE_DOOR;
+  return (
+    <div className="flex gap-[3px]">
+      {Array.from({ length: 14 }, (_, i) => {
+        const on = (i + 1) / 14 <= fill + 1e-6;
+        return (
+          <i
+            key={i}
+            className="flex-1 h-[9px] rounded-[2px]"
+            style={
+              on
+                ? hot
+                  ? {
+                      background: "linear-gradient(180deg, #ff8a8a, #e05252)",
+                      border: "1px solid rgba(224,82,82,.6)",
+                      boxShadow: "0 0 6px rgba(224,82,82,.35)",
+                    }
+                  : {
+                      background:
+                        "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                      border: "1px solid rgba(245,176,58,.55)",
+                    }
+                : {
+                    background: "var(--color-well)",
+                    border: "1px solid var(--color-hairline-lo)",
+                    boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                  }
+            }
+          />
+        );
+      })}
+    </div>
+  );
 };
 
 export const ScheduleTab = ({
@@ -99,6 +137,7 @@ export const ScheduleTab = ({
 
   const counts = { overdue: 0, soon: 0, ok: 0, unknown: 0 };
   for (const r of rows) counts[r.due.level]++;
+  const health = fleetHealth(counts);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -121,159 +160,227 @@ export const ScheduleTab = ({
       setEditing(null);
     });
 
+  const openEdit = (item: MaintenanceItem) => {
+    setEditing(item);
+    setShowForm(true);
+  };
+
   if (items.length === 0 && !showForm) {
     return (
-      <Panel className="p-6 text-center">
-        <p className="text-muted-text mb-4">
+      <div className="ds2-board p-6 text-center mt-4">
+        <p className="font-condensed text-[14px] text-dim mb-4">
           No maintenance schedule yet. Load the starter schedule for your LT625 +
-          X15 (severe-duty intervals you can tune), or add items yourself.
+          X15 (severe-duty intervals you can tune), or add clocks yourself.
         </p>
         {error && <p className="text-destructive text-sm mb-3">{error}</p>}
         <div className="flex gap-2 justify-center">
           <button
-            className="bg-amber text-steel px-3 py-1.5 rounded text-sm font-semibold disabled:opacity-50"
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
+            style={{
+              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
+            }}
             disabled={busy}
             onClick={() => run(async () => void (await seedMaintenanceItems()))}
           >
-            Load starter schedule
+            LOAD STARTER SCHEDULE
           </button>
           <button
-            className="bg-steel text-light px-3 py-1.5 rounded text-sm"
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline"
             onClick={() => {
               setEditing(null);
               setShowForm(true);
             }}
           >
-            Add item
+            ADD CLOCK
           </button>
         </div>
-      </Panel>
+      </div>
     );
   }
 
-  const ItemRow = ({ item, due }: { item: MaintenanceItem; due: Due }) => (
-    <div className="flex items-center gap-3 py-2 border-t border-steel">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm truncate">
-          {item.name}{" "}
-          <span className="text-xs text-muted-text">· {item.unit}</span>
-        </p>
-        <div className="h-1.5 bg-steel rounded mt-1.5 overflow-hidden">
-          <div
-            className="h-1.5 rounded"
-            style={{
-              width: `${Math.min(1, due.progress ?? 0) * 100}%`,
-              background: META[due.level].color,
-            }}
-          />
-        </div>
+  const KnownRow = ({ item, due }: { item: MaintenanceItem; due: Due }) => (
+    <div className="px-4 py-3 border-t ds2-cell-rule first:border-t-0">
+      <div className="flex justify-between items-baseline gap-3 mb-[7px]">
+        <span className="font-condensed font-semibold text-[14.5px] min-w-0 truncate">
+          {item.name}
+        </span>
+        <span className="flex items-center gap-3 shrink-0">
+          <span
+            className="font-condensed font-semibold text-[13px] tabular-nums"
+            style={{ color: META[due.level].color }}
+          >
+            {dueLabel(due)}
+          </span>
+          <button
+            onClick={() => openEdit(item)}
+            className="font-condensed font-semibold text-[11px] tracking-[.08em] text-dim hover:text-ink"
+          >
+            EDIT
+          </button>
+          <button
+            aria-label="Delete"
+            onClick={() => !busy && run(() => deleteMaintenanceItem(item.item_id))}
+            className="font-condensed text-[13px] text-faint hover:text-[#e05252]"
+          >
+            ✕
+          </button>
+        </span>
       </div>
-      <div className="text-right w-40 shrink-0">
-        {due.level === "overdue" && (
-          <div className="mb-1">
-            <Stamp label="Overdue" color="#e24b4a" size="sm" />
-          </div>
-        )}
-        <p className="text-xs" style={{ color: META[due.level].color }}>
-          {dueLabel(due)}
-        </p>
-        <p className="text-[11px] text-muted-text">every {intervalLabel(item)}</p>
-      </div>
-      <div className="flex gap-2 text-muted-text shrink-0">
-        <Pencil
-          size={15}
-          className="cursor-pointer hover:text-light"
-          aria-label="Edit"
-          onClick={() => {
-            setEditing(item);
-            setShowForm(true);
-          }}
-        />
-        <Trash2
-          size={15}
-          className="cursor-pointer hover:text-destructive"
-          aria-label="Delete"
-          onClick={() =>
-            !busy && run(() => deleteMaintenanceItem(item.item_id))
-          }
-        />
-      </div>
+      <ClockCells due={due} />
+      <p className="font-condensed text-[10.5px] text-faint mt-[5px]">
+        every {intervalLabel(item)} · last done {lastDoneLabel(item)}
+      </p>
     </div>
   );
 
+  const sectionNote = (section: string): string | null => {
+    if (section === "Trailer")
+      return currentMiles.trailer != null
+        ? `hub scale · ${num(currentMiles.trailer)} — hub advances when a service logs a reading`
+        : "hub scale — hub advances when a service logs a reading";
+    if (section === "Truck")
+      return currentMiles.tractor != null
+        ? `odometer scale · ${num(currentMiles.tractor)}`
+        : null;
+    return null;
+  };
+
   return (
     <div>
-      <HealthGauge counts={counts} />
-      <div className="flex flex-wrap gap-2 items-center mb-4">
-        <div className="ml-auto flex gap-2">
+      {/* fleet health — the same dial the Fleet tab's speedometers use */}
+      <div className="ds2-board mt-4">
+        <div className="flex gap-6 items-center flex-wrap px-4 py-3.5">
+          <GaugeDial value={health.score ?? 0} min={0} max={100} size={128} />
+          <div>
+            <p className="font-condensed font-semibold text-[15px] text-dim">
+              <span className="font-display text-[30px] tracking-[.04em] text-ink font-normal">
+                {health.score != null ? Math.round(health.score) : "—"}
+              </span>{" "}
+              · fleet health
+            </p>
+            <div className="flex gap-2 flex-wrap mt-2">
+              {counts.overdue > 0 && (
+                <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-[#e05252] border border-[rgba(224,82,82,.35)] bg-[rgba(224,82,82,.08)]">
+                  {counts.overdue} OVERDUE
+                </span>
+              )}
+              {counts.soon > 0 && (
+                <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-[rgba(232,148,10,.35)] bg-[rgba(232,148,10,.08)]">
+                  {counts.soon} CLOSE
+                </span>
+              )}
+              {counts.ok > 0 && (
+                <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-[#6fd08c] border border-[rgba(111,208,140,.3)] bg-[rgba(111,208,140,.06)]">
+                  {counts.ok} RUNNING
+                </span>
+              )}
+              {counts.unknown > 0 && (
+                <span className="font-condensed font-semibold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-faint border border-dashed border-hairline">
+                  {counts.unknown} NO BASELINE
+                </span>
+              )}
+            </div>
+          </div>
+          <span className="ml-auto inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px]" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
+            {(["board", "table"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] capitalize ${
+                  view === v ? "bg-amber text-canvas" : "text-dim hover:text-ink"
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </span>
           <button
-            className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1"
-            onClick={() => setView(view === "board" ? "table" : "board")}
-          >
-            {view === "board" ? (
-              <>
-                <TableIcon size={14} /> Table
-              </>
-            ) : (
-              <>
-                <LayoutList size={14} /> Board
-              </>
-            )}
-          </button>
-          <button
-            className="bg-amber text-steel px-2 py-1 rounded text-xs font-semibold flex items-center gap-1"
             onClick={() => {
               setEditing(null);
               setShowForm(true);
             }}
+            className="h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-amber-hi bg-well border border-amber/35"
+            style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
           >
-            <Plus size={14} /> Add item
+            + ADD CLOCK
           </button>
         </div>
       </div>
 
-      {error && <p className="text-destructive text-sm mb-3">{error}</p>}
+      {error && <p className="text-destructive text-sm mt-3">{error}</p>}
 
       {showForm && (
-        <MaintenanceItemForm
-          initial={editing}
-          onSave={save}
-          onCancel={() => {
-            setShowForm(false);
-            setEditing(null);
-          }}
-          busy={busy}
-        />
+        <div className="mt-4">
+          <MaintenanceItemForm
+            initial={editing}
+            onSave={save}
+            onCancel={() => {
+              setShowForm(false);
+              setEditing(null);
+            }}
+            busy={busy}
+          />
+        </div>
       )}
 
       {view === "board" ? (
         SECTIONS.map((section) => {
           const group = rows.filter((r) => sectionOf(r.item) === section);
           if (group.length === 0) return null;
-          group.sort((a, b) => (b.due.progress ?? 0) - (a.due.progress ?? 0));
+          const known = group
+            .filter((r) => r.due.level !== "unknown")
+            .sort((a, b) => (b.due.progress ?? 0) - (a.due.progress ?? 0));
+          const unknown = group.filter((r) => r.due.level === "unknown");
+          const note = sectionNote(section);
           return (
-            <Panel key={section} className="p-4 mb-4">
-              <p className="text-sm font-medium mb-1">
-                {section}{" "}
-                <span className="text-xs text-muted-text">· {group.length}</span>
-              </p>
-              {group.map(({ item, due }) => (
-                <ItemRow key={item.item_id} item={item} due={due} />
+            <div key={section} className="ds2-board overflow-hidden mt-4">
+              <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  {section}
+                </span>
+                <span className="font-condensed text-[12px] text-faint">
+                  · {group.length}
+                  {note ? ` · ${note}` : ""}
+                </span>
+              </div>
+              {known.map(({ item, due }) => (
+                <KnownRow key={item.item_id} item={item} due={due} />
               ))}
-            </Panel>
+              {unknown.length > 0 && (
+                <div className="px-4 py-[11px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
+                  <b className="text-dim font-semibold">
+                    {unknown.length} clock{unknown.length === 1 ? "" : "s"} without a
+                    baseline
+                  </b>{" "}
+                  — dashed until their first service logs. Tap one to set a baseline
+                  by hand:{" "}
+                  {unknown.map(({ item }, i) => (
+                    <span key={item.item_id}>
+                      {i > 0 && " · "}
+                      <button
+                        onClick={() => openEdit(item)}
+                        className="text-dim hover:text-amber-hi underline decoration-dotted underline-offset-2"
+                      >
+                        {item.name}
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })
       ) : (
-        <Panel className="p-4 overflow-x-auto">
+        <div className="ds2-board p-4 overflow-x-auto mt-4">
           <table className="w-full text-sm min-w-[560px] [&_th]:pr-4 [&_td]:pr-4 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
             <thead>
-              <tr className="text-xs text-muted-text text-left">
-                <th className="font-normal pb-2">Item</th>
-                <th className="font-normal pb-2">System</th>
-                <th className="font-normal pb-2">Every</th>
-                <th className="font-normal pb-2">Last done</th>
-                <th className="font-normal pb-2">Next due</th>
-                <th className="font-normal pb-2 text-right">Status</th>
+              <tr className="font-condensed text-xs text-faint text-left uppercase tracking-[.08em]">
+                <th className="font-semibold pb-2">Clock</th>
+                <th className="font-semibold pb-2">System</th>
+                <th className="font-semibold pb-2">Every</th>
+                <th className="font-semibold pb-2">Last done</th>
+                <th className="font-semibold pb-2">Next due</th>
+                <th className="font-semibold pb-2 text-right">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -285,20 +392,23 @@ export const ScheduleTab = ({
                   return s !== 0 ? s : (b.due.progress ?? 0) - (a.due.progress ?? 0);
                 })
                 .map(({ item, due }) => (
-                  <tr key={item.item_id} className="border-t border-steel">
+                  <tr key={item.item_id} className="border-t border-hairline-lo">
                     <td className="py-2">{item.name}</td>
-                    <td className="py-2 text-muted-text">{sectionOf(item)}</td>
-                    <td className="py-2 text-muted-text">{intervalLabel(item)}</td>
-                    <td className="py-2 text-muted-text">{lastDoneLabel(item)}</td>
+                    <td className="py-2 text-dim">{sectionOf(item)}</td>
+                    <td className="py-2 text-dim">{intervalLabel(item)}</td>
+                    <td className="py-2 text-dim">{lastDoneLabel(item)}</td>
                     <td className="py-2">{dueLabel(due)}</td>
-                    <td className="py-2 text-right" style={{ color: META[due.level].color }}>
+                    <td
+                      className="py-2 text-right font-condensed font-semibold"
+                      style={{ color: META[due.level].color }}
+                    >
                       {META[due.level].label}
                     </td>
                   </tr>
                 ))}
             </tbody>
           </table>
-        </Panel>
+        </div>
       )}
     </div>
   );

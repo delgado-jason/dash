@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { Check, X } from "lucide-react";
 import type { MaintenanceItem, MaintenanceUnit } from "@/types/maintenance";
 import type { ItemInput } from "@/services/maintenanceService";
 import { Panel } from "@/components/ui/Panel";
 
 const CATEGORIES = ["engine", "chassis", "brakes", "compliance", "trailer", "other"];
 
-const field = "bg-steel rounded px-2 py-1 text-sm w-full";
-const lbl = "text-xs text-muted-text mb-1 block";
+const field = "bg-well rounded px-2 py-1 text-sm w-full";
+const lbl = "text-xs text-faint mb-1 block";
 
 export const MaintenanceItemForm = ({
   initial,
@@ -148,7 +147,7 @@ export const MaintenanceItemForm = ({
           />
         </div>
       </div>
-      <p className="text-[11px] text-muted-text mt-2">
+      <p className="text-[11px] text-faint mt-2">
         Set at least a mileage or a month interval. Fill "last done" to start the
         clock — or just log a service that completes it.
       </p>
@@ -158,13 +157,13 @@ export const MaintenanceItemForm = ({
           onClick={submit}
           disabled={busy || !name.trim()}
         >
-          <Check size={15} /> Save
+          Save
         </button>
         <button
-          className="bg-steel text-light px-3 py-1 rounded text-sm flex items-center gap-1"
+          className="bg-well text-light px-3 py-1 rounded text-sm flex items-center gap-1"
           onClick={onCancel}
         >
-          <X size={15} /> Cancel
+          Cancel
         </button>
       </div>
     </Panel>

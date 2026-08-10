@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Check, X } from "lucide-react";
 import type { MaintenanceItem, ServiceUnit } from "@/types/maintenance";
 import type { ServiceInput } from "@/services/maintenanceService";
 import { Panel } from "@/components/ui/Panel";
 
-const field = "bg-steel rounded px-2 py-1 text-sm w-full";
-const lbl = "text-xs text-muted-text mb-1 block";
+const field = "bg-well rounded px-2 py-1 text-sm w-full";
+const lbl = "text-xs text-faint mb-1 block";
 
 export const ServiceForm = ({
   items,
@@ -191,7 +190,7 @@ export const ServiceForm = ({
                   className={`text-xs px-2 py-1 rounded border ${
                     on
                       ? "bg-amber text-steel border-amber font-semibold"
-                      : "bg-steel text-muted-text border-steel"
+                      : "bg-well text-faint border-steel"
                   }`}
                 >
                   {i.name}
@@ -208,13 +207,13 @@ export const ServiceForm = ({
           onClick={submit}
           disabled={busy || !date || !description.trim()}
         >
-          <Check size={15} /> Save
+          Save
         </button>
         <button
-          className="bg-steel text-light px-3 py-1 rounded text-sm flex items-center gap-1"
+          className="bg-well text-light px-3 py-1 rounded text-sm flex items-center gap-1"
           onClick={onCancel}
         >
-          <X size={15} /> Cancel
+          Cancel
         </button>
       </div>
     </Panel>
