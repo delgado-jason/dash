@@ -3,7 +3,11 @@ import type { Trip } from "@/types/trip";
 
 // The integrity gauge behind the Trips page: loads + trips must tile the
 // odometer, so any span between one record's end and the next record's start
-// is miles nobody accounted for. Pure; numeric columns arrive as strings from
+// is miles nobody accounted for. AUDIT ANCHOR (2026-08-09, Jason's call): the
+// ledger only audits from the earliest logged trip's odometer — before that
+// mark the trip ledger didn't exist, so pre-history isn't nagged about (and
+// backfilling an older trip honestly moves the anchor back). No trips = no
+// ledger = nothing to audit. Pure; numeric columns arrive as strings from
 // Postgres, so everything coerces before math.
 
 export interface OdometerGap {
@@ -36,6 +40,14 @@ export const odometerGaps = (
   trips: Trip[],
   threshold: number = GAP_THRESHOLD_MI,
 ): OdometerGap[] => {
+  // The audit anchor — where the trip ledger begins on the odometer.
+  let anchor: number | null = null;
+  for (const t of trips) {
+    const s = num(t.odometer_start);
+    if (s != null && (anchor == null || s < anchor)) anchor = s;
+  }
+  if (anchor == null) return [];
+
   const wins: Win[] = [];
   for (const l of loads) {
     const s = num(l.odometer_start);
@@ -60,7 +72,7 @@ export const odometerGaps = (
   let maxEnd: number | null = null;
   let maxEndDate: string | null = null;
   for (const w of wins) {
-    if (maxEnd != null && w.s - maxEnd >= threshold) {
+    if (maxEnd != null && maxEnd >= anchor && w.s - maxEnd >= threshold) {
       gaps.push({
         miles: w.s - maxEnd,
         fromOdo: maxEnd,
