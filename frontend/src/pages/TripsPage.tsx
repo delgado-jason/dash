@@ -3,6 +3,7 @@ import { useTrips } from "@/hooks/useTrips";
 import { useLoads } from "@/hooks/useLoads";
 import TripForm from "@/components/TripForm";
 import { odometerGaps, type OdometerGap } from "@/lib/metrics/odometerGaps";
+import { tripTotals, EMPTY_PURPOSE } from "@/lib/metrics/tripTotals";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,6 +43,10 @@ const miles = (t: Trip): number | null =>
 
 const num = (n: number) => n.toLocaleString("en-US");
 
+// Board header labels — the local calendar, matching tripTotals' windows.
+const YEAR = new Date().getFullYear();
+const MONTH = new Date().toLocaleString("en-US", { month: "short" });
+
 const PurposeChip = ({ p }: { p: Purpose }) => (
   <span
     className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[.1em] uppercase"
@@ -65,19 +70,10 @@ const TripsPage = () => {
   const gaps = useMemo(() => odometerGaps(loads ?? [], trips ?? []), [loads, trips]);
   const gapMiles = gaps.reduce((s, g) => s + g.miles, 0);
 
-  // This month, by purpose — plain words, never raw enums.
-  const monthByPurpose = useMemo(() => {
-    const key = new Date().toISOString().slice(0, 7);
-    const out = Object.fromEntries(
-      PURPOSES.map((p) => [p, { mi: 0, n: 0 }]),
-    ) as Record<Purpose, { mi: number; n: number }>;
-    for (const t of trips ?? []) {
-      if (!t.trip_date?.startsWith(key)) continue;
-      out[t.trip_purpose].n += 1;
-      out[t.trip_purpose].mi += miles(t) ?? 0;
-    }
-    return out;
-  }, [trips]);
+  // The year ledger, by purpose — YTD is the number these miles exist for
+  // (home/shop/personal at tax time); the current month is answered once in
+  // the board header and inside any cell with miles this month.
+  const totals = useMemo(() => tripTotals(trips ?? []), [trips]);
 
   const visible = useMemo(
     () => (trips ?? []).filter((t) => filter === "all" || t.trip_purpose === filter),
@@ -160,22 +156,43 @@ const TripsPage = () => {
           )}
         </div>
 
-        {/* this month, by purpose */}
-        <div className="ds2-board grid grid-cols-2 md:grid-cols-4 overflow-hidden mt-4">
-          {PURPOSES.map((p, i) => (
-            <div
-              key={p}
-              className={`px-4 py-3 ${i < 3 ? "md:border-r" : ""} ${i < 2 ? "border-b md:border-b-0" : ""} ds2-cell-rule`}
-            >
-              <PurposeChip p={p} />
-              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
-                {num(monthByPurpose[p].mi)}{" "}
-                <span className="text-[13px] text-faint font-medium">
-                  mi{monthByPurpose[p].n > 0 ? ` · ${monthByPurpose[p].n} trip${monthByPurpose[p].n === 1 ? "" : "s"}` : ""}
-                </span>
-              </p>
-            </div>
-          ))}
+        {/* the year ledger, by purpose */}
+        <div className="ds2-board overflow-hidden mt-4">
+          <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+            <span className="font-display text-[17px] tracking-[.08em] text-amber-hi">{YEAR}</span>
+            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              trip miles by purpose
+            </span>
+            <span className="ml-auto font-condensed font-medium text-[12.5px] text-dim">
+              {MONTH} so far · <b className="font-semibold text-ink tabular-nums">{num(totals.monthMi)} mi</b>
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4">
+            {PURPOSES.map((p, i) => {
+              const pt = totals.byPurpose[p] ?? EMPTY_PURPOSE;
+              return (
+                <div
+                  key={p}
+                  className={`px-4 py-3 ${i < 3 ? "md:border-r" : ""} ${i < 2 ? "border-b md:border-b-0" : ""} ds2-cell-rule`}
+                >
+                  <PurposeChip p={p} />
+                  <p
+                    className={`font-condensed font-semibold text-[24px] mt-1 tabular-nums ${pt.ytdTrips === 0 ? "text-faint" : ""}`}
+                  >
+                    {num(pt.ytdMi)}{" "}
+                    <span className="text-[13px] text-faint font-medium">
+                      mi{pt.ytdTrips > 0 ? ` · ${pt.ytdTrips} trip${pt.ytdTrips === 1 ? "" : "s"}` : ""}
+                    </span>
+                  </p>
+                  {pt.monthMi > 0 && (
+                    <p className="font-condensed font-medium text-[12.5px] text-dim mt-[3px] tabular-nums">
+                      {MONTH} · <b className="font-semibold text-amber-hi">{num(pt.monthMi)} mi</b>
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* answering line + filters */}
