@@ -1,6 +1,4 @@
 import type { NationalDiesel } from "@/types/fuelEntry";
-import { Stamp } from "@/components/Stamp";
-import { Panel } from "@/components/ui/Panel";
 import { dieselPrice } from "@/lib/format";
 
 const fmtWeek = (d: string) =>
@@ -28,34 +26,34 @@ export const DieselCompareCard = ({
   const deltaColor = delta == null ? "#9daabb" : under ? "#4ade80" : "#e8940a";
 
   return (
-    <Panel className="p-4 mt-4">
+    <div className="ds2-board p-4 mt-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-xs text-muted-text uppercase tracking-wider">
+          <p className="text-xs text-faint uppercase tracking-wider">
             You vs. national diesel
           </p>
-          <p className="text-[11px] text-muted-text mt-0.5">
+          <p className="text-[11px] text-faint mt-0.5">
             U.S. retail avg · week of {fmtWeek(national.period)} · EIA
           </p>
         </div>
-        {under && <Stamp label="Under the national" color="#4ade80" />}
+        {under && <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#6fd08c] border-2 border-[#6fd08c] rounded-[6px] px-[10px] py-[2px] -rotate-3">UNDER THE NATIONAL</span>}
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-4">
         <div>
-          <p className="text-xs text-muted-text">National avg</p>
-          <p className="text-2xl font-condensed mt-1 text-light">
+          <p className="text-xs text-faint">National avg</p>
+          <p className="text-2xl font-condensed mt-1 text-ink">
             {dieselPrice(national.value)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-muted-text">Your avg / gal</p>
-          <p className="text-2xl font-condensed mt-1 text-light">
+          <p className="text-xs text-faint">Your avg / gal</p>
+          <p className="text-2xl font-condensed mt-1 text-ink">
             {yourCostPerGallon == null ? "—" : dieselPrice(yourCostPerGallon)}
           </p>
         </div>
         <div>
-          <p className="text-xs text-muted-text">
+          <p className="text-xs text-faint">
             {delta == null ? "Difference" : under ? "You save" : "Over by"}
           </p>
           <p
@@ -66,6 +64,6 @@ export const DieselCompareCard = ({
           </p>
         </div>
       </div>
-    </Panel>
+    </div>
   );
 };

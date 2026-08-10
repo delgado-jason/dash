@@ -27,6 +27,13 @@ export const createFuelEntry = async (
   return coerce(res.data.fuel_entry);
 };
 
+export const updateFuelEntry = async (
+  id: string,
+  data: Record<string, unknown>,
+): Promise<void> => {
+  await api.patch(`/fuel-entries/${id}`, data);
+};
+
 export const deleteFuelEntry = async (id: string): Promise<void> => {
   await api.delete(`/fuel/${id}`);
 };
