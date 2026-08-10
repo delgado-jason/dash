@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import {
   parsePnlFile,
   type ProposedPeriod,
@@ -10,7 +9,6 @@ import {
   saveExpensePeriod,
 } from "@/services/expensesService";
 import type { ExpenseType } from "@/types/expense";
-import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
 interface Props {
@@ -74,31 +72,31 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
   };
 
   return (
-    <Panel className="p-4 mb-6">
+    <div>
       {!proposed ? (
         <div>
-          <p className="text-sm text-light mb-2">
+          <p className="text-sm text-ink mb-2">
             Upload a monthly P&amp;L (QuickBooks CSV)
           </p>
           <input
             type="file"
             accept=".csv"
             onChange={onFile}
-            className="text-sm text-muted-text"
+            className="text-sm text-faint"
           />
         </div>
       ) : (
         <div>
           <div className="flex justify-between items-center mb-2">
-            <p className="text-sm text-light">Confirm · {proposed.period_label}</p>
-            <span className="text-xs text-muted-text">
+            <p className="text-sm text-ink">Confirm · {proposed.period_label}</p>
+            <span className="text-xs text-faint">
               Income {money(proposed.income_total)} · Cost{" "}
               {money((proposed.cogs_total ?? 0) + (proposed.expense_total ?? 0))}
             </span>
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-muted-text text-xs text-left">
+              <tr className="text-faint text-xs text-left">
                 <th className="p-1 font-normal">Category</th>
                 <th className="p-1 font-normal">Amount</th>
                 <th className="p-1 font-normal">Type</th>
@@ -107,11 +105,11 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
             </thead>
             <tbody>
               {lines.map((l, i) => (
-                <tr key={i} className="border-t border-steel">
+                <tr key={i} className="border-t border-hairline-lo">
                   <td className="p-1">{l.category}</td>
                   <td className="p-1">
                     <input
-                      className="w-20 bg-steel rounded px-1 text-right"
+                      className="w-20 bg-well rounded px-1 text-right"
                       value={String(l.amount)}
                       onChange={(e) =>
                         updateLine(i, { amount: Number(e.target.value) })
@@ -120,7 +118,7 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
                   </td>
                   <td className="p-1">
                     <select
-                      className="bg-steel rounded px-1"
+                      className="bg-well rounded px-1"
                       value={l.type}
                       onChange={(e) =>
                         updateLine(i, { type: e.target.value as ExpenseType })
@@ -131,12 +129,13 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
                     </select>
                   </td>
                   <td className="p-1 text-right">
-                    <Trash2
-                      size={16}
-                      className="cursor-pointer text-muted-text inline"
-                      aria-label="Remove"
+                    <button
+                      className="text-faint hover:text-[#e05252]"
+                      aria-label="Remove line"
                       onClick={() => removeLine(i)}
-                    />
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -150,13 +149,13 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
             >
               {saving ? "Saving..." : "Save month"}
             </button>
-            <button className="text-muted-text px-3 py-1 text-sm" onClick={onCancel}>
+            <button className="text-faint px-3 py-1 text-sm" onClick={onCancel}>
               Cancel
             </button>
           </div>
         </div>
       )}
       {error && <p className="text-destructive text-sm mt-2">{error}</p>}
-    </Panel>
+    </div>
   );
 };

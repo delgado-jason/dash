@@ -1,5 +1,4 @@
 import { Fragment, useState } from "react";
-import { ArrowLeftRight, Pencil, Check, Trash2, Plus, X } from "lucide-react";
 import type { ExpensePeriod, ExpenseType } from "@/types/expense";
 import {
   patchExpenseLine,
@@ -55,12 +54,12 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
         <td />
       </tr>
       {group(type).map((l) => (
-        <tr key={l.line_id} className="border-t border-steel">
+        <tr key={l.line_id} className="border-t border-hairline-lo">
           <td className="p-2">{l.category}</td>
           <td className="p-2 text-right">
             {editing === l.line_id ? (
               <input
-                className="w-20 bg-steel border border-amber rounded px-1 text-right"
+                className="w-20 bg-well border border-amber rounded px-1 text-right"
                 value={editVal}
                 onChange={(e) => setEditVal(e.target.value)}
               />
@@ -68,31 +67,18 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
               money(l.amount)
             )}
           </td>
-          <td className="p-2 text-right text-muted-text">
+          <td className="p-2 text-right text-faint">
             {rpm(totalMiles > 0 ? l.amount / totalMiles : null)}
           </td>
-          <td className="p-2 text-right text-muted-text">
+          <td className="p-2 text-right text-faint">
             {pct(income && income > 0 ? l.amount / income : null)}
           </td>
           <td className="p-2 text-right">
-            <div className="flex gap-3 justify-end text-muted-text">
-              <ArrowLeftRight
-                size={16}
-                className="cursor-pointer hover:text-light"
-                aria-label={`Move to ${l.type === "fixed" ? "variable" : "fixed"}`}
-                onClick={() =>
-                  !busy &&
-                  run(() =>
-                    patchExpenseLine(l.line_id, {
-                      type: l.type === "fixed" ? "variable" : "fixed",
-                    }),
-                  )
-                }
-              />
+            <div className="flex gap-3 justify-end text-faint">
+              <span aria-hidden>⇄</span>
               {editing === l.line_id ? (
-                <Check
-                  size={16}
-                  className="cursor-pointer hover:text-light"
+                <button
+                  className="font-condensed font-semibold text-[10.5px] tracking-[.08em] text-amber-hi"
                   aria-label="Save"
                   onClick={() =>
                     run(async () => {
@@ -102,24 +88,28 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
                       setEditing(null);
                     })
                   }
-                />
+                >
+                  SAVE
+                </button>
               ) : (
-                <Pencil
-                  size={16}
-                  className="cursor-pointer hover:text-light"
+                <button
+                  className="font-condensed font-semibold text-[10.5px] tracking-[.08em] hover:text-ink"
                   aria-label="Edit value"
                   onClick={() => {
                     setEditing(l.line_id);
                     setEditVal(String(l.amount));
                   }}
-                />
+                >
+                  EDIT
+                </button>
               )}
-              <Trash2
-                size={16}
-                className="cursor-pointer hover:text-destructive"
+              <button
+                className="hover:text-[#e05252]"
                 aria-label="Delete"
                 onClick={() => !busy && run(() => deleteExpenseLine(l.line_id))}
-              />
+              >
+                ✕
+              </button>
             </div>
           </td>
         </tr>
@@ -131,7 +121,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
     <>
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-muted-text text-xs text-left">
+          <tr className="text-faint text-xs text-left">
             <th className="p-2 font-normal">Expense</th>
             <th className="p-2 font-normal text-right">Amount</th>
             <th className="p-2 font-normal text-right">$/mi</th>
@@ -143,11 +133,11 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
           {renderGroup("fixed", "Fixed")}
           {renderGroup("variable", "Variable")}
           {showAdd ? (
-            <tr className="border-t border-steel">
+            <tr className="border-t border-hairline-lo">
               <td className="p-2">
                 <input
                   placeholder="Category"
-                  className="w-full bg-steel rounded px-2 py-1"
+                  className="w-full bg-well rounded px-2 py-1"
                   value={newCat}
                   onChange={(e) => setNewCat(e.target.value)}
                 />
@@ -155,14 +145,14 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
               <td className="p-2">
                 <input
                   placeholder="0"
-                  className="w-20 bg-steel rounded px-2 py-1 text-right"
+                  className="w-20 bg-well rounded px-2 py-1 text-right"
                   value={newAmt}
                   onChange={(e) => setNewAmt(e.target.value)}
                 />
               </td>
               <td className="p-2" colSpan={2}>
                 <select
-                  className="bg-steel rounded px-2 py-1"
+                  className="bg-well rounded px-2 py-1"
                   value={newType}
                   onChange={(e) => setNewType(e.target.value as ExpenseType)}
                 >
@@ -171,10 +161,9 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
                 </select>
               </td>
               <td className="p-2 text-right">
-                <div className="flex gap-3 justify-end text-muted-text">
-                  <Check
-                    size={16}
-                    className="cursor-pointer hover:text-light"
+                <div className="flex gap-3 justify-end text-faint">
+                  <button
+                    className="font-condensed font-semibold text-[10.5px] tracking-[.08em] text-amber-hi"
                     aria-label="Add expense"
                     onClick={() =>
                       newCat &&
@@ -190,17 +179,20 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
                         setShowAdd(false);
                       })
                     }
-                  />
-                  <X
-                    size={16}
-                    className="cursor-pointer hover:text-light"
+                  >
+                    ADD
+                  </button>
+                  <button
+                    className="hover:text-ink"
                     aria-label="Cancel"
                     onClick={() => {
                       setShowAdd(false);
                       setNewCat("");
                       setNewAmt("");
                     }}
-                  />
+                  >
+                    ✕
+                  </button>
                 </div>
               </td>
             </tr>
@@ -211,7 +203,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
                   className="flex items-center gap-1 text-status-info-text"
                   onClick={() => setShowAdd(true)}
                 >
-                  <Plus size={16} /> Add expense
+                  <span aria-hidden>+</span> Add expense
                 </button>
               </td>
             </tr>

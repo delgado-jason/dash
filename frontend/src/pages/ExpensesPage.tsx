@@ -26,10 +26,10 @@ import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
 import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
 import { ObligationsCard } from "@/components/expenses/ObligationsCard";
-import { Panel } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { sitRunCosts } from "@/lib/metrics/sitRun";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
-import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { money } from "@/lib/format";
 
 // That month's miles from loads (drives cost-per-mile + break-even).
@@ -55,13 +55,6 @@ const monthMiles = (loads: Load[], periodMonth: string) => {
   const loadedMiles = inMonth.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
   return { totalMiles, loadedMiles };
 };
-
-const Kpi = ({ label, value }: { label: string; value: string }) => (
-  <Panel className="p-4">
-    <p className="text-xs text-muted-text">{label}</p>
-    <p className="text-2xl font-condensed mt-1">{value}</p>
-  </Panel>
-);
 
 const ExpensesPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -177,6 +170,40 @@ const ExpensesPage = () => {
     () => monthlyObligationCost(obligations),
     [obligations],
   );
+  // Full periods (with lines) for the trailing window, so the sit/run burn can
+  // blend the fixed/variable split the same way the per-mile figures blend cost.
+  const [windowFull, setWindowFull] = useState<ExpensePeriod[]>([]);
+  useEffect(() => {
+    let active = true;
+    const idx = periods.findIndex((p) => p.period_id === selectedId);
+    const ids = (idx >= 0 ? periods.slice(idx, idx + 3) : []).map((p) => p.period_id);
+    if (ids.length === 0) {
+      setWindowFull([]);
+      return;
+    }
+    Promise.all(ids.map((pid) => getExpensePeriod(pid)))
+      .then((ps) => {
+        if (active) setWindowFull(ps);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [periods, selectedId, refreshKey]);
+
+  const burn = useMemo(() => {
+    if (windowFull.length === 0) return null;
+    let fixed = 0;
+    let variable = 0;
+    for (const p of windowFull) {
+      const m = getExpenseMetrics(p, 0, 0);
+      fixed += m.fixedTotal;
+      variable += m.variableTotal;
+    }
+    const n = windowFull.length;
+    return sitRunCosts(fixed / n, variable / n, obligationsTotal);
+  }, [windowFull, obligationsTotal]);
+
   const trueMonthly =
     metrics && selected
       ? getTrueMonthly(metrics.monthlyCost, obligationsTotal, selected.income_total)
@@ -206,189 +233,359 @@ const ExpensesPage = () => {
   const rateLadder = getRateLadder(bookingBase, tiersFrom(schedule));
   const specRateLadder = getRateLadder(bookingBase, specTiersFrom(schedule));
 
+  const selIncome = selected?.income_total ?? 0;
+  const selCost = (selected?.cogs_total ?? 0) + (selected?.expense_total ?? 0);
+  const selProfit = selIncome - selCost;
+  const selMargin = selIncome > 0 ? selProfit / selIncome : null;
+  const isBestMonth =
+    selected != null &&
+    periods.every((p) => {
+      const prof = (p.income_total ?? 0) - ((p.cogs_total ?? 0) + (p.expense_total ?? 0));
+      return p.period_id === selected.period_id || prof <= selProfit;
+    });
+
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <h1 className="text-3xl font-condensed min-w-0">
-          Expenses
-          {selected?.period_label ? ` · ${selected.period_label}` : ""}
-        </h1>
-        {!showUpload && (
-          <button
-            className="bg-amber text-steel px-3 py-1 rounded text-sm font-semibold"
-            onClick={() => setShowUpload(true)}
-          >
-            Upload P&amp;L
-          </button>
-        )}
-      </div>
-
-      {showUpload && (
-        <ExpenseUpload
-          onSaved={() => {
-            setShowUpload(false);
-            refresh();
-          }}
-          onCancel={() => setShowUpload(false)}
-        />
-      )}
-
-      {loading ? (
-        <div>
-          <StatCardsSkeleton count={3} />
-          <BlockSkeleton className="h-64 mt-6" />
-        </div>
-      ) : periods.length === 0 ? (
-        <EmptyState
-          title="No P&L uploaded yet"
-          hint="Upload a profit & loss statement to see your true cost per mile."
-        />
-      ) : selected && metrics && trueMonthly ? (
-        <>
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">EXPENSES</h1>
+          <span className="font-condensed font-medium text-[15px] text-dim">
+            the books — what it costs to run
+          </span>
+          <span className="flex-1" />
           {periods.length > 1 && (
-            <SegmentedTabs
-              size="sm"
-              className="mb-4"
-              ariaLabel="P&L period"
-              tabs={[...periods]
+            <span
+              className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px] overflow-x-auto"
+              style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+              role="tablist"
+            >
+              {[...periods]
                 .reverse()
-                .map((p) => ({ value: p.period_id, label: p.period_label }))}
-              value={selectedId ?? ""}
-              onChange={setSelectedId}
-            />
+                .slice(-8)
+                .map((per) => (
+                  <button
+                    key={per.period_id}
+                    role="tab"
+                    aria-selected={selectedId === per.period_id}
+                    onClick={() => setSelectedId(per.period_id)}
+                    className={`px-2.5 rounded-md font-condensed font-semibold text-[12px] whitespace-nowrap ${
+                      selectedId === per.period_id
+                        ? "bg-amber text-canvas"
+                        : "text-dim hover:text-ink"
+                    }`}
+                  >
+                    {per.period_label}
+                  </button>
+                ))}
+            </span>
           )}
+          <button
+            onClick={() => setShowUpload(true)}
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
+            style={{
+              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
+              boxShadow:
+                "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+            }}
+          >
+            UPLOAD P&L
+          </button>
+        </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <Kpi label="Monthly cost" value={money(trueMonthly.trueMonthlyCost)} />
-            <Kpi label="Weekly cost" value={money(trueMonthly.trueWeeklyCost)} />
-            <Kpi
-              label={`Cost / total mile · ${trailing.months}mo`}
-              value={cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`}
-            />
-            <Kpi
-              label={`Break-even / loaded mi · ${trailing.months}mo`}
-              value={
-                cash.trueBreakEvenRpm == null
-                  ? "—"
-                  : `$${cash.trueBreakEvenRpm.toFixed(2)}`
-              }
-            />
-            <Kpi
-              label="Net margin"
-              value={
-                trueMonthly.trueNetMargin == null
-                  ? "—"
-                  : `${(trueMonthly.trueNetMargin * 100).toFixed(1)}%`
-              }
+        {loading ? (
+          <div className="mt-4">
+            <StatCardsSkeleton count={3} />
+            <BlockSkeleton className="h-64 mt-6" />
+          </div>
+        ) : periods.length === 0 ? (
+          <div className="mt-4">
+            <EmptyState
+              title="No P&L uploaded yet"
+              hint="Upload a profit & loss statement to see your true cost per mile."
             />
           </div>
-          <p className="text-[11px] text-muted-text -mt-4 mb-6">
-            <span className="text-light">Cost / total mile</span> is over every mile
-            you drive; <span className="text-light">break-even / loaded mile</span>{" "}
-            spreads that same cost over only the paid miles — the gap is your
-            deadhead. Per-mile figures blend the last {trailing.months} month
-            {trailing.months > 1 ? "s" : ""}.
-            {obligationsTotal > 0 &&
-              ` Cost includes ${money(obligationsTotal)}/mo of obligations (loan principal + draws).`}
-          </p>
+        ) : selected && metrics && trueMonthly ? (
+          <>
+            {/* the month sentence */}
+            <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
+              <span className="font-display text-[21px] tracking-[.03em] uppercase">
+                {selected.period_label}
+              </span>
+              <span className="text-[13.5px] text-faint">
+                · <b className="font-semibold text-ink tabular-nums">{money(selIncome)}</b> in ·{" "}
+                <b className="font-semibold text-ink tabular-nums">{money(selCost)}</b> out ·{" "}
+                <b className="font-semibold text-ink tabular-nums">{money(selProfit)}</b> kept
+                {selMargin != null && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <b className="font-bold" style={{ color: selMargin >= 0 ? "#6fd08c" : "#e05252" }}>
+                      {(selMargin * 100).toFixed(1)}% margin
+                    </b>
+                  </>
+                )}
+                {isBestMonth && periods.length > 1 && " — your best month on the books"}
+              </span>
+            </div>
 
-          {rateLadder.walkAway != null && (
-            <Panel noir className="p-4 mb-6">
-              <p className="text-xs text-muted-text mb-3">
-                Rate to book · gross $/mile driven · last {rateBasis.months}{" "}
-                complete month{rateBasis.months > 1 ? "s" : ""}
-              </p>
-              <div className="flex items-center gap-2 flex-wrap mb-3 text-[11px]">
-                <span
-                  className="rounded px-2 py-1"
-                  style={{ background: "#0d1119", border: "1px solid #22304a" }}
+            {/* the month board */}
+            <div className="ds2-board overflow-hidden mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-5">
+                {[
+                  { v: money(trueMonthly.trueMonthlyCost), l: "True monthly cost" },
+                  { v: money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
+                  {
+                    v: cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`,
+                    l: `Cost / total mi · ${trailing.months}mo`,
+                  },
+                  {
+                    v:
+                      cash.trueBreakEvenRpm == null
+                        ? "—"
+                        : `$${cash.trueBreakEvenRpm.toFixed(2)}`,
+                    l: `Break-even / loaded mi · ${trailing.months}mo`,
+                  },
+                  {
+                    v:
+                      trueMonthly.trueNetMargin == null
+                        ? "—"
+                        : `${(trueMonthly.trueNetMargin * 100).toFixed(1)}%`,
+                    l: "Net margin",
+                    pos: (trueMonthly.trueNetMargin ?? 0) >= 0,
+                  },
+                ].map((k, ki) => (
+                  <div
+                    key={k.l}
+                    className={`px-4 py-3 ${ki < 4 ? "md:border-r" : ""} ${ki < 2 ? "border-b md:border-b-0" : ""} ds2-cell-rule`}
+                  >
+                    <p
+                      className="font-condensed font-semibold text-[22px] tabular-nums"
+                      style={"pos" in k ? { color: k.pos ? "#6fd08c" : "#e05252" } : undefined}
+                    >
+                      {k.v}
+                    </p>
+                    <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
+                      {k.l}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+                <b className="text-dim">Cost / total mile</b> is over every mile you drive;{" "}
+                <b className="text-dim">break-even / loaded mile</b> spreads that same cost over
+                only the paid miles — the gap is your deadhead. Per-mile figures blend the last{" "}
+                {trailing.months} month{trailing.months > 1 ? "s" : ""}.
+                {obligationsTotal > 0 &&
+                  ` Cost includes ${money(obligationsTotal)}/mo of obligations.`}
+              </div>
+            </div>
+
+            {/* the burn — sit vs run */}
+            {burn && (
+              <div className="ds2-board overflow-hidden mt-4">
+                <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                    The burn — sit vs run
+                  </span>
+                  <span className="font-condensed text-[12px] text-faint">
+                    · daily and weekly · {windowFull.length}-month blend + your notes
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2">
+                  <div className="px-[18px] py-[14px] sm:border-r border-b sm:border-b-0 ds2-cell-rule">
+                    <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase" style={{ color: "#4f8cd6" }}>
+                      Cost to sit
+                    </p>
+                    <p className="font-display text-[34px] tracking-[.02em] mt-1 tabular-nums">
+                      {money(burn.sitDaily)}
+                      <span className="font-condensed text-[14px] text-faint"> / day</span>
+                    </p>
+                    <p className="font-condensed font-semibold text-[17px] mt-[2px] tabular-nums text-dim">
+                      {money(burn.sitWeekly)}
+                      <span className="text-[12px] text-faint"> / week</span>
+                    </p>
+                    <p className="font-condensed text-[11px] text-faint mt-[6px]">
+                      fixed costs + the notes — bleeding whether the truck moves or not
+                    </p>
+                  </div>
+                  <div className="px-[18px] py-[14px]">
+                    <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase text-amber-hi">
+                      Cost to run
+                    </p>
+                    <p className="font-display text-[34px] tracking-[.02em] mt-1 tabular-nums">
+                      {money(burn.runDaily)}
+                      <span className="font-condensed text-[14px] text-faint"> / day</span>
+                    </p>
+                    <p className="font-condensed font-semibold text-[17px] mt-[2px] tabular-nums text-dim">
+                      {money(burn.runWeekly)}
+                      <span className="text-[12px] text-faint"> / week</span>
+                    </p>
+                    <p className="font-condensed text-[11px] text-faint mt-[6px]">
+                      sit + the variable burn — fuel, repairs, the road itself
+                    </p>
+                  </div>
+                </div>
+                <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+                  the <b className="text-dim">{money(burn.roadDaily)}/day</b> between them is what
+                  the road costs on top of existing — a day parked still burns{" "}
+                  {money(burn.sitDaily)}, so a cheap load isn't always cheaper than sitting.
+                </div>
+              </div>
+            )}
+
+            {/* rate to book — the crown jewel */}
+            {rateLadder.walkAway != null && (
+              <div
+                className="relative overflow-hidden rounded-[14px] border mt-4"
+                style={{
+                  background: "linear-gradient(180deg, #0e1420, #0b101a)",
+                  borderColor: "var(--color-hairline)",
+                  boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+                }}
+              >
+                <div
+                  className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule"
+                  style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
                 >
-                  <span className="text-light font-condensed">
-                    {`$${rateBasis.costPerTotalMile?.toFixed(2)}`}
-                  </span>{" "}
-                  <span className="text-muted-text">/ total mi</span>
+                  <div>
+                    <div className="font-forge font-bold text-[20px] leading-none" style={{ letterSpacing: "1.5px" }}>
+                      RATE TO BOOK
+                    </div>
+                    <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
+                      gross $/mile driven · last {rateBasis.months} complete month
+                      {rateBasis.months > 1 ? "s" : ""} · the number that pays for everything
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-[10px] flex-wrap px-[18px] py-[14px]">
+                  <span
+                    className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
+                    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                  >
+                    <b className="text-ink tabular-nums">${rateBasis.costPerTotalMile?.toFixed(2)}</b> / total
+                    mi — your all-in cost
+                  </span>
+                  <span className="font-condensed text-faint">→</span>
+                  <span
+                    className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
+                    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                  >
+                    ÷ <b className="text-ink">{Math.round(linehaulTake * 100)}%</b> keep
+                  </span>
+                  <span className="font-condensed text-faint">→</span>
+                  <span
+                    className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
+                    style={{ background: "var(--color-well)", border: "1px solid rgba(245,176,58,.55)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                  >
+                    <b className="font-display text-[22px] tracking-[.04em] text-amber-hi tabular-nums">
+                      ${rateLadder.walkAway?.toFixed(2)}
+                    </b>{" "}
+                    walk-away
+                  </span>
+                </div>
+                <div className="px-[18px] pb-[14px]">
+                  <RateLadder ladder={rateLadder} rpm={rateBasis.grossPerTotalMile} spec={specRateLadder} />
+                </div>
+                <div className="px-[18px] py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+                  walk-away = your cost/mile ÷ your {Math.round(linehaulTake * 100)}% keep. Book
+                  above it with your deadhead folded into the miles and you clear cost.
+                </div>
+              </div>
+            )}
+
+            {periods.length > 1 && (
+              <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
+            )}
+
+            {/* fixed vs variable */}
+            <div className="ds2-board overflow-hidden mt-4">
+              <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  Fixed vs variable · {selected.period_label} operating
                 </span>
-                <span className="text-muted-text">→</span>
-                <span
-                  className="rounded px-2 py-1 text-muted-text"
-                  style={{ background: "#0d1119", border: "1px solid #22304a" }}
-                >
-                  ÷ {Math.round(linehaulTake * 100)}% keep
-                </span>
-                <span className="text-muted-text">→</span>
-                <span
-                  className="rounded px-2 py-1"
-                  style={{ background: "#0d1119", border: "1px solid #22304a" }}
-                >
-                  <span className="font-condensed" style={{ color: "#f5b03a" }}>
-                    {`$${rateLadder.walkAway?.toFixed(2)}`}
-                  </span>{" "}
-                  <span className="text-muted-text">to book</span>
+                <span className="font-condensed text-[12px] text-faint">
+                  · {money(metrics.monthlyCost)}
                 </span>
               </div>
-              <RateLadder ladder={rateLadder} rpm={rateBasis.grossPerTotalMile} spec={specRateLadder} />
-              <p className="text-[11px] text-muted-text mt-2">
-                walk-away = your cost/mile ÷ your{" "}
-                {Math.round(linehaulTake * 100)}% keep. Book above it with your
-                deadhead folded into the miles and you clear cost.
+              <div className="px-4 pt-3 pb-1">
+                <div className="flex h-3 rounded-[4px] overflow-hidden">
+                  <div
+                    style={{
+                      width: `${metrics.fixedPct ? metrics.fixedPct * 100 : 0}%`,
+                      background: "#4f8cd6",
+                    }}
+                  />
+                  <div style={{ flex: 1, background: "var(--color-amber)" }} />
+                </div>
+              </div>
+              <div className="px-4 pb-3 pt-2 font-condensed text-[13px] text-dim flex gap-6 flex-wrap">
+                <span>
+                  <span style={{ color: "#4f8cd6" }}>●</span> Fixed{" "}
+                  <b className="text-ink tabular-nums">{money(metrics.fixedTotal)}</b>
+                </span>
+                <span>
+                  <span style={{ color: "var(--color-amber)" }}>●</span> Variable{" "}
+                  <b className="text-ink tabular-nums">{money(metrics.variableTotal)}</b>
+                </span>
+                {obligationsTotal > 0 && (
+                  <span className="text-faint">
+                    operating {money(metrics.monthlyCost)} + notes {money(obligationsTotal)} ={" "}
+                    <b className="text-ink">{money(trueMonthly.trueMonthlyCost)}</b> true monthly
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <ObligationsCard items={obligations} onChange={reloadObligations} />
+
+            <div className="ds2-board p-4 mt-4">
+              <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint mb-2">
+                All expenses · {selected.period_label} — reclassify, edit, add or delete
               </p>
-            </Panel>
-          )}
-
-          {periods.length > 1 && (
-            <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
-          )}
-
-          <Panel noir className="p-4 mb-6 mt-6">
-            <p className="text-xs text-muted-text mb-2">
-              Fixed vs variable · P&amp;L operating · {money(metrics.monthlyCost)}
-            </p>
-            <div className="flex h-3 rounded overflow-hidden mb-2">
-              <div
-                style={{
-                  width: `${metrics.fixedPct ? metrics.fixedPct * 100 : 0}%`,
-                  background: "#378add",
-                }}
+              <ExpenseLedger
+                period={selected}
+                totalMiles={miles.totalMiles}
+                income={selected.income_total}
+                onChange={refresh}
               />
-              <div style={{ flex: 1, background: "#e8940a" }} />
             </div>
-            <div className="text-sm flex gap-6">
-              <span>
-                <span style={{ color: "#378add" }}>●</span> Fixed{" "}
-                {money(metrics.fixedTotal)}
-              </span>
-              <span>
-                <span style={{ color: "#e8940a" }}>●</span> Variable{" "}
-                {money(metrics.variableTotal)}
-              </span>
+          </>
+        ) : null}
+
+        {/* upload — the forged popup */}
+        {showUpload && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setShowUpload(false)} />
+            <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
+              <div
+                className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
+                style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+              >
+                <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
+                  UPLOAD P&L
+                </span>
+                <button
+                  className="ml-auto text-faint hover:text-ink"
+                  aria-label="Close"
+                  onClick={() => setShowUpload(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-5">
+                <ExpenseUpload
+                  onSaved={() => {
+                    setShowUpload(false);
+                    refresh();
+                  }}
+                  onCancel={() => setShowUpload(false)}
+                />
+              </div>
             </div>
-            {obligationsTotal > 0 && (
-              <p className="text-[11px] text-muted-text mt-2">
-                Operating {money(metrics.monthlyCost)} + obligations{" "}
-                {money(obligationsTotal)} ={" "}
-                <span className="text-light">
-                  {money(trueMonthly.trueMonthlyCost)}
-                </span>{" "}
-                true monthly cost
-              </p>
-            )}
-          </Panel>
-
-          <ObligationsCard items={obligations} onChange={reloadObligations} />
-
-          <Panel noir className="p-4 mb-6">
-            <p className="text-xs text-muted-text mb-2">
-              All expenses · reclassify, edit value, add or delete
-            </p>
-            <ExpenseLedger
-              period={selected}
-              totalMiles={miles.totalMiles}
-              income={selected.income_total}
-              onChange={refresh}
-            />
-          </Panel>
-        </>
-      ) : null}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
