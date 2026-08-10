@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Truck, Maximize2, Weight, Home, Gauge } from "lucide-react";
 import type { Grade, CareerRank, SeasonStats, Lever } from "@/lib/metrics/playerCard";
 import type { QuarterPace } from "@/lib/metrics/quarterPace";
 import { QuarterPaceCard } from "./QuarterPaceCard";
@@ -50,42 +49,36 @@ const Stat = ({
   span2?: boolean;
   sub?: string;
 }) => (
-  <div className={`bg-plate rounded-lg px-3 py-2 ${span2 ? "col-span-2" : ""}`}>
-    <p className="text-[11px] text-muted-text">{label}</p>
-    <p className="text-lg font-condensed truncate" style={color ? { color } : undefined}>
+  <div
+    className={`rounded-[10px] px-3 py-2 ${span2 ? "col-span-2" : ""}`}
+    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)" }}
+  >
+    <p className="font-condensed text-[11px] tracking-[.1em] uppercase text-faint">{label}</p>
+    <p className="text-lg font-condensed font-semibold truncate tabular-nums" style={color ? { color } : undefined}>
       {value}
     </p>
-    {sub && <p className="text-[10px] text-muted-text truncate">{sub}</p>}
+    {sub && <p className="font-condensed text-[10px] text-faint truncate">{sub}</p>}
   </div>
 );
 
 // An equipment-mix identity strip (oversize / heavy haul). Oversize and heavy
 // haul are DIFFERENT disciplines, so each gets its own strip. The specialist
 // styling only lights when the underlying mix says so.
-const TypeStrip = ({
-  icon,
-  label,
-  mix,
-}: {
-  icon: ReactNode;
-  label: string;
-  mix: TypeMix;
-}) => {
+const TypeStrip = ({ label, mix }: { label: string; mix: TypeMix }) => {
   const spec = mix.specialist;
   return (
     <div
       className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px]"
       style={
         spec
-          ? { background: "#241a06", border: "1px solid #85500b" }
-          : { background: "#1a2130", border: "1px solid #2a3347" }
+          ? { background: "rgba(232,148,10,.08)", border: "1px solid rgba(232,148,10,.4)" }
+          : { background: "var(--color-well)", border: "1px solid var(--color-hairline)" }
       }
     >
       <span
-        className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wide"
-        style={{ color: spec ? "#f5b03a" : "#9fb0c9" }}
+        className="font-condensed font-semibold uppercase tracking-[.08em]"
+        style={{ color: spec ? "var(--color-amber-hi)" : "var(--color-dim)" }}
       >
-        {icon}
         {spec ? `${label} specialist` : label}
       </span>
       <span style={{ color: spec ? "#c7935a" : "#7d8ba3" }}>
@@ -112,7 +105,7 @@ const HometimeChip = ({ hometime }: { hometime: Hometime }) => {
       ? { bg: "#3a1a1a", border: "#a32d2d", fg: "#f87171", sub: "#c98a8a" }
       : state === "home"
         ? { bg: "#123020", border: "#1f6e4a", fg: "#4ade80", sub: "#8fb9a4" }
-        : { bg: "#1a2130", border: "#2a3347", fg: "#cdd8e8", sub: "#7d8ba3" };
+        : { bg: "var(--color-well)", border: "var(--color-hairline)", fg: "var(--color-ink)", sub: "var(--color-faint)" };
 
   const title =
     state === "none"
@@ -135,10 +128,9 @@ const HometimeChip = ({ hometime }: { hometime: Hometime }) => {
       className="flex items-center gap-2.5 mt-4 px-3 py-2 rounded-lg"
       style={{ background: S.bg, border: `1px solid ${S.border}` }}
     >
-      <Home size={18} style={{ color: S.fg, flexShrink: 0 }} />
       <div className="min-w-0">
         <p
-          className="text-sm font-semibold uppercase tracking-wide"
+          className="font-condensed text-sm font-bold uppercase tracking-[.1em]"
           style={{ color: S.fg }}
         >
           {title}
@@ -172,9 +164,9 @@ const LeverTile = ({
   return (
     <div
       className="rounded-[10px] px-3 py-2.5"
-      style={{ background: "#141b28", border: `1px solid ${m ? m.bg : "#2a3347"}` }}
+      style={{ background: "var(--color-well)", border: `1px solid ${m ? m.bg : "var(--color-hairline-lo)"}` }}
     >
-      <p className="text-[10px] tracking-wide text-muted-text uppercase">{label}</p>
+      <p className="font-condensed text-[10px] tracking-[.12em] text-faint uppercase">{label}</p>
       <p className="text-lg font-condensed my-0.5 truncate">{value}</p>
       {m ? (
         <span
@@ -184,7 +176,7 @@ const LeverTile = ({
           {m.label}
         </span>
       ) : (
-        <span className="text-[10px] text-muted-text">—</span>
+        <span className="text-[10px] text-faint">—</span>
       )}
     </div>
   );
@@ -206,6 +198,7 @@ export interface PlayerCardProps {
   heavyHaul?: TypeMix; // heavy-haul mix — a distinct discipline from oversize
   hometime?: Hometime; // days-since-home status; strip hidden when not provided
   pace?: QuarterPace | null; // current-quarter-vs-previous pace; hidden when absent
+  streak?: number | null; // consecutive weeks covering the notes; row hidden when absent
 }
 
 export const PlayerCard = ({
@@ -224,6 +217,7 @@ export const PlayerCard = ({
   heavyHaul,
   hometime,
   pace,
+  streak,
 }: PlayerCardProps) => {
   const stars = "★".repeat(rank.index + 1) + "☆".repeat(RANK_TIERS.length - rank.index - 1);
 
@@ -241,16 +235,23 @@ export const PlayerCard = ({
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-2xl border-2 p-4" style={{ background: "#10151f", borderColor: "#e8940a" }}>
+      <div
+        className="relative overflow-hidden rounded-[14px] border p-4"
+        style={{
+          background: "linear-gradient(180deg, #0e1420, #0b101a)",
+          borderColor: "var(--color-hairline)",
+          boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+        }}
+      >
         <div
-          className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
-          style={{ backgroundImage: "radial-gradient(#e8940a 1.3px, transparent 1.4px)", backgroundSize: "7px 7px", opacity: 0.14 }}
+          className="absolute inset-x-0 top-0 h-16 pointer-events-none"
+          style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
         />
         <div className="flex gap-4 items-start relative">
           <div className="shrink-0">{avatar}</div>
           <div className="flex-1 min-w-0">
             <div className="flex justify-between items-start gap-3 flex-wrap">
-              <h1 className="font-condensed text-3xl leading-none">{name}</h1>
+              <h1 className="font-display text-[30px] tracking-[.04em] leading-none">{name.toUpperCase()}</h1>
               {medals.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap justify-end">
                   {medals.map((m) => (
@@ -259,46 +260,49 @@ export const PlayerCard = ({
                 </div>
               )}
             </div>
-            <p className="text-xs text-muted-text mb-3 mt-1">{business}</p>
+            <p className="font-condensed text-xs text-faint tracking-[.06em] mb-3 mt-1 uppercase">{business}</p>
             {((oversize && oversize.count >= STRIP_MIN_COUNT) ||
               (heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT)) && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {oversize && oversize.count >= STRIP_MIN_COUNT && (
-                  <TypeStrip
-                    icon={<Maximize2 size={13} />}
-                    label="Oversize"
-                    mix={oversize}
-                  />
+                  <TypeStrip label="Oversize" mix={oversize} />
                 )}
                 {heavyHaul && heavyHaul.count >= STRIP_MIN_COUNT && (
-                  <TypeStrip
-                    icon={<Weight size={13} />}
-                    label="Heavy haul"
-                    mix={heavyHaul}
-                  />
+                  <TypeStrip label="Heavy haul" mix={heavyHaul} />
                 )}
               </div>
             )}
             <div className="flex items-center gap-3">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: "#3a2a0a", border: "2px solid #e8940a", color: "#f5b03a" }}
-              >
-                <Truck size={20} />
-              </div>
               <div className="flex-1 min-w-0">
-                <div className="font-forge font-bold text-xl leading-none" style={{ color: "#f5e6c8", letterSpacing: "1px" }}>
-                  {rank.name}
+                <div className="font-forge font-bold text-xl leading-none" style={{ color: "var(--color-ink)", letterSpacing: "1.5px" }}>
+                  {rank.name.toUpperCase()}
                 </div>
-                <div className="text-[10px] text-muted-text mt-0.5">
-                  <span style={{ color: "#f5b03a", letterSpacing: "1px" }}>{stars}</span> · Career rank
+                <div className="font-condensed text-[10px] text-faint tracking-[.08em] mt-0.5 uppercase">
+                  <span style={{ color: "var(--color-amber-hi)", letterSpacing: "1px" }}>{stars}</span> · Career rank — the mile club
                 </div>
-                <div className="h-1.5 rounded bg-plate mt-1 overflow-hidden">
-                  <div className="h-full" style={{ width: `${rank.pct * 100}%`, background: "#e8940a" }} />
+                <div className="flex gap-[3px] mt-1.5">
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <i
+                      key={i}
+                      className="flex-1 h-[9px] rounded-[2px]"
+                      style={
+                        i < Math.round(rank.pct * 10)
+                          ? {
+                              background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                              boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                            }
+                          : {
+                              background: "var(--color-well)",
+                              border: "1px solid var(--color-hairline-lo)",
+                              boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)",
+                            }
+                      }
+                    />
+                  ))}
                 </div>
                 {rank.next && (
-                  <div className="text-[9.5px] text-muted-text mt-0.5">
-                    {fmtMiles(rank.toNext)} to {rank.next.name}
+                  <div className="font-condensed text-[10px] text-faint mt-1">
+                    {fmtMiles(rank.toNext)} to {rank.next.name.toUpperCase()}
                   </div>
                 )}
               </div>
@@ -308,29 +312,60 @@ export const PlayerCard = ({
 
         {hometime && <HometimeChip hometime={hometime} />}
 
-        <div className="mt-4 pt-3 border-t relative" style={{ borderColor: "#2a3347" }}>
+        <div className="mt-4 pt-3 border-t relative" style={{ borderColor: "var(--color-hairline-lo)" }}>
           <div className="flex items-baseline gap-2 mb-2.5">
-            <span className="font-condensed text-sm tracking-wide text-muted-text">
-              SEASON · {season.label}
+            <span className="font-condensed font-semibold text-sm tracking-[.14em] text-faint uppercase">
+              Season · {season.label}
             </span>
-            <span className="text-[11px] text-muted-text">your three profit levers</span>
+            <span className="font-condensed text-[11px] text-faint">your three profit levers</span>
           </div>
           <div className="grid grid-cols-3 gap-2.5">
             <LeverTile label="Rate" value={rateVal} grade={rpmGrade} />
             <LeverTile label="Utilization" value={utilVal} grade={utilGrade} />
             <LeverTile label="Op margin" value={marginVal} grade={marginGrade} />
           </div>
+          {streak != null && (
+            <div className="mt-3">
+              <div className="flex justify-between items-baseline mb-1.5">
+                <span className="font-condensed font-semibold text-[11px] tracking-[.12em] text-faint uppercase">
+                  Covering the notes — week streak
+                </span>
+                <span className="font-condensed font-semibold text-[13px] tabular-nums">
+                  {streak} week{streak === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="flex gap-[3px]">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <i
+                    key={i}
+                    className="flex-1 h-[9px] rounded-[2px]"
+                    style={
+                      i < Math.min(streak, 10)
+                        ? {
+                            background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                            boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                          }
+                        : {
+                            background: "var(--color-well)",
+                            border: "1px solid var(--color-hairline-lo)",
+                            boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)",
+                          }
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           {bottleneck.length > 0 ? (
             <div
               className="flex items-center gap-3 mt-3 px-3.5 py-2.5 rounded-[10px]"
-              style={{ background: "#231a06", border: "1px solid #85500b" }}
+              style={{ background: "rgba(232,148,10,.08)", border: "1px solid rgba(232,148,10,.4)" }}
             >
-              <Gauge size={24} style={{ color: "#f5b03a", flexShrink: 0 }} />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold tracking-wide uppercase" style={{ color: "#f5b03a" }}>
+                <p className="font-condensed text-[13px] font-bold tracking-[.1em] uppercase" style={{ color: "var(--color-amber-hi)" }}>
                   Bottleneck · {bottleneck.map((l) => l.label).join(" & ")}
                 </p>
-                <p className="text-[11px]" style={{ color: "#c7935a" }}>
+                <p className="font-condensed text-[11px]" style={{ color: "var(--color-dim)" }}>
                   {bottleneck.length === 1
                     ? LEVER_HINTS[bottleneck[0].key]
                     : "two levers are lagging — tackle the weakest first."}
@@ -342,13 +377,12 @@ export const PlayerCard = ({
               className="flex items-center gap-3 mt-3 px-3.5 py-2.5 rounded-[10px]"
               style={{ background: "#12261a", border: "1px solid #1f6e4a" }}
             >
-              <Gauge size={24} style={{ color: "#4ade80", flexShrink: 0 }} />
-              <p className="text-[13px] font-semibold tracking-wide uppercase" style={{ color: "#4ade80" }}>
+              <p className="font-condensed text-[13px] font-bold tracking-[.1em] uppercase" style={{ color: "#4ade80" }}>
                 Firing on all cylinders
               </p>
             </div>
           ) : (
-            <p className="text-[11px] text-muted-text mt-3">
+            <p className="text-[11px] text-faint mt-3">
               Grades build over a full month of data.
             </p>
           )}
@@ -361,7 +395,7 @@ export const PlayerCard = ({
         <span className="font-forge font-bold text-lg" style={{ color: "#f5b03a" }}>
           LAST SEASON
         </span>
-        <span className="text-[11px] text-muted-text">· {season.label} · the last complete quarter</span>
+        <span className="text-[11px] text-faint">· {season.label} · the last complete quarter</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Stat label="Net revenue" value={money(season.netRevenue)} sub="net of carrier cut" />
