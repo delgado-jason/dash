@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Pencil } from "lucide-react";
 import type { Driver } from "@/types/driver";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
@@ -16,11 +15,14 @@ import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { hometimeStatus } from "@/lib/metrics/hometime";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { HardwareBoard } from "@/components/awards/HardwareBoard";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate, money } from "@/lib/format";
-import { Panel } from "@/components/ui/Panel";
 import {
   getCostBasis,
   getRateLadder,
@@ -50,8 +52,7 @@ import { computePatches } from "@/lib/awards/patches";
 import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { PlayerCard } from "@/components/playercard/PlayerCard";
-import { RecordBook, driverRecordChips } from "@/components/awards/RecordBook";
-import { PatchBoard } from "@/components/awards/PatchBoard";
+import { driverRecordChips } from "@/components/awards/RecordBook";
 
 const Spec = ({
   label,
@@ -193,6 +194,8 @@ const DriverDetailPage = () => {
       utilGrade: utilizationGrade(utilization),
       windowRpm: basis.windowRpm,
       medals: earnedMedals(medals),
+      allMedals: medals,
+      streak: grind.currentStreak,
       bests: personalBests(driverLoads, fuel, now),
       patches: computePatches(driverLoads, fuel, operation),
       // Equipment identity — oversize and heavy haul kept as separate disciplines.
@@ -227,8 +230,10 @@ const DriverDetailPage = () => {
 
   if (!driver)
     return (
-      <div className="p-6 bg-iron text-light min-h-screen font-body">
-        <p className="text-muted-text">Loading…</p>
+      <div className="p-6 text-ink font-body min-h-screen">
+        <Skeleton className="h-8 w-56 mb-2" />
+        <Skeleton className="h-4 w-32 mb-6" />
+        <BlockSkeleton className="h-72" />
       </div>
     );
 
@@ -245,79 +250,139 @@ const DriverDetailPage = () => {
       kind="driver"
       id={driver.driver_id}
       avatarUrl={driver.avatar_url}
-      size={150}
+      size={84}
       allowVariant
       onUpdated={(u) => setDriver({ ...driver, avatar_url: u })}
     />
   );
 
+  // CDL clock — local calendar days until expiration; hot inside 60.
+  const todayKey = new Date().toLocaleDateString("en-CA");
+  const cdlDays = driver.cdl_expiration
+    ? Math.round(
+        (Date.parse(`${driver.cdl_expiration}T00:00:00Z`) -
+          Date.parse(`${todayKey}T00:00:00Z`)) /
+          86_400_000,
+      )
+    : null;
+
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <Link to="/drivers" className="text-xs text-muted-text hover:text-light">
-        ← Drivers
-      </Link>
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">DRIVERS</h1>
+          <Link
+            to="/drivers"
+            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+          >
+            ← back to the roster
+          </Link>
+        </div>
 
-      {card ? (
-        <div className="mt-3">
-          <PlayerCard
-            name={name}
-            business="Delgado Trucking Services · Owner-Operator"
-            avatar={avatar}
-            rank={card.rank}
-            season={card.season}
-            pace={card.pace}
-            rpmGrade={card.rpmGrade}
-            marginGrade={card.marginGrade}
-            utilization={card.utilization}
-            utilGrade={card.utilGrade}
-            windowRpm={card.windowRpm}
-            medals={card.medals}
-            oversize={card.oversize}
-            heavyHaul={card.heavyHaul}
-            hometime={hometime}
-          />
-          <RecordBook records={driverRecordChips(card.bests)} />
-          <PatchBoard patches={card.patches} />
-          <div className="flex justify-center gap-4 mt-6">
-            <Link to="/trophy-room" className="text-sm text-status-info-text hover:underline">
-              Trophy Room →
-            </Link>
-            <Link to="/recap" className="text-sm text-status-info-text hover:underline">
-              Full recap →
-            </Link>
+        <div className="flex items-center gap-4 flex-wrap mt-[18px]">
+          <div className="shrink-0">{avatar}</div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+              {name.toUpperCase()}
+            </h2>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {driver.active ? (
+                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
+                  ACTIVE
+                </span>
+              ) : (
+                <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
+                  INACTIVE
+                </span>
+              )}
+              {hometime.state === "over" && (
+                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#e05252] border border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]">
+                  OUT {hometime.daysOut} DAYS · PAST YOUR {hometime.threshold}-DAY LINE
+                </span>
+              )}
+              {hometime.state === "ok" && (
+                <span className="font-condensed font-semibold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-dim border border-hairline">
+                  OUT {hometime.daysOut} DAY{hometime.daysOut === 1 ? "" : "S"} ·{" "}
+                  {hometime.toTarget} TO YOUR LINE
+                </span>
+              )}
+              {hometime.state === "home" && (
+                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
+                  HOME
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col md:flex-row gap-6 mt-3 mb-2 items-start">
-          {avatar}
-          <div>
-            <h1 className="text-3xl font-condensed">{name}</h1>
-            <p className="text-muted-text text-sm">
-              {driver.active ? "Active driver" : "Inactive"}
-            </p>
-          </div>
-        </div>
-      )}
 
-      {/* driver details — demoted below the card, still fully editable */}
-      <Panel className="p-4 mt-4">
-        {editing ? (
-          <EntityForm
-            title="Edit driver"
-            fields={DRIVER_FIELDS}
-            initial={toFormValues(
-              driver as unknown as Record<string, unknown>,
-              DRIVER_FIELDS,
-            )}
-            onSave={saveEdit}
-            onCancel={() => setEditing(false)}
-            busy={busy}
-            error={error}
-          />
-        ) : (
+        {card && (
           <>
-            <div className="flex justify-between items-start gap-3">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+            <div className="mt-4">
+              <PlayerCard
+                name={name}
+                business="Delgado Trucking Services · Owner-Operator"
+                avatar={null}
+                rank={card.rank}
+                season={card.season}
+                pace={card.pace}
+                rpmGrade={card.rpmGrade}
+                marginGrade={card.marginGrade}
+                utilization={card.utilization}
+                utilGrade={card.utilGrade}
+                windowRpm={card.windowRpm}
+                medals={card.medals}
+                oversize={card.oversize}
+                heavyHaul={card.heavyHaul}
+                streak={card.streak}
+              />
+            </div>
+            <HardwareBoard
+              medals={card.allMedals}
+              patches={card.patches}
+              records={driverRecordChips(card.bests)}
+            />
+            <div className="flex gap-4 mt-3">
+              <Link
+                to="/recap"
+                className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-dim hover:text-ink"
+              >
+                FULL RECAP →
+              </Link>
+            </div>
+          </>
+        )}
+
+        {/* papers — the CDL clock runs hot inside 60 days */}
+        <div className="ds2-board p-4 mt-4">
+          {editing ? (
+            <EntityForm
+              title="Edit driver"
+              fields={DRIVER_FIELDS}
+              initial={toFormValues(
+                driver as unknown as Record<string, unknown>,
+                DRIVER_FIELDS,
+              )}
+              onSave={saveEdit}
+              onCancel={() => setEditing(false)}
+              busy={busy}
+              error={error}
+            />
+          ) : (
+            <>
+              <div className="flex items-baseline gap-2.5 flex-wrap">
+                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  Papers
+                </span>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
+                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                >
+                  EDIT
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
                 <Spec label="Phone" value={driver.phone} />
                 <Spec label="Email" value={driver.email} />
                 <Spec
@@ -328,65 +393,102 @@ const DriverDetailPage = () => {
                       : null
                   }
                 />
-                <Spec label="CDL expires" value={formatDate(driver.cdl_expiration)} />
+                <div className="min-w-0">
+                  <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">
+                    CDL expires
+                  </p>
+                  <p className="font-condensed text-[14px] break-words flex items-center gap-2 flex-wrap">
+                    {formatDate(driver.cdl_expiration) ?? "—"}
+                    {cdlDays != null &&
+                      (cdlDays <= 60 ? (
+                        <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-[#e05252] border border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]">
+                          {cdlDays <= 0 ? "EXPIRED" : `${cdlDays} DAYS`}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-[10.5px] tracking-[.08em] px-[6px] py-[1px] rounded-[4px] text-faint border border-hairline">
+                          {cdlDays} days
+                        </span>
+                      ))}
+                  </p>
+                </div>
                 <Spec label="Endorsements" value={driver.endorsements} />
                 <Spec label="Hired" value={formatDate(driver.hire_date)} />
               </div>
-              <button
-                onClick={() => setEditing(true)}
-                className="bg-steel text-light px-2 py-1 rounded text-xs flex items-center gap-1 shrink-0"
-              >
-                <Pencil size={13} /> Edit
-              </button>
-            </div>
-            <p className="text-xs text-muted-text mt-2">
-              CDL is managed on the{" "}
-              <Link to="/compliance" className="text-status-info-text hover:underline">
-                Compliance page
-              </Link>
-              .
-            </p>
-          </>
-        )}
-      </Panel>
-
-      {/* plain-page stats for a non-hauling driver (hauling stats live in the card) */}
-      {!card && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-          <Panel className="p-4">
-            <p className="text-xs text-muted-text mb-1">Loads hauled</p>
-            <p className="text-2xl font-condensed">{earnedLoads.length}</p>
-          </Panel>
-          <Panel className="p-4">
-            <p className="text-xs text-muted-text mb-1">Net revenue · all time</p>
-            <p className="text-2xl font-condensed">{money(revenue)}</p>
-          </Panel>
-          <Panel className="p-4">
-            <p className="text-xs text-muted-text mb-1">Miles hauled</p>
-            <p className="text-2xl font-condensed">
-              {milesHauled.toLocaleString("en-US")}
-            </p>
-          </Panel>
+              <p className="font-condensed text-[12px] text-faint mt-3">
+                CDL is managed on the{" "}
+                <Link to="/compliance" className="text-amber-hi hover:text-hot">
+                  Compliance page
+                </Link>
+                .
+              </p>
+            </>
+          )}
         </div>
-      )}
 
-      <Panel className="p-4 mt-4">
-        <p className="text-xs text-muted-text mb-2">Recent loads</p>
-        {earnedLoads.length === 0 ? (
-          <p className="text-sm text-muted-text">None for this driver yet.</p>
-        ) : (
-          <div className="text-sm divide-y divide-steel">
-            {earnedLoads.slice(0, 6).map((l) => (
-              <div key={l.load_id} className="py-2 flex justify-between">
-                <span>
-                  {l.origin_market} → {l.delivery_market}
-                </span>
-                <span className="text-muted-text">{money(loadRevenue(l))}</span>
-              </div>
-            ))}
+        {/* plain stats for a non-hauling driver (hauling stats live in the card) */}
+        {!card && (
+          <div className="ds2-board grid grid-cols-2 md:grid-cols-3 overflow-hidden mt-4">
+            <div className="px-4 py-3 md:border-r border-b md:border-b-0 ds2-cell-rule">
+              <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+                Loads hauled
+              </p>
+              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+                {earnedLoads.length}
+              </p>
+            </div>
+            <div className="px-4 py-3 md:border-r border-b md:border-b-0 ds2-cell-rule">
+              <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+                Net revenue · all time
+              </p>
+              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+                {money(revenue)}
+              </p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+                Miles hauled
+              </p>
+              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+                {milesHauled.toLocaleString("en-US")}
+              </p>
+            </div>
           </div>
         )}
-      </Panel>
+
+        {/* recent hauls — every row links to its load */}
+        <div className="ds2-board p-4 mt-4">
+          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            Recent hauls — every row links to its load
+          </p>
+          {earnedLoads.length === 0 ? (
+            <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+              None for this driver yet.
+            </p>
+          ) : (
+            <div className="mt-[6px]">
+              {earnedLoads.slice(0, 6).map((l) => (
+                <div
+                  key={l.load_id}
+                  className="grid grid-cols-[92px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                >
+                  <Link
+                    to={`/loads/${l.load_id}`}
+                    className="font-display text-[15px] tracking-[.05em] text-amber-hi hover:text-hot"
+                  >
+                    {l.load_number}
+                  </Link>
+                  <span className="min-w-0 truncate">
+                    {l.origin_market} → {l.delivery_market}
+                  </span>
+                  <span className="text-right font-semibold text-ink tabular-nums">
+                    {money(loadRevenue(l))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
