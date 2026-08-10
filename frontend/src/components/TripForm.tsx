@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import type { Trip } from "@/types/trip";
 import type { TripInput } from "@/types/tripInput";
 import {
   createTrip,
+  updateTrip,
+  deleteTrip,
   getLatestOdometer,
   getLastKnownLocation,
 } from "@/services/tripsService";
@@ -23,6 +26,8 @@ import {
 interface TripFormProps {
   onSuccess: () => void;
   onClose: () => void;
+  trip?: Trip | null; // present = edit mode: seeded fields, save patches, delete offered
+  prefillOdometerStart?: number | null; // gap-detector handoff — overrides the latest-odometer prefill
 }
 
 // Local state allows an empty purpose so the Select starts on its placeholder
@@ -32,18 +37,34 @@ type TripFormState = Omit<TripInput, "trip_purpose"> & {
   trip_purpose: TripInput["trip_purpose"] | "";
 };
 
-const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
-  const [formData, setFormData] = useState<TripFormState>({
-    trip_date: "",
-    trip_purpose: "",
-    odometer_start: undefined,
-    odometer_end: undefined,
-    is_estimated: true,
-    start_city: "",
-    start_state: "",
-    end_city: "",
-    end_state: "",
-  });
+const TripForm = ({ onSuccess, onClose, trip = null, prefillOdometerStart = null }: TripFormProps) => {
+  const editing = trip != null;
+  const [formData, setFormData] = useState<TripFormState>(() =>
+    trip
+      ? {
+          trip_date: trip.trip_date?.slice(0, 10) ?? "",
+          trip_purpose: trip.trip_purpose,
+          odometer_start: trip.odometer_start ?? undefined,
+          odometer_end: trip.odometer_end ?? undefined,
+          is_estimated: trip.is_estimated ?? true,
+          start_city: trip.start_city ?? "",
+          start_state: trip.start_state ?? "",
+          end_city: trip.end_city ?? "",
+          end_state: trip.end_state ?? "",
+        }
+      : {
+          trip_date: "",
+          trip_purpose: "",
+          odometer_start: prefillOdometerStart ?? undefined,
+          odometer_end: undefined,
+          is_estimated: true,
+          start_city: "",
+          start_state: "",
+          end_city: "",
+          end_state: "",
+        },
+  );
+  const [deleting, setDeleting] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +73,7 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
   // tile onto the odometer chain (each starts where the last load/trip ended).
   // Non-fatal: if it fails or there's no history, the field is just left blank.
   useEffect(() => {
+    if (editing || prefillOdometerStart != null) return;
     let active = true;
     getLatestOdometer()
       .then((odo) => {
@@ -69,6 +91,7 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
   // most recent load/fuel/trip), so a trip begins where the truck actually is.
   // Non-fatal, same as the odometer prefill: no data → fields stay blank.
   useEffect(() => {
+    if (editing) return;
     let active = true;
     getLastKnownLocation().then((loc) => {
       if (active && loc) {
@@ -113,27 +136,46 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
 
     setSubmitting(true);
     try {
-      await createTrip({
+      const payload = {
         ...formData,
         trip_purpose: purpose,
         start_city: clean(formData.start_city),
         start_state: clean(formData.start_state)?.toUpperCase(),
         end_city: clean(formData.end_city),
         end_state: clean(formData.end_state)?.toUpperCase(),
-      });
+      };
+      if (editing) await updateTrip(trip!.trip_id, payload);
+      else await createTrip(payload);
       onSuccess();
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to create trip");
+      setError(e instanceof Error ? e.message : editing ? "Unable to update trip" : "Unable to create trip");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Delete lives behind a confirm — it's the one destructive act on the page.
+  const handleDelete = async () => {
+    if (!trip) return;
+    if (!window.confirm(`Delete trip ${trip.trip_number}? This can't be undone.`)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteTrip(trip.trip_id);
+      onSuccess();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to delete trip");
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
     <Panel className="p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-condensed text-light">Log Trip</h2>
+        <h2 className="text-xl font-condensed text-ink">{editing ? `Edit Trip ${trip!.trip_number}` : "Log Trip"}</h2>
         <button onClick={onClose} className="text-muted-text hover:text-light">
           ✕
         </button>
@@ -286,12 +328,21 @@ const TripForm = ({ onSuccess, onClose }: TripFormProps) => {
       {error && <p className="text-destructive text-sm mt-3">{error}</p>}
 
       <div className="flex gap-2 mt-4">
-        <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Saving..." : "Log Trip"}
+        <Button onClick={handleSubmit} disabled={submitting || deleting}>
+          {submitting ? "Saving..." : editing ? "Save Trip" : "Log Trip"}
         </Button>
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
+        {editing && (
+          <button
+            onClick={handleDelete}
+            disabled={submitting || deleting}
+            className="ml-auto h-9 px-4 rounded-[9px] border border-status-negative-text/35 text-status-negative-text font-condensed font-semibold text-[13px] hover:bg-status-negative-text/10 disabled:opacity-50"
+          >
+            {deleting ? "Deleting..." : "Delete trip"}
+          </button>
+        )}
       </div>
     </Panel>
   );
