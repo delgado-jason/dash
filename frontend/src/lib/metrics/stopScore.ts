@@ -27,6 +27,7 @@ export interface StopScore {
   timedStops: number; // stops with in+out logged — the sample size
   medianDwellMin: number | null; // null until MIN_STOPS
   onTimePct: number | null; // 0..1 of graded stops that hit on-time
+  onTimeCount: number; // graded stops that hit on-time — raw, never gated
   gradedStops: number; // stops with an appointment + arrival
   detentionCount: number; // timed stops that ran past free time
   unpaidCount: number; // of those, still not marked paid
@@ -148,6 +149,7 @@ export const scoreStops = (stops: Stop[]): StopScore => {
     timedStops: timed.length,
     medianDwellMin: enough ? median(dwells) : null,
     onTimePct: graded.length >= MIN_STOPS ? onTimeN / graded.length : null,
+    onTimeCount: onTimeN,
     gradedStops: graded.length,
     detentionCount: detStops.length,
     unpaidCount: detStops.filter((s) => s.detentionUnpaid).length,

@@ -5,6 +5,33 @@ import {
 } from "../utils/validation/truckValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
 
+// The one constant: a truck's current odometer is the highest reading anywhere
+// in the app — the stored column (the seed/floor, set on the truck form) or the
+// freshest load, trip, fuel fill-up, or tractor-side service. Computed here so
+// every consumer of the trucks API (list, dashboard, detail, maintenance
+// alerts) reads the same number; updating an odometer anywhere updates it
+// everywhere. Postgres GREATEST ignores NULL args, so empty sources fall away.
+const ODOMETER_SOURCES_SQL = `
+    LEFT JOIN LATERAL (
+      SELECT MAX(odometer_end) AS m FROM loads
+      WHERE truck_id = t.truck_id AND user_id = t.user_id
+    ) lo ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT MAX(odometer_end) AS m FROM trips
+      WHERE truck_id = t.truck_id AND user_id = t.user_id
+    ) tr ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT MAX(odometer_reading) AS m FROM fuel_entries
+      WHERE truck_id = t.truck_id AND user_id = t.user_id
+    ) fu ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT MAX(odometer) AS m FROM maintenance_services
+      WHERE truck_id = t.truck_id AND user_id = t.user_id
+        AND unit IN ('tractor', 'both')
+    ) ms ON TRUE
+`;
+const CURRENT_ODOMETER_SQL = `GREATEST(t.current_odometer, lo.m, tr.m, fu.m, ms.m) AS current_odometer`;
+
 // ---- GET ALL TRUCKS ----
 
 export async function getTrucks(user_id) {
@@ -23,7 +50,7 @@ export async function getTrucks(user_id) {
       make,
       model,
       year,
-      current_odometer,
+      ${CURRENT_ODOMETER_SQL},
       status,
       in_service_date,
       avatar_url,
@@ -31,7 +58,8 @@ export async function getTrucks(user_id) {
       created_at,
       updated_at,
       deleted_at
-    FROM public.trucks
+    FROM public.trucks t
+    ${ODOMETER_SOURCES_SQL}
     WHERE user_id = $1
     AND is_deleted = false
     ORDER BY created_at DESC
@@ -65,7 +93,7 @@ export async function getTruck(user_id, truck_id) {
       make,
       model,
       year,
-      current_odometer,
+      ${CURRENT_ODOMETER_SQL},
       status,
       in_service_date,
       avatar_url,
@@ -73,7 +101,8 @@ export async function getTruck(user_id, truck_id) {
       created_at,
       updated_at,
       deleted_at
-    FROM public.trucks
+    FROM public.trucks t
+    ${ODOMETER_SOURCES_SQL}
     WHERE user_id = $1
     AND truck_id = $2
     AND is_deleted = false

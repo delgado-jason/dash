@@ -20,6 +20,28 @@ describe("facilityStops + scoreStops", () => {
     expect(score.medianDwellMin).toBeNull();
   });
 
+  it("counts on-time arrivals raw and ungated, even under the minimum", () => {
+    // Jason's A C S case: two early arrivals against a 7:00 set appointment —
+    // onTimePct is gated null below MIN_STOPS, but the COUNT must still read
+    // 2 of 2, never 0 of 2.
+    const loads = [
+      shipLoad({
+        shipper_in: "06:00",
+        shipper_out: "16:45",
+        pickup_appt_start: "07:00",
+      }),
+      shipLoad({
+        shipper_in: "06:00",
+        shipper_out: "17:00",
+        pickup_appt_start: "07:00",
+      }),
+    ];
+    const score = scoreStops(facilityStops(loads, "FAC", 3));
+    expect(score.gradedStops).toBe(2);
+    expect(score.onTimeCount).toBe(2);
+    expect(score.onTimePct).toBeNull(); // still gated — the pct needs a sample
+  });
+
   it("medians dwell and counts detention past free time", () => {
     // dwells: 2h, 3h, 5h (=120,180,300 min); free 3h → detention on the 5h stop.
     const loads = [
