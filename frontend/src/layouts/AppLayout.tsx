@@ -29,6 +29,7 @@ const FULL_BLEED_PREFIXES = [
   { prefix: "/fuel-entries", ownerOnly: false },
   { prefix: "/expenses", ownerOnly: false },
   { prefix: "/market", ownerOnly: false },
+  { prefix: "/per-diem", ownerOnly: false },
 ];
 const isFullBleed = (pathname: string) =>
   FULL_BLEED_PREFIXES.some(
