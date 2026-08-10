@@ -14,7 +14,7 @@ import {
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { getFreightIndex, type FreightIndexPoint } from "@/services/marketService";
-import { Panel } from "@/components/ui/Panel";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import {
   ratePoints,
@@ -25,16 +25,18 @@ import {
 import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
 import { rpm } from "@/lib/format";
 
-const MACRO = "#7fb2e6"; // FRED PPI overlay line
+const MACRO = "#4f8cd6"; // FRED PPI overlay line — the house chart blue
 
+// The app's one load-type palette (hazmat moved to violet — it was too close
+// to standard's amber to tell apart).
 const COLOR: Record<RatePoint["bucket"], string> = {
-  standard: "#4a90d9",
-  hazmat: "#e0a020",
-  specialized: "#e05a3a",
+  standard: "#f5b03a",
+  hazmat: "#8f7ad0",
+  specialized: "#4f8cd6",
 };
-const BE = "#e0533a";
-const GRID = "#2a3347";
-const MUTED = "#9daabb";
+const BE = "#e05252";
+const GRID = "#141c2a";
+const MUTED = "#5a6880";
 const monthTick = (ym: string) =>
   new Date(ym + "-01T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
@@ -207,7 +209,7 @@ const Barometer = ({
         yAxisId="rate"
         type="monotone"
         dataKey="median"
-        stroke="#4ade80"
+        stroke="#f5b03a"
         strokeWidth={2.5}
         dot={{ fill: "#4ade80", r: 3 }}
         connectNulls
@@ -270,152 +272,318 @@ const MarketPage = () => {
   const yvmColor =
     yvm?.verdict === "beating" ? "#4ade80" : yvm?.verdict === "lagging" ? "#f0b86a" : "#c9d3e0";
 
+  // The ladder as a distribution — where the year's loads actually landed,
+  // in the banded ladder's zones. Same zone colors, same walk-away.
+  const zones = (() => {
+    const L = targets.bookingLadder;
+    if (L.walkAway == null || L.minimum == null || L.target == null) return null;
+    const buckets = { below: 0, floor: 0, mid: 0, past: 0 };
+    for (const pt of points) {
+      if (pt.rate < L.walkAway) buckets.below++;
+      else if (pt.rate < L.minimum) buckets.floor++;
+      else if (pt.rate < L.target) buckets.mid++;
+      else buckets.past++;
+    }
+    const stdBelow = points.filter(
+      (pt) => pt.bucket === "standard" && pt.rate < (L.walkAway as number),
+    ).length;
+    const stdTotal = points.filter((pt) => pt.bucket === "standard").length;
+    const specBelow = points.filter(
+      (pt) => pt.bucket !== "standard" && pt.rate < (L.walkAway as number),
+    ).length;
+    const specTotal = points.filter((pt) => pt.bucket !== "standard").length;
+    const max = Math.max(1, buckets.below, buckets.floor, buckets.mid, buckets.past);
+    return { ...buckets, max, stdBelow, stdTotal, specBelow, specTotal };
+  })();
+
+  const lastMedian = monthly.length > 0 ? monthly[monthly.length - 1].median : null;
+
   return (
-    <div className="p-6 bg-iron text-light font-body min-h-screen">
-      <h1 className="text-3xl font-condensed">Market &amp; Rates</h1>
-      <p className="text-sm text-muted-text mt-1 max-w-[680px]">
-        Every delivered load by what it paid per driven mile — against your
-        break-even and rate tiers. Watch the market turn, and read whether your
-        tiers still fit it.
-      </p>
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">MARKET</h1>
+          <span className="font-condensed font-medium text-[15px] text-dim">
+            the freight market, and where you stand in it
+          </span>
+        </div>
 
-      {points.length === 0 ? (
-        <Panel className="mt-6 p-6">
-          <p className="text-muted-text">
-            No delivered loads with rate + mileage yet. Once you've run some
-            freight, your rate history shows up here.
-          </p>
-        </Panel>
-      ) : (
-        <>
-          <Panel noir className="mt-6 p-5">
-            <div className="flex justify-between items-baseline flex-wrap gap-2">
-              <h2 className="text-lg font-medium text-light">Every load · rate vs the year</h2>
-              <span className="text-xs text-muted-text">gross $/driven mile</span>
-            </div>
-            <div className="flex gap-4 text-[11px] text-muted-text mt-1 mb-2">
-              <span><span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.standard }} />standard</span>
-              <span><span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.hazmat }} />hazmat</span>
-              <span><span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.specialized }} />oversize/heavy</span>
-            </div>
-            {targets.ready ? (
-              <RateScatter points={points} ladder={targets.bookingLadder} specLadder={targets.specLadder} />
-            ) : (
-              <p className="text-xs text-muted-text py-6 text-center">
-                Upload a few months of P&amp;L on the Expenses page to draw your
-                break-even and tier lines.
-              </p>
+        {/* the verdict */}
+        <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
+          {yvm ? (
+            <span
+              className="font-display text-[20px] tracking-[.06em] rounded-[8px] px-3 py-[3px] rotate-[-1deg] border-2"
+              style={{ color: yvmColor, borderColor: yvmColor }}
+            >
+              {yvm.verdict === "beating"
+                ? "▲ BEATING THE MARKET"
+                : yvm.verdict === "lagging"
+                  ? "▼ LAGGING THE MARKET"
+                  : "▪ MOVING WITH THE MARKET"}
+            </span>
+          ) : (
+            <span className="font-display text-[20px] tracking-[.06em] text-faint">
+              THE MARKET
+            </span>
+          )}
+          <span className="text-[13.5px] text-faint">
+            {yvm && (
+              <>
+                · <b className="font-semibold text-ink">{gapPts} pts</b> vs PPI specialized
+                freight (FRED)
+              </>
             )}
-          </Panel>
+            {lastMedian != null && (
+              <>
+                {" "}
+                · your median <b className="font-semibold text-ink tabular-nums">{rpm(lastMedian)}</b>
+                /mi driven
+              </>
+            )}
+            {" "}· <b className="font-semibold text-ink">{points.length}</b> loads sampled
+          </span>
+        </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mt-4">
-            <Panel noir className="p-5">
-              <h2 className="text-lg font-medium text-light">Market barometer</h2>
-              <p className="text-xs text-muted-text mt-0.5 mb-2">
-                your median rate per driven mile, by month
-              </p>
-              {monthly.length > 0 ? (
-                <>
-                  <Barometer data={baroData} breakEven={targets.bookingLadder.walkAway} hasPpi={hasPpi} />
-                  <div className="flex gap-4 text-[11px] text-muted-text mt-1">
-                    <span><span style={{ color: "#4ade80" }}>▬</span> you (median $/mi)</span>
-                    {hasPpi && (
-                      <span><span style={{ color: MACRO }}>╌</span> PPI specialized freight (FRED)</span>
-                    )}
-                  </div>
-                  {yvm && (
-                    <div className="mt-3 pt-3 border-t" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-xs text-muted-text">You vs. the market · last 6 months</span>
-                        <span
-                          className="ds-sfx text-xl"
-                          style={{
-                            color: yvmColor,
-                            padding: "1px 6px",
-                            background:
-                              "radial-gradient(ellipse at center, rgba(245,176,58,0.16), transparent 72%)",
-                          }}
-                        >
-                          {yvm.verdict === "beating"
-                            ? "BEATING"
-                            : yvm.verdict === "lagging"
-                              ? "LAGGING"
-                              : "IN LINE"}
+        {points.length === 0 ? (
+          <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-4">
+            No delivered loads with rate + mileage yet. Once you've run some freight,
+            your rate history shows up here.
+          </p>
+        ) : (
+          <>
+            {/* scatter */}
+            <div className="ds2-board overflow-hidden mt-4">
+              <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  Every load · rate vs the year
+                </span>
+                <span className="font-condensed text-[12px] text-faint">
+                  · gross $/driven mile · the floor in red
+                </span>
+              </div>
+              <div className="px-3 pt-3">
+                {targets.ready ? (
+                  <RateScatter
+                    points={points}
+                    ladder={targets.bookingLadder}
+                    specLadder={targets.specLadder}
+                  />
+                ) : (
+                  <p className="font-condensed text-[12.5px] text-faint py-6 text-center">
+                    Upload a few months of P&L on the Expenses page to draw your
+                    break-even and tier lines.
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-4 flex-wrap font-condensed text-[11px] text-faint px-4 py-[9px]">
+                <span>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.standard }} />
+                  standard flatbed
+                </span>
+                <span>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.specialized }} />
+                  oversize / heavy
+                </span>
+                <span>
+                  <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.hazmat }} />
+                  hazmat
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mt-4">
+              {/* barometer + you-vs-market */}
+              <div className="ds2-board overflow-hidden">
+                <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                    Market barometer
+                  </span>
+                  <span className="font-condensed text-[12px] text-faint">
+                    · your monthly median vs the index · months on the axis
+                  </span>
+                </div>
+                <div className="px-3 pt-3">
+                  {monthly.length > 0 ? (
+                    <>
+                      <Barometer
+                        data={baroData}
+                        breakEven={targets.bookingLadder.walkAway}
+                        hasPpi={hasPpi}
+                      />
+                      <div className="flex gap-4 font-condensed text-[11px] text-faint mt-1 px-1">
+                        <span>
+                          <span style={{ color: "#f5b03a" }}>▬</span> you (median $/mi)
                         </span>
+                        {hasPpi && (
+                          <span>
+                            <span style={{ color: MACRO }}>╌</span> PPI specialized freight (FRED)
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[11px] text-muted-text w-14">you</span>
-                        <div className="flex-1 h-2 rounded" style={{ background: "#232c3f" }}>
-                          <div className="h-2 rounded" style={{ width: `${yvmBar(yvm.yourPct)}%`, background: "#4ade80" }} />
+                      {yvm && (
+                        <div className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3">
+                          <p className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint mb-2">
+                            You vs the market · last 6 months
+                          </p>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="font-condensed text-[11px] text-faint w-14">you</span>
+                            <div
+                              className="flex-1 h-2 rounded-[3px] overflow-hidden"
+                              style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                            >
+                              <div
+                                className="h-2"
+                                style={{
+                                  width: `${yvmBar(yvm.yourPct)}%`,
+                                  background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                }}
+                              />
+                            </div>
+                            <span
+                              className="font-condensed text-xs w-14 text-right tabular-nums"
+                              style={{ color: yvm.yourPct >= 0 ? "#6fd08c" : "#e05252" }}
+                            >
+                              {pctLabel(yvm.yourPct)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-condensed text-[11px] text-faint w-14">market</span>
+                            <div
+                              className="flex-1 h-2 rounded-[3px] overflow-hidden"
+                              style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                            >
+                              <div className="h-2" style={{ width: `${yvmBar(yvm.marketPct)}%`, background: MACRO }} />
+                            </div>
+                            <span className="font-condensed text-xs w-14 text-right tabular-nums" style={{ color: MACRO }}>
+                              {pctLabel(yvm.marketPct)}
+                            </span>
+                          </div>
+                          {yvmText && (
+                            <p
+                              className="mt-2.5 rounded-[8px] px-3 py-2 font-condensed text-[11.5px] leading-relaxed"
+                              style={{ background: "var(--color-well)", color: yvmColor }}
+                            >
+                              {yvmText}
+                            </p>
+                          )}
                         </div>
-                        <span className="text-xs w-12 text-right tabular-nums" style={{ color: yvm.yourPct >= 0 ? "#4ade80" : "#f87171" }}>{pctLabel(yvm.yourPct)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-muted-text w-14">market</span>
-                        <div className="flex-1 h-2 rounded" style={{ background: "#232c3f" }}>
-                          <div className="h-2 rounded" style={{ width: `${yvmBar(yvm.marketPct)}%`, background: MACRO }} />
-                        </div>
-                        <span className="text-xs w-12 text-right tabular-nums" style={{ color: MACRO }}>{pctLabel(yvm.marketPct)}</span>
-                      </div>
-                      <div className="mt-2.5 rounded-lg p-2.5 text-[11px] leading-relaxed" style={{ background: "#0d1119", color: yvmColor }}>
-                        {yvmText}
-                      </div>
-                    </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="font-condensed text-[12.5px] text-faint py-6 text-center">No data yet.</p>
                   )}
-                </>
-              ) : (
-                <p className="text-xs text-muted-text py-6 text-center">No data yet.</p>
-              )}
-            </Panel>
+                </div>
+              </div>
 
-            <Panel noir className="p-5">
-              <h2 className="text-lg font-medium text-light">Tier gauge</h2>
-              <p className="text-xs text-muted-text mt-0.5 mb-3">
-                where your tiers land · last 90 days
-                {gauge.windowN > 0 ? ` · ${gauge.windowN} loads` : ""}
-              </p>
-              {gauge.rows.length > 0 ? (
-                <>
-                  <div className="space-y-2.5">
-                    {gauge.rows.map((r) => (
-                      <div key={r.label}>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-light">
-                            {r.label}{" "}
-                            <span className="text-muted-text">{rpm(r.value)}</span>
-                          </span>
-                          <span className="tabular-nums" style={{ color: toneColor }}>
-                            {Math.round(r.pctile * 100)}
-                            <span className="text-muted-text text-[10px]">th pctile</span>
-                          </span>
-                        </div>
-                        <div className="mt-1 h-1.5 rounded" style={{ background: "#232c3f" }}>
-                          <div
-                            className="h-1.5 rounded"
-                            style={{ width: `${Math.round(r.pctile * 100)}%`, background: toneColor }}
-                          />
-                        </div>
+              {/* tier gauge */}
+              <div className="ds2-board overflow-hidden">
+                <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                    Tier gauge
+                  </span>
+                  <span className="font-condensed text-[12px] text-faint">
+                    · last 90 days{gauge.windowN > 0 ? ` · ${gauge.windowN} loads` : ""}
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  {gauge.rows.length > 0 ? (
+                    <>
+                      <div className="space-y-3">
+                        {gauge.rows.map((r) => (
+                          <div key={r.label}>
+                            <div className="flex justify-between font-condensed text-xs">
+                              <span className="text-ink">
+                                {r.label} <span className="text-faint">{rpm(r.value)}</span>
+                              </span>
+                              <span className="tabular-nums" style={{ color: toneColor }}>
+                                {Math.round(r.pctile * 100)}
+                                <span className="text-faint text-[10px]">th pctile</span>
+                              </span>
+                            </div>
+                            <div
+                              className="mt-1 h-[7px] rounded-[3px] overflow-hidden"
+                              style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                            >
+                              <div
+                                className="h-full"
+                                style={{ width: `${Math.round(r.pctile * 100)}%`, background: toneColor }}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  {gauge.suggestion && (
-                    <div
-                      className="mt-4 rounded-lg p-3 text-[11px] leading-relaxed"
-                      style={{ background: "#0d1119", color: "#c9d3e0" }}
-                    >
-                      {gauge.suggestion}
-                    </div>
+                      {gauge.suggestion && (
+                        <p
+                          className="mt-4 rounded-[8px] px-3 py-2.5 font-condensed text-[11.5px] leading-relaxed text-dim"
+                          style={{ background: "var(--color-well)" }}
+                        >
+                          {gauge.suggestion}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="font-condensed text-[12.5px] text-faint py-6 text-center">
+                      Needs your break-even (Expenses P&L) to place the tiers.
+                    </p>
                   )}
-                </>
-              ) : (
-                <p className="text-xs text-muted-text py-6 text-center">
-                  Needs your break-even (Expenses P&amp;L) to place the tiers.
-                </p>
-              )}
-            </Panel>
-          </div>
-        </>
-      )}
+                </div>
+              </div>
+            </div>
+
+            {/* the ladder as a distribution */}
+            {zones && (
+              <div className="ds2-board overflow-hidden mt-4">
+                <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
+                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                    Where your loads land · the ladder as a distribution
+                  </span>
+                  <span className="font-condensed text-[12px] text-faint">
+                    · {points.length} measurable loads · zone colors = the banded ladder's
+                  </span>
+                </div>
+                {[
+                  { n: "Below the floor", c: "#e05252", bg: "rgba(224,82,82,.45)", v: zones.below },
+                  { n: "Floor → minimum", c: "var(--color-amber-hi)", bg: "rgba(232,148,10,.5)", v: zones.floor },
+                  { n: "Minimum → target", c: "#6fd08c", bg: "rgba(111,208,140,.45)", v: zones.mid },
+                  {
+                    n: "Target and past",
+                    c: "var(--color-hot)",
+                    bg: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                    v: zones.past,
+                  },
+                ].map((z) => (
+                  <div
+                    key={z.n}
+                    className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
+                  >
+                    <span className="w-[150px] font-bold text-[11px] tracking-[.1em] uppercase" style={{ color: z.c }}>
+                      {z.n}
+                    </span>
+                    <span
+                      className="flex-1 h-[10px] rounded-[3px] overflow-hidden"
+                      style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                    >
+                      <i className="block h-full" style={{ width: `${(z.v / zones.max) * 100}%`, background: z.bg }} />
+                    </span>
+                    <span className="w-[120px] text-right text-[13px] text-dim tabular-nums">
+                      {z.v} load{z.v === 1 ? "" : "s"} · {Math.round((z.v / Math.max(1, points.length)) * 100)}%
+                    </span>
+                  </div>
+                ))}
+                {zones.stdTotal > 0 && (
+                  <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
+                    <b className="text-dim">the straight read:</b> {zones.stdBelow} of your{" "}
+                    {zones.stdTotal} standard-flatbed loads ran below the floor —{" "}
+                    {zones.specBelow} of {zones.specTotal} specialized did. The specialized
+                    freight carries the rate. Same zones, same colors as RATE TO BOOK.
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
