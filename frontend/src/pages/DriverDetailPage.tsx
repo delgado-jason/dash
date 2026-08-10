@@ -53,6 +53,9 @@ import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { PlayerCard } from "@/components/playercard/PlayerCard";
 import { driverRecordChips } from "@/components/awards/RecordBook";
+import { LeversBoard } from "@/components/playercard/LeversBoard";
+import { MedalBadge } from "@/components/awards/MedalBadge";
+import { monthCoverage } from "@/lib/metrics/monthCoverage";
 
 const Spec = ({
   label,
@@ -195,7 +198,26 @@ const DriverDetailPage = () => {
       windowRpm: basis.windowRpm,
       medals: earnedMedals(medals),
       allMedals: medals,
-      streak: grind.currentStreak,
+      coverage: monthCoverage(periods, obligationsDebt, driverLoads, now),
+      career: {
+        hauls: del.length,
+        miles: del.reduce((s2, l) => s2 + (Number(l.loaded_miles) || 0), 0),
+        linehaul: del.reduce((s2, l) => s2 + (Number(l.linehaul) || 0), 0),
+      },
+      mixRows: [
+        ...del
+          .reduce((m, l) => {
+            m.set(l.load_type, (m.get(l.load_type) ?? 0) + 1);
+            return m;
+          }, new Map<string, number>())
+          .entries(),
+      ]
+        .map(([label, count]) => ({
+          label,
+          count,
+          pct: del.length > 0 ? count / del.length : 0,
+        }))
+        .sort((a, b) => b.count - a.count),
       bests: personalBests(driverLoads, fuel, now),
       patches: computePatches(driverLoads, fuel, operation),
       // Equipment identity — oversize and heavy haul kept as separate disciplines.
@@ -314,33 +336,42 @@ const DriverDetailPage = () => {
               )}
             </div>
           </div>
+          {card && card.medals.length > 0 && (
+            <span className="ml-auto flex gap-1.5 flex-wrap justify-end">
+              {card.medals.map((m) => (
+                <MedalBadge key={m.key} medal={m} />
+              ))}
+            </span>
+          )}
         </div>
 
         {card && (
           <>
             <div className="mt-4">
               <PlayerCard
-                name={name}
-                business="Delgado Trucking Services · Owner-Operator"
-                avatar={null}
                 rank={card.rank}
-                season={card.season}
+                seasonLabel={card.season.label}
+                career={card.career}
+                coverage={card.coverage}
                 pace={card.pace}
-                rpmGrade={card.rpmGrade}
-                marginGrade={card.marginGrade}
-                utilization={card.utilization}
-                utilGrade={card.utilGrade}
-                windowRpm={card.windowRpm}
-                medals={card.medals}
+                mix={card.mixRows}
                 oversize={card.oversize}
                 heavyHaul={card.heavyHaul}
-                streak={card.streak}
               />
             </div>
             <HardwareBoard
               medals={card.allMedals}
               patches={card.patches}
               records={driverRecordChips(card.bests)}
+            />
+            <LeversBoard
+              season={card.season}
+              rpmGrade={card.rpmGrade}
+              marginGrade={card.marginGrade}
+              utilization={card.utilization}
+              utilGrade={card.utilGrade}
+              windowRpm={card.windowRpm}
+              pace={card.pace}
             />
             <div className="flex gap-4 mt-3">
               <Link

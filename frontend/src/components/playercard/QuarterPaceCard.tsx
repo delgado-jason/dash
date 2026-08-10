@@ -1,4 +1,3 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { QuarterPace } from "@/lib/metrics/quarterPace";
 
 const k = (n: number): string =>
@@ -19,13 +18,13 @@ const Cell = ({
 }) => (
   <div
     className="rounded-lg p-2.5"
-    style={{ background: "#141b28", border: "1px solid #26304a" }}
+    style={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline-lo)" }}
   >
-    <p className="text-[10px] uppercase tracking-wide text-muted-text">{label}</p>
+    <p className="text-[10px] uppercase tracking-wide text-faint">{label}</p>
     <p className="text-base font-semibold mt-0.5" style={color ? { color } : undefined}>
       {value}
     </p>
-    {sub && <p className="text-[10.5px] text-muted-text mt-0.5">{sub}</p>}
+    {sub && <p className="text-[10.5px] text-faint mt-0.5">{sub}</p>}
   </div>
 );
 
@@ -58,8 +57,7 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
     "no-prior": { text: "No prior quarter to compare yet", color: "#9fb0c9" },
   };
   const meta = META[verdict];
-  const Icon =
-    verdict === "beat" ? TrendingUp : verdict === "behind" ? TrendingDown : Minus;
+  const arrow = verdict === "beat" ? "▲" : verdict === "behind" ? "▼" : "▪";
 
   const barMax = Math.max(projectedNet ?? 0, prevFinalNet, currentNet) * 1.08 || 1;
   const fillPct = (currentNet / barMax) * 100;
@@ -68,27 +66,27 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
 
   return (
     <section
-      className="rounded-xl border p-4 mt-5"
-      style={{ background: "#0f1622", borderColor: "#26304a" }}
+      className="rounded-[10px] border p-4 mt-4"
+      style={{ background: "var(--color-well)", borderColor: "var(--color-hairline-lo)" }}
     >
       <div className="flex items-center gap-2 flex-wrap mb-2">
-        <span className="text-[11px] tracking-[1.5px] text-muted-text uppercase">
+        <span className="text-[11px] tracking-[1.5px] text-faint uppercase">
           This quarter
         </span>
-        <span className="text-xs text-muted-text">
+        <span className="text-xs text-faint">
           · {label} · day {daysElapsed} of {daysTotal}
         </span>
         <span
           className="ml-auto inline-flex items-center gap-1.5 font-forge font-bold text-sm rounded-md px-2.5 py-1 border-2"
           style={{ color: meta.color, borderColor: meta.color }}
         >
-          {hasProjection && <Icon size={14} />} {meta.text}
+          {hasProjection && <span aria-hidden>{arrow}</span>} {meta.text}
         </span>
       </div>
 
       <div className="flex items-end gap-2 flex-wrap">
         <span className="text-[30px] font-condensed leading-none">{k(currentNet)}</span>
-        <span className="text-sm text-muted-text mb-1">
+        <span className="text-sm text-faint mb-1">
           net so far · {currentLoads} delivered loads
         </span>
         {hasProjection && pacePct != null && (
@@ -127,7 +125,7 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
               style={{ left: `${Math.min(100, goalPct)}%`, width: 2, background: "#f5a623" }}
             />
           </div>
-          <div className="flex justify-between text-[11px] text-muted-text gap-2">
+          <div className="flex justify-between text-[11px] text-faint gap-2">
             <span>◆ so far {k(currentNet)}</span>
             <span
               className="text-right"
@@ -162,14 +160,14 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
               sub={`vs ${prevLabel}`}
             />
           </div>
-          <p className="text-[10.5px] text-muted-text mt-2.5 leading-snug">
+          <p className="text-[10.5px] text-faint mt-2.5 leading-snug">
             Counted from your delivered loads (each load's settlement net) so it
             can track day by day — which is why these figures won't always match
             the P&amp;L net revenue in Last Season below.
           </p>
         </>
       ) : (
-        <p className="text-xs text-muted-text mt-2">
+        <p className="text-xs text-faint mt-2">
           {verdict === "early"
             ? "Pace needs more of the quarter before it means anything — the read switches on once you're a couple weeks and a few loads in."
             : "Once you've got a full quarter behind you, this shows whether you're on track to beat it."}
