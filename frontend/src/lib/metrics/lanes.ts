@@ -462,3 +462,70 @@ export const getLanesSummary = (loads: Load[]): LanesSummary => {
 
   return { topRpmLane, highestVolumeLane, bestOriginMarket };
 };
+
+// ---- The statusbar answering line: what the window did, in three numbers. ----
+export interface WindowTotals {
+  loads: number;
+  linehaul: number;
+  blendedRpm: number | null; // linehaul ÷ loaded miles across the set
+}
+
+export const getWindowTotals = (loads: Load[]): WindowTotals => {
+  let lh = 0;
+  let mi = 0;
+  for (const l of loads) {
+    lh += Number(l.linehaul) || 0;
+    mi += Number(l.loaded_miles) || 0;
+  }
+  return { loads: loads.length, linehaul: lh, blendedRpm: mi > 0 ? lh / mi : null };
+};
+
+// ---- Origin states for the markets board. ----
+// Spot oversize rarely repeats a lane, but origins recur — where the freight
+// is born is the ranking that means something. Repeats (≥2 loads) rank by
+// volume then rate; singles ride the map, not the board. Best origin = the
+// strongest blended rate among repeats.
+export interface OriginStateStat {
+  state: string; // 2-letter code
+  name: string; // full name, for the row
+  loadCount: number;
+  blendedRpm: number | null;
+}
+
+export interface OriginStateRollup {
+  rows: OriginStateStat[]; // repeats only, volume desc then rate desc
+  singles: number; // origins with exactly one load
+  best: OriginStateStat | null;
+}
+
+export const getOriginStateRollup = (loads: Load[]): OriginStateRollup => {
+  const acc = new Map<string, { n: number; lh: number; mi: number }>();
+  for (const l of loads) {
+    const st = l.origin_state;
+    if (!st) continue;
+    const a = acc.get(st) ?? { n: 0, lh: 0, mi: 0 };
+    a.n += 1;
+    a.lh += Number(l.linehaul) || 0;
+    a.mi += Number(l.loaded_miles) || 0;
+    acc.set(st, a);
+  }
+  const all = [...acc.entries()].map(([state, a]) => ({
+    state,
+    name: getStateName(state) ?? state,
+    loadCount: a.n,
+    blendedRpm: a.mi > 0 ? a.lh / a.mi : null,
+  }));
+  const rows = all
+    .filter((r) => r.loadCount >= 2)
+    .sort(
+      (a, b) =>
+        b.loadCount - a.loadCount ||
+        (b.blendedRpm ?? -1) - (a.blendedRpm ?? -1) ||
+        a.state.localeCompare(b.state),
+    );
+  let best: OriginStateStat | null = null;
+  for (const r of rows)
+    if (r.blendedRpm != null && (best?.blendedRpm == null || r.blendedRpm > best.blendedRpm))
+      best = r;
+  return { rows, singles: all.length - rows.length, best };
+};

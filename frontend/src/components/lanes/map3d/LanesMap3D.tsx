@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { AreaMapDatum, MapLevel } from "@/lib/metrics/lanes";
 import { groupKeyForStateName } from "@/lib/metrics/lanes";
+import { getStateAbbr } from "@/lib/constants/states";
 import { rpm as fmtRpm } from "@/lib/format";
 import {
   colorFor,
@@ -20,9 +21,14 @@ import { DUR, GSAP_EASE } from "@/theme/motion";
 gsap.registerPlugin(useGSAP);
 
 // The situation board — the full R3F treatment (Jason's call, 2026-08-09):
-// states extrude by load volume, lanes fly as bloomed arcs with a pulse
-// traveling each one. Loaded lazily; the SVG board is the non-WebGL fallback.
-// Motion always plays.
+// states extrude by load volume, lanes fly as arcs with pulses traveling
+// them. Loaded lazily; the SVG board is the non-WebGL fallback. Motion always
+// plays — but CALMED (Jason, 2026-08-10: "too in your face, too dramatic"):
+// camera pulled back so the whole board breathes, elevation √-scaled with the
+// cap halved, lit states stamped with their code, bloom/emissives cut
+// 35–40%, one slow pulse per arc with long rests, parallax halved, and the
+// boot ceremony plays once — filter changes settle fast instead of replaying
+// the show. Tune quieter before louder.
 
 interface Props {
   data: Record<string, AreaMapDatum>;
@@ -41,7 +47,10 @@ interface HoverState {
 }
 
 const BASE_H = 0.14; // unlit slab thickness
-const MAX_H = 1.7; // tallest extrusion (the busiest area)
+// Tallest extrusion (the busiest area). With a 3-load max, a linear scale to
+// 1.7 made skyscrapers — halved cap, √ scale below, so height still ranks
+// without towering.
+const MAX_H = 0.85;
 const AMBER = new THREE.Color("#e8940a");
 const AMBER_HI = new THREE.Color("#f5b03a");
 
@@ -89,9 +98,9 @@ const StateMesh = ({
     const local = Math.min(1, Math.max(0.001, (boot.states - t0) / 0.45));
     const eased = 1 - Math.pow(1 - local, 3);
     mesh.current.scale.z = Math.max(0.001, height * eased);
-    const targetE = isSelected ? 0.65 : hovered ? 0.45 : lit ? 0.16 : 0.04;
+    const targetE = isSelected ? 0.5 : hovered ? 0.3 : lit ? 0.16 : 0.04;
     mat.current.emissiveIntensity +=
-      (targetE - mat.current.emissiveIntensity) * 0.18;
+      (targetE - mat.current.emissiveIntensity) * 0.12;
   });
 
   return (
@@ -171,10 +180,11 @@ const Arc = ({
     if (tube.current) {
       built.geom.setDrawRange(0, Math.floor(built.indexCount * local));
     }
-    // The pulse travels forever once its arc is drawn — a load in motion.
+    // The pulse travels once its arc is drawn — a load in motion. Slow, with
+    // a long rest between transits, so most lanes sit calm at any moment.
     if (dot.current) {
       if (local >= 1) {
-        t.current = (t.current + 0.004) % 1.12;
+        t.current = (t.current + 0.0025) % 1.45;
         const tt = Math.min(1, t.current);
         dot.current.position.copy(built.curve.getPointAt(tt));
         dot.current.visible = t.current <= 1;
@@ -191,17 +201,17 @@ const Arc = ({
         <meshStandardMaterial
           color="#1a1206"
           emissive={AMBER}
-          emissiveIntensity={2.1}
+          emissiveIntensity={1.35}
           toneMapped={false}
           roughness={0.4}
         />
       </mesh>
       <mesh ref={dot}>
-        <sphereGeometry args={[0.085, 12, 12]} />
+        <sphereGeometry args={[0.07, 12, 12]} />
         <meshStandardMaterial
           color="#000"
           emissive={AMBER_HI}
-          emissiveIntensity={3.4}
+          emissiveIntensity={2.2}
           toneMapped={false}
         />
       </mesh>
@@ -222,9 +232,9 @@ const ParallaxRig = ({
   useFrame(() => {
     if (!rig.current) return;
     rig.current.rotation.x +=
-      (pointer.current.y * 0.055 - rig.current.rotation.x) * 0.06;
+      (pointer.current.y * 0.028 - rig.current.rotation.x) * 0.06;
     rig.current.rotation.z +=
-      (-pointer.current.x * 0.045 - rig.current.rotation.z) * 0.06;
+      (-pointer.current.x * 0.022 - rig.current.rotation.z) * 0.06;
   });
   return <group ref={rig}>{children}</group>;
 };
@@ -261,7 +271,7 @@ const LanesMap3D = ({
       const key = groupKeyForStateName(s.name, level) ?? s.name;
       const datum = data[key];
       const height = datum
-        ? BASE_H + (datum.loadCount / maxLoads) * MAX_H
+        ? BASE_H + Math.sqrt(datum.loadCount / maxLoads) * MAX_H
         : BASE_H * 0.45;
       out.set(s.name, {
         key,
@@ -332,13 +342,22 @@ const LanesMap3D = ({
   }, [data, solids, perState]);
 
   // One boot timeline: states sweep up, then the arcs draw and pulses launch.
+  // The full ceremony plays ONCE, on mount. Filter changes (level/window)
+  // settle in a quick beat instead of re-erecting the country every click.
   const boot = useRef({ states: 0, arcs: 0 }).current;
+  const booted = useRef(false);
   useGSAP(() => {
     boot.states = 0;
     boot.arcs = 0;
     const tl = gsap.timeline();
-    tl.to(boot, { states: 1, duration: DUR.slow + 0.4, ease: "none" });
-    tl.to(boot, { arcs: 1, duration: DUR.slow + 0.6, ease: GSAP_EASE.mech }, "-=0.35");
+    if (!booted.current) {
+      tl.to(boot, { states: 1, duration: DUR.slow + 0.4, ease: "none" });
+      tl.to(boot, { arcs: 1, duration: DUR.slow + 0.6, ease: GSAP_EASE.mech }, "-=0.35");
+      booted.current = true;
+    } else {
+      tl.to(boot, { states: 1, duration: 0.3, ease: "none" });
+      tl.to(boot, { arcs: 1, duration: 0.35, ease: GSAP_EASE.mech }, "-=0.15");
+    }
   }, [level, windowDays]);
 
   const overState = (name: string) => (e: ThreeEvent<PointerEvent>) => {
@@ -374,7 +393,7 @@ const LanesMap3D = ({
     >
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [0, 13.2, 11.6], fov: 38 }}
+        camera={{ position: [0, 15.5, 13.8], fov: 38 }}
         gl={{ antialias: true, alpha: true }}
         style={{ height: "min(58vh, 560px)", background: "transparent" }}
       >
@@ -421,11 +440,33 @@ const LanesMap3D = ({
               <meshStandardMaterial
                 color="#000"
                 emissive={AMBER_HI}
-                emissiveIntensity={2.6}
+                emissiveIntensity={1.7}
                 toneMapped={false}
               />
             </mesh>
           ))}
+          {/* State stamps — the "which state is what" fix. Lit states only,
+              flat on the slab; grouped levels carry their own labels. */}
+          {level === "state" &&
+            solids.map((s) => {
+              const p = perState.get(s.name)!;
+              const abbr = getStateAbbr(s.name);
+              if (!p.datum || !abbr) return null;
+              return (
+                <Text
+                  key={`stamp-${s.name}`}
+                  position={[s.centroid[0], p.height + 0.02, s.centroid[1]]}
+                  rotation-x={-Math.PI / 2}
+                  fontSize={0.42}
+                  color="#e6ecf7"
+                  fillOpacity={0.85}
+                  outlineColor="#070a10"
+                  outlineWidth={0.02}
+                >
+                  {abbr}
+                </Text>
+              );
+            })}
           {groupLabels.map((g) => (
             <Billboard key={g.key} position={g.pos}>
               <Text
@@ -452,10 +493,10 @@ const LanesMap3D = ({
         </ParallaxRig>
         <EffectComposer>
           <Bloom
-            intensity={0.72}
-            luminanceThreshold={0.62}
+            intensity={0.45}
+            luminanceThreshold={0.72}
             mipmapBlur
-            radius={0.72}
+            radius={0.6}
           />
         </EffectComposer>
       </Canvas>

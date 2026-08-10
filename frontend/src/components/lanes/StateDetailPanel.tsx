@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { X } from "lucide-react";
 import type { StateDetail } from "@/lib/metrics/lanes";
 import { rpm } from "@/lib/format";
 
@@ -38,7 +37,7 @@ export const StateDetailPanel = ({
         onClick={onClear}
         className="text-xs text-dim hover:text-ink flex items-center gap-1"
       >
-        clear <X size={13} />
+        clear ✕
       </button>
     </div>
 
