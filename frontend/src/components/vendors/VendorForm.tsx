@@ -12,6 +12,10 @@ import { formatPhone } from "@/lib/phone";
 
 interface VendorFormProps {
   vendor?: Vendor; // present → edit mode
+  // Create-mode seeds (ignored in edit mode) — used when filing a shop straight
+  // from the maintenance log. The name must match the log's spelling for the
+  // spend readout to attach, so it arrives pre-filled.
+  prefill?: { name?: string; category?: string };
   onSuccess: (v: Vendor) => void;
   onClose: () => void;
 }
@@ -19,11 +23,11 @@ interface VendorFormProps {
 // Create or edit a vendor's core fields. Rating is offered ONLY on create (an
 // initial grade needs no audit); once a vendor exists, rating changes go through
 // VendorRatingForm so the reason + history are enforced.
-const VendorForm = ({ vendor, onSuccess, onClose }: VendorFormProps) => {
+const VendorForm = ({ vendor, prefill, onSuccess, onClose }: VendorFormProps) => {
   const isEdit = !!vendor;
 
-  const [name, setName] = useState(vendor?.name ?? "");
-  const [category, setCategory] = useState(vendor?.category ?? "");
+  const [name, setName] = useState(vendor?.name ?? prefill?.name ?? "");
+  const [category, setCategory] = useState(vendor?.category ?? prefill?.category ?? "");
   const [rating, setRating] = useState<number | null>(vendor?.rating ?? null);
   const [contactName, setContactName] = useState(vendor?.contact_name ?? "");
   const [phone, setPhone] = useState(vendor?.phone ?? "");

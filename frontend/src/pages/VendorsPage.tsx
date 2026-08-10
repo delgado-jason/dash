@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router";
 import { Plus, Crown, MapPin, Trophy } from "lucide-react";
 import { useVendors } from "@/hooks/useVendors";
+import { useUnfiledVendors } from "@/hooks/useUnfiledVendors";
 import {
   groupVendorsByCategory,
   goToCount,
@@ -15,11 +16,12 @@ import VendorForm from "@/components/vendors/VendorForm";
 import type { Vendor } from "@/types/vendor";
 import { money } from "@/lib/format";
 
-// Shop-only spend line, derived from the maintenance log. Only shown for shops
-// that actually matched services; guards the null-cost case ("3 services", no $).
+// Maintenance-spend line, derived from the maintenance log. The backend gates
+// which categories can match (Shop/Tires/Parts/Towing/Washout), so here the
+// only question is whether services attached; guards the null-cost case
+// ("3 services", no $).
 const spendLabel = (v: Vendor): string | null => {
-  if (v.category !== "Shop" || !(v.service_count && v.service_count > 0))
-    return null;
+  if (!(v.service_count && v.service_count > 0)) return null;
   const n = v.service_count;
   const svc = `${n} service${n === 1 ? "" : "s"}`;
   return v.total_spend != null ? `${money(Number(v.total_spend))} · ${svc}` : svc;
@@ -28,9 +30,13 @@ const spendLabel = (v: Vendor): string | null => {
 const VendorsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const { vendors, isLoading, error } = useVendors(refreshKey);
+  const { unfiled } = useUnfiledVendors(refreshKey);
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<string>("All");
   const [showNew, setShowNew] = useState(false);
+  // Filing a shop from the maintenance log — seeds the create form with the
+  // log's exact spelling so the spend readout attaches on save.
+  const [filePrefill, setFilePrefill] = useState<{ name: string; category: string } | null>(null);
 
   const categories = useMemo(
     () => [...new Set(vendors.map((v) => v.category))].sort(),
@@ -81,8 +87,12 @@ const VendorsPage = () => {
           />
           <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] bg-iron text-light overflow-y-auto shadow-xl rounded-lg p-4 sm:p-6 border border-plate">
             <VendorForm
+              prefill={filePrefill ?? undefined}
               onSuccess={() => setRefreshKey((p) => p + 1)}
-              onClose={() => setShowNew(false)}
+              onClose={() => {
+                setShowNew(false);
+                setFilePrefill(null);
+              }}
             />
           </div>
         </div>
@@ -117,7 +127,10 @@ const VendorsPage = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
         <button
-          onClick={() => setShowNew(true)}
+          onClick={() => {
+            setFilePrefill(null);
+            setShowNew(true);
+          }}
           className="bg-amber text-steel px-3 py-2 rounded text-sm font-semibold inline-flex items-center gap-1"
         >
           <Plus size={15} /> New vendor
@@ -140,6 +153,51 @@ const VendorsPage = () => {
             </button>
           ))}
         </div>
+      )}
+
+      {unfiled.length > 0 && (
+        <Panel className="p-0 overflow-hidden mb-5">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#232d43]">
+            <span className="font-condensed uppercase tracking-wide">
+              From your maintenance log
+            </span>
+            <span className="text-muted-text text-xs">
+              · {unfiled.length} not in the rolodex yet
+            </span>
+          </div>
+          <div>
+            {unfiled.map((u) => (
+              <div
+                key={u.name.toLowerCase()}
+                className="flex items-center gap-3 px-4 py-2.5 border-t border-[#1e2740] first:border-t-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate">{u.name}</div>
+                  <div className="text-xs text-muted-text">
+                    {u.service_count} service{u.service_count === 1 ? "" : "s"}
+                    {u.total_spend != null && (
+                      <>
+                        {" · "}
+                        <span className="text-[#c9d3e2]">
+                          {money(Number(u.total_spend))}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setFilePrefill({ name: u.name, category: "Shop" });
+                    setShowNew(true);
+                  }}
+                  className="shrink-0 border border-amber/50 text-amber px-3 py-1.5 rounded text-sm font-semibold hover:bg-amber hover:text-steel"
+                >
+                  Add to rolodex
+                </button>
+              </div>
+            ))}
+          </div>
+        </Panel>
       )}
 
       {vendors.length === 0 ? (

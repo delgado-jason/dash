@@ -21,10 +21,15 @@ const VENDOR_FIELDS = [
   "notes",
 ];
 
-// Shop vendors get a spend readout derived from the maintenance log, matched by
-// name (the maintenance vendor field is free text — no FK yet). Gated to category
-// 'Shop' so a coincidental name match can't attribute shop spend to an escort.
-// SUM(cost) is numeric → serialized as a string; service_count is a real integer.
+// Maintenance-side vendors get a spend readout derived from the maintenance
+// log, matched by name (the maintenance vendor field is free text — no FK
+// yet). Gated to the categories maintenance money actually flows to, so a
+// coincidental name match can't attribute shop spend to an escort or a permit
+// service. SUM(cost) is numeric → serialized as a string; service_count is a
+// real integer.
+export const MAINTENANCE_CATEGORIES = ["Shop", "Tires", "Parts", "Towing", "Washout"];
+const MAINTENANCE_CATEGORY_LIST = MAINTENANCE_CATEGORIES.map((c) => `'${c}'`).join(", ");
+
 const SPEND_JOIN = `
   LEFT JOIN LATERAL (
     SELECT
@@ -33,7 +38,7 @@ const SPEND_JOIN = `
       MAX(m.service_date)    AS last_service
     FROM maintenance_services m
     WHERE m.user_id = v.user_id
-      AND v.category = 'Shop'
+      AND v.category IN (${MAINTENANCE_CATEGORY_LIST})
       AND LOWER(TRIM(m.vendor)) = LOWER(TRIM(v.name))
   ) spend ON TRUE
 `;
@@ -100,6 +105,38 @@ export async function getVendor(user_id, vendor_id) {
     vendor: vendorResult.rows[0],
     ratingHistory: ratingHistoryResult.rows,
   };
+}
+
+// ---- GET UNFILED MAINTENANCE VENDORS ----
+// The bridge from the maintenance log into the rolodex: vendor names that
+// appear on maintenance services but match no vendor row yet. Grouped
+// case/whitespace-insensitively so "TA" and "ta " can't split; the display
+// name is one of the raw spellings. Ordered by spend so the biggest missing
+// relationship surfaces first.
+export async function getUnfiledMaintenanceVendors(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const query = `
+    SELECT
+      MAX(TRIM(m.vendor))    AS name,
+      COUNT(*)::int          AS service_count,
+      SUM(m.cost)            AS total_spend,
+      MAX(m.service_date)    AS last_service
+    FROM maintenance_services m
+    WHERE m.user_id = $1
+      AND m.vendor IS NOT NULL
+      AND TRIM(m.vendor) <> ''
+      AND NOT EXISTS (
+        SELECT 1 FROM vendors v
+        WHERE v.user_id = m.user_id
+          AND LOWER(TRIM(v.name)) = LOWER(TRIM(m.vendor))
+      )
+    GROUP BY LOWER(TRIM(m.vendor))
+    ORDER BY SUM(m.cost) DESC NULLS LAST, MAX(TRIM(m.vendor));
+  `;
+
+  const result = await db.query(query, [user_id]);
+  return result.rows;
 }
 
 // ---- CREATE VENDOR SERVICE ----

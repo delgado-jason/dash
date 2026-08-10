@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getVendors,
   getVendor,
+  getUnfiledMaintenanceVendors,
   createVendor,
   patchVendor,
   deleteVendor,
@@ -22,6 +23,31 @@ router.get("/", async (req, res) => {
       message: "Vendors retrieved successfully",
       count: vendors.length,
       vendors,
+    });
+  } catch (err) {
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- GET UNFILED MAINTENANCE VENDORS ----
+// Must be registered before /:vendor_id or Express would read "unfiled" as an id.
+router.get("/unfiled", async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const unfiled = await getUnfiledMaintenanceVendors(user_id);
+
+    return res.status(200).json({
+      message: "Unfiled maintenance vendors retrieved successfully",
+      count: unfiled.length,
+      unfiled,
     });
   } catch (err) {
     if (err.type === "validation") {
