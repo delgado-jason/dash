@@ -10,8 +10,8 @@ const METALS: CoinMetal[] = ["bronze", "bronze", "silver", "gold", "platinum"];
 // The dossier's achievements board — coins, tags, and record plates in the
 // rack language of the Forge Room. Earned hardware shows struck; unearned
 // rides as a ghost with its criterion and a live meter (the ghost rule).
-// Driver-scoped today; the truck/trailer pages keep RecordBook/PatchBoard
-// until their slices.
+// Shared by the driver, dispatcher, truck, and trailer dossiers — the old
+// comic-era award boards retired at the trailers slice (2026-08-10).
 
 const MeterCells = ({ pct, cells = 4 }: { pct: number; cells?: number }) => (
   <span className="inline-flex gap-[2px] w-full">
