@@ -57,7 +57,9 @@ describe("latestRecapWithData", () => {
 
 describe("computeRecap", () => {
   const loads = [
-    L({ load_id: "a", delivery_date: "2026-05-12", linehaul: "3200", loaded_miles: 1000, origin_state: "TX", destination_state: "GA", origin_market: "Dallas", delivery_market: "Atlanta" }),
+    // FSC + a below-gross net_revenue so gross (3500) ≠ net (2555) — pins the recap
+    // to GROSS (Jason's ruling): a revert to the net helper would read 2555 here.
+    L({ load_id: "a", delivery_date: "2026-05-12", linehaul: "3200", fuel_surcharge: "300", net_revenue: "2555", loaded_miles: 1000, origin_state: "TX", destination_state: "GA", origin_market: "Dallas", delivery_market: "Atlanta" }),
     L({ load_id: "b", delivery_date: "2026-06-15", linehaul: "2600", loaded_miles: 800, origin_state: "TX", destination_state: "TN", origin_market: "Houston", delivery_market: "Memphis" }),
     L({ load_id: "c", delivery_date: "2025-12-30", linehaul: "9999", loaded_miles: 500, origin_state: "CA", destination_state: "NV", origin_market: "LA", delivery_market: "Vegas" }), // prior year — excluded
   ];
@@ -68,19 +70,19 @@ describe("computeRecap", () => {
 
   it("aggregates the year's highlights", () => {
     const r = computeRecap(loads, [] as FuelEntry[], periods, 0, rangeFor("year", 2026, 0), "year", NOW);
-    expect(r.gross).toBe(5800);
+    expect(r.gross).toBe(6100); // GROSS: a(3200+300) + b(2600); net would be 5155
     expect(r.loadedMiles).toBe(1800);
     expect(r.totalMiles).toBe(1800); // no odometers → falls back to loaded miles
     expect(r.states).toBe(3); // TX, GA, TN — prior-year CA/NV excluded
     expect(r.loads).toBe(2);
-    expect(r.biggestLoad).toBe(3200);
+    expect(r.biggestLoad).toBe(3500); // load a gross (linehaul + FSC), not its net
     expect(r.longestHaul).toBe(1000);
-    expect(r.avgRpm).toBeCloseTo(5800 / 1800, 3);
+    expect(r.avgRpm).toBeCloseTo(6100 / 1800, 3);
     expect(r.topLane).toBe("Dallas → Atlanta");
     expect(r.topAgent).toBe("Redwood");
     // 12 months for a year, with only May + Jun carrying gross
     expect(r.monthlyGross).toHaveLength(12);
-    expect(r.monthlyGross[4]).toEqual({ label: "May", gross: 3200 });
+    expect(r.monthlyGross[4]).toEqual({ label: "May", gross: 3500 });
     expect(r.monthlyGross[5]).toEqual({ label: "Jun", gross: 2600 });
   });
 
