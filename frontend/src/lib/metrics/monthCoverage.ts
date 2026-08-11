@@ -1,7 +1,8 @@
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
-import { loadRevenue } from "./loads";
-import { getCostBasis } from "./rateTargets";
+// NET loadRevenue (post-carrier-cut) — the MTD estimate must be the money-kept
+// basis the P&L income line uses and the true-cost threshold is measured on.
+import { getCostBasis, loadRevenue } from "./rateTargets";
 
 // THE month metric (Jason, 2026-08-10): "one load will cover my notes — what I
 // really need to track is covering my monthly expense threshold, and whether I

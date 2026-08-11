@@ -350,17 +350,20 @@ describe("getWindowTotals", () => {
 describe("getOriginStateRollup", () => {
   it("ranks repeats by volume then rate, counts singles, crowns the best rate", () => {
     const r = getOriginStateRollup([
-      makeLoad({ origin_state: "AL", linehaul: "1000", loaded_miles: 500 }),
-      makeLoad({ origin_state: "AL", linehaul: "1000", loaded_miles: 500 }),
-      makeLoad({ origin_state: "AL", linehaul: "1000", loaded_miles: 500 }),
+      // AL carries a fuel surcharge, so its blended rate is GROSS-based ($1,500/load
+      // ÷ 500mi = $3/mi), not linehaul-only ($2/mi) — guards the gross accumulation.
+      makeLoad({ origin_state: "AL", linehaul: "1000", fuel_surcharge: "500", loaded_miles: 500 }),
+      makeLoad({ origin_state: "AL", linehaul: "1000", fuel_surcharge: "500", loaded_miles: 500 }),
+      makeLoad({ origin_state: "AL", linehaul: "1000", fuel_surcharge: "500", loaded_miles: 500 }),
       makeLoad({ origin_state: "SC", linehaul: "3000", loaded_miles: 250 }),
       makeLoad({ origin_state: "SC", linehaul: "3000", loaded_miles: 250 }),
       makeLoad({ origin_state: "NV", linehaul: "900", loaded_miles: 300 }),
     ]);
     expect(r.rows.map((x) => x.state)).toEqual(["AL", "SC"]);
     expect(r.rows[0].name).toBe("Alabama");
+    expect(r.rows[0].blendedRpm).toBeCloseTo(3, 5); // GROSS, not linehaul-only ($2)
     expect(r.singles).toBe(1);
-    // SC blends $12/mi vs AL $2/mi — best is rate, not volume.
+    // SC blends $12/mi vs AL's gross $3/mi — best is rate, not volume.
     expect(r.best?.state).toBe("SC");
   });
 

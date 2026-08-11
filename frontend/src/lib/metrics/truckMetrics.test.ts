@@ -105,6 +105,22 @@ describe("computeTruckMetrics — all-in cost to run (note)", () => {
   });
 });
 
+describe("computeTruckMetrics — miles/month uses the operating window", () => {
+  it("does NOT dilute the pace with dead pre-first-load calendar time", () => {
+    // In service 8 months before `now`, but the first (and only) load is ~4 weeks
+    // back. Pace must reflect the operating window (first load → now), not the raw
+    // 8-month in-service span, or note-per-mile → cost-to-run inflates ~10x.
+    const truck = { in_service_date: "2025-06-01", current_odometer: 0 } as Truck;
+    const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000);
+    expect(m.windowDays).toBe(27); // 2026-01-05 → 2026-02-01
+    // 500 mi ÷ (27 / 30.44) mo ≈ 564 mi/mo — NOT 500 ÷ 8mo ≈ 62 (the diluted bug).
+    expect(m.milesPerMonth).toBeCloseTo(500 / (27 / 30.44), 1);
+    expect(m.milesPerMonth!).toBeGreaterThan(400);
+    // note/mi rides on the correct pace: 1000 ÷ ~564, not 1000 ÷ ~62.
+    expect(m.notePerMile!).toBeLessThan(2);
+  });
+});
+
 describe("computeTruckMetrics — loads hauled vs earned", () => {
   const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
   const unpaid = (pickup: string, delivery: string): Load =>

@@ -221,9 +221,12 @@ const LoadsPage = () => {
     );
 
   const view = [...inTransit, ...rest];
-  const viewNet = view.reduce((sum, l) => sum + loadRevenue(l), 0);
+  // GROSS booked revenue — loadRevenue here is the loads.ts version (linehaul + FSC
+  // + accessorials, the full customer rate), so this line is labeled "gross," and
+  // the $/mi below is a gross rate per loaded mile.
+  const viewGross = view.reduce((sum, l) => sum + loadRevenue(l), 0);
   const viewMiles = view.reduce((sum, l) => sum + (Number(l.loaded_miles) || 0), 0);
-  const viewRpm = viewMiles > 0 ? viewNet / viewMiles : null;
+  const viewRpm = viewMiles > 0 ? viewGross / viewMiles : null;
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -274,7 +277,7 @@ const LoadsPage = () => {
           {view.length} load{plural(view.length)}
         </span>
         <span className="text-[12px] text-faint">in this view ·</span>
-        <b className="font-condensed font-semibold text-ink tabular-nums">{money(viewNet)} net</b>
+        <b className="font-condensed font-semibold text-ink tabular-nums">{money(viewGross)} gross</b>
         {viewRpm != null && (
           <>
             <span className="text-[12px] text-faint">·</span>
