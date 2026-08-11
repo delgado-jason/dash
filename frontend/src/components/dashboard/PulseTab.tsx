@@ -12,6 +12,7 @@ import {
   getUpcomingLoads,
 } from "@/lib/metrics/dashboard";
 import { loadRevenue } from "@/lib/metrics/loads";
+import { loadRevenue as loadNet } from "@/lib/metrics/rateTargets";
 import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
 import { projectWeek } from "@/lib/metrics/weekProjection";
@@ -130,7 +131,9 @@ export const PulseTab = ({
   const pace = useMemo(() => getQuarterPace(loads, now), [loads, now]);
 
   // Landing on the next weekly settlement: delivered, POD in, not yet paid.
-  // Timing, not receivables — the carrier clears it every settlement day.
+  // Timing, not receivables — the carrier clears it every settlement day. This is
+  // the money that ACTUALLY lands, so it's NET (Landstar's deposit after its cut),
+  // not the gross customer rate.
   const pipelineLoads = useMemo(
     () =>
       loads.filter(
@@ -139,7 +142,7 @@ export const PulseTab = ({
     [loads],
   );
   const pipeline = useMemo(
-    () => pipelineLoads.reduce((s, l) => s + loadRevenue(l), 0),
+    () => pipelineLoads.reduce((s, l) => s + loadNet(l), 0),
     [pipelineLoads],
   );
   const settleDate =

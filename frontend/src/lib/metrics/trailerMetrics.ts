@@ -65,10 +65,21 @@ export const computeTrailerMetrics = (
   ).size;
   const utilization =
     weeksInService && weeksInService > 0 ? Math.min(1, activeWeeks / weeksInService) : null;
-  const monthsInService = inService
-    ? Math.max(1, (now.getTime() - inService.getTime()) / (30.44 * DAY))
-    : null;
-  const milesPerMonth = monthsInService ? totalMiles / monthsInService : null;
+  // Pace over the OPERATING window (later of in-service and first earned load → now),
+  // NOT raw calendar time since in-service — see truckMetrics. Dead pre-tracking
+  // months must not dilute miles/month, which drives note-per-mile → cost-to-run.
+  const nowDay = now.toISOString().slice(0, 10);
+  const inServiceDay = trailer.in_service_date ? trailer.in_service_date.slice(0, 10) : null;
+  const firstEarned = earnedLoads
+    .filter((l) => l.pickup_date)
+    .map((l) => l.pickup_date.slice(0, 10))
+    .sort()[0];
+  const windowStart =
+    [inServiceDay, firstEarned].filter((d): d is string => !!d).sort().at(-1) ?? null;
+  const windowMonths = windowStart
+    ? Math.max(0, (Date.parse(`${nowDay}T00:00:00Z`) - Date.parse(`${windowStart}T00:00:00Z`)) / DAY) / 30.44
+    : 0;
+  const milesPerMonth = windowMonths > 0 ? totalMiles / windowMonths : null;
 
   // All-in: maintenance ÷ miles plus the trailer's own note spread over its monthly
   // miles. Mirrors the truck's cost-to-run so the label means the same thing.

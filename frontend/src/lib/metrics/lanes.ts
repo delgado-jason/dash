@@ -499,13 +499,19 @@ export interface OriginStateRollup {
 }
 
 export const getOriginStateRollup = (loads: Load[]): OriginStateRollup => {
-  const acc = new Map<string, { n: number; lh: number; mi: number }>();
+  const acc = new Map<string, { n: number; gross: number; mi: number }>();
   for (const l of loads) {
     const st = l.origin_state;
     if (!st) continue;
-    const a = acc.get(st) ?? { n: 0, lh: 0, mi: 0 };
+    const a = acc.get(st) ?? { n: 0, gross: 0, mi: 0 };
     a.n += 1;
-    a.lh += Number(l.linehaul) || 0;
+    // GROSS (linehaul + FSC + accessorials), to match every other $/mi on the Lanes
+    // page — linehaul-only understated oversize origins most (their tarp/permit
+    // accessorials are the biggest slice).
+    a.gross +=
+      (Number(l.linehaul) || 0) +
+      (Number(l.fuel_surcharge) || 0) +
+      (Number(l.total_accessorials) || 0);
     a.mi += Number(l.loaded_miles) || 0;
     acc.set(st, a);
   }
@@ -513,7 +519,7 @@ export const getOriginStateRollup = (loads: Load[]): OriginStateRollup => {
     state,
     name: getStateName(state) ?? state,
     loadCount: a.n,
-    blendedRpm: a.mi > 0 ? a.lh / a.mi : null,
+    blendedRpm: a.mi > 0 ? a.gross / a.mi : null,
   }));
   const rows = all
     .filter((r) => r.loadCount >= 2)

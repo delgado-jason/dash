@@ -81,9 +81,6 @@ export const computeTruckMetrics = (
   // before you were running loads don't read as "idle" — they're unmeasured, not
   // wasted. Days basis (not weeks) so intensity shows: a light week and a heavy one
   // no longer look identical.
-  const inService = truck.in_service_date
-    ? new Date(truck.in_service_date.slice(0, 10) + "T00:00:00Z")
-    : null;
   const nowDay = now.toISOString().slice(0, 10);
   const inServiceDay = truck.in_service_date
     ? truck.in_service_date.slice(0, 10)
@@ -135,10 +132,12 @@ export const computeTruckMetrics = (
   const utilization =
     windowDays > 0 ? Math.min(1, underLoadDays / windowDays) : null;
 
-  const monthsInService = inService
-    ? Math.max(1, (now.getTime() - inService.getTime()) / (30.44 * DAY))
-    : null;
-  const milesPerMonth = monthsInService ? totalMiles / monthsInService : null;
+  // Pace over the OPERATING window (windowStart→now — the same span utilization uses),
+  // NOT raw calendar time since the in-service date. Months the truck logged nothing
+  // (before dash tracking began, or before its first load) must not dilute the pace:
+  // that understates miles/month and inflates note-per-mile → cost-to-run.
+  const windowMonths = windowDays / 30.44;
+  const milesPerMonth = windowMonths > 0 ? totalMiles / windowMonths : null;
 
   // All-in cost to run: fuel + maintenance (spend ÷ miles driven) plus the rig's own
   // note spread over the miles it runs a month. The note is a per-mile rate on a
