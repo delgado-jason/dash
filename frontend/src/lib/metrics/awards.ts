@@ -15,7 +15,7 @@ import {
   personalBests,
 } from "./playerCard";
 import { resolvePeriod, loadsInRange, type RecapScope } from "./recap";
-import { loadRevenue } from "./rateTargets";
+import { loadRevenue, loadGross } from "./rateTargets";
 import { computePatches } from "@/lib/awards/patches";
 import { computeMedals } from "@/lib/awards/medals";
 import type { TrophyDef } from "@/lib/trophies/catalog";
@@ -72,7 +72,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
     if (subsumed) continue;
     const inR = loadsInRange(i.loads, r);
     if (inR.length === 0) continue;
-    const gross = inR.reduce((s, l) => s + loadRevenue(l), 0);
+    const gross = inR.reduce((s, l) => s + loadGross(l), 0); // GROSS — "hauled" = freight moved
     out.push({
       id: `recap:${scope}:${r.label}`,
       tier: "recap",

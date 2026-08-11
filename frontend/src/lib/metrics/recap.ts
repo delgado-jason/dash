@@ -3,9 +3,12 @@
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { ExpensePeriod } from "@/types/expense";
+// GROSS revenue — the recap's hauled/lane/agent/monthly/RPM figures are market value
+// (freight moved), per Jason's ruling; the net figures come from the P&L (`periods`).
+import { loadRevenue } from "./loads";
 import {
-  loadRevenue,
-  getWeekBookedGross,
+  getWeekGrossEarned,
+  getWeekEarnedGross,
   getGrossTargets,
   getCostBasis,
   payWeekRange,
@@ -207,9 +210,15 @@ export const computeRecap = (
   const firstWeek = payWeekRange(range.start, PAY_WEEK_START_DOW).start.getTime();
   for (let t = firstWeek; t < range.end.getTime(); t += WEEK_MS) {
     if (t < range.start.getTime()) continue; // skip the partial leading week
-    const wg = getWeekBookedGross(loads, new Date(t), new Date(t + WEEK_MS));
-    if (bestWeek == null || wg > bestWeek) bestWeek = wg;
-    statuses.push(classify(wg, targets));
+    const ws = new Date(t);
+    const we = new Date(t + WEEK_MS);
+    // Best week = most GROSS freight hauled, DELIVERED-only (Jason's ruling) — the
+    // same getWeekGrossEarned the dashboard uses, so the record is one number.
+    const grossWeek = getWeekGrossEarned(loads, ws, we);
+    if (bestWeek == null || grossWeek > bestWeek) bestWeek = grossWeek;
+    // Streak = weeks that beat the (net-basis) target, delivered-only — not committed
+    // (a booked-then-cancelled load must not extend a record).
+    statuses.push(classify(getWeekEarnedGross(loads, ws, we), targets));
   }
 
   // Gross per month across the range (1 for a month, 3 for a quarter, 12 for a

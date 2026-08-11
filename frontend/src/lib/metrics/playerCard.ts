@@ -7,7 +7,11 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { deadheadPctOver } from "./deadhead";
-import { loadRevenue, type RateLadder } from "./rateTargets";
+// GROSS revenue — avgRpm (booking rate), bestLane, and the best-week/biggest-load
+// records are market value (Jason's ruling). The net figures (netRevenue, netProfit,
+// trueNet) are derived from the P&L `income`, not from loadRevenue.
+import { loadRevenue } from "./loads";
+import { type RateLadder } from "./rateTargets";
 import { resolvePeriod } from "./recap";
 import { mileMilestone } from "./mileClub";
 import { fuelStats } from "./fuelEconomy";
