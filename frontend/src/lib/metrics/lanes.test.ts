@@ -331,14 +331,15 @@ describe("getStateDetail", () => {
 });
 
 describe("getWindowTotals", () => {
-  it("sums linehaul and blends the rate, coercing numeric strings", () => {
+  it("sums linehaul for the dollar total but blends the rate on GROSS", () => {
     const t = getWindowTotals([
-      makeLoad({ linehaul: "1000", loaded_miles: 200 }),
+      makeLoad({ linehaul: "1000", fuel_surcharge: "200", loaded_miles: 200 }),
       makeLoad({ linehaul: "500.50", loaded_miles: 100 }),
     ]);
     expect(t.loads).toBe(2);
-    expect(t.linehaul).toBeCloseTo(1500.5, 5);
-    expect(t.blendedRpm).toBeCloseTo(1500.5 / 300, 5);
+    expect(t.linehaul).toBeCloseTo(1500.5, 5); // dollar total stays linehaul-only
+    // GROSS ÷ miles (incl. the $200 FSC) = 1700.5/300, NOT linehaul-only 1500.5/300
+    expect(t.blendedRpm).toBeCloseTo(1700.5 / 300, 5);
   });
 
   it("blends to null with no miles, and zeros on empty", () => {

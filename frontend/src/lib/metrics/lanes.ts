@@ -467,17 +467,15 @@ export const getLanesSummary = (loads: Load[]): LanesSummary => {
 export interface WindowTotals {
   loads: number;
   linehaul: number;
-  blendedRpm: number | null; // linehaul ÷ loaded miles across the set
+  blendedRpm: number | null; // GROSS ÷ loaded miles — matches every other $/mi on the page
 }
 
 export const getWindowTotals = (loads: Load[]): WindowTotals => {
-  let lh = 0;
-  let mi = 0;
-  for (const l of loads) {
-    lh += Number(l.linehaul) || 0;
-    mi += Number(l.loaded_miles) || 0;
-  }
-  return { loads: loads.length, linehaul: lh, blendedRpm: mi > 0 ? lh / mi : null };
+  // The dollar total stays linehaul (settlement-relevant, labeled "linehaul" in the
+  // UI), but the blended $/mi is GROSS — "blended" means gross ÷ miles everywhere
+  // else on the Lanes page, and linehaul-only understated oversize windows most.
+  const linehaul = loads.reduce((sum, l) => sum + (Number(l.linehaul) || 0), 0);
+  return { loads: loads.length, linehaul, blendedRpm: avgRpm(loads) };
 };
 
 // ---- Origin states for the markets board. ----

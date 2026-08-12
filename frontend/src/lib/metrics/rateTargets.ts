@@ -75,7 +75,7 @@ const monthMiles = (loads: Load[], year: number, month: number) => {
     (s, l) =>
       s +
       (l.odometer_end != null && l.odometer_start != null
-        ? Number(l.odometer_end) - Number(l.odometer_start)
+        ? Math.max(0, Number(l.odometer_end) - Number(l.odometer_start)) // guard a reversed/equal reading
         : 0),
     0,
   );

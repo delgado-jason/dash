@@ -471,7 +471,9 @@ export const LoadDetailPage = () => {
                 {
                   rate: loadRevenue(load),
                   loadedMiles: Number(load.loaded_miles) || 0,
-                  deadheadMiles: Number(load.deadhead_miles) || 0,
+                  // Odometer is truth: grade a run load on its ACTUAL empty miles,
+                  // falling back to the planning estimate only until the window exists.
+                  deadheadMiles: empty != null && empty >= 0 ? empty : Number(load.deadhead_miles) || 0,
                 },
                 { costPerDrivenMile: basis.costPerTotalMile, payTake: basis.payTake },
               );
