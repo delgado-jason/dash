@@ -433,8 +433,8 @@ export const PulseTab = ({
           }
           sub={
             onTime.onTimePct != null
-              ? `${onTime.gradedStops} timed stops · 90d`
-              : "needs 3+ timed stops"
+              ? `${onTime.gradedStops} graded stops · 90d`
+              : "needs 3+ graded stops"
           }
           tone={
             onTime.onTimePct == null

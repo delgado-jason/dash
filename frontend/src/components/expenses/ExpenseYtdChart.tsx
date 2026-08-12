@@ -76,7 +76,7 @@ export const ExpenseYtdChart = ({
   return (
     <div className="ds2-board p-4 mt-4" style={{ height: 280 }}>
       <p className="text-xs text-faint mb-2">
-        Revenue vs {obligationsTotal > 0 ? "true cost" : "cost"} · year to date
+        Revenue vs {obligationsTotal > 0 ? "true cost" : "cost"} · by month
       </p>
       <ResponsiveContainer width="100%" height="88%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>

@@ -114,6 +114,16 @@ describe("getCostBasis", () => {
     expect(b.grossPerTotalMile).toBeCloseTo(3.2, 5);
   });
 
+  it("guards a reversed/equal odometer reading — contributes 0 driven miles, not negative", () => {
+    const periods = [period("2026-06-01", 5000, 5000)]; // one complete month (June)
+    const loads = [
+      load({ delivery_date: "2026-06-10", loaded_miles: 1000, odometer_start: 1000, odometer_end: 3500, linehaul: "5000" }), // 2500 driven
+      load({ delivery_date: "2026-06-20", loaded_miles: 800, odometer_start: 5000, odometer_end: 4000, linehaul: "4000" }), // reversed → 0, not −1000
+    ];
+    const b = getCostBasis(periods, 0, loads, now);
+    expect(b.totalMiles).toBe(2500); // without the guard it would read 1500
+  });
+
   it("skips months with no P&L, keeping cost and miles aligned", () => {
     const periods = [period("2026-05-01", 5000, 5000)]; // only May
     const loads = [
