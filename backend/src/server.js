@@ -31,6 +31,7 @@ import accessorialRateRouter from "./routes/accessorialRateRoutes.js";
 import routingRouter from "./routes/routingRoutes.js";
 import freightIndexRouter from "./routes/freightIndexRoutes.js";
 import vendorRouter from "./routes/vendorRoutes.js";
+import cityCoordsRouter from "./routes/cityCoordsRoutes.js";
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use("/accessorial-rates", accessorialRateRouter);
 app.use("/routing", routingRouter);
 app.use("/freight-index", freightIndexRouter);
 app.use("/vendors", vendorRouter);
+app.use("/city-coords", cityCoordsRouter);
 
 app.get("/", (req, res) => {
   res.send("Home Page");

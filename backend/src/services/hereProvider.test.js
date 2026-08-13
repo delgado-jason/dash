@@ -5,6 +5,8 @@ import {
   inchesToCm,
   poundsToKg,
   parseGeocode,
+  parseGeocodeDetailed,
+  validateGeocodeResult,
   parseRouteMeters,
   parseRouteTolls,
   parseCitySuggestions,
@@ -37,6 +39,96 @@ describe("parseGeocode", () => {
     assert.equal(parseGeocode({ items: [] }), null);
     assert.equal(parseGeocode({}), null);
     assert.equal(parseGeocode({ items: [{ position: { lat: "x", lng: 1 } }] }), null);
+  });
+});
+
+describe("parseGeocodeDetailed", () => {
+  const hit = {
+    items: [
+      {
+        title: "Macedonia, OH, United States",
+        resultType: "locality",
+        address: { label: "Macedonia, OH, United States", countryCode: "USA", stateCode: "OH" },
+        position: { lat: 41.31, lng: -81.5 },
+        scoring: { queryScore: 0.99 },
+      },
+    ],
+  };
+
+  test("pulls the trust fields from the top hit", () => {
+    assert.deepEqual(parseGeocodeDetailed(hit), {
+      found: true,
+      lat: 41.31,
+      lng: -81.5,
+      stateCode: "OH",
+      countryCode: "USA",
+      resultType: "locality",
+      queryScore: 0.99,
+      label: "Macedonia, OH, United States",
+    });
+  });
+
+  test("found:false when nothing usable came back", () => {
+    assert.deepEqual(parseGeocodeDetailed({ items: [] }), { found: false });
+    assert.deepEqual(parseGeocodeDetailed({}), { found: false });
+    assert.deepEqual(
+      parseGeocodeDetailed({ items: [{ position: { lat: "x", lng: 1 } }] }),
+      { found: false },
+    );
+  });
+});
+
+describe("validateGeocodeResult", () => {
+  const good = {
+    found: true,
+    lat: 41.31,
+    lng: -81.5,
+    stateCode: "OH",
+    countryCode: "USA",
+    resultType: "locality",
+    queryScore: 0.99,
+    label: "Macedonia, OH",
+  };
+
+  test("accepts a US, state-matched, in-bounds, high-confidence hit", () => {
+    const v = validateGeocodeResult("oh", good);
+    assert.equal(v.ok, true);
+    assert.deepEqual(v.coords, { lat: 41.31, lng: -81.5 });
+  });
+
+  test("rejects a state mismatch (the classic wrong-Springfield guard)", () => {
+    const v = validateGeocodeResult("IL", { ...good, stateCode: "MO" });
+    assert.equal(v.ok, false);
+    assert.match(v.reason, /state_mismatch/);
+  });
+
+  test("rejects a non-US result", () => {
+    const v = validateGeocodeResult("OH", { ...good, countryCode: "CAN" });
+    assert.equal(v.ok, false);
+    assert.match(v.reason, /country/);
+  });
+
+  test("rejects a point outside US bounds", () => {
+    const v = validateGeocodeResult("OH", { ...good, lat: 4.6, lng: -74.1 }); // Bogotá
+    assert.equal(v.ok, false);
+    assert.equal(v.reason, "out_of_bounds");
+  });
+
+  test("rejects a low-confidence match", () => {
+    const v = validateGeocodeResult("OH", { ...good, queryScore: 0.55 });
+    assert.equal(v.ok, false);
+    assert.match(v.reason, /low_score/);
+  });
+
+  test("no_match when the API found nothing", () => {
+    assert.equal(validateGeocodeResult("OH", { found: false }).ok, false);
+    assert.equal(validateGeocodeResult("OH", null).reason, "no_match");
+  });
+
+  test("fails closed when HERE returned no confidence score", () => {
+    const v = validateGeocodeResult("OH", { ...good, queryScore: null });
+    assert.equal(v.ok, false);
+    assert.equal(v.reason, "no_score");
   });
 });
 

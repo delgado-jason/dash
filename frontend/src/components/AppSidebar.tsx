@@ -4,6 +4,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   Target,
+  Phone,
   Package,
   Truck,
   Wallet,
@@ -47,6 +48,7 @@ const isGroup = (e: Entry): e is Group => "children" in e;
 const nav: Entry[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/score", label: "Score a Load", icon: Target },
+  { to: "/foreman", label: "The Foreman", icon: Phone },
   {
     label: "Freight",
     icon: Package,
