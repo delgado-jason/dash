@@ -63,6 +63,84 @@ export const geocode = async (city, state) => {
   return coords;
 };
 
+// ---- detailed geocode + validation (for the persistent city_coords cache) ----
+// The plain geocode above returns just { lat, lng } and is fine for the live map.
+// The Foreman STORES coordinates, so it needs enough context to TRUST one before
+// persisting it — the state HERE actually matched, whether it's a US result, and
+// HERE's own confidence — so a wrong point never silently poisons a ranking.
+
+// US bounding box (continental + AK + HI + PR): generous, but enough to reject an
+// obviously-wrong hit like a same-named foreign city.
+export const US_BOUNDS = { minLat: 15, maxLat: 72, minLng: -170, maxLng: -64 };
+
+// HERE geocode item → the fields we need to trust a coordinate. `found:false` when
+// nothing usable came back (the API answered but matched nothing).
+export const parseGeocodeDetailed = (json) => {
+  const item = json?.items?.[0];
+  const pos = item?.position;
+  if (!item || !pos || typeof pos.lat !== "number" || typeof pos.lng !== "number")
+    return { found: false };
+  return {
+    found: true,
+    lat: pos.lat,
+    lng: pos.lng,
+    stateCode: item.address?.stateCode ?? null,
+    countryCode: item.address?.countryCode ?? null,
+    resultType: item.resultType ?? null,
+    queryScore:
+      typeof item.scoring?.queryScore === "number" ? item.scoring.queryScore : null,
+    label: item.address?.label ?? item.title ?? null,
+  };
+};
+
+// Is a detailed result trustworthy enough to STORE? We keep a coordinate only when
+// HERE agrees on the state, it's a US result, it sits inside US bounds, and it
+// clears the confidence floor. Anything else → don't store a number, fall back to
+// region-level. Pure + unit-tested (no key needed).
+// → { ok:true, coords, label, queryScore } | { ok:false, reason }
+export const validateGeocodeResult = (state, d, minScore = 0.8) => {
+  if (!d || d.found === false) return { ok: false, reason: "no_match" };
+  const st = String(state ?? "").trim().toUpperCase();
+  if (d.countryCode && d.countryCode !== "USA")
+    return { ok: false, reason: `country_${d.countryCode}` };
+  if (!d.stateCode || d.stateCode.toUpperCase() !== st)
+    return { ok: false, reason: `state_mismatch_${d.stateCode ?? "none"}` };
+  if (
+    d.lat < US_BOUNDS.minLat ||
+    d.lat > US_BOUNDS.maxLat ||
+    d.lng < US_BOUNDS.minLng ||
+    d.lng > US_BOUNDS.maxLng
+  )
+    return { ok: false, reason: "out_of_bounds" };
+  // Fail closed: a missing OR low confidence score is not trustworthy enough to
+  // STORE (city_coords is write-once), so we fall back to region-level instead.
+  if (d.queryScore == null) return { ok: false, reason: "no_score" };
+  if (d.queryScore < minScore)
+    return { ok: false, reason: `low_score_${d.queryScore.toFixed(2)}` };
+  return {
+    ok: true,
+    coords: { lat: d.lat, lng: d.lng },
+    label: d.label,
+    queryScore: d.queryScore,
+  };
+};
+
+// city/state → detailed geocode. Returns null when unconfigured/blank (a SKIP —
+// the caller must NOT persist a failure, so a later attempt with a key can still
+// succeed); throws on HTTP error (transient); otherwise the parsed detail
+// ({ found:true, … } | { found:false }).
+export const geocodeDetailed = async (city, state) => {
+  if (!hasKey() || !city || !state) return null;
+  const params = new URLSearchParams({
+    q: `${city.trim()}, ${state.trim()}, USA`,
+    apiKey: process.env.HERE_API_KEY,
+    limit: "1",
+  });
+  const res = await fetch(`${GEOCODE_URL}?${params}`);
+  if (!res.ok) throw new Error(`HERE geocode failed (${res.status})`);
+  return parseGeocodeDetailed(await res.json());
+};
+
 // Apply the load's dims to a routing request — HERE wants centimeters + kg.
 // Turns on PHYSICAL restrictions (the oversize reroute around low bridges,
 // narrow roads, weight limits) and, for tolls, the correct vehicle toll class.

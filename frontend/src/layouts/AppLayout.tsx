@@ -14,6 +14,7 @@ import { isDispatcher } from "@/lib/roles";
 // both roles share (like /lanes) are full-bleed for everyone.
 const FULL_BLEED_PREFIXES = [
   { prefix: "/dashboard", ownerOnly: false }, // both boards carry their own trigger now
+  { prefix: "/foreman", ownerOnly: false },
   { prefix: "/lanes", ownerOnly: false },
   { prefix: "/trophy-room", ownerOnly: false },
   { prefix: "/trips", ownerOnly: false },

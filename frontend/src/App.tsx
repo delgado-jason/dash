@@ -10,6 +10,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import LoadsPage from "@/pages/LoadsPage";
 import TripsPage from "@/pages/TripsPage";
 import ScoreLoadPage from "@/pages/ScoreLoadPage";
+import ForemanPage from "@/pages/ForemanPage";
 import GaragePage from "@/pages/GaragePage";
 import ExpensesPage from "@/pages/ExpensesPage";
 import MarketPage from "@/pages/MarketPage";
@@ -57,6 +58,7 @@ const App = () => {
           <Route path="/loads/:load_id" element={<LoadDetailPage />} />
           <Route path="/trips" element={<TripsPage />} />
           <Route path="/score" element={<ScoreLoadPage />} />
+          <Route path="/foreman" element={<ForemanPage />} />
           <Route
             path="/lanes"
             element={

@@ -326,6 +326,10 @@ const NAV: { group: string; items: string[] }[] = [
     items: ["The tabbed dashboard — five views of your operation"],
   },
   {
+    group: "The Foreman",
+    items: ["The Foreman — who to call from where you'll be empty next"],
+  },
+  {
     group: "The money",
     items: [
       "Your net revenue — what you actually keep",
@@ -582,6 +586,88 @@ const GuidePage = () => {
                 and a day-by-day heatmap of earning vs. home vs. idle.
               </TabLine>
             </div>
+          </Section>
+
+          <h2
+            id={slug("The Foreman")}
+            className="font-condensed text-2xl mb-3 mt-8 scroll-mt-6"
+            style={{ color: AMBER_HI }}
+          >
+            The Foreman
+          </h2>
+
+          <Section title="The Foreman — who to call from where you'll be empty next">
+            <p className="text-sm text-muted-text mb-3">
+              The Foreman turns "who do we usually call around here?" into a ranked
+              call list. It looks at where you'll be{" "}
+              <span className="text-light">empty next</span>, then ranks the agents
+              you've booked by how well each one fits your next load. It is a call
+              list built from your own history —{" "}
+              <span className="text-light">not a live load feed</span>: it can't know
+              who has freight posted today, only who's your best bet to call from
+              here.
+            </p>
+
+            <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
+              Where you'll be empty next
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              The anchor is the destination of the furthest-out load you're already
+              committed to (booked or in-transit) — you're covered until it drops.
+              With nothing committed, you're already empty at your last delivery.
+            </p>
+
+            <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
+              The three axes
+            </p>
+            <ul className="text-sm text-muted-text mb-3 space-y-1.5 list-disc pl-5">
+              <li>
+                <span className="text-light">Proximity</span> — straight-line miles
+                from your empty-next point to the{" "}
+                <span className="text-light">nearest</span> origin that agent has
+                loaded you from (their closest origin, not their average — the
+                question is "can they load me near here").
+              </li>
+              <li>
+                <span className="text-light">Rate</span> — the agent's gross dollars
+                per <span className="text-light">loaded</span> mile for a load type,
+                measured against your own <span className="text-light">realized median
+                rate for that type</span> (your flatbed rate runs far under your
+                oversize rate, so the yardstick has to be per-type). Loaded-mile, the
+                same basis as the Agents page, so an agent is never dinged for a
+                deadhead they didn't cause.
+              </li>
+              <li>
+                <span className="text-light">History</span> — loads you've run
+                together, how recently, and dwell (money left sitting in unpaid
+                detention).
+              </li>
+            </ul>
+
+            <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
+              Rank by
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              <span className="text-light">Balanced</span> blends all three, weighting
+              your relationship as heavily as proximity — you're building ties, not
+              just chasing the closest freight.{" "}
+              <span className="text-light">Closest</span> sorts by distance alone;{" "}
+              <span className="text-light">Best rate</span> by the highest raw $/mi.
+              The <span className="text-light">Looking for</span> selector narrows to a
+              load type and benchmarks each agent against your median rate for that type.
+            </p>
+            <Formula>
+              Balanced score = 0.35 × proximity + 0.30 × rate + 0.35 × relationship
+            </Formula>
+
+            <p className="text-sm text-muted-text mt-3">
+              An agent you've run once shows as{" "}
+              <span style={{ color: "#5dcaa5" }}>New · building</span> — not a
+              low-confidence reject, but a relationship worth deepening. Distances are
+              straight-line estimates (shown with a ~) and sharpen to real miles as the
+              app geocodes each city quietly in the background; a city it can't place
+              yet falls back to region-level rather than a fake number.
+            </p>
           </Section>
 
           <h2

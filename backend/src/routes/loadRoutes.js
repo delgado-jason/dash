@@ -7,9 +7,20 @@ import {
   patchLoad,
   deleteLoad,
 } from "../services/loadServices.js";
+import { ensureCityCoords } from "../services/cityCoordsService.js";
 
 const router = express.Router();
 router.use(requireAuth);
+
+// Fire-and-forget: make sure this load's origin/destination have persisted
+// coordinates for the Foreman's distance math. Runs in the background AFTER the
+// row is saved, so it never blocks (or fails) the create/patch — a HERE hiccup
+// just means the city gets geocoded on the next attempt.
+const warmLoadCities = (load) => {
+  if (!load) return;
+  ensureCityCoords(load.origin_city, load.origin_state).catch(() => {});
+  ensureCityCoords(load.destination_city, load.destination_state).catch(() => {});
+};
 
 // ---- GET ALL LOADS ----
 router.get("/", async (req, res) => {
@@ -70,6 +81,7 @@ router.post("/", async (req, res) => {
     const data = req.body;
 
     const load = await createLoad(user_id, data, req.user.self_id);
+    warmLoadCities(load);
 
     return res.status(201).json({
       message: "Load created successfully",
@@ -99,6 +111,7 @@ router.patch("/:load_id", async (req, res) => {
     const data = req.body;
 
     const load = await patchLoad(user_id, load_id, data);
+    warmLoadCities(load);
 
     return res.status(200).json({
       message: "Load updated successfully",
