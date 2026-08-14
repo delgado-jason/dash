@@ -955,11 +955,18 @@ const GuidePage = () => {
               <span className="text-light">same city</span>, then{" "}
               <span className="text-light">a market named for that city</span>{" "}
               (type "Atlanta" and it offers your Atlanta Market, even though your
-              loads run from the towns around it), and finally the{" "}
+              loads run from the towns around it), then the{" "}
               <span className="text-light">nearest city you've already mapped</span>{" "}
-              within 75 miles. Tap <span className="text-light">Use</span> to
-              accept it; it's a suggestion, never an auto-fill, so the call stays
-              yours.
+              within 75 miles, then the{" "}
+              <span className="text-light">nearest major freight hub</span> within
+              75 miles, and — for a genuinely remote spot — a{" "}
+              <span className="text-light">regional name</span> like "Western Texas
+              Market." Tap <span className="text-light">Use</span> to accept a
+              market you already have; when the pick is a hub or region you haven't
+              logged yet, the chip reads{" "}
+              <span className="text-light">Create &amp; use</span> and mints that
+              market (canonically named) for you. Either way it's a suggestion,
+              never an auto-fill — the call stays yours.
             </Why>
           </Metric>
 
