@@ -414,6 +414,7 @@ export const LoadDetailPage = () => {
                 truck_id: load.truck_id ?? null,
                 driver_id: load.driver_id ?? null,
                 trailer_id: load.trailer_id ?? null,
+                booked_by: load.booked_by ?? null,
               }}
               brokers={brokers}
               agents={agents}
@@ -499,6 +500,7 @@ export const LoadDetailPage = () => {
           </div>
           <p className="text-dim text-sm mt-1">
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
+            {load.booked_by_name ? ` · booked by ${load.booked_by_name}` : ""}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">

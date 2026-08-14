@@ -204,6 +204,11 @@ export async function getLoad(user_id, load_id) {
             l.driver_id,
             l.trailer_id,
             l.booked_by,
+            COALESCE(
+              bu.display_name,
+              NULLIF(TRIM(COALESCE(bp.first_name, '') || ' ' || COALESCE(bp.last_name, '')), ''),
+              bu.email
+            ) AS booked_by_name,
             trk.unit_number AS truck_unit,
             drv.first_name || ' ' || drv.last_name AS driver_name,
             trl.unit_number AS trailer_unit,
@@ -226,6 +231,10 @@ export async function getLoad(user_id, load_id) {
         ON l.trailer_id = trl.trailer_id
         LEFT JOIN settlement_schedules AS ss
         ON ss.user_id = l.user_id
+        LEFT JOIN users AS bu
+        ON bu.user_id = l.booked_by
+        LEFT JOIN profiles AS bp
+        ON bp.user_id = l.booked_by
         WHERE l.user_id = $1
         AND load_id = $2;
     `;

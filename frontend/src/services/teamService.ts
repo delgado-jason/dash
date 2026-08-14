@@ -22,6 +22,12 @@ export const getUser = async (id: string): Promise<TeamMember> => {
   return res.data.user;
 };
 
+// Set your OWN display name (owner or dispatcher). Shown as the booker on loads
+// and anywhere the app credits you, in place of your email.
+export const updateMyName = async (display_name: string): Promise<void> => {
+  await api.patch("/users/me", { display_name });
+};
+
 export const createDispatcher = async (data: {
   email: string;
   password: string;

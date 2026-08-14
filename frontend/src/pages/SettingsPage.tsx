@@ -3,6 +3,7 @@ import {
   getSettlementSchedule,
   updateSettlementSchedule,
 } from "@/services/settlementScheduleService";
+import { getTeam, updateMyName } from "@/services/teamService";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
@@ -133,6 +134,7 @@ const SettingsPage = () => {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sfx, setSfx] = useState(sfxEnabled());
+  const [displayName, setDisplayName] = useState("");
 
   // Real break-even for the tier previews + weekly-target preview (cost-based,
   // so it's independent of the tier values being edited).
@@ -170,6 +172,16 @@ const SettingsPage = () => {
         setMarginGoal(pct(s.margin_goal));
       })
       .catch(() => setErr("Couldn't load your settlement schedule."));
+  }, []);
+
+  useEffect(() => {
+    const selfId = localStorage.getItem("user_id");
+    getTeam()
+      .then((t) => {
+        const me = t.find((m) => m.user_id === selfId);
+        if (me) setDisplayName(me.display_name ?? "");
+      })
+      .catch(() => {});
   }, []);
 
   const set = (k: keyof Pcts) => (v: number) => {
@@ -210,6 +222,7 @@ const SettingsPage = () => {
         rate_tier_spec_strong: specTiers.strong / 100,
         margin_goal: marginGoal / 100,
       });
+      await updateMyName(displayName.trim());
       setMsg("Saved. Your revenue and targets now use this split.");
     } catch (e) {
       setErr(
@@ -268,6 +281,26 @@ const SettingsPage = () => {
           </span>
           <span className="text-sm text-light">{sfx ? "On" : "Off"}</span>
         </button>
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Your name</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Shown as the booker on loads you book (instead of your email), and
+          anywhere the app credits you.
+        </p>
+        <label className="block mt-4 max-w-xs">
+          <input
+            type="text"
+            placeholder="e.g. Jason Delgado"
+            value={displayName}
+            onChange={(e) => {
+              setMsg(null);
+              setDisplayName(e.target.value);
+            }}
+            className="w-full mt-1 bg-steel rounded px-2 py-1.5 text-light text-sm block"
+          />
+        </label>
       </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">

@@ -69,6 +69,9 @@ export interface Load {
   // The user (self_id) who booked this load — powers the dispatcher card's
   // per-person credit. Defaults to the creator; editable to reassign credit.
   booked_by?: string | null;
+  // The booker's resolved display name (users.display_name, else profile
+  // first+last, else email), joined on the single-load fetch (getLoad). Read-only.
+  booked_by_name?: string | null;
   // Joined labels, present on the single-load fetch (getLoad) only.
   truck_unit?: string | null;
   driver_name?: string | null;
