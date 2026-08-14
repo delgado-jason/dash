@@ -5,6 +5,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
 import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
+import { emptyNextAnchor } from "@/lib/metrics/foreman";
 import { playSfx } from "@/lib/sfx";
 import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
@@ -41,7 +42,6 @@ const Lbl = ({ children, accent }: { children: ReactNode; accent?: boolean }) =>
   </div>
 );
 
-// A labeled number field on a well (rate, weight, miles).
 const NumField = ({
   label,
   value,
@@ -153,8 +153,8 @@ const DimField = ({
   </div>
 );
 
-// The agent field: match your agents by 3-letter code OR name, pick the person.
-// Anything that matches nothing flags a new agent — and nothing is saved here.
+// The agent field: match by 3-letter code OR name, pick the person. Anything that
+// matches nothing flags a new agent — and nothing is saved here.
 const AgentField = ({
   agents,
   query,
@@ -169,7 +169,6 @@ const AgentField = ({
   onPick: (a: Agent | null) => void;
 }) => {
   const [open, setOpen] = useState(false);
-  const focused = useRef(false);
   const matches = useMemo(() => matchAgents(agents, query), [agents, query]);
   const showList = open && !selected && matches.length > 0;
 
@@ -181,18 +180,14 @@ const AgentField = ({
         autoComplete="off"
         className={cityInputCls + (selected ? " text-amber" : "")}
         onChange={(e) => {
-          onPick(null); // typing re-opens the search
+          onPick(null);
           onQuery(e.target.value);
           setOpen(true);
         }}
         onFocus={() => {
-          focused.current = true;
           if (!selected && matches.length) setOpen(true);
         }}
-        onBlur={() => {
-          focused.current = false;
-          setTimeout(() => setOpen(false), 150);
-        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
         role="combobox"
         aria-expanded={showList}
       />
@@ -251,13 +246,29 @@ const ScoreLoadPage = () => {
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
   const [toll, setToll] = useState<number | null>(null);
+  const [scored, setScored] = useState(false);
+  const truckTouched = useRef(false);
 
-  // Prefill "Truck now" with the truck's last-known location. Non-fatal.
+  const setTruck = (p: Place) => {
+    truckTouched.current = true;
+    setTruckNow(p);
+  };
+
+  // Prefill "Truck now" with where you'll be empty NEXT — the destination of your
+  // active/booked load, else your last delivery (the same anchor The Foreman uses).
+  useEffect(() => {
+    if (truckTouched.current) return;
+    const anchor = emptyNextAnchor(loads ?? []);
+    if (anchor) setTruckNow({ city: anchor.city, state: anchor.state });
+  }, [loads]);
+  // Fallback only when there's no committed/delivered load to anchor on (fuel/trips).
   useEffect(() => {
     let active = true;
     getLastKnownLocation().then((loc) => {
-      if (active && loc && (loc.city || loc.state))
-        setTruckNow({ city: loc.city ?? "", state: loc.state ?? "" });
+      if (!active || truckTouched.current) return;
+      setTruckNow((cur) =>
+        cur.city || cur.state ? cur : { city: loc?.city ?? "", state: loc?.state ?? "" },
+      );
     });
     return () => {
       active = false;
@@ -280,17 +291,12 @@ const ScoreLoadPage = () => {
     dims.lengthIn != null ||
     dims.grossWeightLb != null;
   const oversize = useMemo(() => classifyOversize(dims), [dims]);
-  // Specialized freight (oversize by dims/weight, OR hazmat) is held to the
-  // higher tier set; everything else uses the standard set.
   const specialized = oversize.oversize || hazmat;
   const activeTiers = specialized ? targets.specTiers : targets.tiers;
 
   const pickupReady = !!(pickup.city && pickup.state);
   const deliveryReady = !!(delivery.city && delivery.state);
 
-  // Auto-route once pickup + delivery are complete (debounced). Fills loaded +
-  // deadhead + tolls; a manual edit to the mile fields sticks until the route
-  // itself changes.
   useEffect(() => {
     if (!pickupReady || !deliveryReady) return;
     let cancelled = false;
@@ -323,34 +329,28 @@ const ScoreLoadPage = () => {
 
   const entered = rate !== "" && loaded !== "";
   const score = scoreLoad(
-    {
-      rate: Number(rate),
-      loadedMiles: Number(loaded),
-      deadheadMiles: Number(deadhead),
-    },
-    {
-      costPerDrivenMile: targets.basis.costPerTotalMile,
-      payTake: targets.basis.payTake,
-    },
+    { rate: Number(rate), loadedMiles: Number(loaded), deadheadMiles: Number(deadhead) },
+    { costPerDrivenMile: targets.basis.costPerTotalMile, payTake: targets.basis.payTake },
     activeTiers,
   );
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
+  const canScore = targets.ready && entered && !!meta;
+
+  // Ka-ching when the result reveals a PRIME.
   useEffect(() => {
-    if (score.verdict === "steal") playSfx("kaching");
-  }, [score.verdict]);
+    if (scored && score.verdict === "steal") playSfx("kaching");
+  }, [scored, score.verdict]);
 
   const belowTarget = score.verdict === "pass" || score.verdict === "meh";
   const counter =
     belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
 
-  // Deadhead diagnosis: how much of the run is empty, and whether the freight
-  // itself is fine (the rate the load pays on its own loaded miles).
   const deadMi = Number(deadhead) || 0;
   const deadShare = score.drivenMiles > 0 ? deadMi / score.drivenMiles : 0;
   const freightDrag = deadShare >= 0.12 && belowTarget;
 
-  // Agent factor: an existing agent carries history; an unmatched entry is new.
-  const isNewAgent = !agent && agentQuery.trim().length >= 2 && matchAgents(agents ?? [], agentQuery).length === 0;
+  const isNewAgent =
+    !agent && agentQuery.trim().length >= 2 && matchAgents(agents ?? [], agentQuery).length === 0;
   const agentCard = agent ? scorecards.get(agent.agent_id) : undefined;
 
   const routeNote = routing
@@ -373,135 +373,88 @@ const ScoreLoadPage = () => {
         </div>
       </div>
 
-      <div className="ds2-board mx-auto p-4 sm:p-5" style={{ maxWidth: 440 }}>
-        <NumField label="Rate" value={rate} onChange={setRate} prefix="$" />
-
-        <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
-          Route <span className="normal-case tracking-normal text-[10px]" style={{ color: "#4a5566" }}>— city autocompletes</span>
-        </p>
-        <PlaceRow label="Truck now" place={truckNow} onChange={setTruckNow} />
-        <PlaceRow label="Pickup" place={pickup} onChange={setPickup} />
-        <PlaceRow label="Delivery" place={delivery} onChange={setDelivery} />
-
-        <div className="mt-3">
-          <Lbl accent>Agent</Lbl>
-          <AgentField
-            agents={agents ?? []}
-            query={agentQuery}
-            onQuery={setAgentQuery}
-            selected={agent}
-            onPick={setAgent}
-          />
-          {isNewAgent && (
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className="font-forge text-[11px] tracking-wider px-2 py-0.5 rounded" style={{ background: "rgba(53,160,140,.15)", color: "#5dcaa5" }}>
-                NEW AGENT
-              </span>
-              <span className="text-[11px] text-dim">no history yet · not saved until you book</span>
-            </div>
-          )}
-        </div>
-
-        <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
-          Load size <span className="normal-case tracking-normal" style={{ color: "#4a5566" }}>— leave blank if legal</span>
-        </p>
-        <div className="mb-2">
-          <NumField label="Gross wt" value={wt} onChange={setWt} suffix="lb" />
-        </div>
-        <div className="flex gap-2 mb-2.5">
-          <DimField label="Length" val={len} onChange={setLen} />
-          <DimField label="Width" val={wid} onChange={setWid} accent={oversize.reasons.some((r) => r.startsWith("width"))} />
-          <DimField label="Height" val={hgt} onChange={setHgt} />
-        </div>
-
-        <label
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer select-none bg-well border ${hazmat ? "border-amber/60" : "border-hairline"}`}
-        >
-          <input
-            type="checkbox"
-            checked={hazmat}
-            onChange={(e) => setHazmat(e.target.checked)}
-            className="accent-[#e8940a]"
-          />
-          <span className="text-[12.5px] text-ink">Hazmat</span>
-          <span className="ml-auto text-[10px] text-faint">premium · specialized tiers</span>
-        </label>
-
-        {anyDim &&
-          (oversize.oversize ? (
-            <div className="flex items-start gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "#241a06", border: "1px solid #85500b" }}>
-              <span className="font-forge text-[15px] tracking-wide text-amber">OVERSIZE</span>
-              <span className="text-[11px] mt-0.5 text-dim">{oversize.reasons.join(" · ")} → specialized tiers</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "#0f2018", border: "1px solid #1a5c3a" }}>
-              <span className="font-forge text-[15px] tracking-wide" style={{ color: "#5dcaa5" }}>LEGAL</span>
-              <span className="text-[11px] text-dim">standard flatbed → standard tiers</span>
-            </div>
-          ))}
-
-        <div className="text-[10px] mt-3 mb-1" style={{ color: routeErr ? "#e8940a" : "#5a6880" }}>
-          {routeNote}
-        </div>
-        <div className="flex gap-2.5">
-          <div className="flex-1">
-            <NumField label="Loaded" value={loaded} onChange={setLoaded} suffix="mi" />
-          </div>
-          <div className="flex-1">
-            <NumField label="Deadhead" value={deadhead} onChange={setDeadhead} accent suffix="mi" />
-          </div>
-        </div>
-
-        {toll != null && (
-          <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-lg bg-well">
-            <span className="text-[13px] text-ink">
-              Est. tolls <span className="font-semibold">≈ {money(toll)}</span>
+      {scored && meta ? (
+        /* ================= RESULT VIEW — full width ================= */
+        <div>
+          <div className="flex items-center gap-3 flex-wrap mb-3">
+            <button
+              type="button"
+              onClick={() => setScored(false)}
+              className="font-condensed text-[13px] text-dim hover:text-ink border border-hairline rounded-lg px-3 py-1.5"
+            >
+              ‹ Score another
+            </button>
+            <span className="font-condensed text-[15px] font-semibold text-ink">
+              {pickup.city}, {pickup.state} <span className="text-faint">→</span>{" "}
+              <span className="text-amber">{delivery.city}, {delivery.state}</span>
             </span>
-            <span className="ml-auto text-[10px] text-faint">bill as accessorial · Landstar pays 100%</span>
+            <div className="ml-auto flex items-baseline gap-3 flex-wrap">
+              <span className="font-condensed text-dim text-[13px]">${Number(rate).toLocaleString("en-US")}</span>
+              {agent && <span className="font-condensed text-dim text-[13px]">{agentLabel(agent)}</span>}
+              {isNewAgent && <span className="font-forge text-[11px] tracking-wider" style={{ color: "#5dcaa5" }}>NEW AGENT</span>}
+              <span className="font-condensed text-[12px] px-2 py-0.5 rounded" style={{ background: "rgba(53,160,140,.14)", color: "#5dcaa5" }}>
+                {specialized ? "Specialized" : "Flatbed"}
+              </span>
+            </div>
           </div>
-        )}
 
-        {!targets.ready ? (
-          <p className="text-xs text-dim mt-5 text-center">
-            Upload a P&amp;L on the Expenses page to calibrate your break-even, then loads can be scored.
-          </p>
-        ) : !entered || !meta ? (
-          <p className="text-xs text-dim mt-6 text-center">Enter a rate and real miles to get a verdict.</p>
-        ) : (
-          <>
-            {/* verdict — the one forged plate */}
-            <ForgedPlate chamfer className="p-4 mt-4">
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex-shrink-0">
-                  <Lbl accent>Verdict</Lbl>
-                  <div className="font-forge leading-none" style={{ fontSize: 44, color: meta.fg }}>
-                    {meta.label}
-                  </div>
+          {/* verdict hero */}
+          <ForgedPlate chamfer className="p-4 sm:p-5">
+            <div className="flex items-center gap-5 flex-wrap">
+              <div className="flex-shrink-0">
+                <Lbl accent>Verdict</Lbl>
+                <div className="font-forge leading-none" style={{ fontSize: 50, color: meta.fg }}>{meta.label}</div>
+              </div>
+              <div className="pl-5" style={{ borderLeft: "1px solid rgba(255,255,255,.08)" }}>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-[34px] text-ink">{fmtRpm(score.allInRpm)}</span>
+                  <span className="font-condensed text-[13px] text-dim">/ driven mi (all-in)</span>
                 </div>
-                <div className="flex-1 min-w-[150px]">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-[28px] text-ink">{fmtRpm(score.allInRpm)}</span>
-                    <span className="font-condensed text-[12px] text-dim">/ driven mi (all-in)</span>
-                  </div>
-                  <div className="font-condensed text-[12px] text-dim mt-0.5">
-                    {score.pctOverBreakeven != null && (
-                      <>
-                        {score.pctOverBreakeven >= 0 ? "+" : ""}
-                        {Math.round(score.pctOverBreakeven * 100)}% over break-even ·{" "}
-                      </>
-                    )}
-                    <span style={{ color: specialized ? "#f5b03a" : "#5dcaa5" }}>
-                      {specialized ? "Specialized" : "Standard"}
-                    </span>{" "}
-                    tiers, target +{Math.round(activeTiers.target * 100)}%
-                  </div>
+                <div className="font-condensed text-[13px] text-dim mt-0.5">
+                  {score.pctOverBreakeven != null && (
+                    <>
+                      {score.pctOverBreakeven >= 0 ? "+" : ""}
+                      {Math.round(score.pctOverBreakeven * 100)}% over break-even ·{" "}
+                    </>
+                  )}
+                  <span style={{ color: specialized ? "#f5b03a" : "#5dcaa5" }}>
+                    {specialized ? "Specialized" : "Standard"}
+                  </span>{" "}
+                  tiers, target +{Math.round(activeTiers.target * 100)}%
                 </div>
               </div>
-            </ForgedPlate>
+              <div className="flex-1 min-w-[220px]">
+                <Lbl>Where it lands</Lbl>
+                <div className="flex rounded-[5px] overflow-hidden relative" style={{ height: 10 }}>
+                  <div style={{ flex: 1, background: "#2a1414" }} />
+                  <div style={{ flex: 1, background: "#2a2110" }} />
+                  <div style={{ flex: 1, background: "#12261f" }} />
+                  <div style={{ flex: 1, background: "#2a2410" }} />
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: `${markerPct(score.pctOverBreakeven, score.allInRpm, score.breakevenRpm, activeTiers)}%`,
+                      top: -3,
+                      width: 2,
+                      height: 16,
+                      background: "#e6ecf7",
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[8.5px] font-condensed tracking-wide mt-1">
+                  <span style={{ color: "#e24b4a" }}>SCRAP</span>
+                  <span style={{ color: "#f5b03a" }}>THIN</span>
+                  <span style={{ color: "#5dcaa5" }}>SOLID</span>
+                  <span style={{ color: "#ffcf7a" }}>PRIME</span>
+                </div>
+              </div>
+            </div>
+          </ForgedPlate>
 
-            {/* deadhead diagnosis */}
-            <div className="ds2-board p-4 mt-3">
-              <Lbl>Why it's {meta.label.toLowerCase()} — freight vs deadhead</Lbl>
+          {/* factor grid — full width */}
+          <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr] gap-3 mt-3">
+            <div className="ds2-board p-4">
+              <Lbl>Freight vs deadhead</Lbl>
               <div className="grid grid-cols-2 gap-2.5 mt-2 mb-2.5">
                 <Well className="px-3 py-2">
                   <div className="font-condensed text-[11px]" style={{ color: "#5dcaa5" }}>FREIGHT</div>
@@ -523,91 +476,160 @@ const ScoreLoadPage = () => {
                     ? "Deadhead's slim — this is close to what the freight itself pays."
                     : "Freight rate and all-in are close; deadhead isn't the story here."}
               </p>
+              {toll != null && (
+                <p className="text-[11.5px] text-faint mt-2">Est. tolls ≈ {money(toll)} · bill as accessorial (Landstar pays 100%)</p>
+              )}
             </div>
 
-            {/* agent standing */}
-            {agent && (
-              <div className="ds2-board p-3.5 mt-3 flex items-center gap-3">
-                <span className="text-amber text-[15px]">◆</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <Lbl>Agent</Lbl>
-                    <Link to={`/agents/${agent.agent_id}`} className="font-condensed text-[15px] text-amber hover:text-hot">
-                      {agentLabel(agent)}
-                    </Link>
-                  </div>
+            <div className="ds2-board p-4">
+              <Lbl>Agent</Lbl>
+              {agent ? (
+                <>
+                  <Link to={`/agents/${agent.agent_id}`} className="font-condensed text-[16px] text-amber hover:text-hot">
+                    {agentLabel(agent)}
+                  </Link>
                   {agentCard && agentCard.loadCount > 0 ? (
-                    <div className="text-[12.5px] text-dim mt-0.5">
-                      {agentCard.loadCount} load{agentCard.loadCount === 1 ? "" : "s"} together ·{" "}
-                      {agentCard.medianRpm != null ? `${fmtRpm(agentCard.medianRpm)}/mi avg · ` : ""}
+                    <div className="text-[12.5px] text-dim mt-1.5 leading-relaxed">
+                      {agentCard.loadCount} load{agentCard.loadCount === 1 ? "" : "s"} together
+                      {agentCard.medianRpm != null ? ` · ${fmtRpm(agentCard.medianRpm)}/mi avg` : ""}
+                      <br />
                       {agentCard.moneyLostLoads > 0 ? "detention owed" : "low dwell"}
                       {agentCard.daysSince != null ? ` · last ${agentCard.daysSince}d ago` : ""}
                     </div>
                   ) : (
-                    <div className="text-[12.5px] text-dim mt-0.5">No delivered history yet with this agent.</div>
+                    <div className="text-[12.5px] text-dim mt-1.5">No delivered history yet with this agent.</div>
                   )}
+                </>
+              ) : isNewAgent ? (
+                <div className="text-[12.5px] text-dim mt-1">
+                  <span className="font-forge text-[12px] tracking-wider mr-1.5" style={{ color: "#5dcaa5" }}>NEW</span>
+                  No history yet — the rate scores on its own; the relationship builds once you book.
                 </div>
-              </div>
-            )}
-            {isNewAgent && (
-              <div className="ds2-board p-3.5 mt-3 text-[12.5px] text-dim">
-                <span className="font-forge text-[12px] tracking-wider mr-2" style={{ color: "#5dcaa5" }}>NEW AGENT</span>
-                No history yet — the rate and route still score; the relationship builds once you book.
-              </div>
-            )}
-
-            {/* where it lands */}
-            <div className="mt-4">
-              <Lbl>Where it lands</Lbl>
-              <div className="flex rounded-[5px] overflow-hidden relative" style={{ height: 10 }}>
-                <div style={{ flex: 1, background: "#2a1414" }} />
-                <div style={{ flex: 1, background: "#2a2110" }} />
-                <div style={{ flex: 1, background: "#12261f" }} />
-                <div style={{ flex: 1, background: "#2a2410" }} />
-                <div
-                  style={{
-                    position: "absolute",
-                    left: `${markerPct(score.pctOverBreakeven, score.allInRpm, score.breakevenRpm, activeTiers)}%`,
-                    top: -3,
-                    width: 2,
-                    height: 16,
-                    background: "#e6ecf7",
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-[8.5px] font-condensed tracking-wide mt-1">
-                <span style={{ color: "#e24b4a" }}>SCRAP</span>
-                <span style={{ color: "#f5b03a" }}>THIN</span>
-                <span style={{ color: "#5dcaa5" }}>SOLID</span>
-                <span style={{ color: "#ffcf7a" }}>PRIME</span>
-              </div>
+              ) : (
+                <div className="text-[12.5px] text-faint mt-1">No agent entered.</div>
+              )}
             </div>
 
-            {counter && (
-              <div className="ds2-board p-3 mt-4">
+            {counter ? (
+              <div className="ds2-board p-4">
                 <Lbl>What to ask the agent</Lbl>
-                <div className="flex gap-2 mt-2">
-                  <Well className="flex-1 text-center py-2">
-                    <div className="text-[9px] font-condensed" style={{ color: "#e24b4a" }}>FLOOR</div>
-                    <div className="font-display text-[17px] text-ink">{money(counter.floor)}</div>
-                    <div className="text-[8.5px] text-faint">break-even</div>
+                <div className="mt-2 flex flex-col gap-2">
+                  <Well className="flex items-baseline justify-between px-3 py-1.5">
+                    <span className="font-condensed text-[11px]" style={{ color: "#e24b4a" }}>FLOOR</span>
+                    <span className="font-display text-[18px] text-ink">{money(counter.floor)}</span>
                   </Well>
-                  <Well className="flex-1 text-center py-2" style={{ borderColor: "#1a5c3a" }}>
-                    <div className="text-[9px] font-condensed" style={{ color: "#5dcaa5" }}>SOLID</div>
-                    <div className="font-display text-[17px]" style={{ color: "#5dcaa5" }}>{money(counter.take)}</div>
-                    <div className="text-[8.5px] text-faint">fair</div>
+                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "#1a5c3a" }}>
+                    <span className="font-condensed text-[11px]" style={{ color: "#5dcaa5" }}>SOLID</span>
+                    <span className="font-display text-[18px]" style={{ color: "#5dcaa5" }}>{money(counter.take)}</span>
                   </Well>
-                  <Well className="flex-1 text-center py-2" style={{ borderColor: "#6b5410" }}>
-                    <div className="text-[9px] font-condensed" style={{ color: "#ffcf7a" }}>PRIME</div>
-                    <div className="font-display text-[17px]" style={{ color: "#ffcf7a" }}>{money(counter.steal)}</div>
-                    <div className="text-[8.5px] text-faint">open here</div>
+                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "#6b5410" }}>
+                    <span className="font-condensed text-[11px]" style={{ color: "#ffcf7a" }}>PRIME</span>
+                    <span className="font-display text-[18px]" style={{ color: "#ffcf7a" }}>{money(counter.steal)}</span>
                   </Well>
                 </div>
               </div>
+            ) : (
+              <div className="ds2-board p-4 flex items-center justify-center text-center">
+                <p className="text-[12.5px] text-dim">
+                  Already clears your target — no counter needed. Book it before it's gone.
+                </p>
+              </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      ) : (
+        /* ================= FORM VIEW — lean ================= */
+        <div className="ds2-board mx-auto p-4 sm:p-5" style={{ maxWidth: 440 }}>
+          <NumField label="Rate" value={rate} onChange={setRate} prefix="$" />
+
+          <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
+            Route <span className="normal-case tracking-normal" style={{ color: "#4a5566" }}>— city autocompletes</span>
+          </p>
+          <PlaceRow label="Truck now" place={truckNow} onChange={setTruck} />
+          <PlaceRow label="Pickup" place={pickup} onChange={setPickup} />
+          <PlaceRow label="Delivery" place={delivery} onChange={setDelivery} />
+
+          <div className="mt-3">
+            <Lbl accent>Agent</Lbl>
+            <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
+            {isNewAgent && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <span className="font-forge text-[11px] tracking-wider px-2 py-0.5 rounded" style={{ background: "rgba(53,160,140,.15)", color: "#5dcaa5" }}>
+                  NEW AGENT
+                </span>
+                <span className="text-[11px] text-dim">no history yet · not saved until you book</span>
+              </div>
+            )}
+          </div>
+
+          <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
+            Load size <span className="normal-case tracking-normal" style={{ color: "#4a5566" }}>— leave blank if legal</span>
+          </p>
+          <div className="mb-2">
+            <NumField label="Gross wt" value={wt} onChange={setWt} suffix="lb" />
+          </div>
+          <div className="flex gap-2 mb-2.5">
+            <DimField label="Length" val={len} onChange={setLen} />
+            <DimField label="Width" val={wid} onChange={setWid} accent={oversize.reasons.some((r) => r.startsWith("width"))} />
+            <DimField label="Height" val={hgt} onChange={setHgt} />
+          </div>
+
+          <label
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer select-none bg-well border ${hazmat ? "border-amber/60" : "border-hairline"}`}
+          >
+            <input type="checkbox" checked={hazmat} onChange={(e) => setHazmat(e.target.checked)} className="accent-[#e8940a]" />
+            <span className="text-[12.5px] text-ink">Hazmat</span>
+            <span className="ml-auto text-[10px] text-faint">premium · specialized tiers</span>
+          </label>
+
+          {anyDim &&
+            (oversize.oversize ? (
+              <div className="flex items-start gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "#241a06", border: "1px solid #85500b" }}>
+                <span className="font-forge text-[15px] tracking-wide text-amber">OVERSIZE</span>
+                <span className="text-[11px] mt-0.5 text-dim">{oversize.reasons.join(" · ")} → specialized tiers</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "#0f2018", border: "1px solid #1a5c3a" }}>
+                <span className="font-forge text-[15px] tracking-wide" style={{ color: "#5dcaa5" }}>LEGAL</span>
+                <span className="text-[11px] text-dim">standard flatbed → standard tiers</span>
+              </div>
+            ))}
+
+          <div className="text-[10px] mt-3 mb-1" style={{ color: routeErr ? "#e8940a" : "#5a6880" }}>
+            {routeNote}
+          </div>
+          <div className="flex gap-2.5">
+            <div className="flex-1">
+              <NumField label="Loaded" value={loaded} onChange={setLoaded} suffix="mi" />
+            </div>
+            <div className="flex-1">
+              <NumField label="Deadhead" value={deadhead} onChange={setDeadhead} accent suffix="mi" />
+            </div>
+          </div>
+
+          {!targets.ready ? (
+            <p className="text-xs text-dim mt-5 text-center">
+              Upload a P&amp;L on the Expenses page to calibrate your break-even, then loads can be scored.
+            </p>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setScored(true)}
+                disabled={!canScore}
+                className={`w-full mt-5 py-3 rounded-lg font-forge text-[18px] tracking-widest transition-colors ${
+                  canScore ? "bg-amber text-canvas hover:brightness-110" : "bg-well text-faint border border-hairline cursor-not-allowed"
+                }`}
+              >
+                SCORE IT ▸
+              </button>
+              {!canScore && (
+                <p className="text-[11px] text-faint text-center mt-1.5">enter a rate and real miles to score</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
