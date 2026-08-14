@@ -539,8 +539,10 @@ const LoadForm = ({
     newMarket: Market,
     fieldName: "origin_market_id" | "destination_market_id",
   ) => {
-    setMarketList([...marketList, newMarket]);
-    setFormData({ ...formData, [fieldName]: newMarket.market_id });
+    // Functional updates: handleRecCreate awaits a POST first, so reading
+    // marketList/formData from the closure would clobber edits made in-flight.
+    setMarketList((prev) => [...prev, newMarket]);
+    setFormData((prev) => ({ ...prev, [fieldName]: newMarket.market_id }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -196,8 +196,11 @@ export const regionalDirection = (
   if (!center) return null;
   const dLat = here.lat - center.lat; // + = north
   const dLng = here.lng - center.lng; // + = east
-  if (Math.abs(dLat) < CENTRAL_DEG && Math.abs(dLng) < CENTRAL_DEG) return "Central";
-  if (Math.abs(dLat) >= Math.abs(dLng)) return dLat > 0 ? "Northern" : "Southern";
+  // A degree of longitude covers less ground than a degree of latitude away from
+  // the equator; scale it so the N/S-vs-E/W pick compares real distances.
+  const dLngMi = dLng * Math.cos((center.lat * Math.PI) / 180);
+  if (Math.abs(dLat) < CENTRAL_DEG && Math.abs(dLngMi) < CENTRAL_DEG) return "Central";
+  if (Math.abs(dLat) >= Math.abs(dLngMi)) return dLat > 0 ? "Northern" : "Southern";
   return dLng > 0 ? "Eastern" : "Western";
 };
 
