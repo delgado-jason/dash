@@ -6,13 +6,14 @@ import { cityKey, haversineMiles, type CoordMap } from "./foreman";
 // freight hub belongs to that hub's market (docs/business-rules/001).
 export const MARKET_RADIUS_MI = 75;
 
-// Phase 1 climbs your OWN history — the confidence ladder's first three rungs.
-// Higher tier = weaker signal. First hit wins.
+// Phase 1 climbs your OWN history + existing markets. Higher tier = weaker
+// signal. First hit wins.
 //   1 = same shipper/receiver seen before -> reuse its market
 //   2 = same city seen before             -> reuse its market
-//   3 = a mapped city within 75 mi        -> reuse the nearest one's market
-// (Rungs 4-5, the canonical seeded-hub + regional fallback, are Phase 2.)
-export type MarketRecTier = 1 | 2 | 3;
+//   3 = typed city IS an existing market  -> the hub itself (e.g. "Atlanta")
+//   4 = a mapped city within 75 mi        -> reuse the nearest one's market
+// (The canonical seeded-hub + regional fallback are Phase 2.)
+export type MarketRecTier = 1 | 2 | 3 | 4;
 
 export interface MarketRecommendation {
   tier: MarketRecTier;
@@ -27,6 +28,11 @@ export interface MarketRecommendation {
 export type MarketRole = "origin" | "destination";
 
 const norm = (s?: string | null): string => String(s ?? "").trim().toUpperCase();
+
+// "Atlanta Market" -> "Atlanta" (also handles the regional "[Direction] [State]
+// Market" form, which just won't match a plain city).
+const stripMarketSuffix = (name: string): string =>
+  name.replace(/\s+market\s*$/i, "").trim();
 
 interface StopRef {
   city: string;
@@ -156,7 +162,26 @@ export const recommendMarket = (params: {
     }
   }
 
-  // --- Tier 3: nearest mapped city within 75 mi ------------------------------
+  // --- Tier 3: the typed city IS one of your markets (the hub) --------------
+  // Load history lives in the SUBURBS, but a market is named for its hub. When
+  // someone types the hub itself ("Atlanta"), there's no load AT Atlanta — match
+  // it straight to the existing "Atlanta Market".
+  const cityN = norm(city);
+  if (cityN) {
+    const hub = markets.find(
+      (m) => norm(stripMarketSuffix(m.market_name)) === cityN,
+    );
+    if (hub) {
+      return {
+        tier: 3,
+        market_id: hub.market_id,
+        market_name: hub.market_name,
+        reason: "Matches this city's market",
+      };
+    }
+  }
+
+  // --- Tier 4: nearest mapped city within 75 mi ------------------------------
   const here = hasHere ? coords.get(hereKey) : undefined;
   if (here) {
     // Group history by distinct city, each carrying its own dominant market.
@@ -197,7 +222,7 @@ export const recommendMarket = (params: {
 
     if (nearest) {
       return {
-        tier: 3,
+        tier: 4,
         market_id: nearest.market_id,
         market_name: nearest.market_name,
         reason: `Nearest mapped city · ${nearest.city}, ${nearest.state} (~${Math.round(nearest.distanceMi)} mi)`,
