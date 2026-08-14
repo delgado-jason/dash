@@ -825,6 +825,22 @@ const GuidePage = () => {
               until you actually run a load with them.
             </Why>
             <Why>
+              It also scores the <span className="text-light">destination</span> — where
+              the load leaves you — off your own outbound history: how well freight OUT
+              of that market has paid you, how much of it there's been, and how many
+              agents source it, graded{" "}
+              <span style={{ color: "#5dcaa5" }}>STRONG</span> /{" "}
+              <span className="text-light">FAIR</span> /{" "}
+              <span style={{ color: "#e8940a" }}>SOFT</span> / thin against your overall
+              norm. So a fair-paying load that drops you somewhere you can't reload reads
+              as a <span className="text-light">reposition cost</span>, with your strong
+              markets named for contrast and — when the city's geocoded — the distance to
+              your nearest strong freight. A line up top, <span className="text-light">the
+              call</span>, weighs the rate, the destination, and the agent into one
+              honest recommendation. Thin markets are flagged, not guessed; it sharpens
+              as you log loads.
+            </Why>
+            <Why>
               Miles come from truck routing (HERE), not a straight line — the
               deadhead starts from your{" "}
               <span className="text-light">last-known location</span> (your last

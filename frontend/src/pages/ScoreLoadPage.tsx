@@ -6,6 +6,12 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
 import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
 import { emptyNextAnchor } from "@/lib/metrics/foreman";
+import { useCityCoords } from "@/hooks/useCityCoords";
+import {
+  destinationFactor,
+  theCall,
+  type MarketGrade,
+} from "@/lib/metrics/marketFactor";
 import { playSfx } from "@/lib/sfx";
 import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
@@ -31,6 +37,14 @@ const markerPct = (
   if (pct < tiers.strong)
     return 50 + ((pct - tiers.target) / (tiers.strong - tiers.target)) * 25; // SOLID
   return 75 + Math.min(1, (pct - tiers.strong) / 0.4) * 25; // PRIME
+};
+
+// Destination market grade → forge stencil badge.
+const GRADE_META: Record<MarketGrade, { label: string; color: string }> = {
+  strong: { label: "STRONG", color: "#5dcaa5" },
+  fair: { label: "FAIR", color: "#8494ab" },
+  soft: { label: "SOFT", color: "#e8940a" },
+  thin: { label: "THIN", color: "#5a6880" },
 };
 
 // ---- forge inputs ----
@@ -229,6 +243,7 @@ const ScoreLoadPage = () => {
     () => buildAgentScorecards(agents ?? [], loads ?? [], now),
     [agents, loads, now],
   );
+  const coords = useCityCoords(loads ?? []);
 
   const [rate, setRate] = useState("");
   const [truckNow, setTruckNow] = useState<Place>({ city: "", state: "" });
@@ -353,6 +368,12 @@ const ScoreLoadPage = () => {
     !agent && agentQuery.trim().length >= 2 && matchAgents(agents ?? [], agentQuery).length === 0;
   const agentCard = agent ? scorecards.get(agent.agent_id) : undefined;
 
+  const destFactor = useMemo(
+    () => destinationFactor(loads ?? [], delivery, coords),
+    [loads, delivery.city, delivery.state, coords],
+  );
+  const call = theCall(score.verdict, destFactor, agentCard, isNewAgent);
+
   const routeNote = routing
     ? "routing…"
     : routeErr
@@ -397,6 +418,19 @@ const ScoreLoadPage = () => {
               </span>
             </div>
           </div>
+
+          {/* the call — verdict + destination + agent, weighed */}
+          {call && (
+            <div
+              className="ds2-board p-3.5 mb-3"
+              style={{
+                borderLeft: `3px solid ${call.tone === "good" ? "#5dcaa5" : call.tone === "bad" ? "#e24b4a" : "#e8940a"}`,
+              }}
+            >
+              <Lbl accent>The call</Lbl>
+              <p className="text-[14.5px] text-ink font-medium">{call.text}</p>
+            </div>
+          )}
 
           {/* verdict hero */}
           <ForgedPlate chamfer className="p-4 sm:p-5">
@@ -452,7 +486,7 @@ const ScoreLoadPage = () => {
           </ForgedPlate>
 
           {/* factor grid — full width */}
-          <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr] gap-3 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
             <div className="ds2-board p-4">
               <Lbl>Freight vs deadhead</Lbl>
               <div className="grid grid-cols-2 gap-2.5 mt-2 mb-2.5">
@@ -478,6 +512,59 @@ const ScoreLoadPage = () => {
               </p>
               {toll != null && (
                 <p className="text-[11.5px] text-faint mt-2">Est. tolls ≈ {money(toll)} · bill as accessorial (Landstar pays 100%)</p>
+              )}
+            </div>
+
+            {/* destination — where it leaves you */}
+            <div className="ds2-board p-4">
+              <div className="flex items-center justify-between gap-2">
+                <Lbl>Destination · where it leaves you</Lbl>
+                <span
+                  className="font-forge text-[16px] tracking-wide"
+                  style={{ color: destFactor.market ? GRADE_META[destFactor.market.grade].color : "#5a6880" }}
+                >
+                  {destFactor.market ? GRADE_META[destFactor.market.grade].label : "UNPROVEN"}
+                </span>
+              </div>
+              <div className="font-condensed text-[15px] font-semibold text-ink mt-1">
+                {delivery.city}, {delivery.state}
+              </div>
+              {destFactor.market ? (
+                <Well className="px-3 py-2 mt-2">
+                  <div className="text-[11.5px] text-dim">
+                    Your {destFactor.state} outbound:{" "}
+                    <span style={{ color: GRADE_META[destFactor.market.grade].color }}>
+                      {destFactor.market.loadsOut} load{destFactor.market.loadsOut === 1 ? "" : "s"}
+                      {destFactor.market.medianRpm != null ? ` · ${fmtRpm(destFactor.market.medianRpm)}/loaded` : ""}
+                    </span>{" "}
+                    · {destFactor.market.agents} agent{destFactor.market.agents === 1 ? "" : "s"}
+                  </div>
+                </Well>
+              ) : (
+                <div className="text-[11.5px] text-dim mt-2">
+                  No outbound history from {destFactor.state || "here"} yet — unproven for you.
+                </div>
+              )}
+              {destFactor.strongMarkets.length > 0 && (
+                <>
+                  <div className="text-[11px] text-faint mt-2.5">Your strong outbound:</div>
+                  <div className="flex gap-1.5 flex-wrap mt-1">
+                    {destFactor.strongMarkets.map((m) => (
+                      <span
+                        key={m.state}
+                        className="font-condensed text-[11.5px] px-2 py-0.5 rounded"
+                        style={{ background: "rgba(53,160,140,.12)", color: "#5dcaa5" }}
+                      >
+                        {m.state} {fmtRpm(m.medianRpm)} · {m.loadsOut}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+              {destFactor.nearestStrong && (
+                <p className="text-[11.5px] text-dim mt-2.5">
+                  Nearest strong freight ~{Math.round(destFactor.nearestStrong.miles)} mi ({destFactor.nearestStrong.city}, {destFactor.nearestStrong.state})
+                </p>
               )}
             </div>
 
