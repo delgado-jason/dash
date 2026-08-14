@@ -214,6 +214,26 @@ describe("buildForemanBoard — ranking", () => {
   });
 });
 
+describe("buildForemanBoard — direct customers rank above spot", () => {
+  it("a far direct agent (repeat shipper) outranks a closer spot agent", () => {
+    seq = 0;
+    const agents = [mkAgent("dir", "Direct"), mkAgent("spt", "Spot")];
+    const loads: Load[] = [
+      // spot's booked load sets the anchor (Macedonia OH); spot is close (Akron).
+      mkLoad({ agent_id: "spt", load_status: "booked", origin_city: "Akron", origin_state: "OH", destination_city: "Macedonia", destination_state: "OH", pickup_date: "2026-08-17", delivery_date: "2026-08-19" }),
+      mkLoad({ agent_id: "spt", shipper_name: "OneOff", origin_city: "Akron", origin_state: "OH", delivery_date: "2026-08-03" }),
+      // direct: same shipper twice, but FAR (Columbus ~122 mi).
+      mkLoad({ agent_id: "dir", shipper_name: "Acme", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-01" }),
+      mkLoad({ agent_id: "dir", shipper_name: "Acme", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-05" }),
+    ];
+    const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    const ids = board.rankings.map((r) => r.agentId);
+    expect(ids.indexOf("dir")).toBeLessThan(ids.indexOf("spt"));
+    expect(board.rankings.find((r) => r.agentId === "dir")?.bucket).toBe("direct");
+    expect(board.rankings.find((r) => r.agentId === "spt")?.bucket).toBe("spot");
+  });
+});
+
 describe("buildForemanBoard — rate benchmark (per-type median, loaded basis)", () => {
   it("benchmarks each agent against your realized median gross/loaded for that type", () => {
     const { agents, loads } = buildWorld();

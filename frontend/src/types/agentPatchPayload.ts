@@ -7,6 +7,7 @@ export interface AgentPatchPayload {
   preferred_contact?: string;
   rating?: number | null;
   notes?: string | null;
+  agent_class?: "direct" | "spot" | null; // null clears the override back to auto
   reason?: string; // only when rating changes
   changed_by?: string; // only when rating changes
 }

@@ -18,8 +18,10 @@ import { loadRevenue } from "./loads"; // GROSS per load
 import { median } from "./stats";
 import {
   buildAgentScorecards,
+  effectiveAgentClass,
   MIN_SCORE_LOADS,
   type AgentScorecard,
+  type AgentClass,
   type GoToTier,
 } from "./agentScorecard";
 import { getRegion, getMacro } from "@/lib/constants/states";
@@ -205,6 +207,7 @@ export interface AgentRanking {
   daysSince: number | null;
   dwellLoads: number; // confirmed-billable detention left unpaid
   tier: GoToTier;
+  bucket: AgentClass; // direct customer vs spot — direct always ranks first
   isNew: boolean; // < MIN_SCORE_LOADS delivered → "New · building"
   // scoring
   score: number;
@@ -314,6 +317,7 @@ export const buildForemanBoard = (
   const scorecards = buildAgentScorecards(agents, loads, now);
   const origins = agentOrigins(loads);
   const nameById = new Map(agents.map((a) => [a.agent_id, agentName(a)]));
+  const agentById = new Map(agents.map((a) => [a.agent_id, a]));
 
   // one benchmark cache per type (identical across agents)
   const benchCache = new Map<LoadType, number | null>();
@@ -387,6 +391,7 @@ export const buildForemanBoard = (
       daysSince: card.daysSince,
       dwellLoads: card.moneyLostLoads,
       tier: card.tier,
+      bucket: effectiveAgentClass(agentById.get(agentId)!, card).bucket,
       isNew: card.loadCount < MIN_SCORE_LOADS,
       score: 0,
       why: "",
@@ -410,7 +415,15 @@ export const buildForemanBoard = (
     }
   }
 
-  rankings.sort((a, b) => b.score - a.score || (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9));
+  // Direct customers always rank above spot agents; the score orders within each
+  // bucket (a closer spot agent never outranks a direct customer).
+  const bucketRank = (b: AgentClass) => (b === "direct" ? 0 : 1);
+  rankings.sort(
+    (a, b) =>
+      bucketRank(a.bucket) - bucketRank(b.bucket) ||
+      b.score - a.score ||
+      (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9),
+  );
   if (anchor) for (const r of rankings) r.why = whyLine(r, anchor);
 
   return {

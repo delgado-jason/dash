@@ -21,6 +21,7 @@ export async function getAgents(user_id) {
             preferred_contact,
             agents.rating AS rating,
             agents.notes AS notes,
+            agents.agent_class AS agent_class,
             agents.created_at AS created_at,
             agents.updated_at AS updated_at
         FROM
@@ -53,6 +54,7 @@ export async function getAgent(user_id, agent_id) {
             agents.preferred_contact AS preferred_contact,
             agents.rating AS rating,
             agents.notes AS notes,
+            agents.agent_class AS agent_class,
             agents.created_at AS created_at,
             agents.updated_at AS updated_at
         FROM
@@ -170,6 +172,7 @@ export async function createAgent(user_id, data) {
     "preferred_contact",
     "rating",
     "notes",
+    "agent_class",
   ];
 
   for (const field in data) {
@@ -228,6 +231,7 @@ export async function patchAgent(user_id, agent_id, data) {
     "preferred_contact",
     "rating",
     "notes",
+    "agent_class",
   ];
 
   // Throw error if data contains invalid field(s)

@@ -609,6 +609,21 @@ const GuidePage = () => {
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
+              Direct customers come first
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              Agents split into two buckets:{" "}
+              <span className="text-light">Direct</span> customers — an agent you've
+              hit the same shipper or receiver 2+ times through (their own account,
+              worth a relationship) — and <span className="text-light">Spot</span>{" "}
+              market agents (load-board one-offs). Every direct customer ranks above
+              every spot agent: a closer spot agent never outranks a direct
+              customer, but it still shows below for a quick one-off when nothing
+              direct fits. The bucket auto-updates as loads come in; you can pin an
+              agent either way on the Agents page.
+            </p>
+
+            <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
               Where you'll be empty next
             </p>
             <p className="text-sm text-muted-text mb-3">

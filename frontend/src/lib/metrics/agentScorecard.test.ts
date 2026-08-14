@@ -4,6 +4,7 @@ import type { Agent } from "@/types/agent";
 import {
   classifySpecialty,
   buildAgentScorecards,
+  effectiveAgentClass,
   agentRosterAnalytics,
   concentrationAnalytics,
   agentMomentum,
@@ -27,6 +28,70 @@ const load = (over: Partial<Load>): Load =>
 
 const agent = (id: string, rating: number | null): Agent =>
   ({ agent_id: id, rating, first_name: id, last_name: "X", broker_name: "B" }) as Agent;
+
+describe("agent bucket (direct vs spot)", () => {
+  const cardFor = (loads: Load[]) =>
+    buildAgentScorecards([agent("a", null)], loads).get("a")!;
+
+  it("direct when the same SHIPPER repeats", () => {
+    const c = cardFor([
+      load({ shipper_name: "Acme", receiver_name: "R1" }),
+      load({ shipper_name: "Acme", receiver_name: "R2" }),
+    ]);
+    expect(c.autoClass).toBe("direct");
+    expect(c.repeatCustomers.find((r) => r.facility === "Acme")?.count).toBe(2);
+  });
+
+  it("direct when the same RECEIVER repeats (different shippers)", () => {
+    const c = cardFor([
+      load({ shipper_name: "S1", receiver_name: "Gulf" }),
+      load({ shipper_name: "S2", receiver_name: "Gulf" }),
+    ]);
+    expect(c.autoClass).toBe("direct");
+  });
+
+  it("direct on a recurring round-trip lane (facility on both sides)", () => {
+    const c = cardFor([
+      load({ shipper_name: "Touchstone", receiver_name: "Fujifilm" }),
+      load({ shipper_name: "Fujifilm", receiver_name: "Touchstone" }),
+    ]);
+    expect(c.autoClass).toBe("direct");
+  });
+
+  it("spot when every facility is a one-off", () => {
+    const c = cardFor([
+      load({ shipper_name: "S1", receiver_name: "R1" }),
+      load({ shipper_name: "S2", receiver_name: "R2" }),
+    ]);
+    expect(c.autoClass).toBe("spot");
+    expect(c.repeatCustomers).toEqual([]);
+  });
+
+  it("one load with the same shipper AND receiver name is NOT a repeat", () => {
+    // A plant-to-plant move (Nucor -> Nucor) must not flip a single load to direct.
+    const c = cardFor([load({ shipper_name: "Nucor", receiver_name: "Nucor" })]);
+    expect(c.autoClass).toBe("spot");
+    expect(c.repeatCustomers).toEqual([]);
+  });
+
+  it("ignores cancelled loads for the repeat count", () => {
+    const c = cardFor([
+      load({ shipper_name: "Acme", receiver_name: "R1" }),
+      load({ shipper_name: "Acme", receiver_name: "R2", load_status: "cancelled" }),
+    ]);
+    expect(c.autoClass).toBe("spot");
+  });
+
+  it("effectiveAgentClass: a pin overrides the auto class", () => {
+    const c = cardFor([
+      load({ shipper_name: "Acme", receiver_name: "R1" }),
+      load({ shipper_name: "Acme", receiver_name: "R2" }),
+    ]); // auto = direct
+    const pinned = { ...agent("a", null), agent_class: "spot" as const };
+    expect(effectiveAgentClass(pinned, c)).toEqual({ bucket: "spot", source: "pinned" });
+    expect(effectiveAgentClass(agent("a", null), c)).toEqual({ bucket: "direct", source: "auto" });
+  });
+});
 
 describe("classifySpecialty", () => {
   it("labels oversize when oversize/heavy-haul is the majority (2+)", () => {

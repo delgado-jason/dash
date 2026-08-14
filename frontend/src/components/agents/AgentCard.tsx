@@ -6,7 +6,7 @@ import type {
   AgentStat,
   LiveStanding,
 } from "@/lib/metrics/agentLeaderboard";
-import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
+import { effectiveAgentClass, type AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
 import { RatingMedallion } from "./RatingMedallion";
 import { PRESTIGE_META } from "./PrestigeBadge";
@@ -46,6 +46,7 @@ export const AgentCard = ({
   live,
   card,
   carrierName,
+  onSetClass,
 }: {
   agent: Agent;
   stats?: AgentStat;
@@ -53,6 +54,8 @@ export const AgentCard = ({
   live?: LiveStanding | null;
   card?: AgentScorecard;
   carrierName?: string;
+  // Set/clear the relationship-bucket override (null = back to auto).
+  onSetClass?: (value: "direct" | "spot" | null) => void;
 }) => {
   const tier = agentPrestige(honors);
   const blurb = live ? liveBlurb(live) : null;
@@ -61,6 +64,8 @@ export const AgentCard = ({
   const goto = card ? TIER_META[card.tier] : null;
   const dwell = card ? dwellStatus(card) : null;
   const flag = card ? flagText(card) : null;
+  const cls = effectiveAgentClass(agent, card);
+  const direct = cls.bucket === "direct";
 
   return (
     <Link
@@ -118,6 +123,52 @@ export const AgentCard = ({
           >
             {goto.label}
           </span>
+        )}
+      </div>
+
+      {/* relationship bucket + override */}
+      <div className="flex items-center justify-between gap-2 mt-2">
+        <span
+          className="text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0"
+          style={
+            direct
+              ? { color: "#5dcaa5", background: "rgba(93,202,165,.12)", border: "1px solid rgba(93,202,165,.40)" }
+              : { color: "#8494ab", background: "rgba(132,148,171,.08)", border: "1px solid rgba(132,148,171,.28)" }
+          }
+          title={cls.source === "pinned" ? "Pinned by you" : "Auto — from a repeat shipper or receiver"}
+        >
+          {direct ? "Direct" : "Spot"}
+          <span className="ml-1 font-normal opacity-70">
+            {cls.source === "pinned" ? "pinned" : "auto"}
+          </span>
+        </span>
+        {onSetClass && (
+          <div className="flex rounded-md overflow-hidden border ds2-cell-rule text-[9px] font-semibold uppercase tracking-wide">
+            {([["Auto", null], ["Direct", "direct"], ["Spot", "spot"]] as const).map(
+              ([lbl, val]) => {
+                const active = (agent.agent_class ?? null) === val;
+                return (
+                  <button
+                    key={lbl}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onSetClass(val);
+                    }}
+                    className="px-1.5 py-[3px] transition-colors"
+                    style={
+                      active
+                        ? { color: "#5dcaa5", background: "rgba(93,202,165,.13)" }
+                        : { color: "#5a6880" }
+                    }
+                  >
+                    {lbl}
+                  </button>
+                );
+              },
+            )}
+          </div>
         )}
       </div>
 
