@@ -27,7 +27,6 @@ import { FacilityPicker } from "@/components/FacilityPicker";
 import { facilityLabel } from "@/lib/facilityMatch";
 import { toInches, toFeetInches, isOverWidth, formatInches } from "@/lib/dimensions";
 import { useCityCoords } from "@/hooks/useCityCoords";
-import { warmCityCoords } from "@/services/cityCoordsService";
 import {
   recommendMarket,
   type MarketRecommendation,
@@ -48,6 +47,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// Stable empty fallback so an absent `loads` prop (the edit form) doesn't mint a
+// fresh array every render, which would loop useCityCoords's [loads] effect.
+const NO_LOADS: Load[] = [];
 
 // Interface for LoadFormProps
 interface LoadFormProps {
@@ -129,7 +132,7 @@ const LoadForm = ({
   brokers,
   agents,
   markets,
-  loads,
+  loads = NO_LOADS,
   facilities,
   onSuccess,
   onSubmit,
@@ -236,22 +239,10 @@ const LoadForm = ({
   const [marketList, setMarketList] = useState<Market[]>(markets);
 
   // --- Market recommender (Phase 1: climb your own history) ----------------
-  const coords = useCityCoords(loads ?? []);
-
-  // Nudge the geocoder for the freshly-entered cities so tier-3 (nearest mapped
-  // city) sharpens. Fire-and-forget; failures are swallowed by the service.
-  useEffect(() => {
-    const cities = [
-      { city: formData.origin_city, state: formData.origin_state },
-      { city: formData.destination_city, state: formData.destination_state },
-    ].filter((c) => c.city && c.state);
-    if (cities.length) warmCityCoords(cities);
-  }, [
-    formData.origin_city,
-    formData.origin_state,
-    formData.destination_city,
-    formData.destination_state,
-  ]);
+  // `loads` is a stable reference (useLoads array, or NO_LOADS on the edit form),
+  // so useCityCoords settles after one fetch. New cities are geocoded server-side
+  // on load save (loadRoutes), so no form-time warm is needed here.
+  const coords = useCityCoords(loads);
 
   const originRec = useMemo(
     () =>
@@ -260,7 +251,7 @@ const LoadForm = ({
         facilityName: formData.shipper_name,
         city: formData.origin_city,
         state: formData.origin_state,
-        loads: loads ?? [],
+        loads,
         markets: marketList,
         coords,
       }),
@@ -281,7 +272,7 @@ const LoadForm = ({
         facilityName: formData.receiver_name,
         city: formData.destination_city,
         state: formData.destination_state,
-        loads: loads ?? [],
+        loads,
         markets: marketList,
         coords,
       }),
