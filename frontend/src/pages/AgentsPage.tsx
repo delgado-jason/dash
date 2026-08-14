@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAgents } from "@/hooks/useAgents";
 import { useLoads } from "@/hooks/useLoads";
+import { patchAgent } from "@/services/patchAgentService";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AgentCard } from "@/components/agents/AgentCard";
 import { AgentTable } from "@/components/agents/AgentTable";
@@ -25,8 +26,21 @@ type Filter = "all" | "oversize" | "specialty" | "standard" | "call-first" | "co
 const plural = (n: number) => (n !== 1 ? "s" : "");
 
 const AgentsPage = () => {
-  const { agents, isLoading, error } = useAgents();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { agents, isLoading, error } = useAgents(refreshKey);
   const { loads, isLoading: loadsLoading } = useLoads(0);
+
+  const setAgentClass = async (
+    agent_id: string,
+    value: "direct" | "spot" | null,
+  ) => {
+    try {
+      await patchAgent(agent_id, { agent_class: value });
+      setRefreshKey((k) => k + 1);
+    } catch {
+      // swallow — the badge just stays put; the owner can retry
+    }
+  };
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -215,6 +229,7 @@ const AgentsPage = () => {
               live={standings.get(agent.agent_id)}
               card={card}
               carrierName={carrierName}
+              onSetClass={(value) => setAgentClass(agent.agent_id, value)}
             />
           ))}
         </div>

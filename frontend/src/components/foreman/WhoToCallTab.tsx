@@ -58,6 +58,16 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
           NEW
         </span>
       )}
+      <span
+        className="font-condensed text-[11px] font-semibold px-2 py-0.5 rounded"
+        style={
+          r.bucket === "direct"
+            ? { color: "#5dcaa5", background: "rgba(93,202,165,.13)" }
+            : { color: "#8494ab", background: "rgba(132,148,171,.10)" }
+        }
+      >
+        {r.bucket === "direct" ? "DIRECT" : "SPOT"}
+      </span>
     </div>
 
     <Link
@@ -124,6 +134,46 @@ const AgentRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
   </div>
 );
 
+// A labeled tier of rows (Direct customers / Spot market). Hidden when empty.
+const RankGroup = ({
+  label,
+  hint,
+  rows,
+  startRank,
+  tone,
+}: {
+  label: string;
+  hint: string;
+  rows: AgentRanking[];
+  startRank: number;
+  tone: "direct" | "spot";
+}) => {
+  if (rows.length === 0) return null;
+  return (
+    <div className="ds2-board mt-3">
+      <div className="flex items-center gap-2 px-3.5 pt-3 pb-1">
+        <span
+          className="text-[12px] font-bold uppercase tracking-[.09em]"
+          style={{ color: tone === "direct" ? "#5dcaa5" : "#8494ab" }}
+        >
+          {label}
+        </span>
+        <span className="text-[11px] text-faint">{hint}</span>
+      </div>
+      <div className="grid gap-3 px-3.5 pt-1 pb-1.5" style={{ gridTemplateColumns: "20px 1.4fr 80px 72px 92px" }}>
+        <span />
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Agent</span>
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Away</span>
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">$/mi</span>
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
+      </div>
+      {rows.map((r, i) => (
+        <AgentRow key={r.agentId} r={r} rank={startRank + i} />
+      ))}
+    </div>
+  );
+};
+
 const FOCUS_TABS: { value: LoadTypeFocus; label: string }[] = [
   { value: "any", label: "Any" },
   { value: "standard flatbed", label: "Flatbed" },
@@ -167,6 +217,8 @@ export const WhoToCallTab = () => {
     return <Empty msg="No committed or delivered loads yet — add a load and the Foreman will tell you who to call." />;
 
   const [top, ...rest] = board.rankings;
+  const restDirect = rest.filter((r) => r.bucket === "direct");
+  const restSpot = rest.filter((r) => r.bucket === "spot");
   const anchorHint =
     board.anchor.source === "committed" ? "after your booked load delivers" : "empty here now";
 
@@ -209,21 +261,9 @@ export const WhoToCallTab = () => {
           {/* top call */}
           {top && <TopCall r={top} />}
 
-          {/* the rest */}
-          {rest.length > 0 && (
-            <div className="ds2-board mt-3">
-              <div className="grid gap-3 px-3.5 pt-2.5 pb-1.5" style={{ gridTemplateColumns: "20px 1.4fr 80px 72px 92px" }}>
-                <span />
-                <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Agent</span>
-                <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Away</span>
-                <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">$/mi</span>
-                <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
-              </div>
-              {rest.map((r, i) => (
-                <AgentRow key={r.agentId} r={r} rank={i + 2} />
-              ))}
-            </div>
-          )}
+          {/* remaining agents, bucketed — direct always above spot */}
+          <RankGroup label="Direct customers" hint="your own — call first" rows={restDirect} startRank={2} tone="direct" />
+          <RankGroup label="Spot market" hint="only if nothing direct fits" rows={restSpot} startRank={2 + restDirect.length} tone="spot" />
 
           {/* footer */}
           <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">

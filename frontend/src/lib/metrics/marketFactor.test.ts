@@ -109,6 +109,8 @@ describe("theCall", () => {
     collectedLoads: 0,
     collectRate: null,
     specialty: { tag: "standard", oversizeShare: 0, specialtyShare: 0, oversizeCount: 0 },
+    autoClass: "spot",
+    repeatCustomers: [],
     tier: "solid",
     ratingFlag: null,
   };

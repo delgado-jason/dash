@@ -9,6 +9,8 @@ export interface Agent {
   preferred_contact: string;
   rating?: number | null;
   notes?: string | null;
+  // Manual relationship-bucket override. null/absent = auto (derived from loads).
+  agent_class?: "direct" | "spot" | null;
   created_at: string;
   updated_at: string;
 }

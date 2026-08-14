@@ -117,6 +117,13 @@ const rules = {
       errors.push("notes cannot be blank");
     }
   },
+  // null clears the override back to auto (data-derived); otherwise a pin.
+  agent_class: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (value !== "direct" && value !== "spot") {
+      errors.push("agent_class must be 'direct', 'spot', or null");
+    }
+  },
 };
 
 // ---- CREATE AGENT VALIDATION ----

@@ -49,6 +49,14 @@ export type Trend = "up" | "down" | "flat";
 export type GoToTier = "call-first" | "solid" | "watch" | "cold" | "thin";
 export type RatingFlag = "under" | "over"; // your star rating disagrees with the data
 
+// Relationship bucket. An agent you've hit the same shipper OR receiver 2+ times
+// through is a direct customer (their own account); otherwise spot market.
+export type AgentClass = "direct" | "spot";
+export interface RepeatCustomer {
+  facility: string; // original-cased shipper/receiver name
+  count: number; // loads touching it (either role)
+}
+
 export interface AgentScorecard {
   agentId: string;
   loadCount: number; // delivered
@@ -61,6 +69,8 @@ export interface AgentScorecard {
   collectedLoads: number; // detentionCollected
   collectRate: number | null; // collected ÷ (owed + collected), null if none confirmed
   specialty: SpecialtyMix;
+  autoClass: AgentClass; // data-derived; overridden by agent.agent_class when pinned
+  repeatCustomers: RepeatCustomer[]; // facilities seen 2+ times, count desc
   tier: GoToTier;
   ratingFlag: RatingFlag | null;
 }
@@ -114,6 +124,25 @@ const rawScorecard = (
   const collectedLoads = delivered.filter((l) => detentionCollected(l)).length;
   const confirmed = moneyLostLoads + collectedLoads;
 
+  // Relationship bucket: a shipper OR receiver hit 2+ times through this agent is
+  // their own customer. Counts non-cancelled loads (a booked repeat still counts).
+  const facCount = new Map<string, { display: string; count: number }>();
+  for (const l of loads) {
+    if (l.load_status === "cancelled") continue;
+    for (const nm of [l.shipper_name, l.receiver_name]) {
+      const raw = String(nm ?? "").trim();
+      if (!raw) continue;
+      const key = raw.toUpperCase();
+      const cur = facCount.get(key);
+      if (cur) cur.count += 1;
+      else facCount.set(key, { display: raw, count: 1 });
+    }
+  }
+  const repeatCustomers = [...facCount.values()]
+    .filter((v) => v.count >= 2)
+    .map((v) => ({ facility: v.display, count: v.count }))
+    .sort((a, b) => b.count - a.count);
+
   return {
     agentId,
     loadCount: delivered.length,
@@ -126,6 +155,8 @@ const rawScorecard = (
     collectedLoads,
     collectRate: confirmed > 0 ? collectedLoads / confirmed : null,
     specialty: classifySpecialty(delivered),
+    autoClass: repeatCustomers.length > 0 ? "direct" : "spot",
+    repeatCustomers,
   };
 };
 
@@ -218,6 +249,18 @@ export const buildAgentScorecards = (
     });
   }
   return out;
+};
+
+// The effective bucket for an agent: the owner's pin wins; otherwise the
+// data-derived class from the scorecard.
+export const effectiveAgentClass = (
+  agent: Agent,
+  card: AgentScorecard | undefined,
+): { bucket: AgentClass; source: "pinned" | "auto" } => {
+  if (agent.agent_class === "direct" || agent.agent_class === "spot") {
+    return { bucket: agent.agent_class, source: "pinned" };
+  }
+  return { bucket: card?.autoClass ?? "spot", source: "auto" };
 };
 
 // ---- roster-level analytics for the KPI row ----
