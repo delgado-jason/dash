@@ -127,6 +127,21 @@ describe("recommendMarket — tier 2 (same city)", () => {
     expect(rec?.tier).toBe(2);
     expect(rec?.market_id).toBe("m-atl");
   });
+
+  it("resolves the market by NAME when the list omits the id (real prod list shape)", () => {
+    // The /loads list returns origin_market (name) but no origin_market_id.
+    const loads = [
+      mkLoad({
+        origin_city: "Milner",
+        origin_state: "GA",
+        origin_market_id: "",
+        origin_market: "Atlanta Market",
+      }),
+    ];
+    const rec = recommendMarket({ ...base, loads, role: "origin", city: "Milner", state: "GA" });
+    expect(rec?.tier).toBe(2);
+    expect(rec?.market_id).toBe("m-atl");
+  });
 });
 
 describe("recommendMarket — tier 3 (typed city is an existing market/hub)", () => {

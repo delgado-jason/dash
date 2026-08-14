@@ -44,24 +44,33 @@ interface StopRef {
 
 // Every (location, facility) -> market observation in history, from BOTH roles: a
 // place's market is the same whoever it shipped/received for, so all sightings count.
-const collectStops = (loads: Load[]): StopRef[] => {
+//
+// The loads LIST endpoint returns the market NAME (origin_market / delivery_market)
+// but NOT the id — only the single-load fetch carries ids — so resolve the id from
+// the name against the market list when it's missing. Without this the whole ladder
+// silently finds nothing off the list.
+const collectStops = (loads: Load[], idByName: Map<string, string>): StopRef[] => {
   const out: StopRef[] = [];
+  const resolve = (id?: string | null, name?: string | null): string | null =>
+    id || idByName.get(norm(name)) || null;
   for (const l of loads) {
-    if (l.origin_market_id) {
+    const originId = resolve(l.origin_market_id, l.origin_market);
+    if (originId) {
       out.push({
         city: l.origin_city,
         state: l.origin_state,
         facility: norm(l.shipper_name),
-        market_id: l.origin_market_id,
+        market_id: originId,
         pickup_date: l.pickup_date,
       });
     }
-    if (l.destination_market_id) {
+    const destId = resolve(l.destination_market_id, l.delivery_market);
+    if (destId) {
       out.push({
         city: l.destination_city,
         state: l.destination_state,
         facility: norm(l.receiver_name),
-        market_id: l.destination_market_id,
+        market_id: destId,
         pickup_date: l.pickup_date,
       });
     }
@@ -113,8 +122,9 @@ export const recommendMarket = (params: {
   const { facilityName, city, state, loads, markets, coords } = params;
 
   const nameById = new Map(markets.map((m) => [m.market_id, m.market_name]));
+  const idByName = new Map(markets.map((m) => [norm(m.market_name), m.market_id]));
   const label = params.role === "origin" ? "shipper" : "receiver";
-  const stops = collectStops(loads);
+  const stops = collectStops(loads, idByName);
 
   // A market_id only counts if it still exists in the current market list.
   const resolvable = (market_id: string): boolean => nameById.has(market_id);
