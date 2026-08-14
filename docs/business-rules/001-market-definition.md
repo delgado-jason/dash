@@ -29,7 +29,10 @@ not straight-line distance.
 ### No recognized freight hub within 75 miles
 
 Create a regional market using the format:
-"[State] [Direction] Market"
+"[Direction] [State] Market"
+
+Order is direction first, then the state, then "Market"
+(e.g., "Eastern Kentucky Market", not "Kentucky Eastern Market").
 
 Direction options: Northern, Southern, Eastern, Western, Central
 

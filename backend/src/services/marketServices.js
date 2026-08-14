@@ -2,8 +2,19 @@ import { db } from "../../db/pool.js";
 import {
   validateMarketCreate,
   validateMarketPatch,
+  normalizeMarketName,
 } from "../utils/validation/marketValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+
+// The normalized-name unique index (migration 057) rejects case/whitespace
+// duplicates at the DB. Translate that into a clean validation error instead of
+// a 500 so the UI can show "already exists".
+function rethrowDuplicate(err) {
+  if (err && err.code === "23505") {
+    throw new ValidationError("A market with that name already exists");
+  }
+  throw err;
+}
 
 // ---- GET MARKETS SERVICE ----
 export async function getMarkets(user_id) {
@@ -66,6 +77,12 @@ export async function createMarket(user_id, data) {
     }
   }
 
+  // Canonicalize the name before validation so a blank-after-trim is still
+  // caught and the stored value is the clean form.
+  if (data.market_name !== undefined) {
+    data.market_name = normalizeMarketName(data.market_name);
+  }
+
   // Run validateLoadCreate
   const errors = validateMarketCreate(data);
 
@@ -92,7 +109,12 @@ export async function createMarket(user_id, data) {
             RETURNING *;
         `;
 
-  const result = await db.query(query, values);
+  let result;
+  try {
+    result = await db.query(query, values);
+  } catch (err) {
+    rethrowDuplicate(err);
+  }
 
   // Return created row
   return result.rows[0];
@@ -111,6 +133,12 @@ export async function patchMarket(user_id, market_id, data) {
     if (!allowedFields.includes(field))
       throw new ValidationError(`${field} not allowed`);
   }
+
+  // Canonicalize the name before validation + storage.
+  if (data.market_name !== undefined) {
+    data.market_name = normalizeMarketName(data.market_name);
+  }
+
   // ---- VALIDATION LOGIC ----
 
   // Must pass validation checks before query request
@@ -150,7 +178,12 @@ export async function patchMarket(user_id, market_id, data) {
 
   values.push(user_id, market_id);
 
-  const result = await db.query(query, values);
+  let result;
+  try {
+    result = await db.query(query, values);
+  } catch (err) {
+    rethrowDuplicate(err);
+  }
 
   if (result.rowCount === 0) {
     throw new NotFoundError("Market not found");
