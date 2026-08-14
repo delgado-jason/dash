@@ -950,6 +950,42 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Market playbook — the move to make"
+            answers="Reads which way the freight index is turning and where your recent rate sits against your own rungs, then gives one clear call per tier — raise, hold, protect, or cut costs."
+            sources={[{ label: "Market", to: "/market" }]}
+          >
+            <Why>
+              There's no national oversize spot price to book against, so the
+              playbook doesn't invent one. It reads two things you already trust:
+              which way the{" "}
+              <span className="text-light">FRED freight index</span> is pointing
+              (firming, steady, or softening) and where your own{" "}
+              <span className="text-light">recent median rate</span> sits against
+              your rungs — break-even, floor, target, strong. From those it gives
+              one move per tier instead of a wall of numbers.
+            </Why>
+            <Why>
+              Firming and you're under your strong rung →{" "}
+              <span className="text-light">Raise</span>, with the percent to get
+              there. Steady and under target → room to push. Softening →{" "}
+              <span className="text-light">Hold and protect your floor</span>,
+              showing how much cushion you've got before the edge. And if a tier
+              has slipped below break-even it stops being a rate question —{" "}
+              <span className="text-light">Cut costs</span>, because booking there
+              loses money on every mile.
+            </Why>
+            <Why>
+              Each tier lists its rungs high to low with a{" "}
+              <span className="text-light">You're booking</span> marker dropped in
+              where your rate lands, so the call is something you can see, not
+              decode. Standard flatbed and specialized / oversize each get their
+              own read off their own ladder. It rides the top of the Market page,
+              and — like the barometer and gauge — everything is your gross rate
+              per driven mile, so nothing's compared across bases.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Market suggestions — the right market on load entry"
             answers="As you enter a load, the market field suggests the market you've used before for that shipper/receiver or city — so the same place never gets tagged two different ways."
             sources={[{ label: "Loads", to: "/loads" }]}
