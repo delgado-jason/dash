@@ -104,13 +104,30 @@ export async function createDispatcher(accountId, { email, password, display_nam
 // ---- LIST an account's team ---- (owner + its dispatchers; safe fields only)
 export async function listAccountUsers(accountId) {
   const result = await db.query(
-    `SELECT user_id, email, role, display_name, avatar_url, created_at
-       FROM users
-      WHERE user_id = $1 OR parent_user_id = $1
-      ORDER BY (user_id = $1) DESC, created_at`,
+    `SELECT u.user_id, u.email, u.role,
+            COALESCE(
+              u.display_name,
+              NULLIF(TRIM(COALESCE(p.first_name, '') || ' ' || COALESCE(p.last_name, '')), '')
+            ) AS display_name,
+            u.avatar_url, u.created_at
+       FROM users u
+       LEFT JOIN profiles p ON p.user_id = u.user_id
+      WHERE u.user_id = $1 OR u.parent_user_id = $1
+      ORDER BY (u.user_id = $1) DESC, u.created_at`,
     [accountId],
   );
   return result.rows;
+}
+
+// ---- UPDATE my own display name ---- any member may set their own name (the
+// owner has no profile row, so their name lives here alongside dispatchers').
+export async function updateMyDisplayName(userId, displayName) {
+  const result = await db.query(
+    `UPDATE users SET display_name = $1 WHERE user_id = $2
+       RETURNING user_id, email, role, display_name`,
+    [displayName, userId],
+  );
+  return result.rows[0] ?? null;
 }
 
 // ---- FETCH one account member ---- (for a team member's dispatcher page).

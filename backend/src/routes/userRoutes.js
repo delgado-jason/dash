@@ -4,6 +4,7 @@ import {
   createDispatcher,
   listAccountUsers,
   getTeamMember,
+  updateMyDisplayName,
 } from "../services/userServices.js";
 
 const router = express.Router();
@@ -21,6 +22,21 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const team = await listAccountUsers(req.user.account_id);
     return res.status(200).json({ team });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err.message });
+  }
+});
+
+// ---- UPDATE my own display name ---- any signed-in member sets their own name.
+// (Distinct method+path from GET /:id, so no route collision.)
+router.patch("/me", requireAuth, async (req, res) => {
+  try {
+    const raw = req.body?.display_name;
+    const name = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    const user = await updateMyDisplayName(req.user.self_id, name);
+    return res.status(200).json({ user });
   } catch (err) {
     return res
       .status(500)
