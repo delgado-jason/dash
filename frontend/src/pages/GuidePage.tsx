@@ -935,6 +935,32 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Market suggestions — the right market on load entry"
+            answers="As you enter a load, the market field suggests the market you've used before for that shipper/receiver or city — so the same place never gets tagged two different ways."
+            sources={[{ label: "Loads", to: "/loads" }]}
+          >
+            <Why>
+              A market is a <span className="text-light">location</span>, not a
+              name — every stop within 75 miles of a freight hub belongs to that
+              hub's market. When the same shipper or city gets tagged to two
+              different markets, your lane and RPM analysis quietly splits in
+              half. The suggestion chip stops that at the source: it reads your
+              own history and offers the market you've used before.
+            </Why>
+            <Why>
+              It climbs from surest to loosest and shows the first hit:{" "}
+              <span className="text-light">same shipper or receiver</span> you've
+              hauled before — matched to the state, so a national plant with sites
+              in two states picks the right one — then the{" "}
+              <span className="text-light">same city</span>, then the{" "}
+              <span className="text-light">nearest city you've already mapped</span>{" "}
+              within 75 miles. Tap <span className="text-light">Use</span> to
+              accept it; it's a suggestion, never an auto-fill, so the call stays
+              yours.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Rate per mile (RPM)"
             answers="Your net rate on the miles you actually get paid for."
             sources={[{ label: "Dashboard", to: "/dashboard" }]}

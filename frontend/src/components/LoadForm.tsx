@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Broker } from "@/types/broker";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
+import type { Load } from "@/types/load";
 import type { LoadInput } from "@/types/LoadInput";
 import type { Truck } from "@/types/truck";
 import type { Driver } from "@/types/driver";
@@ -25,6 +26,11 @@ import type { Facility } from "@/types/facility";
 import { FacilityPicker } from "@/components/FacilityPicker";
 import { facilityLabel } from "@/lib/facilityMatch";
 import { toInches, toFeetInches, isOverWidth, formatInches } from "@/lib/dimensions";
+import { useCityCoords } from "@/hooks/useCityCoords";
+import {
+  recommendMarket,
+  type MarketRecommendation,
+} from "@/lib/metrics/marketRecommender";
 
 // UI Component Imports
 
@@ -42,6 +48,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Stable empty fallback so an absent `loads` prop (the edit form) doesn't mint a
+// fresh array every render, which would loop useCityCoords's [loads] effect.
+const NO_LOADS: Load[] = [];
+
 // Interface for LoadFormProps
 interface LoadFormProps {
   initialData?: LoadInput;
@@ -49,6 +59,9 @@ interface LoadFormProps {
   brokers: Broker[];
   agents: Agent[];
   markets: Market[];
+  // Account load history — powers the market recommender. Optional: absent on the
+  // edit page, where the market is already chosen and no suggestion is needed.
+  loads?: Load[];
   facilities: Facility[];
   onSuccess: () => void;
   onBrokerCreated: () => void;
@@ -119,6 +132,7 @@ const LoadForm = ({
   brokers,
   agents,
   markets,
+  loads = NO_LOADS,
   facilities,
   onSuccess,
   onSubmit,
@@ -223,6 +237,79 @@ const LoadForm = ({
   const [brokerList, setBrokerList] = useState<Broker[]>(brokers);
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
+
+  // --- Market recommender (Phase 1: climb your own history) ----------------
+  // `loads` is a stable reference (useLoads array, or NO_LOADS on the edit form),
+  // so useCityCoords settles after one fetch. New cities are geocoded server-side
+  // on load save (loadRoutes), so no form-time warm is needed here.
+  const coords = useCityCoords(loads);
+
+  const originRec = useMemo(
+    () =>
+      recommendMarket({
+        role: "origin",
+        facilityName: formData.shipper_name,
+        city: formData.origin_city,
+        state: formData.origin_state,
+        loads,
+        markets: marketList,
+        coords,
+      }),
+    [
+      formData.shipper_name,
+      formData.origin_city,
+      formData.origin_state,
+      loads,
+      marketList,
+      coords,
+    ],
+  );
+
+  const destinationRec = useMemo(
+    () =>
+      recommendMarket({
+        role: "destination",
+        facilityName: formData.receiver_name,
+        city: formData.destination_city,
+        state: formData.destination_state,
+        loads,
+        markets: marketList,
+        coords,
+      }),
+    [
+      formData.receiver_name,
+      formData.destination_city,
+      formData.destination_state,
+      loads,
+      marketList,
+      coords,
+    ],
+  );
+
+  // A one-tap suggestion chip under a market select. Hidden when there's no
+  // recommendation or it already matches what's chosen.
+  const renderMarketRec = (
+    rec: MarketRecommendation | null,
+    field: "origin_market_id" | "destination_market_id",
+  ) => {
+    if (!rec || rec.market_id === formData[field]) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => setFormData((f) => ({ ...f, [field]: rec.market_id }))}
+        className="mt-1.5 w-full flex items-center gap-2 rounded-[8px] border border-amber/40 bg-amber/[.06] px-2.5 py-1.5 text-left transition-colors hover:bg-amber/[.12]"
+        title={`Use ${rec.market_name} — ${rec.reason}`}
+      >
+        <span className="shrink-0 text-[10.5px] font-condensed font-semibold uppercase tracking-[.09em] text-amber">
+          Use
+        </span>
+        <span className="text-[13px] text-ink font-medium truncate">
+          {rec.market_name}
+        </span>
+        <span className="ml-auto shrink-0 text-[11px] text-dim">{rec.reason}</span>
+      </button>
+    );
+  };
   const [facilityList, setFacilityList] = useState<Facility[]>(facilities);
 
   // Booking credit. Anyone on the account (owner or a dispatcher) can attribute
@@ -933,7 +1020,8 @@ const LoadForm = ({
               ></Input>
             </div>
             {/* Origin Market selects */}
-            <div className="flex gap-2 items-end">
+            <div>
+              <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <Label htmlFor="origin_market">Origin Market</Label>
                 <Select
@@ -969,6 +1057,8 @@ const LoadForm = ({
                   setShowMarketForm(true);
                 }}
               />
+              </div>
+              {renderMarketRec(originRec, "origin_market_id")}
             </div>
             {/* end of origin fields */}
             {/* Destination City field */}
@@ -1001,7 +1091,8 @@ const LoadForm = ({
               ></Input>
             </div>
             {/* Destination Market selects */}
-            <div className="flex gap-2 items-end">
+            <div>
+              <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <Label htmlFor="destination_market">Destination Market</Label>
                 <Select
@@ -1037,6 +1128,8 @@ const LoadForm = ({
                   setShowMarketForm(true);
                 }}
               />
+              </div>
+              {renderMarketRec(destinationRec, "destination_market_id")}
             </div>
           </div>
           {showMarketForm && (

@@ -243,6 +243,7 @@ const LoadsPage = () => {
               brokers={brokers}
               agents={agents}
               markets={markets}
+              loads={loads}
               facilities={facilities}
               onSubmit={async (data) => {
                 await createLoad(data);
