@@ -129,10 +129,13 @@ const rawScorecard = (
   const facCount = new Map<string, { display: string; count: number }>();
   for (const l of loads) {
     if (l.load_status === "cancelled") continue;
+    const seenThisLoad = new Set<string>();
     for (const nm of [l.shipper_name, l.receiver_name]) {
       const raw = String(nm ?? "").trim();
       if (!raw) continue;
       const key = raw.toUpperCase();
+      if (seenThisLoad.has(key)) continue; // one load can't make a facility a repeat
+      seenThisLoad.add(key);
       const cur = facCount.get(key);
       if (cur) cur.count += 1;
       else facCount.set(key, { display: raw, count: 1 });

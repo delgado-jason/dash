@@ -67,6 +67,13 @@ describe("agent bucket (direct vs spot)", () => {
     expect(c.repeatCustomers).toEqual([]);
   });
 
+  it("one load with the same shipper AND receiver name is NOT a repeat", () => {
+    // A plant-to-plant move (Nucor -> Nucor) must not flip a single load to direct.
+    const c = cardFor([load({ shipper_name: "Nucor", receiver_name: "Nucor" })]);
+    expect(c.autoClass).toBe("spot");
+    expect(c.repeatCustomers).toEqual([]);
+  });
+
   it("ignores cancelled loads for the repeat count", () => {
     const c = cardFor([
       load({ shipper_name: "Acme", receiver_name: "R1" }),
