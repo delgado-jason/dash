@@ -23,6 +23,8 @@ import {
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
 import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
+import { buildMarketPlaybook } from "@/lib/metrics/marketPlaybook";
+import { MarketPlaybookCard } from "@/components/market/MarketPlaybookCard";
 import { rpm } from "@/lib/format";
 
 const MACRO = "#4f8cd6"; // FRED PPI overlay line — the house chart blue
@@ -251,6 +253,11 @@ const MarketPage = () => {
     [points, targets.bookingLadder, targets.specLadder, now, trend],
   );
 
+  const playbook = useMemo(
+    () => buildMarketPlaybook(points, targets.bookingLadder, targets.specLadder, trend, now),
+    [points, targets.bookingLadder, targets.specLadder, trend, now],
+  );
+
   const toneColor =
     gauge.tone === "hot" ? "#4ade80" : gauge.tone === "soft" ? "#f87171" : "#e0a020";
 
@@ -307,6 +314,11 @@ const MarketPage = () => {
           <span className="font-condensed font-medium text-[15px] text-dim">
             the freight market, and where you stand in it
           </span>
+        </div>
+
+        {/* the playbook — the one clear move per tier, given the trend */}
+        <div className="mt-4">
+          <MarketPlaybookCard playbook={playbook} />
         </div>
 
         {/* the verdict */}
