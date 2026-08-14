@@ -803,14 +803,26 @@ const GuidePage = () => {
               <span className="text-light">driven</span> mile (your cost/mile ÷
               your Landstar take), so it's apples-to-apples with the all-in rate
               — a lower number than the dashboard's per-loaded-mile ladder, by
-              design. The stamp maps to whichever tier set fits the load:{" "}
-              <span style={{ color: "#f87171" }}>PASS</span> below break-even,{" "}
-              <span style={{ color: "#e8940a" }}>MEH</span> under target,{" "}
-              <span style={{ color: "#4ade80" }}>TAKE IT</span> at target,{" "}
-              <span style={{ color: "#fbbf24" }}>STEAL</span> at strong. A legal
+              design. The verdict maps to whichever tier set fits the load:{" "}
+              <span style={{ color: "#e24b4a" }}>SCRAP</span> below break-even,{" "}
+              <span style={{ color: "#f5b03a" }}>THIN</span> under target,{" "}
+              <span style={{ color: "#5dcaa5" }}>SOLID</span> at target,{" "}
+              <span style={{ color: "#ffcf7a" }}>PRIME</span> at strong. A legal
               load hits those at your Standard tiers (+20 / +30%); an
               oversize, hazmat, or heavy load has to reach the Specialized ones
               (+45 / +60%). A line under the verdict names which set graded it.
+            </Why>
+            <Why>
+              A weak verdict now shows <span className="text-light">why</span> — the
+              freight's own rate (per <span className="text-light">loaded</span>{" "}
+              mile) beside the deadhead's share of the run. So a good load you're just
+              far from reads as "good freight, bad position," not a flat pass: the
+              deadhead is the knock, not the load. Add the{" "}
+              <span className="text-light">agent</span> (by 3-letter code or name) and
+              it shows your history with them — loads together, their rate, dwell — so
+              a keeper's relationship weighs in at booking time. An agent you haven't
+              booked flags <span className="text-light">New</span>, and isn't saved
+              until you actually run a load with them.
             </Why>
             <Why>
               Miles come from truck routing (HERE), not a straight line — the
@@ -832,7 +844,7 @@ const GuidePage = () => {
               bill them as an accessorial (Landstar pays 100%), not eat them. And
               when a load comes in under target, it lays out{" "}
               <span className="text-light">what to ask the agent</span>: the floor
-              (break-even), the TAKE-IT rate, and the STEAL rate for that load's
+              (break-even), the SOLID rate, and the PRIME rate for that load's
               miles — so you know the room to bargain.
             </Why>
           </Metric>

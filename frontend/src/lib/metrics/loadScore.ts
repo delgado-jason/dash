@@ -21,6 +21,7 @@ export interface ScoreBasis {
 export interface LoadScore {
   drivenMiles: number;
   allInRpm: number | null; // gross rate ÷ driven miles (the headline)
+  loadedRpm: number | null; // gross rate ÷ LOADED miles — the freight's own rate, deadhead-blind (for the "why it's THIN" diagnosis, never the verdict)
   breakevenRpm: number | null; // gross break-even ÷ driven mile
   pctOverBreakeven: number | null; // +0.36 = 36% over break-even
   net: number | null; // rate after the carrier's cut
@@ -34,14 +35,16 @@ export const scoreLoad = (
   basis: ScoreBasis,
   tiers: RateTiers = RATE_TIERS,
 ): LoadScore => {
-  const driven =
-    (Number(input.loadedMiles) || 0) + (Number(input.deadheadMiles) || 0);
+  const loaded = Number(input.loadedMiles) || 0;
+  const driven = loaded + (Number(input.deadheadMiles) || 0);
   const rate = Number(input.rate) || 0;
+  const loadedRpm = loaded > 0 ? rate / loaded : null; // freight's own rate
   const { costPerDrivenMile, payTake } = basis;
 
   const empty: LoadScore = {
     drivenMiles: driven,
     allInRpm: null,
+    loadedRpm,
     breakevenRpm: null,
     pctOverBreakeven: null,
     net: null,
@@ -76,6 +79,7 @@ export const scoreLoad = (
   return {
     drivenMiles: driven,
     allInRpm,
+    loadedRpm,
     breakevenRpm,
     pctOverBreakeven,
     net,
@@ -107,12 +111,14 @@ export const counterRates = (
   };
 };
 
+// Forge "Steel grade" verdicts (retired the comic-noir PASS/MEH/TAKE IT/STEAL).
+// Keys are unchanged so the scoring logic and every call site keep working.
 export const VERDICT_META: Record<
   Verdict,
   { label: string; fg: string; bg: string }
 > = {
-  pass: { label: "PASS", fg: "#f87171", bg: "#3a1a1a" },
-  meh: { label: "MEH", fg: "#e8940a", bg: "#3a2a0a" },
-  take: { label: "TAKE IT", fg: "#4ade80", bg: "#1a3a2a" },
-  steal: { label: "STEAL", fg: "#fbbf24", bg: "#3a300a" },
+  pass: { label: "SCRAP", fg: "#e24b4a", bg: "#2a1414" }, // below break-even — loses money
+  meh: { label: "THIN", fg: "#f5b03a", bg: "#2a2110" }, // above break-even, under target
+  take: { label: "SOLID", fg: "#5dcaa5", bg: "#12261f" }, // clears your target
+  steal: { label: "PRIME", fg: "#ffcf7a", bg: "#2a2410" }, // clears your strong tier
 };

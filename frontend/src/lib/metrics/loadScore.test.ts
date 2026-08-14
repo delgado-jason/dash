@@ -7,17 +7,18 @@ const basis = { costPerDrivenMile: 3.08, payTake: 0.78 };
 const TIERS = { minimum: 0.15, target: 0.35, strong: 0.6 };
 
 describe("scoreLoad", () => {
-  it("bakes deadhead into the all-in rate and lands TAKE IT above target", () => {
+  it("bakes deadhead into the all-in rate and lands SOLID above target", () => {
     const s = scoreLoad({ rate: 2900, loadedMiles: 460, deadheadMiles: 80 }, basis, TIERS);
     expect(s.drivenMiles).toBe(540);
     expect(s.allInRpm).toBeCloseTo(2900 / 540); // ~5.37, over loaded+deadhead
+    expect(s.loadedRpm).toBeCloseTo(2900 / 460); // freight's own rate, deadhead-blind
     expect(s.breakevenRpm).toBeCloseTo(3.95, 1);
     expect(s.pctOverBreakeven).toBeGreaterThan(0.35); // clears target
     expect(s.verdict).toBe("take");
     expect(s.profit).toBeGreaterThan(0);
   });
 
-  it("PASSes a load that loses money once deadhead is counted", () => {
+  it("SCRAPs a load that loses money once deadhead is counted", () => {
     // $2.10/loaded looks ok, but 200 deadhead on 500 loaded sinks it under break-even
     const s = scoreLoad({ rate: 1500, loadedMiles: 500, deadheadMiles: 200 }, basis);
     expect(s.allInRpm).toBeCloseTo(1500 / 700); // ~2.14 < 3.95
@@ -25,14 +26,14 @@ describe("scoreLoad", () => {
     expect(s.profit).toBeLessThan(0);
   });
 
-  it("STEALs a load 60%+ over break-even", () => {
+  it("PRIMEs a load 60%+ over break-even", () => {
     const s = scoreLoad({ rate: 4200, loadedMiles: 400, deadheadMiles: 60 }, basis, TIERS);
     expect(s.allInRpm).toBeCloseTo(4200 / 460); // ~9.13
     expect(s.pctOverBreakeven).toBeGreaterThan(0.6);
     expect(s.verdict).toBe("steal");
   });
 
-  it("MEHs a load just above break-even but under target", () => {
+  it("reads THIN just above break-even but under target", () => {
     // aim ~15% over break-even: rate ≈ 3.95*1.15 * driven
     const s = scoreLoad({ rate: 2560, loadedMiles: 500, deadheadMiles: 60 }, basis, TIERS);
     expect(s.verdict).toBe("meh");
@@ -62,7 +63,7 @@ describe("scoreLoad", () => {
 });
 
 describe("counterRates", () => {
-  it("prices the floor, TAKE IT (+35%), and STEAL (+60%) on the driven miles", () => {
+  it("prices the floor, SOLID (+35%), and PRIME (+60%) on the driven miles", () => {
     const c = counterRates(4, 500, TIERS)!; // $4/mi break-even, 500 mi
     expect(c.floor).toBeCloseTo(2000, 5); // 4 × 500
     expect(c.take).toBeCloseTo(2700, 5); // 4 × 1.35 × 500
