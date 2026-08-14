@@ -28,6 +28,12 @@ import { facilityLabel } from "@/lib/facilityMatch";
 import { toInches, toFeetInches, isOverWidth, formatInches } from "@/lib/dimensions";
 import { useCityCoords } from "@/hooks/useCityCoords";
 import {
+  getCityCoords,
+  warmCityCoords,
+  type CityCoordRow,
+} from "@/services/cityCoordsService";
+import { cityKey, type CoordMap } from "@/lib/metrics/foreman";
+import {
   recommendMarket,
   type MarketRecommendation,
 } from "@/lib/metrics/marketRecommender";
@@ -238,11 +244,56 @@ const LoadForm = ({
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
 
-  // --- Market recommender (Phase 1: climb your own history) ----------------
-  // `loads` is a stable reference (useLoads array, or NO_LOADS on the edit form),
-  // so useCityCoords settles after one fetch. New cities are geocoded server-side
-  // on load save (loadRoutes), so no form-time warm is needed here.
-  const coords = useCityCoords(loads);
+  // --- Market recommender -----------------------------------------------------
+  // History cities are already geocoded. Tiers 5-6 (nearest hub / regional) need
+  // the coordinate of the entered city — which for a BRAND-NEW city isn't cached
+  // yet — so warm it on entry (debounced, not per keystroke) and merge the
+  // freshly-verified coordinate in a moment later.
+  const historyCoords = useCityCoords(loads);
+  const [enteredCoords, setEnteredCoords] = useState<CoordMap>(new Map());
+  useEffect(() => {
+    const cities = [
+      { city: formData.origin_city, state: formData.origin_state },
+      { city: formData.destination_city, state: formData.destination_state },
+    ].filter((c) => c.city && c.state);
+    if (!cities.length) return;
+    let active = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const merge = (rows: CityCoordRow[]) =>
+      setEnteredCoords((prev) => {
+        const m = new Map(prev);
+        for (const r of rows) m.set(cityKey(r.city_norm, r.state), { lat: r.lat, lng: r.lng });
+        return m;
+      });
+    timers.push(
+      setTimeout(() => {
+        if (!active) return;
+        warmCityCoords(cities).then((rows) => {
+          if (!active) return;
+          if (rows.length) merge(rows);
+          timers.push(
+            setTimeout(() => {
+              getCityCoords().then((r) => active && merge(r));
+            }, 2500),
+          );
+        });
+      }, 600),
+    );
+    return () => {
+      active = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [
+    formData.origin_city,
+    formData.origin_state,
+    formData.destination_city,
+    formData.destination_state,
+  ]);
+  const coords = useMemo(() => {
+    const m = new Map(historyCoords);
+    for (const [k, v] of enteredCoords) m.set(k, v);
+    return m;
+  }, [historyCoords, enteredCoords]);
 
   const originRec = useMemo(
     () =>
@@ -286,25 +337,62 @@ const LoadForm = ({
     ],
   );
 
-  // A one-tap suggestion chip under a market select. Hidden when there's no
-  // recommendation or it already matches what's chosen.
+  // Create a not-yet-existing recommended market (tiers 5-6), then select it. The
+  // name is already canonical; createMarket's guard (v1.176.0) normalizes anyway.
+  const handleRecCreate = async (
+    rec: MarketRecommendation,
+    field: "origin_market_id" | "destination_market_id",
+  ) => {
+    try {
+      const created = await createMarket({ market_name: rec.market_name, notes: null });
+      handleMarketCreated(created, field);
+      onMarketCreated();
+    } catch {
+      // Rare race (already created) — a re-render resolves it to a plain "Use".
+    }
+  };
+
+  // A one-tap suggestion chip under a market select. "Use" (amber) selects a
+  // market you already have; "Create & use" (teal) mints a new hub/regional
+  // market first. Hidden when there's no rec or it already matches the selection.
   const renderMarketRec = (
     rec: MarketRecommendation | null,
     field: "origin_market_id" | "destination_market_id",
   ) => {
     if (!rec || rec.market_id === formData[field]) return null;
+    const create = rec.isNew;
     return (
       <button
         type="button"
-        onClick={() => setFormData((f) => ({ ...f, [field]: rec.market_id }))}
-        className="mt-1.5 w-full flex items-center gap-2 rounded-[8px] border border-amber/40 bg-amber/[.06] px-2.5 py-1.5 text-left transition-colors hover:bg-amber/[.12]"
-        title={`Use ${rec.market_name} — ${rec.reason}`}
+        onClick={() =>
+          create
+            ? handleRecCreate(rec, field)
+            : setFormData((f) => ({ ...f, [field]: rec.market_id! }))
+        }
+        className="mt-1.5 w-full flex items-center gap-2 rounded-[8px] border px-2.5 py-1.5 text-left transition-colors"
+        style={
+          create
+            ? { borderColor: "rgba(93,202,165,.42)", background: "rgba(93,202,165,.08)" }
+            : { borderColor: "rgba(232,148,10,.40)", background: "rgba(232,148,10,.06)" }
+        }
+        title={`${create ? "Create & use" : "Use"} ${rec.market_name} — ${rec.reason}`}
       >
-        <span className="shrink-0 text-[10.5px] font-condensed font-semibold uppercase tracking-[.09em] text-amber">
-          Use
+        <span
+          className="shrink-0 text-[10.5px] font-condensed font-semibold uppercase tracking-[.09em]"
+          style={{ color: create ? "#5dcaa5" : "#f5b03a" }}
+        >
+          {create ? "+ Create & use" : "Use"}
         </span>
         <span className="text-[13px] text-ink font-medium truncate">
           {rec.market_name}
+          {create && (
+            <span
+              className="ml-1.5 text-[9.5px] uppercase tracking-[.08em] rounded-[5px] px-1.5 py-px"
+              style={{ color: "#5dcaa5", border: "1px solid rgba(93,202,165,.45)" }}
+            >
+              new
+            </span>
+          )}
         </span>
         <span className="ml-auto shrink-0 text-[11px] text-dim">{rec.reason}</span>
       </button>
@@ -451,8 +539,10 @@ const LoadForm = ({
     newMarket: Market,
     fieldName: "origin_market_id" | "destination_market_id",
   ) => {
-    setMarketList([...marketList, newMarket]);
-    setFormData({ ...formData, [fieldName]: newMarket.market_id });
+    // Functional updates: handleRecCreate awaits a POST first, so reading
+    // marketList/formData from the closure would clobber edits made in-flight.
+    setMarketList((prev) => [...prev, newMarket]);
+    setFormData((prev) => ({ ...prev, [fieldName]: newMarket.market_id }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -51,12 +51,16 @@ const mkLoad = (o: Partial<Load>): Load => ({
   ...o,
 });
 
-// Milner GA ~44 mi S of Atlanta; Chattanooga ~106 mi N (out of range).
+// Milner GA ~44 mi S of Atlanta; Chattanooga ~106 mi N (out of history range,
+// but itself a seeded hub). Bartlett TN sits by the Memphis hub; Ely NV is
+// remote (no hub within 75 mi).
 const COORDS: CoordMap = new Map([
   [cityKey("Atlanta", "GA"), { lat: 33.749, lng: -84.388 }],
   [cityKey("Milner", "GA"), { lat: 33.117, lng: -84.196 }],
   [cityKey("Dallas", "TX"), { lat: 32.7767, lng: -96.797 }],
   [cityKey("Chattanooga", "TN"), { lat: 35.0456, lng: -85.3097 }],
+  [cityKey("Bartlett", "TN"), { lat: 35.2045, lng: -89.8739 }],
+  [cityKey("Ely", "NV"), { lat: 39.2472, lng: -114.8886 }],
 ]);
 
 const base = { loads: [] as Load[], markets: MARKETS, coords: COORDS };
@@ -180,16 +184,53 @@ describe("recommendMarket — tier 4 (nearest mapped city ≤75 mi)", () => {
     expect(rec?.reason).toMatch(/Nearest mapped city · Atlanta, GA/);
   });
 
-  it("returns null when the nearest mapped city is beyond 75 mi", () => {
+  it("falls past tier 4 to the seeded hub when history is beyond 75 mi", () => {
     const loads = [mkLoad({ origin_city: "Atlanta", origin_state: "GA", origin_market_id: "m-atl" })];
-    // Chattanooga is ~106 mi from Atlanta -> out of range; no other signal.
+    // Chattanooga is ~106 mi from the Atlanta history (no tier 4) but IS a seeded hub.
     const rec = recommendMarket({ ...base, loads, role: "origin", city: "Chattanooga", state: "TN" });
-    expect(rec).toBeNull();
+    expect(rec?.tier).toBe(5);
+    expect(rec?.market_name).toBe("Chattanooga Market");
+    expect(rec?.isNew).toBe(true);
   });
 
-  it("returns null for tier 3 when the entered city has no coords", () => {
+  it("returns null when the entered city has no coords and nothing else hits", () => {
     const loads = [mkLoad({ origin_city: "Atlanta", origin_state: "GA", origin_market_id: "m-atl" })];
     const rec = recommendMarket({ ...base, loads, role: "origin", city: "Nowhereville", state: "GA" });
+    expect(rec).toBeNull();
+  });
+});
+
+describe("recommendMarket — tier 5 (nearest seeded freight hub ≤75 mi)", () => {
+  it("suggests the hub's existing market for a new city near a hub (use)", () => {
+    // Milner GA is ~44 mi from the Atlanta hub, and "Atlanta Market" exists.
+    const rec = recommendMarket({ ...base, loads: [], role: "origin", city: "Milner", state: "GA" });
+    expect(rec?.tier).toBe(5);
+    expect(rec?.market_id).toBe("m-atl");
+    expect(rec?.isNew).toBe(false);
+    expect(rec?.market_name).toBe("Atlanta Market");
+    expect(rec?.reason).toMatch(/Nearest hub · Atlanta/);
+  });
+
+  it("flags isNew when the nearest hub's market doesn't exist yet (create)", () => {
+    // Bartlett TN sits by the Memphis hub, but there's no Memphis Market here.
+    const rec = recommendMarket({ ...base, loads: [], role: "origin", city: "Bartlett", state: "TN" });
+    expect(rec?.tier).toBe(5);
+    expect(rec?.market_id).toBeNull();
+    expect(rec?.isNew).toBe(true);
+    expect(rec?.market_name).toBe("Memphis Market");
+  });
+});
+
+describe("recommendMarket — tier 6 (regional fallback)", () => {
+  it("names the market by direction within the state when no hub is near", () => {
+    const rec = recommendMarket({ ...base, loads: [], role: "origin", city: "Ely", state: "NV" });
+    expect(rec?.tier).toBe(6);
+    expect(rec?.isNew).toBe(true);
+    expect(rec?.market_name).toMatch(/Nevada Market$/);
+  });
+
+  it("does not fire without coords (can't place the city)", () => {
+    const rec = recommendMarket({ ...base, loads: [], role: "origin", city: "Ghosttown", state: "NV" });
     expect(rec).toBeNull();
   });
 });

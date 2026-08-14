@@ -1,27 +1,32 @@
 import type { Load } from "@/types/load";
 import type { Market } from "@/types/market";
 import { cityKey, haversineMiles, type CoordMap } from "./foreman";
+import { nearestHub, regionalMarketName } from "./freightHubs";
 
 // A stop's market is defined by its LOCATION: all freight within this radius of a
 // freight hub belongs to that hub's market (docs/business-rules/001).
 export const MARKET_RADIUS_MI = 75;
 
-// Phase 1 climbs your OWN history + existing markets. Higher tier = weaker
-// signal. First hit wins.
+// The confidence ladder — higher tier = weaker signal, first hit wins.
 //   1 = same shipper/receiver seen before -> reuse its market
 //   2 = same city seen before             -> reuse its market
 //   3 = typed city IS an existing market  -> the hub itself (e.g. "Atlanta")
-//   4 = a mapped city within 75 mi        -> reuse the nearest one's market
-// (The canonical seeded-hub + regional fallback are Phase 2.)
-export type MarketRecTier = 1 | 2 | 3 | 4;
+//   4 = a mapped history city within 75mi -> reuse the nearest one's market
+//   5 = a seeded freight hub within 75mi  -> "[Hub] Market" (create if new)
+//   6 = no hub within 75mi                -> "[Direction] [State] Market" (create if new)
+// Tiers 1-4 always resolve to an existing market; 5-6 may need creating (isNew).
+export type MarketRecTier = 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface MarketRecommendation {
   tier: MarketRecTier;
-  market_id: string;
+  // The existing market to use, or null when the market must be created (isNew).
+  market_id: string | null;
   market_name: string;
+  // True when market_id is null and the chip should CREATE the market first.
+  isNew: boolean;
   // Short human reason for the chip, e.g. "Same shipper · 3 past loads".
   reason: string;
-  // Present only on tier 3 (straight-line miles to the mapped city).
+  // Straight-line miles, on the proximity tiers (4 and 5).
   distanceMi?: number;
 }
 
@@ -149,6 +154,7 @@ export const recommendMarket = (params: {
         tier: 1,
         market_id: dom.market_id,
         market_name: nameById.get(dom.market_id)!,
+        isNew: false,
         reason: `Same ${label} · ${dom.count} past ${plural(dom.count)}`,
       };
     }
@@ -167,6 +173,7 @@ export const recommendMarket = (params: {
         tier: 2,
         market_id: dom.market_id,
         market_name: nameById.get(dom.market_id)!,
+        isNew: false,
         reason: `Same city · ${dom.count} past ${plural(dom.count)}`,
       };
     }
@@ -186,6 +193,7 @@ export const recommendMarket = (params: {
         tier: 3,
         market_id: hub.market_id,
         market_name: hub.market_name,
+        isNew: false,
         reason: "Matches this city's market",
       };
     }
@@ -235,8 +243,45 @@ export const recommendMarket = (params: {
         tier: 4,
         market_id: nearest.market_id,
         market_name: nearest.market_name,
+        isNew: false,
         reason: `Nearest mapped city · ${nearest.city}, ${nearest.state} (~${Math.round(nearest.distanceMi)} mi)`,
         distanceMi: nearest.distanceMi,
+      };
+    }
+  }
+
+  // --- Tier 5: nearest seeded freight hub within 75 mi ----------------------
+  // A brand-new city with no history: suggest the market of the nearest major
+  // freight hub. The hub's market may already exist (use it) or not (create it).
+  if (here) {
+    const near = nearestHub(here);
+    if (near) {
+      const name = `${near.hub.city} Market`;
+      const id = idByName.get(norm(name)) ?? null;
+      return {
+        tier: 5,
+        market_id: id,
+        market_name: name,
+        isNew: id === null,
+        reason: `Nearest hub · ${near.hub.city} (~${Math.round(near.distanceMi)} mi)`,
+        distanceMi: near.distanceMi,
+      };
+    }
+  }
+
+  // --- Tier 6: regional fallback (no hub within 75 mi) ----------------------
+  // Genuinely remote: name the market by the part of the state it sits in,
+  // "[Direction] [State] Market" (e.g. "Western Texas Market").
+  if (here && hasHere) {
+    const name = regionalMarketName(here, String(state ?? ""));
+    if (name) {
+      const id = idByName.get(norm(name)) ?? null;
+      return {
+        tier: 6,
+        market_id: id,
+        market_name: name,
+        isNew: id === null,
+        reason: "Regional · no hub within 75 mi",
       };
     }
   }
