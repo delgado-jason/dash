@@ -952,7 +952,10 @@ const GuidePage = () => {
               <span className="text-light">same shipper or receiver</span> you've
               hauled before — matched to the state, so a national plant with sites
               in two states picks the right one — then the{" "}
-              <span className="text-light">same city</span>, then the{" "}
+              <span className="text-light">same city</span>, then{" "}
+              <span className="text-light">a market named for that city</span>{" "}
+              (type "Atlanta" and it offers your Atlanta Market, even though your
+              loads run from the towns around it), and finally the{" "}
               <span className="text-light">nearest city you've already mapped</span>{" "}
               within 75 miles. Tap <span className="text-light">Use</span> to
               accept it; it's a suggestion, never an auto-fill, so the call stays

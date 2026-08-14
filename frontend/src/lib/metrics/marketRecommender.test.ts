@@ -129,11 +129,36 @@ describe("recommendMarket — tier 2 (same city)", () => {
   });
 });
 
-describe("recommendMarket — tier 3 (nearest mapped city ≤75 mi)", () => {
+describe("recommendMarket — tier 3 (typed city is an existing market/hub)", () => {
+  it("matches the hub city to its market with no load history there", () => {
+    // The real Atlanta case: history lives in a suburb, so tiers 1-2 miss, but
+    // "Atlanta" IS a market.
+    const loads = [mkLoad({ origin_city: "Milner", origin_state: "GA", origin_market_id: "m-atl" })];
+    const rec = recommendMarket({ ...base, loads, role: "origin", city: "Atlanta", state: "GA" });
+    expect(rec?.tier).toBe(3);
+    expect(rec?.market_id).toBe("m-atl");
+    expect(rec?.reason).toMatch(/market/i);
+  });
+
+  it("fires from the city alone, before a state is entered", () => {
+    const rec = recommendMarket({ ...base, loads: [], role: "origin", city: "Dallas", state: "" });
+    expect(rec?.tier).toBe(3);
+    expect(rec?.market_id).toBe("m-dal");
+  });
+
+  it("same-city history (tier 2) still wins over the hub match", () => {
+    const loads = [mkLoad({ origin_city: "Atlanta", origin_state: "GA", origin_market_id: "m-chi" })];
+    const rec = recommendMarket({ ...base, loads, role: "origin", city: "Atlanta", state: "GA" });
+    expect(rec?.tier).toBe(2);
+    expect(rec?.market_id).toBe("m-chi");
+  });
+});
+
+describe("recommendMarket — tier 4 (nearest mapped city ≤75 mi)", () => {
   it("recommends a mapped city's market when within radius", () => {
     const loads = [mkLoad({ origin_city: "Atlanta", origin_state: "GA", origin_market_id: "m-atl" })];
     const rec = recommendMarket({ ...base, loads, role: "origin", city: "Milner", state: "GA" });
-    expect(rec?.tier).toBe(3);
+    expect(rec?.tier).toBe(4);
     expect(rec?.market_id).toBe("m-atl");
     expect(rec?.distanceMi).toBeGreaterThan(0);
     expect(rec?.distanceMi).toBeLessThan(75);
@@ -181,13 +206,16 @@ describe("recommendMarket — precedence & edge cases", () => {
   });
 
   it("skips a market_id that no longer exists in the market list", () => {
-    const loads = [mkLoad({ origin_city: "Atlanta", origin_state: "GA", origin_market_id: "m-deleted" })];
-    const rec = recommendMarket({ ...base, loads, role: "origin", city: "Atlanta", state: "GA" });
+    // Etowah is not a market name and not geocoded, so only tier-2 could fire —
+    // and it must skip the dangling market_id, leaving nothing.
+    const loads = [mkLoad({ origin_city: "Etowah", origin_state: "GA", origin_market_id: "m-deleted" })];
+    const rec = recommendMarket({ ...base, loads, role: "origin", city: "Etowah", state: "GA" });
     expect(rec).toBeNull();
   });
 
-  it("returns null with no history", () => {
-    expect(recommendMarket({ ...base, loads: [], role: "origin", facilityName: "X", city: "Atlanta", state: "GA" })).toBeNull();
+  it("returns null with no history and no matching market/hub", () => {
+    // Nowhereville is not a market and not in the coord map -> nothing to offer.
+    expect(recommendMarket({ ...base, loads: [], role: "origin", facilityName: "X", city: "Nowhereville", state: "GA" })).toBeNull();
   });
 
   it("returns null when nothing is entered", () => {
