@@ -969,10 +969,19 @@ const GuidePage = () => {
               <span className="text-light">Raise</span>, with the percent to get
               there. Steady and under target → room to push. Softening →{" "}
               <span className="text-light">Hold and protect your floor</span>,
-              showing how much cushion you've got before the edge. And if a tier
-              has slipped below break-even it stops being a rate question —{" "}
-              <span className="text-light">Cut costs</span>, because booking there
-              loses money on every mile.
+              showing how much cushion you've got before the edge.
+            </Why>
+            <Why>
+              A tier can sit <span className="text-light">below your cost floor</span>{" "}
+              (break-even) while the business is still very profitable — your cheap
+              standard freight carried by your oversize work. That's flagged as a
+              nudge to lift that tier or fill the miles with richer freight, not an
+              alarm — it isn't losing you money. The{" "}
+              <span className="text-light">Cut costs</span> call is reserved for
+              when your <span className="text-light">whole operation</span> books
+              below break-even (your blended rate across every load can't cover
+              cost after Landstar's cut) — that's when cutting costs, not chasing
+              rate, is the lever.
             </Why>
             <Why>
               Each tier lists its rungs high to low with a{" "}

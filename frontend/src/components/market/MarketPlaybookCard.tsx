@@ -5,6 +5,7 @@ const ACTION_COLOR: Record<TierPlay["action"], string> = {
   raise: "#5dcaa5",
   hold: "#f5b03a",
   protect: "#f5b03a",
+  "under-floor": "#e8940a", // caution — below cost floor, but not a loss
   "cut-costs": "#e24b4a",
 };
 
