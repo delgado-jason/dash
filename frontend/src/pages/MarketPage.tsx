@@ -20,6 +20,7 @@ import {
   ratePoints,
   monthlyMedianRate,
   tierGauge,
+  windowPoints,
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
 import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
@@ -295,28 +296,31 @@ const MarketPage = () => {
   const yvmColor =
     yvm?.verdict === "beating" ? "#4ade80" : yvm?.verdict === "lagging" ? "#f0b86a" : "#c9d3e0";
 
-  // The ladder as a distribution — where the year's loads actually landed,
-  // in the banded ladder's zones. Same zone colors, same walk-away.
+  // The ladder as a distribution — where your RECENT loads landed, in the banded
+  // ladder's zones. Windowed to the same trailing 90 days as the rate and gauge,
+  // so old loads (booked against an older, lower ladder) don't pile into "below
+  // the floor" against today's break-even. Same zone colors, same walk-away.
   const zones = (() => {
     const L = targets.bookingLadder;
     if (L.walkAway == null || L.minimum == null || L.target == null) return null;
+    const wp = windowPoints(points, now, 90);
     const buckets = { below: 0, floor: 0, mid: 0, past: 0 };
-    for (const pt of points) {
+    for (const pt of wp) {
       if (pt.rate < L.walkAway) buckets.below++;
       else if (pt.rate < L.minimum) buckets.floor++;
       else if (pt.rate < L.target) buckets.mid++;
       else buckets.past++;
     }
-    const stdBelow = points.filter(
+    const stdBelow = wp.filter(
       (pt) => pt.bucket === "standard" && pt.rate < (L.walkAway as number),
     ).length;
-    const stdTotal = points.filter((pt) => pt.bucket === "standard").length;
-    const specBelow = points.filter(
+    const stdTotal = wp.filter((pt) => pt.bucket === "standard").length;
+    const specBelow = wp.filter(
       (pt) => pt.bucket !== "standard" && pt.rate < (L.walkAway as number),
     ).length;
-    const specTotal = points.filter((pt) => pt.bucket !== "standard").length;
+    const specTotal = wp.filter((pt) => pt.bucket !== "standard").length;
     const max = Math.max(1, buckets.below, buckets.floor, buckets.mid, buckets.past);
-    return { ...buckets, max, stdBelow, stdTotal, specBelow, specTotal };
+    return { ...buckets, max, stdBelow, stdTotal, specBelow, specTotal, total: wp.length };
   })();
 
   const lastMedian = monthly.length > 0 ? monthly[monthly.length - 1].median : null;
@@ -567,7 +571,7 @@ const MarketPage = () => {
                     Where your loads land · the ladder as a distribution
                   </span>
                   <span className="font-condensed text-[12px] text-faint">
-                    · {points.length} measurable loads · zone colors = the banded ladder's
+                    · {zones.total} loads · last 90 days · zone colors = the banded ladder's
                   </span>
                 </div>
                 {[
@@ -595,7 +599,7 @@ const MarketPage = () => {
                       <i className="block h-full" style={{ width: `${(z.v / zones.max) * 100}%`, background: z.bg }} />
                     </span>
                     <span className="w-[120px] text-right text-[13px] text-dim tabular-nums">
-                      {z.v} load{z.v === 1 ? "" : "s"} · {Math.round((z.v / Math.max(1, points.length)) * 100)}%
+                      {z.v} load{z.v === 1 ? "" : "s"} · {Math.round((z.v / Math.max(1, zones.total)) * 100)}%
                     </span>
                   </div>
                 ))}
