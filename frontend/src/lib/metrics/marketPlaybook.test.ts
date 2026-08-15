@@ -4,8 +4,11 @@ import { buildTierPlay } from "./marketPlaybook";
 
 // break-even 4.34, floor 4.75, target 5.60, strong 6.50 (gross $/driven mile).
 const LADDER: RateLadder = { walkAway: 4.34, minimum: 4.75, target: 5.6, strong: 6.5 };
-const play = (rate: number | null, dir: "firming" | "flat" | "softening" | null) =>
-  buildTierPlay("standard", "Standard", LADDER, rate, dir);
+const play = (
+  rate: number | null,
+  dir: "firming" | "flat" | "softening" | null,
+  businessUnderwater = false,
+) => buildTierPlay("standard", "Standard", LADDER, rate, dir, businessUnderwater);
 
 describe("buildTierPlay — firming market", () => {
   it("raises toward strong when below it", () => {
@@ -39,10 +42,24 @@ describe("buildTierPlay — softening market", () => {
   });
 });
 
-describe("buildTierPlay — below break-even beats direction", () => {
-  it("cut-costs when under break-even, whatever the market's doing", () => {
-    for (const dir of ["firming", "flat", "softening"] as const) {
-      const p = play(4.2, dir);
+describe("buildTierPlay — a tier under break-even, business still profitable", () => {
+  it("flags 'below cost floor' (subsidized), NOT cut-costs, whatever the market's doing", () => {
+    for (const dir of ["firming", "flat", "softening", null] as const) {
+      const p = play(4.2, dir); // businessUnderwater defaults false
+      expect(p.action).toBe("under-floor");
+      expect(p.headline).toBe("Below your cost floor");
+      expect(p.why).not.toMatch(/cut costs/i);
+      expect(p.why).toMatch(/not losing you money/i); // reassure, don't alarm
+      expect(p.recommendedRate).toBe(4.75); // lift toward the floor
+      expect(p.underwaterPerMile).toBeCloseTo(0.14, 5);
+    }
+  });
+});
+
+describe("buildTierPlay — whole operation under break-even", () => {
+  it("cut-costs when the business itself is underwater, whatever the market's doing", () => {
+    for (const dir of ["firming", "flat", "softening", null] as const) {
+      const p = play(4.2, dir, true);
       expect(p.action).toBe("cut-costs");
       expect(p.headline).toBe("Cut costs");
       expect(p.underwaterPerMile).toBeCloseTo(0.14, 5);
@@ -75,9 +92,9 @@ describe("buildTierPlay — no index reading (null direction)", () => {
     expect(p.rungs).toHaveLength(4);
   });
 
-  it("still says cut-costs when underwater even with no index", () => {
+  it("still flags below-cost-floor when under break-even with no index (business healthy)", () => {
     const p = play(4.2, null);
-    expect(p.action).toBe("cut-costs");
+    expect(p.action).toBe("under-floor");
   });
 });
 

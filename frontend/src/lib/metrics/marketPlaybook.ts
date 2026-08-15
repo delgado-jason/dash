@@ -10,7 +10,11 @@ import { windowRates, median, type RatePoint } from "./marketAnalytics";
 // same gross-$/driven-mile basis as the barometer and scatter, so nothing is
 // compared across bases. Rate math only — the cost-cut planner is separate.
 
-export type PlaybookAction = "raise" | "hold" | "protect" | "cut-costs";
+// "under-floor" = this tier books below your break-even, but the BUSINESS is
+// still profitable (a cheap tier carried by richer freight) — a raise/mix nudge,
+// not the "you're losing money" alarm. "cut-costs" is reserved for when the whole
+// operation is under break-even.
+export type PlaybookAction = "raise" | "hold" | "protect" | "under-floor" | "cut-costs";
 
 export interface Rung {
   key: "strong" | "target" | "floor" | "breakEven";
@@ -45,6 +49,7 @@ export const buildTierPlay = (
   ladder: RateLadder,
   yourRate: number | null,
   direction: MarketDirection | null,
+  businessUnderwater = false,
 ): TierPlay => {
   const be = ladder.walkAway;
   const floor = ladder.minimum;
@@ -83,13 +88,28 @@ export const buildTierPlay = (
   ];
   const withRungs = { ...base, rungs };
 
-  // Below break-even beats every direction — you're losing money on every mile.
+  // Below break-even beats every market direction. But WHAT it means depends on
+  // the whole operation: a single cheap tier under the blended floor (while the
+  // business is profitable) is subsidized freight, not a loss — don't cry "cut
+  // costs." Only when the whole operation is under break-even is cutting costs the
+  // right lever.
   if (yourRate < be) {
+    if (businessUnderwater) {
+      return {
+        ...withRungs,
+        action: "cut-costs",
+        headline: "Cut costs",
+        why: `Your whole operation is booking below break-even (${usd(be)}) — you're losing money on the miles. Cut costs or take home time; don't chase loads at this rate.`,
+        underwaterPerMile: be - yourRate,
+      };
+    }
     return {
       ...withRungs,
-      action: "cut-costs",
-      headline: "Cut costs",
-      why: `You're booking below break-even (${usd(be)}). Holding rate means sitting; booking means losing money — cut costs or take home time, don't chase the load.`,
+      action: "under-floor",
+      headline: "Below your cost floor",
+      why: `Your ${label.toLowerCase()} median (${usd(yourRate)}) runs under your break-even (${usd(be)}) — these loads lean on your better-paying freight, they're not losing you money. Lift this tier toward ${usd(floor)}+ or fill the miles with richer freight; just don't chase them lower.`,
+      movePct: pctMove(yourRate, floor),
+      recommendedRate: floor,
       underwaterPerMile: be - yourRate,
     };
   }
@@ -181,6 +201,10 @@ export const buildMarketPlaybook = (
   specLadder: RateLadder,
   trend: { direction: MarketDirection; pctChange: number } | null,
   now: Date,
+  // Is the WHOLE operation booking below break-even? (blended gross/driven mile <
+  // break-even-to-book). Gates the "cut-costs" verdict; a single cheap tier under
+  // the floor while this is false is subsidized freight, not a loss.
+  businessUnderwater = false,
   windowDays = 90,
 ): MarketPlaybook => {
   const stdRate = median(
@@ -194,8 +218,8 @@ export const buildMarketPlaybook = (
     direction: dir,
     pctChange: trend?.pctChange ?? null,
     tiers: [
-      buildTierPlay("standard", "Standard flatbed", stdLadder, stdRate, dir),
-      buildTierPlay("specialized", "Specialized / oversize", specLadder, specRate, dir),
+      buildTierPlay("standard", "Standard flatbed", stdLadder, stdRate, dir, businessUnderwater),
+      buildTierPlay("specialized", "Specialized / oversize", specLadder, specRate, dir, businessUnderwater),
     ],
   };
 };

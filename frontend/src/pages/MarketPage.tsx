@@ -253,9 +253,25 @@ const MarketPage = () => {
     [points, targets.bookingLadder, targets.specLadder, now, trend],
   );
 
+  // Is the WHOLE operation under break-even? Blended gross/driven mile < the
+  // break-even-to-book (walkAway). This — not a single cheap tier — is what
+  // makes "cut costs" the right call. (grossPerTotalMile ≥ walkAway exactly when
+  // booked gross covers cost after your Landstar take.)
+  const businessUnderwater =
+    targets.basis.grossPerTotalMile != null &&
+    targets.bookingLadder.walkAway != null &&
+    targets.basis.grossPerTotalMile < targets.bookingLadder.walkAway;
   const playbook = useMemo(
-    () => buildMarketPlaybook(points, targets.bookingLadder, targets.specLadder, trend, now),
-    [points, targets.bookingLadder, targets.specLadder, trend, now],
+    () =>
+      buildMarketPlaybook(
+        points,
+        targets.bookingLadder,
+        targets.specLadder,
+        trend,
+        now,
+        businessUnderwater,
+      ),
+    [points, targets.bookingLadder, targets.specLadder, trend, now, businessUnderwater],
   );
 
   const toneColor =
