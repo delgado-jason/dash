@@ -80,18 +80,24 @@ export const percentileOf = (xs: number[], value: number): number | null => {
   return xs.filter((x) => x <= value).length / xs.length;
 };
 
-// Rates from the trailing `days` window ending at `now` (inclusive of today).
-export const windowRates = (
+// Points from the trailing `days` window ending at `now` (inclusive of today).
+// The one place we define "recent" — everything windowed shares this so the rate,
+// the gauge, and the distribution all read the same slice of time.
+export const windowPoints = (
   points: RatePoint[],
   now: Date,
   days = 90,
-): number[] => {
+): RatePoint[] => {
   const today = now.toISOString().slice(0, 10);
   const cut = new Date(now.getTime() - days * 86400000)
     .toISOString()
     .slice(0, 10);
-  return points.filter((p) => p.date > cut && p.date <= today).map((p) => p.rate);
+  return points.filter((p) => p.date > cut && p.date <= today);
 };
+
+// Rates from the trailing `days` window ending at `now` (inclusive of today).
+export const windowRates = (points: RatePoint[], now: Date, days = 90): number[] =>
+  windowPoints(points, now, days).map((p) => p.rate);
 
 export interface TierGaugeRow {
   label: string;
