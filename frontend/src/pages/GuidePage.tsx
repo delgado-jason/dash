@@ -984,6 +984,19 @@ const GuidePage = () => {
               rate, is the lever.
             </Why>
             <Why>
+              When the whole operation is under, a <span className="text-light">cut
+              plan</span> appears under the playbook — built from{" "}
+              <span className="text-light">your own books</span>, not a canned list.
+              It closes the monthly gap least-painful first: overspend trimmed back to
+              normal, then discretionary overhead, a deferred slice of non-safety
+              repairs, a small fuel-efficiency slice — and only reaches for your pay as
+              a last resort, saying so plainly when a gap runs deeper than the safe
+              cuts. Insurance, loans and interest, permits, tolls, and taxes are never
+              touched. You set how each category is treated in{" "}
+              <span className="text-light">Settings → Cost-cut tiers</span>; the plan
+              obeys your choices.
+            </Why>
+            <Why>
               Each tier lists its rungs high to low with a{" "}
               <span className="text-light">You're booking</span> marker dropped in
               where your rate lands, so the call is something you can see, not

@@ -7,6 +7,7 @@ import { getTeam, updateMyName } from "@/services/teamService";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
+import { CutTiersCard } from "@/components/settings/CutTiersCard";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 import { Panel } from "@/components/ui/Panel";
@@ -645,6 +646,8 @@ const SettingsPage = () => {
       </Panel>
 
       <AccessorialRatesCard />
+
+      <CutTiersCard />
     </div>
   );
 };

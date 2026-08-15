@@ -6,6 +6,8 @@ import {
   getExpensePeriod,
   getExpenseCategoryRollup,
   getCategoryDefaults,
+  getCutTierData,
+  setCuttability,
   addExpenseLine,
   patchExpenseLine,
   deleteExpenseLine,
@@ -31,6 +33,27 @@ router.get("/defaults", async (req, res) => {
   try {
     const defaults = await getCategoryDefaults(req.user.user_id);
     return res.status(200).json({ defaults });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// ---- CUT-PLANNER TIER DATA ---- (before "/:period_id" so it isn't matched as one)
+router.get("/cut-tiers", async (req, res) => {
+  try {
+    const categories = await getCutTierData(req.user.user_id);
+    return res.status(200).json({ categories });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// ---- SET A CATEGORY'S CUT TIER OVERRIDE (null = auto) ----
+router.put("/cuttability", async (req, res) => {
+  try {
+    const { category, cuttability } = req.body ?? {};
+    await setCuttability(req.user.user_id, category, cuttability ?? null);
+    return res.status(200).json({ ok: true });
   } catch (err) {
     return handleError(res, err);
   }

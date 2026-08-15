@@ -25,7 +25,10 @@ import {
 } from "@/lib/metrics/marketAnalytics";
 import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
 import { buildMarketPlaybook } from "@/lib/metrics/marketPlaybook";
+import { buildCutPlan, toCutCategories } from "@/lib/metrics/cutPlanner";
 import { MarketPlaybookCard } from "@/components/market/MarketPlaybookCard";
+import { CutPanel } from "@/components/market/CutPanel";
+import { getCutTierData, type CutTierRow } from "@/services/expensesService";
 import { rpm } from "@/lib/format";
 
 const MACRO = "#4f8cd6"; // FRED PPI overlay line — the house chart blue
@@ -275,6 +278,29 @@ const MarketPage = () => {
     [points, targets.bookingLadder, targets.specLadder, trend, now, businessUnderwater],
   );
 
+  // Monthly dollars to cut to get the whole operation back to break-even:
+  // cost minus what your booked gross actually covers after the Landstar take.
+  // > 0 exactly when businessUnderwater — the same reconciled basis.
+  const monthlyGap = useMemo(() => {
+    const b = targets.basis;
+    if (b.grossPerTotalMile == null || b.trueMonthlyCost == null || b.months <= 0) return null;
+    const monthlyGross = (b.grossPerTotalMile * b.totalMiles) / b.months;
+    return b.trueMonthlyCost - monthlyGross * targets.linehaulTake;
+  }, [targets.basis, targets.linehaulTake]);
+
+  // Only fetch the cut-tier data when the plan will actually show.
+  const [cutRows, setCutRows] = useState<CutTierRow[]>([]);
+  useEffect(() => {
+    if (!businessUnderwater) return;
+    getCutTierData().then(setCutRows).catch(() => {});
+  }, [businessUnderwater]);
+
+  const cutPlan = useMemo(() => {
+    if (!businessUnderwater || monthlyGap == null || monthlyGap <= 0 || cutRows.length === 0)
+      return null;
+    return buildCutPlan(toCutCategories(cutRows), monthlyGap);
+  }, [businessUnderwater, monthlyGap, cutRows]);
+
   const toneColor =
     gauge.tone === "hot" ? "#4ade80" : gauge.tone === "soft" ? "#f87171" : "#e0a020";
 
@@ -339,6 +365,7 @@ const MarketPage = () => {
         {/* the playbook — the one clear move per tier, given the trend */}
         <div className="mt-4">
           <MarketPlaybookCard playbook={playbook} />
+          {cutPlan && <CutPanel plan={cutPlan} />}
         </div>
 
         {/* the verdict */}
