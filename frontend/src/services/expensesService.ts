@@ -1,5 +1,6 @@
 import api from "./api";
 import { dedupe } from "@/lib/dedupe";
+import type { CutTier } from "@/lib/metrics/cutPlanner";
 import type {
   ExpensePeriod,
   ExpenseLine,
@@ -80,6 +81,33 @@ export const getCategoryDefaults = async (): Promise<
   } catch {
     throw new Error("Unable to fetch category defaults");
   }
+};
+
+// ---- Cost-cut tiers (the Market cut planner + Settings override) ----
+export interface CutTierRow {
+  category: string;
+  section: "cogs" | "expenses";
+  type: ExpenseType | null;
+  cuttability: CutTier | null; // null = auto-classify from the name
+  current: number; // latest month's spend
+  baseline: number; // trailing monthly average
+}
+
+export const getCutTierData = async (): Promise<CutTierRow[]> => {
+  try {
+    const res = await api.get("/expenses/cut-tiers");
+    return (res.data.categories ?? []) as CutTierRow[];
+  } catch {
+    throw new Error("Unable to fetch cut-tier data");
+  }
+};
+
+// Pin a category's tier, or pass null to clear the override (back to auto).
+export const setCuttability = async (
+  category: string,
+  cuttability: CutTier | null,
+): Promise<void> => {
+  await api.put("/expenses/cuttability", { category, cuttability });
 };
 
 export interface SaveExpenseLine {

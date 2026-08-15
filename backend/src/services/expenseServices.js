@@ -183,10 +183,111 @@ export async function getExpenseCategoryRollup(user_id, year) {
 export async function getCategoryDefaults(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT category, type FROM expense_category_defaults WHERE user_id = $1`,
+    `SELECT category, type, cuttability FROM expense_category_defaults WHERE user_id = $1`,
     [user_id],
   );
   return result.rows;
+}
+
+// The cost-cut tiers the planner + Settings recognize. NULL cuttability = auto.
+export const CUT_TIERS = [
+  "off_limits",
+  "essential",
+  "discretionary",
+  "deferrable",
+  "efficiency",
+  "last_resort",
+];
+
+const monthKey = (v) =>
+  (v instanceof Date ? v.toISOString() : String(v)).slice(0, 10);
+
+// Per-category cost picture for the Market cut planner: the latest month's spend
+// (current) + the trailing monthly average (baseline, over the up-to-6 months
+// before it, treating absent months as $0) + the saved type/cuttability. The
+// planner tiers each category; this just supplies the dollars and the override.
+export async function getCutTierData(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const { rows } = await db.query(
+    `SELECT l.category, l.section, p.period_month, SUM(l.amount)::float8 AS amt
+       FROM expense_lines l
+       JOIN expense_periods p ON p.period_id = l.period_id
+      WHERE l.user_id = $1
+      GROUP BY l.category, l.section, p.period_month`,
+    [user_id],
+  );
+  if (rows.length === 0) return [];
+
+  const { rows: defs } = await db.query(
+    `SELECT category, type, cuttability FROM expense_category_defaults WHERE user_id = $1`,
+    [user_id],
+  );
+  const defByCat = new Map(defs.map((d) => [d.category, d]));
+
+  const maxMonth = rows.reduce(
+    (mx, r) => (monthKey(r.period_month) > mx ? monthKey(r.period_month) : mx),
+    "0000-00-00",
+  );
+  const md = new Date(maxMonth);
+  const baseCutoff = new Date(
+    Date.UTC(md.getUTCFullYear(), md.getUTCMonth() - 6, 1),
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  const byCat = new Map();
+  for (const r of rows) {
+    const m = monthKey(r.period_month);
+    const e =
+      byCat.get(r.category) ??
+      { category: r.category, section: r.section, current: 0, baseSum: 0, baseMonths: new Set() };
+    e.section = r.section;
+    if (m === maxMonth) e.current += r.amt;
+    else if (m >= baseCutoff && m < maxMonth) {
+      e.baseSum += r.amt;
+      e.baseMonths.add(m); // PER-CATEGORY: a category new this month has none
+    }
+    byCat.set(r.category, e);
+  }
+
+  return [...byCat.values()]
+    .map((e) => {
+      const def = defByCat.get(e.category);
+      const n = e.baseMonths.size;
+      return {
+        category: e.category,
+        section: e.section,
+        type: def?.type ?? null,
+        cuttability: def?.cuttability ?? null,
+        current: Math.round(e.current),
+        // No baseline history for THIS category → baseline = current, so a brand-new
+        // (or lumpy quarterly) cost isn't mislabeled as "overspend" and cut first.
+        baseline: n > 0 ? Math.round(e.baseSum / n) : Math.round(e.current),
+      };
+    })
+    .sort((a, b) => b.baseline - a.baseline);
+}
+
+// Pin (or clear, with null) a category's cost-cut tier. Upserts onto the
+// per-user default row, inventing a type only if the category has none yet.
+export async function setCuttability(user_id, category, cuttability) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  if (!category || typeof category !== "string")
+    throw new ValidationError("category is required");
+  if (cuttability != null && !CUT_TIERS.includes(cuttability))
+    throw new ValidationError("invalid cuttability tier");
+  await db.query(
+    `INSERT INTO expense_category_defaults (user_id, category, type, cuttability)
+     VALUES ($1::uuid, $2::varchar,
+       COALESCE(
+         (SELECT type FROM expense_category_defaults WHERE user_id = $1::uuid AND category = $2::varchar),
+         'variable'::expense_type
+       ),
+       $3::cut_tier)
+     ON CONFLICT (user_id, category)
+       DO UPDATE SET cuttability = EXCLUDED.cuttability, updated_at = NOW()`,
+    [user_id, category, cuttability],
+  );
 }
 
 // ---- ADD A LINE ----
