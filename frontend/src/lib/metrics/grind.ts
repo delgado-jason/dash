@@ -37,6 +37,11 @@ export interface Grind {
   thisWeek: WeekStatus; // the in-progress week
   thisWeekGross: number;
   hasLadder: boolean; // false when there's no P&L to build gross targets from
+  // Personal mode only: how far the baseline has forged. The view renders a
+  // ghost meter from these instead of vanishing (the ghost rule — hardware you
+  // haven't earned shows dashed with its criterion, it doesn't disappear).
+  activeWeeks?: number;
+  weeksNeeded?: number;
 }
 
 // Grade a week's gross against the weekly pace targets. Zero freight = home.
@@ -163,6 +168,7 @@ export const computePersonalGrind = (
 ): Grind => {
   const empty: Grind = {
     weeks: [], currentStreak: 0, bestStreak: 0, thisWeek: "home", thisWeekGross: 0, hasLadder: false,
+    activeWeeks: 0, weeksNeeded: MIN_ACTIVE_WEEKS,
   };
   const delivered = mine.filter((l) => l.load_status === "delivered" && l.delivery_date);
   if (delivered.length === 0) return empty;
@@ -192,5 +198,9 @@ export const computePersonalGrind = (
     dailyBreakEven: null,
     dailyTarget: null,
   };
-  return grindFrom(mine, targets, now, weeksToShow, hasLadder);
+  return {
+    ...grindFrom(mine, targets, now, weeksToShow, hasLadder),
+    activeWeeks: active.length,
+    weeksNeeded: MIN_ACTIVE_WEEKS,
+  };
 };

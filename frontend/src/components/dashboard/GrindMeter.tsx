@@ -73,6 +73,46 @@ const Dot = ({ style, label }: { style?: CSSProperties; label: string }) => (
 // Presentational — takes a pre-computed grind so a dispatcher's personal-pace
 // grind can flow through without the owner's P&L fetch.
 export const GrindMeterView = ({ grind, mode = "owner" }: { grind: Grind | null; mode?: Mode }) => {
+  // Personal mode ghosts while the baseline forges — the meter must not
+  // vanish (the ghost rule): show the criterion and the progress toward it.
+  if (mode === "personal" && grind && (!grind.hasLadder || grind.weeks.length === 0)) {
+    const need = grind.weeksNeeded ?? 3;
+    const have = Math.min(grind.activeWeeks ?? 0, need);
+    return (
+      <Board className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="font-forge font-bold text-[17px] tracking-[.12em] text-faint">
+            HEAT
+          </span>
+          <span className="flex-1" />
+          <span className="font-condensed text-[11px] text-faint tracking-[.08em] uppercase">
+            forging your baseline
+          </span>
+        </div>
+        <div className="flex gap-[5px]">
+          {Array.from({ length: need }, (_, i) => (
+            <i
+              key={i}
+              className="flex-1 h-[12px] rounded-[3px]"
+              style={
+                i < have
+                  ? {
+                      background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                      boxShadow: "0 0 8px rgba(232,148,10,.3)",
+                    }
+                  : { border: "1px dashed var(--color-hairline)" }
+              }
+            />
+          ))}
+        </div>
+        <p className="font-condensed text-[12px] text-faint mt-2.5">
+          Your heat gauge grades against <b className="text-dim">your own typical week</b> —
+          it forges after {need} active booking weeks. <b className="text-dim">{have} of {need}</b>{" "}
+          logged; a week counts once loads you booked deliver.
+        </p>
+      </Board>
+    );
+  }
   if (!grind || !grind.hasLadder || grind.weeks.length === 0) return null;
 
   const c = COPY[mode];

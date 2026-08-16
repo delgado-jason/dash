@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { GrindMeterView } from "@/components/dashboard/GrindMeter";
-import { TopAgents } from "@/components/dashboard/TopAgents";
+import { RaceBoard } from "@/components/dashboard/agents/RaceBoard";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
 import { DispatcherChip } from "@/components/dashboard/DispatcherChip";
@@ -23,14 +23,9 @@ import { PaceMeter, paceMarker } from "@/components/ui/PaceMeter";
 import { CountUp } from "@/components/ui/CountUp";
 import {
   getLoadsMonthly,
-  getTopAgentsByRevenue,
   getDeadheadTrend,
   getDetentionOwed,
 } from "@/lib/metrics/dashboard";
-import {
-  computeHonors,
-  currentQuarterStandings,
-} from "@/lib/metrics/agentLeaderboard";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
 import { getWeekGrossCommitted, getWeekGrossEarned } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -172,9 +167,6 @@ const DispatchDashboard = () => {
       : deadhead.thisMonth <= deadheadBaseline
         ? "pos"
         : "neg";
-  const topAgents = getTopAgentsByRevenue(loads);
-  const agentHonors = computeHonors(loads, now);
-  const agentStandings = currentQuarterStandings(loads, now);
 
   // Her chase surface — the shop's booking floor + weekly target (account cost),
   // but the week she's actually filling is HER bookings (earned + committed).
@@ -447,12 +439,9 @@ const DispatchDashboard = () => {
             <DispatchAgentsTable loads={loads} />
           </div>
 
-          {/* Top agents — ranked by gross, same race the owner sees */}
-          <TopAgents
-            agents={topAgents}
-            honors={agentHonors}
-            standings={agentStandings}
-          />
+          {/* THE RACE — the same quarter leaderboard the owner sees, same
+              component, same logic. */}
+          <RaceBoard loads={loads} />
         </div>
       </div>
     </div>

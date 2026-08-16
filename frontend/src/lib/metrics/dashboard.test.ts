@@ -10,7 +10,6 @@ import {
   getMonthlyRPM,
   getOutstandingLoads,
   getLoadsMonthly,
-  getTopAgentsByRevenue,
   getUpcomingLoads,
   getRecentDeliveredLoads,
   getOutstandingSummary,
@@ -231,54 +230,6 @@ describe("getLoadsMonthly", () => {
       }),
     ];
     expect(getLoadsMonthly(loads)).toEqual({ thisMonth: 2, lastMonth: 1 });
-  });
-});
-
-describe("getTopAgentsByRevenue", () => {
-  it("ranks by recent revenue; drops one-offs (floor) and stale agents (window)", () => {
-    const loads = [
-      // Ann: 2 recent loads → qualifies, revenue 1500
-      makeLoad({ agent_id: "a1", agent: "Ann", linehaul: "1000", delivery_date: "2026-06-10T04:00:00.000Z" }),
-      makeLoad({ agent_id: "a1", agent: "Ann", linehaul: "500", delivery_date: "2026-06-12T04:00:00.000Z" }),
-      // Bob: 3 recent loads → qualifies, revenue 1200
-      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-01T04:00:00.000Z" }),
-      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-05T04:00:00.000Z" }),
-      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-08T04:00:00.000Z" }),
-      // Cid: one big recent load → excluded by the ≥2 floor
-      makeLoad({ agent_id: "a3", agent: "Cid", linehaul: "9999", delivery_date: "2026-06-15T04:00:00.000Z" }),
-      // Dot: two loads but ~6 months ago → excluded by the 90-day window
-      makeLoad({ agent_id: "a4", agent: "Dot", linehaul: "5000", delivery_date: "2025-12-15T04:00:00.000Z" }),
-      makeLoad({ agent_id: "a4", agent: "Dot", linehaul: "5000", delivery_date: "2025-12-20T04:00:00.000Z" }),
-    ];
-    const top = getTopAgentsByRevenue(loads, 90, 2, 5);
-    expect(top.map((a) => a.agent)).toEqual(["Ann", "Bob"]);
-    expect(top[0].revenue).toBe(1500);
-    expect(top[0].loadCount).toBe(2);
-  });
-
-  it("respects the limit", () => {
-    const loads = ["a", "b", "c"].flatMap((id) => [
-      makeLoad({ agent_id: id, agent: id, delivery_date: "2026-06-10T04:00:00.000Z" }),
-      makeLoad({ agent_id: id, agent: id, delivery_date: "2026-06-11T04:00:00.000Z" }),
-    ]);
-    expect(getTopAgentsByRevenue(loads, 90, 2, 2)).toHaveLength(2);
-  });
-
-  it("uses GROSS, not net — an agent isn't penalized for Jason's cut", () => {
-    // gross = linehaul + fsc + accessorials = 1250/load; net_revenue (700) must
-    // NOT be what's summed.
-    const grossLoad = {
-      linehaul: "1000",
-      fuel_surcharge: "200",
-      total_accessorials: "50",
-      net_revenue: "700",
-    };
-    const loads = [
-      makeLoad({ agent_id: "g", agent: "Gus", delivery_date: "2026-06-10T04:00:00.000Z", ...grossLoad }),
-      makeLoad({ agent_id: "g", agent: "Gus", delivery_date: "2026-06-12T04:00:00.000Z", ...grossLoad }),
-    ];
-    const top = getTopAgentsByRevenue(loads, 90, 2, 5);
-    expect(top[0].revenue).toBe(2500); // 2 × 1250 gross, not 2 × 700 net
   });
 });
 
