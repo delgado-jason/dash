@@ -285,6 +285,21 @@ export const getWeekGrossEarned = (
     .filter((l) => l.load_status === "delivered")
     .reduce((s, l) => s + loadGross(l), 0);
 
+// The week's still-open slice — in-window loads that haven't delivered yet.
+// This is what stacks ON TOP of earned in a pace meter. getWeekGrossCommitted
+// includes delivered loads (it's the week's whole book, rendered as an
+// underlay on the owner card); summing THAT with earned double-counts every
+// delivered load — the S9 Pulse bug, which resurfaced on the dispatch card
+// (Jason, 2026-08-15: one $2,250 delivered load projecting as $4,500).
+export const getWeekGrossPipeline = (
+  loads: Load[],
+  start: Date,
+  end: Date,
+): number =>
+  loadsInWeek(loads, start, end)
+    .filter((l) => l.load_status !== "delivered")
+    .reduce((s, l) => s + loadGross(l), 0);
+
 // Booked beyond the current pay week — the pipeline a dispatcher just built
 // that the week meter can't show yet (committed counts only loads LANDING this
 // week; a Saturday booking that delivers next Friday lives here until its week

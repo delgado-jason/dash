@@ -3,6 +3,7 @@ import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import {
   getBookedAheadGross,
+  getWeekGrossPipeline,
   loadRevenue,
   loadGross,
   completeMonthsBefore,
@@ -373,5 +374,26 @@ describe("getBookedAheadGross", () => {
   });
   it("is zero with nothing booked past the window", () => {
     expect(getBookedAheadGross([], new Date("2026-08-19T00:00:00Z"))).toBe(0);
+  });
+});
+
+describe("getWeekGrossPipeline", () => {
+  const L = (over: Record<string, unknown>) => over as unknown as import("@/types/load").Load;
+  const start = new Date("2026-08-12T00:00:00Z");
+  const end = new Date("2026-08-19T00:00:00Z");
+  it("excludes delivered — one delivered load must not project double (Brandie's case)", () => {
+    const loads = [
+      L({ load_status: "delivered", delivery_date: "2026-08-12", linehaul: "2250", fuel_surcharge: "0", total_accessorials: 0 }),
+    ];
+    expect(getWeekGrossPipeline(loads, start, end)).toBe(0);
+    // projected = earned + pipeline = 2250 + 0, never 4500
+  });
+  it("counts the undelivered slice of the week", () => {
+    const loads = [
+      L({ load_status: "delivered", delivery_date: "2026-08-12", linehaul: "2250", fuel_surcharge: "0", total_accessorials: 0 }),
+      L({ load_status: "in_transit", delivery_date: "2026-08-17", linehaul: "3199", fuel_surcharge: "651", total_accessorials: 0 }),
+      L({ load_status: "booked", delivery_date: "2026-08-25", linehaul: "999", fuel_surcharge: "0", total_accessorials: 0 }), // outside the window
+    ];
+    expect(getWeekGrossPipeline(loads, start, end)).toBeCloseTo(3850, 5);
   });
 });
