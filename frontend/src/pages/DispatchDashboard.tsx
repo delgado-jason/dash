@@ -27,7 +27,7 @@ import {
   getDetentionOwed,
 } from "@/lib/metrics/dashboard";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
-import { getWeekGrossCommitted, getWeekGrossEarned, getBookedAheadGross } from "@/lib/metrics/rateTargets";
+import { getWeekGrossPipeline, getWeekGrossEarned, getBookedAheadGross } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -174,9 +174,11 @@ const DispatchDashboard = () => {
     targets.weekStart && targets.weekEnd
       ? getWeekGrossEarned(mine, targets.weekStart, targets.weekEnd)
       : 0;
+  // The still-open slice of the week — NOT getWeekGrossCommitted, which
+  // includes delivered loads and double-counts them when summed with earned.
   const committed =
     targets.weekStart && targets.weekEnd
-      ? getWeekGrossCommitted(mine, targets.weekStart, targets.weekEnd)
+      ? getWeekGrossPipeline(mine, targets.weekStart, targets.weekEnd)
       : 0;
   // The pipeline she just built — bookings landing beyond this pay week. The
   // meter can't show them yet (committed counts the landing week), but the
