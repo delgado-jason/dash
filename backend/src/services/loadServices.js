@@ -249,11 +249,12 @@ export async function getLoad(user_id, load_id) {
 }
 
 // ---- CREATE LOAD SERVICE ----
-// A load's booker defaults to the ACCOUNT OWNER (user_id === account_id), not
-// whoever enters it: in this owner-operator shop the owner does the booking and
-// a training dispatcher just logs the loads. The client sends booked_by
-// explicitly (the "Booked by" picker, default = owner) and anyone can reassign
-// it per-load. `self_id` (the logged-in person) is accepted for caller parity.
+// A load's booker defaults to WHOEVER CREATES IT (self_id — the logged-in
+// person), so a dispatcher's bookings are credited to her (and the owner's to
+// him). The client sends booked_by explicitly (the "Booked by" picker) and
+// anyone can reassign it per-load; only if it's absent do we fall back to the
+// creator, then the account owner. This is the attribution the dispatcher
+// scorecards + forge awards are scoped by.
 export async function createLoad(user_id, data, self_id) {
   // Reject missing user_id
   if (!user_id) throw new ValidationError("Missing user_id");
@@ -317,8 +318,8 @@ export async function createLoad(user_id, data, self_id) {
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
 
-  // Booker: explicit override (the "Booked by" picker), else the account owner.
-  const booker = data.booked_by ?? user_id;
+  // Booker: explicit override (the "Booked by" picker), else the creator, else owner.
+  const booker = data.booked_by ?? self_id ?? user_id;
   let fields = ["user_id", "booked_by"];
   let values = [user_id, booker];
   let placeholders = ["$1", "$2"];

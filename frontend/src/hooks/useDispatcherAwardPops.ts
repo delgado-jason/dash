@@ -37,23 +37,24 @@ export const useDispatcherAwardPops = (
   input: DispatcherAwardInput | null,
 ): Award[] => {
   const [pops, setPops] = useState<Award[]>([]);
-  const [done, setDone] = useState(false);
+  // Depend on the underlying DATA, not the input object (rebuilt every render).
+  // Recomputing whenever her loads/streak change — rather than once per mount —
+  // is what makes a freshly-earned award actually fire; the per-device seen-store
+  // dedups, so a re-run never re-pops something already celebrated.
+  const loads = input?.loads;
+  const userId = input?.userId;
+  const streak = input?.streak;
+  const freeHours = input?.freeHours;
+  const ladder = input?.ladder;
 
   useEffect(() => {
-    if (!input || input.loads.length === 0 || done) return;
-    setDone(true);
+    if (!input || !loads || loads.length === 0) return;
 
     // Patches + medals (incl. Backhaul Boss) plus the current-period season
     // trophies — all through one seen-store so day-one baselines silently.
     const earned = [
       ...dispatcherEarnedAwards(input),
-      ...dispatcherSeasonAwards(
-        input.loads,
-        input.userId,
-        input.ladder,
-        input.freeHours,
-        new Date(),
-      ),
+      ...dispatcherSeasonAwards(loads, userId!, ladder!, freeHours!, new Date()),
     ];
     const currentIds = earned.map((a) => a.id);
     const store = read();
@@ -67,7 +68,8 @@ export const useDispatcherAwardPops = (
       write({ baselined: true, seen: [...new Set([...store.seen, ...currentIds])] });
       setPops(fresh);
     }
-  }, [input, done]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loads, userId, streak, freeHours, ladder]);
 
   return pops;
 };

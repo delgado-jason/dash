@@ -73,22 +73,23 @@ export const bestStreakOf = (statuses: WeekStatus[]): number => {
   return best;
 };
 
-export const computeGrind = (
-  loads: Load[],
-  periods: ExpensePeriod[],
-  obligationsMonthly: number,
-  now: Date,
-  marginGoal: number = MARGIN_GOAL,
-  weeksToShow = 14,
-): Grind => {
-  const basis = getCostBasis(periods, obligationsMonthly, loads, now);
-  const targets = getGrossTargets(
-    basis.trueMonthlyCost,
-    marginGoal,
-    WORKING_DAYS_PER_MONTH,
-  );
-  const hasLadder = targets.weeklyTarget != null;
+const medianOf = (xs: number[]): number | null => {
+  if (xs.length === 0) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
 
+// The shared core: grade every pay-week from the earliest delivery to now against
+// a target set, and roll up the streaks. Both grinds — the owner's cost target and
+// a dispatcher's personal pace — flow through here so they render identically.
+const grindFrom = (
+  loads: Load[],
+  targets: GrossTargets,
+  now: Date,
+  weeksToShow: number,
+  hasLadder: boolean,
+): Grind => {
   const current = payWeekRange(now, PAY_WEEK_START_DOW);
   const thisWeekGross = getWeekEarnedGross(loads, current.start, current.end);
   const thisWeek: WeekStatus = hasLadder ? classify(thisWeekGross, targets) : "home";
@@ -126,4 +127,70 @@ export const computeGrind = (
     thisWeekGross,
     hasLadder,
   };
+};
+
+export const computeGrind = (
+  loads: Load[],
+  periods: ExpensePeriod[],
+  obligationsMonthly: number,
+  now: Date,
+  marginGoal: number = MARGIN_GOAL,
+  weeksToShow = 14,
+): Grind => {
+  const basis = getCostBasis(periods, obligationsMonthly, loads, now);
+  const targets = getGrossTargets(
+    basis.trueMonthlyCost,
+    marginGoal,
+    WORKING_DAYS_PER_MONTH,
+  );
+  return grindFrom(loads, targets, now, weeksToShow, targets.weeklyTarget != null);
+};
+
+// A dispatcher's grind, graded against HER OWN typical week instead of the shop's
+// cost target — so the streak is winnable and genuinely hers. "Typical" is the
+// median of her active (non-zero) weekly booked gross over the trailing quarter,
+// so the bar tracks the current season, not an all-time average. A week at ≥ 75%
+// of that keeps the streak hot; an off week (nothing delivered) stays neutral.
+export const PERSONAL_SOLID = 0.75; // ≥ this share of a typical week = a "target" week
+export const PERSONAL_FLOOR = 0.4; // below this share = a "below" week
+const TYPICAL_WINDOW_WEEKS = 13; // ~ a quarter — the seasonal window for "typical"
+const MIN_ACTIVE_WEEKS = 3; // need a few weeks before a personal bar is meaningful
+
+export const computePersonalGrind = (
+  mine: Load[],
+  now: Date,
+  weeksToShow = 14,
+): Grind => {
+  const empty: Grind = {
+    weeks: [], currentStreak: 0, bestStreak: 0, thisWeek: "home", thisWeekGross: 0, hasLadder: false,
+  };
+  const delivered = mine.filter((l) => l.load_status === "delivered" && l.delivery_date);
+  if (delivered.length === 0) return empty;
+
+  let earliest = delivered[0].delivery_date!;
+  for (const l of delivered)
+    if (l.delivery_date! < earliest) earliest = l.delivery_date!;
+  const firstStart = payWeekRange(
+    new Date(earliest.slice(0, 10) + "T00:00:00Z"),
+    PAY_WEEK_START_DOW,
+  ).start;
+  const current = payWeekRange(now, PAY_WEEK_START_DOW);
+
+  // Her active weekly grosses over the trailing quarter → the seasonal "typical".
+  const windowStart = current.start.getTime() - TYPICAL_WINDOW_WEEKS * WEEK_MS;
+  const active: number[] = [];
+  for (let t = firstStart.getTime(); t < current.start.getTime(); t += WEEK_MS) {
+    if (t < windowStart) continue;
+    const g = getWeekEarnedGross(mine, new Date(t), new Date(t + WEEK_MS));
+    if (g > 0) active.push(g);
+  }
+  const typical = medianOf(active);
+  const hasLadder = typical != null && typical > 0 && active.length >= MIN_ACTIVE_WEEKS;
+  const targets: GrossTargets = {
+    weeklyBreakEven: typical != null ? typical * PERSONAL_FLOOR : null,
+    weeklyTarget: typical != null ? typical * PERSONAL_SOLID : null,
+    dailyBreakEven: null,
+    dailyTarget: null,
+  };
+  return grindFrom(mine, targets, now, weeksToShow, hasLadder);
 };

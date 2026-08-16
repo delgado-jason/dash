@@ -25,6 +25,7 @@ const FULL_BLEED_PREFIXES = [
   { prefix: "/facilities", ownerOnly: false },
   { prefix: "/drivers", ownerOnly: false },
   { prefix: "/dispatcher", ownerOnly: false },
+  { prefix: "/forge", ownerOnly: false }, // Dispatch Forge — carries its own trigger
   { prefix: "/trucks", ownerOnly: false },
   { prefix: "/trailers", ownerOnly: false },
   { prefix: "/maintenance", ownerOnly: false },

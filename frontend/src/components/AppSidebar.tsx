@@ -10,6 +10,7 @@ import {
   Wallet,
   ShieldCheck,
   Trophy,
+  Flame,
   BookOpen,
   Volume2,
   VolumeX,
@@ -36,7 +37,7 @@ import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 // `adminOnly` items are owner-only; a dispatcher's nav filters them out (and the
 // route guard bounces her if she types the URL). Keep these flags in lockstep
 // with ADMIN_ONLY_PREFIXES in lib/roles.
-type Child = { to: string; label: string; adminOnly?: boolean };
+type Child = { to: string; label: string; adminOnly?: boolean; dispatcherOnly?: boolean };
 type Leaf = Child & { icon: LucideIcon };
 type Group = { label: string; icon: LucideIcon; children: Child[] };
 type Entry = Leaf | Group;
@@ -85,21 +86,18 @@ const nav: Entry[] = [
   },
   { to: "/compliance", label: "Compliance", icon: ShieldCheck },
   { to: "/trophy-room", label: "Trophy Room", icon: Trophy, adminOnly: true },
+  { to: "/forge", label: "The Forge", icon: Flame, dispatcherOnly: true },
   { to: "/guide", label: "Guide", icon: BookOpen },
 ];
 
-// A dispatcher sees only the non-adminOnly items; empty groups drop out.
+// A dispatcher sees only the non-adminOnly items; the owner sees everything except
+// the dispatcher-only ones (e.g. The Forge, which is each dispatcher's own room).
+// Empty groups drop out.
 const navFor = (dispatcher: boolean): Entry[] => {
-  if (!dispatcher) return nav;
+  const drop = (c: Child) => (dispatcher ? c.adminOnly : c.dispatcherOnly);
   return nav
-    .map((e) =>
-      isGroup(e)
-        ? { ...e, children: e.children.filter((c) => !c.adminOnly) }
-        : e,
-    )
-    .filter((e) =>
-      isGroup(e) ? e.children.length > 0 : !(e as Leaf).adminOnly,
-    );
+    .map((e) => (isGroup(e) ? { ...e, children: e.children.filter((c) => !drop(c)) } : e))
+    .filter((e) => (isGroup(e) ? e.children.length > 0 : !drop(e as Leaf)));
 };
 
 const AppSidebar = () => {

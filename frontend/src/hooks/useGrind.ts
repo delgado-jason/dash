@@ -6,7 +6,7 @@ import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
-import { computeGrind, type Grind } from "@/lib/metrics/grind";
+import { computeGrind, computePersonalGrind, type Grind } from "@/lib/metrics/grind";
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { marginGoalFrom } from "@/lib/constants/targets";
 
@@ -29,3 +29,11 @@ export const useGrind = (loads: Load[]): Grind | null => {
     return computeGrind(loads, periods, obligationsMonthly, new Date(), marginGoalFrom(schedule));
   }, [periods, obligations, loads, schedule]);
 };
+
+// A dispatcher's personal-pace grind — graded against her own typical week, so no
+// P&L is needed. Null until she has enough booking history for a bar.
+export const usePersonalGrind = (mine: Load[]): Grind | null =>
+  useMemo(
+    () => (mine.length > 0 ? computePersonalGrind(mine, new Date()) : null),
+    [mine],
+  );

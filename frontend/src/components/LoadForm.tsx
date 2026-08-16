@@ -401,26 +401,22 @@ const LoadForm = ({
   const [facilityList, setFacilityList] = useState<Facility[]>(facilities);
 
   // Booking credit. Anyone on the account (owner or a dispatcher) can attribute
-  // a load; the picker below defaults to the account owner, since in this shop
-  // the owner does the booking and a training dispatcher just logs the loads.
+  // a load; the picker below defaults to WHOEVER IS CREATING IT, so a dispatcher's
+  // bookings are credited to her and count toward her scorecards + forge awards.
   const selfId = localStorage.getItem("user_id");
   const [team, setTeam] = useState<TeamMember[]>([]);
   useEffect(() => {
     getTeam().then(setTeam).catch(() => {});
   }, []);
-  // New load: once the team loads, default the booker to the account owner
-  // (role "admin"). Edit mode keeps the load's existing booker; a manual pick
-  // wins (we only fill a still-empty booked_by).
+  // New load: default the booker to the logged-in creator (self). Edit mode keeps
+  // the load's existing booker; a manual pick wins (we only fill a still-empty
+  // booked_by). Matches the backend default (createLoad → self_id).
   useEffect(() => {
-    if (initialData) return;
-    // The account owner is the first row — listAccountUsers sorts owner-first.
-    const owner = team[0];
-    if (owner) {
-      setFormData((prev) =>
-        prev.booked_by ? prev : { ...prev, booked_by: owner.user_id },
-      );
-    }
-  }, [team, initialData]);
+    if (initialData || !selfId) return;
+    setFormData((prev) =>
+      prev.booked_by ? prev : { ...prev, booked_by: selfId },
+    );
+  }, [initialData, selfId]);
 
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);

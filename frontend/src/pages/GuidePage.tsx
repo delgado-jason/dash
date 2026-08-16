@@ -414,6 +414,7 @@ const NAV: { group: string; items: string[] }[] = [
       "The Dispatcher Card",
       "Dispatcher achievements — patches &amp; medals",
       "Dispatcher season &amp; trophies",
+      "The Dispatch Forge",
     ],
   },
 ];
@@ -2256,6 +2257,41 @@ const GuidePage = () => {
               head-to-head "champion" would just be the same name every period —
               these reward your own best month instead. Earn one and it pops like
               a patch does.
+            </Why>
+          </Section>
+
+          <Section
+            title="The Dispatch Forge"
+            sources={[{ label: "The Forge", to: "/forge" }]}
+          >
+            <p className="text-sm text-muted-text">
+              Everything a dispatcher earns lives in one place —{" "}
+              <span className="text-light">The Dispatch Forge</span>, her own room
+              reached from the <span className="text-light">Forge</span> entry in
+              the menu. It gathers her rank and progress to the next tier, her{" "}
+              <span className="text-light">coins</span> (medals) and{" "}
+              <span className="text-light">tags</span> (patches), and this
+              quarter's <span className="text-light">season crowns</span> — all
+              scored on the loads she booked.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              It leads with{" "}
+              <span className="text-light">Next up — within reach</span>: the
+              handful of achievements she's closest to, most-progressed first, so
+              there's always a concrete next thing to chase. Every award — earned
+              or locked — carries a short line on exactly{" "}
+              <span className="text-light">how to earn it</span>, and booking a
+              steal, running a clean week, or extending her streak fires the same
+              celebration the owner gets.
+            </p>
+            <Why>
+              Her <span className="text-light">HEAT</span> streak is graded
+              against her own typical week — the median of her recent weekly
+              booked gross over the trailing quarter — not the shop's cost
+              target. A week at three-quarters of her usual keeps it hot. That
+              keeps the streak winnable and seasonal: the bar tracks the market
+              she's actually booking in, and it's hers, not the whole
+              operation's.
             </Why>
           </Section>
         </main>
