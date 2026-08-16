@@ -285,6 +285,20 @@ export const getWeekGrossEarned = (
     .filter((l) => l.load_status === "delivered")
     .reduce((s, l) => s + loadGross(l), 0);
 
+// Booked beyond the current pay week — the pipeline a dispatcher just built
+// that the week meter can't show yet (committed counts only loads LANDING this
+// week; a Saturday booking that delivers next Friday lives here until its week
+// arrives). Live bookings only: booked or rolling, not yet delivered.
+export const getBookedAheadGross = (loads: Load[], weekEnd: Date): number =>
+  loads
+    .filter(
+      (l) =>
+        (l.load_status === "booked" || l.load_status === "in_transit") &&
+        l.delivery_date != null &&
+        new Date(l.delivery_date).getTime() >= weekEnd.getTime(),
+    )
+    .reduce((s, l) => s + loadGross(l), 0);
+
 // This week's blended rate per loaded mile — where you're landing right now.
 export const getWeekRpm = (
   loads: Load[],

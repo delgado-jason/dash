@@ -27,7 +27,7 @@ import {
   getDetentionOwed,
 } from "@/lib/metrics/dashboard";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
-import { getWeekGrossCommitted, getWeekGrossEarned } from "@/lib/metrics/rateTargets";
+import { getWeekGrossCommitted, getWeekGrossEarned, getBookedAheadGross } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -178,6 +178,11 @@ const DispatchDashboard = () => {
     targets.weekStart && targets.weekEnd
       ? getWeekGrossCommitted(mine, targets.weekStart, targets.weekEnd)
       : 0;
+  // The pipeline she just built — bookings landing beyond this pay week. The
+  // meter can't show them yet (committed counts the landing week), but the
+  // work happened NOW, so the card says so (Jason, 2026-08-15: her booked
+  // $5,220 was invisible until its week arrived).
+  const bookedAhead = targets.weekEnd ? getBookedAheadGross(mine, targets.weekEnd) : 0;
   const weeklyTarget: number | null = targets.gross?.weeklyTarget ?? null;
   const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
   const dailyTarget: number | null = targets.gross?.dailyTarget ?? null;
@@ -418,6 +423,16 @@ const DispatchDashboard = () => {
                     projected
                   </p>
                 </div>
+                {bookedAhead > 0 && (
+                  <div>
+                    <p className="font-condensed font-semibold text-[19px] tabular-nums leading-none text-amber-hi">
+                      {money(bookedAhead)}
+                    </p>
+                    <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
+                      booked ahead · lands beyond this week
+                    </p>
+                  </div>
+                )}
                 {dailyTarget != null && (
                   <div className="ml-auto ds2-well px-3.5 py-2">
                     <p className="font-display text-[22px] leading-none tabular-nums">
