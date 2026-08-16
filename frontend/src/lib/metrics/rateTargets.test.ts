@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import {
+  getBookedAheadGross,
   loadRevenue,
   loadGross,
   completeMonthsBefore,
@@ -356,5 +357,21 @@ describe("monthlyObligationCost", () => {
 
   it("is 0 for an empty list", () => {
     expect(monthlyObligationCost([])).toBe(0);
+  });
+});
+
+describe("getBookedAheadGross", () => {
+  const L = (over: Record<string, unknown>) => over as unknown as import("@/types/load").Load;
+  it("counts live bookings landing after the week; Brandie's $5,220 case", () => {
+    const weekEnd = new Date("2026-08-19T00:00:00Z"); // pay week ends Tue Aug 18
+    const loads = [
+      L({ load_status: "booked", delivery_date: "2026-08-21", linehaul: "4573", fuel_surcharge: "647", total_accessorials: 0 }),
+      L({ load_status: "booked", delivery_date: "2026-08-17", linehaul: "1000", fuel_surcharge: "0", total_accessorials: 0 }), // lands THIS week → committed's job
+      L({ load_status: "delivered", delivery_date: "2026-08-25", linehaul: "999", fuel_surcharge: "0", total_accessorials: 0 }), // already earned → not pipeline
+    ];
+    expect(getBookedAheadGross(loads, weekEnd)).toBeCloseTo(5220, 5);
+  });
+  it("is zero with nothing booked past the window", () => {
+    expect(getBookedAheadGross([], new Date("2026-08-19T00:00:00Z"))).toBe(0);
   });
 });
