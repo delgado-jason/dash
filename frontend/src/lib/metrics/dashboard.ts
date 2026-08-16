@@ -395,56 +395,6 @@ export interface AgentRevenue {
 const agentGross = (loads: Load[]): number =>
   loads.reduce((sum, l) => sum + loadGross(l), 0);
 
-// Two guards, two failure modes: `windowDays` drops stale agents (a great load
-// six months ago falls out of the window); `minLoads` drops one-offs (a single
-// lucky run doesn't rank). loadCount + gross are both returned so the ranking
-// self-explains.
-const collectRecentAgents = (
-  loads: Load[],
-  windowDays: number,
-  minLoads: number,
-): AgentRevenue[] => {
-  const cutoff = Date.now() - windowDays * 86_400_000;
-  const recent = loads.filter(
-    (load) =>
-      load.load_status === "delivered" &&
-      load.delivery_date &&
-      new Date(load.delivery_date).getTime() >= cutoff,
-  );
-
-  const byAgent = new Map<string, Load[]>();
-  for (const load of recent) {
-    const bucket = byAgent.get(load.agent_id);
-    if (bucket) bucket.push(load);
-    else byAgent.set(load.agent_id, [load]);
-  }
-
-  const ranked: AgentRevenue[] = [];
-  for (const [agentId, agentLoads] of byAgent) {
-    if (agentLoads.length < minLoads) continue; // volume floor
-    ranked.push({
-      agentId,
-      agent: agentLoads[0].agent,
-      revenue: agentGross(agentLoads),
-      loadCount: agentLoads.length,
-    });
-  }
-  return ranked;
-};
-
-export const getTopAgentsByRevenue = (
-  loads: Load[],
-  windowDays = 90,
-  minLoads = 2,
-  limit = 5,
-): AgentRevenue[] =>
-  collectRecentAgents(loads, windowDays, minLoads)
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, limit);
-
-// The full agent directory for the dispatch Agents table: every agent with a
-// delivered load, lifetime load count + gross, sorted by gross. The component
-// searches / re-sorts / paginates this.
 export const getAgentGrossTable = (loads: Load[]): AgentRevenue[] => {
   const byAgent = new Map<string, Load[]>();
   for (const load of loads) {

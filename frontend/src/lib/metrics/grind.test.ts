@@ -112,3 +112,12 @@ describe("computePersonalGrind — graded against her own typical week", () => {
     expect(g.currentStreak).toBeGreaterThanOrEqual(3); // recent weeks count as target
   });
 });
+
+describe("personal grind baseline progress (the ghost meter's fuel)", () => {
+  it("exposes activeWeeks/weeksNeeded while the ladder is still forging", () => {
+    const grind = computePersonalGrind([], new Date("2026-08-15T12:00:00Z"));
+    expect(grind.hasLadder).toBe(false);
+    expect(grind.activeWeeks).toBe(0);
+    expect(grind.weeksNeeded).toBeGreaterThan(0);
+  });
+});
