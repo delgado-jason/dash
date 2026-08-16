@@ -1,12 +1,14 @@
 import type { CSSProperties } from "react";
 import type { Load } from "@/types/load";
 import { useGrind } from "@/hooks/useGrind";
-import type { WeekStatus } from "@/lib/metrics/grind";
+import type { Grind, WeekStatus } from "@/lib/metrics/grind";
 import { Board } from "@/components/ui/Board";
 
 // Design System v2 / The Forge — the grind streak as HEAT. Target weeks keep
-// the metal hot; the streak is consecutive weeks at temperature. Same engine
-// (useGrind — frozen), new body: the comic flame/Bangers treatment retired.
+// the metal hot; the streak is consecutive weeks at temperature. Two modes: the
+// owner's cost target, and a dispatcher's personal pace (her own typical week).
+type Mode = "owner" | "personal";
+
 const CELL: Record<WeekStatus, { cls: string; style?: CSSProperties }> = {
   target: {
     cls: "",
@@ -20,17 +22,42 @@ const CELL: Record<WeekStatus, { cls: string; style?: CSSProperties }> = {
   home: { cls: "bg-well", style: { boxShadow: "inset 0 1px 3px rgba(0,0,0,.6)" } },
 };
 
-const thisWeekLine = (s: WeekStatus): { text: string; color: string } => {
-  switch (s) {
-    case "target":
-      return { text: "You've beaten your weekly target — nice run.", color: "var(--color-status-positive-text)" };
-    case "breakeven":
-      return { text: "Covering the floor — a bit more freight beats target.", color: "var(--color-amber)" };
-    case "below":
-      return { text: "Below your weekly floor so far.", color: "var(--color-status-negative-text)" };
-    default:
-      return { text: "Nothing delivered yet this week.", color: "var(--color-dim)" };
-  }
+// Copy differs by mode: the owner grades against a cost target; the dispatcher
+// against her own usual week.
+const COPY: Record<Mode, {
+  streak: string;
+  coldHint: string;
+  legendTarget: string;
+  legendMid: string;
+  legendBelow: string;
+  thisWeek: Record<WeekStatus, { text: string; color: string }>;
+}> = {
+  owner: {
+    streak: "on a target-beating streak",
+    coldHint: "beat target this week to light it",
+    legendTarget: "Beat target",
+    legendMid: "Covered break-even",
+    legendBelow: "Below",
+    thisWeek: {
+      target: { text: "You've beaten your weekly target — nice run.", color: "var(--color-status-positive-text)" },
+      breakeven: { text: "Covering the floor — a bit more freight beats target.", color: "var(--color-amber)" },
+      below: { text: "Below your weekly floor so far.", color: "var(--color-status-negative-text)" },
+      home: { text: "Nothing delivered yet this week.", color: "var(--color-dim)" },
+    },
+  },
+  personal: {
+    streak: "on a booking streak",
+    coldHint: "book your usual week to light it",
+    legendTarget: "Hit your pace",
+    legendMid: "Light week",
+    legendBelow: "Slow",
+    thisWeek: {
+      target: { text: "You beat your usual week — nice run.", color: "var(--color-status-positive-text)" },
+      breakeven: { text: "A lighter week — a bit more matches your usual pace.", color: "var(--color-amber)" },
+      below: { text: "Slow start this week.", color: "var(--color-status-negative-text)" },
+      home: { text: "Nothing delivered yet this week.", color: "var(--color-dim)" },
+    },
+  },
 };
 
 const Dot = ({ style, label }: { style?: CSSProperties; label: string }) => (
@@ -43,13 +70,15 @@ const Dot = ({ style, label }: { style?: CSSProperties; label: string }) => (
   </span>
 );
 
-export const GrindMeter = ({ loads }: { loads: Load[] }) => {
-  const grind = useGrind(loads);
+// Presentational — takes a pre-computed grind so a dispatcher's personal-pace
+// grind can flow through without the owner's P&L fetch.
+export const GrindMeterView = ({ grind, mode = "owner" }: { grind: Grind | null; mode?: Mode }) => {
   if (!grind || !grind.hasLadder || grind.weeks.length === 0) return null;
 
+  const c = COPY[mode];
   const { currentStreak, bestStreak, weeks, thisWeek } = grind;
   const cold = currentStreak === 0;
-  const status = thisWeekLine(thisWeek);
+  const status = c.thisWeek[thisWeek];
 
   return (
     <Board className="p-4">
@@ -70,9 +99,7 @@ export const GrindMeter = ({ loads }: { loads: Load[] }) => {
           {cold ? (
             <>
               <span className="font-forge font-bold text-[30px] text-faint">COLD</span>
-              <div className="text-xs text-dim mt-1.5">
-                beat target this week to light it
-              </div>
+              <div className="text-xs text-dim mt-1.5">{c.coldHint}</div>
             </>
           ) : (
             <>
@@ -82,7 +109,7 @@ export const GrindMeter = ({ loads }: { loads: Load[] }) => {
               <span className="font-forge font-semibold text-[15px] ml-1.5 text-dim">
                 {currentStreak === 1 ? "WEEK" : "WEEKS"}
               </span>
-              <div className="text-xs text-dim mt-1">on a target-beating streak</div>
+              <div className="text-xs text-dim mt-1">{c.streak}</div>
             </>
           )}
         </div>
@@ -117,9 +144,9 @@ export const GrindMeter = ({ loads }: { loads: Load[] }) => {
       </div>
 
       <div className="flex gap-x-4 gap-y-1 flex-wrap mt-3">
-        <Dot style={CELL.target.style} label="Beat target" />
-        <Dot style={CELL.breakeven.style} label="Covered break-even" />
-        <Dot style={CELL.below.style} label="Below" />
+        <Dot style={CELL.target.style} label={c.legendTarget} />
+        <Dot style={CELL.breakeven.style} label={c.legendMid} />
+        <Dot style={CELL.below.style} label={c.legendBelow} />
         <Dot style={{ background: "var(--color-well)" }} label="Home" />
       </div>
 
@@ -129,4 +156,10 @@ export const GrindMeter = ({ loads }: { loads: Load[] }) => {
       </div>
     </Board>
   );
+};
+
+// The owner's grind — fetches the P&L target via useGrind, then renders the view.
+export const GrindMeter = ({ loads }: { loads: Load[] }) => {
+  const grind = useGrind(loads);
+  return <GrindMeterView grind={grind} mode="owner" />;
 };

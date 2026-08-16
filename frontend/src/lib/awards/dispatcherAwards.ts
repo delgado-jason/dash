@@ -10,6 +10,7 @@ import { loadDeadheadPct, loadEmptyMiles } from "@/lib/metrics/deadhead";
 import { onTimeStatus, detentionCollected } from "@/lib/detention";
 import { isSpecializedLoadType } from "@/lib/dimensions";
 import { tiered, type Medal } from "./medals";
+import { howToEarn } from "./dispatcherHowTo";
 import type { Award } from "@/lib/metrics/awards";
 import {
   DEADHEAD_TARGET,
@@ -258,7 +259,7 @@ export const dispatcherEarnedAwards = (input: DispatcherAwardInput): Award[] => 
         id: `medal:${m.key}:${m.tier}`,
         tier: "medal",
         name: `${m.name} ${m.tierLabel}`,
-        detail: m.hint,
+        detail: howToEarn(m.key) || m.hint,
         icon: m.icon,
         medalTier: m.tier,
       });

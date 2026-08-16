@@ -7,12 +7,12 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useDispatcherAwardPops } from "@/hooks/useDispatcherAwardPops";
-import { useGrind } from "@/hooks/useGrind";
+import { usePersonalGrind } from "@/hooks/useGrind";
 import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
-import { GrindMeter } from "@/components/dashboard/GrindMeter";
+import { GrindMeterView } from "@/components/dashboard/GrindMeter";
 import { TopAgents } from "@/components/dashboard/TopAgents";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
@@ -32,6 +32,7 @@ import {
   currentQuarterStandings,
 } from "@/lib/metrics/agentLeaderboard";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
+import { getWeekGrossCommitted, getWeekGrossEarned } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -61,8 +62,19 @@ const DispatchDashboard = () => {
   const { trips, isLoading: tripsLoading, error: tripsError } = useTrips(0);
   const targets = useRateTargets(loads);
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
-  const grind = useGrind(loads);
   const now = useMemo(() => new Date(), []);
+
+  // Her board counts only the loads SHE booked (the shared agent race below stays
+  // account-wide). Attribution is booked_by === her own id.
+  const selfId = localStorage.getItem("user_id") ?? "";
+  const mine = useMemo(
+    () => (selfId ? loads.filter((l) => l.booked_by === selfId) : []),
+    [loads, selfId],
+  );
+  // Her personal-pace streak: graded against her OWN typical week (median of her
+  // recent weekly booked gross), so it's winnable and genuinely hers — not the
+  // shop's cost target. Feeds the HEAT meter + the Iron Booker patch.
+  const grind = usePersonalGrind(mine);
 
   // Free-time setting drives what counts as detention (same source as Loads).
   const [freeHours, setFreeHours] = useState(3);
@@ -75,7 +87,6 @@ const DispatchDashboard = () => {
   // Her achievements pop the same way the driver's do — computed from her own
   // bookings, celebrated on her board. Gated on the rate ladder being ready so
   // the day-one baseline is built from complete data.
-  const selfId = localStorage.getItem("user_id") ?? "";
   const awardInput =
     selfId && targets.bookingLadder.walkAway != null
       ? {
@@ -88,6 +99,10 @@ const DispatchDashboard = () => {
           },
           freeHours,
           streak: grind?.bestStreak ?? 0,
+          // Grade "steal"/"grand slam" on the same tiers her forge page uses, so
+          // the two surfaces never disagree on a medal.
+          tiers: targets.tiers,
+          specTiers: targets.specTiers,
         }
       : null;
   const pops = useDispatcherAwardPops(awardInput);
@@ -130,11 +145,11 @@ const DispatchDashboard = () => {
       </div>
     );
 
-  const bookedCount = loads.filter((l) => l.load_status === "booked").length;
-  const inTransitCount = loads.filter(
+  const bookedCount = mine.filter((l) => l.load_status === "booked").length;
+  const inTransitCount = mine.filter(
     (l) => l.load_status === "in_transit",
   ).length;
-  const loadsMonthly = getLoadsMonthly(loads);
+  const loadsMonthly = getLoadsMonthly(mine);
   const loadsDeltaPct =
     loadsMonthly.lastMonth > 0
       ? Math.round(
@@ -143,7 +158,10 @@ const DispatchDashboard = () => {
             100,
         )
       : null;
-  const detention = getDetentionOwed(loads, freeHours);
+  const detention = getDetentionOwed(mine, freeHours);
+  // Deadhead is truck physics — trips carry no booker, so pairing HER loads with
+  // fleet trips would mis-charge fleet empty miles against her loaded miles. Keep
+  // it account-wide (the rig's real deadhead), which is what the tile means.
   const deadhead = getDeadheadTrend(loads, trips, now);
   // Leaner than the 90-day baseline (or the target when there's no baseline yet)
   // reads green; drifting above it reads red so she catches it early.
@@ -158,9 +176,16 @@ const DispatchDashboard = () => {
   const agentHonors = computeHonors(loads, now);
   const agentStandings = currentQuarterStandings(loads, now);
 
-  // Her chase surface — the ladder she books against and the week she's filling.
-  const earned = targets.weekEarned ?? 0;
-  const committed = targets.weekBooked ?? 0;
+  // Her chase surface — the shop's booking floor + weekly target (account cost),
+  // but the week she's actually filling is HER bookings (earned + committed).
+  const earned =
+    targets.weekStart && targets.weekEnd
+      ? getWeekGrossEarned(mine, targets.weekStart, targets.weekEnd)
+      : 0;
+  const committed =
+    targets.weekStart && targets.weekEnd
+      ? getWeekGrossCommitted(mine, targets.weekStart, targets.weekEnd)
+      : 0;
   const weeklyTarget: number | null = targets.gross?.weeklyTarget ?? null;
   const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
   const dailyTarget: number | null = targets.gross?.dailyTarget ?? null;
@@ -311,7 +336,7 @@ const DispatchDashboard = () => {
             <ForgedPlate chamfer tilt className="p-5">
               <div className="flex items-baseline justify-between flex-wrap gap-2">
                 <span className="ds2-label">
-                  Booking floor &amp; week pace · gross — your numbers
+                  Booking floor &amp; your week pace · gross
                 </span>
                 {cur != null && (
                   <span className="font-condensed font-semibold text-[15px] text-amber-hi tabular-nums">
@@ -413,7 +438,7 @@ const DispatchDashboard = () => {
                 )}
               </div>
             </ForgedPlate>
-            <GrindMeter loads={loads} />
+            <GrindMeterView grind={grind} mode="personal" />
           </div>
 
           {/* The workhorses — searchable, paginated loads + agents */}
