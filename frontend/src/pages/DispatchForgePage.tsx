@@ -16,26 +16,17 @@ import { currentSeason, type SeasonTrophy } from "@/lib/metrics/dispatcherSeason
 import { howToEarn } from "@/lib/awards/dispatcherHowTo";
 import type { Medal } from "@/lib/awards/medals";
 import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
+import { Coin as ForgeCoin, type CoinMetal } from "@/components/forge/Coin";
+import { MeterCells } from "@/components/awards/HardwareBoard";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// The forge is a playful surface — emoji read faster than lucide here, and match
-// the medal/patch icon vocabulary the award engines already assign.
-const EMOJI: Record<string, string> = {
-  crown: "👑", coins: "🪙", package: "📦", mountain: "⛰️", medal: "🥇",
-  trophy: "🏆", "stack-2": "📚", cash: "💰", feather: "🪶", flame: "🔥",
-  users: "🤝", gauge: "⏱️", "arrows-horizontal": "🔁", truck: "🚛",
-  route: "🛣️", road: "🛣️",
-};
-const emoji = (icon: string) => EMOJI[icon] ?? "🎖️";
-
-const TIER_RING = ["#33415a", "#b08d57", "#c9d3e0", "#f5b03a"]; // none/bronze/silver/gold
-const Bar = ({ pct, tone = "#f5b03a" }: { pct: number; tone?: string }) => (
-  <div className="h-[7px] rounded-[6px] mt-2 overflow-hidden" style={{ background: "#090d15", border: "1px solid #1a2436" }}>
-    <i className="block h-full rounded-[6px]" style={{ width: `${Math.round(Math.min(1, Math.max(0, pct)) * 100)}%`, background: `linear-gradient(90deg,#e8940a,${tone})` }} />
-  </div>
-);
+// The forge speaks the hardware grammar — struck metal, punched tags, ghost
+// dashes, cell meters (Jason, 2026-08-15: the achievements must look like the
+// approved design; the emoji/tier-ring visuals retired). Metal by tier, same
+// map the driver's board uses.
+const METALS: CoinMetal[] = ["bronze", "bronze", "silver", "gold", "platinum"];
 
 const RackHead = ({ title, right }: { title: string; right?: string }) => (
   <div className="flex items-baseline gap-3 mt-8 mb-3">
@@ -45,66 +36,116 @@ const RackHead = ({ title, right }: { title: string; right?: string }) => (
   </div>
 );
 
-const NextCard = ({ icon, name, gap, sub, pct }: { icon: string; name: string; gap: string; sub?: string; pct: number }) => (
-  <div className="relative rounded-[12px] p-[13px_14px] overflow-hidden" style={{ background: "linear-gradient(180deg,rgba(20,27,40,.8),#090d15)", border: "1px solid #22304a" }}>
+const NextCard = ({ name, gap, sub, pct }: { name: string; gap: string; sub?: string; pct: number }) => (
+  <div
+    className="relative rounded-[12px] p-[13px_14px] overflow-hidden"
+    style={{
+      background: "linear-gradient(180deg, rgba(20,27,40,.8), var(--color-well))",
+      border: "1px solid var(--color-hairline)",
+    }}
+  >
     <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-amber" />
-    <div className="text-[19px]">{icon}</div>
-    <div className="text-[14.5px] font-bold text-cream mt-[3px]" style={{ color: "#f5e6c8" }}>{name}</div>
-    <div className="text-[12px] font-semibold text-amber-hi">{gap}</div>
-    {sub && <div className="text-[11px] text-faint mt-[2px]">{sub}</div>}
-    <Bar pct={pct} />
+    <div className="font-condensed font-bold text-[14.5px] text-ink">{name}</div>
+    <div className="font-condensed text-[12px] font-semibold text-amber-hi">{gap}</div>
+    {sub && <div className="font-condensed text-[11px] text-faint mt-[2px]">{sub}</div>}
+    <div className="mt-2">
+      <MeterCells pct={pct} cells={8} />
+    </div>
   </div>
 );
 
-const Coin = ({ m }: { m: Medal }) => {
+const CoinCell = ({ m }: { m: Medal }) => {
   const on = m.tier > 0;
   return (
-    <div className="text-center rounded-[11px] p-[12px_10px_10px]" style={{ background: "#090d15", border: "1px solid #22304a" }}>
-      <div
-        className="w-[70px] h-[70px] rounded-full mx-auto mb-[7px] flex items-center justify-center text-[26px] relative"
-        style={{
-          background: "radial-gradient(circle at 38% 30%,#20293a,#0c1017)",
-          border: `${on ? 3 : 2}px ${on ? "solid" : "dashed"} ${TIER_RING[on ? Math.min(3, m.tier) : 0]}`,
-          filter: on ? undefined : "grayscale(1) brightness(.5)",
-          boxShadow: on ? `0 0 18px ${TIER_RING[Math.min(3, m.tier)]}66` : undefined,
-        }}
-      >
-        {emoji(m.icon)}
-        {!on && <span className="absolute -bottom-1 -right-1 text-[13px] opacity-70">🔒</span>}
+    <div
+      className="text-center rounded-[11px] p-[12px_10px_10px]"
+      style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)" }}
+    >
+      <div className="flex justify-center mb-[7px]">
+        {on ? (
+          <ForgeCoin metal={METALS[Math.min(m.tier, 4)]} size={58}>
+            {m.tierLabel}
+          </ForgeCoin>
+        ) : (
+          <div
+            className="w-[58px] h-[58px] rounded-full border-2 border-dashed border-hairline flex items-center justify-center font-display text-[11px] text-faint tracking-[.06em]"
+            aria-hidden
+          >
+            {m.tierLabel || "—"}
+          </div>
+        )}
       </div>
-      <div className={`text-[12px] font-semibold ${on ? "text-ink" : "text-faint"}`}>{m.name}</div>
-      <div className="text-[10px] uppercase tracking-[.5px]" style={{ color: on ? TIER_RING[Math.min(3, m.tier)] : "#5a6880" }}>
+      <div className={`font-condensed text-[12px] font-semibold ${on ? "text-ink" : "text-faint"}`}>
+        {m.name}
+      </div>
+      <div className={`font-condensed text-[10px] uppercase tracking-[.06em] ${on ? "text-amber-hi" : "text-faint"}`}>
         {on ? `Tier ${m.tierLabel} · ${m.hint.split(" · ")[0]}` : m.hint}
       </div>
-      <div className="text-[10px] leading-[1.35] text-faint mt-1 pt-1" style={{ borderTop: "1px dashed #223049" }}>
+      {m.next != null && (
+        <div className="mt-1.5">
+          <MeterCells pct={m.progress} cells={6} />
+        </div>
+      )}
+      <div className="font-condensed text-[10px] leading-[1.35] text-faint mt-1 pt-1 border-t border-dashed border-hairline-lo">
         {howToEarn(m.key)}
       </div>
     </div>
   );
 };
 
-const Tag = ({ p }: { p: GrindPatch }) => (
-  <div className={`rounded-[10px] p-[10px_12px] ${p.earned ? "" : "opacity-60"}`} style={{ background: "#090d15", border: "1px solid #22304a" }}>
-    <div className="grid grid-cols-[auto_1fr] gap-[11px] items-center">
-      <div className="w-[34px] h-[34px] rounded-[8px] flex items-center justify-center text-[17px]" style={{ background: p.earned ? "rgba(232,148,10,.10)" : "rgba(90,104,123,.1)", border: `1px solid ${p.earned ? "rgba(232,148,10,.3)" : "#2b384f"}` }}>
-        {emoji(p.icon)}
-      </div>
-      <div className="min-w-0">
-        <div className="text-[13.5px] font-semibold" style={{ color: "#f5e6c8" }}>{p.name}</div>
-        <div className={`text-[11.5px] font-semibold ${p.earned ? "text-amber-hi" : "text-faint"}`}>{p.badge} · {p.hint}</div>
-      </div>
+const TagCell = ({ p }: { p: GrindPatch }) => (
+  <div
+    className="rounded-[10px] p-[10px_12px]"
+    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)" }}
+  >
+    <div className="flex items-center gap-2 flex-wrap">
+      {p.earned ? (
+        <span className="font-condensed font-bold text-[11px] tracking-[.08em] px-[9px] py-[4px] rounded-[5px] uppercase text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.07)]">
+          {p.name} · {p.badge}
+        </span>
+      ) : (
+        <span className="font-condensed font-semibold text-[11px] tracking-[.06em] px-[9px] py-[4px] rounded-[5px] uppercase text-faint border border-dashed border-hairline">
+          {p.name}
+        </span>
+      )}
+      <span className={`font-condensed text-[11.5px] ${p.earned ? "text-dim" : "text-faint"}`}>
+        {p.hint}
+      </span>
     </div>
-    <Bar pct={p.progress} />
-    <div className="text-[10.5px] text-faint mt-[3px]">{howToEarn(p.key)}</div>
+    <div className="mt-2">
+      <MeterCells pct={p.progress} cells={8} />
+    </div>
+    <div className="font-condensed text-[10.5px] text-faint mt-[5px]">{howToEarn(p.key)}</div>
   </div>
 );
 
 const Crown = ({ t, period }: { t: SeasonTrophy; period: string }) => (
-  <div className={`rounded-[13px] p-[15px] text-center ${t.earned ? "" : ""}`} style={{ background: "linear-gradient(180deg,rgba(20,27,40,.8),#090d15)", border: `1px solid ${t.earned ? "rgba(245,176,58,.5)" : "#22304a"}`, boxShadow: t.earned ? "0 0 22px rgba(232,148,10,.16) inset" : undefined }}>
-    <div className="text-[32px]" style={{ filter: t.earned ? undefined : "grayscale(1) brightness(.55)" }}>👑</div>
-    <div className="text-[14.5px] font-bold mt-[5px]" style={{ color: "#f5e6c8" }}>{t.name}</div>
-    <div className={`text-[11.5px] mt-[2px] ${t.earned ? "text-amber-hi" : "text-dim"}`}>{t.detail}</div>
-    <div className="text-[10.5px] text-faint mt-[6px] pt-[6px]" style={{ borderTop: "1px dashed #223049" }}>
+  <div
+    className="rounded-[13px] p-[15px] text-center"
+    style={{
+      background: "linear-gradient(180deg, rgba(20,27,40,.8), var(--color-well))",
+      border: `1px solid ${t.earned ? "rgba(245,176,58,.5)" : "var(--color-hairline)"}`,
+      boxShadow: t.earned ? "0 0 22px rgba(232,148,10,.16) inset" : undefined,
+    }}
+  >
+    {t.earned ? (
+      <span
+        className="inline-block font-display text-[13px] tracking-[.14em] text-amber-hi rounded-[4px] px-[10px] pt-[3px] pb-[2px] rotate-[-2deg]"
+        style={{
+          border: "1.5px solid rgba(245,176,58,.55)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,.12), 0 1px 2px rgba(0,0,0,.5)",
+        }}
+      >
+        SEASON CROWN
+      </span>
+    ) : (
+      <span className="inline-block font-display text-[13px] tracking-[.14em] text-faint rounded-[4px] px-[10px] pt-[3px] pb-[2px] border-[1.5px] border-dashed border-hairline">
+        UNCLAIMED
+      </span>
+    )}
+    <div className="font-condensed text-[14.5px] font-bold mt-[7px] text-ink">{t.name}</div>
+    <div className={`font-condensed text-[11.5px] mt-[2px] ${t.earned ? "text-amber-hi" : "text-dim"}`}>{t.detail}</div>
+    <div className="font-condensed text-[10.5px] text-faint mt-[6px] pt-[6px] border-t border-dashed border-hairline-lo">
       {howToEarn(t.key)} · {period}
     </div>
   </div>
@@ -196,11 +237,10 @@ const DispatchForgePage = () => {
 
   // NEXT UP — the closest not-yet-maxed achievements, most-progressed first, so
   // there's always a concrete next thing to chase.
-  type Cand = { icon: string; name: string; gap: string; sub?: string; pct: number };
+  type Cand = { name: string; gap: string; sub?: string; pct: number };
   const cands: Cand[] = [];
   if (card.rank.next)
     cands.push({
-      icon: "🎖️",
       name: card.rank.next.name,
       gap: `${Math.max(0, card.rank.next.min - card.rank.count)} loads to the next rank`,
       sub: `${card.rank.count} of ${card.rank.next.min} booked`,
@@ -208,10 +248,10 @@ const DispatchForgePage = () => {
     });
   for (const m of medals)
     if (m.next != null)
-      cands.push({ icon: emoji(m.icon), name: `${m.name} · Tier ${m.tier + 1}`, gap: howToEarn(m.key), sub: m.hint, pct: m.progress });
+      cands.push({ name: `${m.name} · Tier ${m.tier + 1}`, gap: howToEarn(m.key), sub: m.hint, pct: m.progress });
   for (const p of patches)
     if (p.progress < 1)
-      cands.push({ icon: emoji(p.icon), name: `${p.name} · ${p.hint.replace(/^next: /, "")}`, gap: howToEarn(p.key), sub: `at ${p.badge}`, pct: p.progress });
+      cands.push({ name: `${p.name} · ${p.hint.replace(/^next: /, "")}`, gap: howToEarn(p.key), sub: `at ${p.badge}`, pct: p.progress });
   const nextUp = cands.sort((a, b) => b.pct - a.pct).slice(0, 4);
 
   return (
@@ -231,7 +271,7 @@ const DispatchForgePage = () => {
         {/* HERO */}
         <div
           className="grid grid-cols-[auto_1fr] gap-[22px] items-center rounded-[16px] p-[20px_22px]"
-          style={{ border: "1px solid #22304a", background: "linear-gradient(180deg, rgba(18,24,36,.7), rgba(10,13,19,.5))" }}
+          style={{ border: "1px solid var(--color-hairline)", background: "linear-gradient(180deg, rgba(18,24,36,.7), rgba(10,13,19,.5))" }}
         >
           <div className="shrink-0">
             {/* key remounts the avatar when the URL arrives — EntityAvatar seeds
@@ -246,7 +286,7 @@ const DispatchForgePage = () => {
               THE DISPATCH FORGE
             </h1>
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="inline-flex items-center gap-2 text-[15px] font-bold rounded-full px-[14px] py-[5px]" style={{ color: "#f5e6c8", background: "rgba(232,148,10,.12)", border: "1px solid rgba(232,148,10,.4)" }}>
+              <span className="inline-flex items-center gap-2 text-[15px] font-bold rounded-full px-[14px] py-[5px]" style={{ color: "var(--color-ink)", background: "rgba(232,148,10,.12)", border: "1px solid rgba(232,148,10,.4)" }}>
                 <span className="text-gold" style={{ color: "#f5b03a" }}>★</span> {card.rank.name}
               </span>
               <span className="text-[12px] text-dim">
@@ -257,9 +297,9 @@ const DispatchForgePage = () => {
               <div className="mt-[11px] max-w-[420px]">
                 <div className="flex justify-between text-[11.5px] text-faint mb-[5px]">
                   <span>{card.rank.count} loads booked · {name}</span>
-                  <span><b className="text-cream" style={{ color: "#f5e6c8" }}>{Math.max(0, card.rank.next.min - card.rank.count)}</b> to {card.rank.next.name}</span>
+                  <span><b className="text-ink">{Math.max(0, card.rank.next.min - card.rank.count)}</b> to {card.rank.next.name}</span>
                 </div>
-                <Bar pct={card.rank.pct} />
+                <MeterCells pct={card.rank.pct} cells={10} />
               </div>
             )}
           </div>
@@ -281,7 +321,7 @@ const DispatchForgePage = () => {
         <RackHead title="COINS — STRUCK AT THE PRESS" right="Bronze → Silver → Gold" />
         <div className="grid gap-[14px_12px]" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(148px,1fr))" }}>
           {medals.map((m) => (
-            <Coin key={m.key} m={m} />
+            <CoinCell key={m.key} m={m} />
           ))}
         </div>
 
@@ -289,7 +329,7 @@ const DispatchForgePage = () => {
         <RackHead title="TAGS — PUNCHED EVERY RE-EARN" />
         <div className="grid gap-[10px]" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))" }}>
           {patches.map((p) => (
-            <Tag key={p.key} p={p} />
+            <TagCell key={p.key} p={p} />
           ))}
         </div>
 

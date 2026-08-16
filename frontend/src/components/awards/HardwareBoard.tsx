@@ -13,7 +13,7 @@ const METALS: CoinMetal[] = ["bronze", "bronze", "silver", "gold", "platinum"];
 // Shared by the driver, dispatcher, truck, and trailer dossiers — the old
 // comic-era award boards retired at the trailers slice (2026-08-10).
 
-const MeterCells = ({ pct, cells = 4 }: { pct: number; cells?: number }) => (
+export const MeterCells = ({ pct, cells = 4 }: { pct: number; cells?: number }) => (
   <span className="inline-flex gap-[2px] w-full">
     {Array.from({ length: cells }, (_, i) => (
       <i
