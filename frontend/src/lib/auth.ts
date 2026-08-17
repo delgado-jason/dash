@@ -38,6 +38,17 @@ export const adoptRefreshedToken = (refreshed: string): boolean => {
   return true;
 };
 
+// A session is only usable when ALL of its parts are present — a valid token
+// alone isn't an identity. A half-cleared or cross-tab-clobbered storage
+// (token from one login, user_id/role from another or missing) must read as
+// "not signed in", never as "default to the admin view" (2026-08-16: Jason
+// hit exactly that chimera — dispatch board with a no-name user and someone
+// else's award storm).
+export const hasCompleteSession = (): boolean =>
+  isTokenValid(localStorage.getItem("token")) &&
+  !!localStorage.getItem("user_id") &&
+  !!localStorage.getItem("role");
+
 // Drop everything a session keeps, in one place.
 export const clearSession = () => {
   localStorage.removeItem("token");

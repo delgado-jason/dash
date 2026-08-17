@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { isTokenValid, adoptRefreshedToken, tokenExp } from "./auth";
+import {
+  isTokenValid,
+  adoptRefreshedToken,
+  tokenExp,
+  hasCompleteSession,
+} from "./auth";
 
 // Build a JWT-shaped token (header.payload.signature) with a base64url payload.
 const mk = (payload: object): string => {
@@ -97,5 +102,35 @@ describe("adoptRefreshedToken", () => {
 
     expect(adoptRefreshedToken("not-a-jwt")).toBe(false);
     expect(localStorage.getItem("token")).toBe(live);
+  });
+});
+
+describe("hasCompleteSession — fail closed, never default-to-admin", () => {
+  const put = (k: string, v: string) => localStorage.setItem(k, v);
+  const freshToken = () => {
+    const exp = Math.floor(Date.now() / 1000) + 3600;
+    const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, "");
+    return `${b64({ alg: "HS256" })}.${b64({ exp })}.sig`;
+  };
+  beforeEach(() => localStorage.clear());
+
+  it("true only when token + user_id + role are ALL present", () => {
+    put("token", freshToken());
+    put("user_id", "u1");
+    put("role", "dispatcher");
+    expect(hasCompleteSession()).toBe(true);
+  });
+
+  it("a valid token with missing identity is NOT a session (the chimera state)", () => {
+    put("token", freshToken());
+    expect(hasCompleteSession()).toBe(false);
+    put("user_id", "u1"); // still no role
+    expect(hasCompleteSession()).toBe(false);
+  });
+
+  it("identity without a live token is not a session either", () => {
+    put("user_id", "u1");
+    put("role", "admin");
+    expect(hasCompleteSession()).toBe(false);
   });
 });
