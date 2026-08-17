@@ -2117,7 +2117,11 @@ const GuidePage = () => {
             <Why>
               The waterfall is a ladder of stages — vault thresholds that
               ratchet the protected cushion upward, debts that die from the
-              overflow (bound live to your obligations), and the trailer fund.
+              overflow (bound live to your obligations), and overflow funds
+              like the trade-up war chest, measured as vault money above the
+              protected cushion. (The snapshot's trailer figure is the trailer
+              HOLDING account — note and guarantor out, zeroes monthly — it
+              rides the Reserves card, not the waterfall.)
               The stages <span className="text-light">are</span> the plan:
               edit them, reorder them, or write next year's plan fresh — the
               old year keeps its history. Marge reads the same tables

@@ -542,9 +542,11 @@ const StatusPage = () => {
                   <p className="text-[10.5px] text-faint">
                     {st.stage.kind === "obligation"
                       ? "balance left"
-                      : st.stage.target_lo != null
-                        ? `of ${money(Number(st.stage.target_lo))}${st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}`
-                        : ""}
+                      : st.stage.kind === "trailer"
+                        ? `above the ratchet · of ${money(Number(st.stage.target_lo ?? 0))}${st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}`
+                        : st.stage.target_lo != null
+                          ? `of ${money(Number(st.stage.target_lo))}${st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}`
+                          : ""}
                   </p>
                 </div>
               </div>
@@ -561,7 +563,7 @@ const StatusPage = () => {
                 {plan && `· ${money(Number(plan.maintenance_weekly))}/wk maintenance · ${money(Number(plan.tax_weekly))}/wk tax`}
               </span>
             </div>
-            <div className="grid grid-cols-2">
+            <div className="grid grid-cols-3">
               <div className="px-4 py-4 border-r ds2-cell-rule">
                 <p className="font-condensed font-semibold text-[23px] tabular-nums">
                   {latest ? money(Number(latest.maintenance)) : "—"}
@@ -570,11 +572,19 @@ const StatusPage = () => {
                   Maintenance · repairs only
                 </p>
               </div>
-              <div className="px-4 py-4">
+              <div className="px-4 py-4 border-r ds2-cell-rule">
                 <p className="font-condensed font-semibold text-[23px] tabular-nums">
                   {latest ? money(Number(latest.tax)) : "—"}
                 </p>
                 <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">Tax</p>
+              </div>
+              <div className="px-4 py-4">
+                <p className="font-condensed font-semibold text-[23px] tabular-nums">
+                  {latest ? money(Number(latest.trailer)) : "—"}
+                </p>
+                <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
+                  Trailer holding · zeroes monthly
+                </p>
               </div>
             </div>
           </div>
@@ -629,7 +639,7 @@ const StatusPage = () => {
                 <div><label className={LBL}>Vault</label><input inputMode="decimal" placeholder="8750" className={FIELD} value={fVault} onChange={(e) => setFVault(e.target.value)} /></div>
                 <div><label className={LBL}>Maintenance</label><input inputMode="decimal" placeholder="1500" className={FIELD} value={fMaint} onChange={(e) => setFMaint(e.target.value)} /></div>
                 <div><label className={LBL}>Tax</label><input inputMode="decimal" placeholder="2100" className={FIELD} value={fTax} onChange={(e) => setFTax(e.target.value)} /></div>
-                <div><label className={LBL}>Trailer fund</label><input inputMode="decimal" placeholder="0" className={FIELD} value={fTrailer} onChange={(e) => setFTrailer(e.target.value)} /></div>
+                <div><label className={LBL}>Trailer holding</label><input inputMode="decimal" placeholder="0" className={FIELD} value={fTrailer} onChange={(e) => setFTrailer(e.target.value)} /></div>
                 {draftStatus?.orders?.length ? (
                   <p className="col-span-2 font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
                     the verdict as you type: <b className="text-amber-hi">{draftStatus.orders.join(" · ")}</b>
@@ -699,7 +709,7 @@ const StatusPage = () => {
                       <select className={FIELD} value={s.kind} onChange={(e) => editStage(i, { kind: e.target.value as PlanStageRow["kind"], obligation_id: e.target.value === "obligation" ? s.obligation_id : null })}>
                         <option value="vault">vault threshold</option>
                         <option value="obligation">pay off an obligation</option>
-                        <option value="trailer">trailer fund</option>
+                        <option value="trailer">trade-up fund · vault overflow above the ratchet</option>
                       </select>
                       {s.kind === "obligation" ? (
                         <select className={FIELD} value={s.obligation_id ?? ""} onChange={(e) => editStage(i, { obligation_id: e.target.value || null })}>

@@ -5,8 +5,11 @@
 // ratcheting thresholds. Each vault-kind stage sets the PROTECTED level; money
 // above the highest completed vault threshold is the OVERFLOW, and the
 // overflow funds the current non-vault stage ("anything above the floor
-// starts contributing to Best Egg"). Obligation stages complete at $0 balance;
-// trailer stages fill from the snapshot's trailer fund.
+// starts contributing to Best Egg"). Obligation stages complete at $0 balance.
+// 'trailer'-kind stages are OVERFLOW FUNDS (the trade-up war chest): they
+// measure vault money ABOVE the ratchet — NOT the snapshot's trailer column,
+// which is his trailer HOLDING account (note + guarantor out, zeroes monthly,
+// 55% of trailer revenue committed to the vault) and drives no stage.
 //
 // The Friday ritual is snapshot-FIRST: raw balances in, orders out.
 
@@ -90,22 +93,24 @@ export interface WaterfallStatus {
 }
 
 // A stage is DONE when its goal holds: vault ≥ target, obligation ≤ $0,
-// trailer fund ≥ target_lo. An UNBOUND obligation stage can't be graded — it
-// rides as pending until it's bound in EDIT PLAN.
-const stageDone = (s: PlanStageInput, vault: number, trailer: number): boolean => {
+// overflow fund (trailer kind) ≥ target_lo ABOVE the ratchet. An UNBOUND
+// obligation stage can't be graded — it rides as pending until it's bound.
+const stageDone = (s: PlanStageInput, vault: number, ratchet: number): boolean => {
   const lo = num(s.target_lo) ?? 0;
   if (s.kind === "vault") return vault >= lo;
-  if (s.kind === "trailer") return trailer >= lo && lo > 0;
+  if (s.kind === "trailer") return lo > 0 && vault - ratchet >= lo;
   const bal = num(s.obligation?.current_balance ?? null);
   return bal != null && bal <= 0;
 };
 
-const stageProgress = (s: PlanStageInput, vault: number, trailer: number): { pct: number; value: number | null } => {
+const stageProgress = (s: PlanStageInput, vault: number, ratchet: number): { pct: number; value: number | null } => {
   const lo = num(s.target_lo) ?? 0;
   if (s.kind === "vault")
     return { pct: lo > 0 ? Math.min(1, Math.max(0, vault / lo)) : 0, value: vault };
-  if (s.kind === "trailer")
-    return { pct: lo > 0 ? Math.min(1, Math.max(0, trailer / lo)) : 0, value: trailer };
+  if (s.kind === "trailer") {
+    const above = Math.max(0, vault - ratchet);
+    return { pct: lo > 0 ? Math.min(1, above / lo) : 0, value: above };
+  }
   const bal = num(s.obligation?.current_balance ?? null);
   const orig = num(s.obligation?.original_balance ?? null);
   if (bal == null) return { pct: 0, value: null }; // unbound — ghost until bound
@@ -120,7 +125,6 @@ export const getWaterfallStage = (
 ): WaterfallStatus | null => {
   if (!snapshot || stages.length === 0) return null;
   const vault = num(snapshot.vault);
-  const trailer = num(snapshot.trailer) ?? 0;
   if (vault == null) return null;
 
   const ordered = [...stages].sort((a, b) => a.position - b.position);
@@ -133,8 +137,10 @@ export const getWaterfallStage = (
 
   for (let i = 0; i < ordered.length; i++) {
     const s = ordered[i];
-    const done = activeIndex === null && stageDone(s, vault, trailer);
-    const { pct, value } = stageProgress(s, vault, trailer);
+    // The ratchet known so far grades this stage — overflow funds measure
+    // above it, and it only grows as EARLIER vault stages complete.
+    const done = activeIndex === null && stageDone(s, vault, protectedLevel);
+    const { pct, value } = stageProgress(s, vault, protectedLevel);
     if (done && s.kind === "vault") {
       protectedLevel = Math.max(protectedLevel, num(s.target_lo) ?? 0);
     }
