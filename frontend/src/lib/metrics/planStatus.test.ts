@@ -90,30 +90,54 @@ describe("getWaterfallStage — the cascade", () => {
     expect(w.stages[0].currentValue).toBeNull();
   });
 
-  it("dead Best Egg hands off to the trailer fund, ratchet protected", () => {
+  it("dead Best Egg hands off to the trade-up fund — VAULT OVERFLOW, not the holding account", () => {
     const st = stages();
     st[2].obligation = { current_balance: 0, original_balance: 13000 };
-    const w = getWaterfallStage(snap({ vault: 17500, trailer: 4500 }), st)!;
+    // The snapshot's trailer column is his HOLDING account (note + guarantor,
+    // zeroes monthly) — it must not move any stage.
+    const w = getWaterfallStage(snap({ vault: 19500, trailer: 830 }), st)!;
     expect(w.activeIndex).toBe(3);
     const fund = w.stages[3];
     expect(fund.state).toBe("active");
+    expect(fund.currentValue).toBe(4500); // 19,500 − 15,000 ratchet: money above the cushion
     expect(fund.progress).toBeCloseTo(4500 / 15000, 5);
-    expect(fund.overflow).toBe(2500); // 17,500 − 15,000 ratchet
+    expect(fund.overflow).toBe(4500);
+  });
+
+  it("the holding account never drives the waterfall", () => {
+    const st = stages();
+    st[2].obligation = { current_balance: 0, original_balance: 13000 };
+    const a = getWaterfallStage(snap({ vault: 19500, trailer: 0 }), st)!;
+    const b = getWaterfallStage(snap({ vault: 19500, trailer: 99999 }), st)!;
+    expect(a.activeIndex).toBe(b.activeIndex);
+    expect(a.stages[3].progress).toBeCloseTo(b.stages[3].progress, 10);
+  });
+
+  it("the trade-up fund completes on overflow ≥ target — above the ratchet, not absolute vault", () => {
+    const st = stages();
+    st[2].obligation = { current_balance: 0, original_balance: 13000 };
+    // Vault 30k: 15k protected + 15k above → stage 4 done, stage 5 (30k absolute) done too? 30k ≥ 30k → the finish only if plan says so.
+    const w = getWaterfallStage(snap({ vault: 30500 }), st)!;
+    expect(w.stages[3].state).toBe("done"); // 15,500 above the 15k ratchet
   });
 
   it("the final vault stage runs to the goal with no overflow concept", () => {
     const st = stages();
     st[2].obligation = { current_balance: 0, original_balance: 13000 };
-    const w = getWaterfallStage(snap({ vault: 21000, trailer: 16000 }), st)!;
-    expect(w.activeIndex).toBe(4);
-    expect(w.stages[4].progress).toBeCloseTo(21000 / 30000, 5);
-    expect(w.stages[4].overflow).toBeNull();
+    // Vault 31k: floor done, trade-up done (16k above 15k ratchet), final
+    // cushion stage active toward 30k... 31k ≥ 30k → all done.
+    const w = getWaterfallStage(snap({ vault: 31000 }), st)!;
+    expect(w.activeIndex).toBeNull();
+    // Vault 27k: trade-up still filling (12k of 15k above the ratchet).
+    const w2 = getWaterfallStage(snap({ vault: 27000 }), st)!;
+    expect(w2.activeIndex).toBe(3);
+    expect(w2.stages[3].progress).toBeCloseTo(12000 / 15000, 5);
   });
 
   it("every stage done → activeIndex null (the finish line)", () => {
     const st = stages();
     st[2].obligation = { current_balance: 0, original_balance: 13000 };
-    const w = getWaterfallStage(snap({ vault: 36000, trailer: 16000 }), st)!;
+    const w = getWaterfallStage(snap({ vault: 36000 }), st)!;
     expect(w.activeIndex).toBeNull();
     expect(w.stages.every((x) => x.state === "done")).toBe(true);
   });
