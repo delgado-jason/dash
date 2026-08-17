@@ -2096,6 +2096,35 @@ const GuidePage = () => {
             </p>
           </Section>
 
+          <Section
+            title="The Plan — Account Status"
+            sources={[{ label: "Account Status", to: "/status" }]}
+          >
+            <p className="text-sm text-muted-text">
+              Your yearly cash plan, tracked one Friday at a time. The ritual is
+              snapshot-<span className="text-light">first</span>: after the
+              settlement and payroll land, punch in the raw balances (Ops,
+              Vault, Maintenance, Tax, Trailer fund) — then the page hands you
+              the orders: sweep everything over the Ops float line to the
+              Vault, and send anything above the protected cushion to the
+              current waterfall stage. Next Friday's snapshot confirms the
+              moves landed.
+            </p>
+            <Formula>
+              sweep = max(0, ops − float line) · overflow = max(0, vault −
+              highest completed vault threshold)
+            </Formula>
+            <Why>
+              The waterfall is a ladder of stages — vault thresholds that
+              ratchet the protected cushion upward, debts that die from the
+              overflow (bound live to your obligations), and the trailer fund.
+              The stages <span className="text-light">are</span> the plan:
+              edit them, reorder them, or write next year's plan fresh — the
+              old year keeps its history. Marge reads the same tables
+              (plans, stages, snapshots, obligations) for the Friday report.
+            </Why>
+          </Section>
+
           <Section title="What a dispatcher sees">
             <p className="text-sm text-muted-text">
               A dispatcher's menu is trimmed to the day-to-day: the Dispatch

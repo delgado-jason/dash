@@ -13,6 +13,7 @@ export const isDispatcher = (): boolean => getRole() === "dispatcher";
 // `adminOnly` flags in AppSidebar so the nav and the guard never disagree.
 export const ADMIN_ONLY_PREFIXES = [
   "/expenses",
+  "/status",
   "/per-diem",
   "/recap",
   "/garage",
