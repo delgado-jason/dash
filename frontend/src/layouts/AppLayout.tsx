@@ -34,6 +34,7 @@ const FULL_BLEED_PREFIXES = [
   { prefix: "/market", ownerOnly: false },
   { prefix: "/per-diem", ownerOnly: false },
   { prefix: "/compliance", ownerOnly: false },
+  { prefix: "/status", ownerOnly: false },
 ];
 const isFullBleed = (pathname: string) =>
   FULL_BLEED_PREFIXES.some(
