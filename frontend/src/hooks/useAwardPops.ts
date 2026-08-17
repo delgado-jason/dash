@@ -34,23 +34,33 @@ import {
 // which ones a device has already celebrated is per-device — that's what lets
 // Jason and Brandie each catch every award once on their own screen even though
 // they share the login.
-const KEY = "dash.awards.v1";
+// Keyed PER IDENTITY: an identity swap on a shared device must not diff one
+// user's earned set against another's baseline — that's an award storm
+// (2026-08-16). The legacy device-wide store migrates to the first identity
+// that reads it, so shipping this doesn't re-storm anyone.
+const BASE_KEY = "dash.awards.v1";
+const storeKey = (userId: string) => `${BASE_KEY}.${userId}`;
 interface Store {
   baselined: boolean;
   seen: string[];
 }
-const read = (): Store => {
+const read = (userId: string): Store => {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) || "");
+    const legacy = localStorage.getItem(BASE_KEY);
+    if (legacy && !localStorage.getItem(storeKey(userId))) {
+      localStorage.setItem(storeKey(userId), legacy);
+      localStorage.removeItem(BASE_KEY);
+    }
+    const s = JSON.parse(localStorage.getItem(storeKey(userId)) || "");
     if (s && Array.isArray(s.seen)) return { baselined: !!s.baselined, seen: s.seen };
   } catch {
     /* fresh device */
   }
   return { baselined: false, seen: [] };
 };
-const write = (s: Store) => {
+const write = (userId: string, s: Store) => {
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(storeKey(userId), JSON.stringify(s));
   } catch {
     /* storage disabled — pops just won't persist */
   }
@@ -146,16 +156,20 @@ export const useAwardPops = (
       ...earnedTrophyAwards(TROPHY_CATALOG, statuses, byKey),
       ...baseAwards,
     ];
+    // Identity read at effect time — pops must diff against THIS user's own
+    // baseline, never another identity's (see storeKey).
+    const userId = localStorage.getItem("user_id");
+    if (!userId) return;
     const currentIds = earned.map((a) => a.id);
-    const store = read();
+    const store = read(userId);
 
     if (!store.baselined) {
-      write({ baselined: true, seen: currentIds }); // silent baseline
+      write(userId, { baselined: true, seen: currentIds }); // silent baseline
       return;
     }
     const fresh = newAwards(earned, new Set(store.seen));
     if (fresh.length > 0) {
-      write({ baselined: true, seen: [...new Set([...store.seen, ...currentIds])] });
+      write(userId, { baselined: true, seen: [...new Set([...store.seen, ...currentIds])] });
       setPops(fresh);
     }
   }, [data, loads, done]);
