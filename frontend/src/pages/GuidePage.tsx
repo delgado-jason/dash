@@ -1560,10 +1560,13 @@ const GuidePage = () => {
               marked home and ran nothing) vs{" "}
               <span style={{ color: "#f87171" }}>idle</span> days (no load, not
               home) — so a low number tells you whether it was time off or
-              missing freight. Home days still count against utilization; it's
-              your truck's real opportunity cost. The window starts at your
-              first logged load, so weeks before you were entering loads don't
-              read as idle.
+              missing freight. Unmarked days follow the per-diem default: home
+              before <span className="text-light">Aug 18, 2026</span>, out
+              (idle) from the flip on — one more reason marking home time
+              matters. Home days still count against utilization; it's your
+              truck's real opportunity cost. The window starts at your first
+              logged load, so weeks before you were entering loads don't read
+              as idle.
             </Eg>
             <Why>
               Across a fleet, this is the number that exposes a truck sitting

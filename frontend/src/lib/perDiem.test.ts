@@ -117,6 +117,28 @@ describe("the 2026-08-18 default flip — unmarked counts FULL from the boundary
     expect(s.fullDays).toBe(3); // 08-15 (inferred) + 08-18 + 08-19 (auto)
     expect(s.inferredCount).toBe(1);
   });
+
+  it("a load span crossing the boundary: only its PRE-flip days need confirming", () => {
+    // Haul 08-17 → 08-19 straddles the flip. 08-17 is a hollow inferred day
+    // (confirmable); 08-18/19 are auto-full like any post-flip day — unmarked
+    // IS the claim there, nothing to confirm.
+    const inferred = new Set<string>(["2026-08-17", "2026-08-18", "2026-08-19"]);
+    const s = computePerDiem(new Map(), inferred, 69, 0.8, 2026, new Date(2026, 7, 20));
+    expect(s.fullDays).toBe(4); // 08-17 (inferred) + 08-18..08-20 (auto)
+    expect(s.inferredCount).toBe(1); // 08-17 only
+  });
+
+  it("a past year is walked entirely under the old rules (unmarked = home)", () => {
+    const manual = new Map<string, PerDiemStatus>([["2025-06-02", "half"]]);
+    const inferred = new Set<string>(["2025-06-10"]);
+    const s = computePerDiem(manual, inferred, 69, 0.8, 2025, new Date(2025, 11, 31));
+    // 365 unmarked days stay home — only the mark and the load-covered day count.
+    expect(s.fullDays).toBe(1);
+    expect(s.halfDays).toBe(1);
+    // (1*69 + 1*51.75) * 0.8 = 120.75 * 0.8 = 96.6 → 97
+    expect(s.deductible).toBe(97);
+    expect(s.inferredCount).toBe(1);
+  });
 });
 
 describe("nextStatus cycle", () => {

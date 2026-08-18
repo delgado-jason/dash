@@ -123,12 +123,18 @@ export const lastHomeDay = (
   const home = new Set(homeDays);
   const travel = new Set(travelDays);
   const cur = new Date(`${todayKey}T00:00:00Z`); // UTC-midnight of the local day, to step cleanly
+  let k = todayKey;
   for (let i = 0; i < 400; i++) {
-    const k = dayKey(cur);
+    k = dayKey(cur);
     if (dayStatus(k, under, home, travel) === "home") return k;
     cur.setUTCDate(cur.getUTCDate() - 1);
   }
-  return null;
+  // The whole 400-day scan found no home day. Post-flip that means AT LEAST
+  // 400 days out — return the scan floor so the days-out counter reads ≥400
+  // and the over-threshold alarm stays lit. Returning null here would replace
+  // the most-overdue state there is with a neutral "no marks yet" nudge,
+  // exactly when the warning matters most.
+  return k;
 };
 
 // A GitHub-style calendar: columns are weeks (aligned to Sunday so rows are real

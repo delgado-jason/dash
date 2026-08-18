@@ -208,6 +208,19 @@ describe("computeTruckMetrics — post-flip default: unmarked days are OUT", () 
     expect(m.homeDays).toBe(1);
     expect(m.idleDays).toBe(4);
   });
+
+  it("pins the boundary day: unmarked 08-17 is home, unmarked 08-18 is idle", () => {
+    const now = new Date("2026-08-19T00:00:00Z");
+    const truck = { in_service_date: "2026-08-10", current_odometer: 0 } as Truck;
+    const loads = [load("2026-08-15", "2026-08-16")];
+    // window 08-15 → 08-19 = 4 days: 15–16 under load, 17 unmarked (pre-flip
+    // → home), 18 unmarked (ON the flip day → idle). Pins both the date and
+    // the >= — a one-day slip either way breaks the 1/1 split.
+    const m = computeTruckMetrics(truck, loads, [], [], now, [], []);
+    expect(m.underLoadDays).toBe(2);
+    expect(m.homeDays).toBe(1);
+    expect(m.idleDays).toBe(1);
+  });
 });
 
 describe("computeTruckMetrics — loads hauled vs earned", () => {

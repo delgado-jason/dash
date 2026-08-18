@@ -92,6 +92,10 @@ const PerDiemPage = () => {
     return eoy < now ? eoy : now;
   }, [year, now]);
 
+  // Which era(s) the board on screen spans — the header rule and the legend
+  // must describe THIS year's behavior, not the current one's.
+  const flipYear = Number(FULL_DEFAULT_SINCE.slice(0, 4));
+
   const inferred = useMemo(
     () => inferredOutDays(loads ?? [], year, cap),
     [loads, year, cap],
@@ -224,7 +228,12 @@ const PerDiemPage = () => {
                 The year
               </span>
               <span className="font-condensed text-[12px] text-faint">
-                · unmarked counts FULL — tap a day: half → home → clear
+                {/* The rule differs by era — say the right one for the year on screen. */}
+                {year < flipYear
+                  ? "· unmarked counts home — tap a day: full → half → home → clear"
+                  : year > flipYear
+                    ? "· unmarked counts FULL — tap a day: half → home → clear"
+                    : "· from Aug 18: unmarked counts FULL (tap: half → home → clear) · before: unmarked counts home (tap: full → half → home)"}
               </span>
             </div>
             <div
@@ -279,7 +288,9 @@ const PerDiemPage = () => {
             ))}
             </div>
             <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[11px] text-faint">
-              <Sw style={AUTO_FULL_STYLE} label="Full — automatic (unmarked)" />
+              {year >= flipYear && (
+                <Sw style={AUTO_FULL_STYLE} label="Full — automatic (unmarked)" />
+              )}
               <Sw style={{ background: "var(--color-amber)" }} label="Full — marked" />
               <Sw
                 style={{
@@ -290,12 +301,14 @@ const PerDiemPage = () => {
               />
               <Sw
                 style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}
-                label="Home"
+                label={year <= flipYear ? "Home / unmarked (before Aug 18 '26)" : "Home"}
               />
-              <Sw
-                style={{ background: "transparent", border: "1.5px dashed var(--color-amber-hi)" }}
-                label="Inferred from a load (before Aug 18) — tap to confirm"
-              />
+              {year <= flipYear && (
+                <Sw
+                  style={{ background: "transparent", border: "1.5px dashed var(--color-amber-hi)" }}
+                  label="Inferred from a load (before Aug 18 '26) — tap to confirm"
+                />
+              )}
               <Sw
                 style={{ background: "transparent", border: "1px dashed var(--color-hairline-lo)" }}
                 label="Future"

@@ -122,6 +122,14 @@ describe("the 2026-08-18 default flip — unmarked days are OUT from the boundar
     // With an explicit home mark after the boundary, THAT is the last home.
     expect(lastHomeDay([], ["2026-08-21"], [], AFTER)).toBe("2026-08-21");
   });
+
+  it("lastHomeDay: a fully-exhausted 400-day scan returns the floor, never null — the alarm stays lit", () => {
+    // Far enough out that the whole scan window is post-flip with no marks:
+    // that is AT LEAST 400 days out, the most overdue state there is. It must
+    // read as a (≥400) days-out date, not dissolve into a "no marks yet" null.
+    const farOut = new Date("2027-10-01T12:00:00Z");
+    expect(lastHomeDay([], [], [], farOut)).toBe("2026-08-28"); // 399 days back — the scan floor
+  });
 });
 
 // Regression: the operator's per-diem calendar is in LOCAL days, so "today" must be

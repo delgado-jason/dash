@@ -97,7 +97,8 @@ const TruckDetailPage = () => {
       .then(setTrips)
       .catch(() => {});
     // Per-diem drives the day split: explicit "home" marks plus "full"/"half"
-    // (on-the-road) days; unmarked days default to home inside computeTruckMetrics.
+    // (on-the-road) days. Unmarked days default to home BEFORE 2026-08-18 and
+    // to out/idle from the flip on (see FULL_DEFAULT_SINCE in lib/perDiem).
     const year = new Date().getUTCFullYear();
     Promise.all([getPerDiemDays(year), getPerDiemDays(year - 1).catch(() => [])])
       .then(([a, b]) => {
