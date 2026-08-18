@@ -336,8 +336,8 @@ const FuelEntriesPage = () => {
             {stats.avgMpg != null && (
               <> · <b className="font-semibold text-ink tabular-nums">{stats.avgMpg.toFixed(1)}</b> MPG avg</>
             )}
-            {stats.costPerMile != null && (
-              <> · <b className="font-semibold text-ink tabular-nums">${stats.costPerMile.toFixed(2)}</b>/mi</>
+            {stats.costPerMile90 != null && (
+              <> · <b className="font-semibold text-ink tabular-nums">${stats.costPerMile90.toFixed(2)}</b>/mi · 90-day</>
             )}
             {realStates > 0 && <> · <b className="font-semibold text-ink">{realStates}</b> states</>}
           </span>

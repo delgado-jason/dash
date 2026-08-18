@@ -1613,20 +1613,31 @@ const GuidePage = () => {
             sources={[{ label: "Garage", to: "/garage" }]}
           >
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <ChainBox top="$0.28" bottom="fuel / mi" />
+              <ChainBox top="$0.68" bottom="fuel / mi (90-day)" />
               <span className="text-muted-text">+</span>
               <ChainBox top="$0.12" bottom="maintenance / mi" />
               <span className="text-muted-text">+</span>
               <ChainBox top="$0.50" bottom="note / mi" />
               <span className="text-muted-text">=</span>
-              <ChainBox top="$0.90" bottom="cost to run / mi" />
+              <ChainBox top="$1.30" bottom="cost to run / mi" />
             </div>
-            <Formula>(fuel + maintenance) ÷ miles driven + note ÷ miles per month</Formula>
+            <Formula>
+              fuel (90-day tank windows) + maintenance ÷ miles driven + note ÷
+              miles per month
+            </Formula>
             <Why>
               The real cost of keeping the rig rolling — the note included, so the
-              number reflects what actually leaves your pocket each mile. The same
-              payment also shows on the payoff tracker, but as balance paid down, not
-              a per-mile cost.
+              number reflects what actually leaves your pocket each mile. Fuel is
+              the <span className="text-light">90-day tank-window rate</span> —
+              the same number the Fuel page answers with — because diesel prices
+              swing too much for an all-time average to mean anything today, and
+              because dollars and miles must cover the{" "}
+              <span className="text-light">same stretch of road</span> (miles you
+              drove before you started logging fuel don't get to water it down).
+              No full-tank window in the last 90 days means fuel is unknown, so
+              the whole number waits rather than showing a fuel-less total. The
+              same payment also shows on the payoff tracker, but as balance paid
+              down, not a per-mile cost.
             </Why>
           </Metric>
 

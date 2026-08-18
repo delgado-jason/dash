@@ -22,10 +22,10 @@ export interface TruckMetrics {
   idleDays: number; // days with no load and no home mark — the true idle
   avgMpg: number | null;
   bestTank: number | null;
-  fuelPerMile: number | null;
+  fuelPerMile: number | null; // fuelStats.costPerMile90 — the app's ONE fuel $/mi
+  maintPerMile: number | null; // maintenance $ ÷ driven miles (both full-history)
   revPerMile: number | null;
-  costToRunPerMile: number | null; // (fuel + maintenance + note) ÷ miles — all-in
-  fuelSpend: number; // fuel $ over the window (for the fuel-vs-maintenance split)
+  costToRunPerMile: number | null; // fuel(90d) + maintenance + note — all-in $/mi
   maintSpend: number; // maintenance $ attributable to the truck
   notePerMile: number | null; // asset note ÷ miles/month (null when no note passed)
   milesPerMonth: number | null;
@@ -73,7 +73,6 @@ export const computeTruckMetrics = (
   const totalMiles = earned.reduce((s, l) => s + loadMiles(l), 0);
 
   const fs = fuelStats(truckFuel, now);
-  const fuelSpend = fs.totalSpend;
   const maintSpend = truckServiceSpend(services);
 
   // Utilization — days the truck was under a load ÷ days in the window. The window
@@ -139,15 +138,21 @@ export const computeTruckMetrics = (
   const windowMonths = windowDays / 30.44;
   const milesPerMonth = windowMonths > 0 ? totalMiles / windowMonths : null;
 
-  // All-in cost to run: fuel + maintenance (spend ÷ miles driven) plus the rig's own
-  // note spread over the miles it runs a month. The note is a per-mile rate on a
-  // different time base than fuel/maint, but each piece is a valid $/mi, so they add.
+  // All-in cost to run: fuel + maintenance + note. Each component is a valid
+  // $/mi on its own honest basis, so they add. Fuel is the 90-day tank-window
+  // rate (fs.costPerMile90) — NEVER total fuel spend ÷ total load miles: fuel
+  // logging and load history start on different dates, so that mix divides a
+  // few months of diesel by a year of driving and understates fuel by half
+  // (the $0.31-vs-$0.68 bug, 2026-08-18). Maintenance spreads its full logged
+  // history over the miles that history covers — a consistent pair. No recent
+  // fuel window → fuel is UNKNOWN, not $0: cost-to-run goes null over lying.
   const notePerMile =
     milesPerMonth && milesPerMonth > 0 && assetNote > 0 ? assetNote / milesPerMonth : null;
-  const operatingPerMile =
-    totalMiles > 0 ? (fuelSpend + maintSpend) / totalMiles : null;
+  const maintPerMile = totalMiles > 0 ? maintSpend / totalMiles : null;
   const costToRunPerMile =
-    operatingPerMile != null ? operatingPerMile + (notePerMile ?? 0) : null;
+    fs.costPerMile90 != null && maintPerMile != null
+      ? fs.costPerMile90 + maintPerMile + (notePerMile ?? 0)
+      : null;
 
   return {
     utilization,
@@ -157,10 +162,10 @@ export const computeTruckMetrics = (
     idleDays,
     avgMpg: fs.avgMpg,
     bestTank: fs.bestMpg,
-    fuelPerMile: fs.costPerMile,
+    fuelPerMile: fs.costPerMile90,
+    maintPerMile,
     revPerMile: totalMiles > 0 ? netRevenue / totalMiles : null,
     costToRunPerMile,
-    fuelSpend,
     maintSpend,
     notePerMile,
     milesPerMonth,

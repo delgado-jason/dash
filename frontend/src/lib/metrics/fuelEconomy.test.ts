@@ -66,6 +66,51 @@ describe("fuelStats", () => {
   });
 });
 
+describe("fuelStats — costPerMile90 (the canonical fuel $/mi)", () => {
+  // Two clean windows: 600 mi on $480 (May) and 600 mi on $600 (August).
+  // Full fills only, so each closing fill is a window by itself.
+  const may = [
+    e(100000, 120, 4.0, "2026-05-01"), // opening full
+    e(100600, 120, 4.0, "2026-05-03"), // closes May window: 600 mi, $480
+  ];
+  const augFill = e(101200, 120, 5.0, "2026-08-10"); // closes Aug window: 600 mi, $600
+
+  it("counts only windows that CLOSED in the last 90 days", () => {
+    // now = Aug 15: the May window (closed May 3, 104 days back) is out; the
+    // August window is in. $600 ÷ 600 mi — the recent rate, not the blend.
+    const s = fuelStats([...may, augFill], new Date("2026-08-15T00:00:00.000Z"));
+    expect(s.costPerMile90).toBeCloseTo(1.0, 5);
+    expect(s.totalMiles).toBe(1200); // lifetime window miles are untouched
+  });
+
+  it("equals the all-window rate when everything is recent", () => {
+    // now = June 1: both would-be cutoffs cover May. One window: $480 ÷ 600 mi.
+    const s = fuelStats(may, new Date("2026-06-01T00:00:00.000Z"));
+    expect(s.costPerMile90).toBeCloseTo(480 / 600, 5);
+  });
+
+  it("null when every window closed more than 90 days ago", () => {
+    const s = fuelStats(may, new Date("2026-12-01T00:00:00.000Z"));
+    expect(s.costPerMile90).toBeNull();
+    expect(s.avgMpg).not.toBeNull(); // MPG stays lifetime — it's mechanical, not priced
+  });
+
+  it("null with no completed windows at all", () => {
+    const s = fuelStats([e(100000, 130, 5, "2026-08-01")], new Date("2026-08-15T00:00:00.000Z"));
+    expect(s.costPerMile90).toBeNull();
+  });
+
+  it("a window straddling the cutoff counts iff its CLOSING fill is inside", () => {
+    // Window opens May 1 (outside 90d of Aug 15) but closes Aug 10 (inside):
+    // the whole window counts — its dollars and miles travel together.
+    const s = fuelStats(
+      [e(100000, 120, 4.0, "2026-05-01"), e(100600, 120, 5.0, "2026-08-10")],
+      new Date("2026-08-15T00:00:00.000Z"),
+    );
+    expect(s.costPerMile90).toBeCloseTo(600 / 600, 5);
+  });
+});
+
 describe("avgWeeklyCost", () => {
   it("divides last-90-day spend by the weeks of data present", () => {
     // Two fills a week apart, $700 each → ~$700/week over a 1-week span.

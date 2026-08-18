@@ -72,7 +72,12 @@ export interface FuelStats {
   avgCostPerGallon: number | null;
   totalMiles: number;
   avgMpg: number | null;
-  costPerMile: number | null;
+  // THE canonical fuel $/mile, app-wide (Jason, 2026-08-18): tank-window
+  // spend ÷ tank-window miles, restricted to windows that CLOSED in the last
+  // 90 days. Fuel prices are volatile — an all-time average drifts from what
+  // diesel costs today. Every surface that quotes fuel cost per mile must
+  // read this one number; null = no full-to-full window closed recently.
+  costPerMile90: number | null;
   bestMpg: number | null;
   worstMpg: number | null;
   avgWeeklyCost90: number | null;
@@ -116,8 +121,18 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
   const totalSpend = entries.reduce((s, e) => s + entryCost(e), 0);
   const totalMiles = windows.reduce((s, w) => s + w.miles, 0);
   const windowGallons = windows.reduce((s, w) => s + w.gallons, 0);
-  const windowSpend = windows.reduce((s, w) => s + w.cost, 0);
   const mpgs = windows.map((w) => w.mpg);
+
+  // 90-day rolling $/mile — a window belongs to the day its closing full-up
+  // happened, so one window can straddle the cutoff; it counts iff it closed
+  // inside. Dollars and miles always come from the SAME windows.
+  const cutoff = new Date(now);
+  cutoff.setUTCDate(cutoff.getUTCDate() - 90);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const recent = windows.filter((w) => String(w.date).slice(0, 10) >= cutoffStr);
+  const recentMiles = recent.reduce((s, w) => s + w.miles, 0);
+  const recentSpend = recent.reduce((s, w) => s + w.cost, 0);
+
   return {
     entryCount: entries.length,
     totalGallons,
@@ -125,7 +140,7 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
     avgCostPerGallon: totalGallons > 0 ? totalSpend / totalGallons : null,
     totalMiles,
     avgMpg: windowGallons > 0 ? totalMiles / windowGallons : null,
-    costPerMile: totalMiles > 0 ? windowSpend / totalMiles : null,
+    costPerMile90: recentMiles > 0 ? recentSpend / recentMiles : null,
     bestMpg: mpgs.length ? Math.max(...mpgs) : null,
     worstMpg: mpgs.length ? Math.min(...mpgs) : null,
     avgWeeklyCost90: avgWeeklyCost(entries, now),
@@ -143,7 +158,7 @@ export interface TankRecap {
   pricePerGallon: number; // this tank's blended $/gal
   mpgVsAvg: number | null; // tank MPG − overall avg MPG (+ = better)
   mpgVsLast: number | null; // tank MPG − previous tank's MPG (+ = better)
-  cpmVsAvg: number | null; // tank $/mile − avg $/mile (− = better/cheaper)
+  cpmVsAvg: number | null; // tank $/mile − 90-day $/mile (− = better/cheaper)
   ppgVsNational: number | null; // tank $/gal − national that month (− = under market)
   isRecord: boolean; // strictly beat every prior tank's MPG (needs a prior)
   streak: number; // consecutive most-recent tanks at/above avg MPG
@@ -164,7 +179,7 @@ export const latestTankRecap = (
   const mpgVsAvg = stats.avgMpg != null ? tank.mpg - stats.avgMpg : null;
   const mpgVsLast = prior ? tank.mpg - prior.mpg : null;
   const cpmVsAvg =
-    stats.costPerMile != null ? costPerMile - stats.costPerMile : null;
+    stats.costPerMile90 != null ? costPerMile - stats.costPerMile90 : null;
 
   // National price for the tank's month (best-effort — null when EIA has none).
   const month = String(tank.date).slice(0, 7);
