@@ -17,11 +17,15 @@ import {
   createStage,
   patchStage,
   deleteStage,
+  getAccounts,
+  createAccount,
+  patchAccount,
   getSnapshots,
   createSnapshot,
   type PlanRow,
   type PlanStageRow,
   type SnapshotRow,
+  type AccountRow,
 } from "@/services/planService";
 import { getObligations } from "@/services/obligationsService";
 import type { Obligation } from "@/types/obligation";
@@ -89,6 +93,7 @@ const LBL = "font-condensed font-semibold text-[11px] tracking-[.12em] uppercase
 
 const StatusPage = () => {
   const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,9 +103,10 @@ const StatusPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
-    Promise.all([getPlans(), getSnapshots(), getObligations()])
-      .then(([p, s, o]) => {
+    Promise.all([getPlans(), getAccounts(), getSnapshots(), getObligations()])
+      .then(([p, a, s, o]) => {
         setPlans(p);
+        setAccounts(a);
         setSnapshots(s);
         setObligations(o);
       })
@@ -113,6 +119,20 @@ const StatusPage = () => {
 
   const plan = useMemo(() => plans.find((p) => p.active) ?? plans[0] ?? null, [plans]);
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+
+  // Role resolution — the math reads two roles; everything else is a reserve.
+  const activeAccounts = useMemo(
+    () => accounts.filter((a) => a.active).sort((a, b) => a.position - b.position),
+    [accounts],
+  );
+  const opsAcct = activeAccounts.find((a) => a.role === "ops") ?? null;
+  const vaultAcct = activeAccounts.find((a) => a.role === "vault") ?? null;
+  const reserveAccts = activeAccounts.filter((a) => a.role === "reserve");
+  const balanceOf = (sn: SnapshotRow | null, accountId: string | null | undefined): number | null => {
+    if (!sn || !accountId) return null;
+    const b = sn.balances.find((x) => x.account_id === accountId);
+    return b == null ? null : Number(b.balance);
+  };
   const obligById = useMemo(
     () => new Map(obligations.map((o) => [o.obligation_id, o])),
     [obligations],
@@ -139,7 +159,7 @@ const StatusPage = () => {
   );
 
   const snapInput: SnapshotInput | null = latest
-    ? { ops: latest.ops, vault: latest.vault, maintenance: latest.maintenance, tax: latest.tax, trailer: latest.trailer }
+    ? { ops: balanceOf(latest, opsAcct?.account_id), vault: balanceOf(latest, vaultAcct?.account_id) }
     : null;
 
   const status = useMemo(
@@ -152,26 +172,27 @@ const StatusPage = () => {
     () =>
       snapshots.map((s) => ({
         week: formatDate(s.as_of) ?? s.as_of,
-        ops: Number(s.ops),
-        vault: Number(s.vault),
+        ops: balanceOf(s, opsAcct?.account_id) ?? 0,
+        vault: balanceOf(s, vaultAcct?.account_id) ?? 0,
       })),
-    [snapshots],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshots, opsAcct, vaultAcct],
   );
 
   // ---- snapshot form ----
   const [fAsOf, setFAsOf] = useState(todayKey());
-  const [fOps, setFOps] = useState("");
-  const [fVault, setFVault] = useState("");
-  const [fMaint, setFMaint] = useState("");
-  const [fTax, setFTax] = useState("");
-  const [fTrailer, setFTrailer] = useState("");
+  const [fBalances, setFBalances] = useState<Record<string, string>>({});
   const [fNote, setFNote] = useState("");
 
   const draftStatus = useMemo(() => {
     if (!plan) return null;
-    const draft: SnapshotInput = { ops: fOps || null, vault: fVault || null, maintenance: fMaint || null, tax: fTax || null, trailer: fTrailer || "0" };
+    const draft: SnapshotInput = {
+      ops: opsAcct ? fBalances[opsAcct.account_id] || null : null,
+      vault: vaultAcct ? fBalances[vaultAcct.account_id] || null : null,
+    };
     return getPlanStatus(draft, { float_line: plan.float_line, stages: stageInputs });
-  }, [plan, stageInputs, fOps, fVault, fMaint, fTax, fTrailer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, stageInputs, fBalances, opsAcct, vaultAcct]);
 
   const saveSnapshot = async () => {
     setBusy(true);
@@ -179,15 +200,15 @@ const StatusPage = () => {
     try {
       await createSnapshot({
         as_of: fAsOf,
-        ops: Number(fOps),
-        vault: Number(fVault),
-        maintenance: Number(fMaint),
-        tax: Number(fTax),
-        trailer: fTrailer ? Number(fTrailer) : 0,
         note: fNote.trim() || null,
+        balances: activeAccounts.map((a) => ({
+          account_id: a.account_id,
+          balance: Number(fBalances[a.account_id] || 0),
+        })),
       });
       setShowSnap(false);
-      setFOps(""); setFVault(""); setFMaint(""); setFTax(""); setFTrailer(""); setFNote("");
+      setFBalances({});
+      setFNote("");
       await load();
     } catch (e) {
       setError(
@@ -208,6 +229,7 @@ const StatusPage = () => {
   const [pMaint, setPMaint] = useState("");
   const [pTax, setPTax] = useState("");
   const [pStages, setPStages] = useState<PlanStageRow[]>([]);
+  const [pAccounts, setPAccounts] = useState<AccountRow[]>([]);
 
   const openPlanEditor = () => {
     if (!plan) return;
@@ -219,6 +241,7 @@ const StatusPage = () => {
     setPMaint(String(plan.maintenance_weekly));
     setPTax(String(plan.tax_weekly));
     setPStages([...plan.stages].sort((a, b) => a.position - b.position));
+    setPAccounts(activeAccounts.map((a) => ({ ...a })));
     setError(null);
     setShowPlan(true);
   };
@@ -250,6 +273,20 @@ const StatusPage = () => {
         maintenance_weekly: Number(pMaint),
         tax_weekly: Number(pTax),
       });
+      // Persist the accounts: new create, edited patch, removed deactivate
+      // (history keeps its balance rows — REMOVE hides, it never erases).
+      for (let i = 0; i < pAccounts.length; i++) {
+        const a = pAccounts[i];
+        const body = { name: a.name.trim(), role: a.role, position: i + 1, active: true };
+        if (a.account_id.startsWith("new-")) await createAccount(body);
+        else await patchAccount(a.account_id, body);
+      }
+      for (const a of activeAccounts) {
+        if (!pAccounts.some((x) => x.account_id === a.account_id)) {
+          await patchAccount(a.account_id, { active: false });
+        }
+      }
+
       // Persist the draft stages: new rows create, existing rows patch with
       // their (possibly reordered) position.
       const keepIds = new Set<string>();
@@ -423,7 +460,9 @@ const StatusPage = () => {
             </div>
             <div className="p-4">
               <p className="font-display text-[40px] leading-none tabular-nums">
-                {latest ? money(Number(latest.ops)) : "—"}
+                {balanceOf(latest, opsAcct?.account_id) != null
+                  ? money(balanceOf(latest, opsAcct?.account_id)!)
+                  : "—"}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 ops balance · float line {plan ? money(Number(plan.float_line)) : "—"}
@@ -460,7 +499,9 @@ const StatusPage = () => {
             </div>
             <div className="p-4">
               <p className="font-display text-[40px] leading-none tabular-nums">
-                {latest ? money(Number(latest.vault)) : "—"}
+                {balanceOf(latest, vaultAcct?.account_id) != null
+                  ? money(balanceOf(latest, vaultAcct?.account_id)!)
+                  : "—"}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 {status?.cushion
@@ -563,29 +604,28 @@ const StatusPage = () => {
                 {plan && `· ${money(Number(plan.maintenance_weekly))}/wk maintenance · ${money(Number(plan.tax_weekly))}/wk tax`}
               </span>
             </div>
-            <div className="grid grid-cols-3">
-              <div className="px-4 py-4 border-r ds2-cell-rule">
-                <p className="font-condensed font-semibold text-[23px] tabular-nums">
-                  {latest ? money(Number(latest.maintenance)) : "—"}
+            <div className="grid" style={{ gridTemplateColumns: `repeat(${Math.max(1, reserveAccts.length)}, 1fr)` }}>
+              {reserveAccts.length === 0 ? (
+                <p className="font-condensed text-[13px] text-faint px-4 py-4">
+                  No reserve accounts — add them in EDIT PLAN.
                 </p>
-                <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
-                  Maintenance · repairs only
-                </p>
-              </div>
-              <div className="px-4 py-4 border-r ds2-cell-rule">
-                <p className="font-condensed font-semibold text-[23px] tabular-nums">
-                  {latest ? money(Number(latest.tax)) : "—"}
-                </p>
-                <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">Tax</p>
-              </div>
-              <div className="px-4 py-4">
-                <p className="font-condensed font-semibold text-[23px] tabular-nums">
-                  {latest ? money(Number(latest.trailer)) : "—"}
-                </p>
-                <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
-                  Trailer holding · zeroes monthly
-                </p>
-              </div>
+              ) : (
+                reserveAccts.map((a, i) => (
+                  <div
+                    key={a.account_id}
+                    className={`px-4 py-4 ${i < reserveAccts.length - 1 ? "border-r ds2-cell-rule" : ""}`}
+                  >
+                    <p className="font-condensed font-semibold text-[23px] tabular-nums">
+                      {balanceOf(latest, a.account_id) != null
+                        ? money(balanceOf(latest, a.account_id)!)
+                        : "—"}
+                    </p>
+                    <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
+                      {a.name}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -635,11 +675,25 @@ const StatusPage = () => {
               </div>
               <div className="p-5 grid grid-cols-2 gap-3">
                 <div><label className={LBL}>As of</label><input type="date" className={FIELD} value={fAsOf} onChange={(e) => setFAsOf(e.target.value)} /></div>
-                <div><label className={LBL}>Ops</label><input inputMode="decimal" placeholder="12300" className={FIELD} value={fOps} onChange={(e) => setFOps(e.target.value)} /></div>
-                <div><label className={LBL}>Vault</label><input inputMode="decimal" placeholder="8750" className={FIELD} value={fVault} onChange={(e) => setFVault(e.target.value)} /></div>
-                <div><label className={LBL}>Maintenance</label><input inputMode="decimal" placeholder="1500" className={FIELD} value={fMaint} onChange={(e) => setFMaint(e.target.value)} /></div>
-                <div><label className={LBL}>Tax</label><input inputMode="decimal" placeholder="2100" className={FIELD} value={fTax} onChange={(e) => setFTax(e.target.value)} /></div>
-                <div><label className={LBL}>Trailer holding</label><input inputMode="decimal" placeholder="0" className={FIELD} value={fTrailer} onChange={(e) => setFTrailer(e.target.value)} /></div>
+                {activeAccounts.map((a) => (
+                  <div key={a.account_id}>
+                    <label className={LBL}>
+                      {a.name}
+                      {a.role !== "reserve" && (
+                        <span className="normal-case tracking-normal text-amber-hi"> · {a.role}</span>
+                      )}
+                    </label>
+                    <input
+                      inputMode="decimal"
+                      placeholder="0"
+                      className={FIELD}
+                      value={fBalances[a.account_id] ?? ""}
+                      onChange={(e) =>
+                        setFBalances((m) => ({ ...m, [a.account_id]: e.target.value }))
+                      }
+                    />
+                  </div>
+                ))}
                 {draftStatus?.orders?.length ? (
                   <p className="col-span-2 font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
                     the verdict as you type: <b className="text-amber-hi">{draftStatus.orders.join(" · ")}</b>
@@ -653,7 +707,14 @@ const StatusPage = () => {
                 <button
                   className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
                   style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
-                  disabled={busy || !fOps || !fVault || !fMaint || !fTax}
+                  disabled={
+                    busy ||
+                    !opsAcct ||
+                    !vaultAcct ||
+                    !fBalances[opsAcct.account_id] ||
+                    fBalances[vaultAcct.account_id] == null ||
+                    fBalances[vaultAcct.account_id] === ""
+                  }
                   onClick={saveSnapshot}
                 >
                   {busy ? "SAVING…" : "SAVE SNAPSHOT"}
@@ -684,6 +745,58 @@ const StatusPage = () => {
                 </div>
                 <div><label className={LBL}>Maintenance / wk</label><input inputMode="decimal" className={FIELD} value={pMaint} onChange={(e) => setPMaint(e.target.value)} /></div>
                 <div><label className={LBL}>Tax / wk</label><input inputMode="decimal" className={FIELD} value={pTax} onChange={(e) => setPTax(e.target.value)} /></div>
+
+                <p className="col-span-2 font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mt-2">
+                  The accounts — what the Friday snapshot asks for · one ops, one vault
+                </p>
+                {pAccounts.map((a, i) => (
+                  <div key={a.account_id} className="col-span-2 flex gap-2 items-center">
+                    <input
+                      className={FIELD}
+                      value={a.name}
+                      onChange={(e) =>
+                        setPAccounts((rows) => rows.map((r, k) => (k === i ? { ...r, name: e.target.value } : r)))
+                      }
+                    />
+                    <select
+                      className={FIELD}
+                      style={{ maxWidth: 140 }}
+                      value={a.role}
+                      onChange={(e) =>
+                        setPAccounts((rows) =>
+                          rows.map((r, k) => (k === i ? { ...r, role: e.target.value as AccountRow["role"] } : r)),
+                        )
+                      }
+                    >
+                      <option value="ops">ops · the float</option>
+                      <option value="vault">vault · the cascade</option>
+                      <option value="reserve">reserve · watched</option>
+                    </select>
+                    <button
+                      className="shrink-0 text-faint hover:text-[#e05252] px-1"
+                      aria-label="Remove account"
+                      onClick={() => setPAccounts((rows) => rows.filter((_, k) => k !== i))}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="col-span-2">
+                  <button
+                    className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-amber-hi hover:text-hot"
+                    onClick={() =>
+                      setPAccounts((rows) => [
+                        ...rows,
+                        { account_id: `new-${Date.now()}`, name: "New account", role: "reserve", position: rows.length + 1, active: true },
+                      ])
+                    }
+                  >
+                    + ADD ACCOUNT
+                  </button>
+                  <span className="font-condensed text-[11px] text-faint ml-3">
+                    removing hides the account going forward — its history stays
+                  </span>
+                </div>
 
                 <p className="col-span-2 font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mt-2">
                   The waterfall — order is the plan · debt stages bind to an obligation

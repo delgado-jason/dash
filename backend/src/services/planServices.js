@@ -119,29 +119,101 @@ export async function deleteStage(user_id, stage_id) {
   if (result.rowCount === 0) throw new NotFoundError("Stage not found");
 }
 
-// ---- account snapshots (append-only) ----
+// ---- accounts (the snapshot's shape is data too) ----
 
-export async function getSnapshots(user_id) {
+const ACCOUNT_FIELDS = ["name", "role", "position", "active"];
+
+export async function getAccounts(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT * FROM public.account_snapshots WHERE user_id = $1 ORDER BY as_of`,
+    `SELECT * FROM public.plan_accounts WHERE user_id = $1 ORDER BY position, created_at`,
     [user_id],
   );
   return result.rows;
 }
 
-export async function createSnapshot(user_id, data) {
+export async function createAccount(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const { as_of, ops, vault, maintenance, tax, trailer, note } = data;
-  if (!as_of) throw new ValidationError("Missing as_of date");
-  for (const [k, v] of Object.entries({ ops, vault, maintenance, tax })) {
-    if (v == null || isNaN(Number(v)))
-      throw new ValidationError(`${k} must be a number`);
-  }
+  const fields = pick(data, ACCOUNT_FIELDS);
+  if (!fields.name || !fields.role)
+    throw new ValidationError("An account needs a name and a role");
+  const cols = Object.keys(fields);
   const result = await db.query(
-    `INSERT INTO public.account_snapshots (user_id, as_of, ops, vault, maintenance, tax, trailer, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [user_id, as_of, ops, vault, maintenance, tax, trailer ?? 0, note ?? null],
+    `INSERT INTO public.plan_accounts (user_id, ${cols.join(", ")})
+     VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(", ")}) RETURNING *`,
+    [user_id, ...Object.values(fields)],
   );
   return result.rows[0];
+}
+
+export async function patchAccount(user_id, account_id, data) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  if (!account_id) throw new ValidationError("Missing account_id");
+  const fields = pick(data, ACCOUNT_FIELDS);
+  if (Object.keys(fields).length === 0)
+    throw new ValidationError("Nothing to update");
+  const sets = Object.keys(fields).map((k, i) => `${k} = $${i + 3}`);
+  const result = await db.query(
+    `UPDATE public.plan_accounts SET ${sets.join(", ")}
+     WHERE user_id = $1 AND account_id = $2 RETURNING *`,
+    [user_id, account_id, ...Object.values(fields)],
+  );
+  if (result.rowCount === 0) throw new NotFoundError("Account not found");
+  return result.rows[0];
+}
+
+// ---- account snapshots (append-only; balances ride per-account rows) ----
+
+export async function getSnapshots(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const snaps = await db.query(
+    `SELECT * FROM public.account_snapshots WHERE user_id = $1 ORDER BY as_of`,
+    [user_id],
+  );
+  const balances = await db.query(
+    `SELECT snapshot_id, account_id, balance FROM public.snapshot_balances WHERE user_id = $1`,
+    [user_id],
+  );
+  return snaps.rows.map((sn) => ({
+    ...sn,
+    balances: balances.rows
+      .filter((b) => b.snapshot_id === sn.snapshot_id)
+      .map(({ account_id, balance }) => ({ account_id, balance })),
+  }));
+}
+
+export async function createSnapshot(user_id, data) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const { as_of, note, balances } = data;
+  if (!as_of) throw new ValidationError("Missing as_of date");
+  if (!Array.isArray(balances) || balances.length === 0)
+    throw new ValidationError("A snapshot needs at least one balance");
+  for (const b of balances) {
+    if (!b.account_id || b.balance == null || isNaN(Number(b.balance)))
+      throw new ValidationError("Every balance needs an account and a number");
+  }
+  // One snapshot + its balances land together or not at all.
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const snap = await client.query(
+      `INSERT INTO public.account_snapshots (user_id, as_of, note)
+       VALUES ($1, $2, $3) RETURNING *`,
+      [user_id, as_of, note ?? null],
+    );
+    for (const b of balances) {
+      await client.query(
+        `INSERT INTO public.snapshot_balances (snapshot_id, account_id, user_id, balance)
+         VALUES ($1, $2, $3, $4)`,
+        [snap.rows[0].snapshot_id, b.account_id, user_id, b.balance],
+      );
+    }
+    await client.query("COMMIT");
+    return { ...snap.rows[0], balances };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }

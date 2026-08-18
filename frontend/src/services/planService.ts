@@ -25,15 +25,19 @@ export interface PlanRow {
   stages: PlanStageRow[];
 }
 
+export interface AccountRow {
+  account_id: string;
+  name: string;
+  role: "ops" | "vault" | "reserve";
+  position: number;
+  active: boolean;
+}
+
 export interface SnapshotRow {
   snapshot_id: string;
   as_of: string;
-  ops: string;
-  vault: string;
-  maintenance: string;
-  tax: string;
-  trailer: string;
   note: string | null;
+  balances: { account_id: string; balance: string | number }[];
 }
 
 export const getPlans = async (): Promise<PlanRow[]> => {
@@ -61,6 +65,20 @@ export const patchStage = async (stageId: string, data: Record<string, unknown>)
 
 export const deleteStage = async (stageId: string): Promise<void> => {
   await api.delete(`/plans/stages/${stageId}`);
+};
+
+export const getAccounts = async (): Promise<AccountRow[]> => {
+  const res = await api.get("/plans/accounts/all");
+  return res.data.accounts;
+};
+
+export const createAccount = async (data: Record<string, unknown>): Promise<AccountRow> => {
+  const res = await api.post("/plans/accounts", data);
+  return res.data.account;
+};
+
+export const patchAccount = async (id: string, data: Record<string, unknown>): Promise<void> => {
+  await api.patch(`/plans/accounts/${id}`, data);
 };
 
 export const getSnapshots = async (): Promise<SnapshotRow[]> => {
