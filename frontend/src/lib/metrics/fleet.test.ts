@@ -104,6 +104,34 @@ describe("lastHomeDay", () => {
   });
 });
 
+describe("the 2026-08-18 default flip — unmarked days are OUT from the boundary on", () => {
+  const AFTER = new Date("2026-08-25T12:00:00Z");
+
+  it("heatmap: post-flip unmarked reads idle; explicit home still wins; pre-flip unmarked stays home", () => {
+    const h = fleetHeatmap([], ["2026-08-22"], [], AFTER, 4);
+    const cellFor = (date: string) => h.cells.find((c) => c.date === date);
+    expect(cellFor("2026-08-20")?.status).toBe("idle"); // unmarked, post-flip → out
+    expect(cellFor("2026-08-22")?.status).toBe("home"); // explicit mark wins
+    expect(cellFor("2026-08-17")?.status).toBe("home"); // unmarked, pre-flip → home
+  });
+
+  it("lastHomeDay: an unmarked post-flip evening no longer resets the counter", () => {
+    // No marks at all: every day back to the boundary is OUT; the first
+    // pre-boundary unmarked day (08-17) is the last true home.
+    expect(lastHomeDay([], [], [], AFTER)).toBe("2026-08-17");
+    // With an explicit home mark after the boundary, THAT is the last home.
+    expect(lastHomeDay([], ["2026-08-21"], [], AFTER)).toBe("2026-08-21");
+  });
+
+  it("lastHomeDay: a fully-exhausted 400-day scan returns the floor, never null — the alarm stays lit", () => {
+    // Far enough out that the whole scan window is post-flip with no marks:
+    // that is AT LEAST 400 days out, the most overdue state there is. It must
+    // read as a (≥400) days-out date, not dissolve into a "no marks yet" null.
+    const farOut = new Date("2027-10-01T12:00:00Z");
+    expect(lastHomeDay([], [], [], farOut)).toBe("2026-08-28"); // 399 days back — the scan floor
+  });
+});
+
 // Regression: the operator's per-diem calendar is in LOCAL days, so "today" must be
 // the local day. On a US evening the UTC date is already tomorrow — an unmarked day
 // that would read as home and falsely reset the counter to "home today."

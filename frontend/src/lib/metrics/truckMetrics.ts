@@ -10,6 +10,7 @@ import type { Truck } from "@/types/truck";
 import { loadRevenue } from "./rateTargets";
 import { fuelStats } from "./fuelEconomy";
 import { underLoadDaySet } from "./underLoad";
+import { FULL_DEFAULT_SINCE } from "@/lib/perDiem";
 
 export interface TruckMetrics {
   utilization: number | null; // under-load days ÷ window days (0..1)
@@ -105,9 +106,10 @@ export const computeTruckMetrics = (
       )
     : 0;
 
-  // Categorize every window day. The per-diem default is HOME (an unmarked day
-  // means you were home), so home = explicit "home" mark OR unmarked, unless you
-  // were under a load. "full"/"half" (travel) days you weren't loaded are idle
+  // Categorize every window day. The per-diem default FLIPPED on
+  // FULL_DEFAULT_SINCE: before it an unmarked day means home; from it on an
+  // unmarked day means OUT (idle unless loaded) — Jason marks home time
+  // explicitly now. "full"/"half" (travel) days you weren't loaded are idle
   // (out, not earning). An explicit home mark wins over a load's date envelope.
   const underLoadSet = underLoadDaySet(truckLoads, windowStart, nowDay);
   const homeSet = new Set(homeDays);
@@ -124,7 +126,8 @@ export const computeTruckMetrics = (
       if (homeSet.has(k)) homeDayCount++;
       else if (underLoadSet.has(k)) underLoadDays++;
       else if (travelSet.has(k)) idleDays++;
-      else homeDayCount++; // unmarked → home
+      else if (k >= FULL_DEFAULT_SINCE) idleDays++; // unmarked → out, post-flip
+      else homeDayCount++; // unmarked → home, pre-flip
       cur.setUTCDate(cur.getUTCDate() + 1);
     }
   }

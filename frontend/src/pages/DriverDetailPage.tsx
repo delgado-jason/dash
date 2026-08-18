@@ -10,9 +10,11 @@ import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getFuelEntries } from "@/services/fuelService";
 import { getTrucks } from "@/services/trucksService";
-import { getLastHomeDay } from "@/services/perDiemService";
+import { getPerDiemDays } from "@/services/perDiemService";
+import type { PerDiemDay } from "@/types/perDiem";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { hometimeStatus } from "@/lib/metrics/hometime";
+import { lastHomeDay } from "@/lib/metrics/fleet";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -79,7 +81,7 @@ const DriverDetailPage = () => {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [lastHome, setLastHome] = useState<string | null>(null);
+  const [perDiemDays, setPerDiemDays] = useState<PerDiemDay[]>([]);
   const [hometimeThreshold, setHometimeThreshold] = useState(21);
   const [operation, setOperation] = useState("flatbed");
   const [tiers, setTiers] = useState<RateTiers>(RATE_TIERS);
@@ -101,7 +103,12 @@ const DriverDetailPage = () => {
     getObligations().then(setObligations).catch(() => {});
     getFuelEntries().then(setFuel).catch(() => {});
     getTrucks().then(setTrucks).catch(() => {});
-    getLastHomeDay().then(setLastHome).catch(() => {});
+    // This + last year of marks — same window the Fleet tab reads, so both
+    // hometime chips run the identical (post-flip) lastHomeDay math.
+    const yr = new Date().getUTCFullYear();
+    Promise.all([getPerDiemDays(yr), getPerDiemDays(yr - 1).catch(() => [])])
+      .then(([a, b]) => setPerDiemDays([...a, ...b]))
+      .catch(() => {});
     getSettlementSchedule()
       .then((s) => {
         setHometimeThreshold(s.hometime_threshold_days);
@@ -226,11 +233,18 @@ const DriverDetailPage = () => {
     };
   }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, tiers, marginGoal]);
 
-  // Hometime status for the (owner-op) driver — days since their last home mark.
-  const hometime = useMemo(
-    () => hometimeStatus(lastHome, hometimeThreshold, new Date()),
-    [lastHome, hometimeThreshold],
-  );
+  // Hometime status for the (owner-op) driver — computed CLIENT-side with the
+  // same flipped lastHomeDay the Fleet tab uses (post-2026-08-18 an unmarked
+  // day is OUT), so the two chips can never disagree. The old backend
+  // last-home endpoint only knew explicit marks.
+  const hometime = useMemo(() => {
+    const homeDays = perDiemDays.filter((d) => d.status === "home").map((d) => d.day);
+    const travelDays = perDiemDays
+      .filter((d) => d.status === "full" || d.status === "half")
+      .map((d) => d.day);
+    const lastHome = lastHomeDay(loads ?? [], homeDays, travelDays, new Date());
+    return hometimeStatus(lastHome, hometimeThreshold, new Date());
+  }, [perDiemDays, loads, hometimeThreshold]);
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!driver) return;

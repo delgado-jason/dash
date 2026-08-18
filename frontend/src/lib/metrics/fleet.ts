@@ -1,7 +1,7 @@
 import type { Load } from "@/types/load";
 import type { MaintenanceService } from "@/types/maintenance";
 import { underLoadDaySet } from "./underLoad";
-import { dayKey as localDayKey } from "@/lib/perDiem";
+import { dayKey as localDayKey, FULL_DEFAULT_SINCE } from "@/lib/perDiem";
 
 // Fleet-tab metrics: what a single owner-operator's rig has cost in the shop, and
 // the day-by-day rhythm of how it ran. Pure — the clock comes in as `now`.
@@ -88,21 +88,26 @@ export interface Heatmap {
   months: { col: number; label: string }[]; // a label at the column where each month begins
 }
 
-// Which bucket a single day falls in. The per-diem calendar's default is HOME —
-// an unmarked day means you were home — so home = explicit "home" mark OR
-// unmarked, as long as you weren't under a load. "full"/"half" (travel) days you
-// weren't loaded are idle (out, not earning). A load span you didn't override
-// with a home mark is under-load.
+// Which bucket a single day falls in. The per-diem default FLIPPED on
+// FULL_DEFAULT_SINCE (2026-08-18): before it an unmarked day means home; from
+// it on an unmarked day means OUT (idle unless under a load) — Jason marks
+// home time explicitly now. "full"/"half" (travel) days you weren't loaded are
+// idle (out, not earning). An explicit home mark always wins.
 export const dayStatus = (
   k: string,
   under: Set<string>,
   home: Set<string>,
   travel: Set<string>,
-): DayStatus =>
-  home.has(k) ? "home" : under.has(k) ? "underload" : travel.has(k) ? "idle" : "home";
+): DayStatus => {
+  if (home.has(k)) return "home";
+  if (under.has(k)) return "underload";
+  if (travel.has(k)) return "idle";
+  return k >= FULL_DEFAULT_SINCE ? "idle" : "home";
+};
 
-// The most recent day you were home (scanning back from today) — home includes
-// unmarked days, so this is the true "last home," not just the last explicit mark.
+// The most recent day you were home (scanning back from today) — pre-boundary
+// unmarked days count as home; from the flip on, only an explicit home mark
+// does (otherwise every unmarked evening would falsely reset the counter).
 export const lastHomeDay = (
   loads: Load[],
   homeDays: string[],
@@ -118,12 +123,18 @@ export const lastHomeDay = (
   const home = new Set(homeDays);
   const travel = new Set(travelDays);
   const cur = new Date(`${todayKey}T00:00:00Z`); // UTC-midnight of the local day, to step cleanly
+  let k = todayKey;
   for (let i = 0; i < 400; i++) {
-    const k = dayKey(cur);
+    k = dayKey(cur);
     if (dayStatus(k, under, home, travel) === "home") return k;
     cur.setUTCDate(cur.getUTCDate() - 1);
   }
-  return null;
+  // The whole 400-day scan found no home day. Post-flip that means AT LEAST
+  // 400 days out — return the scan floor so the days-out counter reads ≥400
+  // and the over-threshold alarm stays lit. Returning null here would replace
+  // the most-overdue state there is with a neutral "no marks yet" nudge,
+  // exactly when the warning matters most.
+  return k;
 };
 
 // A GitHub-style calendar: columns are weeks (aligned to Sunday so rows are real
