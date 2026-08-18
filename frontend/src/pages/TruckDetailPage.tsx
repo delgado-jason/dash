@@ -558,7 +558,7 @@ const TruckDetailPage = () => {
               { v: metrics.bestTank != null ? metrics.bestTank.toFixed(1) : "—", l: "Best tank" },
               {
                 v: metrics.fuelPerMile != null ? `$${metrics.fuelPerMile.toFixed(2)}` : "—",
-                l: "Fuel / mi",
+                l: "Fuel / mi (90d)",
               },
               {
                 v: metrics.revPerMile != null ? `$${metrics.revPerMile.toFixed(2)}` : "—",

@@ -102,22 +102,30 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const mpgSeries = useMemo(() => mpgWindows(fleet.fuel).slice(-8).map((w) => w.mpg), [fleet.fuel]);
   const paidPerGal = useMemo(() => monthlyFuelPrice(fleet.fuel).at(-1)?.avgPrice ?? null, [fleet.fuel]);
 
-  // Cost to run, all-in: fuel + maintenance (spend ÷ total miles) PLUS the rig's
-  // own note (monthly truck + trailer payment ÷ miles/month). Shares are by
-  // per-mile component so they always sum to 100%.
-  const tMiles = metrics?.totalMiles ?? 0;
+  // Cost to run, all-in: fuel + maintenance + the rig's own note (monthly
+  // truck + trailer payment ÷ miles/month). Fuel and maintenance come from
+  // computeTruckMetrics — fuel is the 90-day tank-window rate, the SAME number
+  // the fuel page answers with. Shares are by per-mile component so they
+  // always sum to 100%. Fuel unknown (no recent full-tank window) ghosts the
+  // whole stack — a fuel-less "cost to run" would understate by half.
   const mpm = metrics?.milesPerMonth ?? null;
-  const fuelPerMile = tMiles > 0 ? (metrics?.fuelSpend ?? 0) / tMiles : null;
-  const maintPerMile = tMiles > 0 ? (metrics?.maintSpend ?? 0) / tMiles : null;
+  const fuelPerMile = metrics?.fuelPerMile ?? null;
+  const maintPerMile = metrics?.maintPerMile ?? null;
   const notePerMile = mpm && mpm > 0 && fleet.assetNote > 0 ? fleet.assetNote / mpm : null;
   const costParts = (
     [
-      { key: "fuel", label: "fuel", v: fuelPerMile, color: "var(--color-cat1)" },
+      { key: "fuel", label: "fuel (90-day)", v: fuelPerMile, color: "var(--color-cat1)" },
       { key: "maint", label: "maintenance", v: maintPerMile, color: "var(--color-cat5)" },
       { key: "note", label: "truck + trailer note", v: notePerMile, color: "var(--color-cat3)" },
     ] as { key: string; label: string; v: number | null; color: string }[]
   ).filter((p): p is { key: string; label: string; v: number; color: string } => p.v != null);
-  const costPerMile = costParts.length ? costParts.reduce((s, p) => s + p.v, 0) : null;
+  // Same null-gate as truckMetrics.costToRunPerMile — BOTH fuel and maint
+  // known, or no total. A fuel-only stack here while the truck page shows "—"
+  // would be two surfaces disagreeing on the same number.
+  const costPerMile =
+    fuelPerMile != null && maintPerMile != null
+      ? costParts.reduce((s, p) => s + p.v, 0)
+      : null;
   const costPct = (v: number) => (costPerMile && costPerMile > 0 ? Math.round((v / costPerMile) * 100) : 0);
   const dieselGap = paidPerGal != null && fleet.nationalDiesel != null ? paidPerGal - fleet.nationalDiesel : null;
 
@@ -192,7 +200,9 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
                   </span>
                 </p>
                 <p className="text-[11.5px] text-faint mt-1">
-                  {costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")}
+                  {costPerMile != null
+                    ? costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")
+                    : "forges after a full-tank fuel window in the last 90 days"}
                   {" · "}
                   <span className="text-dim tabular-nums">{odo.toLocaleString("en-US")} on the clock</span>
                   {club.next ? (
@@ -417,7 +427,10 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
         <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">per mile</span>}>Cost to run</H3>
           {costPerMile == null ? (
-            <p className="text-xs text-muted-text">Not enough miles + fuel logged yet.</p>
+            <p className="text-xs text-muted-text">
+              Needs a full-tank fuel window closed in the last 90 days — fuel is
+              the biggest slice, so there's no honest total without it.
+            </p>
           ) : (
             <>
               <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid #26304a" }}>

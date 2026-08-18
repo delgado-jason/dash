@@ -135,7 +135,7 @@ export const LatestTankCard = ({
               <span style={{ color: cpmVsAvg <= 0 ? GOOD : BAD }}>
                 {cpmVsAvg <= 0 ? "▼" : "▲"}{" "}
                 ${Math.abs(cpmVsAvg).toFixed(2)} {cpmVsAvg <= 0 ? "under" : "over"}{" "}
-                avg
+                90-day avg
               </span>
             ) : (
               <span className="text-faint">no average yet</span>

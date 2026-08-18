@@ -283,12 +283,15 @@ export const LoadDetailPage = () => {
   const dh = deadheadShare(load);
   // Actual empty miles from the odometer window; null until the load has run.
   const empty = loadEmptyMiles(load);
-  // Use the truck's real MPG + price/gal from fuel history; fall back to the
-  // working assumptions only until there's fuel data logged.
+  // Price the load off the 90-DAY tank windows — mpg90 · $/gal90 divide back
+  // to exactly costPerMile90, the app's one fuel rate (an all-time price
+  // drifts from today's pump). Fall back to lifetime history, then to the
+  // working assumptions, only when there's no recent (or any) fuel window.
   const fs = fuelStats(fuelEntries, new Date());
-  const fuelMpg = fs.avgMpg ?? ASSUMED_MPG;
-  const fuelPrice = fs.avgCostPerGallon ?? ASSUMED_FUEL_PRICE;
-  const usingRealFuel = fs.avgMpg != null && fs.avgCostPerGallon != null;
+  const fuelMpg = fs.mpg90 ?? fs.avgMpg ?? ASSUMED_MPG;
+  const fuelPrice = fs.avgCostPerGallon90 ?? fs.avgCostPerGallon ?? ASSUMED_FUEL_PRICE;
+  const usingRecentFuel = fs.mpg90 != null && fs.avgCostPerGallon90 != null;
+  const usingRealFuel = usingRecentFuel || (fs.avgMpg != null && fs.avgCostPerGallon != null);
   const fuel = estimateLoadFuel(load, fuelMpg, fuelPrice);
   const accTotal = accessorials.reduce((s, a) => s + Number(a.amount), 0);
 
@@ -938,16 +941,18 @@ export const LoadDetailPage = () => {
                 value={`${Math.round(fuel.gallons).toLocaleString("en-US")} gal`}
               />
               <Row
-                label={usingRealFuel ? "Your avg" : "Assumed"}
+                label={usingRecentFuel ? "Your 90-day avg" : usingRealFuel ? "Your avg (all-time)" : "Assumed"}
                 value={`${fuelMpg.toFixed(1)} mpg · $${fuelPrice.toFixed(2)}/gal`}
               />
               <p className="text-xs text-dim mt-2">
                 {fuel.basis === "actual"
                   ? "Miles from this load's odometer readings."
                   : "Miles estimated from loaded + deadhead — enter odometer start and end for actual."}{" "}
-                {usingRealFuel
-                  ? "MPG and price are your fuel-history averages."
-                  : "MPG and price are working assumptions until you log fuel."}
+                {usingRecentFuel
+                  ? "MPG and price are your 90-day tank-window averages — the same basis as fuel cost per mile everywhere else."
+                  : usingRealFuel
+                    ? "No tank window closed in the last 90 days — falling back to your all-time fuel averages."
+                    : "MPG and price are working assumptions until you log fuel."}
               </p>
             </>
           ) : (

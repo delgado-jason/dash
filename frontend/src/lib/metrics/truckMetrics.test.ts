@@ -25,17 +25,32 @@ const run = (
   homeDays: string[] = [],
   travelDays: string[] = [],
   assetNote = 0,
+  fuel: FuelEntry[] = [],
+  services: MaintenanceService[] = [],
 ) =>
   computeTruckMetrics(
     truck,
     loads,
-    [] as FuelEntry[],
-    [] as MaintenanceService[],
+    fuel,
+    services,
     now,
     homeDays,
     travelDays,
     assetNote,
   );
+
+// A full-to-full pair (both ≥ the 120-gal threshold) closing one tank window:
+// `miles` on `cost` dollars, dated by the closing fill.
+const tankWindow = (
+  openOdo: number,
+  miles: number,
+  cost: number,
+  closeDate: string,
+): FuelEntry[] =>
+  [
+    { odometer_reading: openOdo, gallons: 120, price_per_gallon: 4, fuel_date: "2026-01-02" },
+    { odometer_reading: openOdo + miles, gallons: 120, price_per_gallon: cost / 120, fuel_date: closeDate },
+  ] as unknown as FuelEntry[];
 
 describe("computeTruckMetrics — days-based utilization", () => {
   it("splits days: under-load / home (incl. unmarked) / idle (travel, unloaded)", () => {
@@ -88,20 +103,79 @@ describe("computeTruckMetrics — days-based utilization", () => {
 describe("computeTruckMetrics — all-in cost to run (note)", () => {
   const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
   const loads = [load("2026-01-05", "2026-01-07")]; // 500 loaded miles, delivered+paid
+  // 600 mi on $360 closing Jan 20 — inside 90 days of `now` → fuel $0.60/mi.
+  const fuel = tankWindow(100000, 600, 360, "2026-01-20");
 
-  it("no note passed → notePerMile is null, cost is operating only", () => {
+  it("no fuel logged → cost to run is NULL (fuel unknown), never a fuel-less total", () => {
     const m = run(truck, loads);
     expect(m.notePerMile).toBeNull();
-    // no fuel/maintenance in the fixtures → operating cost is 0, not the note
-    expect(m.costToRunPerMile).toBe(0);
+    expect(m.fuelPerMile).toBeNull();
+    expect(m.costToRunPerMile).toBeNull(); // not 0, not maint+note — unknown
+  });
+
+  it("no note passed → notePerMile is null, cost is operating only", () => {
+    const m = run(truck, loads, [], [], 0, fuel);
+    expect(m.notePerMile).toBeNull();
+    // fuel $0.60 + maintenance $0 (none logged over 500 mi) — no note slice
+    expect(m.costToRunPerMile).toBeCloseTo(0.6, 6);
   });
 
   it("folds the monthly note in as note ÷ miles-per-month", () => {
-    const m = run(truck, loads, [], [], 1000); // $1,000/mo note
+    const m = run(truck, loads, [], [], 1000, fuel); // $1,000/mo note
     expect(m.milesPerMonth).not.toBeNull();
     expect(m.notePerMile).toBeCloseTo(1000 / m.milesPerMonth!, 6);
-    // operating (fuel+maint) is 0 here, so the all-in total equals the note slice
-    expect(m.costToRunPerMile).toBeCloseTo(m.notePerMile!, 6);
+    // fuel $0.60 + maint $0 + the note slice
+    expect(m.costToRunPerMile).toBeCloseTo(0.6 + m.notePerMile!, 6);
+  });
+});
+
+describe("computeTruckMetrics — fuel $/mi rides the 90-day tank windows", () => {
+  const truck = { in_service_date: "2025-01-01", current_odometer: 0 } as Truck;
+  // 600 mi on $360 closing Jan 20 2026 → $0.60/mi, well inside 90 days of `now`.
+  const fuel = tankWindow(100000, 600, 360, "2026-01-20");
+
+  it("load miles outside the fuel log do NOT dilute fuel $/mi (the 31¢-vs-68¢ bug)", () => {
+    // A year of paid loads (12 × 500 = 6,000 mi) before fuel logging began.
+    // The old math divided $360 by all 6,500 mi → ~$0.055/mi. The fuel rate
+    // must stay the tank-window rate no matter how many miles predate the log.
+    const yearOfLoads = Array.from({ length: 12 }, (_, i) =>
+      load(`2025-${String(i + 1).padStart(2, "0")}-05`, `2025-${String(i + 1).padStart(2, "0")}-07`),
+    );
+    const m = run(truck, [...yearOfLoads, load("2026-01-05", "2026-01-07")], [], [], 0, fuel);
+    expect(m.fuelPerMile).toBeCloseTo(0.6, 6);
+    expect(m.costToRunPerMile).toBeCloseTo(0.6, 6); // no maint, no note
+  });
+
+  it("fuel windows older than 90 days → fuel and cost-to-run go null, MPG stays", () => {
+    // Same window but closed 2025-10-01 — 123 days before `now` (2026-02-01).
+    const stale = tankWindow(100000, 600, 360, "2025-10-01");
+    const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000, stale);
+    expect(m.fuelPerMile).toBeNull();
+    expect(m.costToRunPerMile).toBeNull(); // even with a note — fuel is unknown
+    expect(m.avgMpg).not.toBeNull(); // lifetime MPG is mechanical, not priced
+  });
+
+  it("folds real maintenance dollars in: fuel(90d) + maint ÷ miles + note", () => {
+    const services = [
+      { unit: "tractor", cost: "400" }, // numeric string, like Postgres sends it
+      { unit: "both", cost: 100 },
+      { unit: "trailer", cost: 999 }, // not the tractor's — excluded
+    ] as unknown as MaintenanceService[];
+    // One paid load = 500 mi → maint = $500 ÷ 500 mi = $1.00/mi on top of $0.60 fuel.
+    const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000, fuel, services);
+    expect(m.maintPerMile).toBeCloseTo(1.0, 6);
+    expect(m.costToRunPerMile).toBeCloseTo(0.6 + 1.0 + m.notePerMile!, 6);
+  });
+
+  it("fuel known but ZERO paid-load miles → maint basis is unknown → cost-to-run null", () => {
+    // Fresh install: fuel logged first, delivered loads still unpaid. There are
+    // no miles to spread maintenance over, so the total waits — it must not
+    // render as fuel-only while real maintenance dollars sit unspread.
+    const services = [{ unit: "tractor", cost: 250 }] as unknown as MaintenanceService[];
+    const m = run(truck, [], [], [], 0, fuel, services);
+    expect(m.fuelPerMile).toBeCloseTo(0.6, 6); // the fuel rate itself is knowable
+    expect(m.maintPerMile).toBeNull();
+    expect(m.costToRunPerMile).toBeNull();
   });
 });
 

@@ -1208,10 +1208,13 @@ const GuidePage = () => {
           >
             <Why>
               The card at the top of the Fuel page scores your latest full tank:{" "}
-              <span className="text-light">MPG</span> against your average (with
-              vs-last-tank as a side note),{" "}
-              <span className="text-light">fuel cost per mile</span> — the number
-              that feeds your break-even, $/gal ÷ MPG — and the tank's{" "}
+              <span className="text-light">MPG</span> against your lifetime
+              average (with vs-last-tank as a side note),{" "}
+              <span className="text-light">fuel cost per mile</span> — this
+              tank's $/gal ÷ MPG — against your{" "}
+              <span className="text-light">90-day average</span> (it needs at
+              least two recent tanks; one tank alone has nothing honest to
+              compare against), and the tank's{" "}
               <span className="text-light">$/gal versus the national price</span>.
               Green is better, red is worse. It leans on your{" "}
               <span className="text-light">average</span> rather than just the
@@ -1612,21 +1615,33 @@ const GuidePage = () => {
             answers="What the rig costs per mile, all-in: fuel, maintenance, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into the whole rig."
             sources={[{ label: "Garage", to: "/garage" }]}
           >
+            {/* Illustrative round numbers — the app computes yours live. */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <ChainBox top="$0.28" bottom="fuel / mi" />
+              <ChainBox top="$0.70" bottom="fuel / mi (90-day)" />
               <span className="text-muted-text">+</span>
-              <ChainBox top="$0.12" bottom="maintenance / mi" />
+              <ChainBox top="$0.10" bottom="maintenance / mi" />
               <span className="text-muted-text">+</span>
               <ChainBox top="$0.50" bottom="note / mi" />
               <span className="text-muted-text">=</span>
-              <ChainBox top="$0.90" bottom="cost to run / mi" />
+              <ChainBox top="$1.30" bottom="cost to run / mi" />
             </div>
-            <Formula>(fuel + maintenance) ÷ miles driven + note ÷ miles per month</Formula>
+            <Formula>
+              fuel (90-day tank windows) + maintenance ÷ miles driven + note ÷
+              miles per month
+            </Formula>
             <Why>
               The real cost of keeping the rig rolling — the note included, so the
-              number reflects what actually leaves your pocket each mile. The same
-              payment also shows on the payoff tracker, but as balance paid down, not
-              a per-mile cost.
+              number reflects what actually leaves your pocket each mile. Fuel is
+              the <span className="text-light">90-day tank-window rate</span> —
+              the same number the Fuel page answers with — because diesel prices
+              swing too much for an all-time average to mean anything today, and
+              because dollars and miles must cover the{" "}
+              <span className="text-light">same stretch of road</span> (miles you
+              drove before you started logging fuel don't get to water it down).
+              No full-tank window in the last 90 days means fuel is unknown, so
+              the whole number waits rather than showing a fuel-less total. The
+              same payment also shows on the payoff tracker, but as balance paid
+              down, not a per-mile cost.
             </Why>
           </Metric>
 
