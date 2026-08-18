@@ -1115,7 +1115,7 @@ const GuidePage = () => {
 
           <Metric
             title="Per diem — the meal-allowance deduction"
-            answers="Your days out, turned into the M&IE tax deduction. Mark days on a year calendar; unmarked past days are inferred from your loads."
+            answers="Your days out, turned into the M&IE tax deduction. Unmarked days count as full days out — you only mark home time and half days."
             sources={[{ label: "Per Diem", to: "/per-diem" }]}
           >
             <Formula>
@@ -1130,10 +1130,16 @@ const GuidePage = () => {
               As a DOT hours-of-service driver you deduct{" "}
               <span className="text-light">80%</span> of the IRS special rate
               (vs 50% for everyone else). The rate updates each October — set it
-              and the deductible on the Settings page. On the Per Diem page, tap
-              a day to cycle home → full → half; days you haven't marked yet
-              this year are inferred from your delivered loads (shown hollow)
-              for you to confirm.
+              and the deductible on the Settings page. The default assumes the
+              life: from <span className="text-light">Aug 18, 2026</span> on, an
+              unmarked day counts as a <span className="text-light">full day
+              out</span> automatically — tap a day only to mark it half
+              (departure/return), home, or back to automatic. Marking home time
+              matters twice: it keeps the deduction honest AND it drives the
+              hometime warning and the rig card's home/idle split. Days before
+              the flip kept the old rules — home unless a delivered load covered
+              them (shown hollow to confirm) or you marked them — so the history
+              you entered under those rules didn't silently rewrite itself.
             </Why>
           </Metric>
 

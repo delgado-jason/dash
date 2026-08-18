@@ -12,6 +12,7 @@ import {
   effectiveStatus,
   computePerDiem,
   nextStatus,
+  FULL_DEFAULT_SINCE,
 } from "@/lib/perDiem";
 import type { PerDiemStatus } from "@/types/perDiem";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -23,13 +24,24 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const AMBER = "var(--color-amber)";
 const HALF_BG = `linear-gradient(135deg, ${AMBER} 0 50%, var(--color-well) 50% 100%)`;
 
+const AUTO_FULL_STYLE: CSSProperties = {
+  background: "rgba(245,176,58,.30)",
+  color: "var(--color-amber-hi)",
+  fontWeight: 600,
+  border: "1px solid rgba(245,176,58,.28)",
+};
+
 const cellStyle = (
   eff: PerDiemStatus,
   inferred: boolean,
+  autoFull: boolean,
   future: boolean,
 ): CSSProperties => {
   if (future)
     return { background: "transparent", border: "1px dashed var(--color-hairline-lo)", color: "#39445c" };
+  // Post-flip unmarked: counts FULL automatically — subdued amber so the wall
+  // of default days doesn't shout, while explicit marks stay solid.
+  if (autoFull) return AUTO_FULL_STYLE;
   // The ghost rule, applied to data: visible, not yet confirmed, tap to claim.
   if (inferred)
     return { background: "transparent", border: "1.5px dashed var(--color-amber-hi)", color: "var(--color-amber-hi)", fontWeight: 600 };
@@ -85,13 +97,13 @@ const PerDiemPage = () => {
     [loads, year, cap],
   );
   const summary = useMemo(
-    () => computePerDiem(manual, inferred, rate, deductPct),
-    [manual, inferred, rate, deductPct],
+    () => computePerDiem(manual, inferred, rate, deductPct, year, cap),
+    [manual, inferred, rate, deductPct, year, cap],
   );
 
   const cycle = async (key: string) => {
     const prev = manual;
-    const next = nextStatus(prev.get(key));
+    const next = nextStatus(prev.get(key), key >= FULL_DEFAULT_SINCE);
     const m = new Map(prev);
     if (next) m.set(key, next);
     else m.delete(key);
@@ -212,7 +224,7 @@ const PerDiemPage = () => {
                 The year
               </span>
               <span className="font-condensed text-[12px] text-faint">
-                · tap a day: home → full → half
+                · unmarked counts FULL — tap a day: half → home → clear
               </span>
             </div>
             <div
@@ -238,18 +250,21 @@ const PerDiemPage = () => {
                       const future = dt > cap;
                       const today = dt.getTime() === now.getTime();
                       const eff = effectiveStatus(key, manual, inferred);
-                      const isInferred = !manual.has(key) && inferred.has(key);
+                      const autoFull =
+                        !manual.has(key) && key >= FULL_DEFAULT_SINCE && !future;
+                      const isInferred =
+                        !manual.has(key) && key < FULL_DEFAULT_SINCE && inferred.has(key);
                       return (
                         <button
                           key={key}
                           type="button"
                           disabled={future}
                           onClick={() => cycle(key)}
-                          title={key}
+                          title={autoFull ? `${key} — full day (automatic)` : key}
                           className="rounded-[3px] text-[9px] flex items-center justify-center leading-none"
                           style={{
                             aspectRatio: "1",
-                            ...cellStyle(eff, isInferred, future),
+                            ...cellStyle(eff, isInferred, autoFull, future),
                             boxShadow: today ? "0 0 0 2px #f5b03a" : undefined,
                             cursor: future ? "default" : "pointer",
                           }}
@@ -264,7 +279,8 @@ const PerDiemPage = () => {
             ))}
             </div>
             <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[11px] text-faint">
-              <Sw style={{ background: "var(--color-amber)" }} label="Full day" />
+              <Sw style={AUTO_FULL_STYLE} label="Full — automatic (unmarked)" />
+              <Sw style={{ background: "var(--color-amber)" }} label="Full — marked" />
               <Sw
                 style={{
                   background: HALF_BG,
@@ -273,12 +289,12 @@ const PerDiemPage = () => {
                 label="Half day"
               />
               <Sw
-                style={{ background: "transparent", border: "1.5px dashed var(--color-amber-hi)" }}
-                label="Inferred — tap to confirm"
+                style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}
+                label="Home"
               />
               <Sw
-                style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}
-                label="Home / unmarked"
+                style={{ background: "transparent", border: "1.5px dashed var(--color-amber-hi)" }}
+                label="Inferred from a load (before Aug 18) — tap to confirm"
               />
               <Sw
                 style={{ background: "transparent", border: "1px dashed var(--color-hairline-lo)" }}
@@ -286,8 +302,13 @@ const PerDiemPage = () => {
               />
             </div>
             <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
-              <b className="text-dim">the wiring:</b> home marks here drive the hometime chip on
-              your driver card — the days-out warning reads this calendar.
+              <b className="text-dim">the wiring:</b> from <b className="text-dim">Aug 18, 2026</b>{" "}
+              an unmarked day counts as a FULL day out — you only mark home time and
+              departure/return halves. Days before that kept the old rules (home unless a
+              load covered them or you marked them), so your earlier history and its
+              deduction didn't rewrite itself. Home marks here drive the hometime chip on
+              your driver card and the rig card's home/idle split — the days-out warning
+              reads this calendar.
             </div>
           </div>
         </div>
