@@ -109,6 +109,27 @@ describe("fuelStats — costPerMile90 (the canonical fuel $/mi)", () => {
     );
     expect(s.costPerMile90).toBeCloseTo(600 / 600, 5);
   });
+
+  it("pins the boundary: exactly 90 days back is IN, 91 days back is OUT", () => {
+    // now = Aug 15 → cutoff day = May 17 (inclusive). A window closing ON the
+    // cutoff counts; one day earlier doesn't. Pins both the 90 and the ≥.
+    const win = (closeDate: string) => [
+      e(100000, 120, 4.0, "2026-04-01"),
+      e(100600, 120, 5.0, closeDate),
+    ];
+    const now = new Date("2026-08-15T00:00:00.000Z");
+    expect(fuelStats(win("2026-05-17"), now).costPerMile90).toBeCloseTo(1.0, 5);
+    expect(fuelStats(win("2026-05-16"), now).costPerMile90).toBeNull();
+  });
+
+  it("mpg90 · $/gal90 factor the SAME 90-day set — their quotient IS costPerMile90", () => {
+    const s = fuelStats([...may, augFill], new Date("2026-08-15T00:00:00.000Z"));
+    // Only the August window is recent: 600 mi on 120 gal at $5.
+    expect(s.mpg90).toBeCloseTo(5.0, 5);
+    expect(s.avgCostPerGallon90).toBeCloseTo(5.0, 5);
+    expect(s.avgCostPerGallon90! / s.mpg90!).toBeCloseTo(s.costPerMile90!, 10);
+    expect(s.windows90).toBe(1);
+  });
 });
 
 describe("avgWeeklyCost", () => {
@@ -205,6 +226,22 @@ describe("latestTankRecap", () => {
     const first = latestTankRecap(fuelStats(tanks([6]), now), [])!;
     expect(first.isRecord).toBe(false);
     expect(first.mpgVsLast).toBeNull();
+  });
+
+  it("nulls cpmVsAvg when the latest tank is the ONLY window in 90 days (vacuous $0.00)", () => {
+    // One aged-out window (closed >90d back) + one recent: the 90-day "average"
+    // would be the recent tank itself — a guaranteed on-par delta that says
+    // nothing. The card must fall back to "no average yet" instead.
+    const aged = [
+      e(100000, 120, 4.0, "2026-01-01"),
+      e(100600, 120, 4.0, "2026-01-03"), // closes >90d before now (Aug 1)
+      e(101200, 120, 6.0, "2026-07-20"), // the only recent window
+    ];
+    const r = latestTankRecap(fuelStats(aged, now), [])!;
+    expect(r.cpmVsAvg).toBeNull();
+    // Two recent windows → a real comparison exists again.
+    const two = tanks([6, 6]); // both close in June, within 90d of Aug 1
+    expect(latestTankRecap(fuelStats(two, now), [])!.cpmVsAvg).not.toBeNull();
   });
 
   it("compares tank $/gal to the national price for its month, null when absent", () => {

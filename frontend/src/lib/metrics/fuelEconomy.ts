@@ -78,6 +78,11 @@ export interface FuelStats {
   // diesel costs today. Every surface that quotes fuel cost per mile must
   // read this one number; null = no full-to-full window closed recently.
   costPerMile90: number | null;
+  // The 90-day set split into its factors, so estimate surfaces can show
+  // "X mpg · $Y/gal" whose quotient IS costPerMile90 — never a second rate.
+  mpg90: number | null;
+  avgCostPerGallon90: number | null;
+  windows90: number; // tank windows closed in the last 90 days
   bestMpg: number | null;
   worstMpg: number | null;
   avgWeeklyCost90: number | null;
@@ -132,6 +137,7 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
   const recent = windows.filter((w) => String(w.date).slice(0, 10) >= cutoffStr);
   const recentMiles = recent.reduce((s, w) => s + w.miles, 0);
   const recentSpend = recent.reduce((s, w) => s + w.cost, 0);
+  const recentGallons = recent.reduce((s, w) => s + w.gallons, 0);
 
   return {
     entryCount: entries.length,
@@ -141,6 +147,9 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
     totalMiles,
     avgMpg: windowGallons > 0 ? totalMiles / windowGallons : null,
     costPerMile90: recentMiles > 0 ? recentSpend / recentMiles : null,
+    mpg90: recentGallons > 0 ? recentMiles / recentGallons : null,
+    avgCostPerGallon90: recentGallons > 0 ? recentSpend / recentGallons : null,
+    windows90: recent.length,
     bestMpg: mpgs.length ? Math.max(...mpgs) : null,
     worstMpg: mpgs.length ? Math.min(...mpgs) : null,
     avgWeeklyCost90: avgWeeklyCost(entries, now),
@@ -178,8 +187,13 @@ export const latestTankRecap = (
 
   const mpgVsAvg = stats.avgMpg != null ? tank.mpg - stats.avgMpg : null;
   const mpgVsLast = prior ? tank.mpg - prior.mpg : null;
+  // The latest tank is itself IN the 90-day set — when it's the only member,
+  // the "average" is just this tank and the delta is a vacuous $0.00. Null it
+  // so the card says "no average yet" instead of a green on-par stamp.
   const cpmVsAvg =
-    stats.costPerMile90 != null ? costPerMile - stats.costPerMile90 : null;
+    stats.costPerMile90 != null && stats.windows90 > 1
+      ? costPerMile - stats.costPerMile90
+      : null;
 
   // National price for the tank's month (best-effort — null when EIA has none).
   const month = String(tank.date).slice(0, 7);

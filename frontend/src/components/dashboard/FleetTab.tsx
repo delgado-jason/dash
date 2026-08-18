@@ -119,8 +119,13 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
       { key: "note", label: "truck + trailer note", v: notePerMile, color: "var(--color-cat3)" },
     ] as { key: string; label: string; v: number | null; color: string }[]
   ).filter((p): p is { key: string; label: string; v: number; color: string } => p.v != null);
+  // Same null-gate as truckMetrics.costToRunPerMile — BOTH fuel and maint
+  // known, or no total. A fuel-only stack here while the truck page shows "—"
+  // would be two surfaces disagreeing on the same number.
   const costPerMile =
-    fuelPerMile != null && costParts.length ? costParts.reduce((s, p) => s + p.v, 0) : null;
+    fuelPerMile != null && maintPerMile != null
+      ? costParts.reduce((s, p) => s + p.v, 0)
+      : null;
   const costPct = (v: number) => (costPerMile && costPerMile > 0 ? Math.round((v / costPerMile) * 100) : 0);
   const dieselGap = paidPerGal != null && fleet.nationalDiesel != null ? paidPerGal - fleet.nationalDiesel : null;
 

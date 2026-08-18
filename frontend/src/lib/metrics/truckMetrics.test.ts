@@ -26,12 +26,13 @@ const run = (
   travelDays: string[] = [],
   assetNote = 0,
   fuel: FuelEntry[] = [],
+  services: MaintenanceService[] = [],
 ) =>
   computeTruckMetrics(
     truck,
     loads,
     fuel,
-    [] as MaintenanceService[],
+    services,
     now,
     homeDays,
     travelDays,
@@ -152,6 +153,29 @@ describe("computeTruckMetrics — fuel $/mi rides the 90-day tank windows", () =
     expect(m.fuelPerMile).toBeNull();
     expect(m.costToRunPerMile).toBeNull(); // even with a note — fuel is unknown
     expect(m.avgMpg).not.toBeNull(); // lifetime MPG is mechanical, not priced
+  });
+
+  it("folds real maintenance dollars in: fuel(90d) + maint ÷ miles + note", () => {
+    const services = [
+      { unit: "tractor", cost: "400" }, // numeric string, like Postgres sends it
+      { unit: "both", cost: 100 },
+      { unit: "trailer", cost: 999 }, // not the tractor's — excluded
+    ] as unknown as MaintenanceService[];
+    // One paid load = 500 mi → maint = $500 ÷ 500 mi = $1.00/mi on top of $0.60 fuel.
+    const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000, fuel, services);
+    expect(m.maintPerMile).toBeCloseTo(1.0, 6);
+    expect(m.costToRunPerMile).toBeCloseTo(0.6 + 1.0 + m.notePerMile!, 6);
+  });
+
+  it("fuel known but ZERO paid-load miles → maint basis is unknown → cost-to-run null", () => {
+    // Fresh install: fuel logged first, delivered loads still unpaid. There are
+    // no miles to spread maintenance over, so the total waits — it must not
+    // render as fuel-only while real maintenance dollars sit unspread.
+    const services = [{ unit: "tractor", cost: 250 }] as unknown as MaintenanceService[];
+    const m = run(truck, [], [], [], 0, fuel, services);
+    expect(m.fuelPerMile).toBeCloseTo(0.6, 6); // the fuel rate itself is knowable
+    expect(m.maintPerMile).toBeNull();
+    expect(m.costToRunPerMile).toBeNull();
   });
 });
 
