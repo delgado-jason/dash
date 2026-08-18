@@ -9,7 +9,7 @@ import {
 } from "./planStatus";
 
 const snap = (over: Partial<SnapshotInput>): SnapshotInput => ({
-  ops: 0, vault: 0, maintenance: 0, tax: 0, trailer: 0, ...over,
+  ops: 0, vault: 0, ...over,
 });
 
 // THE 2027 PLAN, as seeded — numeric strings like Postgres sends them.
@@ -95,7 +95,7 @@ describe("getWaterfallStage — the cascade", () => {
     st[2].obligation = { current_balance: 0, original_balance: 13000 };
     // The snapshot's trailer column is his HOLDING account (note + guarantor,
     // zeroes monthly) — it must not move any stage.
-    const w = getWaterfallStage(snap({ vault: 19500, trailer: 830 }), st)!;
+    const w = getWaterfallStage(snap({ vault: 19500 }), st)!;
     expect(w.activeIndex).toBe(3);
     const fund = w.stages[3];
     expect(fund.state).toBe("active");
@@ -104,13 +104,11 @@ describe("getWaterfallStage — the cascade", () => {
     expect(fund.overflow).toBe(4500);
   });
 
-  it("the holding account never drives the waterfall", () => {
-    const st = stages();
-    st[2].obligation = { current_balance: 0, original_balance: 13000 };
-    const a = getWaterfallStage(snap({ vault: 19500, trailer: 0 }), st)!;
-    const b = getWaterfallStage(snap({ vault: 19500, trailer: 99999 }), st)!;
-    expect(a.activeIndex).toBe(b.activeIndex);
-    expect(a.stages[3].progress).toBeCloseTo(b.stages[3].progress, 10);
+  it("only ops and vault exist at the input layer — reserves can't drive anything", () => {
+    // The holding/reserve accounts aren't even inputs to the math anymore;
+    // the type carries exactly the two roles the plan reads.
+    const input: SnapshotInput = { ops: 1, vault: 19500 };
+    expect(Object.keys(input).sort()).toEqual(["ops", "vault"]);
   });
 
   it("the trade-up fund completes on overflow ≥ target — above the ratchet, not absolute vault", () => {

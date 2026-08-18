@@ -24,13 +24,13 @@ export interface PlanStageInput {
   obligation?: { current_balance: number | null; original_balance: number | null } | null;
 }
 
+// The math reads exactly two roles: the ops account (float/sweep) and the
+// vault account (the cascade). Reserve accounts are display-only — the page
+// resolves role → balance from plan_accounts before calling in.
 export interface SnapshotInput {
   as_of?: string;
   ops: string | number | null;
   vault: string | number | null;
-  maintenance: string | number | null;
-  tax: string | number | null;
-  trailer: string | number | null;
 }
 
 const num = (v: string | number | null | undefined): number | null => {

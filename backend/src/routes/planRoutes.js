@@ -7,6 +7,9 @@ import {
   createStage,
   patchStage,
   deleteStage,
+  getAccounts,
+  createAccount,
+  patchAccount,
   getSnapshots,
   createSnapshot,
 } from "../services/planServices.js";
@@ -32,6 +35,10 @@ router.patch("/:plan_id", handle(async (req) => ({ plan: await patchPlan(req.use
 router.post("/:plan_id/stages", handle(async (req) => ({ status: 201, body: { stage: await createStage(req.user.user_id, req.params.plan_id, req.body) } })));
 router.patch("/stages/:stage_id", handle(async (req) => ({ stage: await patchStage(req.user.user_id, req.params.stage_id, req.body) })));
 router.delete("/stages/:stage_id", handle(async (req) => { await deleteStage(req.user.user_id, req.params.stage_id); return { deleted: true }; }));
+
+router.get("/accounts/all", handle(async (req) => ({ accounts: await getAccounts(req.user.user_id) })));
+router.post("/accounts", handle(async (req) => ({ status: 201, body: { account: await createAccount(req.user.user_id, req.body) } })));
+router.patch("/accounts/:account_id", handle(async (req) => ({ account: await patchAccount(req.user.user_id, req.params.account_id, req.body) })));
 
 router.get("/snapshots/all", handle(async (req) => ({ snapshots: await getSnapshots(req.user.user_id) })));
 router.post("/snapshots", handle(async (req) => ({ status: 201, body: { snapshot: await createSnapshot(req.user.user_id, req.body) } })));
