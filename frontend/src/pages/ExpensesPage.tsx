@@ -160,7 +160,7 @@ const ExpensesPage = () => {
   // month (reconcile with the month's P&L); per-mile figures use the trailing
   // blend. obligationsTotal = 0 → these equal the operating-only numbers.
   const obligationsTotal = useMemo(
-    () => obligations.filter((o) => o.active).reduce((s, o) => s + o.amount, 0),
+    () => obligations.filter((o) => o.active && !o.on_pl).reduce((s, o) => s + Number(o.amount), 0),
     [obligations],
   );
   // Break-even / rate-ladder basis excludes owner draws (a draw is a profit
@@ -542,7 +542,9 @@ const ExpensesPage = () => {
               </div>
             </div>
 
-            <ObligationsCard items={obligations} onChange={reloadObligations} />
+            {/* Break-even rows only — the P&L bills (insurance, subscriptions)
+                live on the Cash Flow page's draft calendar, not here. */}
+            <ObligationsCard items={obligations.filter((o) => !o.on_pl)} onChange={reloadObligations} />
 
             <div className="ds2-board p-4 mt-4">
               <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint mb-2">

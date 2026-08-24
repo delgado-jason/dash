@@ -79,6 +79,7 @@ const nav: Entry[] = [
     children: [
       { to: "/expenses", label: "Expenses", adminOnly: true },
       { to: "/status", label: "Plan", adminOnly: true },
+      { to: "/cashflow", label: "Cash Flow", adminOnly: true },
       { to: "/market", label: "Market", adminOnly: true },
       { to: "/per-diem", label: "Per Diem", adminOnly: true },
       { to: "/recap", label: "Recap", adminOnly: true },

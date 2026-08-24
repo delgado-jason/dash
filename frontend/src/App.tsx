@@ -16,6 +16,7 @@ import ExpensesPage from "@/pages/ExpensesPage";
 import MarketPage from "@/pages/MarketPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import StatusPage from "@/pages/StatusPage";
+import CashFlowPage from "@/pages/CashFlowPage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
@@ -99,6 +100,7 @@ const App = () => {
             <Route path="/market" element={<MarketPage />} />
             <Route path="/per-diem" element={<PerDiemPage />} />
             <Route path="/status" element={<StatusPage />} />
+            <Route path="/cashflow" element={<CashFlowPage />} />
             <Route path="/recap" element={<RecapPage />} />
             <Route path="/garage" element={<GaragePage />} />
             <Route path="/trophy-room" element={<TrophyHallPage />} />

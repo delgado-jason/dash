@@ -1,0 +1,961 @@
+import { useEffect, useMemo, useState } from "react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Link } from "react-router";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  ResponsiveContainer,
+} from "recharts";
+import { useLoads } from "@/hooks/useLoads";
+import { getObligations, createObligation, patchObligation } from "@/services/obligationsService";
+import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getPlans, getAccounts, getSnapshots } from "@/services/planService";
+import type { PlanRow, AccountRow, SnapshotRow } from "@/services/planService";
+import {
+  getCashAssumptions, patchCashAssumptions,
+  getMonthlyFinancials, upsertMonthlyFinancials,
+  getForecastAdjustments, setForecastAdjustment,
+} from "@/services/cashflowService";
+import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
+import {
+  twoWeekLiquidity, buildForecast, pretaxMargin, keyOf,
+} from "@/lib/metrics/cashflow";
+import type { LiquidityWeek } from "@/lib/metrics/cashflow";
+import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
+import type { Obligation } from "@/types/obligation";
+
+const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
+const FIELD =
+  "w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-[14px] text-ink tabular-nums focus:outline-none focus:border-amber";
+
+const money = (n: number): string =>
+  `$${Math.round(n).toLocaleString("en-US")}`;
+const moneyCents = (n: number): string =>
+  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+const signed = (n: number): string =>
+  n === 0 ? "0.00" : `${n > 0 ? "+" : "−"}${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// "2026-11-01" → "Nov ’26"
+const monthLabel = (k: string): string => {
+  const d = new Date(`${k.slice(0, 10)}T00:00:00Z`);
+  return `${d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })} ’${String(d.getUTCFullYear()).slice(2)}`;
+};
+const dayLabel = (k: string): string => {
+  const d = new Date(`${k}T00:00:00Z`);
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+};
+
+const CashFlowPage = () => {
+  const { loads } = useLoads(0);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [assumptions, setAssumptions] = useState<CashAssumptionsRow | null>(null);
+  const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
+  const [adjustments, setAdjustments] = useState<Map<string, number>>(new Map());
+  const [settlementDay, setSettlementDay] = useState<number | null>(null);
+  const [plans, setPlans] = useState<PlanRow[]>([]);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Planning scratch — page-local, not persisted.
+  const [beginOverride, setBeginOverride] = useState<number | null>(null);
+  const [setlOverride, setSetlOverride] = useState<[number | null, number | null]>([null, null]);
+  const [editing, setEditing] = useState<string | null>(null); // which cell is an input
+  const [showPaste, setShowPaste] = useState(false);
+  const [showAssume, setShowAssume] = useState(false);
+  const [showBills, setShowBills] = useState(false);
+
+  const load = () =>
+    Promise.all([
+      getObligations(), getCashAssumptions(), getMonthlyFinancials(),
+      getForecastAdjustments(), getSettlementSchedule().catch(() => null),
+      getPlans(), getAccounts(), getSnapshots(),
+    ])
+      .then(([o, a, f, adj, sched, p, acc, snaps]) => {
+        setObligations(o);
+        setAssumptions(a);
+        setFinancials(f);
+        setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)])));
+        setSettlementDay(sched?.settlement_day ?? null);
+        setPlans(p);
+        setAccounts(acc);
+        setSnapshots(snaps);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const plan = useMemo(() => plans.find((p) => p.active) ?? plans[0] ?? null, [plans]);
+  const floatLine = plan ? Number(plan.float_line) : null;
+
+  // Week 1 beginning = the latest Friday snapshot's OPS balance (bills draft
+  // from ops; the vault is protected by design) — overridable on the board.
+  const latestSnap = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+  const opsAcct = accounts.filter((a) => a.active).find((a) => a.role === "ops") ?? null;
+  const snapOps = useMemo(() => {
+    if (!latestSnap || !opsAcct) return null;
+    const b = latestSnap.balances.find((x) => x.account_id === opsAcct.account_id);
+    return b == null ? null : Number(b.balance);
+  }, [latestSnap, opsAcct]);
+
+  const asOfKey = useMemo(() => keyOf(new Date()), []);
+  const beginning = beginOverride ?? snapOps;
+
+  const liquidity = useMemo(() => {
+    if (beginning == null || !assumptions) return null;
+    return twoWeekLiquidity({
+      asOfKey,
+      beginning,
+      obligations,
+      weeklyPayroll: Number(assumptions.weekly_payroll),
+      loads: loads ?? [],
+      settlementDay,
+      weeklyRevenueFallback: Number(assumptions.weekly_revenue),
+      overrides: setlOverride,
+    });
+  }, [beginning, assumptions, obligations, loads, settlementDay, asOfKey, setlOverride]);
+
+  const forecast = useMemo(
+    () => (assumptions ? buildForecast(financials, assumptions, adjustments) : null),
+    [financials, assumptions, adjustments],
+  );
+  const actualsShown = financials.slice(-6);
+
+  const chartData = useMemo(() => {
+    const rows: { m: string; actual: number | null; forecast: number | null }[] =
+      actualsShown.map((f) => ({ m: monthLabel(f.month), actual: Number(f.ending_cash), forecast: null }));
+    if (forecast) {
+      // Seam: the last actual point also anchors the dashed line.
+      if (rows.length > 0) rows[rows.length - 1].forecast = rows[rows.length - 1].actual;
+      forecast.months.forEach((fm) =>
+        rows.push({ m: monthLabel(fm.month), actual: null, forecast: fm.ending }),
+      );
+    }
+    return rows;
+  }, [actualsShown, forecast]);
+
+  const clears = liquidity != null && floatLine != null ? liquidity.lowestEnding >= floatLine : null;
+  const catchup = assumptions ? Number(assumptions.tax_catchup_owed) : 0;
+  const lastForecastEnd = forecast?.months.at(-1)?.ending ?? null;
+  const ytdMargin = useMemo(() => {
+    const inc = financials.reduce((s, f) => s + Number(f.total_income), 0);
+    const ni = financials.reduce((s, f) => s + Number(f.net_income), 0);
+    return inc > 0 ? ni / inc : null;
+  }, [financials]);
+
+  const endTone = (v: number) =>
+    floatLine != null && v < floatLine ? "var(--color-warn)" : "var(--color-ok)";
+
+  // Day strip: 14 days from as-of; a bill's draft day carries its chip, the
+  // settlement day carries the inflow marker.
+  const stripDays = useMemo(() => {
+    if (!liquidity) return [];
+    const days: { key: string; bills: { label: string; amount: number }[]; settle: boolean }[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(new Date(`${asOfKey}T00:00:00Z`).getTime() + i * 86_400_000);
+      const key = keyOf(d);
+      const bills = liquidity.weeks[i < 7 ? 0 : 1].bills
+        .filter((b) => b.draftKey === key)
+        .map((b) => ({ label: b.label, amount: b.amount }));
+      days.push({ key, bills, settle: settlementDay != null && d.getUTCDay() === settlementDay });
+    }
+    return days;
+  }, [liquidity, asOfKey, settlementDay]);
+
+  if (loading)
+    return <div className="text-sm text-muted-text py-12 text-center">Loading the cash picture…</div>;
+
+  return (
+    <div className="min-h-screen text-ink font-body">
+      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+        {/* statusbar */}
+        <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
+          <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">CASH FLOW</h1>
+          <span className="font-condensed font-medium text-[15px] text-dim">
+            the drains, the drafts, and the runway
+          </span>
+          <span className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowPaste(true)}
+              className="font-condensed font-bold text-[11.5px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-3.5 py-[7px] hover:bg-amber-hi"
+            >
+              Paste months
+            </button>
+            <button
+              onClick={() => setShowAssume(true)}
+              className="font-condensed font-semibold text-[11.5px] tracking-[.12em] uppercase text-dim border border-hairline rounded-[8px] px-3 py-[6px] hover:text-ink"
+            >
+              Assumptions
+            </button>
+          </span>
+        </div>
+
+        {/* answering line */}
+        <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
+          {clears != null && liquidity ? (
+            <>
+              <span
+                className="font-display text-[21px] tracking-[.04em] rounded-[8px] px-3 pt-[3px] pb-[1px] border-2"
+                style={{
+                  color: clears ? "var(--color-ok)" : "var(--color-warn)",
+                  borderColor: clears ? "rgba(111,208,140,.45)" : "rgba(224,82,82,.5)",
+                  background: clears ? "rgba(111,208,140,.06)" : "rgba(224,82,82,.07)",
+                  transform: "rotate(-1.2deg)",
+                }}
+              >
+                {clears ? "CLEARS THE LINE" : "BELOW THE LINE"}
+              </span>
+              <span className="text-[13.5px] text-faint">
+                · lowest point <b className="font-semibold text-ink tabular-nums">{money(liquidity.lowestEnding)}</b>
+                {floatLine != null && (
+                  <> {clears ? "over" : "under"} the <b className="font-semibold text-ink">{money(floatLine)}</b> float</>
+                )}
+                {ytdMargin != null && (
+                  <> · YTD pretax margin <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
+                )}
+              </span>
+            </>
+          ) : (
+            <span className="text-[13.5px] text-faint">
+              forges after a Friday snapshot sets your ops balance — or tap Beginning to set it by hand
+            </span>
+          )}
+        </div>
+
+        {/* THE NEXT TWO WEEKS */}
+        <div className="ds2-board mt-4 overflow-hidden">
+          <div
+            className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap"
+            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+          >
+            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+              THE NEXT TWO WEEKS
+            </span>
+            <button
+              onClick={() => setShowBills(true)}
+              className="font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-amber-hi hover:text-hot"
+            >
+              Edit bills ▸
+            </button>
+            <span className="ml-auto font-condensed text-[12px] text-faint">
+              beginning ={" "}
+              {snapOps != null && beginOverride == null ? (
+                <>latest snapshot ops <b className="text-dim tabular-nums">{moneyCents(snapOps)}</b>
+                  {latestSnap && <> · {latestSnap.as_of.slice(0, 10)}</>}</>
+              ) : beginOverride != null ? (
+                <>override <b className="text-dim tabular-nums">{moneyCents(beginOverride)}</b>{" "}
+                  <button className="text-amber-hi hover:text-hot" onClick={() => setBeginOverride(null)}>✕</button></>
+              ) : (
+                "no snapshot yet"
+              )}
+              {" · "}tap a value to override
+            </span>
+          </div>
+
+          {liquidity ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint">
+                      <th className="text-left px-4 py-2 border-b border-hairline"></th>
+                      {liquidity.weeks.map((w, i) => (
+                        <th key={i} className="text-right px-4 py-2 border-b border-hairline whitespace-nowrap">
+                          WK {i + 1} · {dayLabel(w.startKey)} – {dayLabel(w.endKey)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <Row label="Beginning">
+                      {liquidity.weeks.map((w, i) => (
+                        <td key={i} className="text-right px-4 py-2 border-b border-hairline-lo">
+                          {i === 0 ? (
+                            <EditCell
+                              id="begin"
+                              editing={editing}
+                              setEditing={setEditing}
+                              value={w.beginning}
+                              onCommit={(v) => setBeginOverride(v)}
+                            />
+                          ) : (
+                            moneyCents(w.beginning)
+                          )}
+                        </td>
+                      ))}
+                    </Row>
+                    <Row
+                      label={
+                        <span>
+                          Settlements
+                          <SourceChip week={liquidity.weeks[0]} other={liquidity.weeks[1]} />
+                        </span>
+                      }
+                    >
+                      {liquidity.weeks.map((w, i) => (
+                        <td key={i} className="text-right px-4 py-2 border-b border-hairline-lo font-semibold" style={{ color: "var(--color-ok)" }}>
+                          <EditCell
+                            id={`setl${i}`}
+                            editing={editing}
+                            setEditing={setEditing}
+                            value={w.settlements}
+                            prefix="+"
+                            onCommit={(v) =>
+                              setSetlOverride((prev) => (i === 0 ? [v, prev[1]] : [prev[0], v]))
+                            }
+                          />
+                          {w.settlementSource === "override" && (
+                            <button
+                              className="ml-1 text-amber-hi hover:text-hot text-[11px]"
+                              onClick={() => setSetlOverride((prev) => (i === 0 ? [null, prev[1]] : [prev[0], null]))}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </td>
+                      ))}
+                    </Row>
+                    <Row label="Payroll">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.payroll} />)}</Row>
+                    <Row label="Loan / lease">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.loanLease} />)}</Row>
+                    <Row label="Insurance">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.insurance} />)}</Row>
+                    <Row label="Other">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.other} />)}</Row>
+                    <tr>
+                      <td className="text-left px-4 pt-2.5 pb-3 font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint border-t border-hairline">
+                        Ending
+                      </td>
+                      {liquidity.weeks.map((w, i) => (
+                        <td key={i} className="text-right px-4 pt-2.5 pb-3 border-t border-hairline">
+                          <span className="font-display text-[22px] tracking-[.03em]" style={{ color: endTone(w.ending) }}>
+                            {moneyCents(w.ending)}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* day strip */}
+              <div className="grid gap-1 px-4 pt-1 pb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(68px, 1fr))" }}>
+                {stripDays.map((d, i) => (
+                  <div
+                    key={d.key}
+                    className="rounded-[6px] px-1.5 py-1 min-h-[58px] text-[10px]"
+                    style={{
+                      background: d.settle ? "rgba(232,148,10,.07)" : "var(--color-well)",
+                      border: d.settle ? "1px solid rgba(232,148,10,.5)" : "1px solid var(--color-hairline-lo)",
+                      outline: i === 0 ? "2px solid var(--color-amber)" : undefined,
+                    }}
+                  >
+                    <span className="font-condensed font-semibold text-[10px] text-faint uppercase">
+                      {dayLabel(d.key)}
+                    </span>
+                    {d.settle && <div style={{ color: "var(--color-ok)" }}>▲ settlement</div>}
+                    {d.bills.map((b) => (
+                      <div key={b.label} style={{ color: "#f08a8a" }} className="leading-[1.3]">
+                        ▼ {b.label} {Math.round(b.amount)}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="px-4 pb-3 font-condensed text-[11px] text-faint">
+                ▲ Wednesday settlement lands · ▼ bill drafts · amber ring = today · ENDING turns{" "}
+                <span style={{ color: "var(--color-warn)" }}>red</span> under the float
+                {floatLine != null && <> ({money(floatLine)} — the plan’s line, edited on <Link to="/status" className="text-amber-hi hover:text-hot">Status</Link>)</>}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-text px-4 py-6">
+              Needs a beginning balance — take a <Link to="/status" className="text-amber-hi hover:text-hot">Friday snapshot</Link>{" "}
+              or{" "}
+              <button
+                className="text-amber-hi hover:text-hot"
+                onClick={() => {
+                  const v = window.prompt("Beginning cash (ops) for week 1:");
+                  const n = v == null ? NaN : Number(v.replace(/[$,]/g, ""));
+                  if (Number.isFinite(n)) setBeginOverride(n);
+                }}
+              >
+                set it by hand
+              </button>
+              .
+            </p>
+          )}
+        </div>
+
+        {/* THE SIX-MONTH ROAD */}
+        <div className="ds2-board mt-4 overflow-hidden">
+          <div
+            className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
+            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+          >
+            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+              THE SIX-MONTH ROAD
+            </span>
+            <span className="ml-auto font-condensed text-[12px] text-faint">
+              {financials.length > 0
+                ? <>last {actualsShown.length} actual months + 6 forecast · baseline{" "}
+                    <b className="text-dim tabular-nums">{forecast ? moneyCents(forecast.baseline) : "—"}</b>/mo net</>
+                : "forges after your first PASTE MONTHS import"}
+            </span>
+          </div>
+
+          {forecast && chartData.length > 0 ? (
+            <>
+              <div className="px-2 pt-3" style={{ height: 240 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 8, right: 18, bottom: 0, left: 8 }}>
+                    <CartesianGrid stroke="#141c2a" vertical={false} />
+                    <XAxis dataKey="m" tick={{ fill: "#5a6880", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#1e2636" }} />
+                    <YAxis
+                      tick={{ fill: "#5a6880", fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
+                      width={44}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: "#0e1420", border: "1px solid #1e2636", borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: "#93a1b8" }}
+                      // Match the library's wide signature; coerce inside.
+                      formatter={(v, name) => {
+                        const n = Number(v);
+                        const label = name === "actual" ? "ending (actual)" : "ending (forecast)";
+                        return Number.isFinite(n) ? [moneyCents(n), label] : ["—", label];
+                      }}
+                    />
+                    {floatLine != null && (
+                      <ReferenceLine
+                        y={floatLine}
+                        stroke="var(--color-warn)"
+                        strokeDasharray="2 4"
+                        label={{ value: `float ${money(floatLine)}`, position: "insideBottomRight", fill: "var(--color-warn)", fontSize: 10.5 }}
+                      />
+                    )}
+                    <Line type="monotone" dataKey="actual" stroke="#f5b03a" strokeWidth={2} dot={{ r: 3, fill: "#f5b03a" }} connectNulls={false} />
+                    <Line type="monotone" dataKey="forecast" stroke="#f5b03a" strokeWidth={2} strokeDasharray="6 5" strokeOpacity={0.85} dot={{ r: 3, fill: "#f5b03a", fillOpacity: 0.85 }} connectNulls={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr className="font-condensed text-[11px] tracking-[.1em] uppercase text-faint">
+                      {["Month", "Net income", "Pretax margin", "+ Depreciation", "Financing", "Income tax", "Net change", "Ending", "Wks off"].map((h, i) => (
+                        <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-3.5 py-2 border-b border-hairline whitespace-nowrap`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {actualsShown.map((f) => {
+                      const margin = pretaxMargin(f);
+                      const change = Number(f.ending_cash) - Number(f.beginning_cash);
+                      return (
+                        <tr key={f.month} className="text-ink">
+                          <td className="text-left px-3.5 py-1.5 border-b border-hairline-lo">{monthLabel(f.month)}</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(Number(f.net_income))}</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{margin != null ? `${(margin * 100).toFixed(1)}%` : "—"}</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">in NI</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(Number(f.financing))}</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">—</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(change)}</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{moneyCents(Number(f.ending_cash))}</td>
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">—</td>
+                        </tr>
+                      );
+                    })}
+                    {forecast.months.map((fm) => (
+                      <tr key={fm.month} className="text-dim">
+                        <td className="text-left px-3.5 py-1.5 border-b border-hairline-lo">
+                          {monthLabel(fm.month)} <span className="text-faint">◦</span>
+                          {fm.weeksOff > 0 && (
+                            <span className="ml-2 font-condensed text-[10px] font-semibold tracking-[.06em] px-[7px] rounded-full border" style={{ color: "var(--color-blue)", borderColor: "rgba(79,140,214,.45)" }}>
+                              {fm.weeksOff} wk home
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(fm.netIncome)}</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">—</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(fm.opAdjustments)}</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(fm.financing)}</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(fm.incomeTax)}</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(fm.netChange)}</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{moneyCents(fm.ending)}</td>
+                        <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">
+                          <input
+                            type="number"
+                            min={0}
+                            max={4}
+                            step={0.5}
+                            className="w-14 bg-well border border-hairline rounded-[6px] px-1.5 py-0.5 text-right text-[12px] text-ink focus:outline-none focus:border-amber"
+                            defaultValue={fm.weeksOff}
+                            onBlur={(e) => {
+                              const v = Number(e.target.value);
+                              if (Number.isFinite(v) && v >= 0 && v !== fm.weeksOff) {
+                                setForecastAdjustment(fm.month, v)
+                                  .then(() => getForecastAdjustments())
+                                  .then((adj) => setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)]))))
+                                  .catch(() => {});
+                              }
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {lastForecastEnd != null && (
+                <div className="mx-4 my-3 rounded-[8px] px-3.5 py-2.5 font-condensed text-[12.5px] text-dim" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
+                  💰 <b className="text-ink tabular-nums">true spendable ≈ {money(lastForecastEnd - catchup)}</b>
+                  {" — "}{monthLabel(forecast.months.at(-1)!.month)} ending {money(lastForecastEnd)} −{" "}
+                  <b className="text-ink">{money(catchup)}</b> tax catch-up earmark · forecast = 6-actual average
+                  net income − home-time weeks, depreciation added back, financing floor and taxes out
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-text px-4 py-6">
+              Forges after your first import — PASTE MONTHS up top takes rows straight from your QBO
+              worksheet and previews every month before anything commits.
+            </p>
+          )}
+        </div>
+
+        {showBills && (
+          <BillsPopup
+            obligations={obligations}
+            onClose={() => setShowBills(false)}
+            onChanged={load}
+          />
+        )}
+        {showPaste && (
+          <PastePopup
+            onClose={() => setShowPaste(false)}
+            onCommitted={() => {
+              setShowPaste(false);
+              load();
+            }}
+          />
+        )}
+        {showAssume && assumptions && (
+          <AssumptionsPopup
+            assumptions={assumptions}
+            floatLine={floatLine}
+            onClose={() => setShowAssume(false)}
+            onSaved={() => {
+              setShowAssume(false);
+              load();
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Row = ({ label, children }: { label: React.ReactNode; children: React.ReactNode }) => (
+  <tr>
+    <td className="text-left px-4 py-2 border-b border-hairline-lo font-condensed text-[13px] text-dim">{label}</td>
+    {children}
+  </tr>
+);
+
+const Neg = ({ v }: { v: number }) => (
+  <td className="text-right px-4 py-2 border-b border-hairline-lo text-dim">
+    {v === 0 ? "0.00" : `−${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+  </td>
+);
+
+const SourceChip = ({ week, other }: { week: LiquidityWeek; other: LiquidityWeek }) => {
+  const anyOverride = week.settlementSource === "override" || other.settlementSource === "override";
+  const anyLoads = week.settlementSource === "loads" || other.settlementSource === "loads";
+  const label = anyOverride ? "manual override" : anyLoads ? `${week.settlementLoads + other.settlementLoads} loads projected` : "fallback — no loads booked";
+  return (
+    <span className="ml-2 font-condensed text-[10.5px] font-semibold tracking-[.08em] uppercase px-2 rounded-full border" style={{ color: "var(--color-amber-hi)", borderColor: "rgba(232,148,10,.4)", background: "rgba(232,148,10,.08)" }}>
+      {label}
+    </span>
+  );
+};
+
+const EditCell = ({
+  id, editing, setEditing, value, onCommit, prefix = "",
+}: {
+  id: string;
+  editing: string | null;
+  setEditing: (v: string | null) => void;
+  value: number;
+  onCommit: (v: number) => void;
+  prefix?: string;
+}) => {
+  if (editing === id) {
+    return (
+      <input
+        autoFocus
+        type="number"
+        step="0.01"
+        defaultValue={Math.round(value * 100) / 100}
+        className="w-28 bg-well border border-amber rounded-[6px] px-2 py-0.5 text-right text-[13px] text-ink focus:outline-none"
+        onBlur={(e) => {
+          const v = Number(e.target.value);
+          if (Number.isFinite(v)) onCommit(v);
+          setEditing(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") setEditing(null);
+        }}
+      />
+    );
+  }
+  return (
+    <button className="hover:underline decoration-dotted underline-offset-4 tabular-nums" onClick={() => setEditing(id)} title="tap to override">
+      {prefix}
+      {value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </button>
+  );
+};
+
+// The draft-calendar editor — every active bill with its category, draft day,
+// and FULL draft amount. Loan rows also expose the break-even (principal)
+// amount the Expenses math reads; for P&L bills the two are the same number,
+// kept equal on save. New bills: loan/lease → off-P&L, everything else is
+// already a P&L expense (on_pl = true) so break-even never double-counts.
+const BillsPopup = ({
+  obligations, onClose, onChanged,
+}: {
+  obligations: Obligation[];
+  onClose: () => void;
+  onChanged: () => void;
+}) => {
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<Record<string, { day: string; amount: string; category: string }>>({});
+  const [newBill, setNewBill] = useState({ label: "", amount: "", day: "", category: "other" });
+
+  const bills = obligations
+    .filter((o) => o.active && o.day_of_month != null)
+    .sort((a, b) => (a.day_of_month ?? 0) - (b.day_of_month ?? 0));
+
+  const rowState = (o: Obligation) =>
+    draft[o.obligation_id] ?? {
+      day: String(o.day_of_month ?? ""),
+      amount: String(o.draft_amount ?? o.amount),
+      category: o.category,
+    };
+  const setRow = (id: string, patch: Partial<{ day: string; amount: string; category: string }>) =>
+    setDraft((prev) => ({ ...prev, [id]: { ...(prev[id] ?? rowState(bills.find((b) => b.obligation_id === id)!)), ...patch } }));
+
+  const saveRow = async (o: Obligation) => {
+    const st = rowState(o);
+    const day = Number(st.day);
+    const amount = Number(st.amount);
+    if (!Number.isFinite(day) || day < 1 || day > 31 || !Number.isFinite(amount)) return;
+    setBusy(true);
+    try {
+      await patchObligation(o.obligation_id, {
+        category: st.category as Obligation["category"],
+        day_of_month: day,
+        draft_amount: amount,
+        // P&L bills keep ONE number; loans keep their principal in `amount`.
+        ...(o.on_pl ? { amount } : {}),
+      });
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeRow = async (o: Obligation) => {
+    setBusy(true);
+    try {
+      // Deactivate, never delete — history stays.
+      await patchObligation(o.obligation_id, { active: false });
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addBill = async () => {
+    const day = Number(newBill.day);
+    const amount = Number(newBill.amount);
+    if (!newBill.label || !Number.isFinite(day) || day < 1 || day > 31 || !Number.isFinite(amount)) return;
+    setBusy(true);
+    try {
+      await createObligation({
+        label: newBill.label,
+        amount,
+        category: newBill.category as Obligation["category"],
+        day_of_month: day,
+        draft_amount: amount,
+        on_pl: newBill.category !== "loan_lease",
+      });
+      setNewBill({ label: "", amount: "", day: "", category: "other" });
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const SEL = "bg-well border border-hairline rounded-[6px] px-1.5 py-1 text-[12px] text-ink focus:outline-none focus:border-amber";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>THE BILLS</span>
+          <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">what drafts, and when</span>
+          <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-5">
+          <table className="w-full text-[13px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+            <thead>
+              <tr className="font-condensed text-[10.5px] tracking-[.08em] uppercase text-faint">
+                <th className="text-left px-1 py-1 border-b border-hairline">Bill</th>
+                <th className="text-left px-1 py-1 border-b border-hairline">Category</th>
+                <th className="text-right px-1 py-1 border-b border-hairline">Day</th>
+                <th className="text-right px-1 py-1 border-b border-hairline">Draft $</th>
+                <th className="px-1 py-1 border-b border-hairline"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {bills.map((o) => {
+                const st = rowState(o);
+                return (
+                  <tr key={o.obligation_id}>
+                    <td className="text-left px-1 py-1.5 border-b border-hairline-lo">
+                      {o.label}
+                      {!o.on_pl && (
+                        <span className="ml-1.5 font-condensed text-[9.5px] text-faint uppercase tracking-[.06em]" title="break-even reads the principal amount, not this draft">
+                          principal {moneyCents(o.amount)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-left px-1 py-1.5 border-b border-hairline-lo">
+                      <select className={SEL} value={st.category} onChange={(e) => setRow(o.obligation_id, { category: e.target.value })}>
+                        <option value="loan_lease">loan / lease</option>
+                        <option value="insurance">insurance</option>
+                        <option value="other">other</option>
+                      </select>
+                    </td>
+                    <td className="text-right px-1 py-1.5 border-b border-hairline-lo">
+                      <input className={`${SEL} w-12 text-right`} type="number" min={1} max={31} value={st.day} onChange={(e) => setRow(o.obligation_id, { day: e.target.value })} />
+                    </td>
+                    <td className="text-right px-1 py-1.5 border-b border-hairline-lo">
+                      <input className={`${SEL} w-24 text-right`} type="number" step="0.01" value={st.amount} onChange={(e) => setRow(o.obligation_id, { amount: e.target.value })} />
+                    </td>
+                    <td className="text-right px-1 py-1.5 border-b border-hairline-lo whitespace-nowrap">
+                      <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[11px] uppercase tracking-[.08em] mr-2" onClick={() => saveRow(o)}>save</button>
+                      <button disabled={busy} className="text-faint hover:text-warn" title="remove from the calendar (deactivates)" onClick={() => removeRow(o)}>✕</button>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr>
+                <td className="px-1 py-2">
+                  <input className={`${SEL} w-full`} placeholder="new bill" value={newBill.label} onChange={(e) => setNewBill((p) => ({ ...p, label: e.target.value }))} />
+                </td>
+                <td className="px-1 py-2">
+                  <select className={SEL} value={newBill.category} onChange={(e) => setNewBill((p) => ({ ...p, category: e.target.value }))}>
+                    <option value="loan_lease">loan / lease</option>
+                    <option value="insurance">insurance</option>
+                    <option value="other">other</option>
+                  </select>
+                </td>
+                <td className="text-right px-1 py-2">
+                  <input className={`${SEL} w-12 text-right`} type="number" min={1} max={31} placeholder="day" value={newBill.day} onChange={(e) => setNewBill((p) => ({ ...p, day: e.target.value }))} />
+                </td>
+                <td className="text-right px-1 py-2">
+                  <input className={`${SEL} w-24 text-right`} type="number" step="0.01" placeholder="0.00" value={newBill.amount} onChange={(e) => setNewBill((p) => ({ ...p, amount: e.target.value }))} />
+                </td>
+                <td className="text-right px-1 py-2">
+                  <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[11px] uppercase tracking-[.08em]" onClick={addBill}>+ add</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="font-condensed text-[11px] text-faint mt-3 leading-[1.5]">
+            Loan/lease rows: this is the FULL bank draft — the break-even principal amount stays
+            on <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>. Removing a bill
+            deactivates it; history stays.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted: () => void }) => {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const parsed = useMemo(() => parseFinancialRows(text), [text]);
+  const good = parsed.filter((p) => p.row != null);
+  const bad = parsed.filter((p) => p.error != null);
+
+  const commit = async () => {
+    if (good.length === 0 || bad.length > 0) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await upsertMonthlyFinancials(good.map((g) => g.row!));
+      onCommitted();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Import failed");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-[680px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>PASTE MONTHS</span>
+          <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">one row per month, straight from the QBO worksheet</span>
+          <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-5">
+          <div className="font-mono text-[10.5px] rounded-[6px] px-2.5 py-2 overflow-x-auto whitespace-nowrap" style={{ color: "var(--color-amber-hi)", background: "var(--color-well)", border: "1px dashed rgba(232,148,10,.35)" }}>
+            {FINANCIAL_COLUMNS.join(" · ")}
+          </div>
+          <textarea
+            className="w-full mt-3 bg-well border border-hairline rounded-[8px] px-3 py-2 text-[12px] font-mono text-ink min-h-[110px] focus:outline-none focus:border-amber"
+            placeholder={"2026-07\t33552.45\t6521.97\t…  (tab or comma separated; header row ok; re-pasting a month updates it)"}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          {parsed.length > 0 && (
+            <table className="w-full mt-3 text-[12px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr className="font-condensed text-[10px] tracking-[.08em] uppercase text-faint">
+                  <th className="text-left px-2 py-1 border-b border-hairline">Month</th>
+                  <th className="text-right px-2 py-1 border-b border-hairline">Net income</th>
+                  <th className="text-right px-2 py-1 border-b border-hairline">Ending cash</th>
+                  <th className="text-left px-2 py-1 border-b border-hairline">Check</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parsed.map((p, i) => (
+                  <tr key={i}>
+                    <td className="text-left px-2 py-1 border-b border-hairline-lo">{p.row ? p.row.month.slice(0, 7) : "—"}</td>
+                    <td className="text-right px-2 py-1 border-b border-hairline-lo">{p.row ? p.row.net_income : "—"}</td>
+                    <td className="text-right px-2 py-1 border-b border-hairline-lo">{p.row ? p.row.ending_cash : "—"}</td>
+                    <td className="text-left px-2 py-1 border-b border-hairline-lo" style={{ color: p.error ? "var(--color-warn)" : "var(--color-ok)" }}>
+                      {p.error ? `⚠ ${p.error}` : "✓ reconciles"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {err && <p className="text-[12px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
+          <div className="flex items-center gap-2 mt-4">
+            <button
+              disabled={busy || good.length === 0 || bad.length > 0}
+              onClick={commit}
+              className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40"
+            >
+              {busy ? "Committing…" : `Commit ${good.length} month${good.length === 1 ? "" : "s"}`}
+            </button>
+            <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+              Cancel
+            </button>
+            {bad.length > 0 && (
+              <span className="font-condensed text-[11.5px]" style={{ color: "var(--color-warn)" }}>
+                fix {bad.length} flagged row{bad.length === 1 ? "" : "s"} first — the archive never takes half a paste
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AssumptionsPopup = ({
+  assumptions, floatLine, onClose, onSaved,
+}: {
+  assumptions: CashAssumptionsRow;
+  floatLine: number | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) => {
+  const [f, setF] = useState({
+    weekly_revenue: assumptions.weekly_revenue,
+    weekly_payroll: assumptions.weekly_payroll,
+    monthly_depreciation: assumptions.monthly_depreciation,
+    fed_tax_rate: assumptions.fed_tax_rate,
+    state_tax_rate: assumptions.state_tax_rate,
+    financing_floor: assumptions.financing_floor,
+    tax_catchup_owed: assumptions.tax_catchup_owed,
+  });
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setF((prev) => ({ ...prev, [k]: e.target.value }));
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await patchCashAssumptions(
+        Object.fromEntries(Object.entries(f).map(([k, v]) => [k, Number(v)])) as Partial<Record<keyof CashAssumptionsRow, number>>,
+      );
+      onSaved();
+    } catch {
+      setBusy(false);
+    }
+  };
+
+  const FIELDS: { key: keyof typeof f; label: string }[] = [
+    { key: "weekly_revenue", label: "Weekly revenue fallback (net settlement)" },
+    { key: "weekly_payroll", label: "Weekly payroll" },
+    { key: "monthly_depreciation", label: "Monthly depreciation (add-back)" },
+    { key: "fed_tax_rate", label: "Federal tax rate (0–1)" },
+    { key: "state_tax_rate", label: "State tax rate (0–1)" },
+    { key: "financing_floor", label: "Financing floor (principal / mo, negative)" },
+    { key: "tax_catchup_owed", label: "Tax catch-up earmark" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>ASSUMPTIONS</span>
+          <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-5">
+          {FIELDS.map(({ key, label }) => (
+            <div key={key} className="mb-3">
+              <label className={LBL}>{label}</label>
+              <input type="number" step="0.01" className={FIELD} value={f[key]} onChange={set(key)} />
+            </div>
+          ))}
+          <p className="font-condensed text-[11.5px] text-faint leading-[1.5]">
+            The red line on both boards is the plan’s float{floatLine != null && <> ({money(floatLine)})</>} — edited on{" "}
+            <Link to="/status" className="text-amber-hi hover:text-hot">Status</Link>, not here. Bills live with your
+            obligations on <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>: category, draft
+            day, and full draft amount; loan rows keep a separate break-even (principal) amount so nothing double-counts.
+          </p>
+          <div className="flex items-center gap-2 mt-4">
+            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CashFlowPage;
