@@ -21,6 +21,7 @@ import {
 } from "@/lib/metrics/cashflow";
 import type { LiquidityWeek } from "@/lib/metrics/cashflow";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
+import { dayKey as localDayKey } from "@/lib/perDiem";
 import type { Obligation } from "@/types/obligation";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
@@ -64,23 +65,32 @@ const CashFlowPage = () => {
   const [showAssume, setShowAssume] = useState(false);
   const [showBills, setShowBills] = useState(false);
 
+  const [loadError, setLoadError] = useState(false);
+
+  // allSettled, not all: one flaky call must not throw away the other seven
+  // and render a stocked page as brand-new onboarding.
   const load = () =>
-    Promise.all([
+    Promise.allSettled([
       getObligations(), getCashAssumptions(), getMonthlyFinancials(),
-      getForecastAdjustments(), getSettlementSchedule().catch(() => null),
+      getForecastAdjustments(), getSettlementSchedule(),
       getPlans(), getAccounts(), getSnapshots(),
     ])
       .then(([o, a, f, adj, sched, p, acc, snaps]) => {
-        setObligations(o);
-        setAssumptions(a);
-        setFinancials(f);
-        setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)])));
-        setSettlementDay(sched?.settlement_day ?? null);
-        setPlans(p);
-        setAccounts(acc);
-        setSnapshots(snaps);
+        if (o.status === "fulfilled") setObligations(o.value);
+        if (a.status === "fulfilled") setAssumptions(a.value);
+        if (f.status === "fulfilled") setFinancials(f.value);
+        if (adj.status === "fulfilled")
+          setAdjustments(new Map(adj.value.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)])));
+        if (sched.status === "fulfilled") setSettlementDay(sched.value?.settlement_day ?? null);
+        if (p.status === "fulfilled") setPlans(p.value);
+        if (acc.status === "fulfilled") setAccounts(acc.value);
+        if (snaps.status === "fulfilled") setSnapshots(snaps.value);
+        // The schedule 404s harmlessly for a fresh user — every other failure
+        // deserves a visible flag, not a silently emptier page.
+        setLoadError(
+          [o, a, f, adj, p, acc, snaps].some((r) => r.status === "rejected"),
+        );
       })
-      .catch(() => {})
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -100,7 +110,9 @@ const CashFlowPage = () => {
     return b == null ? null : Number(b.balance);
   }, [latestSnap, opsAcct]);
 
-  const asOfKey = useMemo(() => keyOf(new Date()), []);
+  // The operator's LOCAL calendar day — a US evening is already tomorrow in
+  // UTC, which would start the board a day late and drop tonight's drafts.
+  const asOfKey = useMemo(() => localDayKey(new Date()), []);
   const beginning = beginOverride ?? snapOps;
 
   const liquidity = useMemo(() => {
@@ -139,9 +151,14 @@ const CashFlowPage = () => {
   const clears = liquidity != null && floatLine != null ? liquidity.lowestEnding >= floatLine : null;
   const catchup = assumptions ? Number(assumptions.tax_catchup_owed) : 0;
   const lastForecastEnd = forecast?.months.at(-1)?.ending ?? null;
+  // YTD means the LATEST archived year only — the archive is permanent, so an
+  // unfiltered sum would quietly blend 2026 into 2027's "year to date".
   const ytdMargin = useMemo(() => {
-    const inc = financials.reduce((s, f) => s + Number(f.total_income), 0);
-    const ni = financials.reduce((s, f) => s + Number(f.net_income), 0);
+    if (financials.length === 0) return null;
+    const year = financials[financials.length - 1].month.slice(0, 4);
+    const inYear = financials.filter((f) => f.month.slice(0, 4) === year);
+    const inc = inYear.reduce((s, f) => s + Number(f.total_income), 0);
+    const ni = inYear.reduce((s, f) => s + Number(f.net_income), 0);
     return inc > 0 ? ni / inc : null;
   }, [financials]);
 
@@ -192,6 +209,13 @@ const CashFlowPage = () => {
             </button>
           </span>
         </div>
+
+        {loadError && (
+          <p className="mt-3 font-condensed text-[12.5px]" style={{ color: "var(--color-warn)" }}>
+            ⚠ some data didn’t load — the boards below may be missing pieces.{" "}
+            <button className="underline underline-offset-2" onClick={load}>retry</button>
+          </p>
+        )}
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
@@ -370,19 +394,31 @@ const CashFlowPage = () => {
             </>
           ) : (
             <p className="text-xs text-muted-text px-4 py-6">
-              Needs a beginning balance — take a <Link to="/status" className="text-amber-hi hover:text-hot">Friday snapshot</Link>{" "}
-              or{" "}
-              <button
-                className="text-amber-hi hover:text-hot"
-                onClick={() => {
-                  const v = window.prompt("Beginning cash (ops) for week 1:");
-                  const n = v == null ? NaN : Number(v.replace(/[$,]/g, ""));
-                  if (Number.isFinite(n)) setBeginOverride(n);
-                }}
-              >
-                set it by hand
-              </button>
-              .
+              {assumptions == null ? (
+                <>
+                  Needs your planning assumptions first —{" "}
+                  <button className="text-amber-hi hover:text-hot" onClick={() => setShowAssume(true)}>
+                    set them up
+                  </button>
+                  {beginning == null && " — and a beginning balance"}.
+                </>
+              ) : (
+                <>
+                  Needs a beginning balance — take a{" "}
+                  <Link to="/status" className="text-amber-hi hover:text-hot">Friday snapshot</Link> or{" "}
+                  <button
+                    className="text-amber-hi hover:text-hot"
+                    onClick={() => {
+                      const v = window.prompt("Beginning cash (ops) for week 1:");
+                      const n = v == null ? NaN : Number(v.replace(/[$,]/g, ""));
+                      if (Number.isFinite(n)) setBeginOverride(n);
+                    }}
+                  >
+                    set it by hand
+                  </button>
+                  .
+                </>
+              )}
             </p>
           )}
         </div>
@@ -488,19 +524,28 @@ const CashFlowPage = () => {
                         <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{moneyCents(fm.ending)}</td>
                         <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">
                           <input
+                            // Key on the saved value: a failed save's reload
+                            // snaps the input back instead of showing a number
+                            // the row's math never took.
+                            key={`${fm.month}:${fm.weeksOff}`}
                             type="number"
                             min={0}
-                            max={4}
+                            max={5}
                             step={0.5}
                             className="w-14 bg-well border border-hairline rounded-[6px] px-1.5 py-0.5 text-right text-[12px] text-ink focus:outline-none focus:border-amber"
                             defaultValue={fm.weeksOff}
                             onBlur={(e) => {
                               const v = Number(e.target.value);
-                              if (Number.isFinite(v) && v >= 0 && v !== fm.weeksOff) {
+                              // 0–5: a month only holds ~4.5 weeks; typed values ignore HTML max.
+                              if (Number.isFinite(v) && v >= 0 && v <= 5 && v !== fm.weeksOff) {
                                 setForecastAdjustment(fm.month, v)
                                   .then(() => getForecastAdjustments())
                                   .then((adj) => setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)]))))
-                                  .catch(() => {});
+                                  .catch(() =>
+                                    getForecastAdjustments()
+                                      .then((adj) => setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)]))))
+                                      .catch(() => {}),
+                                  );
                               }
                             }}
                           />
@@ -544,7 +589,7 @@ const CashFlowPage = () => {
             }}
           />
         )}
-        {showAssume && assumptions && (
+        {showAssume && (
           <AssumptionsPopup
             assumptions={assumptions}
             floatLine={floatLine}
@@ -595,16 +640,18 @@ const EditCell = ({
   prefix?: string;
 }) => {
   if (editing === id) {
+    const original = Math.round(value * 100) / 100;
     return (
       <input
         autoFocus
         type="number"
         step="0.01"
-        defaultValue={Math.round(value * 100) / 100}
+        defaultValue={original}
         className="w-28 bg-well border border-amber rounded-[6px] px-2 py-0.5 text-right text-[13px] text-ink focus:outline-none"
         onBlur={(e) => {
           const v = Number(e.target.value);
-          if (Number.isFinite(v)) onCommit(v);
+          // Tap-to-look must not freeze an override — only a CHANGED value commits.
+          if (Number.isFinite(v) && v !== original) onCommit(v);
           setEditing(null);
         }}
         onKeyDown={(e) => {
@@ -635,8 +682,9 @@ const BillsPopup = ({
   onChanged: () => void;
 }) => {
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, { day: string; amount: string; category: string }>>({});
-  const [newBill, setNewBill] = useState({ label: "", amount: "", day: "", category: "other" });
+  const [newBill, setNewBill] = useState({ label: "", amount: "", principal: "", day: "", category: "other" });
 
   const bills = obligations
     .filter((o) => o.active && o.day_of_month != null)
@@ -655,17 +703,38 @@ const BillsPopup = ({
     const st = rowState(o);
     const day = Number(st.day);
     const amount = Number(st.amount);
-    if (!Number.isFinite(day) || day < 1 || day > 31 || !Number.isFinite(amount)) return;
+    if (!Number.isFinite(day) || day < 1 || day > 31) {
+      setErr(`${o.label}: draft day must be 1–31`);
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 0) {
+      setErr(`${o.label}: bad draft amount`);
+      return;
+    }
+    // on_pl FOLLOWS the category, on every save — a bill recategorized to
+    // loan/lease must join break-even (with its principal), and one moved off
+    // loan/lease must leave it, or the one-bill-list contract breaks.
+    const on_pl = st.category !== "loan_lease";
     setBusy(true);
+    setErr(null);
     try {
       await patchObligation(o.obligation_id, {
         category: st.category as Obligation["category"],
         day_of_month: day,
         draft_amount: amount,
-        // P&L bills keep ONE number; loans keep their principal in `amount`.
-        ...(o.on_pl ? { amount } : {}),
+        on_pl,
+        // P&L bills keep ONE number. A row that just BECAME a loan keeps its
+        // old amount as the principal until Jason sets the real split.
+        ...(on_pl ? { amount } : {}),
+      });
+      setDraft((prev) => {
+        const next = { ...prev };
+        delete next[o.obligation_id];
+        return next;
       });
       onChanged();
+    } catch {
+      setErr(`${o.label}: save failed — the server kept the old values`);
     } finally {
       setBusy(false);
     }
@@ -673,10 +742,15 @@ const BillsPopup = ({
 
   const removeRow = async (o: Obligation) => {
     setBusy(true);
+    setErr(null);
     try {
-      // Deactivate, never delete — history stays.
-      await patchObligation(o.obligation_id, { active: false });
+      // Calendar-only removal: the obligation stays ACTIVE (break-even and
+      // payoff trackers keep it) — it just stops drafting here. Deactivating
+      // belongs to the Expenses card, where its other roles are visible.
+      await patchObligation(o.obligation_id, { day_of_month: null });
       onChanged();
+    } catch {
+      setErr(`${o.label}: remove failed`);
     } finally {
       setBusy(false);
     }
@@ -685,19 +759,33 @@ const BillsPopup = ({
   const addBill = async () => {
     const day = Number(newBill.day);
     const amount = Number(newBill.amount);
-    if (!newBill.label || !Number.isFinite(day) || day < 1 || day > 31 || !Number.isFinite(amount)) return;
+    const isLoan = newBill.category === "loan_lease";
+    const principal = isLoan ? Number(newBill.principal) : amount;
+    if (!newBill.label || !Number.isFinite(day) || day < 1 || day > 31 || !Number.isFinite(amount) || amount < 0) {
+      setErr("New bill needs a name, a day 1–31, and a draft amount");
+      return;
+    }
+    if (isLoan && (!Number.isFinite(principal) || principal < 0)) {
+      // A loan's interest is already on the P&L — break-even takes only the
+      // principal slice, so a new loan must say what that slice is.
+      setErr("A loan/lease bill needs its principal (the break-even share)");
+      return;
+    }
     setBusy(true);
+    setErr(null);
     try {
       await createObligation({
         label: newBill.label,
-        amount,
+        amount: principal,
         category: newBill.category as Obligation["category"],
         day_of_month: day,
         draft_amount: amount,
-        on_pl: newBill.category !== "loan_lease",
+        on_pl: !isLoan,
       });
-      setNewBill({ label: "", amount: "", day: "", category: "other" });
+      setNewBill({ label: "", amount: "", principal: "", day: "", category: "other" });
       onChanged();
+    } catch {
+      setErr("Add failed — nothing was created");
     } finally {
       setBusy(false);
     }
@@ -753,7 +841,7 @@ const BillsPopup = ({
                     </td>
                     <td className="text-right px-1 py-1.5 border-b border-hairline-lo whitespace-nowrap">
                       <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[11px] uppercase tracking-[.08em] mr-2" onClick={() => saveRow(o)}>save</button>
-                      <button disabled={busy} className="text-faint hover:text-warn" title="remove from the calendar (deactivates)" onClick={() => removeRow(o)}>✕</button>
+                      <button disabled={busy} className="text-faint hover:text-warn" title="remove from the draft calendar — stays active for break-even/payoff" onClick={() => removeRow(o)}>✕</button>
                     </td>
                   </tr>
                 );
@@ -773,7 +861,10 @@ const BillsPopup = ({
                   <input className={`${SEL} w-12 text-right`} type="number" min={1} max={31} placeholder="day" value={newBill.day} onChange={(e) => setNewBill((p) => ({ ...p, day: e.target.value }))} />
                 </td>
                 <td className="text-right px-1 py-2">
-                  <input className={`${SEL} w-24 text-right`} type="number" step="0.01" placeholder="0.00" value={newBill.amount} onChange={(e) => setNewBill((p) => ({ ...p, amount: e.target.value }))} />
+                  <input className={`${SEL} w-24 text-right`} type="number" step="0.01" placeholder="draft" title="the full bank draft" value={newBill.amount} onChange={(e) => setNewBill((p) => ({ ...p, amount: e.target.value }))} />
+                  {newBill.category === "loan_lease" && (
+                    <input className={`${SEL} w-24 text-right mt-1`} type="number" step="0.01" placeholder="principal" title="break-even share — interest is already on the P&L" value={newBill.principal} onChange={(e) => setNewBill((p) => ({ ...p, principal: e.target.value }))} />
+                  )}
                 </td>
                 <td className="text-right px-1 py-2">
                   <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[11px] uppercase tracking-[.08em]" onClick={addBill}>+ add</button>
@@ -781,10 +872,12 @@ const BillsPopup = ({
               </tr>
             </tbody>
           </table>
+          {err && <p className="font-condensed text-[12px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
           <p className="font-condensed text-[11px] text-faint mt-3 leading-[1.5]">
-            Loan/lease rows: this is the FULL bank draft — the break-even principal amount stays
-            on <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>. Removing a bill
-            deactivates it; history stays.
+            Loan/lease rows: the draft is the FULL bank payment — the break-even principal amount
+            stays separate (shown in the chip, edited on{" "}
+            <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>). ✕ removes a bill
+            from the calendar only — it stays active for break-even and payoff tracking.
           </p>
         </div>
       </div>
@@ -883,32 +976,46 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
 const AssumptionsPopup = ({
   assumptions, floatLine, onClose, onSaved,
 }: {
-  assumptions: CashAssumptionsRow;
+  // null = no row yet (fresh user) — saving creates it, so the popup must
+  // open either way or the page can never bootstrap.
+  assumptions: CashAssumptionsRow | null;
   floatLine: number | null;
   onClose: () => void;
   onSaved: () => void;
 }) => {
   const [f, setF] = useState({
-    weekly_revenue: assumptions.weekly_revenue,
-    weekly_payroll: assumptions.weekly_payroll,
-    monthly_depreciation: assumptions.monthly_depreciation,
-    fed_tax_rate: assumptions.fed_tax_rate,
-    state_tax_rate: assumptions.state_tax_rate,
-    financing_floor: assumptions.financing_floor,
-    tax_catchup_owed: assumptions.tax_catchup_owed,
+    weekly_revenue: assumptions?.weekly_revenue ?? "",
+    weekly_payroll: assumptions?.weekly_payroll ?? "",
+    monthly_depreciation: assumptions?.monthly_depreciation ?? "",
+    fed_tax_rate: assumptions?.fed_tax_rate ?? "",
+    state_tax_rate: assumptions?.state_tax_rate ?? "",
+    financing_floor: assumptions?.financing_floor ?? "",
+    tax_catchup_owed: assumptions?.tax_catchup_owed ?? "",
   });
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setF((prev) => ({ ...prev, [k]: e.target.value }));
 
   const save = async () => {
+    // A cleared field is "leave it alone", never "set it to 0" — Number("")
+    // is 0 and a zeroed payroll or financing floor lies loudly downstream.
+    const patch = Object.fromEntries(
+      Object.entries(f)
+        .filter(([, v]) => String(v).trim() !== "" && Number.isFinite(Number(v)))
+        .map(([k, v]) => [k, Number(v)]),
+    ) as Partial<Record<keyof CashAssumptionsRow, number>>;
+    if (Object.keys(patch).length === 0) {
+      setErr("Nothing to save — every field is empty.");
+      return;
+    }
     setBusy(true);
+    setErr(null);
     try {
-      await patchCashAssumptions(
-        Object.fromEntries(Object.entries(f).map(([k, v]) => [k, Number(v)])) as Partial<Record<keyof CashAssumptionsRow, number>>,
-      );
+      await patchCashAssumptions(patch);
       onSaved();
     } catch {
+      setErr("Save failed — nothing was changed. Try again.");
       setBusy(false);
     }
   };
@@ -938,6 +1045,7 @@ const AssumptionsPopup = ({
               <input type="number" step="0.01" className={FIELD} value={f[key]} onChange={set(key)} />
             </div>
           ))}
+          {err && <p className="text-[12px] mb-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
           <p className="font-condensed text-[11.5px] text-faint leading-[1.5]">
             The red line on both boards is the plan’s float{floatLine != null && <> ({money(floatLine)})</>} — edited on{" "}
             <Link to="/status" className="text-amber-hi hover:text-hot">Status</Link>, not here. Bills live with your

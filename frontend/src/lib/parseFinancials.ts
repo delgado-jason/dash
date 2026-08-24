@@ -57,7 +57,8 @@ export const parseFinancialRows = (text: string): ParsedFinancialRow[] => {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  return lines
+  const seen = new Set<string>();
+  const rows = lines
     .map((raw): ParsedFinancialRow | null => {
       // Tabs first (spreadsheet paste), else commas. Never split on spaces —
       // a stray "Truck note" style cell would shred.
@@ -90,6 +91,12 @@ export const parseFinancialRows = (text: string): ParsedFinancialRow[] => {
           error: `doesn't reconcile: ${beg.toFixed(2)} + ${change.toFixed(2)} ≠ ${endc.toFixed(2)}`,
         };
 
+      // The same month twice in one paste would silently last-write-win in
+      // the upsert — with possibly DIFFERENT numbers. Flag it instead.
+      if (seen.has(month))
+        return { row: null, raw, error: `duplicate month ${month.slice(0, 7)} in this paste` };
+      seen.add(month);
+
       const s = (n: number) => n.toFixed(2);
       return {
         raw, error: null,
@@ -104,4 +111,5 @@ export const parseFinancialRows = (text: string): ParsedFinancialRow[] => {
       };
     })
     .filter((r): r is ParsedFinancialRow => r !== null);
+  return rows;
 };

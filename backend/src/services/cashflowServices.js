@@ -73,7 +73,9 @@ const FINANCIAL_FIELDS = [
 export async function getFinancials(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT ${FINANCIAL_FIELDS.join(", ")} FROM monthly_financials
+    `SELECT to_char(month, 'YYYY-MM-DD') AS month,
+            ${FINANCIAL_FIELDS.filter((f) => f !== "month").join(", ")}
+     FROM monthly_financials
      WHERE user_id = $1 ORDER BY month`,
     [user_id],
   );
@@ -87,10 +89,15 @@ export async function upsertFinancials(user_id, rows) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!Array.isArray(rows) || rows.length === 0)
     throw new ValidationError("rows must be a non-empty array");
+  if (rows.length > 120)
+    throw new ValidationError("too many rows in one paste (max 120)");
   for (const r of rows) {
+    if (typeof r.month !== "string" || !/^\d{4}-\d{2}-01$/.test(r.month))
+      throw new ValidationError(`Row ${r.month ?? "?"}: month must be YYYY-MM-01`);
     for (const f of FINANCIAL_FIELDS) {
-      if (r[f] === undefined || r[f] === null || r[f] === "")
-        throw new ValidationError(`Row ${r.month ?? "?"}: missing ${f}`);
+      if (f === "month") continue;
+      if (r[f] === undefined || r[f] === null || r[f] === "" || !Number.isFinite(Number(r[f])))
+        throw new ValidationError(`Row ${r.month}: bad ${f}`);
     }
   }
   const client = await db.pool.connect();
@@ -106,7 +113,8 @@ export async function upsertFinancials(user_id, rows) {
              .map((f) => `${f} = EXCLUDED.${f}`)
              .join(", ")},
            updated_at = NOW()
-         RETURNING ${FINANCIAL_FIELDS.join(", ")}`,
+         RETURNING to_char(month, 'YYYY-MM-DD') AS month,
+                   ${FINANCIAL_FIELDS.filter((f) => f !== "month").join(", ")}`,
         [user_id, ...FINANCIAL_FIELDS.map((f) => r[f])],
       );
       out.push(res.rows[0]);
@@ -124,7 +132,8 @@ export async function upsertFinancials(user_id, rows) {
 export async function getAdjustments(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT month, weeks_off FROM forecast_adjustments WHERE user_id = $1 ORDER BY month`,
+    `SELECT to_char(month, 'YYYY-MM-DD') AS month, weeks_off
+     FROM forecast_adjustments WHERE user_id = $1 ORDER BY month`,
     [user_id],
   );
   return result.rows;
@@ -133,14 +142,17 @@ export async function getAdjustments(user_id) {
 export async function setAdjustment(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const { month, weeks_off } = data;
-  if (!month || weeks_off == null)
-    throw new ValidationError("month and weeks_off are required");
+  if (typeof month !== "string" || !/^\d{4}-\d{2}-01$/.test(month))
+    throw new ValidationError("month must be YYYY-MM-01");
+  const w = Number(weeks_off);
+  if (!Number.isFinite(w) || w < 0 || w > 8)
+    throw new ValidationError("weeks_off must be between 0 and 8");
   const result = await db.query(
     `INSERT INTO forecast_adjustments (user_id, month, weeks_off)
      VALUES ($1, $2, $3)
      ON CONFLICT (user_id, month) DO UPDATE SET weeks_off = EXCLUDED.weeks_off, updated_at = NOW()
-     RETURNING month, weeks_off`,
-    [user_id, month, weeks_off],
+     RETURNING to_char(month, 'YYYY-MM-DD') AS month, weeks_off`,
+    [user_id, month, w],
   );
   return result.rows[0];
 }

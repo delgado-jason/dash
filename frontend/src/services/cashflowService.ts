@@ -47,9 +47,16 @@ export const patchCashAssumptions = async (
   return res.data.assumptions;
 };
 
+// Defensive: month must be a bare "YYYY-MM-01" — a raw pg Date would arrive
+// as an ISO timestamp and crash the month math downstream.
+const cleanMonth = <T extends { month: string }>(r: T): T => ({
+  ...r,
+  month: String(r.month).slice(0, 10),
+});
+
 export const getMonthlyFinancials = async (): Promise<MonthlyFinancialRow[]> => {
   const res = await api.get("/cashflow/financials");
-  return res.data.financials ?? [];
+  return (res.data.financials ?? []).map(cleanMonth);
 };
 
 // The paste importer's commit — all rows in one transactional upsert.
@@ -62,7 +69,7 @@ export const upsertMonthlyFinancials = async (
 
 export const getForecastAdjustments = async (): Promise<ForecastAdjustmentRow[]> => {
   const res = await api.get("/cashflow/adjustments");
-  return res.data.adjustments ?? [];
+  return (res.data.adjustments ?? []).map(cleanMonth);
 };
 
 export const setForecastAdjustment = async (

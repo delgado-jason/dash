@@ -123,6 +123,28 @@ describe("twoWeekLiquidity — Jason's 2-Week Cash sheet, penny-exact", () => {
     expect(r.weeks[1].settlements).toBeCloseTo(1460, 2);
   });
 
+  it("the fallback decision is PER WEEK and by projected count, not by loads existing", () => {
+    // One load pays into week 1 only. Week 2 must fall back to weekly revenue
+    // even though loads exist — a 'loads.length > 0' shortcut would show a
+    // $0 dry week; a 'total > 0' shortcut is pinned by the zero-net case below.
+    const loads = [
+      { load_status: "delivered", payment_status: "invoiced", delivery_date: "2026-08-24", linehaul: "3000", net_revenue: "2190" },
+    ] as unknown as Load[];
+    const r = twoWeekLiquidity({ ...base, loads });
+    expect(r.weeks[0].settlementSource).toBe("loads");
+    expect(r.weeks[1].settlementSource).toBe("fallback");
+    expect(r.weeks[1].settlements).toBe(4647);
+  });
+
+  it("a projected load with $0 net still counts as a projection (count, not total)", () => {
+    const loads = [
+      { load_status: "delivered", payment_status: "invoiced", delivery_date: "2026-08-24", linehaul: "0", net_revenue: "0" },
+    ] as unknown as Load[];
+    const r = twoWeekLiquidity({ ...base, loads });
+    expect(r.weeks[0].settlementSource).toBe("loads");
+    expect(r.weeks[0].settlements).toBe(0); // the honest projection, not the fallback
+  });
+
   it("inactive bills and bills without a draft day stay off the calendar", () => {
     const r = twoWeekLiquidity({
       ...base,

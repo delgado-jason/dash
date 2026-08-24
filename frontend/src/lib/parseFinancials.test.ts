@@ -44,4 +44,11 @@ describe("parseFinancialRows", () => {
   it("empty text → no rows", () => {
     expect(parseFinancialRows("")).toHaveLength(0);
   });
+
+  it("flags a duplicate month within one paste instead of last-write-wins", () => {
+    const rows = parseFinancialRows(`${JUL}\n${JUL}`);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].error).toBeNull();
+    expect(rows[1].error).toMatch(/duplicate month 2026-07/);
+  });
 });
