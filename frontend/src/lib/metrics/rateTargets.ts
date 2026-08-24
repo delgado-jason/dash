@@ -11,9 +11,11 @@ import type { Obligation } from "@/types/obligation";
 // yourself out as an expense and inflate the rate you "need". Mirrors how True Net
 // already excludes draws. (The Expenses page keeps a separate cash-out view that
 // intentionally includes draws.)
+// on_pl rows (insurance, subscriptions) are already inside operating cost —
+// they draft cash on the calendar but must NOT join the break-even sum.
 export const monthlyObligationCost = (obligations: Obligation[]): number =>
   obligations
-    .filter((o) => o.active && !o.is_draw)
+    .filter((o) => o.active && !o.is_draw && !o.on_pl)
     .reduce((s, o) => s + Number(o.amount), 0);
 
 // The full customer rate (gross) = linehaul + fuel surcharge + accessorials. Used

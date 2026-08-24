@@ -19,7 +19,7 @@ import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { computeGrind } from "@/lib/metrics/grind";
 import { marginGoalFrom } from "@/lib/constants/targets";
-import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadRevenue, monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { computeAllStatuses } from "@/lib/trophies/status";
 import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
@@ -113,11 +113,9 @@ export const useAwardPops = (
       maxFuelOdometer(data.fuel) ?? 0,
       ...loads.map((l) => Number(l.odometer_end) || 0),
     );
-    // Break-even excludes owner draws, so the grind's pace targets use the
-    // debt-only obligation sum (not "all active").
-    const obligationsDebtMonthly = data.obligations
-      .filter((o) => o.active && !o.is_draw)
-      .reduce((s, o) => s + Number(o.amount), 0);
+    // Break-even excludes owner draws AND on-P&L bills (those already sit in
+    // operating cost) — same rule as monthlyObligationCost, kept in one place.
+    const obligationsDebtMonthly = monthlyObligationCost(data.obligations);
     const grind = computeGrind(loads, data.periods, obligationsDebtMonthly, now, marginGoalFrom(data.schedule));
     const truckLoan = assetLoanStatus(data.obligations, "truck", now);
     const trailerLoan = assetLoanStatus(data.obligations, "trailer", now);

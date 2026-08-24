@@ -29,6 +29,7 @@ import {
   getCostBasis,
   getRateLadder,
   loadRevenue,
+  monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
 import {
   RATE_TIERS,
@@ -144,11 +145,9 @@ const DriverDetailPage = () => {
   const card = useMemo(() => {
     if (driverLoads.length === 0) return null;
     const now = new Date();
-    // Active DEBT obligations (owner draws excluded) drive break-even/rate and
-    // subtract from True Net — a draw is a profit distribution, not a cost.
-    const obligationsDebt = obligations
-      .filter((o) => o.active && !o.is_draw)
-      .reduce((s, o) => s + Number(o.amount), 0);
+    // Active DEBT obligations (owner draws and on-P&L bills excluded) drive
+    // break-even/rate and subtract from True Net — one rule, one helper.
+    const obligationsDebt = monthlyObligationCost(obligations);
     const lifetimeMiles = Math.max(
       0,
       ...trucks.map((t) => Number(t.current_odometer) || 0),

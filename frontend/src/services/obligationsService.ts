@@ -9,6 +9,10 @@ const coerce = (o: any): Obligation => ({
   amount: Number(o.amount),
   active: o.active,
   is_draw: o.is_draw ?? false,
+  category: o.category ?? "other",
+  day_of_month: o.day_of_month != null ? Number(o.day_of_month) : null,
+  draft_amount: o.draft_amount != null ? Number(o.draft_amount) : null,
+  on_pl: o.on_pl ?? false,
   original_balance: o.original_balance != null ? Number(o.original_balance) : null,
   current_balance: o.current_balance != null ? Number(o.current_balance) : null,
   balance_as_of: o.balance_as_of ?? null,
@@ -43,6 +47,10 @@ export const createObligation = async (data: {
   label: string;
   amount: number;
   is_draw?: boolean;
+  category?: "loan_lease" | "insurance" | "other";
+  day_of_month?: number | null;
+  draft_amount?: number | null;
+  on_pl?: boolean;
 }): Promise<Obligation> => {
   try {
     const res = await api.post("/obligations", data);
@@ -55,7 +63,16 @@ export const createObligation = async (data: {
 export const patchObligation = async (
   id: string,
   data: Partial<
-    { label: string; amount: number; active: boolean; is_draw: boolean } & PayoffInput
+    {
+      label: string;
+      amount: number;
+      active: boolean;
+      is_draw: boolean;
+      category: "loan_lease" | "insurance" | "other";
+      day_of_month: number | null;
+      draft_amount: number | null;
+      on_pl: boolean;
+    } & PayoffInput
   >,
 ): Promise<void> => {
   try {

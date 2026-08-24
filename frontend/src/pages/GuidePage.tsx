@@ -342,6 +342,9 @@ const NAV: { group: string; items: string[] }[] = [
       "Rate per mile (RPM)",
       "Lane rate — typical vs blended",
       "Outstanding loads — how long money sits",
+      "Two-week cash — will you clear the drafts",
+      "Six-month road — the rolling forecast",
+      "Pretax margin — the real one",
       "Per diem — the meal-allowance deduction",
       "Deadhead",
       "Fuel economy (MPG)",
@@ -1110,6 +1113,70 @@ const GuidePage = () => {
               One stuck invoice shouldn't make routine collections look slow.
               The median shows the normal pace; the oldest surfaces the
               exception instead of hiding it.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Two-week cash — will you clear the drafts"
+            answers="Fourteen days of real money: every bill on its draft day, settlements on their Wednesdays, and whether the ending stays above your float."
+            sources={[{ label: "Cash Flow", to: "/cashflow" }]}
+          >
+            <Formula>
+              ending = beginning + settlements − payroll − loan/lease −
+              insurance − other
+            </Formula>
+            <Why>
+              Week 1 begins at your latest Friday snapshot’s{" "}
+              <span className="text-light">ops balance</span> (tap to override);
+              week 2 begins where week 1 ends. Bills draft their{" "}
+              <span className="text-light">full payment</span> on their real day
+              of the month. Settlements prefer <span className="text-light">real
+              loads</span>: anything not yet paid lands on the first Wednesday
+              after its delivery day (delivered Tuesday pays tomorrow; delivered
+              Wednesday waits a week). No loads booked into a week yet → the
+              weekly-revenue fallback, and the chip says which one you’re
+              looking at. The ending turns red under the plan’s float — the
+              same line the sweep math uses on Status.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Six-month road — the rolling forecast"
+            answers="Your last six closed months (from the QBO archive) rolled six months forward, home-time dips included."
+            sources={[{ label: "Cash Flow", to: "/cashflow" }]}
+          >
+            <Formula>
+              net income = 6-month average − (weeks off × weekly revenue)
+              <br />
+              net change = (net income + depreciation) + financing floor − taxes
+            </Formula>
+            <Why>
+              Actual months come from PASTE MONTHS — rows copied straight off
+              the QBO exports, each checked (<span className="text-light">ending
+              = beginning + change</span>) before the archive takes it; the
+              archive is permanent and re-pasting a month updates it. Forecast
+              months (marked ◦, dashed on the chart) chain from the last actual
+              ending. Depreciation is <span className="text-light">inside</span>{" "}
+              net income and added back as non-cash — one pair, never
+              double-counted. Set weeks off on any forecast month (November’s
+              baby week ships marked). The earmark line shows{" "}
+              <span className="text-light">true spendable</span>: ending minus
+              the tax catch-up you owe.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Pretax margin — the real one"
+            answers="Net income ÷ total income per closed month — honest now that depreciation sits in the P&L."
+            sources={[{ label: "Cash Flow", to: "/cashflow" }]}
+          >
+            <Formula>pretax margin = net income ÷ total income</Formula>
+            <Why>
+              Before depreciation was on the books, any margin the app showed
+              ran fat by the truck’s wear. The Cash Flow table shows it per
+              month and the answering line carries the YTD figure — these come
+              from your accountant-grade QBO numbers, not the app’s load math,
+              so they’re the ones to quote.
             </Why>
           </Metric>
 
