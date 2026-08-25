@@ -170,7 +170,7 @@ const DriverDetailPage = () => {
     // criteria (seasonStrong below) stay on the app's own season math — every
     // other award grades app data, and a QBO import must not re-fire medals.
     const appMarginG = marginGrade(season.netMargin);
-    const qbo = qboPretaxMargin(financials);
+    const qbo = qboPretaxMargin(financials, now);
     const leverMarginValue = qbo?.margin ?? season.netMargin;
     const marginG = qbo ? marginGrade(qbo.margin) : appMarginG;
     const marginLabel = qbo ? "Pretax margin" : "Op margin";

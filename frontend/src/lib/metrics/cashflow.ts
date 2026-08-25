@@ -222,22 +222,39 @@ const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep
 // archive lags the calendar by a month by nature.
 export const qboPretaxMargin = (
   actuals: FinancialMonth[],
+  now: Date,
   monthsBack = 3,
 ): { margin: number; label: string } | null => {
-  if (actuals.length === 0) return null;
-  const recent = [...actuals]
+  // CLOSED months only — a mid-month paste of a partial month must not grade
+  // the lever while the tile claims closed books.
+  const curMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const closed = actuals.filter((m) => m.month.slice(0, 10) < curMonth);
+  if (closed.length === 0) return null;
+  const recent = [...closed]
     .sort((a, b) => (a.month < b.month ? -1 : 1))
     .slice(-monthsBack);
   const income = recent.reduce((s, m) => s + num(m.total_income), 0);
   if (income <= 0) return null;
   const ni = recent.reduce((s, m) => s + num(m.net_income), 0);
 
-  const name = (k: string) => MONTH_ABBR[Number(k.slice(5, 7)) - 1];
-  const yr = recent[recent.length - 1].month.slice(2, 4);
-  const label =
-    recent.length === 1
-      ? `${name(recent[0].month)} ’${yr}`
-      : `${name(recent[0].month)}–${name(recent[recent.length - 1].month)} ’${yr}`;
+  const name = (k: string) => `${MONTH_ABBR[Number(k.slice(5, 7)) - 1]}`;
+  const withYr = (k: string) => `${name(k)} ’${k.slice(2, 4)}`;
+  const first = recent[0].month;
+  const last = recent[recent.length - 1].month;
+  // The label must not claim months the pool doesn't hold: a CONTIGUOUS run
+  // reads as a range ("May–Jul ’26", years on both ends when they differ);
+  // a gapped archive lists the actual months ("Mar, Apr, Jul ’26").
+  const idx = (k: string) => Number(k.slice(0, 4)) * 12 + Number(k.slice(5, 7));
+  const contiguous = recent.every(
+    (m, i) => i === 0 || idx(m.month) === idx(recent[i - 1].month) + 1,
+  );
+  let label: string;
+  if (recent.length === 1) label = withYr(first);
+  else if (!contiguous)
+    label = `${recent.slice(0, -1).map((m) => name(m.month)).join(", ")}, ${withYr(last)}`;
+  else if (first.slice(0, 4) !== last.slice(0, 4))
+    label = `${withYr(first)}–${withYr(last)}`;
+  else label = `${name(first)}–${withYr(last)}`;
   return { margin: ni / income, label };
 };
 
