@@ -45,10 +45,12 @@ const LeverTile = ({
   label,
   value,
   grade,
+  sub,
 }: {
   label: string;
   value: string;
   grade: Grade | null;
+  sub?: string; // basis line — names WHERE the number comes from
 }) => {
   const m = grade ? GRADE_META[grade] : null;
   return (
@@ -71,6 +73,7 @@ const LeverTile = ({
       ) : (
         <span className="text-[10px] text-faint">—</span>
       )}
+      {sub && <p className="font-condensed text-[9.5px] text-faint truncate mt-1">{sub}</p>}
     </div>
   );
 };
@@ -107,6 +110,12 @@ export interface LeversBoardProps {
   season: SeasonStats;
   rpmGrade: Grade | null;
   marginGrade: Grade | null;
+  // The graded margin itself + where it came from. QBO pretax margin when the
+  // monthly archive has closed months (Jason, 2026-08-25 — the accountant-
+  // grade number); the app's season estimate only as a labeled fallback.
+  marginValue: number | null;
+  marginLabel: string; // "Pretax margin" (QBO) | "Op margin" (app estimate)
+  marginBasis: string | null; // e.g. "QBO · May–Jul ’26" | "app est. · season"
   utilization: number | null;
   utilGrade: Grade | null;
   windowRpm: number | null;
@@ -117,6 +126,9 @@ export const LeversBoard = ({
   season,
   rpmGrade,
   marginGrade,
+  marginValue,
+  marginLabel,
+  marginBasis,
   utilization,
   utilGrade,
   windowRpm,
@@ -125,13 +137,13 @@ export const LeversBoard = ({
   const levers: Lever[] = [
     { key: "rate", label: "Rate", grade: rpmGrade },
     { key: "util", label: "Utilization", grade: utilGrade },
-    { key: "margin", label: "Op margin", grade: marginGrade },
+    { key: "margin", label: marginLabel, grade: marginGrade },
   ];
   const bottleneck = bottleneckLevers(levers);
   const onTarget = allLeversOnTarget(levers);
   const rateVal = windowRpm != null ? `$${windowRpm.toFixed(2)}/mi` : "—";
   const utilVal = utilization != null ? pct0(utilization) : "—";
-  const marginVal = season.netMargin != null ? pct1(season.netMargin) : "—";
+  const marginVal = marginValue != null ? pct1(marginValue) : "—";
 
   return (
     <div className="ds2-board p-4 mt-4">
@@ -145,7 +157,7 @@ export const LeversBoard = ({
       <div className="grid grid-cols-3 gap-2.5 mt-3">
         <LeverTile label="Rate" value={rateVal} grade={rpmGrade} />
         <LeverTile label="Utilization" value={utilVal} grade={utilGrade} />
-        <LeverTile label="Op margin" value={marginVal} grade={marginGrade} />
+        <LeverTile label={marginLabel} value={marginVal} grade={marginGrade} sub={marginBasis ?? undefined} />
       </div>
 
       {bottleneck.length > 0 ? (

@@ -13,6 +13,9 @@ import { getTrucks } from "@/services/trucksService";
 import { getPerDiemDays } from "@/services/perDiemService";
 import type { PerDiemDay } from "@/types/perDiem";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getMonthlyFinancials } from "@/services/cashflowService";
+import type { MonthlyFinancialRow } from "@/services/cashflowService";
+import { qboPretaxMargin } from "@/lib/metrics/cashflow";
 import { hometimeStatus } from "@/lib/metrics/hometime";
 import { lastHomeDay } from "@/lib/metrics/fleet";
 import { useLoads } from "@/hooks/useLoads";
@@ -83,6 +86,7 @@ const DriverDetailPage = () => {
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [perDiemDays, setPerDiemDays] = useState<PerDiemDay[]>([]);
+  const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
   const [hometimeThreshold, setHometimeThreshold] = useState(21);
   const [operation, setOperation] = useState("flatbed");
   const [tiers, setTiers] = useState<RateTiers>(RATE_TIERS);
@@ -104,6 +108,8 @@ const DriverDetailPage = () => {
     getObligations().then(setObligations).catch(() => {});
     getFuelEntries().then(setFuel).catch(() => {});
     getTrucks().then(setTrucks).catch(() => {});
+    // The QBO archive drives the margin lever; empty on failure → labeled app fallback.
+    getMonthlyFinancials().then(setFinancials).catch(() => {});
     // This + last year of marks — same window the Fleet tab reads, so both
     // hometime chips run the identical (post-flip) lastHomeDay math.
     const yr = new Date().getUTCFullYear();
@@ -158,7 +164,17 @@ const DriverDetailPage = () => {
     const ladder = getRateLadder(basis.breakEvenRpm, tiers);
     const season = getSeasonStats(periods, driverLoads, driverTrips, now, obligationsDebt);
     const rpmG = rpmGrade(basis.windowRpm, ladder);
-    const marginG = marginGrade(season.netMargin);
+    // The margin LEVER grades the QBO pretax margin (last ≤3 closed months —
+    // accountant-grade books, depreciation included) when the archive has
+    // data; the app's season estimate is only a labeled fallback. Award
+    // criteria (seasonStrong below) stay on the app's own season math — every
+    // other award grades app data, and a QBO import must not re-fire medals.
+    const appMarginG = marginGrade(season.netMargin);
+    const qbo = qboPretaxMargin(financials, now);
+    const leverMarginValue = qbo?.margin ?? season.netMargin;
+    const marginG = qbo ? marginGrade(qbo.margin) : appMarginG;
+    const marginLabel = qbo ? "Pretax margin" : "Op margin";
+    const marginBasis = qbo ? `QBO · ${qbo.label}` : "app est. · this season";
     // Driver utilization (days-based) — under-load days ÷ days since first load.
     const nowKey = now.toISOString().slice(0, 10);
     const winStart = firstDeliveredPickup(driverLoads);
@@ -191,7 +207,7 @@ const DriverDetailPage = () => {
       cumulativeNet: del.reduce((s, l) => s + loadRevenue(l), 0),
       streak: grind.currentStreak,
       loanPaidPct: paidPcts.length ? Math.max(...paidPcts) : null,
-      seasonStrong: marginG === "strong",
+      seasonStrong: appMarginG === "strong", // award criterion — app math, always
     });
     return {
       rank: careerRank(lifetimeMiles),
@@ -199,6 +215,9 @@ const DriverDetailPage = () => {
       pace: getQuarterPace(driverLoads, now),
       rpmGrade: rpmG,
       marginGrade: marginG,
+      marginValue: leverMarginValue,
+      marginLabel,
+      marginBasis,
       utilization,
       utilGrade: utilizationGrade(utilization),
       windowRpm: basis.windowRpm,
@@ -230,7 +249,7 @@ const DriverDetailPage = () => {
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, tiers, marginGoal]);
+  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, tiers, marginGoal, financials]);
 
   // Hometime status for the (owner-op) driver — computed CLIENT-side with the
   // same flipped lastHomeDay the Fleet tab uses (post-2026-08-18 an unmarked
@@ -381,6 +400,9 @@ const DriverDetailPage = () => {
               season={card.season}
               rpmGrade={card.rpmGrade}
               marginGrade={card.marginGrade}
+              marginValue={card.marginValue}
+              marginLabel={card.marginLabel}
+              marginBasis={card.marginBasis}
               utilization={card.utilization}
               utilGrade={card.utilGrade}
               windowRpm={card.windowRpm}
