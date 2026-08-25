@@ -1176,7 +1176,10 @@ const GuidePage = () => {
               ran fat by the truck’s wear. The Cash Flow table shows it per
               month and the answering line carries the YTD figure — these come
               from your accountant-grade QBO numbers, not the app’s load math,
-              so they’re the ones to quote.
+              so they’re the ones to quote. The driver card’s{" "}
+              <span className="text-light">margin lever</span> grades this same
+              number (pooled over the last three closed months), so the
+              bottleneck diagnosis runs on real books too.
             </Why>
           </Metric>
 
@@ -1519,11 +1522,17 @@ const GuidePage = () => {
               </span>
               : <span className="text-light">Rate</span> against your break-even
               ladder, <span className="text-light">Utilization</span> against
-              the 70/80/85% benchmark,{" "}
-              <span className="text-light">Op margin</span> against your margin
-              tiers. They mask each other — a great rate with the truck sitting
-              still nets mediocre — so the card names whichever is lagging and
-              what to do about it. When all three reach Target, it reads{" "}
+              the 70/80/85% benchmark, and{" "}
+              <span className="text-light">Pretax margin</span> against your
+              margin tiers — read from your{" "}
+              <span className="text-light">QBO books</span> (the last three
+              closed months on the Cash Flow archive, depreciation included),
+              because the accountant-grade number is the one to trust. The tile
+              names its basis; until the archive has months it falls back to
+              the app's season estimate, labeled. They mask each other — a
+              great rate with the truck sitting still nets mediocre — so the
+              card names whichever is lagging and what to do about it. When all
+              three reach Target, it reads{" "}
               <span style={{ color: "#4ade80" }}>Firing on all cylinders</span>.
             </Why>
           </Metric>

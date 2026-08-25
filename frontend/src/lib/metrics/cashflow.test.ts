@@ -5,6 +5,7 @@ import {
   twoWeekLiquidity,
   buildForecast,
   pretaxMargin,
+  qboPretaxMargin,
   type FinancialMonth,
   type CashAssumptions,
 } from "./cashflow";
@@ -215,5 +216,32 @@ describe("pretaxMargin — real margin now that depreciation is in the P&L", () 
   it("net income ÷ total income; null when no income", () => {
     expect(pretaxMargin(ACTUALS[5])!).toBeCloseTo(9337.69 / 33552.45, 6);
     expect(pretaxMargin({ month: "2026-01-01", total_income: "0", net_income: "0", ending_cash: "0" })).toBeNull();
+  });
+});
+
+describe("qboPretaxMargin — the margin lever's number", () => {
+  it("pools the last 3 closed months (Σni ÷ Σincome, not an average of ratios)", () => {
+    const r = qboPretaxMargin(ACTUALS)!;
+    // May–Jul: (8218.66 + 2896.27 + 9337.69) ÷ (28833.36 + 27745.72 + 33552.45)
+    expect(r.margin).toBeCloseTo(20452.62 / 90131.53, 6);
+    expect(r.label).toBe("May–Jul ’26");
+  });
+
+  it("sorts by month first — an unsorted archive still picks the LATEST three", () => {
+    const shuffled = [ACTUALS[5], ACTUALS[0], ACTUALS[3], ACTUALS[1], ACTUALS[4], ACTUALS[2]];
+    expect(qboPretaxMargin(shuffled)!.margin).toBeCloseTo(20452.62 / 90131.53, 6);
+  });
+
+  it("uses what exists under 3 months, labels a single month plainly", () => {
+    const one = qboPretaxMargin([ACTUALS[5]])!;
+    expect(one.margin).toBeCloseTo(9337.69 / 33552.45, 6);
+    expect(one.label).toBe("Jul ’26");
+  });
+
+  it("null with an empty archive or zero income — the lever falls back, labeled", () => {
+    expect(qboPretaxMargin([])).toBeNull();
+    expect(
+      qboPretaxMargin([{ month: "2026-07-01", total_income: "0", net_income: "0", ending_cash: "0" }]),
+    ).toBeNull();
   });
 });

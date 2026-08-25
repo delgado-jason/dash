@@ -212,6 +212,35 @@ export const pretaxMargin = (m: FinancialMonth): number | null => {
   return inc > 0 ? num(m.net_income) / inc : null;
 };
 
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// The margin the driver card's lever grades (Jason, 2026-08-25): pretax
+// margin over the last (up to) `monthsBack` CLOSED months of the QBO archive
+// — accountant-grade books, not the app's load math. Pooled Σni ÷ Σincome
+// (not an average of ratios) so big and small months weigh honestly. The
+// label carries the actual months so the basis is never ambiguous — the
+// archive lags the calendar by a month by nature.
+export const qboPretaxMargin = (
+  actuals: FinancialMonth[],
+  monthsBack = 3,
+): { margin: number; label: string } | null => {
+  if (actuals.length === 0) return null;
+  const recent = [...actuals]
+    .sort((a, b) => (a.month < b.month ? -1 : 1))
+    .slice(-monthsBack);
+  const income = recent.reduce((s, m) => s + num(m.total_income), 0);
+  if (income <= 0) return null;
+  const ni = recent.reduce((s, m) => s + num(m.net_income), 0);
+
+  const name = (k: string) => MONTH_ABBR[Number(k.slice(5, 7)) - 1];
+  const yr = recent[recent.length - 1].month.slice(2, 4);
+  const label =
+    recent.length === 1
+      ? `${name(recent[0].month)} ’${yr}`
+      : `${name(recent[0].month)}–${name(recent[recent.length - 1].month)} ’${yr}`;
+  return { margin: ni / income, label };
+};
+
 // Forecast per the spec: baseline = AVG(net income, last 6 actuals);
 // weeks off (planned home time) shave weekly revenue off a month's net;
 // depreciation adds back (non-cash — it's inside net income, so the pair nets
