@@ -57,7 +57,10 @@ export interface LiquidityWeek {
   beginning: number;
   settlements: number; // projected revenue landing (BEFORE holdbacks)
   // Fuel advance + avg per-settlement deductions withheld from this week's
-  // settlement. 0 on an override week — the override IS the landed net.
+  // settlement — EVERY week, overrides included: an override replaces the
+  // projected revenue, never the withholding. (Uniform on purpose — a skip
+  // rule made editing the projection silently erase the holdback, so shaving
+  // $47 off a week RAISED its ending by $2,203.)
   holdback: number;
   settlementSource: "loads" | "fallback" | "override";
   settlementLoads: number; // how many loads back the number (0 on fallback/override)
@@ -82,10 +85,11 @@ export interface LiquidityInput {
   loads: Load[]; // for real settlement projection
   settlementDay: number | null; // 0–6, null → fallback-only
   weeklyRevenueFallback: number;
-  // Withheld from every projected settlement week (Jason, 2026-08-31): the
-  // ~$2,000 weekly fuel advance (drawn on the card mid-trip — it never lands
-  // in the bank, the Wednesday check arrives short by it) plus the average
-  // of Landstar's per-settlement deductions. Never applied to an override.
+  // Withheld from every settlement week (Jason, 2026-08-31): the ~$2,000
+  // weekly fuel advance (drawn on the card mid-trip — it never lands in the
+  // bank, the Wednesday check arrives short by it) plus the average of
+  // Landstar's per-settlement deductions. Negative inputs clamp to 0 — a
+  // sign slip must not ADD phantom cash to every week.
   weeklyFuelAdvance?: number;
   weeklySettlementDeductions?: number;
   overrides?: [number | null, number | null]; // manual per-week settlements
@@ -157,7 +161,7 @@ export const twoWeekLiquidity = (input: LiquidityInput): TwoWeekLiquidity => {
     const insurance = byCat("insurance");
     const other = byCat("other");
     const holdback =
-      settlementSource === "override" ? 0 : weeklyFuelAdvance + weeklySettlementDeductions;
+      Math.max(0, weeklyFuelAdvance) + Math.max(0, weeklySettlementDeductions);
     const ending =
       carry + settlements - holdback - weeklyPayroll - loanLease - insurance - other;
     const week: LiquidityWeek = {

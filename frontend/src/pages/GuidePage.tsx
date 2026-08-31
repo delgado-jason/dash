@@ -1136,12 +1136,13 @@ const GuidePage = () => {
               Wednesday waits a week). No loads booked into a week yet → the
               weekly-revenue fallback, and the chip says which one you’re
               looking at. <span className="text-light">Holdbacks</span> come
-              off every projected week: the weekly fuel advance (drawn on the
-              card mid-trip — the Wednesday check arrives short by it) plus
-              your average per-settlement deductions, both set in ASSUMPTIONS.
-              A manual override skips the holdback — what you type is what
-              lands. The ending turns red under the plan’s float — the same
-              line the sweep math uses on Status.
+              off every week: the weekly fuel advance (drawn on the card
+              mid-trip — the Wednesday check arrives short by it) plus your
+              average per-settlement deductions, both set in ASSUMPTIONS. An
+              override replaces the settlements figure only — the holdback
+              still applies, so the rows always add up the same way. The
+              ending turns red under the plan’s float — the same line the
+              sweep math uses on Status.
             </Why>
           </Metric>
 
