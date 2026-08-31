@@ -10,6 +10,8 @@ export interface CashAssumptionsRow {
   state_tax_rate: string;
   financing_floor: string;
   tax_catchup_owed: string;
+  weekly_fuel_advance: string;
+  weekly_settlement_deductions: string;
 }
 
 export interface MonthlyFinancialRow {

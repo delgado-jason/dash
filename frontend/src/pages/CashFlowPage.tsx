@@ -125,6 +125,8 @@ const CashFlowPage = () => {
       loads: loads ?? [],
       settlementDay,
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
+      weeklyFuelAdvance: Number(assumptions.weekly_fuel_advance ?? 0),
+      weeklySettlementDeductions: Number(assumptions.weekly_settlement_deductions ?? 0),
       overrides: setlOverride,
     });
   }, [beginning, assumptions, obligations, loads, settlementDay, asOfKey, setlOverride]);
@@ -341,6 +343,18 @@ const CashFlowPage = () => {
                           )}
                         </td>
                       ))}
+                    </Row>
+                    <Row
+                      label={
+                        <span>
+                          Holdbacks
+                          <span className="ml-2 font-condensed text-[10px] text-faint normal-case tracking-normal">
+                            fuel advance + avg deductions
+                          </span>
+                        </span>
+                      }
+                    >
+                      {liquidity.weeks.map((w, i) => <Neg key={i} v={w.holdback} />)}
                     </Row>
                     <Row label="Payroll">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.payroll} />)}</Row>
                     <Row label="Loan / lease">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.loanLease} />)}</Row>
@@ -991,6 +1005,8 @@ const AssumptionsPopup = ({
     state_tax_rate: assumptions?.state_tax_rate ?? "",
     financing_floor: assumptions?.financing_floor ?? "",
     tax_catchup_owed: assumptions?.tax_catchup_owed ?? "",
+    weekly_fuel_advance: assumptions?.weekly_fuel_advance ?? "",
+    weekly_settlement_deductions: assumptions?.weekly_settlement_deductions ?? "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1028,6 +1044,8 @@ const AssumptionsPopup = ({
     { key: "state_tax_rate", label: "State tax rate (0–1)" },
     { key: "financing_floor", label: "Financing floor (principal / mo, negative)" },
     { key: "tax_catchup_owed", label: "Tax catch-up earmark" },
+    { key: "weekly_fuel_advance", label: "Weekly fuel advance (held from settlements)" },
+    { key: "weekly_settlement_deductions", label: "Avg weekly settlement deductions" },
   ];
 
   return (

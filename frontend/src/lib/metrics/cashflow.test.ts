@@ -146,6 +146,43 @@ describe("twoWeekLiquidity — Jason's 2-Week Cash sheet, penny-exact", () => {
     expect(r.weeks[0].settlements).toBe(0); // the honest projection, not the fallback
   });
 
+  it("holdbacks (fuel advance + avg deductions) come off every PROJECTED week", () => {
+    // $2,000 advance + $250 avg deductions, fallback revenue both weeks:
+    // each week's cash-in is effectively 4,647 − 2,250. Same bill windows as
+    // the worksheet case, beginning $14,000.
+    const r = twoWeekLiquidity({
+      ...base,
+      weeklyFuelAdvance: 2000,
+      weeklySettlementDeductions: 250,
+    });
+    const [w1, w2] = r.weeks;
+    expect(w1.settlements).toBe(4647); // the row still shows projected revenue
+    expect(w1.holdback).toBe(2250); // the withholding is its own visible line
+    // 14000 + 4647 − 2250 − 1908 − 2050.19 − 1241 = 11,197.81
+    expect(w1.ending).toBeCloseTo(11197.81, 2);
+    // 11197.81 + 4647 − 2250 − 1908 − 380.45 − 336.03 = 10,970.33
+    expect(w2.holdback).toBe(2250);
+    expect(w2.ending).toBeCloseTo(10970.33, 2);
+  });
+
+  it("an OVERRIDE week skips the holdback — the typed number is the landed net", () => {
+    const r = twoWeekLiquidity({
+      ...base,
+      weeklyFuelAdvance: 2000,
+      weeklySettlementDeductions: 250,
+      overrides: [1000, null],
+    });
+    expect(r.weeks[0].holdback).toBe(0); // override = what actually lands
+    expect(r.weeks[1].holdback).toBe(2250); // the projected week still holds back
+    // wk1: 14000 + 1000 − 1908 − 2050.19 − 1241 = 9,800.81 (his worksheet line)
+    expect(r.weeks[0].ending).toBeCloseTo(9800.81, 2);
+  });
+
+  it("no holdback inputs → zero holdback, prior math unchanged", () => {
+    const r = twoWeekLiquidity(base);
+    expect(r.weeks[0].holdback).toBe(0);
+  });
+
   it("inactive bills and bills without a draft day stay off the calendar", () => {
     const r = twoWeekLiquidity({
       ...base,

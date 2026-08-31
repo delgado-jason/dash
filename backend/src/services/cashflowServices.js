@@ -13,6 +13,8 @@ const ASSUMPTION_FIELDS = [
   "state_tax_rate",
   "financing_floor",
   "tax_catchup_owed",
+  "weekly_fuel_advance",
+  "weekly_settlement_deductions",
 ];
 
 export async function getAssumptions(user_id) {

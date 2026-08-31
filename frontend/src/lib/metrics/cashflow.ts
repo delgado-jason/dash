@@ -55,7 +55,10 @@ export interface LiquidityWeek {
   startKey: string;
   endKey: string; // inclusive
   beginning: number;
-  settlements: number;
+  settlements: number; // projected revenue landing (BEFORE holdbacks)
+  // Fuel advance + avg per-settlement deductions withheld from this week's
+  // settlement. 0 on an override week — the override IS the landed net.
+  holdback: number;
   settlementSource: "loads" | "fallback" | "override";
   settlementLoads: number; // how many loads back the number (0 on fallback/override)
   payroll: number;
@@ -79,6 +82,12 @@ export interface LiquidityInput {
   loads: Load[]; // for real settlement projection
   settlementDay: number | null; // 0–6, null → fallback-only
   weeklyRevenueFallback: number;
+  // Withheld from every projected settlement week (Jason, 2026-08-31): the
+  // ~$2,000 weekly fuel advance (drawn on the card mid-trip — it never lands
+  // in the bank, the Wednesday check arrives short by it) plus the average
+  // of Landstar's per-settlement deductions. Never applied to an override.
+  weeklyFuelAdvance?: number;
+  weeklySettlementDeductions?: number;
   overrides?: [number | null, number | null]; // manual per-week settlements
 }
 
@@ -110,7 +119,9 @@ const weekSettlements = (
 export const twoWeekLiquidity = (input: LiquidityInput): TwoWeekLiquidity => {
   const {
     asOfKey, beginning, obligations, weeklyPayroll, loads,
-    settlementDay, weeklyRevenueFallback, overrides = [null, null],
+    settlementDay, weeklyRevenueFallback,
+    weeklyFuelAdvance = 0, weeklySettlementDeductions = 0,
+    overrides = [null, null],
   } = input;
 
   const calendarBills = obligations.filter(
@@ -145,12 +156,14 @@ export const twoWeekLiquidity = (input: LiquidityInput): TwoWeekLiquidity => {
     const loanLease = byCat("loan_lease");
     const insurance = byCat("insurance");
     const other = byCat("other");
+    const holdback =
+      settlementSource === "override" ? 0 : weeklyFuelAdvance + weeklySettlementDeductions;
     const ending =
-      carry + settlements - weeklyPayroll - loanLease - insurance - other;
+      carry + settlements - holdback - weeklyPayroll - loanLease - insurance - other;
     const week: LiquidityWeek = {
       startKey, endKey,
       beginning: carry,
-      settlements, settlementSource,
+      settlements, holdback, settlementSource,
       settlementLoads: settlementSource === "loads" ? projected.count : 0,
       payroll: weeklyPayroll,
       loanLease, insurance, other, bills, ending,
@@ -175,6 +188,8 @@ export interface FinancialMonth {
 export interface CashAssumptions {
   weekly_revenue: string | number;
   weekly_payroll: string | number;
+  weekly_fuel_advance?: string | number;
+  weekly_settlement_deductions?: string | number;
   monthly_depreciation: string | number;
   fed_tax_rate: string | number;
   state_tax_rate: string | number;
