@@ -1122,8 +1122,8 @@ const GuidePage = () => {
             sources={[{ label: "Cash Flow", to: "/cashflow" }]}
           >
             <Formula>
-              ending = beginning + settlements − payroll − loan/lease −
-              insurance − other
+              ending = beginning + settlements − holdbacks − payroll −
+              loan/lease − insurance − other
             </Formula>
             <Why>
               Week 1 begins at your latest Friday snapshot’s{" "}
@@ -1135,8 +1135,14 @@ const GuidePage = () => {
               after its delivery day (delivered Tuesday pays tomorrow; delivered
               Wednesday waits a week). No loads booked into a week yet → the
               weekly-revenue fallback, and the chip says which one you’re
-              looking at. The ending turns red under the plan’s float — the
-              same line the sweep math uses on Status.
+              looking at. <span className="text-light">Holdbacks</span> come
+              off every week: the weekly fuel advance (drawn on the card
+              mid-trip — the Wednesday check arrives short by it) plus your
+              average per-settlement deductions, both set in ASSUMPTIONS. An
+              override replaces the settlements figure only — the holdback
+              still applies, so the rows always add up the same way. The
+              ending turns red under the plan’s float — the same line the
+              sweep math uses on Status.
             </Why>
           </Metric>
 

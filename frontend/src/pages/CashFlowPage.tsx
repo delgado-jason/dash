@@ -125,6 +125,8 @@ const CashFlowPage = () => {
       loads: loads ?? [],
       settlementDay,
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
+      weeklyFuelAdvance: Number(assumptions.weekly_fuel_advance ?? 0),
+      weeklySettlementDeductions: Number(assumptions.weekly_settlement_deductions ?? 0),
       overrides: setlOverride,
     });
   }, [beginning, assumptions, obligations, loads, settlementDay, asOfKey, setlOverride]);
@@ -341,6 +343,18 @@ const CashFlowPage = () => {
                           )}
                         </td>
                       ))}
+                    </Row>
+                    <Row
+                      label={
+                        <span>
+                          Holdbacks
+                          <span className="ml-2 font-condensed text-[10px] text-faint normal-case tracking-normal">
+                            fuel advance + avg deductions
+                          </span>
+                        </span>
+                      }
+                    >
+                      {liquidity.weeks.map((w, i) => <Neg key={i} v={w.holdback} />)}
                     </Row>
                     <Row label="Payroll">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.payroll} />)}</Row>
                     <Row label="Loan / lease">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.loanLease} />)}</Row>
@@ -991,6 +1005,8 @@ const AssumptionsPopup = ({
     state_tax_rate: assumptions?.state_tax_rate ?? "",
     financing_floor: assumptions?.financing_floor ?? "",
     tax_catchup_owed: assumptions?.tax_catchup_owed ?? "",
+    weekly_fuel_advance: assumptions?.weekly_fuel_advance ?? "",
+    weekly_settlement_deductions: assumptions?.weekly_settlement_deductions ?? "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1009,6 +1025,14 @@ const AssumptionsPopup = ({
       setErr("Nothing to save — every field is empty.");
       return;
     }
+    // The two holdback fields are withholdings — a negative would ADD phantom
+    // cash to every projected week (the lib clamps too, but say it out loud).
+    for (const k of ["weekly_fuel_advance", "weekly_settlement_deductions"] as const) {
+      if (patch[k] != null && patch[k]! < 0) {
+        setErr("Holdback fields can't be negative — they're withheld FROM the settlement.");
+        return;
+      }
+    }
     setBusy(true);
     setErr(null);
     try {
@@ -1021,13 +1045,15 @@ const AssumptionsPopup = ({
   };
 
   const FIELDS: { key: keyof typeof f; label: string }[] = [
-    { key: "weekly_revenue", label: "Weekly revenue fallback (net settlement)" },
+    { key: "weekly_revenue", label: "Weekly revenue fallback (pre-holdback net)" },
     { key: "weekly_payroll", label: "Weekly payroll" },
     { key: "monthly_depreciation", label: "Monthly depreciation (add-back)" },
     { key: "fed_tax_rate", label: "Federal tax rate (0–1)" },
     { key: "state_tax_rate", label: "State tax rate (0–1)" },
     { key: "financing_floor", label: "Financing floor (principal / mo, negative)" },
     { key: "tax_catchup_owed", label: "Tax catch-up earmark" },
+    { key: "weekly_fuel_advance", label: "Weekly fuel advance (held from settlements)" },
+    { key: "weekly_settlement_deductions", label: "Avg weekly settlement deductions" },
   ];
 
   return (
