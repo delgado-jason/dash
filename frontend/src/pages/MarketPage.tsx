@@ -13,6 +13,8 @@ import {
 } from "recharts";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { Link } from "react-router";
+import { markupToMargin, dialAdvice } from "@/lib/metrics/rateDial";
 import { getFreightIndex, type FreightIndexPoint } from "@/services/marketService";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
@@ -278,6 +280,20 @@ const MarketPage = () => {
     [points, targets.bookingLadder, targets.specLadder, trend, now, businessUnderwater],
   );
 
+  // Market-aware dial advice (Jason, 2026-09-02): the FRED trend → a
+  // recommended slider position for each rate dial, anchored to the margin
+  // goal. Current positions read back from the ladders themselves, so the
+  // advice always compares against what's actually saved.
+  const dialAdv = useMemo(() => {
+    if (!trend) return null;
+    const bl = targets.bookingLadder;
+    const sl = targets.specLadder;
+    if (!bl.walkAway || !bl.target || !sl.walkAway || !sl.target) return null; // 0 → NaN ratios
+    const stdM = markupToMargin(bl.target / bl.walkAway - 1);
+    const specM = markupToMargin(sl.target / sl.walkAway - 1);
+    return dialAdvice(trend.direction, targets.marginGoal, stdM, specM);
+  }, [trend, targets]);
+
   // Monthly dollars to cut to get the whole operation back to break-even:
   // cost minus what your booked gross actually covers after the Landstar take.
   // > 0 exactly when businessUnderwater — the same reconciled basis.
@@ -367,6 +383,38 @@ const MarketPage = () => {
           <MarketPlaybookCard playbook={playbook} />
           {cutPlan && <CutPanel plan={cutPlan} />}
         </div>
+
+        {/* the dial advice — what the trend means for the rate dials */}
+        {dialAdv && (
+          <div className="ds2-board p-4 mt-4">
+            <div className="flex items-baseline gap-2.5 flex-wrap">
+              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                The dial advice
+              </span>
+              <span className="font-condensed text-[11px] text-faint">
+                trend → where to park the rate dials · index {trend ? `${trend.pctChange >= 0 ? "+" : ""}${(trend.pctChange * 100).toFixed(1)}% / 3 mo` : ""}
+              </span>
+            </div>
+            <p
+              className="font-condensed font-bold text-[15px] tracking-[.02em] mt-2"
+              style={{ color: dialAdv.hold ? "var(--color-ok)" : dialAdv.direction === "softening" ? "var(--color-amber-hi)" : "var(--color-ok)" }}
+            >
+              {dialAdv.headline}
+            </p>
+            {!dialAdv.hold && (
+              <p className="font-condensed text-[13px] text-dim mt-1 tabular-nums">
+                Standard → <b className="text-ink">{(dialAdv.std * 100).toFixed(0)}%</b> margin
+                {" "}({dialAdv.stdDelta >= 0 ? "+" : "−"}{Math.abs(dialAdv.stdDelta * 100).toFixed(0)} pts from where you sit)
+                {" "}· Specialized → <b className="text-ink">{(dialAdv.spec * 100).toFixed(0)}%</b>
+                {" "}({dialAdv.specDelta >= 0 ? "+" : "−"}{Math.abs(dialAdv.specDelta * 100).toFixed(0)} pts)
+              </p>
+            )}
+            <p className="font-condensed text-[12px] text-faint mt-1.5">
+              {dialAdv.why}{" "}
+              <Link to="/settings" className="text-amber-hi hover:text-hot">adjust the dials on Settings →</Link>
+            </p>
+          </div>
+        )}
 
         {/* the verdict */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
