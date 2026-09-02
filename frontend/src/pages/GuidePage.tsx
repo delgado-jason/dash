@@ -1362,7 +1362,8 @@ const GuidePage = () => {
               fuel · % of net = fuel spend ÷ net revenue
               <br />
               <span style={{ color: AMBER_HI }}>
-                surcharge covers = fuel surcharge collected ÷ fuel spend
+                surcharge covers = FSC collected ÷ fuel spend · par = (price −
+                peg) ÷ price × loaded share × MPG bonus
               </span>
             </Formula>
             <Eg>
@@ -1376,13 +1377,20 @@ const GuidePage = () => {
               gross, because you pay for fuel out of what your business actually
               keeps — after Landstar's cut — not the full customer rate. (Gross
               would read a flattering 13%; the honest number is 17%.) You keep
-              100% of the fuel surcharge, so it's meant to offset diesel: when{" "}
-              <span className="text-light">surcharge covers ≥ 100%</span> the
-              freight paid for its own fuel; under 100%, the gap eats into your
-              linehaul. It's been slipping — the surcharge fell while diesel
-              held — which is worth watching when you price a load. Only months
-              with logged fuel are counted, so a month you haven't entered fills
-              for never shows a false 0%.
+              100% of the fuel surcharge — but a surcharge was{" "}
+              <span className="text-light">never meant to cover 100% of
+              fuel</span>. The schedule pays only the price ABOVE a contract peg
+              (~$1.25/gal), on <span className="text-light">loaded miles
+              only</span>: you eat the first peg-dollars of every gallon and
+              every deadhead mile by design. So the card grades you against{" "}
+              <span className="text-light">par</span> — what the schedule
+              actually owes at this month’s diesel price and your deadhead —
+              green at or above par, amber within 5 points, red beyond (FSC
+              leaking: loads booked light on surcharge, or deadhead eating the
+              collected miles). Par moves with diesel: pricier fuel raises it,
+              cheap fuel lowers it. Your MPG above the schedule’s 6.0 base is a
+              real bonus you keep. Only months with logged fuel are counted, so
+              a month you haven't entered fills for never shows a false 0%.
             </Why>
           </Metric>
 
