@@ -288,8 +288,7 @@ const MarketPage = () => {
     if (!trend) return null;
     const bl = targets.bookingLadder;
     const sl = targets.specLadder;
-    if (bl.walkAway == null || bl.target == null || sl.walkAway == null || sl.target == null)
-      return null;
+    if (!bl.walkAway || !bl.target || !sl.walkAway || !sl.target) return null; // 0 → NaN ratios
     const stdM = markupToMargin(bl.target / bl.walkAway - 1);
     const specM = markupToMargin(sl.target / sl.walkAway - 1);
     return dialAdvice(trend.direction, targets.marginGoal, stdM, specM);

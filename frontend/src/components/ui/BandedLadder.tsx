@@ -14,6 +14,7 @@ export const BandedLadder = ({
 }) => {
   if (
     ladder.walkAway == null ||
+    ladder.walkAway <= 0 || // a zero walk-away would print NaN captions
     ladder.minimum == null ||
     ladder.target == null ||
     ladder.strong == null

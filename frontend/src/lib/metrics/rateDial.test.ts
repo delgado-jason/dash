@@ -61,6 +61,13 @@ describe("dialAdvice — market-aware, anchored to the goal", () => {
     expect(a.headline).toMatch(/hold/i);
   });
 
+  it("advice never points past the dial's physical range", () => {
+    // A high goal + firming + a fat premium would otherwise recommend 48%+.
+    const a = dialAdvice("firming", 0.26, 0.167, 0.31);
+    expect(a.std).toBeLessThanOrEqual(0.45);
+    expect(a.spec).toBeLessThanOrEqual(0.45);
+  });
+
   it("the premium never collapses below 5 pts, and advice never dips under the goal", () => {
     const a = dialAdvice("softening", GOAL, 0.16, 0.17); // premium squeezed to 1 pt
     expect(a.spec - a.std).toBeCloseTo(0.05, 4);

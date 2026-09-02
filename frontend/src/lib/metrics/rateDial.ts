@@ -65,6 +65,10 @@ export interface DialAdvice {
 //   firming   → goal + 8 pts  (the market is paying — take the extra)
 // Specialized = standard + your existing risk premium (current spec − std
 // target margins, floored at 5 pts), so advice preserves the spread you set.
+// The dial's physical range — advice must never point past where the slider
+// can actually go.
+export const DIAL_MAX_MARGIN = 0.45;
+
 export const dialAdvice = (
   direction: MarketDirection,
   marginGoal: number,
@@ -72,9 +76,9 @@ export const dialAdvice = (
   currentSpecMargin: number,
 ): DialAdvice => {
   const bump = direction === "softening" ? 0.02 : direction === "firming" ? 0.08 : 0.05;
-  const std = r4(marginGoal + bump); // bump > 0, so this always clears the goal
+  const std = Math.min(DIAL_MAX_MARGIN, r4(marginGoal + bump)); // always clears the goal
   const premium = Math.max(0.05, r4(currentSpecMargin - currentStdMargin));
-  const spec = r4(std + premium);
+  const spec = Math.min(DIAL_MAX_MARGIN, r4(std + premium));
   const stdDelta = r4(std - currentStdMargin);
   const specDelta = r4(spec - currentSpecMargin);
   const hold = Math.abs(stdDelta) < 0.01 && Math.abs(specDelta) < 0.01;

@@ -15,7 +15,7 @@ import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
 type Tier3 = { min: number; target: number; strong: number };
-// (tiers are now SET via the RateDial slider — stored shape unchanged)
+// Tiers are SET via the RateDial slider; this stored percent shape is unchanged.
 const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean percent
 
 // Rate-tier set editor: three markup inputs + a live preview at the real

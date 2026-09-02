@@ -10,9 +10,13 @@ import { markupToMargin, dialRungs } from "@/lib/metrics/rateDial";
 
 type Tier3 = { min: number; target: number; strong: number };
 
-const LO = -10; // slider range, in margin percentage points
+// The track PAINTS from −10 so the red zone is visible geography, but the
+// HANDLE floors at 0 — the dial never writes a below-break-even rung, so the
+// page-level ascending guard can never trip from here.
+const TRACK_LO = -10;
+const LO = 0; // handle minimum
 const HI = 45;
-const posOf = (m: number) => `${((m - LO) / (HI - LO)) * 100}%`;
+const posOf = (m: number) => `${((m - TRACK_LO) / (HI - TRACK_LO)) * 100}%`;
 
 export const RateDial = ({
   label,
@@ -34,8 +38,15 @@ export const RateDial = ({
   // The handle position derives from the stored target markup, so the dial
   // and the columns can never disagree.
   const margin = Math.round(markupToMargin(tiers.target / 100) * 1000) / 10;
-  const rungs = dialRungs(margin / 100);
   const goal = marginGoalPct;
+  // Cards and readout render the STORED columns — the truth the Scorer reads —
+  // never a re-derivation. A legacy set (e.g. seeded +35/45/60) shows exactly
+  // as saved until the first slide rewrites it into dial shape.
+  const stored = (["min", "target", "strong"] as const).map((k) => ({
+    key: k,
+    markup: tiers[k] / 100,
+    margin: markupToMargin(tiers[k] / 100),
+  }));
 
   const slide = (mPct: number) => {
     const r = dialRungs(mPct / 100);
@@ -46,24 +57,24 @@ export const RateDial = ({
     });
   };
 
-  const danger = margin < 0;
-  const under = !danger && margin < goal;
+  const atFloor = margin <= 0;
+  const under = !atFloor && margin < goal;
   const at = (markup: number) => (be != null ? `$${(be * (1 + markup)).toFixed(2)}` : "—");
-  const pct1 = (n: number) => `${Math.round(n * 1000) / 10}%`;
+  const pct1 = (n: number) => `${Math.round(n * 10) / 10}%`; // input already in percent
 
   // Zone geometry in margin space: red below 0, amber 0→goal, pale green
   // goal→goal+5, solid green past goal+5.
-  const zx = (m: number) => ((Math.min(HI, Math.max(LO, m)) - LO) / (HI - LO)) * 100;
+  const zx = (m: number) => ((Math.min(HI, Math.max(TRACK_LO, m)) - TRACK_LO) / (HI - TRACK_LO)) * 100;
 
   return (
     <div className="rounded-lg p-3.5" style={{ background: "#0d1119" }}>
       <div className="flex items-center gap-2">
         <span className="inline-block rounded-full" style={{ width: 9, height: 9, background: dot }} />
         <span className="text-sm font-medium text-light">{label}</span>
-        <span className="text-sm tabular-nums" style={{ color: danger ? "#f87171" : "#ffcf7a", fontWeight: 600 }}>
+        <span className="text-sm tabular-nums" style={{ color: atFloor ? "#f87171" : "#ffcf7a", fontWeight: 600 }}>
           · pricing for {pct1(margin)} margin
         </span>
-        {!danger && !under && (
+        {!atFloor && !under && (
           <span className="text-[11px]" style={{ color: "#4ade80" }}>
             {Math.round((margin - goal) * 10) / 10} pts above your {goal}% goal — your padding
           </span>
@@ -92,19 +103,20 @@ export const RateDial = ({
           min={LO}
           max={HI}
           step={0.5}
-          value={margin}
+          value={Math.max(LO, margin)}
           aria-label={`${label} target margin`}
           onChange={(e) => slide(Number(e.target.value))}
-          className="rate-dial-range absolute left-0 right-0 w-full"
-          style={{ top: 16, height: 24, ["--dial-thumb" as string]: danger ? "#e05252" : "#f5b03a" }}
+          className="rate-dial-range absolute"
+          style={{ left: `${zx(0)}%`, right: 0, top: 16, height: 24, ["--dial-thumb" as string]: atFloor ? "#e05252" : "#f5b03a" }}
         />
         <span className="absolute text-[10px] text-muted-text" style={{ left: 0, bottom: 0 }}>−10%</span>
         <span className="absolute text-[10px] text-muted-text" style={{ right: 0, bottom: 0 }}>45%</span>
       </div>
 
-      {danger && (
+      {atFloor && (
         <p className="text-[12px] mt-2 font-semibold" style={{ color: "#f87171" }}>
-          ⚠ BELOW BREAK-EVEN — every mile pays the broker. Rungs are floored at 0%; drag back right.
+          ⚠ AT BREAK-EVEN — the handle stops here. Everything left of the marker is
+          the red zone: every mile there pays the broker.
         </p>
       )}
       {under && (
@@ -118,8 +130,8 @@ export const RateDial = ({
         {be != null ? (
           <>
             {pct1(margin)} margin ⇒{" "}
-            <span className="text-light">+{pct1(rungs.markups.target * 100)}</span> over break-even ⇒
-            book at <span className="text-light tabular-nums">≈ {at(rungs.markups.target)}/mi</span> gross
+            <span className="text-light">+{pct1(tiers.target)}</span> over break-even ⇒
+            book at <span className="text-light tabular-nums">≈ {at(tiers.target / 100)}/mi</span> gross
           </>
         ) : (
           "add a few months of P&L to preview the rates"
@@ -128,18 +140,16 @@ export const RateDial = ({
 
       {/* rung cards */}
       <div className="grid grid-cols-3 gap-2 mt-2">
-        {(
-          [
-            { k: "Minimum", m: rungs.margins.minimum, mk: rungs.markups.minimum, c: "#93a1b8" },
-            { k: "Target", m: rungs.margins.target, mk: rungs.markups.target, c: "#e8940a" },
-            { k: "Strong", m: rungs.margins.strong, mk: rungs.markups.strong, c: "#4ade80" },
-          ] as const
-        ).map((r) => (
-          <div key={r.k} className="rounded px-2 py-1.5" style={{ background: "#111827", border: "1px solid #1e2636" }}>
-            <div className="text-[10px] uppercase tracking-wide text-muted-text">{r.k}</div>
-            <div className="text-sm tabular-nums font-semibold" style={{ color: r.c }}>{at(r.mk)}</div>
+        {stored.map((r, i) => (
+          <div key={r.key} className="rounded px-2 py-1.5" style={{ background: "#111827", border: "1px solid #1e2636" }}>
+            <div className="text-[10px] uppercase tracking-wide text-muted-text">
+              {["Minimum", "Target", "Strong"][i]}
+            </div>
+            <div className="text-sm tabular-nums font-semibold" style={{ color: ["#93a1b8", "#e8940a", "#4ade80"][i] }}>
+              {at(r.markup)}
+            </div>
             <div className="text-[10px] text-muted-text tabular-nums">
-              {pct1(r.m * 100)} margin · +{pct1(r.mk * 100)}
+              {pct1(r.margin * 100)} margin · +{pct1(r.markup * 100)}
             </div>
           </div>
         ))}

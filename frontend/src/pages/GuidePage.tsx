@@ -812,7 +812,7 @@ const GuidePage = () => {
               both shown on the ladder above.{" "}
               <span className="text-light">Standard</span> (seeded +10 / 20 / 30%)
               is your everyday freight and carries the full bar plus your rate
-              marker. <span className="text-light">Specialized</span> (+35 / 45 /
+              marker. <span className="text-light">Specialized</span> (seeded +35 / 45 /
               60%) is the higher bar for oversize, hazmat, and heavy-haul loads —
               they command a real premium — shown as the compact row beneath (same
               walk-away, higher target and strong). The marker is your actual gross
@@ -844,9 +844,9 @@ const GuidePage = () => {
               <span style={{ color: "#f5b03a" }}>THIN</span> under target,{" "}
               <span style={{ color: "#5dcaa5" }}>SOLID</span> at target,{" "}
               <span style={{ color: "#ffcf7a" }}>PRIME</span> at strong. A legal
-              load hits those at your Standard tiers (+20 / +30%); an
+              load hits those at your Standard tiers (target / strong — whatever your dial derives); an
               oversize, hazmat, or heavy load has to reach the Specialized ones
-              (+45 / +60%). A line under the verdict names which set graded it.
+              (the Specialized dial’s). A line under the verdict names which set graded it.
             </Why>
             <Why>
               A weak verdict now shows <span className="text-light">why</span> — the
