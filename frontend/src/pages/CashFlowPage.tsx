@@ -259,7 +259,7 @@ const CashFlowPage = () => {
                   <> {clears ? "over" : "under"} the <b className="font-semibold text-ink">{money(floatLine)}</b> float</>
                 )}
                 {ytdMargin != null && (
-                  <> · YTD pretax margin <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
+                  <> · YTD pretax margin (QBO) <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
                 )}
               </span>
             </>

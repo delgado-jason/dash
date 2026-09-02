@@ -97,7 +97,28 @@ export interface CostBasis {
   grossPerTotalMile: number | null; // full gross ÷ TOTAL miles — your booked rate/mile
   payTake: number | null; // net ÷ gross — your blended keep after the carrier's cut
   months: number; // months with a P&L that were actually included
+  // The included months, named — "Jun–Aug" (or "Mar, Apr, Jul" across a gap,
+  // years on both ends when they differ) — so every surface can SAY which
+  // window its break-even covers instead of leaving it a mystery.
+  windowLabel: string | null;
 }
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const windowLabelOf = (included: { year: number; month: number }[]): string | null => {
+  if (included.length === 0) return null;
+  const name = (m: { year: number; month: number }) => MONTH_ABBR[m.month];
+  const withYr = (m: { year: number; month: number }) => `${name(m)} ’${String(m.year).slice(2)}`;
+  const first = included[0];
+  const last = included[included.length - 1];
+  if (included.length === 1) return withYr(first);
+  const idx = (m: { year: number; month: number }) => m.year * 12 + m.month;
+  const contiguous = included.every((m, i) => i === 0 || idx(m) === idx(included[i - 1]) + 1);
+  if (!contiguous)
+    // Any listed month from a different year carries its own year tag.
+    return [...included.slice(0, -1).map((m) => (m.year !== last.year ? withYr(m) : name(m))), withYr(last)].join(", ");
+  if (first.year !== last.year) return `${withYr(first)}–${withYr(last)}`;
+  return `${name(first)}–${withYr(last)}`;
+};
 
 // Blend true cost + miles over the last `monthsBack` COMPLETE months. Only
 // months that have a P&L are counted, and their miles are summed over the SAME
@@ -121,10 +142,12 @@ export const getCostBasis = (
   let revenue = 0;
   let grossRev = 0;
   let n = 0;
+  const included: { year: number; month: number }[] = [];
   for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
     const p = byKey.get(`${year}-${month}`);
     if (!p) continue; // no P&L for this month → skip cost AND miles (stay aligned)
     n++;
+    included.push({ year, month });
     cost += (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsMonthly;
     const m = monthMiles(loads, year, month);
     loaded += m.loaded;
@@ -143,6 +166,7 @@ export const getCostBasis = (
     grossPerTotalMile: total > 0 ? grossRev / total : null,
     payTake: grossRev > 0 ? revenue / grossRev : null,
     months: n,
+    windowLabel: windowLabelOf(included),
   };
 };
 

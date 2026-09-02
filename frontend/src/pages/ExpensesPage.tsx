@@ -148,8 +148,24 @@ const ExpensesPage = () => {
       total += m.totalMiles;
       loaded += m.loadedMiles;
     }
+    // Name the window's months so the label says WHICH three, not just "3mo".
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const dates = windowPeriods
+      .map((p) => new Date(p.period_month))
+      .sort((a, b) => a.getTime() - b.getTime());
+    const named = dates.map((d) => MONTHS[d.getUTCMonth()]);
+    // A gap must LIST months, not fake a range — "May, Jul, Aug", never
+    // "May–Aug" when June's P&L is missing.
+    const mIdx = (d: Date) => d.getUTCFullYear() * 12 + d.getUTCMonth();
+    const contiguous = dates.every((d, i) => i === 0 || mIdx(d) === mIdx(dates[i - 1]) + 1);
+    const label =
+      named.length === 0 ? null
+      : named.length === 1 ? named[0]
+      : contiguous ? `${named[0]}–${named[named.length - 1]}`
+      : named.join(", ");
     return {
       months: n || 1,
+      label,
       avgCost: n > 0 ? cost / n : 0,
       avgTotalMiles: n > 0 ? total / n : 0,
       avgLoadedMiles: n > 0 ? loaded / n : 0,
@@ -337,21 +353,21 @@ const ExpensesPage = () => {
                   { v: money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
                   {
                     v: cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`,
-                    l: `Cost / total mi · ${trailing.months}mo`,
+                    l: `Cost / total mi · cash · ${trailing.label ?? `${trailing.months}mo`}`,
                   },
                   {
                     v:
                       cash.trueBreakEvenRpm == null
                         ? "—"
                         : `$${cash.trueBreakEvenRpm.toFixed(2)}`,
-                    l: `Break-even / loaded mi · ${trailing.months}mo`,
+                    l: `Break-even / loaded mi · cash · ${trailing.label ?? `${trailing.months}mo`}`,
                   },
                   {
                     v:
                       trueMonthly.trueNetMargin == null
                         ? "—"
                         : `${(trueMonthly.trueNetMargin * 100).toFixed(1)}%`,
-                    l: "Net margin",
+                    l: "Net margin · app est.",
                     pos: (trueMonthly.trueNetMargin ?? 0) >= 0,
                   },
                 ].map((k, ki) => (

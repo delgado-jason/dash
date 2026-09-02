@@ -15,7 +15,8 @@ import { type RateLadder } from "./rateTargets";
 import { resolvePeriod } from "./recap";
 import { mileMilestone } from "./mileClub";
 import { fuelStats } from "./fuelEconomy";
-import { RANK_TIERS, MARGIN_BANDS } from "@/lib/constants/playerCard";
+import { RANK_TIERS } from "@/lib/constants/playerCard";
+import { MARGIN_GOAL } from "@/lib/constants/targets";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -64,11 +65,29 @@ export const careerRank = (lifetimeMiles: number): CareerRank => {
 };
 
 // ---------- season grades ----------
-export const marginGrade = (pct: number | null): Grade | null => {
+// Margin bands derive from the ONE margin knob — margin_goal on Settings
+// (Jason's researched 15% for flatbed/oversize, 2026-09-02): goal −5pts /
+// goal / goal +5pts ⇒ 10 / 15 / 20. Single source, so no surface can grade
+// the same margin differently from another. (Replaced the hardcoded 8/17/27
+// bands that predated depreciation-honest margins.)
+// Rounded to 4 decimals so float dirt (0.17 − 0.05 = 0.12000000000000001)
+// can't break the inclusive band edges.
+const r4 = (n: number) => Math.round(n * 10000) / 10000;
+export const marginBandsFrom = (goal: number = MARGIN_GOAL) => ({
+  minimum: Math.max(0, r4(goal - 0.05)),
+  target: r4(goal),
+  strong: r4(goal + 0.05),
+});
+
+export const marginGrade = (
+  pct: number | null,
+  goal: number = MARGIN_GOAL,
+): Grade | null => {
   if (pct == null) return null;
-  if (pct >= MARGIN_BANDS.strong) return "strong";
-  if (pct >= MARGIN_BANDS.target) return "target";
-  if (pct >= MARGIN_BANDS.minimum) return "minimum";
+  const bands = marginBandsFrom(goal);
+  if (pct >= bands.strong) return "strong";
+  if (pct >= bands.target) return "target";
+  if (pct >= bands.minimum) return "minimum";
   return "below";
 };
 
@@ -334,7 +353,7 @@ export const earnedTrophies = (opts: {
     out.push({ key: "century", name: `${century} Loads`, icon: "stack", detail: "Career" });
 
   if (opts.seasonMargin === "strong")
-    out.push({ key: "strong-season", name: "Strong Season", icon: "trophy", detail: "Margin ≥ 27%" });
+    out.push({ key: "strong-season", name: "Strong Season", icon: "trophy", detail: "Margin at the strong band (goal +5pts)" });
 
   if (opts.bestMpg != null)
     out.push({ key: "feather-foot", name: "High-MPG Tank", icon: "flame", detail: `${opts.bestMpg.toFixed(1)} mpg best` });

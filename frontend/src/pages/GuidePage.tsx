@@ -776,7 +776,13 @@ const GuidePage = () => {
               the rate to book is your cost-per-mile ÷ 0.73. Anything above{" "}
               <span className="text-light">$4.34</span> (with your empty miles
               counted) makes money. It's conservative: you keep 100% of fuel
-              surcharge on top, so your real cushion is a bit bigger.
+              surcharge on top, so your real cushion is a bit bigger. This is a{" "}
+              <span className="text-light">cash</span> break-even — costs from
+              your last <span className="text-light">3 complete months</span>{" "}
+              of P&L plus loan principal (no depreciation), stepping forward on
+              the 1st of each month. Every surface that shows it names the
+              window (“cash · Jun–Aug”), so where the number came from is never
+              a mystery.
             </Why>
           </Metric>
 
@@ -1533,8 +1539,12 @@ const GuidePage = () => {
               : <span className="text-light">Rate</span> against your break-even
               ladder, <span className="text-light">Utilization</span> against
               the 70/80/85% benchmark, and{" "}
-              <span className="text-light">Pretax margin</span> against your
-              margin tiers — read from your{" "}
+              <span className="text-light">Pretax margin</span> against bands
+              that ride your <span className="text-light">margin goal</span>{" "}
+              (Settings): goal −5 / goal / goal +5 — at your researched 15%
+              that's <span className="text-light">10 / 15 / 20%</span>, and the
+              same bands grade every margin in the app, so no page can
+              contradict another. The margin itself reads from your{" "}
               <span className="text-light">QBO books</span> (the last three
               closed months on the Cash Flow archive, depreciation included),
               because the accountant-grade number is the one to trust. The tile

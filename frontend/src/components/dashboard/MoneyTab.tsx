@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { MARGIN_GOAL } from "@/lib/constants/targets";
 import { Link } from "react-router-dom";
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
@@ -432,10 +433,12 @@ export const MoneyTab = ({
                   <text
                     x={cx}
                     y={163}
+                    // Same bands as every margin grader: red under the goal,
+                    // green at goal +5pts (strong) — never a hardcoded 20/30.
                     fill={
-                      r.margin < 0.2
+                      r.margin < (marginGoal ?? MARGIN_GOAL)
                         ? "var(--color-status-negative-text)"
-                        : r.margin >= 0.3
+                        : r.margin >= (marginGoal ?? MARGIN_GOAL) + 0.05
                           ? "var(--color-status-positive-text)"
                           : "var(--color-dim)"
                     }

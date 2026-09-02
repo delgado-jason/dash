@@ -47,6 +47,8 @@ export interface AwardInputs {
   fuel: FuelEntry[];
   lifetimeMiles: number;
   obligationsDebtMonthly: number;
+  marginGoal?: number; // Settings margin_goal — drives the bands. Omitted → the
+  // MARGIN_GOAL seed (26%), NOT the user's setting: always pass it when loadable.
   streak?: number; // grind streak (weeks beating target)
   loanPaidPct?: number | null; // best % paid across tracked loans — Debt Crusher medal
   now: Date;
@@ -92,7 +94,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
     cumulativeNet: del.reduce((s, l) => s + loadRevenue(l), 0),
     streak: i.streak ?? 0,
     loanPaidPct: i.loanPaidPct ?? null,
-    seasonStrong: marginGrade(season.netMargin) === "strong",
+    seasonStrong: marginGrade(season.netMargin, i.marginGoal) === "strong",
   });
   for (const m of medals)
     if (m.tier > 0)

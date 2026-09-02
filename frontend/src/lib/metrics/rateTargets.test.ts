@@ -114,6 +114,28 @@ describe("getCostBasis", () => {
     expect(b.costPerTotalMile).toBeCloseTo(4.8, 5);
     // your gross rate per total mile = gross (24k) / 7500 = 3.20
     expect(b.grossPerTotalMile).toBeCloseTo(3.2, 5);
+    // the window names its months — no more "where did this come from"
+    expect(b.windowLabel).toBe("Apr–Jun ’26");
+  });
+
+  it("windowLabel: gaps list months, year boundaries carry both years, empty is null", () => {
+    // Only May has a P&L → single month label.
+    const may = getCostBasis([period("2026-05-01", 5000, 5000)], 0, [], now);
+    expect(may.windowLabel).toBe("May ’26");
+    // Apr + Jun with May missing → a list, not a fake range.
+    const gap = getCostBasis(
+      [period("2026-04-01", 5000, 5000), period("2026-06-01", 5000, 5000)],
+      0, [], now,
+    );
+    expect(gap.windowLabel).toBe("Apr, Jun ’26");
+    // Nov–Jan across the year boundary → years on both ends.
+    const wrap = getCostBasis(
+      [period("2026-11-01", 5000, 5000), period("2026-12-01", 5000, 5000), period("2027-01-01", 5000, 5000)],
+      0, [], new Date("2027-02-10T00:00:00Z"),
+    );
+    expect(wrap.windowLabel).toBe("Nov ’26–Jan ’27");
+    // No P&L at all → null (surfaces fall back to the plain "3mo" wording).
+    expect(getCostBasis([], 0, [], now).windowLabel).toBeNull();
   });
 
   it("guards a reversed/equal odometer reading — contributes 0 driven miles, not negative", () => {

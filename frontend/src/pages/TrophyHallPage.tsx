@@ -26,6 +26,7 @@ import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { CoinRack, TagRack, PlateRack, RackHeader } from "@/components/forge/Racks";
 import { computePatches } from "@/lib/awards/patches";
 import { personalBests, marginGrade, careerRank } from "@/lib/metrics/playerCard";
+import { marginGoalFrom, MARGIN_GOAL } from "@/lib/constants/targets";
 import { useGrind } from "@/hooks/useGrind";
 import { useExpensePeriods } from "@/hooks/useExpensePeriods";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -212,6 +213,7 @@ const TrophyHallPage = () => {
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [operation, setOperation] = useState("flatbed");
+  const [marginGoal, setMarginGoal] = useState(MARGIN_GOAL);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -225,6 +227,7 @@ const TrophyHallPage = () => {
     ])
       .then(([tr, dr, tk, fu, ob, sched]) => {
         if (sched) setOperation(sched.operation);
+        setMarginGoal(marginGoalFrom(sched));
         setRecords(tr);
         setDrivers(dr);
         setTrucks(tk);
@@ -294,7 +297,7 @@ const TrophyHallPage = () => {
       0,
     );
     const seasonStrong =
-      marginGrade(inc > 0 ? (inc - cost) / inc : null) === "strong";
+      marginGrade(inc > 0 ? (inc - cost) / inc : null, marginGoal) === "strong";
     return {
       rank: careerRank(lifetimeMiles),
       medals: computeMedals({
@@ -308,7 +311,7 @@ const TrophyHallPage = () => {
       patches: computePatches(loads, fuel, operation),
       bests: personalBests(loads, fuel, now),
     };
-  }, [loads, trucks, fuel, obligations, grind, periods, operation]);
+  }, [loads, trucks, fuel, obligations, grind, periods, operation, marginGoal]);
 
   // Truck & trailer racks — the iron earns its own hardware.
   const rig = useMemo(() => {
