@@ -148,8 +148,19 @@ const ExpensesPage = () => {
       total += m.totalMiles;
       loaded += m.loadedMiles;
     }
+    // Name the window's months so the label says WHICH three, not just "3mo".
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const named = windowPeriods
+      .map((p) => new Date(p.period_month))
+      .sort((a, b) => a.getTime() - b.getTime())
+      .map((d) => MONTHS[d.getUTCMonth()]);
+    const label =
+      named.length === 0 ? null
+      : named.length === 1 ? named[0]
+      : `${named[0]}–${named[named.length - 1]}`;
     return {
       months: n || 1,
+      label,
       avgCost: n > 0 ? cost / n : 0,
       avgTotalMiles: n > 0 ? total / n : 0,
       avgLoadedMiles: n > 0 ? loaded / n : 0,
@@ -337,21 +348,21 @@ const ExpensesPage = () => {
                   { v: money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
                   {
                     v: cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`,
-                    l: `Cost / total mi · ${trailing.months}mo`,
+                    l: `Cost / total mi · cash · ${trailing.label ?? `${trailing.months}mo`}`,
                   },
                   {
                     v:
                       cash.trueBreakEvenRpm == null
                         ? "—"
                         : `$${cash.trueBreakEvenRpm.toFixed(2)}`,
-                    l: `Break-even / loaded mi · ${trailing.months}mo`,
+                    l: `Break-even / loaded mi · cash · ${trailing.label ?? `${trailing.months}mo`}`,
                   },
                   {
                     v:
                       trueMonthly.trueNetMargin == null
                         ? "—"
                         : `${(trueMonthly.trueNetMargin * 100).toFixed(1)}%`,
-                    l: "Net margin",
+                    l: "Net margin · app est.",
                     pos: (trueMonthly.trueNetMargin ?? 0) >= 0,
                   },
                 ].map((k, ki) => (

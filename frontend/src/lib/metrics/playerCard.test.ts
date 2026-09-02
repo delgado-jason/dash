@@ -80,13 +80,22 @@ describe("careerRank", () => {
 });
 
 describe("grades", () => {
-  it("marginGrade bands at 8/17/27", () => {
-    expect(marginGrade(0.3)).toBe("strong");
-    expect(marginGrade(0.27)).toBe("strong");
-    expect(marginGrade(0.2)).toBe("target");
-    expect(marginGrade(0.1)).toBe("minimum");
-    expect(marginGrade(0.05)).toBe("below");
-    expect(marginGrade(null)).toBeNull();
+  it("marginGrade bands derive from the margin goal: goal −5 / goal / goal +5", () => {
+    // Jason's researched 15% (his Settings margin_goal) ⇒ 10 / 15 / 20.
+    expect(marginGrade(0.2, 0.15)).toBe("strong"); // band edges are inclusive
+    expect(marginGrade(0.199, 0.15)).toBe("target");
+    expect(marginGrade(0.15, 0.15)).toBe("target");
+    expect(marginGrade(0.149, 0.15)).toBe("minimum");
+    expect(marginGrade(0.1, 0.15)).toBe("minimum");
+    expect(marginGrade(0.099, 0.15)).toBe("below");
+    expect(marginGrade(null, 0.15)).toBeNull();
+    // A different goal shifts every band with it — one knob, one truth.
+    expect(marginGrade(0.2, 0.25)).toBe("minimum");
+    // No goal passed → the MARGIN_GOAL seed constant (0.26), same fallback
+    // chain as every other settings-driven number.
+    expect(marginGrade(0.31)).toBe("strong");
+    // A tiny goal can't push the minimum band below zero.
+    expect(marginGrade(0.0, 0.02)).toBe("minimum");
   });
   it("rpmGrade rides the rate ladder", () => {
     const ladder = { walkAway: 4, minimum: 4.6, target: 5.4, strong: 6.4 };

@@ -417,7 +417,7 @@ export const PulseTab = ({
           value={targets.rollingRpm != null ? fmtRpm(targets.rollingRpm) : "—"}
           sub={
             targets.basis?.breakEvenRpm != null
-              ? `break-even ${fmtRpm(targets.basis.breakEvenRpm)}`
+              ? `break-even ${fmtRpm(targets.basis.breakEvenRpm)} · cash · ${targets.basis.windowLabel ?? "3-mo"}`
               : "3-mo blended"
           }
           to="/settings"

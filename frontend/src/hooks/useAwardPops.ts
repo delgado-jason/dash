@@ -131,6 +131,7 @@ export const useAwardPops = (
       fuel: data.fuel,
       lifetimeMiles,
       obligationsDebtMonthly,
+      marginGoal: marginGoalFrom(data.schedule),
       streak: grind.currentStreak,
       loanPaidPct,
       now,

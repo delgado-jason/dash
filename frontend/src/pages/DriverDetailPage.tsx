@@ -169,10 +169,10 @@ const DriverDetailPage = () => {
     // data; the app's season estimate is only a labeled fallback. Award
     // criteria (seasonStrong below) stay on the app's own season math — every
     // other award grades app data, and a QBO import must not re-fire medals.
-    const appMarginG = marginGrade(season.netMargin);
+    const appMarginG = marginGrade(season.netMargin, marginGoal);
     const qbo = qboPretaxMargin(financials, now);
     const leverMarginValue = qbo?.margin ?? season.netMargin;
-    const marginG = qbo ? marginGrade(qbo.margin) : appMarginG;
+    const marginG = qbo ? marginGrade(qbo.margin, marginGoal) : appMarginG;
     const marginLabel = qbo ? "Pretax margin" : "Op margin";
     const marginBasis = qbo ? `QBO · ${qbo.label}` : "app est. · this season";
     // Driver utilization (days-based) — under-load days ÷ days since first load.
@@ -218,6 +218,7 @@ const DriverDetailPage = () => {
       marginValue: leverMarginValue,
       marginLabel,
       marginBasis,
+      rateBasis: basis.windowLabel ? `cash · ${basis.windowLabel}` : null,
       utilization,
       utilGrade: utilizationGrade(utilization),
       windowRpm: basis.windowRpm,
@@ -403,6 +404,7 @@ const DriverDetailPage = () => {
               marginValue={card.marginValue}
               marginLabel={card.marginLabel}
               marginBasis={card.marginBasis}
+              rateBasis={card.rateBasis}
               utilization={card.utilization}
               utilGrade={card.utilGrade}
               windowRpm={card.windowRpm}

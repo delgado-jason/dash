@@ -12,4 +12,5 @@ export const RANK_TIERS = [
 // Net operating-margin bands (P&L basis: (income − COGS − expenses) / income,
 // net of Landstar). Locked with Jason against his real 6-month data + the
 // owner-operator industry curve. Values are fractions of net revenue.
-export const MARGIN_BANDS = { strong: 0.27, target: 0.17, minimum: 0.08 } as const;
+// MARGIN bands moved to lib/metrics/playerCard.marginBandsFrom — derived
+// from the margin_goal setting, never hardcoded again (2026-09-02).
