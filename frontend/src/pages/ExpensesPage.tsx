@@ -150,14 +150,19 @@ const ExpensesPage = () => {
     }
     // Name the window's months so the label says WHICH three, not just "3mo".
     const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const named = windowPeriods
+    const dates = windowPeriods
       .map((p) => new Date(p.period_month))
-      .sort((a, b) => a.getTime() - b.getTime())
-      .map((d) => MONTHS[d.getUTCMonth()]);
+      .sort((a, b) => a.getTime() - b.getTime());
+    const named = dates.map((d) => MONTHS[d.getUTCMonth()]);
+    // A gap must LIST months, not fake a range — "May, Jul, Aug", never
+    // "May–Aug" when June's P&L is missing.
+    const mIdx = (d: Date) => d.getUTCFullYear() * 12 + d.getUTCMonth();
+    const contiguous = dates.every((d, i) => i === 0 || mIdx(d) === mIdx(dates[i - 1]) + 1);
     const label =
       named.length === 0 ? null
       : named.length === 1 ? named[0]
-      : `${named[0]}–${named[named.length - 1]}`;
+      : contiguous ? `${named[0]}–${named[named.length - 1]}`
+      : named.join(", ");
     return {
       months: n || 1,
       label,

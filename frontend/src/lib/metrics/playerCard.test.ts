@@ -94,8 +94,13 @@ describe("grades", () => {
     // No goal passed → the MARGIN_GOAL seed constant (0.26), same fallback
     // chain as every other settings-driven number.
     expect(marginGrade(0.31)).toBe("strong");
-    // A tiny goal can't push the minimum band below zero.
+    // A tiny goal can't push the minimum band below zero: a NEGATIVE margin
+    // must still grade "below" (unclamped, minimum would be −0.03 and −0.01
+    // would falsely pass as "minimum").
     expect(marginGrade(0.0, 0.02)).toBe("minimum");
+    expect(marginGrade(-0.01, 0.02)).toBe("below");
+    // Float-dirty goal: 0.17 − 0.05 must land exactly on 0.12, inclusive.
+    expect(marginGrade(0.12, 0.17)).toBe("minimum");
   });
   it("rpmGrade rides the rate ladder", () => {
     const ladder = { walkAway: 4, minimum: 4.6, target: 5.4, strong: 6.4 };

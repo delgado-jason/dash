@@ -70,10 +70,13 @@ export const careerRank = (lifetimeMiles: number): CareerRank => {
 // goal / goal +5pts ⇒ 10 / 15 / 20. Single source, so no surface can grade
 // the same margin differently from another. (Replaced the hardcoded 8/17/27
 // bands that predated depreciation-honest margins.)
+// Rounded to 4 decimals so float dirt (0.17 − 0.05 = 0.12000000000000001)
+// can't break the inclusive band edges.
+const r4 = (n: number) => Math.round(n * 10000) / 10000;
 export const marginBandsFrom = (goal: number = MARGIN_GOAL) => ({
-  minimum: Math.max(0, goal - 0.05),
-  target: goal,
-  strong: goal + 0.05,
+  minimum: Math.max(0, r4(goal - 0.05)),
+  target: r4(goal),
+  strong: r4(goal + 0.05),
 });
 
 export const marginGrade = (
@@ -350,7 +353,7 @@ export const earnedTrophies = (opts: {
     out.push({ key: "century", name: `${century} Loads`, icon: "stack", detail: "Career" });
 
   if (opts.seasonMargin === "strong")
-    out.push({ key: "strong-season", name: "Strong Season", icon: "trophy", detail: "Margin ≥ 27%" });
+    out.push({ key: "strong-season", name: "Strong Season", icon: "trophy", detail: "Margin at the strong band (goal +5pts)" });
 
   if (opts.bestMpg != null)
     out.push({ key: "feather-foot", name: "High-MPG Tank", icon: "flame", detail: `${opts.bestMpg.toFixed(1)} mpg best` });

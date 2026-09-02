@@ -114,7 +114,8 @@ const windowLabelOf = (included: { year: number; month: number }[]): string | nu
   const idx = (m: { year: number; month: number }) => m.year * 12 + m.month;
   const contiguous = included.every((m, i) => i === 0 || idx(m) === idx(included[i - 1]) + 1);
   if (!contiguous)
-    return `${included.slice(0, -1).map(name).join(", ")}, ${withYr(last)}`;
+    // Any listed month from a different year carries its own year tag.
+    return [...included.slice(0, -1).map((m) => (m.year !== last.year ? withYr(m) : name(m))), withYr(last)].join(", ");
   if (first.year !== last.year) return `${withYr(first)}–${withYr(last)}`;
   return `${name(first)}–${withYr(last)}`;
 };

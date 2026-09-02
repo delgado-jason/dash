@@ -47,7 +47,8 @@ export interface AwardInputs {
   fuel: FuelEntry[];
   lifetimeMiles: number;
   obligationsDebtMonthly: number;
-  marginGoal?: number; // Settings margin_goal — drives the bands (default 15%)
+  marginGoal?: number; // Settings margin_goal — drives the bands. Omitted → the
+  // MARGIN_GOAL seed (26%), NOT the user's setting: always pass it when loadable.
   streak?: number; // grind streak (weeks beating target)
   loanPaidPct?: number | null; // best % paid across tracked loans — Debt Crusher medal
   now: Date;
