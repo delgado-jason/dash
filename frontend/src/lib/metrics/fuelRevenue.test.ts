@@ -30,6 +30,47 @@ const load = (o: Partial<Load>): Load =>
     ...o,
   }) as unknown as Load;
 
+describe("fuelVsRevenue — expectedCoverage (the FSC standard)", () => {
+  it("par = (price − peg)/price × loaded share × MPG bonus — Jason's August shape", () => {
+    // ~August 2026: $4.942/gal blended, 68.7% loaded share, MPG ≈ base.
+    // Expected ≈ (4.942 − 1.25)/4.942 × 0.687 ≈ 51.3% — his actual 53.3%
+    // coverage is ON PAR, not "short of 100%" like the old red stamp claimed.
+    const entries = [fuel({ fuel_date: "2026-06-10", gallons: 1000, price_per_gallon: 4.942 })];
+    const loads = [
+      load({
+        delivery_date: "2026-06-15",
+        fuel_surcharge: "2634", // 53.3% of $4,942 fuel
+        loaded_miles: 687,
+        deadhead_miles: 313, // driven 1000 → loaded share .687
+      }),
+    ];
+    const m = fuelVsRevenue(entries, loads, 6.0).months[0];
+    expect(m.expectedCoverage).toBeCloseTo(((4.942 - 1.25) / 4.942) * 0.687, 3);
+    expect(m.fscCoverage!).toBeGreaterThan(m.expectedCoverage!); // on par
+  });
+
+  it("your MPG above the schedule's 6.0 base raises the bar (the bonus is yours to collect)", () => {
+    const entries = [fuel({ gallons: 1000, price_per_gallon: 4.0 })];
+    const loads = [load({ loaded_miles: 800, deadhead_miles: 200, fuel_surcharge: "1500" })];
+    const at6 = fuelVsRevenue(entries, loads, 6.0).months[0].expectedCoverage!;
+    const at66 = fuelVsRevenue(entries, loads, 6.6).months[0].expectedCoverage!;
+    expect(at66 / at6).toBeCloseTo(1.1, 5);
+    // No MPG data → no bonus claimed, the term drops to 1.
+    expect(fuelVsRevenue(entries, loads, null).months[0].expectedCoverage!).toBeCloseTo(at6, 5);
+  });
+
+  it("null when the bar can't be computed: price at/below the peg, or no driven miles", () => {
+    const cheap = [fuel({ gallons: 100, price_per_gallon: 1.2 })]; // under the $1.25 peg
+    const loads = [load({ loaded_miles: 500, deadhead_miles: 100 })];
+    expect(fuelVsRevenue(cheap, loads, 6).months[0].expectedCoverage).toBeNull();
+    const noMiles = [load({ loaded_miles: 0, deadhead_miles: 0 })];
+    expect(
+      fuelVsRevenue([fuel({ gallons: 100, price_per_gallon: 4 })], noMiles, 6).months[0]
+        .expectedCoverage,
+    ).toBeNull();
+  });
+});
+
 describe("fuelVsRevenue", () => {
   it("computes fuel %-of-NET and surcharge coverage per month", () => {
     const entries = [

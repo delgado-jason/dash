@@ -130,8 +130,8 @@ const FuelEntriesPage = () => {
     return parts.join(", ") || null;
   }, [recap, entries]);
   const fuelRev = useMemo(
-    () => fuelVsRevenue(entries, loads),
-    [entries, loads],
+    () => fuelVsRevenue(entries, loads, stats.avgMpg),
+    [entries, loads, stats.avgMpg],
   );
   const dieselData = useMemo(
     () => dieselChartData(entries, nationalSeries),
