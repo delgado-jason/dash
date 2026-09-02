@@ -150,6 +150,25 @@ const CashFlowPage = () => {
     return rows;
   }, [actualsShown, forecast]);
 
+  // Freshness + basis: WHEN the archive last changed and WHICH months feed
+  // the baseline — a new import moves the forecast, and the header must say
+  // why instead of letting the number jump silently (Jason, 2026-09-01).
+  const lastImport = useMemo(() => {
+    const ts = financials
+      .map((f) => (f.updated_at ? Date.parse(f.updated_at) : NaN))
+      .filter((n) => Number.isFinite(n));
+    return ts.length ? new Date(Math.max(...ts)) : null;
+  }, [financials]);
+  const baselineMonths = useMemo(() => {
+    const last6 = financials.slice(-6);
+    if (last6.length === 0) return null;
+    const name = (k: string) =>
+      new Date(`${k.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+    return last6.length === 1
+      ? name(last6[0].month)
+      : `${name(last6[0].month)}–${name(last6[last6.length - 1].month)}`;
+  }, [financials]);
+
   const clears = liquidity != null && floatLine != null ? liquidity.lowestEnding >= floatLine : null;
   const catchup = assumptions ? Number(assumptions.tax_catchup_owed) : 0;
   const lastForecastEnd = forecast?.months.at(-1)?.ending ?? null;
@@ -447,10 +466,25 @@ const CashFlowPage = () => {
               THE SIX-MONTH ROAD
             </span>
             <span className="ml-auto font-condensed text-[12px] text-faint">
-              {financials.length > 0
-                ? <>last {actualsShown.length} actual months + 6 forecast · baseline{" "}
-                    <b className="text-dim tabular-nums">{forecast ? moneyCents(forecast.baseline) : "—"}</b>/mo net</>
-                : "forges after your first PASTE MONTHS import"}
+              {financials.length > 0 ? (
+                <>
+                  last {actualsShown.length} actual months + 6 forecast · baseline{" "}
+                  <b className="text-dim tabular-nums">{forecast ? moneyCents(forecast.baseline) : "—"}</b>/mo
+                  {baselineMonths && <> · avg of {baselineMonths} net</>}
+                  {lastImport && (
+                    <>
+                      {" "}·{" "}
+                      <b className="text-dim">
+                        updated {lastImport.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {", "}
+                        {lastImport.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                      </b>
+                    </>
+                  )}
+                </>
+              ) : (
+                "forges after your first PASTE MONTHS import"
+              )}
             </span>
           </div>
 

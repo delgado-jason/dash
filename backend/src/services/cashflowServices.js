@@ -76,7 +76,8 @@ export async function getFinancials(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT to_char(month, 'YYYY-MM-DD') AS month,
-            ${FINANCIAL_FIELDS.filter((f) => f !== "month").join(", ")}
+            ${FINANCIAL_FIELDS.filter((f) => f !== "month").join(", ")},
+            updated_at
      FROM monthly_financials
      WHERE user_id = $1 ORDER BY month`,
     [user_id],
