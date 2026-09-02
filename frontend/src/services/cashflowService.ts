@@ -30,6 +30,7 @@ export interface MonthlyFinancialRow {
   total_liabilities: string;
   total_equity: string;
   depreciation: string;
+  updated_at?: string; // ISO — when this row was imported/last re-pasted
 }
 
 export interface ForecastAdjustmentRow {

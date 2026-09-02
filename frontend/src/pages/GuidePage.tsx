@@ -1165,7 +1165,11 @@ const GuidePage = () => {
               ending. Depreciation is <span className="text-light">inside</span>{" "}
               net income and added back as non-cash — one pair, never
               double-counted. Set weeks off on any forecast month (November’s
-              baby week ships marked). The earmark line shows{" "}
+              baby week ships marked). The board header shows{" "}
+              <span className="text-light">when the archive last changed</span>{" "}
+              and <span className="text-light">which months feed the baseline</span>{" "}
+              — when an import moves the forecast, the header says why. The
+              earmark line shows{" "}
               <span className="text-light">true spendable</span>: ending minus
               the tax catch-up you owe.
             </Why>
