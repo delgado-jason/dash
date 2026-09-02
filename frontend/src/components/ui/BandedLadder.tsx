@@ -66,6 +66,21 @@ export const BandedLadder = ({
         <span>target · ${ladder.target.toFixed(2)}</span>
         <span>strong · ${ladder.strong.toFixed(2)}</span>
       </div>
+      {/* Both currencies, always: markup for the negotiation, margin for the
+          goal — a +15% markup is only a 13% margin, and this line is where
+          that stops being a surprise. */}
+      <div className="flex justify-between font-condensed text-[9.5px] text-faint mt-[2px] tabular-nums opacity-80">
+        <span>0% margin</span>
+        {(["minimum", "target", "strong"] as const).map((k) => {
+          const markup = ladder[k]! / ladder.walkAway! - 1;
+          const margin = markup / (1 + markup);
+          return (
+            <span key={k}>
+              +{(markup * 100).toFixed(0)}% ⇒ ~{(margin * 100).toFixed(0)}% margin
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 };

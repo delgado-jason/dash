@@ -513,3 +513,33 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   background: var(--color-amber);
   box-shadow: 0 0 8px rgba(232, 148, 10, 0.8);
 }
+
+/* The Rate Dial's slider: transparent track (the zone bar behind it paints
+   the bands), chunky forge-amber thumb (red in the danger zone via var). */
+.rate-dial-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.rate-dial-range::-webkit-slider-runnable-track { background: transparent; }
+.rate-dial-range::-moz-range-track { background: transparent; }
+.rate-dial-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--dial-thumb, #f5b03a);
+  border: 3px solid #0d1117;
+  box-shadow: 0 0 0 2px var(--dial-thumb, #f5b03a), 0 4px 10px rgba(0, 0, 0, 0.6);
+  margin-top: 1px;
+}
+.rate-dial-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--dial-thumb, #f5b03a);
+  border: 3px solid #0d1117;
+  box-shadow: 0 0 0 2px var(--dial-thumb, #f5b03a), 0 4px 10px rgba(0, 0, 0, 0.6);
+}

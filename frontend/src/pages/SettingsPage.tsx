@@ -1,3 +1,4 @@
+import { RateDial } from "@/components/settings/RateDial";
 import { useEffect, useState } from "react";
 import {
   getSettlementSchedule,
@@ -14,71 +15,12 @@ import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
 type Tier3 = { min: number; target: number; strong: number };
+// (tiers are now SET via the RateDial slider — stored shape unchanged)
 const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean percent
 
 // Rate-tier set editor: three markup inputs + a live preview at the real
 // break-even. The Scorer's verdict uses target + strong; min is the ladder's
 // lower rung.
-const TierCard = ({
-  label,
-  dot,
-  tiers,
-  onChange,
-  be,
-}: {
-  label: string;
-  dot: string;
-  tiers: Tier3;
-  onChange: (t: Tier3) => void;
-  be: number | null;
-}) => {
-  const at = (m: number) => `$${(be! * (1 + m / 100)).toFixed(2)}`;
-  const keys: (keyof Tier3)[] = ["min", "target", "strong"];
-  const labels = { min: "Min", target: "Target", strong: "Strong" };
-  return (
-    <div className="rounded-lg p-3.5" style={{ background: "#0d1119" }}>
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className="inline-block rounded-full"
-          style={{ width: 9, height: 9, background: dot }}
-        />
-        <span className="text-sm font-medium text-light">{label}</span>
-      </div>
-      <div className="flex gap-2.5">
-        {keys.map((k) => (
-          <label key={k} className="flex-1 min-w-0">
-            <span className="text-[11px] text-muted-text">{labels[k]}</span>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-muted-text text-xs">+</span>
-              <input
-                type="number"
-                min={0}
-                max={300}
-                step={1}
-                value={Number.isFinite(tiers[k]) ? tiers[k] : ""}
-                onChange={(e) => onChange({ ...tiers, [k]: Number(e.target.value) })}
-                className="w-full bg-steel rounded px-1.5 py-1 text-light text-right text-sm tabular-nums"
-              />
-              <span className="text-muted-text text-xs">%</span>
-            </div>
-          </label>
-        ))}
-      </div>
-      <div className="text-[11px] text-muted-text mt-2.5">
-        {be != null ? (
-          <>
-            ${be.toFixed(2)} → <span className="text-light">{at(tiers.min)}</span>{" "}
-            · <span style={{ color: "#e8940a" }}>{at(tiers.target)}</span> ·{" "}
-            <span style={{ color: "#4ade80" }}>{at(tiers.strong)}</span>
-          </>
-        ) : (
-          "add a few months of P&L to preview the rates"
-        )}
-      </div>
-    </div>
-  );
-};
-
 // A sample load for the live preview, so the effect of the percentages is visible.
 const SAMPLE_LINEHAUL = 2000;
 const SAMPLE_FSC = 300;
@@ -427,16 +369,17 @@ const SettingsPage = () => {
       </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">
-        <h2 className="text-lg font-medium text-light">Rate tiers</h2>
+        <h2 className="text-lg font-medium text-light">The rate dial</h2>
         <p className="text-sm text-muted-text mt-1">
-          Your markup over break-even, per driven mile. Two sets — the load Scorer
-          grades <span className="text-light">specialized</span> freight (oversize,
-          hazmat, heavy haul) on the higher set and everything else on{" "}
-          <span className="text-light">standard</span>. Drives the Scorer's verdict,
-          counter-rate ladder, and the rate ladders across the app.
+          Slide to the <span className="text-light">margin you're pricing for</span> —
+          the three rungs derive from it (target −5 / target / target +5) and save
+          as the same markups the Scorer, counter-rate ladder, and rate ladders
+          have always read. The gap between your handle and the goal marker is
+          your padding for what the road takes. Specialized (oversize, hazmat,
+          heavy haul) carries its own dial.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-          <TierCard
+          <RateDial
             label="Standard"
             dot="#4a90d9"
             tiers={stdTiers}
@@ -445,8 +388,10 @@ const SettingsPage = () => {
               setStdTiers(t);
             }}
             be={be}
+            marginGoalPct={Number.isFinite(marginGoal) ? marginGoal : 15}
+            windowLabel={targets.basis.windowLabel}
           />
-          <TierCard
+          <RateDial
             label="Specialized"
             dot="#e05a3a"
             tiers={specTiers}
@@ -455,6 +400,8 @@ const SettingsPage = () => {
               setSpecTiers(t);
             }}
             be={be}
+            marginGoalPct={Number.isFinite(marginGoal) ? marginGoal : 15}
+            windowLabel={targets.basis.windowLabel}
           />
         </div>
         {tierErr ? (

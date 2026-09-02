@@ -797,8 +797,19 @@ const GuidePage = () => {
               (1 + your tier %)
             </Formula>
             <Why>
-              There are <span className="text-light">two tier sets</span>, both
-              editable in Settings and both shown on the ladder above.{" "}
+              The rungs are SET with{" "}
+              <span className="text-light">the rate dial</span> on Settings — a
+              slider denominated in the margin you're pricing for; the three
+              rungs derive as target −5 / target / target +5 in margin space
+              and convert to markups. Two currencies, one number: a{" "}
+              <span className="text-light">markup</span> is measured against
+              cost, a <span className="text-light">margin</span> against
+              revenue — +25% over break-even yields a ~20% margin (markup ÷ (1
+              + markup)), which is why the ladder prints both on every rung.
+              Slide the dial left in a soft market to stay competitive; below
+              your goal it warns, below 0% it flags every mile as paying the
+              broker. There are <span className="text-light">two dials</span>,
+              both shown on the ladder above.{" "}
               <span className="text-light">Standard</span> (seeded +10 / 20 / 30%)
               is your everyday freight and carries the full bar plus your rate
               marker. <span className="text-light">Specialized</span> (+35 / 45 /
