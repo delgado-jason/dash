@@ -121,6 +121,26 @@ const AgentDetailPage = () => {
     [allLoads, agentId],
   );
 
+  // The relationship touches join the same activity stream — deletable,
+  // because a mis-log from a truck stop must be fixable or the log rots.
+  // HOOKS LIVE ABOVE THE EARLY RETURNS — inserting them after the loading
+  // return crashed this page once (rendered-more-hooks), 2026-09-04.
+  const [touches, setTouches] = useState<AgentContact[]>([]);
+  useEffect(() => {
+    if (!agentId) return;
+    getAgentContacts()
+      .then((all) => setTouches(all.filter((c) => c.agent_id === agentId)))
+      .catch(() => {});
+  }, [agentId, refreshKey]);
+  const removeTouch = async (id: string) => {
+    try {
+      await deleteAgentContact(id);
+      setTouches((prev) => prev.filter((c) => c.contact_id !== id));
+    } catch {
+      /* row stays — nothing changed server-side */
+    }
+  };
+
   if (isLoading)
     return (
       <div className="p-6 text-ink min-h-screen font-body">
@@ -143,22 +163,6 @@ const AgentDetailPage = () => {
   const grossRev = getGrossRevenue(loads);
   const rpm = getAverageRPM(loads);
   const lastWorked = getLastLoadDate(loads);
-  // The relationship touches join the same activity stream — deletable,
-  // because a mis-log from a truck stop must be fixable or the log rots.
-  const [touches, setTouches] = useState<AgentContact[]>([]);
-  useEffect(() => {
-    getAgentContacts()
-      .then((all) => setTouches(all.filter((c) => c.agent_id === agentId)))
-      .catch(() => {});
-  }, [agentId, refreshKey]);
-  const removeTouch = async (id: string) => {
-    try {
-      await deleteAgentContact(id);
-      setTouches((prev) => prev.filter((c) => c.contact_id !== id));
-    } catch {
-      /* row stays — nothing changed server-side */
-    }
-  };
   const logs = buildTimeline(notes, ratingHistory, touches);
   const agentLoads = [...(loads ?? [])].sort((a, b) =>
     b.pickup_date.localeCompare(a.pickup_date),
