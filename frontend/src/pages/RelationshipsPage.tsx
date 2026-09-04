@@ -52,7 +52,10 @@ const copyText = (t: string) => {
   try { void navigator.clipboard.writeText(t); } catch { /* text is visible anyway */ }
 };
 
-const T1_CAP = 8;
+// Attention is the scarce resource: Tier 1 caps at 5 (weekly touch), Tier 2
+// at 10 (bi-weekly). Existing over-cap seats are grandfathered — the cap
+// blocks moving IN, never kicks anyone out (Jason demotes by hand).
+const TIER_CAPS: Record<number, number | null> = { 1: 5, 2: 10, 3: null };
 
 const MOVE_META: Record<Move, { label: (r: { tier: number }) => string; style: keyof typeof chipStyle }> = {
   up: { label: (r) => `▲ CONSIDER T${Math.max(1, r.tier - 1)}`, style: "ok" },
@@ -72,6 +75,7 @@ const RelationshipsPage = () => {
   const [showProspect, setShowProspect] = useState(false);
   const [actionFor, setActionFor] = useState<Agent | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"book" | "review">("book");
   const [loadError, setLoadError] = useState(false);
   const [blastError, setBlastError] = useState<string | null>(null);
 
@@ -254,7 +258,29 @@ const RelationshipsPage = () => {
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           <h1 className="font-display text-[26px] tracking-[.06em] leading-none">RELATIONSHIPS</h1>
           <span className="font-condensed font-medium text-[15px] text-dim">the book of agents — freight follows friendship</span>
-          <button onClick={() => setShowProspect(true)} className={`ml-auto ${BTN}`}>+ Add prospect</button>
+          <span className="flex-1" />
+          <span
+            className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px]"
+            style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+            role="tablist"
+          >
+            {(
+              [["book", "the book"], ["review", "monthly review"]] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => setView(v)}
+                className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] capitalize ${
+                  view === v ? "bg-amber text-canvas" : "text-dim hover:text-ink"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+          <button onClick={() => setShowProspect(true)} className={BTN}>+ Add prospect</button>
         </div>
 
         {loadError && (
@@ -285,6 +311,7 @@ const RelationshipsPage = () => {
           )}
         </div>
 
+        {view === "book" && (<>
         {/* THIS WEEK'S RITUAL */}
         <div className="ds2-board mt-4 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
@@ -422,7 +449,7 @@ const RelationshipsPage = () => {
                 <p className="font-condensed font-semibold text-[11px] tracking-[.16em] uppercase text-faint">
                   <span className="font-display text-[17px] text-ink tracking-[.04em] normal-case">TIER {t}</span>{" "}
                   · every {TIER_CADENCE_DAYS[t]}d · {byTier[t].length}
-                  {t === 1 && ` of ${T1_CAP} max`}
+                  {TIER_CAPS[t] != null && ` of ${TIER_CAPS[t]} max`}
                   {t === 3 && " · incl. the cold pool"}
                 </p>
                 {byTier[t].map((a) => <AgentCard key={a.agent_id} a={a} />)}
@@ -496,7 +523,9 @@ const RelationshipsPage = () => {
         </div>
 
 
-        {/* THE MONTHLY REVIEW */}
+        </>)}
+
+        {view === "review" && (
         <div className="ds2-board mt-4 overflow-hidden">
           <div className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
             <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>THE MONTHLY REVIEW</span>
@@ -585,6 +614,8 @@ const RelationshipsPage = () => {
             under 3 loads → THIN, never a fake grade · last-load amber past 30d, red past 60d · tap a name to retier.
           </div>
         </div>
+        )}
+
         {touchFor && (
           <TouchPopup
             agent={touchFor.agent}
@@ -600,7 +631,7 @@ const RelationshipsPage = () => {
         {actionFor && (
           <AgentActionPopup
             agent={actionFor}
-            t1Count={byTier[1].length}
+            tierCounts={{ 1: byTier[1].length, 2: byTier[2].length, 3: byTier[3].length }}
             busy={busy}
             canRetier={!isDispatcher()}
             onTouch={() => {
@@ -740,10 +771,10 @@ const TouchPopup = ({
 };
 
 const AgentActionPopup = ({
-  agent, t1Count, busy, canRetier, onTouch, onRetier, onClose,
+  agent, tierCounts, busy, canRetier, onTouch, onRetier, onClose,
 }: {
   agent: Agent;
-  t1Count: number;
+  tierCounts: Record<number, number>;
   busy: boolean;
   // Tiers are the OWNER'S call — the dispatcher runs the ritual (touches,
   // prospects, close-outs) but never moves an agent between tiers.
@@ -774,13 +805,14 @@ const AgentActionPopup = ({
             <div className="flex gap-2">
               {[1, 2, 3].map((t) => {
                 const isCurrent = agent.relationship_tier === t;
-                const capped = t === 1 && !isCurrent && t1Count >= T1_CAP;
+                const cap = TIER_CAPS[t];
+                const capped = cap != null && !isCurrent && (tierCounts[t] ?? 0) >= cap;
                 return (
                   <button
                     key={t}
                     disabled={busy || isCurrent || capped}
                     className={`${isCurrent ? BTN : BTN_GHOST} flex-1 py-2`}
-                    title={capped ? `Tier 1 is full (${T1_CAP}) — demote someone first` : undefined}
+                    title={capped ? `Tier ${t} is full (${cap}) — demote someone first` : undefined}
                     onClick={() => onRetier(t)}
                   >
                     Tier {t}{capped ? " · full" : ""}
@@ -789,7 +821,7 @@ const AgentActionPopup = ({
               })}
             </div>
             <p className="font-condensed text-[11px] text-faint mt-3">
-              Tier 1 caps at {T1_CAP} — weekly attention diluted is weekly attention wasted.
+              Tier 1 caps at {TIER_CAPS[1]}, Tier 2 at {TIER_CAPS[2]} — attention diluted is attention wasted.
             </p>
           </>
         ) : (
