@@ -24,6 +24,7 @@ import {
 } from "@/lib/metrics/relationships";
 import { capacityDraft, closeOutDraft } from "@/lib/relationshipTemplates";
 import { isDispatcher } from "@/lib/roles";
+import { Link } from "react-router";
 
 const money = (n: number): string => `$${Math.round(n).toLocaleString("en-US")}`;
 const pct0 = (n: number): string => `${Math.round(n * 100)}%`;
@@ -639,6 +640,12 @@ const AgentActionPopup = ({
       </div>
       <div className="p-5">
         <button className={`${BTN} w-full py-2`} onClick={onTouch}>Log a touch</button>
+        <Link
+          to={`/agents/${agent.agent_id}`}
+          className="block text-center font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-amber-hi hover:text-hot mt-2"
+        >
+          Touch history & profile →
+        </Link>
         {canRetier ? (
           <>
             <span className={LBL}>Move to tier</span>

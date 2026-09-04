@@ -2154,7 +2154,10 @@ const GuidePage = () => {
               <span className="text-light">you send from your own email and
               phone</span>; an agent can smell an automated thank-you a mile
               out. First Friday monthly: fifteen minutes of retiering off the
-              drift chips.
+              drift chips. Every touch lands in the agent’s{" "}
+              <span className="text-light">activity timeline</span> (their
+              detail page) alongside notes and rating changes — and a mis-log
+              deletes with one tap; the metrics recompute, nothing rots.
             </Why>
           </Metric>
 

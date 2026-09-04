@@ -1,6 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
-import { Mail, Phone, StickyNote, Star } from "lucide-react";
+import { Mail, Phone, StickyNote, Star, MessageSquare } from "lucide-react";
+
+const TOUCH_LABEL: Record<string, string> = {
+  capacity: "capacity email",
+  check_in: "check-in",
+  appreciation: "appreciation",
+  close_out: "close-out",
+  cold: "cold outreach",
+  inbound_inquiry: "inbound inquiry",
+  other: "touch",
+};
 
 import { useAgent } from "@/hooks/useAgent";
 import { useLoads } from "@/hooks/useLoads";
@@ -40,6 +50,9 @@ import {
 import { loadRevenue } from "@/lib/metrics/loads";
 import { Panel } from "@/components/ui/Panel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  getAgentContacts, deleteAgentContact, type AgentContact,
+} from "@/services/agentContactsService";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
@@ -130,7 +143,23 @@ const AgentDetailPage = () => {
   const grossRev = getGrossRevenue(loads);
   const rpm = getAverageRPM(loads);
   const lastWorked = getLastLoadDate(loads);
-  const logs = buildTimeline(notes, ratingHistory);
+  // The relationship touches join the same activity stream — deletable,
+  // because a mis-log from a truck stop must be fixable or the log rots.
+  const [touches, setTouches] = useState<AgentContact[]>([]);
+  useEffect(() => {
+    getAgentContacts()
+      .then((all) => setTouches(all.filter((c) => c.agent_id === agentId)))
+      .catch(() => {});
+  }, [agentId, refreshKey]);
+  const removeTouch = async (id: string) => {
+    try {
+      await deleteAgentContact(id);
+      setTouches((prev) => prev.filter((c) => c.contact_id !== id));
+    } catch {
+      /* row stays — nothing changed server-side */
+    }
+  };
+  const logs = buildTimeline(notes, ratingHistory, touches);
   const agentLoads = [...(loads ?? [])].sort((a, b) =>
     b.pickup_date.localeCompare(a.pickup_date),
   );
@@ -427,6 +456,34 @@ const AgentDetailPage = () => {
                     <p className="text-xs text-dim mt-1">
                       {fmtDate(log.timestamp)} · {log.data.changed_by}
                     </p>
+                  </div>
+                ) : log.type === "touch" ? (
+                  <div
+                    key={log.data.contact_id}
+                    className="border-l-2 px-3 py-2 rounded-sm flex items-start gap-2"
+                    style={{
+                      borderLeftColor: log.data.direction === "inbound" ? "#6fd08c" : "#4f8cd6",
+                      background: "var(--color-well)",
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">
+                        <Phone size={13} className="inline text-dim -mt-0.5" style={{ display: log.data.method === "call" ? undefined : "none" }} />
+                        <Mail size={13} className="inline text-dim -mt-0.5" style={{ display: log.data.method === "email" ? undefined : "none" }} />
+                        <MessageSquare size={13} className="inline text-dim -mt-0.5" style={{ display: log.data.method === "text" ? undefined : "none" }} />{" "}
+                        {log.data.direction === "inbound" ? "They reached out" : "You reached out"} ·{" "}
+                        <span className="text-light">{TOUCH_LABEL[log.data.type]}</span>
+                      </p>
+                      {log.data.note && <p className="text-sm text-dim">{log.data.note}</p>}
+                      <p className="text-xs text-dim mt-1">{fmtDate(log.timestamp)}</p>
+                    </div>
+                    <button
+                      className="text-dim hover:text-destructive text-xs mt-0.5"
+                      title="delete this touch — mis-logs happen; the metrics recompute"
+                      onClick={() => void removeTouch(log.data.contact_id)}
+                    >
+                      ✕
+                    </button>
                   </div>
                 ) : (
                   <div
