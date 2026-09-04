@@ -59,6 +59,8 @@ const RelationshipsPage = () => {
   const [showProspect, setShowProspect] = useState(false);
   const [actionFor, setActionFor] = useState<Agent | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [blastError, setBlastError] = useState<string | null>(null);
 
   const load = () =>
     Promise.all([getAgents(), getAgentContacts(), getBrokers()])
@@ -66,8 +68,9 @@ const RelationshipsPage = () => {
         setAgents(a);
         setContacts(c);
         setBrokers(b);
+        setLoadError(false);
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
 
   useEffect(() => { load(); }, []);
@@ -130,19 +133,32 @@ const RelationshipsPage = () => {
     }
   };
 
-  // Monday's one-tap: log the capacity email as an outbound touch on every T1.
+  // Monday's one-tap: log the capacity email as an outbound touch on every
+  // T1 — idempotent per day (a retry after a partial failure skips agents
+  // already logged today), failures named, screen always refreshed.
   const logCapacityBlast = async () => {
     setBusy(true);
-    try {
-      for (const a of byTier[1]) {
+    setBlastError(null);
+    const todayKey = nowKey;
+    const already = new Set(
+      contacts
+        .filter((c) => c.type === "capacity" && c.contacted_at.slice(0, 10) === todayKey)
+        .map((c) => c.agent_id),
+    );
+    const failed: string[] = [];
+    for (const a of byTier[1]) {
+      if (already.has(a.agent_id)) continue;
+      try {
         await createAgentContact({
           agent_id: a.agent_id, direction: "outbound", method: "email", type: "capacity",
         });
+      } catch {
+        failed.push(nameOf(a));
       }
-      await load();
-    } finally {
-      setBusy(false);
     }
+    await load();
+    if (failed.length) setBlastError(`Didn't log: ${failed.join(", ")} — tap again to retry just them.`);
+    setBusy(false);
   };
 
   const overdueSet = useMemo(() => new Set(queue.map((e) => e.agent.agent_id)), [queue]);
@@ -152,7 +168,8 @@ const RelationshipsPage = () => {
   const AgentCard = ({ a }: { a: Agent }) => {
     const st = prospectState(a.agent_id, contacts, loads ?? []);
     const last = lastTouchOf(a.agent_id, contacts);
-    const days = last == null ? null : Math.floor((now.getTime() - Date.parse(last)) / 86_400_000);
+    // Clamped: a touch logged AFTER the page mounted must read 0d, never −1d.
+    const days = last == null ? null : Math.max(0, Math.floor((now.getTime() - Date.parse(last)) / 86_400_000));
     const rev = revenueOf.get(a.agent_id);
     const inb = inboundOfAgent(a.agent_id);
     const sc = scorecards.get(a.agent_id);
@@ -207,6 +224,11 @@ const RelationshipsPage = () => {
           <button onClick={() => setShowProspect(true)} className={`ml-auto ${BTN}`}>+ Add prospect</button>
         </div>
 
+        {loadError && (
+          <p className="mt-3 font-condensed text-[12.5px]" style={{ color: "var(--color-warn)" }}>
+            ⚠ couldn’t load the book — <button className="underline underline-offset-2" onClick={load}>retry</button>
+          </p>
+        )}
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           {share90.share != null ? (
@@ -245,10 +267,13 @@ const RelationshipsPage = () => {
                 <p className="font-condensed text-[11.5px] text-mono mt-1.5 rounded-[7px] px-2.5 py-1.5" style={{ background: "var(--color-well)", border: "1px dashed rgba(232,148,10,.35)", color: "var(--color-amber-hi)", fontFamily: "ui-monospace, monospace" }}>
                   {capacity.subject} — {capacity.body.split("\n")[0]}
                 </p>
+                {blastError && (
+                  <p className="font-condensed text-[12px] mt-1.5" style={{ color: "var(--color-warn)" }}>{blastError}</p>
+                )}
               </div>
               <div className="flex gap-2 pt-1">
                 <button className={BTN_GHOST} onClick={() => copyText(`${capacity.subject}\n\n${capacity.body}`)}>Copy</button>
-                <button className={BTN} disabled={busy || byTier[1].length === 0} onClick={logCapacityBlast}>
+                <button className={BTN} disabled={busy || byTier[1].length === 0} onClick={() => void logCapacityBlast()}>
                   Log all {byTier[1].length} sent
                 </button>
               </div>
@@ -322,22 +347,30 @@ const RelationshipsPage = () => {
               <div className="flex-1 min-w-[260px]">
                 <p className="font-condensed font-semibold text-[13.5px]">Appreciation calls → Tier 1s you ran for this week</p>
                 <p className="font-condensed text-[12px] text-faint mt-0.5">
-                  {fri.length > 0 ? (
-                    <>auto-computed: <b className="text-dim">{fri.map((e) => `${nameOf(e.agent)} (${e.loads})`).join(" · ")}</b> — thank them like you mean it</>
-                  ) : (
-                    "no Tier 1 deliveries this week yet"
-                  )}
+                  {fri.length > 0 ? "thank them like you mean it — one button per agent, each logs its own call" : "no Tier 1 deliveries this week yet"}
                 </p>
               </div>
               {fri.length > 0 && (
-                <div className="flex gap-2 pt-1">
-                  <button
-                    className={BTN}
-                    disabled={busy}
-                    onClick={() => setTouchFor({ agent: fri[0].agent as unknown as Agent, prefill: { direction: "outbound", method: "call", type: "appreciation" } })}
-                  >
-                    Log calls
-                  </button>
+                <div className="flex gap-2 pt-1 flex-wrap">
+                  {fri.map((e) => {
+                    // Already thanked this week → the button turns done-ghost.
+                    const thanked = contacts.some(
+                      (c) =>
+                        c.agent_id === e.agent.agent_id &&
+                        c.type === "appreciation" &&
+                        c.contacted_at.slice(0, 10) >= dayKeyOf(new Date(now.getTime() - 6 * 86_400_000)),
+                    );
+                    return (
+                      <button
+                        key={e.agent.agent_id}
+                        className={thanked ? BTN_GHOST : BTN}
+                        disabled={busy || thanked}
+                        onClick={() => setTouchFor({ agent: e.agent as unknown as Agent, prefill: { direction: "outbound", method: "call", type: "appreciation" } })}
+                      >
+                        {thanked ? `✓ ${nameOf(e.agent)}` : `Log ${nameOf(e.agent)} (${e.loads})`}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -473,8 +506,16 @@ const RelationshipsPage = () => {
               try {
                 let brokerId = data.broker_id;
                 if (!brokerId && data.newBrokerCode) {
-                  const b = await createBroker({ broker_name: data.newBrokerCode, phone: null, email: null, rating: null, notes: null });
-                  brokerId = b.broker_id;
+                  // A typed code that already exists (unique per user) just
+                  // matches — no duplicate, no opaque 500.
+                  const existing = brokers.find(
+                    (b) => b.broker_name.toUpperCase() === data.newBrokerCode.toUpperCase(),
+                  );
+                  if (existing) brokerId = existing.broker_id;
+                  else {
+                    const b = await createBroker({ broker_name: data.newBrokerCode, phone: null, email: null, rating: null, notes: null });
+                    brokerId = b.broker_id;
+                  }
                 }
                 if (!brokerId) return false;
                 await createAgent({

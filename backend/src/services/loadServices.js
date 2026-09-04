@@ -127,6 +127,7 @@ export async function getLoad(user_id, load_id) {
             load_number,
             load_type,
             load_status,
+            booked_via,
             brokers.broker_id,
             brokers.broker_name AS broker,
             agents.agent_id,

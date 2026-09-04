@@ -260,6 +260,9 @@ export async function patchAgent(user_id, agent_id, data) {
   }
   // ---- VALIDATION LOGIC ----
 
+  // tier_set_at is SERVER truth — a client-sent value is dropped, then the
+  // retier (if any) stamps it fresh.
+  delete agentData.tier_set_at;
   // Retiering stamps WHEN the call was made — server-side, not client-claimed.
   if (agentData.relationship_tier !== undefined) {
     agentData.tier_set_at = new Date().toISOString();

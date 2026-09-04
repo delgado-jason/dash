@@ -418,6 +418,7 @@ export const LoadDetailPage = () => {
                 driver_id: load.driver_id ?? null,
                 trailer_id: load.trailer_id ?? null,
                 booked_by: load.booked_by ?? null,
+            booked_via: load.booked_via ?? null,
               }}
               brokers={brokers}
               agents={agents}

@@ -28,6 +28,8 @@ export async function createAgentContact(user_id, data) {
   const TYPES = ["capacity", "check_in", "appreciation", "close_out", "cold", "inbound_inquiry", "other"];
   if (!TYPES.includes(type))
     throw new ValidationError(`type must be one of ${TYPES.join(", ")}`);
+  if (contacted_at != null && Number.isNaN(Date.parse(contacted_at)))
+    throw new ValidationError("contacted_at must be a valid timestamp");
 
   const result = await db.query(
     `INSERT INTO agent_contacts

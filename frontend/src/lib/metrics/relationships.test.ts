@@ -195,6 +195,14 @@ describe("coldFunnel", () => {
   });
 });
 
+describe("clock-skew clamp", () => {
+  it("a touch stamped AFTER `now` reads 0 days, never −1", () => {
+    const agents = [agent("t2", 2)];
+    const contacts = [touch({ agent_id: "t2", contacted_at: "2026-09-04T13:00:00Z" })]; // 1h after NOW
+    expect(tuesdayPick(agents, contacts, NOW)!.daysSince).toBe(0);
+  });
+});
+
 describe("lastTouchOf", () => {
   it("max over the log; null when never", () => {
     const c = [

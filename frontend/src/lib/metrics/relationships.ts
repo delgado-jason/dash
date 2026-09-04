@@ -109,7 +109,8 @@ export const dueQueue = (
   for (const a of agents) {
     const st = prospectState(a.agent_id, contacts, loads);
     const last = lastTouchOf(a.agent_id, contacts);
-    const daysSince = last == null ? null : Math.floor((nowMs - Date.parse(last)) / DAY);
+    // Clamped — a touch stamped moments after `now` must read 0, never −1.
+    const daysSince = last == null ? null : Math.max(0, Math.floor((nowMs - Date.parse(last)) / DAY));
     let dueBy: number;
     let reason: string;
     if (st.stage === "touched") {
@@ -150,7 +151,7 @@ export const tuesdayPick = (
   return best
     ? {
         agent: best.agent,
-        daysSince: best.last == null ? null : Math.floor((now.getTime() - Date.parse(best.last)) / DAY),
+        daysSince: best.last == null ? null : Math.max(0, Math.floor((now.getTime() - Date.parse(best.last)) / DAY)),
       }
     : null;
 };

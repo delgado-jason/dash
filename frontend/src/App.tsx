@@ -94,6 +94,9 @@ const App = () => {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/dispatcher/:id" element={<DispatcherPage />} />
           <Route path="/forge" element={<DispatchForgePage />} />
+          {/* Brandie's workflow — the ritual, touches, prospects; tier
+              controls are gated inside the page (owner only). */}
+          <Route path="/relationships" element={<RelationshipsPage />} />
 
           {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
           <Route element={<AdminRoute />}>
@@ -102,7 +105,6 @@ const App = () => {
             <Route path="/per-diem" element={<PerDiemPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/cashflow" element={<CashFlowPage />} />
-            <Route path="/relationships" element={<RelationshipsPage />} />
             <Route path="/recap" element={<RecapPage />} />
             <Route path="/garage" element={<GaragePage />} />
             <Route path="/trophy-room" element={<TrophyHallPage />} />

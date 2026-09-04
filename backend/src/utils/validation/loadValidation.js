@@ -65,6 +65,13 @@ const rules = {
       errors.push(`${value} is an invalid date`);
     }
   },
+  booked_via: (value, errors) => {
+    // Attribution enum — null/undefined legal (legacy loads; edits must not
+    // be forced to invent history). A present value must be one of the two.
+    if (value == null) return;
+    if (!["agent_reached_out", "i_reached_out"].includes(value))
+      errors.push(`${value} is not an allowed booked_via value`);
+  },
   load_status: (value, errors) => {
     const allowedStatusValues = [
       "booked",
