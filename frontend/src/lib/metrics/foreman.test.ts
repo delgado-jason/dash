@@ -48,6 +48,7 @@ const mkAgent = (id: string, first: string): Agent => ({
   broker_name: "B",
   first_name: first,
   last_name: "Co",
+  relationship_tier: 3,
   preferred_contact: "phone",
   created_at: "2026-01-01",
   updated_at: "2026-01-01",

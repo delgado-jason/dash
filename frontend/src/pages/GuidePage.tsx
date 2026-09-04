@@ -396,6 +396,9 @@ const NAV: { group: string; items: string[] }[] = [
   {
     group: "Agents",
     items: [
+      "Relationships — the book of agents",
+      "Inbound share — is the system working?",
+      "The cold pool — from stranger to agent",
       "Agent ratings",
       "Reading the roster — the Go-to score",
       "The quarterly leaderboard",
@@ -2132,6 +2135,70 @@ const GuidePage = () => {
             style={{ borderColor: "#22304a" }}
             aria-hidden="true"
           />
+          <Metric
+            title="Relationships — the book of agents"
+            answers="Three tiers you assign, a weekly ritual the queue runs for you, and every touch logged in two taps."
+            sources={[{ label: "Relationships", to: "/relationships" }]}
+          >
+            <Why>
+              Tiers are <span className="text-light">your call</span> — Tier 1
+              (max 8) gets weekly attention, Tier 2 bi-weekly, Tier 3 quarterly
+              plus the cold pool. Blue chips flag where the data disagrees with
+              your placement (a Tier 2 performing call-first, a Tier 1 going
+              cold) — same gut-vs-data grammar as the star-rating flags. The
+              week runs itself: Monday capacity email to Tier 1 (the empty line
+              generates from your booked loads), Tuesday check-in call to the
+              longest-untouched Tier 2, a close-out email after every delivery
+              (it nags until logged), Friday appreciation calls to the Tier 1s
+              you ran for. Dash drafts and logs —{" "}
+              <span className="text-light">you send from your own email and
+              phone</span>; an agent can smell an automated thank-you a mile
+              out. First Friday monthly: fifteen minutes of retiering off the
+              drift chips.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Inbound share — is the system working?"
+            answers="The one number: what share of your booked loads came from agents reaching out to YOU."
+            sources={[{ label: "Relationships", to: "/relationships" }]}
+          >
+            <Formula>
+              inbound share = loads the agent brought you ÷ attributed loads
+            </Formula>
+            <Why>
+              Every new load answers one required question at booking: did the
+              agent reach out, or did you? The whole thesis of relationship
+              work is that capacity emails and appreciation calls compound
+              until agents call <span className="text-light">you</span> first —
+              so the fleet-wide share should climb from the system-start
+              baseline (Sep ’26, marked on the chart), and{" "}
+              <span className="text-light">Tier 1’s share should pull away
+              from Tier 3’s</span>. If it doesn’t within a quarter or two, the
+              cadence isn’t landing — change the plays, not the goal. Loads
+              from before the system carry no answer and sit outside the math.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="The cold pool — from stranger to agent"
+            answers="Prospects you've never run for, added by hand, tracked to their first load."
+            sources={[{ label: "Relationships", to: "/relationships" }]}
+          >
+            <Why>
+              Add a prospect with <span className="text-light">+ ADD
+              PROSPECT</span> (name, agency code, where you found them). Every
+              stage after that is <span className="text-light">derived</span> —
+              nothing to update by hand: a logged cold touch makes them
+              TOUCHED (follow-up resurfaces in 14 days), their logged reply
+              makes them REPLIED (tightens to 7), and the moment a load books
+              under their name they graduate automatically. The funnel — pool →
+              touched → replied → converted, with median days to first load —
+              tells you if cold outreach earns its Tuesday, and conversion by
+              source tells you where to hunt.
+            </Why>
+          </Metric>
+
           <GroupHeading>Vendors</GroupHeading>
 
           <Section

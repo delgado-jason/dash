@@ -193,11 +193,13 @@ const LoadForm = ({
           driver_id: initialData.driver_id ?? null,
           trailer_id: initialData.trailer_id ?? null,
           booked_by: initialData.booked_by ?? null,
+          booked_via: initialData.booked_via ?? null,
         }
       : {
           load_number: "",
           broker_id: "",
           agent_id: "",
+          booked_via: null,
           load_type: "standard flatbed",
           load_status: "booked",
           pickup_date: "",
@@ -565,6 +567,12 @@ const LoadForm = ({
       setError(dateOrderError);
       return;
     }
+    // Attribution is the fuel for the whole inbound gauge — required on every
+    // NEW load. Editing a legacy (null) load stays legal.
+    if (!initialData && !formData.booked_via) {
+      setError("How'd this load come to you? Pick one — it takes two taps.");
+      return;
+    }
     try {
       await onSubmit(formData);
       onSuccess();
@@ -705,6 +713,29 @@ const LoadForm = ({
                 </Select>
               </div>
             )}
+            {/* Attribution — who initiated this booking (relationship system) */}
+            <div>
+              <Label>
+                How’d this load come to you?{!initialData && <span className="text-destructive"> *</span>}
+              </Label>
+              <div className="inline-flex border rounded-md overflow-hidden mt-1" style={{ borderColor: "var(--color-hairline, #2a3347)" }}>
+                {(
+                  [
+                    ["agent_reached_out", "Agent reached out"],
+                    ["i_reached_out", "I reached out"],
+                  ] as const
+                ).map(([v, label]) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, booked_via: v })}
+                    className={`px-3 py-1.5 text-sm ${formData.booked_via === v ? "bg-primary text-primary-foreground font-semibold" : "text-muted-text"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* Broker selects */}
             <div className="flex gap-2 items-end">
               <div className="flex-1">
