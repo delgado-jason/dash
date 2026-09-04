@@ -2153,8 +2153,17 @@ const GuidePage = () => {
               you ran for. Dash drafts and logs —{" "}
               <span className="text-light">you send from your own email and
               phone</span>; an agent can smell an automated thank-you a mile
-              out. First Friday monthly: fifteen minutes of retiering off the
-              drift chips. Every touch lands in the agent’s{" "}
+              out. First Friday monthly: fifteen minutes with{" "}
+              <span className="text-light">THE MONTHLY REVIEW</span> — every
+              tiered agent's trailing <span className="text-light">90 days</span>{" "}
+              (a single month is noise at ~8 loads; the quarter is evidence):
+              loads, revenue, rate grade, inbound %, last-load recency, and
+              touches given, with an advisory move chip whose reasoning prints
+              under it. ▲ needs 3+ loads (a cold-pool conversion promotes on
+              its first — converting IS the evidence); ▼ on a Tier 1 needs the
+              full quarter quiet with your touches cited; under the bar it says
+              THIN — NO VERDICT instead of faking a grade. COPY REPORT drops
+              the table as plain text for your records. Every touch lands in the agent’s{" "}
               <span className="text-light">activity timeline</span> (their
               detail page) alongside notes and rating changes — and a mis-log
               deletes with one tap; the metrics recompute, nothing rots.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -23,6 +23,10 @@ import {
   closeOutPending, inboundShare, inboundByTier, inboundTrend, coldFunnel,
 } from "@/lib/metrics/relationships";
 import { capacityDraft, closeOutDraft } from "@/lib/relationshipTemplates";
+import { useRateTargets } from "@/hooks/useRateTargets";
+import {
+  reviewWindow, defaultReviewMonth, buildReview, reviewReportText, type Move,
+} from "@/lib/metrics/monthlyReview";
 import { isDispatcher } from "@/lib/roles";
 import { Link } from "react-router";
 
@@ -49,6 +53,14 @@ const copyText = (t: string) => {
 };
 
 const T1_CAP = 8;
+
+const MOVE_META: Record<Move, { label: (r: { tier: number }) => string; style: keyof typeof chipStyle }> = {
+  up: { label: (r) => `▲ CONSIDER T${Math.max(1, r.tier - 1)}`, style: "ok" },
+  down: { label: (r) => `▼ CONSIDER T${Math.min(3, r.tier + 1)}`, style: "due" },
+  hold: { label: () => "HOLD", style: "plain" },
+  thin: { label: () => "THIN — NO VERDICT", style: "drift" },
+};
+
 
 const RelationshipsPage = () => {
   const { loads } = useLoads(0);
@@ -97,6 +109,26 @@ const RelationshipsPage = () => {
   const tierShare = useMemo(() => inboundByTier(agents, loads ?? [], ninetyAgo, nowKey), [agents, loads, ninetyAgo, nowKey]);
   const trend = useMemo(() => inboundTrend(loads ?? []), [loads]);
   const funnel = useMemo(() => coldFunnel(agents, contacts, loads ?? []), [agents, contacts, loads]);
+
+  // THE MONTHLY REVIEW — review monthly, judge on the trailing 90 days.
+  const targets = useRateTargets(loads ?? []);
+  const [reviewMonth, setReviewMonth] = useState(() => defaultReviewMonth(new Date()));
+  const win = useMemo(() => reviewWindow(reviewMonth, now), [reviewMonth, now]);
+  const reviewRows = useMemo(() => {
+    const dataTiers = new Map([...scorecards].map(([id, sc]) => [id, sc.tier]));
+    return buildReview(
+      agents, loads ?? [], contacts, dataTiers,
+      targets.basis.breakEvenRpm, targets.tiers, win, now,
+    );
+  }, [agents, loads, contacts, scorecards, targets, win, now]);
+  const stepMonth = (d: number) => {
+    const [y, m] = reviewMonth.split("-").map(Number);
+    const nx = new Date(Date.UTC(y, m - 1 + d, 1));
+    const nxKey = nx.toISOString().slice(0, 7);
+    // Never step past the CURRENT month — a wholly-future window is a
+    // phantom that clamps into a duplicate of today's view.
+    if (nxKey <= nowKey.slice(0, 7)) setReviewMonth(nxKey);
+  };
 
   const revenueOf = useMemo(() => {
     const m = new Map<string, { rev: number; n: number }>();
@@ -463,6 +495,96 @@ const RelationshipsPage = () => {
           </div>
         </div>
 
+
+        {/* THE MONTHLY REVIEW */}
+        <div className="ds2-board mt-4 overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>THE MONTHLY REVIEW</span>
+            <span className="font-display text-[16px] tracking-[.05em] flex items-center gap-2">
+              <button className="text-faint hover:text-ink" onClick={() => stepMonth(-1)} aria-label="previous window">‹</button>
+              {win.label}
+              <button className="text-faint hover:text-ink" onClick={() => stepMonth(1)} aria-label="next window">›</button>
+            </span>
+            <span className="font-condensed text-[11px] text-faint">trailing 90 days · reviewed monthly</span>
+            <button
+              className={`ml-auto ${BTN_GHOST}`}
+              onClick={() => copyText(reviewReportText(reviewRows, win))}
+            >
+              Copy report
+            </button>
+          </div>
+          {reviewRows.length === 0 ? (
+            <p className="text-xs text-muted-text px-4 py-6">no activity in this window yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px] tabular-nums font-condensed" style={{ borderCollapse: "collapse" }}>
+                <thead>
+                  <tr className="text-[10.5px] tracking-[.1em] uppercase text-faint">
+                    {["Agent", "Loads · 90d", "Net revenue", "Net $/mi", "Rate", "Inbound", "Last load", "Touches out/in", "Move"].map((h, i) => (
+                      <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-3 py-2 border-b border-hairline whitespace-nowrap`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviewRows.map((r, i) => {
+                    const sep = i === 0 || reviewRows[i - 1].tier !== r.tier;
+                    const meta = MOVE_META[r.move];
+                    const recTone =
+                      r.lastLoadDays == null ? "var(--color-faint)"
+                      : r.lastLoadDays > 60 ? "#f08a8a"
+                      : r.lastLoadDays > 30 ? "#f5c37a"
+                      : "var(--color-ink)";
+                    const gradeTone =
+                      r.rateGrade === "strong" ? "var(--color-ok)"
+                      : r.rateGrade === "target" ? "var(--color-amber-hi)"
+                      : r.rateGrade === "minimum" ? "var(--color-dim)"
+                      : r.rateGrade === "below" ? "#f08a8a"
+                      : "var(--color-faint)";
+                    return (
+                      <Fragment key={r.agent.agent_id}>
+                        {sep && (
+                          <tr>
+                            <td colSpan={9} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[13px] tracking-[.08em] text-amber-hi" style={{ background: "rgba(232,148,10,.05)" }}>
+                              TIER {r.tier}
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                        <td className="text-left px-3 py-2 border-b border-hairline-lo">
+                          <button className="hover:underline underline-offset-4 font-semibold" onClick={() => {
+                            const full = agents.find((a) => a.agent_id === r.agent.agent_id);
+                            if (full) setActionFor(full);
+                          }}>
+                            {nameOf(r.agent)}
+                          </button>
+                        </td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo">{r.loads90}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo">{money(r.netRevenue)}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo">{r.netRpm != null ? `$${r.netRpm.toFixed(2)}` : "—"}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo" style={{ color: gradeTone }}>{r.rateGrade ?? "—"}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo">{r.inbound != null ? pct0(r.inbound) : "—"}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo" style={{ color: recTone }}>{r.lastLoadDays != null ? `${r.lastLoadDays}d` : "never"}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo">{r.touchesOut} / {r.touchesIn}</td>
+                        <td className="text-right px-3 py-2 border-b border-hairline-lo" style={{ maxWidth: 260 }}>
+                          <span className={CHIP} style={chipStyle[meta.style]}>{meta.label(r)}</span>
+                          {r.move !== "hold" && (
+                            <span className="block text-[10.5px] text-faint mt-0.5 text-right">{r.why}</span>
+                          )}
+                        </td>
+                        </tr>
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11px] text-faint leading-[1.5]">
+            evidence rules: ▲ needs 3+ loads with the data saying call-first (a cold-pool conversion promotes on its
+            first load — converting IS the evidence) · ▼ on a Tier 1 needs the full quarter quiet, touches cited ·
+            under 3 loads → THIN, never a fake grade · last-load amber past 30d, red past 60d · tap a name to retier.
+          </div>
+        </div>
         {touchFor && (
           <TouchPopup
             agent={touchFor.agent}
