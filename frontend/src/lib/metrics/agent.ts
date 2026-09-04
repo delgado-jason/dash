@@ -2,6 +2,7 @@ import type { Load } from "@/types/load";
 import type { AgentNote } from "@/types/agentNote";
 import type { AgentRatingHistory } from "@/types/agentRatingHistory";
 import type { TimelineEvent } from "@/types/timelineEvent";
+import type { AgentContact } from "@/services/agentContactsService";
 
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
@@ -99,10 +100,12 @@ export const getTotalLoads = (loads: Load[] | null): number | null => {
   return getLoadCount(loads) + getCancelledCount(loads);
 };
 
-// ---- BUILD A TIMELINE ---- builds a timeline with two different data shapes
+// ---- BUILD A TIMELINE ---- one activity stream: notes, rating changes, and
+// relationship touches, most recent first.
 export const buildTimeline = (
   notes: AgentNote[],
   ratings: AgentRatingHistory[],
+  touches: AgentContact[] = [],
 ): TimelineEvent[] => {
   const noteEvent: TimelineEvent[] = notes.map((note) => ({
     type: "note",
@@ -116,7 +119,13 @@ export const buildTimeline = (
     data: rating,
   }));
 
-  const events = [...noteEvent, ...ratingEvent];
+  const touchEvent: TimelineEvent[] = touches.map((t) => ({
+    type: "touch",
+    timestamp: t.contacted_at,
+    data: t,
+  }));
+
+  const events = [...noteEvent, ...ratingEvent, ...touchEvent];
 
   // Sort the array by timestamp. Most recent first
   events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));

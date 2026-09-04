@@ -235,6 +235,27 @@ describe("getTotalLoads", () => {
 
 // ---- BUILD A TIMELINE ---- builds a timeline with two different data shapes
 describe("buildTimeline", () => {
+  it("weaves TOUCHES into the stream, sorted with everything else", () => {
+    const notes = [
+      { id: "n1", agent_id: "a", note: "note", created_at: "2026-09-01T10:00:00Z", created_by: "JD" },
+    ];
+    const touches = [
+      {
+        contact_id: "t1", agent_id: "a", contacted_at: "2026-09-02T10:00:00Z",
+        direction: "outbound" as const, method: "call" as const, type: "appreciation" as const,
+        note: null, load_id: null,
+      },
+      {
+        contact_id: "t2", agent_id: "a", contacted_at: "2026-08-30T10:00:00Z",
+        direction: "inbound" as const, method: "email" as const, type: "inbound_inquiry" as const,
+        note: null, load_id: null,
+      },
+    ];
+    const r = buildTimeline(notes, [], touches);
+    expect(r.map((e) => e.type)).toEqual(["touch", "note", "touch"]); // newest first
+    expect(r[0].type === "touch" && r[0].data.contact_id).toBe("t1");
+  });
+
   it("builds a timeline with two different data shapes", () => {
     const notes = [
       {
