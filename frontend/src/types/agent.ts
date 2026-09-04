@@ -11,6 +11,13 @@ export interface Agent {
   notes?: string | null;
   // Manual relationship-bucket override. null/absent = auto (derived from loads).
   agent_class?: "direct" | "spot" | null;
+  // Relationship system (2026-09-03): the tier is the OWNER'S call (1/2/3,
+  // default 3); city/state/source describe prospects for the cold pool.
+  relationship_tier: number;
+  tier_set_at?: string | null;
+  agent_city?: string | null;
+  agent_state?: string | null;
+  source?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -17,6 +17,7 @@ import MarketPage from "@/pages/MarketPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import StatusPage from "@/pages/StatusPage";
 import CashFlowPage from "@/pages/CashFlowPage";
+import RelationshipsPage from "@/pages/RelationshipsPage";
 import MaintenancePage from "@/pages/MaintenancePage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
@@ -93,6 +94,9 @@ const App = () => {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/dispatcher/:id" element={<DispatcherPage />} />
           <Route path="/forge" element={<DispatchForgePage />} />
+          {/* Brandie's workflow — the ritual, touches, prospects; tier
+              controls are gated inside the page (owner only). */}
+          <Route path="/relationships" element={<RelationshipsPage />} />
 
           {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
           <Route element={<AdminRoute />}>

@@ -6,6 +6,9 @@ export interface Load {
   broker_id: string;
   broker: string;
   agent_id: string;
+  // Attribution (relationship system): who initiated this booking. Required
+  // on NEW loads by the form; legacy nulls sit outside every inbound %.
+  booked_via?: "agent_reached_out" | "i_reached_out" | null;
   agent: string;
   agent_email: string | null;
   shipper_name?: string | null;

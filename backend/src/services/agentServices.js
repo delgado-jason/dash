@@ -16,6 +16,11 @@ export async function getAgents(user_id) {
             brokers.broker_name AS broker_name,
             first_name,
             last_name,
+            relationship_tier,
+            tier_set_at,
+            agent_city,
+            agent_state,
+            source,
             agents.phone AS phone,
             agents.email AS email,
             preferred_contact,
@@ -49,6 +54,11 @@ export async function getAgent(user_id, agent_id) {
             brokers.broker_name AS broker_name,
             agents.first_name AS first_name,
             agents.last_name AS last_name,
+            agents.relationship_tier AS relationship_tier,
+            agents.tier_set_at AS tier_set_at,
+            agents.agent_city AS agent_city,
+            agents.agent_state AS agent_state,
+            agents.source AS source,
             agents.phone AS phone,
             agents.email AS email,
             agents.preferred_contact AS preferred_contact,
@@ -173,6 +183,10 @@ export async function createAgent(user_id, data) {
     "rating",
     "notes",
     "agent_class",
+    "relationship_tier",
+    "agent_city",
+    "agent_state",
+    "source",
   ];
 
   for (const field in data) {
@@ -232,6 +246,11 @@ export async function patchAgent(user_id, agent_id, data) {
     "rating",
     "notes",
     "agent_class",
+    "relationship_tier",
+    "tier_set_at", // injected server-side on retier — never client-set
+    "agent_city",
+    "agent_state",
+    "source",
   ];
 
   // Throw error if data contains invalid field(s)
@@ -240,6 +259,14 @@ export async function patchAgent(user_id, agent_id, data) {
       throw new ValidationError(`${field} not allowed`);
   }
   // ---- VALIDATION LOGIC ----
+
+  // tier_set_at is SERVER truth — a client-sent value is dropped, then the
+  // retier (if any) stamps it fresh.
+  delete agentData.tier_set_at;
+  // Retiering stamps WHEN the call was made — server-side, not client-claimed.
+  if (agentData.relationship_tier !== undefined) {
+    agentData.tier_set_at = new Date().toISOString();
+  }
 
   // Must pass validation checks before query request
   const errors = validateAgentPatch(agentData);
