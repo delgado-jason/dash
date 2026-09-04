@@ -2142,8 +2142,8 @@ const GuidePage = () => {
           >
             <Why>
               Tiers are <span className="text-light">your call</span> — Tier 1
-              (max 8) gets weekly attention, Tier 2 bi-weekly, Tier 3 quarterly
-              plus the cold pool. Blue chips flag where the data disagrees with
+              (max 5) gets weekly attention, Tier 2 (max 10) bi-weekly, Tier 3
+              quarterly plus the cold pool. Blue chips flag where the data disagrees with
               your placement (a Tier 2 performing call-first, a Tier 1 going
               cold) — same gut-vs-data grammar as the star-rating flags. The
               week runs itself: Monday capacity email to Tier 1 (the empty line
@@ -2153,8 +2153,8 @@ const GuidePage = () => {
               you ran for. Dash drafts and logs —{" "}
               <span className="text-light">you send from your own email and
               phone</span>; an agent can smell an automated thank-you a mile
-              out. First Friday monthly: fifteen minutes with{" "}
-              <span className="text-light">THE MONTHLY REVIEW</span> — every
+              out. First Friday monthly: fifteen minutes with the{" "}
+              <span className="text-light">MONTHLY REVIEW tab</span> — every
               tiered agent's trailing <span className="text-light">90 days</span>{" "}
               (a single month is noise at ~8 loads; the quarter is evidence):
               loads, revenue, rate grade, inbound %, last-load recency, and
