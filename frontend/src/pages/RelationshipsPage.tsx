@@ -23,6 +23,7 @@ import {
   closeOutPending, inboundShare, inboundByTier, inboundTrend, coldFunnel,
 } from "@/lib/metrics/relationships";
 import { capacityDraft, closeOutDraft } from "@/lib/relationshipTemplates";
+import { isDispatcher } from "@/lib/roles";
 
 const money = (n: number): string => `$${Math.round(n).toLocaleString("en-US")}`;
 const pct0 = (n: number): string => `${Math.round(n * 100)}%`;
@@ -445,6 +446,7 @@ const RelationshipsPage = () => {
             agent={actionFor}
             t1Count={byTier[1].length}
             busy={busy}
+            canRetier={!isDispatcher()}
             onTouch={() => {
               setTouchFor({ agent: actionFor });
               setActionFor(null);
@@ -574,11 +576,14 @@ const TouchPopup = ({
 };
 
 const AgentActionPopup = ({
-  agent, t1Count, busy, onTouch, onRetier, onClose,
+  agent, t1Count, busy, canRetier, onTouch, onRetier, onClose,
 }: {
   agent: Agent;
   t1Count: number;
   busy: boolean;
+  // Tiers are the OWNER'S call — the dispatcher runs the ritual (touches,
+  // prospects, close-outs) but never moves an agent between tiers.
+  canRetier: boolean;
   onTouch: () => void;
   onRetier: (tier: number) => void;
   onClose: () => void;
@@ -593,27 +598,35 @@ const AgentActionPopup = ({
       </div>
       <div className="p-5">
         <button className={`${BTN} w-full py-2`} onClick={onTouch}>Log a touch</button>
-        <span className={LBL}>Move to tier</span>
-        <div className="flex gap-2">
-          {[1, 2, 3].map((t) => {
-            const isCurrent = agent.relationship_tier === t;
-            const capped = t === 1 && !isCurrent && t1Count >= T1_CAP;
-            return (
-              <button
-                key={t}
-                disabled={busy || isCurrent || capped}
-                className={`${isCurrent ? BTN : BTN_GHOST} flex-1 py-2`}
-                title={capped ? `Tier 1 is full (${T1_CAP}) — demote someone first` : undefined}
-                onClick={() => onRetier(t)}
-              >
-                Tier {t}{capped ? " · full" : ""}
-              </button>
-            );
-          })}
-        </div>
-        <p className="font-condensed text-[11px] text-faint mt-3">
-          Tier 1 caps at {T1_CAP} — weekly attention diluted is weekly attention wasted.
-        </p>
+        {canRetier ? (
+          <>
+            <span className={LBL}>Move to tier</span>
+            <div className="flex gap-2">
+              {[1, 2, 3].map((t) => {
+                const isCurrent = agent.relationship_tier === t;
+                const capped = t === 1 && !isCurrent && t1Count >= T1_CAP;
+                return (
+                  <button
+                    key={t}
+                    disabled={busy || isCurrent || capped}
+                    className={`${isCurrent ? BTN : BTN_GHOST} flex-1 py-2`}
+                    title={capped ? `Tier 1 is full (${T1_CAP}) — demote someone first` : undefined}
+                    onClick={() => onRetier(t)}
+                  >
+                    Tier {t}{capped ? " · full" : ""}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="font-condensed text-[11px] text-faint mt-3">
+              Tier 1 caps at {T1_CAP} — weekly attention diluted is weekly attention wasted.
+            </p>
+          </>
+        ) : (
+          <p className="font-condensed text-[11px] text-faint mt-3">
+            Tier {agent.relationship_tier} — tiers are the owner’s call.
+          </p>
+        )}
       </div>
     </div>
   </div>
