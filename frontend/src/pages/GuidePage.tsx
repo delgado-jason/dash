@@ -323,7 +323,8 @@ const GroupHeading = ({ children }: { children: string }) => (
 const NAV: { group: string; items: string[] }[] = [
   {
     group: "The dashboard",
-    items: ["The tabbed dashboard — five views of your operation"],
+    items: [
+      "dash on your phone","The tabbed dashboard — five views of your operation"],
   },
   {
     group: "The Foreman",
@@ -550,6 +551,16 @@ const GuidePage = () => {
           >
             The dashboard
           </h2>
+
+          <Section title="dash on your phone">
+            <p className="text-sm text-muted-text">
+              dash installs like an app: open it in your phone's browser and
+              use <span className="text-light">Add to Home Screen</span>. It
+              gets its own icon, launches full-screen without browser chrome,
+              and lands on the dashboard. Same app, same login — just one tap
+              from the home screen.
+            </p>
+          </Section>
 
           <Section title="The tabbed dashboard — five views of your operation">
             <p className="text-sm text-muted-text mb-3">
