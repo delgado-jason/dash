@@ -343,6 +343,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Lane rate — typical vs blended",
       "Outstanding loads — how long money sits",
       "Two-week cash — will you clear the drafts",
+      "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
       "Per diem — the meal-allowance deduction",
@@ -1157,14 +1158,47 @@ const GuidePage = () => {
               Wednesday waits a week). No loads booked into a week yet → the
               weekly-revenue fallback, and the chip says which one you’re
               looking at. <span className="text-light">Holdbacks</span> come
-              off every week: the weekly fuel advance (drawn on the card
-              mid-trip — the Wednesday check arrives short by it) plus your
-              average per-settlement deductions, both set in ASSUMPTIONS. An
+              off every week: your real fuel cost and your real settlement
+              deductions. Since the settlement feed went live these are
+              MEASURED — fuel from your own fuel log on a rolling 30 days,
+              deductions from your actual Landstar statements — with the
+              hand-set ASSUMPTIONS as fallbacks when data is missing. An
               override replaces the settlements figure only — the holdback
               still applies, so the rows always add up the same way. The
               ending turns red under the plan’s float — the same line the
               sweep math uses on Status.
             </Why>
+          </Metric>
+
+          <Metric
+            title="The settlements — Landstar's actuals"
+            answers="What Landstar actually paid you each week, straight from parsed Contractor Statements."
+          >
+            <p className="text-sm text-muted-text mb-2">
+              The company server reads every settlement statement, proves the
+              parse against the statement's own printed totals to the penny,
+              and feeds the week into dash: revenue, fuel advances, other
+              deductions, net deposit, escrow balances. A week that's already
+              archived is never overwritten.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              Three things happen with it: the two-week board's fuel and
+              deduction lines become <span className="text-light">measured</span>{" "}
+              (30-day fuel from your log; two deduction buckets, because the
+              first settlement of each month carries the insurance stack —
+              advances excluded so fuel is never counted twice); every load
+              page gets a <span className="text-light">settlement verification</span>{" "}
+              line — Landstar's gross vs the net this page promised, penny-diffed,
+              cumulative across later adjustments; and when Landstar reaches
+              back into a paid load (admin fees, permit and escort fees hitting
+              late), the adjustment is named, dated, and counted — a named fee
+              reads amber, an unexplained shortfall reads red.
+            </p>
+            <Caveat title="FIX chips mean a load isn't in dash">
+              A settlement line for a load number dash doesn't know gets a FIX
+              chip on the settlements board — usually a load that never got
+              entered. Enter the load and the next feed links it.
+            </Caveat>
           </Metric>
 
           <Metric

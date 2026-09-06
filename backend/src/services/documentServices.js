@@ -38,7 +38,8 @@ export async function registerDocument(user_id, data) {
   if (!filename || typeof filename !== "string" || filename.length > 255)
     throw new ValidationError("Bad filename");
   if (!server_url || typeof server_url !== "string" ||
-      !server_url.startsWith(DOCS_URL_PREFIX) || server_url.length > 1000)
+      !server_url.startsWith(DOCS_URL_PREFIX) ||
+      server_url.includes("/../") || server_url.length > 1000)
     throw new ValidationError("server_url must be on the DTS file host");
   if (!sha256 || !SHA_RE.test(sha256))
     throw new ValidationError("Bad sha256");

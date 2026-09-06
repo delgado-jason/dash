@@ -48,6 +48,9 @@ import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getLoadDocuments } from "@/services/documentsService";
 import type { LoadDocument } from "@/types/document";
 import { formatDoctype } from "@/lib/formatDoctype";
+import { getLoadSettlementLines } from "@/services/settlementsService";
+import type { SettlementLine } from "@/types/settlement";
+import { loadSettlementRollup } from "@/lib/metrics/settlements";
 import {
   Dialog,
   DialogContent,
@@ -169,6 +172,7 @@ export const LoadDetailPage = () => {
   const { load, isLoading, error } = useLoad(refreshKey);
   const [route, setRoute] = useState<RouteGeo | null>(null);
   const [documents, setDocuments] = useState<LoadDocument[]>([]);
+  const [settlementLines, setSettlementLines] = useState<SettlementLine[]>([]);
   const { accessorials } = useAccessorials(accRefreshKey);
   // The booking grade — the Score engine’s verdict, worn by the load forever.
   // Basis comes from the same rolling cost engine every other surface uses.
@@ -259,9 +263,15 @@ export const LoadDetailPage = () => {
     // Reset first: navigating load A -> load B must never wear A's chips
     // while B's fetch is in flight (or if it fails).
     setDocuments([]);
+    setSettlementLines([]);
     getLoadDocuments(load.load_id)
       .then((docs) => {
         if (active) setDocuments(docs);
+      })
+      .catch(() => {});
+    getLoadSettlementLines(load.load_id)
+      .then((lines) => {
+        if (active) setSettlementLines(lines);
       })
       .catch(() => {});
     return () => {
@@ -1214,6 +1224,62 @@ export const LoadDetailPage = () => {
             </span>
           )}
         </div>
+        {(() => {
+          // display fallback (net) stays separate: the ROLLUP only gets a
+          // real expectation — Number(null) === 0 must never read "expected $0"
+          const expected =
+            load.net_revenue != null && Number.isFinite(Number(load.net_revenue))
+              ? Number(load.net_revenue)
+              : null;
+          const roll = loadSettlementRollup(settlementLines, expected);
+          if (!roll) return null;
+          const fmt = (n: number) =>
+            n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+          const chip = (bg: string, fg: string, text: string) => (
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-[.06em]"
+              style={{ backgroundColor: bg, color: fg }}
+            >
+              {text}
+            </span>
+          );
+          return (
+            <div className="mb-3 px-3 py-2.5 rounded-[9px] border border-hairline bg-well font-condensed text-[12.5px] leading-relaxed">
+              <div className="flex items-center gap-2 flex-wrap">
+                {roll.status === "unexplained"
+                  ? chip("var(--color-status-negative-bg)", "var(--color-status-negative-text)",
+                      `settled ⚠ unexplained ${fmt(roll.delta)}`)
+                  : roll.status === "none"
+                    ? chip("var(--color-status-neutral-bg)", "var(--color-status-neutral-text)",
+                        `settled · unverified ${roll.settledPeriods[0]?.slice(5) ?? ""}`)
+                    : chip("var(--color-status-positive-bg)", "var(--color-status-positive-text)",
+                        `settled ✓ ${roll.settledPeriods[0]?.slice(5) ?? ""}`)}
+                {roll.adjustments.map((a, i) => (
+                  <span key={i}>
+                    {chip(
+                      "var(--color-status-aware-bg)",
+                      "var(--color-status-aware-text)",
+                      `adjusted ${fmt(a.amount)} · ${a.period_ending.slice(5)}`,
+                    )}
+                  </span>
+                ))}
+              </div>
+              <p className="text-dim mt-1.5">
+                Landstar paid <span className="text-ink font-semibold">{fmt(roll.grossSettled)}</span>
+                {" "}gross · advances &amp; fees −{fmt(roll.advancesAndFees)}
+                {roll.adjustments.length > 0 && (
+                  <> · later adjustments {fmt(roll.adjustments.reduce((s, a) => s + a.amount, 0))}</>
+                )}
+                {" "}→ <span className="font-semibold" style={{ color: roll.status === "unexplained" ? "var(--color-status-negative-text)" : "var(--color-status-positive-text)" }}>net to date {fmt(roll.netToDate)}</span>
+                {roll.status === "unexplained" && (
+                  <span style={{ color: "var(--color-status-negative-text)" }}>
+                    {" "}· paid {fmt(Math.abs(roll.delta))} {roll.delta < 0 ? "less" : "more"} than this page promised, with no named fee behind it — worth a call
+                  </span>
+                )}
+              </p>
+            </div>
+          );
+        })()}
         {documents.length === 0 ? (
           <p className="text-sm text-faint">
             No documents filed yet — drop this load's paperwork in the DTS
