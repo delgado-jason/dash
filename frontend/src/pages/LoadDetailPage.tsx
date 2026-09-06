@@ -45,6 +45,9 @@ import {
   tonuOwed,
 } from "@/lib/detention";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getLoadDocuments } from "@/services/documentsService";
+import type { LoadDocument } from "@/types/document";
+import { formatDoctype } from "@/lib/formatDoctype";
 import {
   Dialog,
   DialogContent,
@@ -165,6 +168,7 @@ export const LoadDetailPage = () => {
   const [accRefreshKey, setAccRefreshKey] = useState(0);
   const { load, isLoading, error } = useLoad(refreshKey);
   const [route, setRoute] = useState<RouteGeo | null>(null);
+  const [documents, setDocuments] = useState<LoadDocument[]>([]);
   const { accessorials } = useAccessorials(accRefreshKey);
   // The booking grade — the Score engine’s verdict, worn by the load forever.
   // Basis comes from the same rolling cost engine every other surface uses.
@@ -242,6 +246,24 @@ export const LoadDetailPage = () => {
     getLoadRoute(load.load_id).then((r) => {
       if (active) setRoute(r);
     });
+    return () => {
+      active = false;
+    };
+  }, [load?.load_id]);
+
+  // Paperwork filed on the DTS server for this load. Non-fatal: no documents
+  // just renders the empty-state line.
+  useEffect(() => {
+    if (!load?.load_id) return;
+    let active = true;
+    // Reset first: navigating load A -> load B must never wear A's chips
+    // while B's fetch is in flight (or if it fails).
+    setDocuments([]);
+    getLoadDocuments(load.load_id)
+      .then((docs) => {
+        if (active) setDocuments(docs);
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
@@ -1177,6 +1199,48 @@ export const LoadDetailPage = () => {
             Add
           </button>
         </div>
+      </Panel>
+
+      {/* Paperwork — filed by the DTS server's ingest agent; read-only here.
+          The upload path is the DTS Inbox, not dash. */}
+      <Panel className="p-4 mt-2">
+        <div className="flex items-center justify-between mb-3">
+          <p className="font-display text-[13px] tracking-[.08em] text-dim">
+            MANIFEST · PAPERWORK
+          </p>
+          {documents.length > 0 && (
+            <span className="text-[11px] text-faint">
+              {documents.length} filed on the server
+            </span>
+          )}
+        </div>
+        {documents.length === 0 ? (
+          <p className="text-sm text-faint">
+            No documents filed yet — drop this load's paperwork in the DTS
+            Inbox and the robot files it here automatically.
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {documents.map((d) => (
+                <a
+                  key={d.document_id}
+                  href={d.server_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={d.filename}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-hairline bg-well text-amber-light hover:border-amber transition-colors"
+                >
+                  📎 {formatDoctype(d.doc_type)}
+                </a>
+              ))}
+            </div>
+            <p className="text-[11px] text-faint mt-2">
+              Documents open from the DTS server — your device must be on the
+              tailnet.
+            </p>
+          </>
+        )}
       </Panel>
       </div>
     </div>

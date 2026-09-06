@@ -362,6 +362,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Detention — a decision, not an auto-flag",
       "TONU — the dead-run fee",
       "The loads table, by color",
+      "Paperwork on a load",
       "Facility & agent scorecards",
     ],
   },
@@ -1528,6 +1529,31 @@ const GuidePage = () => {
               <span className="text-light">Detention</span> to work through
               what's owed.
             </p>
+          </Section>
+
+          <Section title="Paperwork on a load">
+            <p className="text-sm text-muted-text mb-2">
+              Every load page has a{" "}
+              <span className="text-light">MANIFEST · PAPERWORK</span> panel —
+              chips for the rate con, POD, freight bill, trip sheet, and
+              anything else filed for that load. Tap a chip to open the
+              document.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              You never upload documents in dash. Drop them (any name, any
+              mess) into the <span className="text-light">DTS Inbox</span>{" "}
+              folder on any device — the company server's filing robot renames
+              them to convention, files them in the vault, and the chip
+              appears here on its own. If the robot can't tell what something
+              is, it waits at{" "}
+              <span className="text-light">approve.dts-ops.co</span> for a
+              one-tap answer.
+            </p>
+            <Caveat title="Chips won't open off the tailnet">
+              Documents open from the company server, which lives on the
+              private tailnet — your device needs the Tailscale app signed in.
+              No tailnet, no paperwork (that's the security model working).
+            </Caveat>
           </Section>
 
           <Section title="Facility & agent scorecards">
