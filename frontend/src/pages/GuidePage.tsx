@@ -1194,6 +1194,14 @@ const GuidePage = () => {
               late), the adjustment is named, dated, and counted — a named fee
               reads amber, an unexplained shortfall reads red.
             </p>
+            <p className="text-sm text-muted-text mb-2">
+              Loads whose settled money doesn't match the load page's promise
+              wear a <span className="text-light">SETL ±$</span> chip on the
+              loads table — the disagreements surface themselves; you never
+              hunt for them. And the load page's settlement line carries an{" "}
+              <span className="text-light">open statement →</span> link that
+              opens the most recent statement that touched the load.
+            </p>
             <Caveat title="FIX chips mean a load isn't in dash">
               A settlement line for a load number dash doesn't know gets a FIX
               chip on the settlements board — usually a load that never got

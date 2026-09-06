@@ -187,3 +187,15 @@ export const loadSettlementRollup = (
     adjustments,
   };
 };
+
+// The loads-table flag: Landstar's settled gross vs dash's expected net.
+// Null = in agreement (or nothing to compare) — only a real mismatch flags.
+export const settlementDelta = (
+  grossSettled: string | number,
+  expectedNet: number | null,
+): number | null => {
+  if (expectedNet == null) return null;
+  // round to cents first — float noise must never flag a penny-equal load
+  const delta = Math.round((num(grossSettled) - expectedNet) * 100) / 100;
+  return Math.abs(delta) > 0.01 ? delta : null;
+};

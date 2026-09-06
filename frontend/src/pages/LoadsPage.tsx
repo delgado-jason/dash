@@ -3,6 +3,9 @@ import { Link } from "react-router";
 
 import type { Load } from "@/types/load";
 import { useLoads } from "@/hooks/useLoads";
+import { getSettlementsByLoad } from "@/services/settlementsService";
+import { settlementDelta } from "@/lib/metrics/settlements";
+import type { LoadSettlementSummary } from "@/types/settlement";
 import { useBrokers } from "@/hooks/useBrokers";
 import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
@@ -73,7 +76,15 @@ const Chip = ({ bg, fg, text }: { bg: string; fg: string; text: string }) => (
 );
 
 // One loads-table row, shared by the "On the road" group and the main table.
-const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
+const LoadRow = ({
+  load,
+  freeHours,
+  setlDelta,
+}: {
+  load: Load;
+  freeHours: number;
+  setlDelta?: number | null;
+}) => {
   const flag = loadFlag(load, freeHours);
   const detPaid = detentionCollected(load);
   const tonuPaid = load.load_status === "tonu" && load.tonu_paid;
@@ -99,6 +110,13 @@ const LoadRow = ({ load, freeHours }: { load: Load; freeHours: number }) => {
         {flag === "detention" && <Chip bg="#7a4718" fg="#f5c37a" text="DET" />}
         {flag === "detention-eligible" && (
           <Chip bg="transparent" fg="#8b98a9" text="det?" />
+        )}
+        {setlDelta != null && (
+          <Chip
+            bg="#3a1417"
+            fg="#f2a6a3"
+            text={`SETL ${setlDelta < 0 ? "−" : "+"}$${Math.abs(setlDelta).toFixed(0)}`}
+          />
         )}
         {detPaid && <Chip bg="#12251a" fg="#6f9a80" text="det paid" />}
         {tonuPaid && <Chip bg="#12251a" fg="#6f9a80" text="tonu paid" />}
@@ -153,12 +171,27 @@ const LoadsPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [freeHours, setFreeHours] = useState(3);
+  const [setlMap, setSetlMap] = useState<Map<string, LoadSettlementSummary>>(new Map());
 
   useEffect(() => {
     getSettlementSchedule()
       .then((s) => setFreeHours(s.detention_free_hours))
       .catch(() => {});
+    getSettlementsByLoad()
+      .then((rows) => setSetlMap(new Map(rows.map((r) => [r.load_id, r]))))
+      .catch(() => {});
   }, []);
+
+  // Landstar-vs-promise flag: settled gross against the load's expected net.
+  const deltaFor = (load: Load): number | null => {
+    const summary = setlMap.get(load.load_id);
+    if (!summary) return null;
+    const expected =
+      load.net_revenue != null && Number.isFinite(Number(load.net_revenue))
+        ? Number(load.net_revenue)
+        : null;
+    return settlementDelta(summary.gross_settled, expected);
+  };
 
   // The answering line: whatever the filters currently show, summed live —
   // the list as a spreadsheet that answers back. (Story KPIs moved to their
@@ -349,6 +382,7 @@ const LoadsPage = () => {
                     key={load.load_id}
                     load={load}
                     freeHours={freeHours}
+                    setlDelta={deltaFor(load)}
                   />
                 ))}
               </tbody>
@@ -386,7 +420,12 @@ const LoadsPage = () => {
             </thead>
             <tbody>
               {rest.map((load) => (
-                <LoadRow key={load.load_id} load={load} freeHours={freeHours} />
+                <LoadRow
+                  key={load.load_id}
+                  load={load}
+                  freeHours={freeHours}
+                  setlDelta={deltaFor(load)}
+                />
               ))}
             </tbody>
           </table>

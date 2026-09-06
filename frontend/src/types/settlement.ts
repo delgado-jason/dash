@@ -42,3 +42,12 @@ export interface SettlementLine {
   period_ending: string;
   server_url: string;
 }
+
+// Per-load rollup for the loads-table flag and the last-statement link.
+export interface LoadSettlementSummary {
+  load_id: string;
+  gross_settled: string | number;
+  last_period_ending: string;
+  last_server_url: string;
+  has_adjustments: boolean;
+}

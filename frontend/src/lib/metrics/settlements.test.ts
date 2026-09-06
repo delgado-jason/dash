@@ -6,6 +6,7 @@ import {
   settlementDateInWeek,
   depositToPeriodEnding,
   loadSettlementRollup,
+  settlementDelta,
 } from "./settlements";
 
 const s = (period_ending: string, deductions: number, advances: number) =>
@@ -186,5 +187,17 @@ describe("loadSettlementRollup", () => {
     expect(loadSettlementRollup([], 100)).toBeNull();
     const r = loadSettlementRollup([line({ revenue: 100 })], null)!;
     expect(r.status).toBe("none");
+  });
+});
+
+describe("settlementDelta", () => {
+  it("flags only real mismatches, signed", () => {
+    expect(settlementDelta(479.74, 564.74)).toBeCloseTo(-85.0, 2);
+    expect(settlementDelta(2873.02, 2873.02)).toBeNull();
+    expect(settlementDelta("2873.02", 2873.03)).toBeNull(); // within a penny
+  });
+
+  it("no expectation -> no flag, never a false alarm", () => {
+    expect(settlementDelta(100, null)).toBeNull();
   });
 });

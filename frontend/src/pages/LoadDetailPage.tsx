@@ -1233,6 +1233,10 @@ export const LoadDetailPage = () => {
               : null;
           const roll = loadSettlementRollup(settlementLines, expected);
           if (!roll) return null;
+          // the LAST statement that touched this load — the one you open
+          const lastLine = [...settlementLines].sort((a, b) =>
+            a.period_ending < b.period_ending ? -1 : 1,
+          )[settlementLines.length - 1];
           const fmt = (n: number) =>
             n.toLocaleString("en-US", { style: "currency", currency: "USD" });
           const chip = (bg: string, fg: string, text: string) => (
@@ -1263,6 +1267,17 @@ export const LoadDetailPage = () => {
                     )}
                   </span>
                 ))}
+                {lastLine && (
+                  <a
+                    href={lastLine.server_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-auto text-amber-light hover:underline text-[11.5px] font-semibold"
+                    title="The most recent statement that touched this load (tailnet)"
+                  >
+                    open statement ({lastLine.period_ending.slice(5)}) →
+                  </a>
+                )}
               </div>
               <p className="text-dim mt-1.5">
                 Landstar paid <span className="text-ink font-semibold">{fmt(roll.grossSettled)}</span>
