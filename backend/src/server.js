@@ -35,6 +35,7 @@ import routingRouter from "./routes/routingRoutes.js";
 import freightIndexRouter from "./routes/freightIndexRoutes.js";
 import vendorRouter from "./routes/vendorRoutes.js";
 import documentRouter from "./routes/documentRoutes.js";
+import settlementRouter from "./routes/settlementRoutes.js";
 import cityCoordsRouter from "./routes/cityCoordsRoutes.js";
 
 const app = express();
@@ -42,7 +43,7 @@ const app = express();
 // ---- MIDDLEWARE ----
 // Expose the sliding-session header so the browser can read the refreshed token.
 app.use(cors({ exposedHeaders: ["X-Refreshed-Token"] }));
-app.use(express.json());
+app.use(express.json({ limit: "1mb" })); // settlement feeds carry up to 500 lines
 
 // Everything this API returns is per-user, authenticated JSON, and some responses
 // carry the sliding-session X-Refreshed-Token header. Express caches by default
@@ -92,6 +93,7 @@ app.use("/routing", routingRouter);
 app.use("/freight-index", freightIndexRouter);
 app.use("/vendors", vendorRouter);
 app.use("/documents", documentRouter);
+app.use("/settlements", settlementRouter);
 app.use("/city-coords", cityCoordsRouter);
 
 app.get("/", (req, res) => {

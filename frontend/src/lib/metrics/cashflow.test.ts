@@ -321,3 +321,37 @@ describe("qboPretaxMargin — the margin lever's number", () => {
     ).toBeNull();
   });
 });
+
+describe("twoWeekLiquidity — measured per-week deductions (settlement feed)", () => {
+  const base = {
+    asOfKey: "2026-09-06",
+    beginning: 10000,
+    obligations: [],
+    weeklyPayroll: 0,
+    loads: [],
+    settlementDay: null,
+    weeklyRevenueFallback: 0,
+    weeklyFuelAdvance: 1842,
+  };
+
+  it("applies each week's own bucket when provided", () => {
+    const r = twoWeekLiquidity({
+      ...base,
+      weeklySettlementDeductions: 999, // must be ignored
+      weeklyDeductionsPerWeek: [1180, 340],
+    });
+    expect(r.weeks[0].holdback).toBeCloseTo(1842 + 1180, 2);
+    expect(r.weeks[1].holdback).toBeCloseTo(1842 + 340, 2);
+  });
+
+  it("falls back to the flat assumption when buckets are absent (legacy path unchanged)", () => {
+    const r = twoWeekLiquidity({ ...base, weeklySettlementDeductions: 500 });
+    expect(r.weeks[0].holdback).toBeCloseTo(1842 + 500, 2);
+    expect(r.weeks[1].holdback).toBeCloseTo(1842 + 500, 2);
+  });
+
+  it("clamps a negative bucket to 0 — sign slips never add phantom cash", () => {
+    const r = twoWeekLiquidity({ ...base, weeklyDeductionsPerWeek: [-50, 340] });
+    expect(r.weeks[0].holdback).toBeCloseTo(1842, 2);
+  });
+});

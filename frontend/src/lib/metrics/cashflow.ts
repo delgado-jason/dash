@@ -92,6 +92,12 @@ export interface LiquidityInput {
   // sign slip must not ADD phantom cash to every week.
   weeklyFuelAdvance?: number;
   weeklySettlementDeductions?: number;
+  // Settlement-feed era (2026-09-06): measured two-bucket deductions, one
+  // per projected week (first-settlement-of-month runs heavy — insurance).
+  // When present, beats the flat weeklySettlementDeductions. Advances are
+  // already excluded upstream; fuel rides weeklyFuelAdvance as its measured
+  // 30-day figure with the hand-set assumption as fallback.
+  weeklyDeductionsPerWeek?: [number, number];
   overrides?: [number | null, number | null]; // manual per-week settlements
 }
 
@@ -125,6 +131,7 @@ export const twoWeekLiquidity = (input: LiquidityInput): TwoWeekLiquidity => {
     asOfKey, beginning, obligations, weeklyPayroll, loads,
     settlementDay, weeklyRevenueFallback,
     weeklyFuelAdvance = 0, weeklySettlementDeductions = 0,
+    weeklyDeductionsPerWeek,
     overrides = [null, null],
   } = input;
 
@@ -160,8 +167,10 @@ export const twoWeekLiquidity = (input: LiquidityInput): TwoWeekLiquidity => {
     const loanLease = byCat("loan_lease");
     const insurance = byCat("insurance");
     const other = byCat("other");
-    const holdback =
-      Math.max(0, weeklyFuelAdvance) + Math.max(0, weeklySettlementDeductions);
+    const weekDeductions = weeklyDeductionsPerWeek
+      ? Math.max(0, weeklyDeductionsPerWeek[w])
+      : Math.max(0, weeklySettlementDeductions);
+    const holdback = Math.max(0, weeklyFuelAdvance) + weekDeductions;
     const ending =
       carry + settlements - holdback - weeklyPayroll - loanLease - insurance - other;
     const week: LiquidityWeek = {

@@ -23,6 +23,17 @@ import type { LiquidityWeek } from "@/lib/metrics/cashflow";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import type { Obligation } from "@/types/obligation";
+import { getSettlements } from "@/services/settlementsService";
+import { getFuelEntries } from "@/services/fuelService";
+import type { SettlementSummary } from "@/types/settlement";
+import type { FuelEntry } from "@/types/fuelEntry";
+import {
+  deductionBuckets,
+  weeklyFuelCost30,
+  settlementDatesForBoard,
+  depositToPeriodEnding,
+  isFirstOfMonth,
+} from "@/lib/metrics/settlements";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
 const FIELD =
@@ -55,6 +66,8 @@ const CashFlowPage = () => {
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [settlements, setSettlements] = useState<SettlementSummary[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Planning scratch — page-local, not persisted.
@@ -74,8 +87,11 @@ const CashFlowPage = () => {
       getObligations(), getCashAssumptions(), getMonthlyFinancials(),
       getForecastAdjustments(), getSettlementSchedule(),
       getPlans(), getAccounts(), getSnapshots(),
+      getSettlements(), getFuelEntries(),
     ])
-      .then(([o, a, f, adj, sched, p, acc, snaps]) => {
+      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel]) => {
+        if (setl.status === "fulfilled") setSettlements(setl.value);
+        if (fuel.status === "fulfilled") setFuelEntries(fuel.value);
         if (o.status === "fulfilled") setObligations(o.value);
         if (a.status === "fulfilled") setAssumptions(a.value);
         if (f.status === "fulfilled") setFinancials(f.value);
@@ -88,7 +104,7 @@ const CashFlowPage = () => {
         // The schedule 404s harmlessly for a fresh user — every other failure
         // deserves a visible flag, not a silently emptier page.
         setLoadError(
-          [o, a, f, adj, p, acc, snaps].some((r) => r.status === "rejected"),
+          [o, a, f, adj, p, acc, snaps, setl, fuel].some((r) => r.status === "rejected"),
         );
       })
       .finally(() => setLoading(false));
@@ -115,8 +131,34 @@ const CashFlowPage = () => {
   const asOfKey = useMemo(() => localDayKey(new Date()), []);
   const beginning = beginOverride ?? snapOps;
 
+  // Settlement-feed measurements (locked 2026-09-06): fuel = rolling 30d
+  // from the fuel log (cash job; the 90d window stays on cost-per-mile);
+  // deductions = two ex-advance buckets over the last 12 settlements,
+  // applied by each week's settlement-date calendar position. Hand-set
+  // assumptions remain the FALLBACK when a measurement has no data.
+  const buckets = useMemo(() => deductionBuckets(settlements), [settlements]);
+  const fuel30 = useMemo(
+    () => weeklyFuelCost30(fuelEntries, localDayKey(new Date())),
+    [fuelEntries],
+  );
+
   const liquidity = useMemo(() => {
     if (beginning == null || !assumptions) return null;
+    const measuredFuel = fuel30 ?? Number(assumptions.weekly_fuel_advance ?? 0);
+    let perWeek: [number, number] | undefined;
+    if (settlementDay != null && (buckets.firstOfMonth != null || buckets.standard != null)) {
+      const dates = settlementDatesForBoard(asOfKey, settlementDay);
+      const samplePe = settlements[0]?.period_ending;
+      perWeek = dates.map((d) => {
+        // deposits lag period endings — the bucket belongs to the STATEMENT
+        // week, or the insurance-heavy holdback lands on the wrong board week
+        const pe = samplePe ? depositToPeriodEnding(d, samplePe) : d;
+        const bucket = isFirstOfMonth(pe)
+          ? (buckets.firstOfMonth ?? buckets.standard)
+          : (buckets.standard ?? buckets.firstOfMonth);
+        return bucket ?? Number(assumptions.weekly_settlement_deductions ?? 0);
+      }) as [number, number];
+    }
     return twoWeekLiquidity({
       asOfKey,
       beginning,
@@ -125,11 +167,12 @@ const CashFlowPage = () => {
       loads: loads ?? [],
       settlementDay,
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
-      weeklyFuelAdvance: Number(assumptions.weekly_fuel_advance ?? 0),
+      weeklyFuelAdvance: measuredFuel,
       weeklySettlementDeductions: Number(assumptions.weekly_settlement_deductions ?? 0),
+      weeklyDeductionsPerWeek: perWeek,
       overrides: setlOverride,
     });
-  }, [beginning, assumptions, obligations, loads, settlementDay, asOfKey, setlOverride]);
+  }, [beginning, assumptions, obligations, loads, settlementDay, asOfKey, setlOverride, buckets, fuel30, settlements]);
 
   const forecast = useMemo(
     () => (assumptions ? buildForecast(financials, assumptions, adjustments) : null),
@@ -453,6 +496,138 @@ const CashFlowPage = () => {
                 </>
               )}
             </p>
+          )}
+        </div>
+
+        {/* THE SETTLEMENTS — Landstar's weekly actuals, fed by the server */}
+        <div className="ds2-board mt-4 overflow-hidden">
+          <div
+            className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
+            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+          >
+            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+              THE SETTLEMENTS
+            </span>
+            <span className="ml-auto font-condensed text-[12px] text-faint">
+              weekly deposits as Landstar actually paid them · every row reconciled to its own statement
+            </span>
+          </div>
+          {settlements.length === 0 ? (
+            <p className="px-4 py-6 font-condensed text-sm text-faint">
+              No settlements fed yet — the server's parser fills this the moment
+              statements flow (and the backfill lights up a year of history).
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px] font-condensed" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  <thead>
+                    <tr className="text-faint text-[10.5px] uppercase tracking-[.1em]">
+                      <th className="text-left px-4 py-2">Week ending</th>
+                      <th className="text-right px-3 py-2">Loads</th>
+                      <th className="text-right px-3 py-2">Revenue</th>
+                      <th className="text-right px-3 py-2">Advances</th>
+                      <th className="text-right px-3 py-2">Other deductions</th>
+                      <th className="text-right px-3 py-2">Net deposit</th>
+                      <th className="text-right px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settlements.slice(0, 6).map((s) => {
+                      const adv = Number(s.advances);
+                      const other = Number(s.deductions) - adv;
+                      return (
+                        <tr key={s.settlement_id} className="border-t ds2-cell-rule">
+                          <td className="px-4 py-2 text-ink font-semibold">
+                            <a href={s.server_url} target="_blank" rel="noreferrer" className="hover:text-amber-hi" title="Open the filed statement (tailnet)">
+                              {s.period_ending.slice(5)}
+                            </a>
+                            {isFirstOfMonth(s.period_ending) && (
+                              <span className="ml-2 text-[10px] text-faint uppercase">1st of mo</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right">{s.loads}</td>
+                          <td className="px-3 py-2 text-right">{moneyCents(Number(s.revenue))}</td>
+                          <td className="px-3 py-2 text-right text-dim">−{moneyCents(adv)}</td>
+                          <td className="px-3 py-2 text-right text-dim">−{moneyCents(other)}</td>
+                          <td className="px-3 py-2 text-right text-ink font-semibold">{moneyCents(Number(s.net))}</td>
+                          <td className="px-4 py-2 text-right">
+                            {s.unmatched_loads.length > 0 ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-negative-bg)", color: "var(--color-status-negative-text)" }} title={`Loads on the statement but not in dash: ${s.unmatched_loads.join(", ")}`}>
+                                FIX {s.unmatched_loads.length}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-positive-bg)", color: "var(--color-status-positive-text)" }}>
+                                ✓
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {settlements[0]?.adjustments.length > 0 && (
+                <div className="mx-4 my-3 px-3 py-2 rounded-[9px] border font-condensed text-[12.5px]" style={{ borderColor: "rgba(232,148,10,.35)", background: "var(--color-well, #090d15)" }}>
+                  <span className="text-amber-hi font-semibold uppercase text-[10.5px] tracking-[.08em]">
+                    Adjustments · week of {settlements[0].period_ending.slice(5)}
+                  </span>{" "}
+                  <span className="text-dim">— Landstar reached back into paid loads:</span>{" "}
+                  {settlements[0].adjustments.map((a, i) => (
+                    <span key={i} className="text-ink">
+                      {i > 0 && " · "}
+                      {a.load_id ? (
+                        <Link to={`/loads/${a.load_id}`} className="text-amber-light hover:underline">{a.load_number}</Link>
+                      ) : (
+                        a.load_number ?? "—"
+                      )}{" "}
+                      {(a.description ?? "adjustment").toLowerCase()}{" "}
+                      <span className={Number(a.amount) < 0 ? "text-hot" : "text-dim"}>
+                        {moneyCents(Number(a.amount))}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 pb-4 pt-1">
+                <div className="ds2-well rounded-[10px] px-3.5 py-3">
+                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel cost · measured · 30d</p>
+                  <p className="font-display text-[24px] text-amber-hi mt-1">
+                    {fuel30 != null ? `${money(fuel30)}/wk` : "no fuel log data"}
+                  </p>
+                  <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
+                    {fuel30 != null
+                      ? "replaces the flat advance line on the board — advances aren't burn"
+                      : `falling back to the $${Number(assumptions?.weekly_fuel_advance ?? 0)} assumption`}
+                  </p>
+                </div>
+                <div className="ds2-well rounded-[10px] px-3.5 py-3">
+                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Deductions · two buckets · ex-advances</p>
+                  <p className="font-display text-[24px] text-amber-hi mt-1">
+                    {buckets.firstOfMonth != null ? money(buckets.firstOfMonth) : "—"}
+                    <span className="text-[13px] text-faint"> 1st of mo</span>
+                    <span className="text-[15px] text-faint"> · </span>
+                    {buckets.standard != null ? money(buckets.standard) : "—"}
+                    <span className="text-[13px] text-faint"> other wks</span>
+                  </p>
+                  <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
+                    avg of last {buckets.samples} settlements — insurance makes the first week heavy
+                  </p>
+                </div>
+                <div className="ds2-well rounded-[10px] px-3.5 py-3">
+                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Escrow balances</p>
+                  <p className="font-display text-[24px] mt-1" style={{ color: "#4f8cd6" }}>
+                    {settlements[0]?.escrow_tractor == null && settlements[0]?.escrow_trailer == null
+                      ? "—"
+                      : moneyCents(Number(settlements[0]?.escrow_tractor ?? 0) + Number(settlements[0]?.escrow_trailer ?? 0))}
+                  </p>
+                  <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
+                    tractor {settlements[0]?.escrow_tractor == null ? "—" : moneyCents(Number(settlements[0].escrow_tractor))} · trailer {settlements[0]?.escrow_trailer == null ? "—" : moneyCents(Number(settlements[0].escrow_trailer))} — Landstar's hold that's still yours
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
