@@ -1,5 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { requireServiceToken } from "../middleware/requireServiceToken.js";
 import {
   getAssumptions,
   patchAssumptions,
@@ -10,7 +11,6 @@ import {
 } from "../services/cashflowServices.js";
 
 const router = express.Router();
-router.use(requireAuth);
 
 const handle = (fn) => async (req, res) => {
   try {
@@ -23,6 +23,17 @@ const handle = (fn) => async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error", message: err.message });
   }
 };
+
+// Machine read for THE BOOKS console on the DTS server: the same rows the
+// app reads, same table, same source of truth — so the two apps can never
+// disagree. Registered BEFORE the blanket requireAuth; carries its own gate.
+router.get(
+  "/financials/service",
+  requireServiceToken,
+  handle(async (req) => ({ financials: await getFinancials(req.user.user_id) })),
+);
+
+router.use(requireAuth);
 
 router.get("/assumptions", handle(async (req) => ({ assumptions: await getAssumptions(req.user.user_id) })));
 router.patch("/assumptions", handle(async (req) => ({ assumptions: await patchAssumptions(req.user.user_id, req.body) })));
