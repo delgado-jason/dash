@@ -72,17 +72,57 @@ const FINANCIAL_FIELDS = [
   "depreciation",
 ];
 
+// Fields the statement feed supplies beyond the 15-column paste (066).
+// Nullable: paste-era rows simply lack them; consumers null-check.
+const STATEMENT_FIELDS = [
+  "total_current_assets",
+  "total_current_liabilities",
+  "total_assets",
+  "loan_proceeds",
+  "principal_repayments",
+];
+
 export async function getFinancials(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT to_char(month, 'YYYY-MM-DD') AS month,
             ${FINANCIAL_FIELDS.filter((f) => f !== "month").join(", ")},
+            ${STATEMENT_FIELDS.join(", ")},
             updated_at
      FROM monthly_financials
      WHERE user_id = $1 ORDER BY month`,
     [user_id],
   );
   return result.rows;
+}
+
+// The DTS server's statement feed: ONE month per call, and it NEVER
+// overwrites an archived month — the existing archive is authoritative and
+// exports only fill months it lacks (ON CONFLICT DO NOTHING). Deliberate
+// re-feeds, if ever wanted, are a human decision made elsewhere.
+export async function feedMonth(user_id, row) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  if (!row || typeof row.month !== "string" || !/^\d{4}-\d{2}-01$/.test(row.month))
+    throw new ValidationError("month must be YYYY-MM-01");
+  const core = FINANCIAL_FIELDS.filter((f) => f !== "month");
+  for (const f of core) {
+    if (!Number.isFinite(Number(row[f])))
+      throw new ValidationError(`bad ${f}`);
+  }
+  for (const f of STATEMENT_FIELDS) {
+    if (row[f] !== undefined && row[f] !== null && !Number.isFinite(Number(row[f])))
+      throw new ValidationError(`bad ${f}`);
+  }
+  const all = ["month", ...core, ...STATEMENT_FIELDS];
+  const res = await db.query(
+    `INSERT INTO monthly_financials (user_id, ${all.join(", ")})
+     VALUES ($1, ${all.map((_, i) => `$${i + 2}`).join(", ")})
+     ON CONFLICT (user_id, month) DO NOTHING
+     RETURNING to_char(month, 'YYYY-MM-DD') AS month`,
+    [user_id, row.month, ...core.map((f) => row[f]),
+     ...STATEMENT_FIELDS.map((f) => row[f] ?? null)],
+  );
+  return { inserted: res.rowCount > 0 };
 }
 
 // Bulk upsert from the paste importer — one call, all rows, transactional so a

@@ -2,6 +2,7 @@ import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireServiceToken } from "../middleware/requireServiceToken.js";
 import {
+  feedMonth,
   getAssumptions,
   patchAssumptions,
   getFinancials,
@@ -31,6 +32,25 @@ router.get(
   "/financials/service",
   requireServiceToken,
   handle(async (req) => ({ financials: await getFinancials(req.user.user_id) })),
+);
+
+// The statement feed writes here — one month, never overwriting an
+// archived one (the archive is authoritative; exports fill gaps only).
+router.post(
+  "/financials/service",
+  requireServiceToken,
+  handle(async (req) => {
+    const r = await feedMonth(req.user.user_id, req.body);
+    return {
+      status: r.inserted ? 201 : 200,
+      body: {
+        message: r.inserted
+          ? "Month archived from statements"
+          : "Month already archived — existing data is authoritative; skipped",
+        inserted: r.inserted,
+      },
+    };
+  }),
 );
 
 router.use(requireAuth);
