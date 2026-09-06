@@ -1,5 +1,9 @@
 import api from "./api";
-import type { SettlementSummary, SettlementLine } from "@/types/settlement";
+import type {
+  SettlementSummary,
+  SettlementLine,
+  LoadSettlementSummary,
+} from "@/types/settlement";
 
 export const getSettlements = async (): Promise<SettlementSummary[]> => {
   try {
@@ -18,5 +22,14 @@ export const getLoadSettlementLines = async (
     return response.data.lines;
   } catch {
     throw new Error("Unable to fetch settlement lines");
+  }
+};
+
+export const getSettlementsByLoad = async (): Promise<LoadSettlementSummary[]> => {
+  try {
+    const response = await api.get("/settlements/by-load");
+    return response.data.rows;
+  } catch {
+    throw new Error("Unable to fetch settlement summaries");
   }
 };

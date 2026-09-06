@@ -227,3 +227,23 @@ export async function getLoadSettlement(user_id, load_id) {
   );
   return result.rows;
 }
+
+// Per-load settlement rollup for the LOADS TABLE flags and the detail page's
+// open-last-statement link: settled gross (all lines, reversals included),
+// the last statement that touched the load, adjustment presence.
+export async function getSettlementsByLoad(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT sl.load_id,
+            SUM(COALESCE(sl.revenue, 0)) AS gross_settled,
+            to_char(MAX(s.period_ending), 'YYYY-MM-DD') AS last_period_ending,
+            (ARRAY_AGG(s.server_url ORDER BY s.period_ending DESC))[1] AS last_server_url,
+            BOOL_OR(sl.is_adjustment) AS has_adjustments
+     FROM settlement_lines sl
+     JOIN settlements s ON s.settlement_id = sl.settlement_id
+     WHERE sl.user_id = $1 AND sl.load_id IS NOT NULL
+     GROUP BY sl.load_id`,
+    [user_id],
+  );
+  return result.rows;
+}

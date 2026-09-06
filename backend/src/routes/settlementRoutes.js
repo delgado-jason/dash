@@ -5,6 +5,7 @@ import {
   ingestSettlement,
   getSettlements,
   getLoadSettlement,
+  getSettlementsByLoad,
 } from "../services/settlementServices.js";
 
 const router = express.Router();
@@ -35,6 +36,20 @@ router.get("/", async (req, res) => {
       message: "Settlements retrieved successfully",
       count: settlements.length,
       settlements,
+    });
+  } catch (err) {
+    if (err.type === "validation") return res.status(err.statusCode).json({ error: err.message });
+    return res.status(500).json({ error: "Internal Server Error", message: err.message });
+  }
+});
+
+router.get("/by-load", async (req, res) => {
+  try {
+    const rows = await getSettlementsByLoad(req.user.user_id);
+    return res.status(200).json({
+      message: "Per-load settlement summaries retrieved successfully",
+      count: rows.length,
+      rows,
     });
   } catch (err) {
     if (err.type === "validation") return res.status(err.statusCode).json({ error: err.message });
