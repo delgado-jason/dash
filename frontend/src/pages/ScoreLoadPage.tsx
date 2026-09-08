@@ -257,6 +257,7 @@ const ScoreLoadPage = () => {
   const [hgt, setHgt] = useState<FtIn>({ ft: "", in: "" });
   const [loaded, setLoaded] = useState("");
   const [deadhead, setDeadhead] = useState("");
+  const [deadheadUnrouted, setDeadheadUnrouted] = useState(false);
   const [hazmat, setHazmat] = useState(false);
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
@@ -328,11 +329,21 @@ const ScoreLoadPage = () => {
       setRouting(false);
       if (res.loadedMiles == null && res.deadheadMiles == null) {
         setRouteErr(true);
+        // A failed route must never leave the PREVIOUS route's miles in the
+        // fields wearing a "routed" label — that scored real loads against
+        // another load's deadhead (2026-09-08). Clear, don't keep.
+        setLoaded("");
+        setDeadhead("");
+        setDeadheadUnrouted(false);
         setToll(null);
         return;
       }
-      if (res.loadedMiles != null) setLoaded(String(res.loadedMiles));
-      if (res.deadheadMiles != null) setDeadhead(String(res.deadheadMiles));
+      setLoaded(res.loadedMiles != null ? String(res.loadedMiles) : "");
+      setDeadhead(res.deadheadMiles != null ? String(res.deadheadMiles) : "");
+      setDeadheadUnrouted(
+        res.deadheadMiles == null &&
+          !!(truckNow.city && truckNow.state),
+      );
       setToll(res.tollUsd);
     }, 600);
     return () => {
@@ -342,7 +353,10 @@ const ScoreLoadPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickup.city, pickup.state, delivery.city, delivery.state, truckNow.city, truckNow.state, dimsKey]);
 
-  const entered = rate !== "" && loaded !== "";
+  // Deadhead is REQUIRED to score — a blank field is unknown miles, not zero
+  // miles, and unknown-as-zero flatters every verdict. Sitting at the shipper?
+  // Type 0 and mean it.
+  const entered = rate !== "" && loaded !== "" && deadhead !== "";
   const score = scoreLoad(
     { rate: Number(rate), loadedMiles: Number(loaded), deadheadMiles: Number(deadhead) },
     { costPerDrivenMile: targets.basis.costPerTotalMile, payTake: targets.basis.payTake },
@@ -378,9 +392,11 @@ const ScoreLoadPage = () => {
     ? "routing…"
     : routeErr
       ? "couldn't route — type the miles in"
-      : loaded
-        ? "routed · edit to override"
-        : "enter pickup + delivery to route";
+      : deadheadUnrouted && loaded
+        ? "loaded leg routed · deadhead didn't — type it in"
+        : loaded
+          ? "routed · edit to override"
+          : "enter pickup + delivery to route";
 
   return (
     <div className="p-4 sm:p-6">
@@ -711,7 +727,7 @@ const ScoreLoadPage = () => {
                 SCORE IT ▸
               </button>
               {!canScore && (
-                <p className="text-[11px] text-faint text-center mt-1.5">enter a rate and real miles to score</p>
+                <p className="text-[11px] text-faint text-center mt-1.5">enter a rate, loaded miles, and deadhead to score — type 0 deadhead only if the truck is already there</p>
               )}
             </>
           )}

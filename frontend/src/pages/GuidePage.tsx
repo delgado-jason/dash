@@ -849,6 +849,9 @@ const GuidePage = () => {
               $2,900 for 460 loaded + 80 deadhead = 540 miles you drive →{" "}
               <span className="text-light">$5.37/mi</span>. The deadhead is
               baked in on purpose — it's the empty cost agents leave out.
+              It's also <span className="text-light">required</span>: a blank
+              deadhead means unknown, and the scorer won't treat unknown as
+              zero. Already sitting at the shipper? Type 0 and mean it.
             </Eg>
             <Why>
               The break-even here is per{" "}
