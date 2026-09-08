@@ -2245,7 +2245,10 @@ const GuidePage = () => {
               the table as plain text for your records. Every touch lands in the agent’s{" "}
               <span className="text-light">activity timeline</span> (their
               detail page) alongside notes and rating changes — and a mis-log
-              deletes with one tap; the metrics recompute, nothing rots.
+              deletes with one tap; the metrics recompute, nothing rots. The
+              timeline shows the <span className="text-light">six most
+              recent</span> entries; SHOW ALL opens the full history, and the
+              count on that button tells you how deep it runs.
             </Why>
           </Metric>
 

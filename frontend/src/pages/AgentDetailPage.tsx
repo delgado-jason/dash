@@ -58,6 +58,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money } from "@/lib/format";
 
+// The activity timeline shows this many entries before "Show all" — recent
+// state is what most visits need; deep history stays one click away.
+const ACTIVITY_PREVIEW = 6;
+
 const fmtDate = (d?: string | null) =>
   d
     ? new Date(String(d).slice(0, 10) + "T00:00:00Z").toLocaleDateString(
@@ -82,6 +86,7 @@ const AgentDetailPage = () => {
   const [noteInitials, setNoteInitials] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const [freeHours, setFreeHours] = useState(3);
 
   useEffect(() => {
@@ -164,6 +169,9 @@ const AgentDetailPage = () => {
   const rpm = getAverageRPM(loads);
   const lastWorked = getLastLoadDate(loads);
   const logs = buildTimeline(notes, ratingHistory, touches);
+  const visibleLogs = activityExpanded
+    ? logs
+    : logs.slice(0, ACTIVITY_PREVIEW);
   const agentLoads = [...(loads ?? [])].sort((a, b) =>
     b.pickup_date.localeCompare(a.pickup_date),
   );
@@ -435,7 +443,7 @@ const AgentDetailPage = () => {
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {logs.map((log) =>
+              {visibleLogs.map((log) =>
                 log.type === "rating" ? (
                   <div
                     key={log.data.id}
@@ -506,6 +514,14 @@ const AgentDetailPage = () => {
                     </p>
                   </div>
                 ),
+              )}
+              {logs.length > ACTIVITY_PREVIEW && (
+                <button
+                  className="w-full text-center text-sm font-semibold text-amber-light hover:text-amber border-t border-[#8494ab]/15 mt-1 pt-2.5"
+                  onClick={() => setActivityExpanded((p) => !p)}
+                >
+                  {activityExpanded ? "Show less" : `Show all ${logs.length}`}
+                </button>
               )}
             </div>
           )}
