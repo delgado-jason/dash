@@ -59,7 +59,10 @@ export const geocode = async (city, state) => {
   const res = await fetch(`${GEOCODE_URL}?${params}`);
   if (!res.ok) throw new Error(`HERE geocode failed (${res.status})`);
   const coords = parseGeocode(await res.json());
-  geoCache.set(key, coords);
+  // Cache HITS only. Caching a null pinned one transient empty response into
+  // every later route for the life of the process (weeks on Railway) — the
+  // deadhead leg then silently failed on every score (2026-09-08).
+  if (coords) geoCache.set(key, coords);
   return coords;
 };
 

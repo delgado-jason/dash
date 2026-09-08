@@ -1,6 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
+  geocode,
   metersToMiles,
   inchesToCm,
   poundsToKg,
@@ -214,5 +215,38 @@ describe("parseCitySuggestions", () => {
       { city: "Austin", state: "TX", label: "Austin, TX" },
     ]);
     assert.deepEqual(parseCitySuggestions({}), []);
+  });
+});
+
+describe("geocode cache", () => {
+  test("a no-match response is NOT cached — the next call retries and succeeds", async () => {
+    const realFetch = global.fetch;
+    const realKey = process.env.HERE_API_KEY;
+    process.env.HERE_API_KEY = "test-key";
+    let calls = 0;
+    global.fetch = async () => {
+      calls += 1;
+      return {
+        ok: true,
+        json: async () =>
+          calls === 1
+            ? { items: [] } // transient empty answer — must not poison the cache
+            : { items: [{ position: { lat: 32.5, lng: -94.74 } }] },
+      };
+    };
+    try {
+      const first = await geocode("Cachetestville", "TX");
+      assert.equal(first, null);
+      const second = await geocode("Cachetestville", "TX");
+      assert.deepEqual(second, { lat: 32.5, lng: -94.74 });
+      assert.equal(calls, 2); // it went back to the network — null was not cached
+      const third = await geocode("Cachetestville", "TX");
+      assert.deepEqual(third, { lat: 32.5, lng: -94.74 });
+      assert.equal(calls, 2); // the HIT was cached
+    } finally {
+      global.fetch = realFetch;
+      if (realKey === undefined) delete process.env.HERE_API_KEY;
+      else process.env.HERE_API_KEY = realKey;
+    }
   });
 });
