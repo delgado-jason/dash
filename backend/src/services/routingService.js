@@ -1,7 +1,7 @@
 // Load-scoring mileage + route geometry, provider-agnostic. Talks to hereProvider
 // today; swap that import to change providers. Everything here is an ESTIMATE for
 // scoring/visualizing a load — the odometer stays the single source of truth.
-import { geocode, routeMiles, routeMilesAndTolls } from "./hereProvider.js";
+import { geocodeCity, routeMiles, routeMilesAndTolls } from "./hereProvider.js";
 
 // One leg's miles: geocode both ends, then route between them with the load's
 // dims. Self-contained try/catch so a failure on one leg never sinks the other
@@ -10,8 +10,8 @@ async function legMiles(from, to, dims) {
   try {
     if (!from?.city || !from?.state || !to?.city || !to?.state) return null;
     const [a, b] = await Promise.all([
-      geocode(from.city, from.state),
-      geocode(to.city, to.state),
+      geocodeCity(from.city, from.state),
+      geocodeCity(to.city, to.state),
     ]);
     if (!a || !b) return null;
     const mi = await routeMiles(a, b, dims);
@@ -28,8 +28,8 @@ async function legMilesAndTolls(from, to, dims) {
     if (!from?.city || !from?.state || !to?.city || !to?.state)
       return { miles: null, tollUsd: null };
     const [a, b] = await Promise.all([
-      geocode(from.city, from.state),
-      geocode(to.city, to.state),
+      geocodeCity(from.city, from.state),
+      geocodeCity(to.city, to.state),
     ]);
     if (!a || !b) return { miles: null, tollUsd: null };
     const { miles, tollUsd } = await routeMilesAndTolls(a, b, dims);
@@ -62,7 +62,7 @@ export async function routeGeo({ deadheadOrigin, pickup, delivery } = {}) {
   const geo = async (p) => {
     if (!p?.city || !p?.state) return null;
     try {
-      const c = await geocode(p.city, p.state);
+      const c = await geocodeCity(p.city, p.state);
       return c ? { lat: c.lat, lng: c.lng, city: p.city.trim(), state: p.state.trim() } : null;
     } catch {
       return null;

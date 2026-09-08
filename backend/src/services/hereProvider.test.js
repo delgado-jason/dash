@@ -2,6 +2,8 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   geocode,
+  parseAutocompleteCity,
+  parseLookup,
   metersToMiles,
   inchesToCm,
   poundsToKg,
@@ -248,5 +250,34 @@ describe("geocode cache", () => {
       if (realKey === undefined) delete process.env.HERE_API_KEY;
       else process.env.HERE_API_KEY = realKey;
     }
+  });
+});
+
+describe("parseAutocompleteCity — prominence pick + twin refusal", () => {
+  const item = (city, st, label, id) => ({ id, address: { city, stateCode: st, label } });
+  test("picks the top exact match; a name variant (Twp) never blocks it", () => {
+    const json = { items: [
+      item("Walker", "MI", "Walker, MI, United States", "id-real"),
+      item("Walker Twp", "MI", "Walker Twp, MI, United States", "id-twp"),
+      item("Midway", "TX", "Midway, TX, United States", "id-junk"),
+    ]};
+    assert.deepEqual(parseAutocompleteCity(json, "Walker", "MI"), { status: "ok", id: "id-real" });
+  });
+  test("two identical same-state labels = twins -> ambiguous, never a guess", () => {
+    const json = { items: [
+      item("Milford", "IN", "Milford, IN, United States", "id-north"),
+      item("Milford", "IN", "Milford, IN, United States", "id-south"),
+    ]};
+    assert.equal(parseAutocompleteCity(json, "Milford", "IN").status, "ambiguous");
+  });
+  test("no exact same-state match -> none (falls back to plain geocode)", () => {
+    const json = { items: [item("Walker Twp", "MI", "Walker Twp, MI, United States", "x")] };
+    assert.equal(parseAutocompleteCity(json, "Walker", "MI").status, "none");
+    assert.equal(parseAutocompleteCity({}, "Walker", "MI").status, "none");
+  });
+  test("parseLookup extracts a position and rejects junk", () => {
+    assert.deepEqual(parseLookup({ position: { lat: 43.0, lng: -85.7 } }), { lat: 43.0, lng: -85.7 });
+    assert.equal(parseLookup({ position: { lat: "43" } }), null);
+    assert.equal(parseLookup({}), null);
   });
 });

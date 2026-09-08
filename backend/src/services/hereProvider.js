@@ -10,6 +10,7 @@
 const GEOCODE_URL = "https://geocode.search.hereapi.com/v1/geocode";
 const ROUTER_URL = "https://router.hereapi.com/v8/routes";
 const AUTOCOMPLETE_URL = "https://autocomplete.search.hereapi.com/v1/autocomplete";
+const LOOKUP_URL = "https://lookup.search.hereapi.com/v1/lookup";
 
 // ---- unit conversions (pure) ----
 export const metersToMiles = (m) => m / 1609.344;
@@ -218,6 +219,87 @@ export const routeMilesAndTolls = async (from, to, dims) => {
     miles: meters == null ? null : metersToMiles(meters),
     tollUsd: parseRouteTolls(json),
   };
+};
+
+// ---- prominence-aware city geocoding (the scoring path) ----
+// Plain /geocode's top hit is a text match, not the place a human means:
+// "Walker, MI" returned Walker Twp near Mackinac (not the Grand Rapids city),
+// putting 476 phantom deadhead miles on a scored load (2026-09-09). The
+// autocomplete index ranks by prominence, so its first same-state hit is the
+// city a load posting means; /lookup turns that hit's id into coordinates.
+//
+// The unsolvable case is real twins: HERE holds TWO localities both labeled
+// "Milford, IN". No provider can pick the right one from city+state text —
+// Google guesses popular, HERE guesses the other one. We refuse to guess:
+// twins come back AMBIGUOUS and the leg goes unrouted, so the human types
+// the miles instead of trusting a coin flip.
+
+// Pure: autocomplete response + requested city/state →
+// { status: "ok", id } | { status: "ambiguous", label } | { status: "none" }.
+// Only exact same-state city-name matches count; a name variant ("Walker Twp")
+// never blocks the exact match, and cross-state fuzz ("Midway, TX") is dropped.
+export const parseAutocompleteCity = (json, city, state) => {
+  const items = Array.isArray(json?.items) ? json.items : [];
+  const wantCity = String(city ?? "").trim().toUpperCase();
+  const wantSt = String(state ?? "").trim().toUpperCase();
+  const exact = items.filter((i) => {
+    const a = i?.address;
+    return (
+      !!i?.id &&
+      a?.stateCode?.toUpperCase() === wantSt &&
+      a?.city?.trim()?.toUpperCase() === wantCity
+    );
+  });
+  if (exact.length === 0) return { status: "none" };
+  const top = exact[0];
+  const topLabel = (top.address?.label ?? "").toUpperCase();
+  const twins = exact.filter(
+    (i) => (i.address?.label ?? "").toUpperCase() === topLabel,
+  );
+  if (twins.length > 1) return { status: "ambiguous", label: top.address?.label };
+  return { status: "ok", id: top.id };
+};
+
+// Pure: /lookup response → { lat, lng } | null.
+export const parseLookup = (json) => {
+  const pos = json?.position;
+  if (!pos || typeof pos.lat !== "number" || typeof pos.lng !== "number")
+    return null;
+  return { lat: pos.lat, lng: pos.lng };
+};
+
+// city/state → { lat, lng } via autocomplete prominence, falling back to the
+// plain geocoder for places too small for the city index. null when
+// unconfigured, unmatched, or AMBIGUOUS (twins — the caller must not guess).
+export const geocodeCity = async (city, state) => {
+  if (!hasKey() || !city || !state) return null;
+  const key = `CITY:${city.trim()}, ${state.trim()}`.toUpperCase();
+  if (geoCache.has(key)) return geoCache.get(key);
+
+  const params = new URLSearchParams({
+    q: `${city.trim()}, ${state.trim()}`,
+    in: "countryCode:USA",
+    types: "city",
+    limit: "5",
+    apiKey: process.env.HERE_API_KEY,
+  });
+  const res = await fetch(`${AUTOCOMPLETE_URL}?${params}`);
+  if (!res.ok) throw new Error(`HERE autocomplete failed (${res.status})`);
+  const pick = parseAutocompleteCity(await res.json(), city, state);
+
+  if (pick.status === "ambiguous") return null; // twins: never guess, never cache
+  if (pick.status === "ok") {
+    const lres = await fetch(
+      `${LOOKUP_URL}?${new URLSearchParams({ id: pick.id, apiKey: process.env.HERE_API_KEY })}`,
+    );
+    if (!lres.ok) throw new Error(`HERE lookup failed (${lres.status})`);
+    const coords = parseLookup(await lres.json());
+    if (coords) {
+      geoCache.set(key, coords);
+      return coords;
+    }
+  }
+  return geocode(city, state); // tiny places live only in the geocode index
 };
 
 // ---- city autocomplete ----
