@@ -68,15 +68,19 @@ describe("buildReview — the evidence rules, as printed", () => {
     expect(thin.move).toBe("thin");
   });
 
-  it("▼ on a T1 needs the quarter quiet AND 60+ days cold; the why cites touches", () => {
+  it("▼ on a T1 needs the quarter quiet AND 60+ days cold; the why cites days touched", () => {
     const loads = [load({ delivery_date: "2026-06-10" })]; // 1 load, 86d before NOW
     const contacts = Array.from({ length: 4 }, (_, i) =>
       touch({ contacted_at: `2026-08-0${i + 1}T10:00:00Z` }),
     );
+    // a second log on an already-touched day must NOT inflate the count —
+    // out counts distinct days, not raw touches
+    contacts.push(touch({ contacted_at: "2026-08-01T16:30:00Z" }));
     const [r] = buildReview([agent("a", 1)], loads, contacts, tiers({ a: "watch" }), 3.0, TIERS, WIN, NOW);
     expect(r.move).toBe("down");
     expect(r.why).toMatch(/86d cold/);
-    expect(r.why).toMatch(/4 touches, 0 returned — you held up your end/);
+    expect(r.why).toMatch(/touched 4 days, 0 in — you held up your end/);
+    expect(r.touchesOut).toBe(4);
   });
 
   it("a T1 with a recent load never gets the ▼ even at 1 load", () => {

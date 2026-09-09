@@ -27,6 +27,7 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import {
   reviewWindow, defaultReviewMonth, buildReview, reviewReportText, type Move,
 } from "@/lib/metrics/monthlyReview";
+import { touchCountsByAgent, originMarketsByAgent } from "@/lib/metrics/agentTouches";
 import { isDispatcher } from "@/lib/roles";
 import { Link } from "react-router";
 
@@ -109,6 +110,14 @@ const RelationshipsPage = () => {
   const capacity = useMemo(() => capacityDraft(loads ?? []), [loads]);
 
   const ninetyAgo = dayKeyOf(new Date(now.getTime() - 90 * 86_400_000));
+  // Rolling 30 days INCLUDING today (29 back + today) — the card scoreboard
+  // is live, deliberately unlike the review's month-end quarter.
+  const thirtyAgo = dayKeyOf(new Date(now.getTime() - 29 * 86_400_000));
+  const touches30 = useMemo(
+    () => touchCountsByAgent(contacts, thirtyAgo, nowKey),
+    [contacts, thirtyAgo, nowKey],
+  );
+  const marketsByAgent = useMemo(() => originMarketsByAgent(loads ?? []), [loads]);
   const share90 = useMemo(() => inboundShare(loads ?? [], ninetyAgo, nowKey), [loads, ninetyAgo, nowKey]);
   const tierShare = useMemo(() => inboundByTier(agents, loads ?? [], ninetyAgo, nowKey), [agents, loads, ninetyAgo, nowKey]);
   const trend = useMemo(() => inboundTrend(loads ?? []), [loads]);
@@ -221,10 +230,31 @@ const RelationshipsPage = () => {
             : null
         : null;
     const overdue = overdueSet.has(a.agent_id);
+    const converted = st.stage === "converted";
+    // The live scoreboard (mockup contract 2026-09-09): 30d out-DAYS (effort,
+    // saturation-proof) vs inbound events (engagement — the only touch number
+    // that argues for a tier). Zero touches is a real zero, not missing data.
+    const t30 = converted
+      ? (touches30.get(a.agent_id) ?? { outDays: 0, inbound: 0 })
+      : null;
+    const mkts = converted ? (marketsByAgent.get(a.agent_id) ?? []) : [];
+    // A card is a button (opens the action panel) that CONTAINS links —
+    // invalid as <button>, so it's a keyboard-accessible div instead.
     return (
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setActionFor(a)}
-        className="w-full text-left rounded-[9px] px-2.5 py-2 mt-2"
+        onKeyDown={(e) => {
+          // Only when the CARD itself is focused — Enter on a focused
+          // tel:/mailto: link bubbles here and must stay a link press.
+          if (e.target !== e.currentTarget) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setActionFor(a);
+          }
+        }}
+        className="w-full text-left rounded-[9px] px-2.5 py-2 mt-2 cursor-pointer"
         style={{
           background: "var(--color-well)",
           border: overdue ? "1px solid rgba(224,82,82,.45)" : "1px solid var(--color-hairline-lo)",
@@ -237,17 +267,70 @@ const RelationshipsPage = () => {
           {st.stage === "replied" && <span className={CHIP} style={chipStyle.warm}>REPLIED</span>}
           {overdue && <span className={CHIP} style={chipStyle.due}>{days == null ? "NEVER TOUCHED" : `${days}d — DUE`}</span>}
           {drift && <span className={CHIP} style={chipStyle.drift}>{drift}</span>}
-          {inb != null && st.stage === "converted" && (
+          {inb != null && converted && (
             <span className={CHIP} style={inb >= 0.4 ? chipStyle.ok : chipStyle.plain}>inbound {pct0(inb)}</span>
           )}
         </div>
         <div className="font-condensed text-[11px] text-faint mt-0.5 tabular-nums">
           {days == null ? "never touched" : `touched ${days}d ago`}
           {rev ? <> · <b className="text-dim">{money(rev.rev)}</b> · {rev.n} loads</> : null}
-          {st.stage !== "converted" && a.agent_city ? <> · {a.agent_city}, {a.agent_state}</> : null}
-          {st.stage !== "converted" && a.source ? <> · via {a.source}</> : null}
+          {t30 && (
+            <>
+              {" · 30d: "}
+              {t30.outDays} out-day{t30.outDays === 1 ? "" : "s"} ·{" "}
+              {t30.inbound > 0 ? (
+                <b className="text-amber">{t30.inbound} in ▲</b>
+              ) : (
+                <>0 in</>
+              )}
+            </>
+          )}
+          {!converted && a.agent_city ? <> · {a.agent_city}, {a.agent_state}</> : null}
+          {!converted && a.source ? <> · via {a.source}</> : null}
         </div>
-      </button>
+        {mkts.length > 0 && (
+          <div className="font-condensed text-[11px] text-faint mt-0.5">
+            <span className="text-[10px] font-bold tracking-[.07em] uppercase" style={{ color: "#3b4660" }}>
+              hauled from
+            </span>{" "}
+            {mkts.map((m, i) => (
+              <span key={`${m.city},${m.state}`}>
+                {i > 0 && " · "}
+                <b className="text-ink font-semibold">{m.city} {m.state}</b>{" "}
+                <span className="text-dim">×{m.n}</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {(a.phone || a.email || converted) && (
+          <div className="font-condensed text-[11px] mt-1 flex gap-3.5 flex-wrap">
+            {a.phone ? (
+              <a
+                href={`tel:${a.phone.replace(/[^+\d]/g, "")}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-dim hover:text-amber"
+                style={{ borderBottom: "1px dotted rgba(132,148,171,.35)" }}
+              >
+                📞 {a.phone}
+              </a>
+            ) : converted ? (
+              <span style={{ color: "#3b4660" }}>📞 no phone on file</span>
+            ) : null}
+            {a.email ? (
+              <a
+                href={`mailto:${a.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-dim hover:text-amber"
+                style={{ borderBottom: "1px dotted rgba(132,148,171,.35)" }}
+              >
+                ✉️ {a.email}
+              </a>
+            ) : converted ? (
+              <span style={{ color: "#3b4660" }}>✉️ no email on file</span>
+            ) : null}
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -549,7 +632,7 @@ const RelationshipsPage = () => {
               <table className="w-full text-[13px] tabular-nums font-condensed" style={{ borderCollapse: "collapse" }}>
                 <thead>
                   <tr className="text-[10.5px] tracking-[.1em] uppercase text-faint">
-                    {["Agent", "Loads · 90d", "Net revenue", "Net $/mi", "Rate", "Inbound", "Last load", "Touches out/in", "Move"].map((h, i) => (
+                    {["Agent", "Loads · 90d", "Net revenue", "Net $/mi", "Rate", "Inbound", "Last load", "Days touched / in", "Move"].map((h, i) => (
                       <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-3 py-2 border-b border-hairline whitespace-nowrap`}>{h}</th>
                     ))}
                   </tr>

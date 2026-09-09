@@ -94,7 +94,16 @@ export const buildReview = (
         c.contacted_at.slice(0, 10) >= win.startKey &&
         c.contacted_at.slice(0, 10) <= win.endKey,
     );
-    const touchesOut = myContacts.filter((c) => c.direction === "outbound").length;
+    // Out counts DISTINCT DAYS touched, not raw logs — four notes from one
+    // conversation are one day of attention, so logging granularity can't
+    // saturate the effort number. Inbound stays per-event: every time the
+    // agent reaches out is evidence, and it's the only touch number that
+    // ever argues for a promotion.
+    const touchesOut = new Set(
+      myContacts
+        .filter((c) => c.direction === "outbound")
+        .map((c) => c.contacted_at.slice(0, 10)),
+    ).size;
     const touchesIn = myContacts.filter((c) => c.direction === "inbound").length;
 
     const lastDelivery = mine
@@ -157,7 +166,7 @@ export const buildReview = (
       lastLoadDays > 60
     ) {
       move = "down";
-      why = `${loads90} load${loads90 === 1 ? "" : "s"} all quarter · ${lastLoadDays}d cold · ${touchesOut} touches, ${touchesIn} returned${touchesOut >= 3 ? " — you held up your end" : " — run the cadence before judging hard"}`;
+      why = `${loads90} load${loads90 === 1 ? "" : "s"} all quarter · ${lastLoadDays}d cold · touched ${touchesOut} day${touchesOut === 1 ? "" : "s"}, ${touchesIn} in${touchesOut >= 3 ? " — you held up your end" : " — run the cadence before judging hard"}`;
     } else if (loads90 < 3) {
       move = "thin";
       why = `${loads90} load${loads90 === 1 ? "" : "s"} is under the 3-load evidence bar — keep the cadence, judge next quarter`;
