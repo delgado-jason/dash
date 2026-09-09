@@ -2251,7 +2251,17 @@ const GuidePage = () => {
               deletes with one tap; the metrics recompute, nothing rots. The
               timeline shows the <span className="text-light">six most
               recent</span> entries; SHOW ALL opens the full history, and the
-              count on that button tells you how deep it runs.
+              count on that button tells you how deep it runs. Each tier-tree
+              card carries a live 30-day scoreboard —{" "}
+              <span className="text-light">out-days</span> (distinct days you
+              touched them, so four notes from one call read as one day of
+              attention) beside <span className="text-light">in</span> (every
+              time THEY reached out — the only touch number that ever argues
+              for a promotion; the review counts touches the same way). Cards
+              also show <span className="text-light">hauled from</span> — the
+              agent’s top origin markets, derived from their actual loads — so
+              when the truck goes empty into a state, the tree says who to
+              call first; phone and email sit right on the card, tap-to-dial.
             </Why>
           </Metric>
 
