@@ -28,6 +28,8 @@ import {
   reviewWindow, defaultReviewMonth, buildReview, reviewReportText, type Move,
 } from "@/lib/metrics/monthlyReview";
 import { touchCountsByAgent, originMarketsByAgent } from "@/lib/metrics/agentTouches";
+import { QualifySweep } from "@/components/relationships/QualifySweep";
+import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
 import { isDispatcher } from "@/lib/roles";
 import { Link } from "react-router";
 
@@ -71,21 +73,23 @@ const RelationshipsPage = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [contacts, setContacts] = useState<AgentContact[]>([]);
+  const [coverage, setCoverage] = useState<AgentCoverage[]>([]);
   const [loading, setLoading] = useState(true);
   const [touchFor, setTouchFor] = useState<{ agent: Agent; prefill?: Partial<AgentContact> } | null>(null);
   const [showProspect, setShowProspect] = useState(false);
   const [actionFor, setActionFor] = useState<Agent | null>(null);
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<"book" | "review">("book");
+  const [view, setView] = useState<"book" | "review" | "sweep">("book");
   const [loadError, setLoadError] = useState(false);
   const [blastError, setBlastError] = useState<string | null>(null);
 
   const load = () =>
-    Promise.all([getAgents(), getAgentContacts(), getBrokers()])
-      .then(([a, c, b]) => {
+    Promise.all([getAgents(), getAgentContacts(), getBrokers(), getAgentCoverage()])
+      .then(([a, c, b, cov]) => {
         setAgents(a);
         setContacts(c);
         setBrokers(b);
+        setCoverage(cov);
         setLoadError(false);
       })
       .catch(() => setLoadError(true))
@@ -348,7 +352,7 @@ const RelationshipsPage = () => {
             role="tablist"
           >
             {(
-              [["book", "the book"], ["review", "monthly review"]] as const
+              [["book", "the book"], ["sweep", "qualify"], ["review", "monthly review"]] as const
             ).map(([v, label]) => (
               <button
                 key={v}
@@ -607,6 +611,16 @@ const RelationshipsPage = () => {
 
 
         </>)}
+
+        {view === "sweep" && (
+          <QualifySweep
+            agents={agents}
+            loads={loads ?? []}
+            contacts={contacts}
+            coverage={coverage}
+            onChanged={load}
+          />
+        )}
 
         {view === "review" && (
         <div className="ds2-board mt-4 overflow-hidden">

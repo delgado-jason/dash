@@ -2306,6 +2306,45 @@ const GuidePage = () => {
             </Why>
           </Metric>
 
+          <Metric
+            title="The qualify sweep — does this agent have their own customers?"
+            answers="One call, one question, per Tier 3 agent. Sorts the long tail into agents worth working and agents to park."
+            sources={[{ label: "Relationships", to: "/relationships" }]}
+          >
+            <Why>
+              Most of the long tail hauled once and never came back, and the
+              reason matters: an agent working the Landstar board has no
+              customers of their own, so no amount of nurture creates freight
+              that isn’t there. The{" "}
+              <span className="text-light">QUALIFY</span> tab walks the
+              never-asked agents one at a time, richest first, and asks the
+              only question that decides everything downstream —{" "}
+              <span className="text-light">direct, spot, or unclear</span>.
+              <br />
+              <br />
+              Those three are not the same as blank.{" "}
+              <span className="text-light">Blank means nobody has asked yet</span>,
+              and the class you see is derived from loads. Unclear means you
+              asked and couldn’t tell — they stay in the book and come round
+              again. Only a{" "}
+              <span className="text-light">spot you pinned yourself</span> can
+              ever park an agent, so an inconclusive call can never drop a real
+              customer out of your book by accident. The database enforces
+              that, not just the screen.
+              <br />
+              <br />
+              While you talk, capture the markets they name. Agents say “I’ve
+              got shippers in Savannah and Charleston” without naming the
+              shipper, so a market alone is enough —{" "}
+              <span className="text-light">the shipper name is optional</span>{" "}
+              and fills in later. Pick the city from the dropdown rather than
+              typing it free: that’s what gives the Foreman a real coordinate,
+              so a market you’ve never hauled can still be ranked by distance
+              when you go empty nearby. A claimed market shows as a dashed
+              chip; it turns solid the day a load actually comes out of there.
+            </Why>
+          </Metric>
+
           <GroupHeading>Vendors</GroupHeading>
 
           <Section

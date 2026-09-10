@@ -9,8 +9,17 @@ export interface Agent {
   preferred_contact: string;
   rating?: number | null;
   notes?: string | null;
-  // Manual relationship-bucket override. null/absent = auto (derived from loads).
-  agent_class?: "direct" | "spot" | null;
+  // Manual relationship-bucket override. Three states with three meanings:
+  //   null/absent  never asked        — auto (derived from loads) is in charge
+  //   'unclear'    asked, can't tell  — stays in the working book
+  //   'direct' | 'spot'               — asked and answered; only a pinned
+  //                                     'spot' may ever park an agent
+  agent_class?: "direct" | "unclear" | "spot" | null;
+  // 'parked' leaves every working view (due queue, call lists, sweep) but stays
+  // in every analytical one. The DB refuses to park a non-pinned-'spot' agent.
+  work_status?: "active" | "parked";
+  // Claimed capability, mirroring the load_type enum.
+  freight_types?: string[];
   // Relationship system (2026-09-03): the tier is the OWNER'S call (1/2/3,
   // default 3); city/state/source describe prospects for the cold pool.
   relationship_tier: number;

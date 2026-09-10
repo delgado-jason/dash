@@ -16,7 +16,7 @@ export interface ContactLike {
   contacted_at: string; // ISO
   direction: "outbound" | "inbound";
   method: "call" | "email" | "text";
-  type: "capacity" | "check_in" | "appreciation" | "close_out" | "cold" | "inbound_inquiry" | "other";
+  type: "capacity" | "check_in" | "appreciation" | "close_out" | "cold" | "inbound_inquiry" | "qualification" | "other";
   load_id?: string | null;
 }
 

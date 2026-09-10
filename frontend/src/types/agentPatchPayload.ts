@@ -7,7 +7,11 @@ export interface AgentPatchPayload {
   preferred_contact?: string;
   rating?: number | null;
   notes?: string | null;
-  agent_class?: "direct" | "spot" | null; // null clears the override back to auto
+  // null clears the override back to auto; 'unclear' means asked and couldn't
+  // tell, which is NOT the same as never asked and never permits parking.
+  agent_class?: "direct" | "unclear" | "spot" | null;
+  work_status?: "active" | "parked";
+  freight_types?: string[];
   reason?: string; // only when rating changes
   changed_by?: string; // only when rating changes
   relationship_tier?: number;

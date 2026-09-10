@@ -27,6 +27,8 @@ export async function getAgents(user_id) {
             agents.rating AS rating,
             agents.notes AS notes,
             agents.agent_class AS agent_class,
+            agents.work_status AS work_status,
+            agents.freight_types AS freight_types,
             agents.created_at AS created_at,
             agents.updated_at AS updated_at
         FROM
@@ -65,6 +67,8 @@ export async function getAgent(user_id, agent_id) {
             agents.rating AS rating,
             agents.notes AS notes,
             agents.agent_class AS agent_class,
+            agents.work_status AS work_status,
+            agents.freight_types AS freight_types,
             agents.created_at AS created_at,
             agents.updated_at AS updated_at
         FROM
@@ -246,6 +250,8 @@ export async function patchAgent(user_id, agent_id, data) {
     "rating",
     "notes",
     "agent_class",
+    "work_status",
+    "freight_types",
     "relationship_tier",
     "tier_set_at", // injected server-side on retier — never client-set
     "agent_city",

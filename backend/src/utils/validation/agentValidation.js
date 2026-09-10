@@ -118,10 +118,40 @@ const rules = {
     }
   },
   // null clears the override back to auto (data-derived); otherwise a pin.
+  // 'unclear' = asked and couldn't tell. It is NOT the same as null (never
+  // asked), and it is deliberately not 'spot' — only a pinned 'spot' may park
+  // an agent, so an inconclusive call can never drop one out of the book.
   agent_class: (value, errors) => {
     if (value === null || value === undefined) return;
-    if (value !== "direct" && value !== "spot") {
-      errors.push("agent_class must be 'direct', 'spot', or null");
+    if (value !== "direct" && value !== "unclear" && value !== "spot") {
+      errors.push("agent_class must be 'direct', 'unclear', 'spot', or null");
+    }
+  },
+
+  // Parked agents leave every working view (due queue, call lists, sweep) but
+  // stay in every analytical one. The DB additionally refuses to park an agent
+  // whose class is not a pinned 'spot'.
+  work_status: (value, errors) => {
+    if (value !== "active" && value !== "parked") {
+      errors.push("work_status must be 'active' or 'parked'");
+    }
+  },
+
+  // Mirrors the load_type enum so a claimed capability can be checked against
+  // what the agent has actually tendered.
+  freight_types: (value, errors) => {
+    if (!Array.isArray(value)) {
+      errors.push("freight_types must be an array");
+      return;
+    }
+
+    const allowed = ["standard flatbed", "oversize", "hazmat", "heavy haul"];
+
+    for (const t of value) {
+      if (!allowed.includes(t)) {
+        errors.push(`freight_types must be one of: ${allowed.join(", ")}`);
+        return;
+      }
     }
   },
 };
