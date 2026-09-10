@@ -165,7 +165,16 @@ export const QualifySweep = ({
       setFreight([]);
       setOutcome("reached");
       setNote("");
-      setCursor((c) => c + 1);
+
+      // DO NOT blindly advance the cursor. onChanged() refetches, and a agent
+      // whose class we just pinned drops OUT of the queue memo — every later
+      // index shifts down by one and the next agent slides into the current
+      // index. Incrementing as well would step over that agent entirely, so
+      // every completed call silently lost one from the sweep.
+      //
+      // Advance only when the agent STAYS in the queue (voicemail, no answer,
+      // bad number — no class pinned), because then nothing shifts.
+      if (!cls) setCursor((c) => c + 1);
       onChanged();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not log the call");

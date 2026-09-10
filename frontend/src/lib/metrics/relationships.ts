@@ -25,6 +25,10 @@ export interface AgentLike {
   first_name: string;
   last_name: string;
   relationship_tier: number; // 1 | 2 | 3
+  // 'parked' agents leave every WORKING surface (due queue, Tuesday pick,
+  // Friday list, the sweep). They stay in ANALYTICAL ones — a parked agent's
+  // revenue and rate still happened. Absent/undefined reads as active.
+  work_status?: "active" | "parked";
   agent_city?: string | null;
   agent_state?: string | null;
   source?: string | null;
@@ -107,6 +111,7 @@ export const dueQueue = (
   const nowMs = now.getTime();
   const out: DueEntry[] = [];
   for (const a of agents) {
+    if (a.work_status === "parked") continue; // parked is never owed a touch
     const st = prospectState(a.agent_id, contacts, loads);
     const last = lastTouchOf(a.agent_id, contacts);
     // Clamped — a touch stamped moments after `now` must read 0, never −1.
@@ -139,7 +144,9 @@ export const tuesdayPick = (
   contacts: ContactLike[],
   now: Date,
 ): { agent: AgentLike; daysSince: number | null } | null => {
-  const t2 = agents.filter((a) => a.relationship_tier === 2);
+  const t2 = agents.filter(
+    (a) => a.relationship_tier === 2 && a.work_status !== "parked",
+  );
   if (t2.length === 0) return null;
   let best: { agent: AgentLike; last: string | null } | null = null;
   for (const a of t2) {
@@ -165,7 +172,11 @@ export const fridayList = (
 ): { agent: AgentLike; loads: number }[] => {
   const start = dayKey(new Date(now.getTime() - 6 * DAY));
   const end = dayKey(now);
-  const t1 = new Map(agents.filter((a) => a.relationship_tier === 1).map((a) => [a.agent_id, a]));
+  const t1 = new Map(
+    agents
+      .filter((a) => a.relationship_tier === 1 && a.work_status !== "parked")
+      .map((a) => [a.agent_id, a]),
+  );
   const counts = new Map<string, number>();
   for (const l of loads) {
     if (l.load_status !== "delivered" || !l.delivery_date || !l.agent_id) continue;
