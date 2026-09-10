@@ -122,6 +122,24 @@ export const QualifySweep = ({
 
   if (!agent || !stats) return null;
 
+  // The in-progress answers belong to the agent on screen. Carrying them to the
+  // next record is how one agent's class ends up pinned on another — so every
+  // move through the queue clears them.
+  const resetForm = () => {
+    setCls(null);
+    setFreight([]);
+    setOutcome("reached");
+    setNote("");
+    setErr(null);
+  };
+
+  // Navigate without writing anything. Clamped, so Back at the top and Skip at
+  // the end are no-ops rather than rendering an empty card.
+  const move = (delta: number) => {
+    resetForm();
+    setCursor((c) => Math.min(Math.max(c + delta, 0), queue.length - 1));
+  };
+
   const logAndNext = async () => {
     setSaving(true);
     setErr(null);
@@ -161,10 +179,7 @@ export const QualifySweep = ({
         });
       }
 
-      setCls(null);
-      setFreight([]);
-      setOutcome("reached");
-      setNote("");
+      resetForm();
 
       // DO NOT blindly advance the cursor. onChanged() refetches, and a agent
       // whose class we just pinned drops OUT of the queue memo — every later
@@ -333,6 +348,23 @@ export const QualifySweep = ({
         </div>
         <div className="flex items-center gap-3">
           {err && <span className="text-status-negative-text text-[13px]">{err}</span>}
+          {/* Move through the queue WITHOUT writing anything — for a number that
+              rings out, a callback to make later, or a record to come back to.
+              Back exists so a skip is never a one-way door. */}
+          <button
+            onClick={() => move(-1)}
+            disabled={saving || cursor === 0}
+            className="font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-dim border border-hairline rounded-[7px] px-3 py-[9px] hover:text-ink disabled:opacity-30 disabled:hover:text-dim"
+          >
+            ← Back
+          </button>
+          <button
+            onClick={() => move(1)}
+            disabled={saving || cursor >= queue.length - 1}
+            className="font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-dim border border-hairline rounded-[7px] px-3 py-[9px] hover:text-ink disabled:opacity-30 disabled:hover:text-dim"
+          >
+            Skip →
+          </button>
           <button
             onClick={logAndNext}
             disabled={saving}
