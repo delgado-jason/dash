@@ -133,6 +133,15 @@ export const QualifySweep = ({
     setErr(null);
   };
 
+  // If nobody was actually spoken to, there is no basis for a class. Selecting
+  // voicemail / no answer / bad number clears any class already picked —
+  // otherwise you can choose Reached + Direct, switch to Bad number, and still
+  // pin Direct on a phone that does not ring.
+  const pickOutcome = (o: Outcome) => {
+    setOutcome(o);
+    if (o !== "reached") setCls(null);
+  };
+
   // Navigate without writing anything. Clamped, so Back at the top and Skip at
   // the end are no-ops rather than rendering an empty card.
   const move = (delta: number) => {
@@ -170,9 +179,11 @@ export const QualifySweep = ({
         });
       }
 
-      // Only pin when the call produced an answer. A voicemail or no-answer
-      // leaves the class null so the agent comes round again.
-      if (cls) {
+      // Only pin when the call produced an answer. A voicemail, no-answer or
+      // bad number leaves the class null so the agent comes round again.
+      // Guarded on outcome as well as cls — the UI clears one when the other
+      // changes, but the write path should not depend on that holding.
+      if (cls && outcome === "reached") {
         await patchAgent(agent.agent_id, {
           agent_class: cls,
           ...(freight.length > 0 ? { freight_types: freight } : {}),
@@ -339,7 +350,7 @@ export const QualifySweep = ({
           {OUTCOMES.map((o) => (
             <button
               key={o.value}
-              onClick={() => setOutcome(o.value)}
+              onClick={() => pickOutcome(o.value)}
               className={`${TAG} ${outcome === o.value ? TAG_ON : TAG_OFF}`}
             >
               {o.label}
