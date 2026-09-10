@@ -98,6 +98,30 @@ app.use("/documents", documentRouter);
 app.use("/settlements", settlementRouter);
 app.use("/city-coords", cityCoordsRouter);
 
+// ---- HEALTH / VERSION ----
+// Deliberately UNAUTHENTICATED and cheap: the question "which commit is
+// actually serving traffic?" must be answerable from a script, a monitor, or a
+// rollback decision at 2am — none of which can log in. Without this, the only
+// way to tell whether a deploy landed is to exercise the behaviour that
+// changed, which requires being a user.
+//
+// Railway injects the RAILWAY_* variables automatically. `started` is the one
+// that distinguishes "deployed" from "deployed but crash-looping on the old
+// build" — a process that keeps restarting shows a start time that keeps
+// moving. Nothing here is a secret: a commit sha and an uptime.
+const STARTED_AT = new Date().toISOString();
+
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+    branch: process.env.RAILWAY_GIT_BRANCH ?? null,
+    deployment: process.env.RAILWAY_DEPLOYMENT_ID ?? null,
+    started: STARTED_AT,
+    uptime_s: Math.round(process.uptime()),
+  });
+});
+
 app.get("/", (req, res) => {
   res.send("Home Page");
 });
