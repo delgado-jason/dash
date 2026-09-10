@@ -1,15 +1,11 @@
 import { useMemo, useState } from "react";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
-import CityAutocomplete from "@/components/CityAutocomplete";
+import CoverageEditor from "@/components/relationships/CoverageEditor";
 import { patchAgent } from "@/services/patchAgentService";
 import { createAgentContact } from "@/services/agentContactsService";
-import {
-  createAgentCoverage,
-  deleteAgentCoverage,
-  type AgentCoverage,
-} from "@/services/agentCoverageService";
-import { warmCityCoords } from "@/services/cityCoordsService";
+import { createAgentNote } from "@/services/createAgentNoteService";
+import { type AgentCoverage } from "@/services/agentCoverageService";
 import { lastTouchOf, type ContactLike } from "@/lib/metrics/relationships";
 import { loadRevenue } from "@/lib/metrics/loads";
 import type { Agent } from "@/types/agent";
@@ -61,8 +57,7 @@ export const QualifySweep = ({
   const [cls, setCls] = useState<"direct" | "unclear" | "spot" | null>(null);
   const [freight, setFreight] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<Outcome>("reached");
-  const [cityText, setCityText] = useState("");
-  const [picked, setPicked] = useState<{ city: string; state: string } | null>(null);
+  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -127,49 +122,17 @@ export const QualifySweep = ({
 
   if (!agent || !stats) return null;
 
-  const addCoverage = async () => {
-    if (!picked) return;
-    setErr(null);
-    try {
-      await createAgentCoverage({
-        agent_id: agent.agent_id,
-        city: picked.city,
-        state: picked.state,
-      });
-      // Warm the geocode cache so the Foreman can place this market. Cities an
-      // agent CLAIMS are exactly the ones missing from city_coords, which only
-      // holds cities we have actually booked — without this the coordinate is
-      // absent and the row can never be ranked by distance.
-      void warmCityCoords([{ city: picked.city, state: picked.state }]);
-      setPicked(null);
-      setCityText("");
-      onChanged();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not save that market");
-    }
-  };
-
-  const removeCoverage = async (id: string) => {
-    try {
-      await deleteAgentCoverage(id);
-      onChanged();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not remove that market");
-    }
-  };
-
   const logAndNext = async () => {
     setSaving(true);
     setErr(null);
     try {
-      // Only pin the class when the call actually produced an answer. A
-      // voicemail leaves it null so the agent stays in this queue.
-      if (cls) {
-        await patchAgent(agent.agent_id, {
-          agent_class: cls,
-          ...(freight.length > 0 ? { freight_types: freight } : {}),
-        });
-      }
+      // ORDER MATTERS. Pinning the class is what drops this agent out of the
+      // queue, so it goes LAST. Do it first and a later failure leaves the
+      // agent classed, gone from the sweep, with no record of the call — and
+      // the operator staring at an error, believing nothing saved.
+      //
+      // With the class last, every failure mode is recoverable: the agent stays
+      // in the queue and the call can simply be logged again.
       await createAgentContact({
         agent_id: agent.agent_id,
         direction: "outbound",
@@ -179,11 +142,29 @@ export const QualifySweep = ({
           cls ? ` · ${cls}` : ""
         }`,
       });
+
+      // The narrative of the call, kept where it will actually be read again:
+      // the agent's own notes on their detail page.
+      if (note.trim()) {
+        await createAgentNote(agent.agent_id, {
+          note: `Qualification call — ${note.trim()}`,
+          created_by: "DISP", // the sweep is always dispatch; ≤5 chars
+        });
+      }
+
+      // Only pin when the call produced an answer. A voicemail or no-answer
+      // leaves the class null so the agent comes round again.
+      if (cls) {
+        await patchAgent(agent.agent_id, {
+          agent_class: cls,
+          ...(freight.length > 0 ? { freight_types: freight } : {}),
+        });
+      }
+
       setCls(null);
       setFreight([]);
       setOutcome("reached");
-      setPicked(null);
-      setCityText("");
+      setNote("");
       setCursor((c) => c + 1);
       onChanged();
     } catch (e) {
@@ -290,71 +271,7 @@ export const QualifySweep = ({
 
         <div className="p-[20px_22px] border-t md:border-t-0 md:border-l border-hairline">
           <p className={LBL}>Coverage they named</p>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {mine.length === 0 && (
-              <span className="text-faint text-[13px] italic">Nothing captured yet</span>
-            )}
-            {mine.map((c) => (
-              <span
-                key={c.coverage_id}
-                className={`inline-flex items-center gap-2 px-[11px] py-[7px] rounded-[9px] text-[13.5px] text-ink ${
-                  c.source === "confirmed"
-                    ? "border border-status-positive-text bg-status-positive-text/10"
-                    : "border border-dashed border-dim bg-white/5"
-                }`}
-              >
-                <i
-                  className={`w-2 h-2 rounded-full ${
-                    c.source === "confirmed"
-                      ? "bg-status-positive-text"
-                      : "border-[1.5px] border-dim"
-                  }`}
-                />
-                {c.city}, {c.state}
-                {c.shipper_name && (
-                  <span className="font-condensed text-[12.5px] tracking-[.04em] text-dim">
-                    {c.shipper_name}
-                  </span>
-                )}
-                <button
-                  onClick={() => removeCoverage(c.coverage_id)}
-                  aria-label={`Remove ${c.city}, ${c.state}`}
-                  className="text-dim hover:text-ink text-[15px] leading-none"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <CityAutocomplete
-                value={cityText}
-                onType={(city) => {
-                  setCityText(city);
-                  setPicked(null); // typing invalidates a previous pick
-                }}
-                onSelect={(city, state) => {
-                  setCityText(`${city}, ${state}`);
-                  setPicked({ city, state });
-                }}
-                placeholder="Start typing a city…"
-                inputClassName="w-full bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[14px]"
-              />
-            </div>
-            <button
-              onClick={addCoverage}
-              disabled={!picked}
-              className="bg-plate text-ink rounded-[8px] px-4 font-semibold text-[14px] disabled:bg-hairline disabled:text-faint disabled:cursor-not-allowed"
-            >
-              Add
-            </button>
-          </div>
-          <p className="text-dim text-[12.5px] mt-[11px] leading-[1.5]">
-            <b className="text-ink">Add stays disabled until a suggestion is picked</b> — city and
-            state have to be canonical or the Foreman can't place them. Shipper name is optional.
-          </p>
+          <CoverageEditor agentId={agent.agent_id} rows={mine} onChanged={onChanged} />
 
           <p className={`${LBL} mt-6`}>Freight this agent moves</p>
           <div className="flex flex-wrap gap-2">
@@ -373,6 +290,23 @@ export const QualifySweep = ({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ---- what actually happened on the call ---- */}
+      <div className="p-[16px_22px] border-t border-hairline">
+        <p className={LBL}>
+          Call notes{" "}
+          <span className="normal-case tracking-normal font-body text-faint">
+            — saved to this agent's notes
+          </span>
+        </p>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          placeholder="What they said, what they cover, anything worth remembering next time…"
+          className="w-full bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[14px] placeholder:text-faint resize-y"
+        />
       </div>
 
       {/* ---- close the call ---- */}

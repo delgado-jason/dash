@@ -9,6 +9,7 @@ const TOUCH_LABEL: Record<string, string> = {
   close_out: "close-out",
   cold: "cold outreach",
   inbound_inquiry: "inbound inquiry",
+  qualification: "qualification call",
   other: "touch",
 };
 
@@ -16,6 +17,8 @@ import { useAgent } from "@/hooks/useAgent";
 import { useLoads } from "@/hooks/useLoads";
 import { useCarrierName } from "@/hooks/useCarrierName";
 import { createAgentNote } from "@/services/createAgentNoteService";
+import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
+import CoverageEditor from "@/components/relationships/CoverageEditor";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import {
   agentStops,
@@ -145,6 +148,16 @@ const AgentDetailPage = () => {
       /* row stays — nothing changed server-side */
     }
   };
+
+  // Footprint — the markets this agent says they cover. Same hooks-above-returns
+  // rule as the touches above.
+  const [coverage, setCoverage] = useState<AgentCoverage[]>([]);
+  useEffect(() => {
+    if (!agentId) return;
+    getAgentCoverage()
+      .then((all) => setCoverage(all.filter((c) => c.agent_id === agentId)))
+      .catch(() => {});
+  }, [agentId, refreshKey]);
 
   if (isLoading)
     return (
@@ -544,6 +557,22 @@ const AgentDetailPage = () => {
           </p>
           <p className="text-xs text-dim">Preferred</p>
           <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
+        </Panel>
+
+        <Panel className="p-4 mt-4">
+          <p className="text-xs text-dim uppercase tracking-wider mb-1">
+            Footprint
+          </p>
+          <p className="text-[11.5px] text-faint mb-3 leading-snug">
+            Markets they say they cover. A dashed chip is a claim; it turns
+            solid once a load comes out of that city.
+          </p>
+          <CoverageEditor
+            agentId={agent.agent_id}
+            rows={coverage}
+            onChanged={() => setRefreshKey((p) => p + 1)}
+            emptyText="No markets captured yet"
+          />
         </Panel>
       </div>
       </div>

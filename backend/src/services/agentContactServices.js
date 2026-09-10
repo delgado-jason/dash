@@ -25,7 +25,11 @@ export async function createAgentContact(user_id, data) {
     throw new ValidationError("direction must be outbound or inbound");
   if (!["call", "email", "text"].includes(method))
     throw new ValidationError("method must be call, email, or text");
-  const TYPES = ["capacity", "check_in", "appreciation", "close_out", "cold", "inbound_inquiry", "other"];
+  // Keep in step with the contact_type enum in Postgres (068 added
+  // 'qualification'). This list is a second source of truth for the same set,
+  // so a value added to the enum without adding it here is accepted by the
+  // database and rejected by the API.
+  const TYPES = ["capacity", "check_in", "appreciation", "close_out", "cold", "inbound_inquiry", "qualification", "other"];
   if (!TYPES.includes(type))
     throw new ValidationError(`type must be one of ${TYPES.join(", ")}`);
   if (contacted_at != null && Number.isNaN(Date.parse(contacted_at)))
