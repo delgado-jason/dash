@@ -11,6 +11,7 @@ export interface AgentPatchPayload {
   // tell, which is NOT the same as never asked and never permits parking.
   agent_class?: "direct" | "unclear" | "spot" | null;
   work_status?: "active" | "parked";
+  park_reason?: string | null;
   freight_types?: string[];
   reason?: string; // only when rating changes
   changed_by?: string; // only when rating changes

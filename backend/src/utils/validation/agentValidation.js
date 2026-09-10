@@ -137,6 +137,19 @@ const rules = {
     }
   },
 
+  // Why this row left the call book. Either a pinned 'spot' (the freight
+  // reason) or a written reason unlocks parking — see 069. null clears it.
+  park_reason: (value, errors) => {
+    if (value === null) return;
+    if (!isValidType("string", value)) {
+      errors.push("park_reason must be a string");
+      return;
+    }
+    if (value.trim().length > 500) {
+      errors.push("park_reason cannot be more than 500 characters");
+    }
+  },
+
   // Mirrors the load_type enum so a claimed capability can be checked against
   // what the agent has actually tendered.
   freight_types: (value, errors) => {
