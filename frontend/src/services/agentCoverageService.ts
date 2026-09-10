@@ -15,9 +15,22 @@ export interface AgentCoverage {
   created_at: string;
 }
 
+// Non-fatal on failure, matching getCityCoords: this read is one of several in
+// the Relationships page's Promise.all, and coverage is optional to every view
+// except the sweep. Letting it reject would take the whole page — the book and
+// the monthly review included — down to its error state over a feature they
+// don't use. An empty list degrades the sweep to "nothing captured yet" and
+// leaves everything else working.
+//
+// The WRITES below still throw: those are user actions, and a silent failure
+// there would lose a market she just captured on a call.
 export const getAgentCoverage = async (): Promise<AgentCoverage[]> => {
-  const res = await api.get("/agent-coverage");
-  return res.data.coverage ?? [];
+  try {
+    const res = await api.get("/agent-coverage");
+    return res.data.coverage ?? [];
+  } catch {
+    return [];
+  }
 };
 
 export const createAgentCoverage = async (data: {
