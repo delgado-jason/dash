@@ -559,7 +559,7 @@ const AgentDetailPage = () => {
           <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
         </Panel>
 
-        <Panel className="p-4 mt-4">
+        <Panel className="md:col-span-3 p-4">
           <p className="text-xs text-dim uppercase tracking-wider mb-1">
             Footprint
           </p>
