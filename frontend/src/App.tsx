@@ -17,7 +17,11 @@ import MarketPage from "@/pages/MarketPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import StatusPage from "@/pages/StatusPage";
 import CashFlowPage from "@/pages/CashFlowPage";
-import RelationshipsPage from "@/pages/RelationshipsPage";
+import RelationshipsLayout from "@/pages/relationships/RelationshipsLayout";
+import TodayView from "@/pages/relationships/TodayView";
+import CallsView from "@/pages/relationships/CallsView";
+import TiersView from "@/pages/relationships/TiersView";
+import ReviewView from "@/pages/relationships/ReviewView";
 import MaintenancePage from "@/pages/MaintenancePage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
@@ -96,9 +100,15 @@ const App = () => {
           <Route path="/dispatcher/:id" element={<DispatcherPage />} />
           <Route path="/forge" element={<DispatchForgePage />} />
           <Route path="/my-recap" element={<DispatcherRecapPage />} />
-          {/* Brandie's workflow — the ritual, touches, prospects; tier
-              controls are gated inside the page (owner only). */}
-          <Route path="/relationships" element={<RelationshipsPage />} />
+          {/* Brandie's workflow — Today · Call list · Tiers · Review under one
+              shell; the owner-only tier controls live inside the agent sheet. */}
+          <Route path="/relationships" element={<RelationshipsLayout />}>
+            <Route index element={<Navigate to="today" replace />} />
+            <Route path="today" element={<TodayView />} />
+            <Route path="calls" element={<CallsView />} />
+            <Route path="tiers" element={<TiersView />} />
+            <Route path="review" element={<ReviewView />} />
+          </Route>
 
           {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
           <Route element={<AdminRoute />}>

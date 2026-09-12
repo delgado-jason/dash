@@ -80,6 +80,9 @@ export const buildReview = (
 
   const rows: ReviewRow[] = [];
   for (const a of agents) {
+    // v2: no owner-set tier reads as the old Tier 3 (the long tail) so this
+    // v1 review keeps its shape until PR4 rebuilds it on the five buckets.
+    const tier = a.relationship_tier ?? 3;
     const mine = loads.filter((l) => l.agent_id === a.agent_id);
     const delivered = mine.filter(
       (l) =>
@@ -131,7 +134,7 @@ export const buildReview = (
 
     // The activity filter: Tier 3 rows only exist when the window has a story.
     const active = loads90 > 0 || touchesOut + touchesIn > 0;
-    if (a.relationship_tier === 3 && !active) continue;
+    if (tier === 3 && !active) continue;
 
     const dataTier = dataTiers.get(a.agent_id);
     const st = prospectState(a.agent_id, contacts, loads);
@@ -146,7 +149,7 @@ export const buildReview = (
     const convertedInWindow =
       st.stage === "converted" &&
       st.coldTouches > 0 &&
-      a.relationship_tier >= 2 &&
+      tier >= 2 &&
       firstDelivered != null &&
       firstDelivered >= win.startKey &&
       firstDelivered <= win.endKey;
@@ -156,11 +159,11 @@ export const buildReview = (
     if (convertedInWindow) {
       move = "up";
       why = `cold-pool convert — first load${touchesIn > 0 ? " AND they called you" : ""}; conversion beats the load count`;
-    } else if (loads90 >= 3 && a.relationship_tier >= 2 && dataTier === "call-first") {
+    } else if (loads90 >= 3 && tier >= 2 && dataTier === "call-first") {
       move = "up";
       why = `${loads90} loads · data says call-first${inbound != null && inbound >= 0.5 ? " · half their freight came to you" : ""}`;
     } else if (
-      a.relationship_tier === 1 &&
+      tier === 1 &&
       loads90 <= 1 &&
       lastLoadDays != null &&
       lastLoadDays > 60
@@ -177,7 +180,7 @@ export const buildReview = (
 
     rows.push({
       agent: a,
-      tier: a.relationship_tier,
+      tier,
       loads90,
       netRevenue,
       netRpm,

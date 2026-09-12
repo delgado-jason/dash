@@ -82,6 +82,14 @@ router.post("/", async (req, res) => {
       agent,
     });
   } catch (err) {
+    // agents are UNIQUE(first_name, last_name, user_id): adding a person who is
+    // already on the book is a decision for the user, not a raw Postgres 500.
+    if (err.code === "23505") {
+      return res.status(409).json({
+        error: "An agent with that name is already on your book.",
+      });
+    }
+
     if (err.type === "validation") {
       return res.status(err.statusCode).json({
         error: err.message,
@@ -104,7 +112,8 @@ router.patch("/:agent_id", async (req, res) => {
     const agent_id = req.params.agent_id;
     const data = req.body;
 
-    const agent = await patchAgent(user_id, agent_id, data);
+    // req.user carries who is acting (role, self_id) — the tier rule needs it.
+    const agent = await patchAgent(user_id, agent_id, data, req.user);
 
     return res.status(200).json({
       message: "Agent updated successfully",
@@ -119,7 +128,7 @@ router.patch("/:agent_id", async (req, res) => {
       });
     }
 
-    if (err.type === "not_found") {
+    if (err.type === "not_found" || err.type === "forbidden_error") {
       return res.status(err.statusCode).json({ error: err.message });
     }
 

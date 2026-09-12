@@ -11,8 +11,11 @@ import { isValidType, isValidUUID } from "../helper.js";
 // notes */
 
 const rules = {
+  // Optional since 073: a prospect is a person first, the agency code is
+  // billing paperwork that may not be known yet. null clears it.
   broker_id: (value, errors) => {
-    if (!isValidUUID(value)) {
+    if (value === null || value === undefined) return;
+    if (!isValidType("string", value) || !isValidUUID(value)) {
       errors.push("not a valid UUID");
     }
   },
@@ -191,6 +194,29 @@ const rules = {
     }
   },
 
+  // The OWNER'S tier (REL-01 v2.0): 1/2/3 for an established agent, null for
+  // "no tier" — a Prospect (or dormant → Parked, derived on the frontend).
+  // The change itself is gated by tierChangeGate below, not here.
+  relationship_tier: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (!isValidType("integer", value) || value < 1 || value > 3) {
+      errors.push("relationship_tier must be 1, 2, 3, or null");
+    }
+  },
+
+  // Free text from the footprint's sixth question ("best number, and best
+  // time of day?"). null clears it.
+  best_time_to_call: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (!isValidType("string", value)) {
+      errors.push("best_time_to_call must be a string");
+      return;
+    }
+    if (value.trim().length > 80) {
+      errors.push("best_time_to_call cannot be more than 80 characters");
+    }
+  },
+
   // Mirrors the load_type enum so a claimed capability can be checked against
   // what the agent has actually tendered.
   freight_types: (value, errors) => {
@@ -224,18 +250,52 @@ export const normalizeAgentText = (data) => {
   if (typeof data.agent_state === "string") {
     data.agent_state = data.agent_state.trim().toUpperCase();
   }
+  // Blank reads as "not on file" — store null, never an empty string.
+  if (typeof data.best_time_to_call === "string") {
+    const t = data.best_time_to_call.trim();
+    data.best_time_to_call = t === "" ? null : t;
+  }
   return data;
+};
+
+// ---- TIER CHANGE GATE (REL-01 v2.0 §4) ----
+// The tier is the owner's call and every change carries a written reason —
+// dash suggests, the human decides. Pure: hands back the verdict, the service
+// turns it into the right HTTP error inside its transaction.
+//   from   the stored tier (1/2/3/null)
+//   to     the tier in the PATCH (undefined = not in the patch)
+//   reason the written reason, if any
+//   role   req.user.role — 'admin' is the owner
+export const tierChangeGate = ({ from, to, reason, role }) => {
+  if (to === undefined) return { changed: false, error: null };
+  const changed = (from ?? null) !== (to ?? null);
+  if (!changed) return { changed: false, error: null };
+  if (role !== "admin") {
+    return { changed, error: { status: 403, message: "Only the owner sets tiers." } };
+  }
+  if (!isValidType("string", reason) || reason.trim().length === 0) {
+    return { changed, error: { status: 400, message: "A tier change needs a reason." } };
+  }
+  return { changed, error: null };
 };
 
 // ---- CREATE AGENT VALIDATION ----
 export const validateAgentCreate = (data) => {
   const errors = [];
 
-  if (!data.broker_id) errors.push("Missing broker_id");
+  // broker_id is optional since 073 — a prospect may arrive without a code.
   if (!data.first_name) errors.push("Missing first_name");
   if (!data.last_name) errors.push("Missing last_name");
 
+  // A new agent lands with NO tier (REL-01 v2.0: the owner sets one from the
+  // book, with a reason, through the gated PATCH). null is the only honest
+  // value here; anything else is a side door around that gate.
+  if (data.relationship_tier !== undefined && data.relationship_tier !== null) {
+    errors.push("a new agent has no tier — the owner sets one from the book");
+  }
+
   for (const field in data) {
+    if (field === "relationship_tier") continue; // judged above, not by the 1–3 range rule
     if (rules[field]) {
       rules[field](data[field], errors);
     }

@@ -10,7 +10,9 @@ const NOW = new Date("2026-09-04T12:00:00Z");
 const WIN = reviewWindow("2026-08", NOW); // quarter ending Aug 31
 const TIERS = { minimum: 0.15, target: 0.25, strong: 0.35 };
 
-const agent = (id: string, tier: number): AgentLike =>
+// tier null = no owner-set tier (v2's Prospect) — this v1 review reads it as
+// the old Tier 3 long tail until PR4 rebuilds it on the five buckets.
+const agent = (id: string, tier: number | null): AgentLike =>
   ({ agent_id: id, first_name: id, last_name: "X", relationship_tier: tier });
 
 const load = (o: Partial<Load>): Load =>
@@ -29,7 +31,7 @@ const load = (o: Partial<Load>): Load =>
 const touch = (o: Partial<ContactLike>): ContactLike =>
   ({
     agent_id: "a", contacted_at: "2026-08-10T10:00:00Z",
-    direction: "outbound", method: "call", type: "check_in",
+    direction: "outbound", method: "call", type: "capacity", // a live v2 type; the review reads only cold / direction
     ...o,
   });
 
@@ -95,20 +97,25 @@ describe("buildReview — the evidence rules, as printed", () => {
       touch({ direction: "inbound", type: "inbound_inquiry", contacted_at: "2026-07-20T10:00:00Z" }),
     ];
     const loads = [load({ pickup_date: "2026-08-10", delivery_date: "2026-08-12" })];
-    const [r] = buildReview([agent("a", 3)], loads, contacts, new Map(), 3.0, TIERS, WIN, NOW);
+    const [r] = buildReview([agent("a", null)], loads, contacts, new Map(), 3.0, TIERS, WIN, NOW);
     expect(r.move).toBe("up");
     expect(r.why).toMatch(/cold-pool convert/);
     expect(r.why).toMatch(/they called you/);
   });
 
-  it("an inactive Tier 3 doesn't get a row; an active one does", () => {
+  it("an inactive untiered agent doesn't get a row; an active one does — as Tier 3 in the print", () => {
     const rows = buildReview(
-      [agent("quiet", 3), agent("touched", 3)],
+      [agent("quiet", null), agent("touched", null)],
       [],
       [touch({ agent_id: "touched" })],
       new Map(), 3.0, TIERS, WIN, NOW,
     );
     expect(rows.map((r) => r.agent.agent_id)).toEqual(["touched"]);
+    expect(rows[0].tier).toBe(3);
+    expect(rows[0].move).toBe("thin");
+    const text = reviewReportText(rows, WIN);
+    expect(text).toContain("— TIER 3 —");
+    expect(text).toContain("touched X: 0 loads");
   });
 
   it("netRpm and rate grade go null under the 2-load minimum; inbound null when unattributed", () => {
@@ -158,11 +165,11 @@ describe("the window filter — delivery-date basis, inclusive boundaries", () =
     const contacts = [touch({ type: "cold", contacted_at: "2026-07-01T10:00:00Z" })];
     const straddle = [load({ pickup_date: "2026-08-30", delivery_date: "2026-09-02" })];
     // August review: not converted-in-window, no phantom 0-load promotion row…
-    const aug = buildReview([agent("a", 3)], straddle, contacts, new Map(), 3.0, TIERS, WIN, NOW);
+    const aug = buildReview([agent("a", null)], straddle, contacts, new Map(), 3.0, TIERS, WIN, NOW);
     expect(aug.find((r) => r.move === "up")).toBeUndefined();
     // …September review: the load AND the promotion appear together.
     const sepWin = reviewWindow("2026-09", new Date("2026-10-02T12:00:00Z"));
-    const sep = buildReview([agent("a", 3)], straddle, contacts, new Map(), 3.0, TIERS, sepWin, new Date("2026-10-02T12:00:00Z"));
+    const sep = buildReview([agent("a", null)], straddle, contacts, new Map(), 3.0, TIERS, sepWin, new Date("2026-10-02T12:00:00Z"));
     expect(sep[0].move).toBe("up");
     expect(sep[0].loads90).toBe(1);
   });

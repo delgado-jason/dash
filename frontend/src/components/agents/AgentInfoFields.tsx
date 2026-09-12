@@ -73,6 +73,8 @@ export const IdentityFields = ({
             value={draft.broker_id}
             onChange={(e) => onChange({ broker_id: e.target.value })}
           >
+            {/* A prospect may have no code yet (073) — blank is a real state. */}
+            <option value="">— no code —</option>
             {agencies.map((b) => (
               <option key={b.broker_id} value={b.broker_id}>
                 {b.broker_name}

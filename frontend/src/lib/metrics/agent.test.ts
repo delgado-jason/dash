@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { Load } from "@/types/load";
 import {
   getLoadCount,
   getCancelledCount,
@@ -24,7 +25,7 @@ describe("getLoadCount", () => {
       },
     ];
 
-    const result = getLoadCount(loads as any);
+    const result = getLoadCount(loads as unknown as Load[]);
 
     expect(result).toBe(2);
   });
@@ -45,7 +46,7 @@ describe("getCancelledCount", () => {
       },
     ];
 
-    const result = getCancelledCount(loads as any);
+    const result = getCancelledCount(loads as unknown as Load[]);
 
     expect(result).toBe(1);
   });
@@ -87,7 +88,7 @@ describe("getGrossRevenue", () => {
       },
     ];
 
-    const result = getGrossRevenue(loads as any);
+    const result = getGrossRevenue(loads as unknown as Load[]);
 
     expect(result).toBe(4400);
   });
@@ -147,7 +148,7 @@ describe("getAverageRPM", () => {
       },
     ];
 
-    const result = getAverageRPM(loads as any);
+    const result = getAverageRPM(loads as unknown as Load[]);
 
     expect(result).toBe(5.764705882352941);
   });
@@ -186,7 +187,7 @@ describe("getLastLoadDate", () => {
       },
     ];
 
-    const result = getLastLoadDate(loads as any);
+    const result = getLastLoadDate(loads as unknown as Load[]);
 
     expect(result).toBe("2026-06-23T00:00:00.000Z");
   });
@@ -228,7 +229,7 @@ describe("getTotalLoads", () => {
       },
     ];
 
-    const result = getTotalLoads(loads as any);
+    const result = getTotalLoads(loads as unknown as Load[]);
     expect(result).toBe(5);
   });
 });
@@ -239,16 +240,21 @@ describe("buildTimeline", () => {
     const notes = [
       { id: "n1", agent_id: "a", note: "note", created_at: "2026-09-01T10:00:00Z", created_by: "JD" },
     ];
+    // The v2 (073) touch fields, all at their defaults — the timeline reads none of them.
+    const v2 = {
+      outcome: null, next_step: null, next_step_at: null,
+      footprint_captured: false, combined_types: null, cap_override: false,
+    };
     const touches = [
       {
         contact_id: "t1", agent_id: "a", contacted_at: "2026-09-02T10:00:00Z",
         direction: "outbound" as const, method: "call" as const, type: "appreciation" as const,
-        note: null, load_id: null,
+        note: null, load_id: null, ...v2,
       },
       {
         contact_id: "t2", agent_id: "a", contacted_at: "2026-08-30T10:00:00Z",
         direction: "inbound" as const, method: "email" as const, type: "inbound_inquiry" as const,
-        note: null, load_id: null,
+        note: null, load_id: null, ...v2,
       },
     ];
     const r = buildTimeline(notes, [], touches);

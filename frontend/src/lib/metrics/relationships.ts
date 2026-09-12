@@ -4,6 +4,7 @@
 // the contact log; attribution lives on the load and legacy nulls sit outside
 // every denominator. Pure + clock-injected throughout.
 import type { Load } from "@/types/load";
+import type { ContactType } from "@/lib/relationships/contactTypes";
 
 // The day the relationship system went live — the inbound gauge's baseline.
 export const SYSTEM_START = "2026-09-03";
@@ -16,7 +17,7 @@ export interface ContactLike {
   contacted_at: string; // ISO
   direction: "outbound" | "inbound";
   method: "call" | "email" | "text";
-  type: "capacity" | "check_in" | "appreciation" | "close_out" | "cold" | "inbound_inquiry" | "qualification" | "other";
+  type: ContactType;
   load_id?: string | null;
 }
 
@@ -24,7 +25,10 @@ export interface AgentLike {
   agent_id: string;
   first_name: string;
   last_name: string;
-  relationship_tier: number; // 1 | 2 | 3
+  // 1 | 2 | 3, or null = no owner-set tier (v2: a Prospect / dormant-Parked).
+  // The v1 rituals below treat "no tier" the way they treated Tier 3 — the
+  // untiered long tail rides no clock — until PR2 rebuilds them on v2's buckets.
+  relationship_tier: number | null;
   // 'parked' agents leave every WORKING surface (due queue, Tuesday pick,
   // Friday list, the sweep). They stay in ANALYTICAL ones — a parked agent's
   // revenue and rate still happened. Absent/undefined reads as active.
@@ -132,8 +136,9 @@ export const dueQueue = (
       // from the pool deliberately, not pushed by the queue.
       continue;
     } else {
-      const cadence = TIER_CADENCE_DAYS[a.relationship_tier];
-      if (cadence == null) continue; // Tier 3 rides no clock — sweep, not rotation
+      // No tier (v2) reads as the old Tier 3 here: no clock.
+      const cadence = TIER_CADENCE_DAYS[a.relationship_tier ?? 3];
+      if (cadence == null) continue; // Tier 3 / untiered rides no clock — sweep, not rotation
       dueBy = cadence;
       reason = `tier ${a.relationship_tier} cadence — every ${dueBy}d`;
     }
@@ -141,6 +146,19 @@ export const dueQueue = (
     if (overdueDays >= 0) out.push({ agent: a, daysSince, dueBy, overdueDays, reason });
   }
   return out.sort((x, y) => y.overdueDays - x.overdueDays);
+};
+
+// The working book by explicit tier. Parked agents leave every working
+// surface (the tier lists, the Monday blast), and an untiered agent — a v2
+// Prospect — has no tier row to sit in.
+export const activeByTier = <A extends AgentLike>(agents: A[]): Record<1 | 2 | 3, A[]> => {
+  const out: Record<1 | 2 | 3, A[]> = { 1: [], 2: [], 3: [] };
+  for (const a of agents) {
+    if (a.work_status === "parked") continue;
+    const t = a.relationship_tier;
+    if (t === 1 || t === 2 || t === 3) out[t].push(a);
+  }
+  return out;
 };
 
 // Tuesday's call: the TIER-2 agent who's waited longest (never-touched first).
@@ -255,7 +273,8 @@ export const inboundByTier = (
   fromKey: string,
   toKey: string,
 ): Record<number, InboundShare> => {
-  const tierOf = new Map(agents.map((a) => [a.agent_id, a.relationship_tier]));
+  // Untiered (v2 Prospects) fold into the Tier 3 bar — the old long tail.
+  const tierOf = new Map(agents.map((a) => [a.agent_id, a.relationship_tier ?? 3]));
   const windowed = loads.filter(
     (l) =>
       l.load_status !== "cancelled" &&

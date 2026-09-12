@@ -9,7 +9,7 @@ const mk = (id: string, code: string, first: string, last: string): Agent => ({
   first_name: first,
   last_name: last,
   preferred_contact: "phone",
-  relationship_tier: 3,
+  relationship_tier: null, // v2: no owner-set tier — a Prospect; the matcher never reads it
   created_at: "",
   updated_at: "",
 });

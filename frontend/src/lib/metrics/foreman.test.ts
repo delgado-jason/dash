@@ -48,7 +48,7 @@ const mkAgent = (id: string, first: string, brokerName = "EWT"): Agent => ({
   broker_name: brokerName,
   first_name: first,
   last_name: "Co",
-  relationship_tier: 3,
+  relationship_tier: null, // v2: no owner-set tier — the Foreman ranks on loads, never on this
   preferred_contact: "phone",
   created_at: "2026-01-01",
   updated_at: "2026-01-01",

@@ -11,14 +11,16 @@ import {
   inboundByTier,
   inboundTrend,
   coldFunnel,
+  activeByTier,
   type ContactLike,
   type AgentLike,
 } from "./relationships";
 
 const NOW = new Date("2026-09-04T12:00:00Z"); // a Friday
 
-const agent = (id: string, tier: number): AgentLike =>
-  ({ agent_id: id, first_name: id, last_name: "X", relationship_tier: tier });
+// tier null = no owner-set tier (v2's Prospect / dormant-Parked).
+const agent = (id: string, tier: number | null, o: Partial<AgentLike> = {}): AgentLike =>
+  ({ agent_id: id, first_name: id, last_name: "X", relationship_tier: tier, ...o });
 
 const touch = (o: Partial<ContactLike>): ContactLike =>
   ({
@@ -26,7 +28,7 @@ const touch = (o: Partial<ContactLike>): ContactLike =>
     contacted_at: "2026-09-01T10:00:00Z",
     direction: "outbound",
     method: "email",
-    type: "check_in",
+    type: "capacity", // a live v2 type — nothing here reads it except cold / close_out
     ...o,
   });
 
@@ -66,9 +68,9 @@ describe("prospectState — every stage derived, none stored", () => {
   });
 });
 
-describe("dueQueue — cadence per tier, follow-ups for the cold pool", () => {
+describe("dueQueue — cadence per tier, follow-ups for prospects", () => {
   it("T1 overdue at 8 days, T2 fine at 8, cold follow-up at 15, replied at 8", () => {
-    const agents = [agent("t1", 1), agent("t2", 2), agent("c", 3), agent("r", 3)];
+    const agents = [agent("t1", 1), agent("t2", 2), agent("c", null), agent("r", null)];
     const contacts = [
       touch({ agent_id: "t1", contacted_at: "2026-08-27T10:00:00Z" }), // 8d
       touch({ agent_id: "t2", contacted_at: "2026-08-27T10:00:00Z" }), // 8d — under 14
@@ -87,13 +89,26 @@ describe("dueQueue — cadence per tier, follow-ups for the cold pool", () => {
   });
 
   it("an untouched PROSPECT never nags — cold outreach is pulled, not pushed", () => {
-    expect(dueQueue([agent("p", 3)], [], [], NOW)).toHaveLength(0);
+    expect(dueQueue([agent("p", null)], [], [], NOW)).toHaveLength(0);
   });
 
   it("a never-touched WORKING agent surfaces immediately", () => {
     const q = dueQueue([agent("w", 1)], [], [load({ agent_id: "w" })], NOW);
     expect(q).toHaveLength(1);
     expect(q[0].daysSince).toBeNull();
+  });
+
+  it("an untiered agent with history rides no clock — the sweep, not the rotation", () => {
+    const loads = [load({ agent_id: "u" })];
+    const stale = [touch({ agent_id: "u", contacted_at: "2026-01-01T10:00:00Z" })]; // 8 months quiet
+    expect(dueQueue([agent("u", null)], stale, loads, NOW)).toEqual([]);
+    expect(dueQueue([agent("u", null)], [], loads, NOW)).toEqual([]); // never touched, still no nag
+  });
+
+  it("a parked agent is never owed a touch, whatever its tier", () => {
+    const parked = agent("pk", 1, { work_status: "parked" });
+    const q = dueQueue([parked, agent("t1", 1)], [], [load({ agent_id: "pk", load_id: "p1" }), load({ agent_id: "t1", load_id: "x1" })], NOW);
+    expect(q.map((e) => e.agent.agent_id)).toEqual(["t1"]);
   });
 });
 
@@ -109,6 +124,14 @@ describe("the weekly ritual pickers", () => {
     expect(tuesdayPick([agent("only1", 1)], [], NOW)).toBeNull();
   });
 
+  it("tuesdayPick ignores the untiered and the parked — no tier, no Tuesday", () => {
+    expect(tuesdayPick([agent("u", null)], [], NOW)).toBeNull();
+    expect(tuesdayPick([agent("pk", 2, { work_status: "parked" })], [], NOW)).toBeNull();
+    // a parked T2 never outranks a live one, even never-touched
+    const live = agent("live", 2);
+    expect(tuesdayPick([agent("pk", 2, { work_status: "parked" }), live], [touch({ agent_id: "live" })], NOW)!.agent).toBe(live);
+  });
+
   it("fridayList = T1 agents with delivered loads in the trailing week, most loads first", () => {
     const agents = [agent("s", 1), agent("m", 1), agent("t2", 2)];
     const loads = [
@@ -120,6 +143,15 @@ describe("the weekly ritual pickers", () => {
     ];
     const list = fridayList(agents, loads, NOW);
     expect(list.map((e) => [e.agent.agent_id, e.loads])).toEqual([["s", 2], ["m", 1]]);
+  });
+
+  it("fridayList skips the untiered and the parked even with a delivery this week", () => {
+    const loads = [
+      load({ agent_id: "u", load_id: "1", delivery_date: "2026-09-02" }),
+      load({ agent_id: "pk", load_id: "2", delivery_date: "2026-09-02" }),
+    ];
+    expect(fridayList([agent("u", null)], loads, NOW)).toEqual([]);
+    expect(fridayList([agent("pk", 1, { work_status: "parked" })], loads, NOW)).toEqual([]);
   });
 
   it("closeOutPending = recent deliveries without a close-out contact linked", () => {
@@ -134,7 +166,8 @@ describe("the weekly ritual pickers", () => {
 });
 
 describe("inbound share — the one number, legacy nulls outside the math", () => {
-  const agents = [agent("t1", 1), agent("t3", 3)];
+  // "t3" is UNTIERED (v2's Prospect) — its attributed loads fold into the Tier 3 bar.
+  const agents = [agent("t1", 1), agent("t3", null)];
   const loads = [
     load({ load_id: "1", agent_id: "t1", pickup_date: "2026-09-01", booked_via: "agent_reached_out" }),
     load({ load_id: "2", agent_id: "t1", pickup_date: "2026-09-02", booked_via: "i_reached_out" }),
@@ -154,9 +187,10 @@ describe("inbound share — the one number, legacy nulls outside the math", () =
     expect(inboundShare([load({ load_id: "4", pickup_date: "2026-09-03" })], "2026-09-01", "2026-09-30").share).toBeNull();
   });
 
-  it("splits by tier — the thesis check", () => {
+  it("splits by tier — the thesis check; an untiered agent's attributed loads land in [3]", () => {
     const byTier = inboundByTier(agents, loads, "2026-09-01", "2026-09-30");
     expect(byTier[1].share).toBeCloseTo(0.5, 5);
+    expect(byTier[3].attributed).toBe(1); // load 3 (load 4 is a legacy null)
     expect(byTier[3].share).toBeCloseTo(0, 5);
     expect(byTier[2].share).toBeNull();
   });
@@ -170,7 +204,7 @@ describe("inbound share — the one number, legacy nulls outside the math", () =
 
 describe("coldFunnel", () => {
   it("pool/touched/replied/converted with median days", () => {
-    const agents = [agent("p1", 3), agent("p2", 3), agent("p3", 3), agent("w", 1)];
+    const agents = [agent("p1", null), agent("p2", null), agent("p3", null), agent("w", 1)];
     const contacts = [
       touch({ agent_id: "p1", type: "cold", contacted_at: "2026-08-01T09:00:00Z" }),
       touch({ agent_id: "p2", type: "cold", contacted_at: "2026-08-01T09:00:00Z" }),
@@ -200,6 +234,24 @@ describe("clock-skew clamp", () => {
     const agents = [agent("t2", 2)];
     const contacts = [touch({ agent_id: "t2", contacted_at: "2026-09-04T13:00:00Z" })]; // 1h after NOW
     expect(tuesdayPick(agents, contacts, NOW)!.daysSince).toBe(0);
+  });
+});
+
+describe("activeByTier — the working book by explicit tier", () => {
+  it("shelves 1/2/3, leaves the parked and the untiered out", () => {
+    const t1 = agent("t1", 1);
+    const t2 = agent("t2", 2);
+    const t3 = agent("t3", 3);
+    const parkedT1 = agent("pk", 1, { work_status: "parked" });
+    const untiered = agent("u", null);
+    const by = activeByTier([parkedT1, t1, untiered, t3, t2]);
+    expect(by[1]).toEqual([t1]);
+    expect(by[2]).toEqual([t2]);
+    expect(by[3]).toEqual([t3]);
+  });
+
+  it("an empty book → three empty shelves, never undefined", () => {
+    expect(activeByTier([])).toEqual({ 1: [], 2: [], 3: [] });
   });
 });
 
