@@ -38,6 +38,17 @@ describe("parseGeocode", () => {
     assert.deepEqual(parseGeocode(json), { lat: 32.53, lng: -96.66 });
   });
 
+  test("null when two hits share one label (twins — refuse to guess)", () => {
+    const twp = (lat, lng) => ({
+      address: { label: "Bruce Twp, MI, United States" },
+      position: { lat, lng },
+    });
+    assert.equal(parseGeocode({ items: [twp(46.4, -84.3), twp(42.8, -83.0)] }), null);
+    // a second hit with a DIFFERENT label is not a twin
+    const other = { address: { label: "Bruce Rd, Romeo, MI, United States" }, position: { lat: 1, lng: 1 } };
+    assert.deepEqual(parseGeocode({ items: [twp(42.8, -83.0), other] }), { lat: 42.8, lng: -83.0 });
+  });
+
   test("null when no items or malformed", () => {
     assert.equal(parseGeocode({ items: [] }), null);
     assert.equal(parseGeocode({}), null);
@@ -69,6 +80,28 @@ describe("parseGeocodeDetailed", () => {
       queryScore: 0.99,
       label: "Macedonia, OH, United States",
     });
+  });
+
+  test("ambiguous when two hits share the top hit's label (Bruce Twp twins)", () => {
+    const twp = (lat, lng) => ({
+      title: "Bruce Twp, MI, United States",
+      resultType: "locality",
+      address: { label: "Bruce Twp, MI, United States", countryCode: "USA", stateCode: "MI" },
+      position: { lat, lng },
+      scoring: { queryScore: 1 },
+    });
+    const d = parseGeocodeDetailed({ items: [twp(46.39766, -84.32213), twp(42.81005, -83.01232)] });
+    assert.deepEqual(d, { found: true, ambiguous: true, label: "Bruce Twp, MI, United States" });
+    assert.equal(validateGeocodeResult("MI", d).reason, "ambiguous_twin_cities");
+  });
+
+  test("a differently-labelled second hit is not a twin", () => {
+    const second = {
+      ...hit.items[0],
+      address: { ...hit.items[0].address, label: "Macedonia Rd, Macedonia, OH, United States" },
+      resultType: "street",
+    };
+    assert.equal(parseGeocodeDetailed({ items: [hit.items[0], second] }).ambiguous, undefined);
   });
 
   test("found:false when nothing usable came back", () => {
@@ -132,6 +165,36 @@ describe("validateGeocodeResult", () => {
     const v = validateGeocodeResult("OH", { ...good, queryScore: null });
     assert.equal(v.ok, false);
     assert.equal(v.reason, "no_score");
+  });
+
+  // "Hazelton, PA" (a misspelling of Hazleton) geocoded to Hazelton St in
+  // Pittsburgh — same state, high score, 230 miles from the real town — and the
+  // Foreman distanced against it for weeks. A street is never a city.
+  test("rejects a street-level hit even in the right state", () => {
+    const v = validateGeocodeResult("PA", {
+      ...good,
+      stateCode: "PA",
+      resultType: "street",
+      queryScore: 0.95,
+      label: "Hazelton St, Pittsburgh, PA 15207-1616, United States",
+    });
+    assert.equal(v.ok, false);
+    assert.equal(v.reason, "not_a_locality_street");
+  });
+
+  test("accepts an administrativeArea (a township / county-level place)", () => {
+    const v = validateGeocodeResult("OH", { ...good, resultType: "administrativeArea" });
+    assert.equal(v.ok, true);
+  });
+
+  test("rejects an ambiguous twin instead of storing a coin flip", () => {
+    const v = validateGeocodeResult("IN", {
+      found: true,
+      ambiguous: true,
+      label: "Milford, IN, United States",
+    });
+    assert.equal(v.ok, false);
+    assert.equal(v.reason, "ambiguous_twin_cities");
   });
 });
 

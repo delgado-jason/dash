@@ -22,8 +22,14 @@ export const poundsToKg = (lb) => Math.round(lb * 0.45359237);
 // HERE geocode response → { lat, lng } of the top hit, or null when nothing
 // matched or the shape is off.
 export const parseGeocode = (json) => {
-  const pos = json?.items?.[0]?.position;
+  const item = json?.items?.[0];
+  const pos = item?.position;
   if (!pos || typeof pos.lat !== "number" || typeof pos.lng !== "number")
+    return null;
+  // Same-label twins ("Bruce Twp, MI" ×2, 300 mi apart) — the top hit is a
+  // coin flip. Unrouted beats a confidently wrong deadhead.
+  const label = item.address?.label;
+  if (label && json.items.filter((i) => i?.address?.label === label).length > 1)
     return null;
   return { lat: pos.lat, lng: pos.lng };
 };
@@ -55,7 +61,7 @@ export const geocode = async (city, state) => {
   const params = new URLSearchParams({
     q: `${city.trim()}, ${state.trim()}, USA`,
     apiKey: process.env.HERE_API_KEY,
-    limit: "1",
+    limit: "5", // enough to see a same-label twin behind the top hit
   });
   const res = await fetch(`${GEOCODE_URL}?${params}`);
   if (!res.ok) throw new Error(`HERE geocode failed (${res.status})`);
@@ -84,6 +90,12 @@ export const parseGeocodeDetailed = (json) => {
   const pos = item?.position;
   if (!item || !pos || typeof pos.lat !== "number" || typeof pos.lng !== "number")
     return { found: false };
+  // Twins in the geocode index: "Bruce Twp, MI" comes back TWICE under one
+  // label — Chippewa County in the UP and Macomb County north of Detroit, 300
+  // miles apart. The top hit is a coin flip; refuse it rather than store it.
+  const label = item.address?.label ?? null;
+  const twins = label ? json.items.filter((i) => i?.address?.label === label) : [];
+  if (twins.length > 1) return { found: true, ambiguous: true, label };
   return {
     found: true,
     lat: pos.lat,
@@ -97,18 +109,27 @@ export const parseGeocodeDetailed = (json) => {
   };
 };
 
+// Result types that ARE a city. Everything else — a street ("Hazelton St,
+// Pittsburgh" was stored as the city of Hazleton, 230 miles off, 2026-09-11),
+// a house number, a POI — is never a coordinate for a town.
+const LOCALITY_TYPES = new Set(["locality", "administrativeArea"]);
+
 // Is a detailed result trustworthy enough to STORE? We keep a coordinate only when
-// HERE agrees on the state, it's a US result, it sits inside US bounds, and it
-// clears the confidence floor. Anything else → don't store a number, fall back to
+// HERE agrees on the state, it's a US result, it IS a locality (not a street),
+// it isn't an ambiguous twin, it sits inside US bounds, and it clears the
+// confidence floor. Anything else → don't store a number, fall back to
 // region-level. Pure + unit-tested (no key needed).
 // → { ok:true, coords, label, queryScore } | { ok:false, reason }
 export const validateGeocodeResult = (state, d, minScore = 0.8) => {
   if (!d || d.found === false) return { ok: false, reason: "no_match" };
+  if (d.ambiguous) return { ok: false, reason: "ambiguous_twin_cities" };
   const st = String(state ?? "").trim().toUpperCase();
   if (d.countryCode && d.countryCode !== "USA")
     return { ok: false, reason: `country_${d.countryCode}` };
   if (!d.stateCode || d.stateCode.toUpperCase() !== st)
     return { ok: false, reason: `state_mismatch_${d.stateCode ?? "none"}` };
+  if (d.resultType && !LOCALITY_TYPES.has(d.resultType))
+    return { ok: false, reason: `not_a_locality_${d.resultType}` };
   if (
     d.lat < US_BOUNDS.minLat ||
     d.lat > US_BOUNDS.maxLat ||
@@ -138,7 +159,7 @@ export const geocodeDetailed = async (city, state) => {
   const params = new URLSearchParams({
     q: `${city.trim()}, ${state.trim()}, USA`,
     apiKey: process.env.HERE_API_KEY,
-    limit: "1",
+    limit: "5", // enough to see a same-label twin behind the top hit
   });
   const res = await fetch(`${GEOCODE_URL}?${params}`);
   if (!res.ok) throw new Error(`HERE geocode failed (${res.status})`);
@@ -300,6 +321,54 @@ export const geocodeCity = async (city, state) => {
     }
   }
   return geocode(city, state); // tiny places live only in the geocode index
+};
+
+// Prominence-aware DETAILED geocode for the persistent city_coords cache —
+// the same autocomplete→lookup chain as geocodeCity, returning the detailed
+// shape validateGeocodeResult judges. The old writer used the plain geocoder
+// and its state-only validator, which persisted Walker Twp (near Mackinac)
+// as Walker, MI and a Pittsburgh street as Hazleton, PA — wrong by 180 and
+// 230 miles, poisoning Foreman distances for weeks (2026-09-11).
+// Twins come back { ambiguous: true } so the caller records a refusal, never
+// a coin flip. Falls back to the plain detailed geocoder only for places the
+// city index doesn't know — the locality check then rejects streets.
+export const geocodeCityDetailed = async (city, state) => {
+  if (!hasKey() || !city || !state) return null;
+  const params = new URLSearchParams({
+    q: `${city.trim()}, ${state.trim()}`,
+    in: "countryCode:USA",
+    types: "city",
+    limit: "5",
+    apiKey: process.env.HERE_API_KEY,
+  });
+  const res = await fetch(`${AUTOCOMPLETE_URL}?${params}`);
+  if (!res.ok) throw new Error(`HERE autocomplete failed (${res.status})`);
+  const pick = parseAutocompleteCity(await res.json(), city, state);
+  if (pick.status === "ambiguous")
+    return { found: true, ambiguous: true, label: pick.label ?? null };
+  if (pick.status === "ok") {
+    const lres = await fetch(
+      `${LOOKUP_URL}?${new URLSearchParams({ id: pick.id, apiKey: process.env.HERE_API_KEY })}`,
+    );
+    if (!lres.ok) throw new Error(`HERE lookup failed (${lres.status})`);
+    const j = await lres.json();
+    const pos = parseLookup(j);
+    if (pos) {
+      return {
+        found: true,
+        lat: pos.lat,
+        lng: pos.lng,
+        stateCode: j.address?.stateCode ?? null,
+        countryCode: j.address?.countryCode ?? null,
+        resultType: j.resultType ?? "locality",
+        // an exact same-state city-name match in the city index IS the
+        // confidence — lookup carries no queryScore of its own
+        queryScore: 1,
+        label: j.address?.label ?? j.title ?? null,
+      };
+    }
+  }
+  return geocodeDetailed(city, state);
 };
 
 // ---- city autocomplete ----
