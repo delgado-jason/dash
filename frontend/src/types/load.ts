@@ -66,6 +66,9 @@ export interface Load {
   // true = confirmed owed (waiting to collect), false = dismissed (shipper won't pay).
   detention_billable?: boolean | null;
   tonu_paid?: boolean;
+  // Decision 4 (073): set by Dispatch when an OS&D or damage claim lands.
+  // Breaks the agent's on-time, claim-free streak. Absent on fixtures → false.
+  claim_filed?: boolean;
   truck_id?: string | null;
   driver_id?: string | null;
   trailer_id?: string | null;

@@ -40,6 +40,14 @@ export interface TouchPrefill {
   direction?: ContactDirection;
   method?: ContactMethod;
   type?: ContactType;
+  // Today's rows carry more: a close-out is logged against its load, and a
+  // nurture flag's note starts with its marker so the flag stays down.
+  load_id?: string | null;
+  note?: string;
+  // A CALL BACK row: the call was promised, so the cap never refuses it — the
+  // form skips the gate and logs with cap_override; the prefilled note says
+  // "callback promised {day}" (editable).
+  promised?: true;
 }
 
 export interface ClassPin {
@@ -155,13 +163,16 @@ export const LogTouchForm = ({
   const [nextStep, setNextStep] = useState<ContactNextStep>("none");
   const [nextStepAt, setNextStepAt] = useState<string | null>(null);
   const [footprint, setFootprint] = useState(false);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(prefill?.note ?? "");
 
   const options = useMemo(() => pickerTypes(direction, { admin: isAdmin }), [direction, isAdmin]);
   const kind = contactKind(type, direction);
   const proactive = isProactive({ type, direction });
   const cap = useMemo(() => capStatus(agent.agent_id, contacts, now), [agent.agent_id, contacts, now]);
-  const capped = proactive && cap.blocked && cap.first != null;
+  // A promised call-back is kept, not refused: the cap gate is skipped and the
+  // contact carries cap_override so the record says why a second touch went out.
+  const promised = prefill?.promised === true;
+  const capped = !promised && proactive && cap.blocked && cap.first != null;
   // The chosen reason is already in this week's message — as its own type or
   // an earlier fold — so there is nothing to PATCH.
   const carried = capped && cap.first != null && alreadyCarries(cap.first, type);
@@ -202,7 +213,8 @@ export const LogTouchForm = ({
       next_step_at: nextStepAtOut,
       footprint_captured: footprintOut,
       note: note.trim() || null,
-      cap_override: capOverride,
+      cap_override: capOverride || promised,
+      ...(prefill?.load_id ? { load_id: prefill.load_id } : {}),
     },
     classPin,
   });
@@ -339,6 +351,13 @@ export const LogTouchForm = ({
       </Field>
 
       <ErrorLine>{error}</ErrorLine>
+
+      {promised && proactive && cap.blocked && cap.first && (
+        <p className="font-condensed text-[12.5px] text-faint mt-3 leading-snug">
+          {agent.first_name} already had a proactive touch this week ({contactTypeLabel(cap.first.type)}, {weekdayOf(cap.first.contacted_at)}) — a promised call-back is
+          kept anyway; this one logs with the cap overridden.
+        </p>
+      )}
 
       {capped && cap.first ? (
         <div className="mt-3">

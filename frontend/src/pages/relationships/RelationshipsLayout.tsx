@@ -10,6 +10,7 @@ import { isDispatcher } from "@/lib/roles";
 import { SYSTEM_START, inboundShare } from "@/lib/metrics/relationships";
 import { inboundHeadline } from "@/lib/relationships/inboundHeadline";
 import { utcDayKey } from "@/lib/relationships/dayKeys";
+import { buildToday, type TodayModel } from "@/lib/relationships/todayQueue";
 import { AgentSheet } from "@/components/relationships/AgentSheet";
 import { ProspectSheet } from "@/components/relationships/ProspectSheet";
 import { Toast, type ToastState } from "@/components/relationships/Toast";
@@ -30,12 +31,28 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "review", label: "Review" },
 ];
 const SUB_LINE: Record<Tab, string> = {
-  today: "moving here in the next build",
+  today: "the day's job — nothing sends itself",
   calls: "moving here in the next build",
   tiers: "the owner sets the tiers — dash only suggests",
   review: "moving here in the next build",
 };
 const isTab = (v: string | undefined): v is Tab => v === "today" || v === "calls" || v === "tiers" || v === "review";
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// Today's live context: "Monday Sep 14 · 1 close-out · 2 callbacks".
+const todaySubLine = (today: TodayModel | null, now: Date): string => {
+  if (!today) return SUB_LINE.today;
+  const day = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  return `${day} · ${plural(today.closeOuts.length, "close-out")} · ${plural(today.callbacks.length, "callback")}`;
+};
+
+// Tab labels carry their queue counts once the data is in: "Today · 6".
+const tabLabel = (tab: Tab, today: TodayModel | null): string => {
+  const base = TABS.find((t) => t.value === tab)?.label ?? tab;
+  if (tab === "today" && today) return `${base} · ${today.count}`;
+  return base;
+};
 
 const TOAST_MS = 6000;
 
@@ -84,10 +101,32 @@ const RelationshipsLayout = () => {
     [data.loads, data.now],
   );
 
-  const ctx: RelationshipsContext = useMemo(
-    () => ({ ...data, isAdmin, openAgent, openProspect, notify }),
-    [data, isAdmin, openAgent, openProspect, notify],
+  // The derived queue, built once here so the tab count, the sub-line and
+  // the Today view read the same object. null while the loads slice is
+  // missing — Today withholds rather than show confident zeros.
+  const today = useMemo<TodayModel | null>(
+    () =>
+      data.loadsReady && !data.loading
+        ? buildToday({
+            agents: data.agents,
+            loads: data.loads,
+            contacts: data.contacts,
+            coverage: data.coverage,
+            notes: data.notes,
+            coords: data.coords,
+            ladder: data.ladder,
+            now: data.now,
+          })
+        : null,
+    [data.loadsReady, data.loading, data.agents, data.loads, data.contacts, data.coverage, data.notes, data.coords, data.ladder, data.now],
   );
+
+  const ctx: RelationshipsContext = useMemo(
+    () => ({ ...data, isAdmin, today, openAgent, openProspect, notify }),
+    [data, isAdmin, today, openAgent, openProspect, notify],
+  );
+
+  const tabs = useMemo(() => TABS.map((t) => ({ value: t.value, label: tabLabel(t.value, today) })), [today]);
 
   const sheetAgent = sheetAgentId ? data.agents.find((a) => a.agent_id === sheetAgentId) ?? null : null;
   const bookError = data.errors.agents ?? data.errors.contacts ?? data.errors.brokers;
@@ -99,7 +138,9 @@ const RelationshipsLayout = () => {
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           <h1 className="font-display text-[26px] tracking-[.06em] leading-none">RELATIONSHIPS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">{SUB_LINE[tab]}</span>
+          <span className="font-condensed font-medium text-[15px] text-dim">
+            {tab === "today" ? todaySubLine(today, data.now) : SUB_LINE[tab]}
+          </span>
           <span className="flex-1" />
           <Link
             to="/relationships/review"
@@ -115,7 +156,7 @@ const RelationshipsLayout = () => {
         </div>
 
         <SegmentedTabs
-          tabs={TABS}
+          tabs={tabs}
           value={tab}
           onChange={(v) => navigate(`/relationships/${v}`)}
           size="md"
@@ -135,6 +176,14 @@ const RelationshipsLayout = () => {
           <AlertLamp category="loads" className="mt-3">
             loads didn't come through — load counts, RPM and the inbound chip are incomplete ·{" "}
             <button type="button" className="underline underline-offset-2 hover:text-ink" onClick={data.retryLoads}>
+              retry
+            </button>
+          </AlertLamp>
+        )}
+        {data.errors.notes && (
+          <AlertLamp category="notes" className="mt-3">
+            agent notes didn't come through — a nurture flag you skipped may show again until they do ·{" "}
+            <button type="button" className="underline underline-offset-2 hover:text-ink" onClick={() => void data.reload()}>
               retry
             </button>
           </AlertLamp>

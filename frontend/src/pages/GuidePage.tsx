@@ -2291,13 +2291,71 @@ const GuidePage = () => {
               recompute, nothing rots.
               <br />
               <br />
-              Today, Call list and Review are being rebuilt next on these
-              buckets. Until then Today still carries the week’s rituals
-              (Monday’s capacity heads-up to Tier 1, the close-out after every
-              delivery, the Tuesday and Friday calls now logged as a capacity
-              heads-up and a milestone note), Call list holds the qualify
-              sweep, and Review is the trailing-90-day table with its move
-              chips — tap a name there to open the agent sheet.
+              <span className="text-light">Today is the day’s job.</span> The
+              plate at the top follows ADMIN-02’s week and the queue beneath it
+              does the thinking. <span className="text-light">Monday</span> is
+              the capacity pass: from where the truck goes empty next — the
+              Foreman’s anchor, the same coordinate cache — every active agent
+              whose freight sits within 150 straight-line miles (their
+              delivered-load origins plus the markets they named), nearest
+              first, each with the §7 heads-up drafted in their name and yours,
+              email or text. COPY puts it on the clipboard; LOG SENT records
+              it. One at a time, on purpose — there is no “log all”. Parked
+              agents never get the email; the ones within 75 miles are counted
+              for the Foreman to harvest instead. <span className="text-light">
+              Tuesday and Thursday</span> lead with reactivation — the lapsed
+              prospects who hauled before, most loads first, then the quietest;
+              the first one still clear this week is the plate’s hero and
+              Thursday adds prospecting. <span className="text-light">Wednesday</span> is the
+              nurture flags: a load-count crossing at 5 · 10 · 25 · 50 · 100,
+              an on-time and claim-free streak at 10 · 20 · 50 (untimed loads
+              are neutral; a claim breaks it), the first-load anniversary for
+              two weeks, and in season the Thanksgiving and New Year notes
+              (ten days before Thanksgiving through the day; Dec 22 to Jan 2).
+              Each flag sits until it is logged or skipped — a skip is
+              recorded so the flag doesn’t return; the owner personalizes the
+              Tier 1 holiday versions.{" "}
+              <span className="text-light">Friday</span> is the five — agents
+              contacted, footprints, inbound offers, loads booked above
+              break-even, days empty — with COPY THE FIVE for the owner and a
+              hygiene line naming who still lacks a phone, a preferred channel
+              or a footprint. Weekends carry only close-outs and callbacks, and
+              preview Monday’s pass.
+              <br />
+              <br />
+              Beneath the plate, in a fixed order: <span className="text-light">
+              NOW</span> — every delivery in the last fourteen days with no
+              close-out logged, its draft one tap away (operational, so it
+              never touches the cap); the plate’s own rows; <span className="text-light">
+              CALL BACK</span> — every “call back Thursday” you promised on a
+              log whose day has come, standing until something settles it (they
+              call, you reach them, or any proactive touch — a close-out or
+              freight-bill note does not). A promised call is never refused by
+              the cap: it logs with the override and a note saying why. One
+              reason per agent per day — an agent owed a call back gets that
+              row and no plate or list row. Then the next three of the day’s
+              list and a door to the Call list. A row for an agent who already had this
+              week’s proactive touch is ghosted with a TOUCHED chip and is not
+              offered a second one — when a milestone lands on a Monday
+              capacity agent the plate folds it into{" "}
+              <span className="text-light">one combined message</span> and the
+              contact records both reasons. DONE TODAY lists what was logged,
+              each with an undo. Nothing here is “due” by a clock anymore; the
+              old Tier 1 weekly / Tier 2 monthly list is gone.
+              <br />
+              <br />
+              <span className="text-light">Cooling is the owner’s flag, not
+              Dispatch’s to-do.</span> At the bottom of Today, every tiered
+              agent past their threshold with no two-way contact — Tier 1 at 21
+              days, Tier 2 at 42, Tier 3 at 90 — plus anyone who flags inside
+              the next two weeks (“flags Oct 9 if nothing changes”). A reached
+              call, anything inbound or a load resets the clock; a voicemail
+              or a one-way email does not. Dispatch sees it read-only; the
+              owner taps a row to log their own thread — Owner personal,
+              uncapped. It never creates a task and never sends anything.
+              Call list and Review are rebuilt next on these buckets: until
+              then Call list holds the qualify sweep and Review is the
+              trailing-90-day table with its move chips.
             </Why>
           </Metric>
 
@@ -2336,16 +2394,16 @@ const GuidePage = () => {
               work is that capacity heads-ups, milestone notes and being the
               easy, reliable truck compound until agents call{" "}
               <span className="text-light">you</span> first — so the fleet-wide
-              share should climb from the system-start baseline (Sep ’26,
-              marked on the chart), and{" "}
+              share should climb from the system-start baseline (Sep ’26), and{" "}
               <span className="text-light">Tier 1’s share should pull away
               from Tier 3’s</span>. If it doesn’t within a quarter or two, the
               method isn’t landing — change the plays, not the goal. Loads
               from before the system carry no answer and sit outside the math.
-              The INBOUND chip in the Relationships statusbar carries the same
+              The INBOUND chip in the Relationships statusbar carries the
               number since system start — a plain fraction (“4 of 9”) until ten
               attributed loads exist, a percent after that, because a
-              percentage of three loads is noise.
+              percentage of three loads is noise. The month-by-month and
+              by-tier view returns with the rebuilt Review.
             </Why>
           </Metric>
 
@@ -2375,9 +2433,11 @@ const GuidePage = () => {
               Prospecting</span> for an agent who never ran and{" "}
               <span className="text-light">Reactivation</span> for one who
               hauled before and went quiet — and each counts as the week’s one
-              proactive touch. The funnel on Today — courting → touched →
-              replied → converted, with median days to first load — tells you
-              if prospecting is earning its afternoons.
+              proactive touch. Today works them for you: the lapsed ones (a
+              load once, nothing two-way in six weeks) lead Tuesday and
+              Thursday as reactivation, the never-ran ones follow on Thursday
+              as prospecting — three at a time, the rest behind the Call list
+              door.
             </Why>
           </Metric>
 
