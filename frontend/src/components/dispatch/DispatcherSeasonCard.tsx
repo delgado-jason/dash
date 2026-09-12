@@ -8,6 +8,7 @@ import {
   type SeasonTrophy,
 } from "@/lib/metrics/dispatcherSeason";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { MeterCells } from "@/components/awards/HardwareBoard";
 import { money, rpm as fmtRpm } from "@/lib/format";
 
 const GOLD = "#fcd34d";
@@ -55,6 +56,9 @@ const TrophyTile = ({ t }: { t: SeasonTrophy }) => (
     >
       {t.detail}
     </p>
+    <div className="mt-2">
+      <MeterCells pct={t.progress} cells={8} />
+    </div>
   </div>
 );
 

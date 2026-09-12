@@ -52,52 +52,76 @@ const atRpm = (r: number, o: Partial<Load> = {}): Load => ({
   linehaul: String(r * 1000),
   ...o,
 });
+// `n` booked loads at a rate, distinct ids.
+const nAt = (n: number, r: number): Load[] =>
+  Array.from({ length: n }, (_, i) => atRpm(r, { load_id: `b${i}` }));
+
+const trophy = (loads: Load[], key: "booking" | "rate" | "perfect") =>
+  currentSeason(loads, "me", "month", ladder, 2, now).trophies.find(
+    (t) => t.key === key,
+  )!;
 
 describe("dispatchSeason trophies", () => {
   it("Booking Champion earns at the month bar and shows progress below it", () => {
-    const eight = Array.from({ length: BOOKING_BAR.month }, (_, i) =>
-      atRpm(5, { load_id: `b${i}` }),
-    );
-    const won = currentSeason(eight, "me", "month", ladder, 2, now).trophies.find(
-      (t) => t.key === "booking",
-    )!;
+    const bar = BOOKING_BAR.month;
+    const won = trophy(nAt(bar, 5), "booking");
     expect(won.earned).toBe(true);
-    expect(won.detail).toBe("8 loads booked");
+    expect(won.detail).toBe(`${bar} loads booked`);
+    expect(won.progress).toBe(1);
 
-    const short = currentSeason(eight.slice(0, 7), "me", "month", ladder, 2, now)
-      .trophies.find((t) => t.key === "booking")!;
+    const short = trophy(nAt(bar - 1, 5), "booking");
     expect(short.earned).toBe(false);
-    expect(short.detail).toBe("7 / 8 loads");
+    expect(short.detail).toBe(`${bar - 1} / ${bar} loads`);
+    expect(short.progress).toBeCloseTo((bar - 1) / bar, 6);
+
+    expect(trophy([], "booking").progress).toBe(0);
+  });
+
+  it("Booking Champion caps progress at 1 past the bar", () => {
+    const over = trophy(nAt(BOOKING_BAR.month + 2, 5), "booking");
+    expect(over.earned).toBe(true);
+    expect(over.progress).toBe(1);
   });
 
   it("Rate Champion earns when the period averages at/above target", () => {
     const over = [atRpm(6, { load_id: "a" }), atRpm(5, { load_id: "b" })]; // avg 5.5
-    expect(
-      currentSeason(over, "me", "month", ladder, 2, now).trophies.find(
-        (t) => t.key === "rate",
-      )!.earned,
-    ).toBe(true);
+    const won = trophy(over, "rate");
+    expect(won.earned).toBe(true);
+    expect(won.progress).toBe(1);
+
     const under = [atRpm(4, { load_id: "a" }), atRpm(4, { load_id: "b" })];
-    expect(
-      currentSeason(under, "me", "month", ladder, 2, now).trophies.find(
-        (t) => t.key === "rate",
-      )!.earned,
-    ).toBe(false);
+    const short = trophy(under, "rate");
+    expect(short.earned).toBe(false);
+    expect(short.progress).toBeCloseTo(4 / 5, 6); // avg 4 vs target 5
+
+    expect(trophy([], "rate").progress).toBe(0); // no rate yet
   });
 
   it("Perfect Period needs every load at/above target and counts the misses", () => {
     const perfect = [atRpm(5, { load_id: "a" }), atRpm(6, { load_id: "b" })];
-    expect(
-      currentSeason(perfect, "me", "month", ladder, 2, now).trophies.find(
-        (t) => t.key === "perfect",
-      )!.earned,
-    ).toBe(true);
+    const won = trophy(perfect, "perfect");
+    expect(won.earned).toBe(true);
+    expect(won.progress).toBe(1);
+
     const oneUnder = [atRpm(5, { load_id: "a" }), atRpm(4, { load_id: "b" })];
-    const p = currentSeason(oneUnder, "me", "month", ladder, 2, now).trophies.find(
+    const p = trophy(oneUnder, "perfect");
+    expect(p.earned).toBe(false);
+    expect(p.detail).toBe("1 load under target");
+    expect(p.progress).toBeCloseTo(0.5, 6); // 1 of 2 at target
+
+    expect(trophy([], "perfect").progress).toBe(0); // no loads yet
+  });
+
+  it("Perfect Period stays at zero progress while the ladder has no target", () => {
+    // bookingLadder.target is null until the P&L fetch resolves (and forever
+    // with no expense periods) — the meter must not light under "no target set".
+    const noTarget: RateLadder = { walkAway: null, minimum: null, target: null, strong: null };
+    const p = currentSeason([atRpm(5)], "me", "month", noTarget, 2, now).trophies.find(
       (t) => t.key === "perfect",
     )!;
     expect(p.earned).toBe(false);
-    expect(p.detail).toBe("1 load under target");
+    expect(p.detail).toBe("no target set");
+    expect(p.progress).toBe(0);
   });
 
   it("scopes to the person's own non-cancelled loads inside the period", () => {
@@ -115,13 +139,16 @@ describe("dispatchSeason trophies", () => {
 
 describe("dispatcherSeasonAwards", () => {
   it("emits only earned trophies keyed by scope + period; empty when none", () => {
-    const eight = Array.from({ length: 8 }, (_, i) => atRpm(6, { load_id: `b${i}` }));
-    const ids = dispatcherSeasonAwards(eight, "me", ladder, 2, now).map((a) => a.id);
-    // Month: 8 loads, avg 6 ≥ target, all at target → all three.
+    // Exactly the month bar — enough for the month, short of the quarter.
+    expect(BOOKING_BAR.month).toBeLessThan(BOOKING_BAR.quarter);
+    const loads = nAt(BOOKING_BAR.month, 6);
+    const ids = dispatcherSeasonAwards(loads, "me", ladder, 2, now).map((a) => a.id);
+    // Month: at the bar, avg 6 ≥ target, all at target → all three.
     expect(ids).toContain("trophy:disp-booking:month:Jun 2026");
     expect(ids).toContain("trophy:disp-rate:month:Jun 2026");
     expect(ids).toContain("trophy:disp-perfect:month:Jun 2026");
-    // Quarter: rate/perfect earn, but 8 < 24 so no booking champion.
+    // Quarter: rate/perfect earn, but the month bar is under the quarter bar so
+    // no booking champion.
     expect(ids).toContain("trophy:disp-rate:quarter:Q2 2026");
     expect(ids).not.toContain("trophy:disp-booking:quarter:Q2 2026");
     expect(dispatcherSeasonAwards([], "me", ladder, 2, now)).toEqual([]);
