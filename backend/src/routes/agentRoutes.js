@@ -111,6 +111,14 @@ router.patch("/:agent_id", async (req, res) => {
       agent,
     });
   } catch (err) {
+    // agents are UNIQUE(first_name, last_name, user_id): renaming onto a name
+    // already on the book is a decision for the user, not a raw Postgres 500.
+    if (err.code === "23505") {
+      return res.status(409).json({
+        error: "An agent with that name is already on your book.",
+      });
+    }
+
     if (err.type === "not_found") {
       return res.status(err.statusCode).json({ error: err.message });
     }

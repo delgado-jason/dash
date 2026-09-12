@@ -27,6 +27,10 @@ const rules = {
     if (trimmed.length === 0) {
       errors.push("first_name cannot be blank");
     }
+
+    if (trimmed.length > 50) {
+      errors.push("first_name cannot be more than 50 characters");
+    }
   },
   last_name: (value, errors) => {
     if (!isValidType("string", value)) {
@@ -38,6 +42,10 @@ const rules = {
 
     if (trimmed.length === 0) {
       errors.push("last_name cannot be blank");
+    }
+
+    if (trimmed.length > 50) {
+      errors.push("last_name cannot be more than 50 characters");
     }
   },
   phone: (value, errors) => {
@@ -52,6 +60,10 @@ const rules = {
 
     if (trimmed.length === 0) {
       errors.push("phone cannot be blank");
+    }
+
+    if (trimmed.length > 50) {
+      errors.push("phone cannot be more than 50 characters");
     }
   },
   email: (value, errors) => {
@@ -70,6 +82,35 @@ const rules = {
 
     if (!trimmed.includes("@") || !trimmed.includes(".")) {
       errors.push("not a valid email");
+    }
+
+    if (trimmed.length > 50) {
+      errors.push("email cannot be more than 50 characters");
+    }
+  },
+  // Where the agent sits. Both skip on null/blank — null clears the column.
+  agent_city: (value, errors) => {
+    if (!value) return;
+
+    if (!isValidType("string", value)) {
+      errors.push("agent_city must be a string");
+      return;
+    }
+
+    if (value.trim().length > 100) {
+      errors.push("agent_city cannot be more than 100 characters");
+    }
+  },
+  agent_state: (value, errors) => {
+    if (!value) return;
+
+    if (!isValidType("string", value)) {
+      errors.push("agent_state must be a string");
+      return;
+    }
+
+    if (!/^[A-Za-z]{2}$/.test(value.trim())) {
+      errors.push("agent_state must be a 2-letter state code");
     }
   },
   preferred_contact: (value, errors) => {
@@ -167,6 +208,23 @@ const rules = {
       }
     }
   },
+};
+
+// The rules above measure the TRIMMED value, so the row has to store the
+// trimmed value too — agent_state is varchar(2) and would refuse " OK " with
+// a raw Postgres 22001 after the rules had already passed it. Runs in place
+// on the payload before validation; anything that isn't a string is left for
+// the rules to judge.
+const TRIMMED_TEXT = ["first_name", "last_name", "phone", "email", "agent_city"];
+
+export const normalizeAgentText = (data) => {
+  for (const field of TRIMMED_TEXT) {
+    if (typeof data[field] === "string") data[field] = data[field].trim();
+  }
+  if (typeof data.agent_state === "string") {
+    data.agent_state = data.agent_state.trim().toUpperCase();
+  }
+  return data;
 };
 
 // ---- CREATE AGENT VALIDATION ----

@@ -1,5 +1,6 @@
 import { db } from "../../db/pool.js";
 import {
+  normalizeAgentText,
   validateAgentCreate,
   validateAgentPatch,
 } from "../utils/validation/agentValidation.js";
@@ -202,6 +203,7 @@ export async function createAgent(user_id, data) {
   }
 
   // Run validateLoadCreate
+  normalizeAgentText(data);
   const errors = validateAgentCreate(data);
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
@@ -278,6 +280,7 @@ export async function patchAgent(user_id, agent_id, data) {
   }
 
   // Must pass validation checks before query request
+  normalizeAgentText(agentData);
   const errors = validateAgentPatch(agentData);
 
   // if errors, reject request

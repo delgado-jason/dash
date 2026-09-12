@@ -57,6 +57,14 @@ import {
   getAgentContacts, deleteAgentContact, type AgentContact,
 } from "@/services/agentContactsService";
 import { patchAgent } from "@/services/patchAgentService";
+import { useBrokers } from "@/hooks/useBrokers";
+import { IdentityFields, ContactFields } from "@/components/agents/AgentInfoFields";
+import {
+  draftFromAgent,
+  validateDraft,
+  buildAgentPatch,
+  type AgentEditDraft,
+} from "@/lib/agents/agentEdit";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
@@ -138,6 +146,14 @@ const AgentDetailPage = () => {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  // "Edit info" — name, agency, city/state and contact, edited in place in the
+  // header and Contact panel. Rating and standing notes keep their own editors.
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [draft, setDraft] = useState<AgentEditDraft | null>(null);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  const { brokers } = useBrokers(0);
 
   // The relationship touches join the same activity stream — deletable,
   // because a mis-log from a truck stop must be fixable or the log rots.
@@ -226,6 +242,45 @@ const AgentDetailPage = () => {
     }
   };
 
+  const patchDraft = (p: Partial<AgentEditDraft>) =>
+    setDraft((d) => d && { ...d, ...p });
+
+  const startEditingInfo = () => {
+    setDraft(draftFromAgent(agent));
+    setInfoError(null);
+    setEditingInfo(true);
+  };
+
+  // PATCH returns the row without broker_name, so on success the page refetches
+  // (same as the standing-notes editor) rather than trusting the response.
+  const handleSaveInfo = async () => {
+    if (!draft) return;
+    const msg = validateDraft(draft);
+    if (msg) {
+      setInfoError(msg);
+      return;
+    }
+    const payload = buildAgentPatch(agent, draft);
+    if (!payload) {
+      setEditingInfo(false);
+      return;
+    }
+    setSavingInfo(true);
+    try {
+      await patchAgent(agent.agent_id, payload);
+      setEditingInfo(false);
+      setRefreshKey((p) => p + 1);
+    } catch (e) {
+      setInfoError(e instanceof Error ? e.message : "Couldn't save — try again.");
+    } finally {
+      setSavingInfo(false);
+    }
+  };
+
+  const whereabouts = [agent.agent_city, agent.agent_state]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <div className="min-h-screen text-ink font-body">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10 pt-5">
@@ -251,46 +306,88 @@ const AgentDetailPage = () => {
       </div>
 
       <div className="flex flex-col gap-4 mt-3 mb-6 sm:flex-row sm:justify-between sm:items-start">
-        <div className="flex gap-4 items-center min-w-0">
+        <div className="flex gap-4 items-center min-w-0 flex-1">
           <div className="size-16 rounded-full bg-well border-2 border-amber flex items-center justify-center font-condensed font-semibold text-2xl text-amber-light shrink-0">
             {agent.first_name.charAt(0)}
             {agent.last_name.charAt(0)}
           </div>
-          <div className="min-w-0">
-            <h1 className="font-display text-[27px] tracking-[.05em] leading-none">
-              {agent.first_name} {agent.last_name}
-            </h1>
-            <p className="text-sm text-dim mt-1">
-              {agent.broker_name}
-              {carrierName ? ` · ${carrierName} Agent` : ""}
-            </p>
-            {prestige.label && (
-              <span className="inline-flex items-center gap-2 mt-1.5">
-                <Coin
-                  metal={
-                    ({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"
-                  }
-                  size={22}
-                >
-                  {agent.first_name.charAt(0)}
-                </Coin>
-                <span className="text-xs font-condensed font-semibold uppercase tracking-[.1em] text-dim">
-                  {prestige.label} agent
+          {editingInfo && draft ? (
+            <div className="min-w-0 flex-1">
+              <IdentityFields
+                draft={draft}
+                onChange={patchDraft}
+                brokers={brokers}
+              />
+            </div>
+          ) : (
+            <div className="min-w-0">
+              <h1 className="font-display text-[27px] tracking-[.05em] leading-none">
+                {agent.first_name} {agent.last_name}
+              </h1>
+              <p className="text-sm text-dim mt-1">
+                {agent.broker_name}
+                {whereabouts ? ` · ${whereabouts}` : ""}
+                {carrierName ? ` · ${carrierName} Agent` : ""}
+              </p>
+              {prestige.label && (
+                <span className="inline-flex items-center gap-2 mt-1.5">
+                  <Coin
+                    metal={
+                      ({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"
+                    }
+                    size={22}
+                  >
+                    {agent.first_name.charAt(0)}
+                  </Coin>
+                  <span className="text-xs font-condensed font-semibold uppercase tracking-[.1em] text-dim">
+                    {prestige.label} agent
+                  </span>
                 </span>
-              </span>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="shrink-0 sm:text-right">
-          <RatingStamp rating={agent.rating} />
-          <div className="mt-3">
-            <button
-              onClick={() => setShowRatingForm(true)}
-              className="h-8 px-3.5 rounded-[9px] border border-hairline text-dim hover:text-ink text-sm font-condensed font-semibold"
-            >
-              Edit rating
-            </button>
-          </div>
+          {editingInfo ? (
+            <>
+              <div className="flex items-center gap-3 sm:justify-end">
+                <button
+                  onClick={() => void handleSaveInfo()}
+                  disabled={savingInfo}
+                  className="h-8 px-3.5 rounded-[9px] bg-amber text-steel text-sm font-condensed font-semibold disabled:opacity-50"
+                >
+                  {savingInfo ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  className="text-xs text-dim hover:text-ink"
+                  onClick={() => setEditingInfo(false)}
+                >
+                  cancel
+                </button>
+              </div>
+              {infoError && (
+                <p className="text-status-negative-text text-xs mt-2">{infoError}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <RatingStamp rating={agent.rating} />
+              <div className="mt-3 flex items-center gap-2 sm:justify-end">
+                <button
+                  onClick={() => setShowRatingForm(true)}
+                  className="h-8 px-3.5 rounded-[9px] border border-hairline text-dim hover:text-ink text-sm font-condensed font-semibold"
+                >
+                  Edit rating
+                </button>
+                <button
+                  onClick={startEditingInfo}
+                  className="h-8 px-3.5 rounded-[9px] border border-amber text-amber-hi text-sm font-condensed font-semibold"
+                >
+                  Edit info
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -562,19 +659,25 @@ const AgentDetailPage = () => {
           <p className="text-xs text-dim uppercase tracking-wider mb-3">
             Contact
           </p>
-          <p className="text-sm mb-2 break-words">
-            <Mail size={14} className="inline text-dim mr-1.5 -mt-0.5" />
-            {agent.email || "No email"}
-          </p>
-          <p className="text-sm mb-3">
-            <Phone
-              size={14}
-              className="inline text-dim mr-1.5 -mt-0.5"
-            />
-            {agent.phone || "No phone"}
-          </p>
-          <p className="text-xs text-dim">Preferred</p>
-          <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
+          {editingInfo && draft ? (
+            <ContactFields draft={draft} onChange={patchDraft} />
+          ) : (
+            <>
+              <p className="text-sm mb-2 break-words">
+                <Mail size={14} className="inline text-dim mr-1.5 -mt-0.5" />
+                {agent.email || "No email"}
+              </p>
+              <p className="text-sm mb-3">
+                <Phone
+                  size={14}
+                  className="inline text-dim mr-1.5 -mt-0.5"
+                />
+                {agent.phone || "No phone"}
+              </p>
+              <p className="text-xs text-dim">Preferred</p>
+              <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
+            </>
+          )}
 
           <p className="text-xs text-dim uppercase tracking-wider mt-4 mb-1.5">
             Standing notes

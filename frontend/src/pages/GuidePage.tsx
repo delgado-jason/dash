@@ -400,6 +400,7 @@ const NAV: { group: string; items: string[] }[] = [
     group: "Agents",
     items: [
       "Relationships — the book of agents",
+      "Editing an agent",
       "Inbound share — is the system working?",
       "The cold pool — from stranger to agent",
       "Agent ratings",
@@ -2281,6 +2282,23 @@ const GuidePage = () => {
               call first; phone and email sit right on the card, tap-to-dial.
             </Why>
           </Metric>
+
+          <Section title="Editing an agent">
+            <p className="text-sm text-muted-text">
+              <span className="text-light">EDIT INFO</span> on an agent's page
+              turns the header and the Contact panel into fields — first and
+              last name, agency, city and state, phone, email and how they
+              prefer to be reached (call, text or email) — and SAVE CHANGES
+              writes them in place. Names are required; everything else can be
+              left blank. A name that's already on your book is refused, since
+              two agents can't share one. Changing the agency moves the{" "}
+              <span className="text-light">person</span> to the new code — the
+              loads already booked under them keep the agency they were booked
+              through, so past revenue stays where it was earned. Dispatchers
+              can do all of this too; only the star rating and the standing
+              notes keep their own editors.
+            </p>
+          </Section>
 
           <Metric
             title="Inbound share — is the system working?"
