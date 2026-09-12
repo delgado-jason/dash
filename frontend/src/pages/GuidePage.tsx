@@ -2344,6 +2344,20 @@ const GuidePage = () => {
               so a market you’ve never hauled can still be ranked by distance
               when you go empty nearby. A claimed market shows as a dashed
               chip; it turns solid the day a load actually comes out of there.
+              <br />
+              <br />
+              Two controls protect the record itself.{" "}
+              <span className="text-light">Someone else answered?</span> Use
+              the divert link before saving — everything the call produced
+              (class, freight, markets, notes, the contact) files under the
+              person who actually answered, found on the same agency code or
+              created there, and the dialed record gets a single breadcrumb
+              note. Never file one human’s answers on another human’s record.
+              And <span className="text-light">parking</span> now lives in the
+              app: classing an agent spot offers “park them now” on the spot,
+              and any agent card’s action panel can park (written reason
+              required unless they’re spot) or unpark. Parked = out of every
+              queue; the record and loads stay forever.
             </Why>
           </Metric>
 

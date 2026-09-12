@@ -745,6 +745,30 @@ const RelationshipsPage = () => {
                 setBusy(false);
               }
             }}
+            onPark={async (reason) => {
+              setBusy(true);
+              try {
+                await patchAgent(actionFor.agent_id, {
+                  work_status: "parked",
+                  ...(reason ? { park_reason: reason } : {}),
+                });
+                await load();
+                setActionFor(null);
+              } finally {
+                setBusy(false);
+              }
+            }}
+            onUnpark={async () => {
+              setBusy(true);
+              try {
+                // park_reason stays on the record — it's history, not state
+                await patchAgent(actionFor.agent_id, { work_status: "active" });
+                await load();
+                setActionFor(null);
+              } finally {
+                setBusy(false);
+              }
+            }}
             onClose={() => setActionFor(null)}
           />
         )}
@@ -868,7 +892,7 @@ const TouchPopup = ({
 };
 
 const AgentActionPopup = ({
-  agent, tierCounts, busy, canRetier, onTouch, onRetier, onClose,
+  agent, tierCounts, busy, canRetier, onTouch, onRetier, onPark, onUnpark, onClose,
 }: {
   agent: Agent;
   tierCounts: Record<number, number>;
@@ -878,14 +902,24 @@ const AgentActionPopup = ({
   canRetier: boolean;
   onTouch: () => void;
   onRetier: (tier: number) => void;
+  onPark: (reason: string) => void;
+  onUnpark: () => void;
   onClose: () => void;
-}) => (
+}) => {
+  const [parkReason, setParkReason] = useState("");
+  const parked = agent.work_status === "parked";
+  // The DB guard: parking needs a written reason unless the agent is classed
+  // spot (spot IS the reason). Mirror it here so the button can't 500.
+  const reasonRequired = (agent.agent_class ?? "") !== "spot";
+  const canPark = !reasonRequired || parkReason.trim().length > 0;
+  return (
   <div className={POPUP_WRAP}>
     <div className="absolute inset-0 bg-black/60" onClick={onClose} />
     <div className={POPUP_BOX}>
       <div className={POPUP_HEAD} style={{ background: "linear-gradient(90deg, rgba(232,148,10,.12), transparent 60%)" }}>
         <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>{agent.first_name.toUpperCase()} {agent.last_name.toUpperCase()}</span>
         <span className="font-condensed text-[12px] text-faint">· {agent.broker_name}</span>
+        {parked && <span className={CHIP} style={chipStyle.due}>PARKED</span>}
         <button className="ml-auto text-faint hover:text-ink" onClick={onClose}>✕</button>
       </div>
       <div className="p-5">
@@ -926,10 +960,46 @@ const AgentActionPopup = ({
             Tier {agent.relationship_tier} — tiers are the owner’s call.
           </p>
         )}
+
+        {/* Park/unpark — the record and loads stay; only the attention stops.
+            Mockup approved 2026-09-11; the DB guard finally has a UI. */}
+        <span className={LBL}>{parked ? "Parked" : "Park"}</span>
+        {parked ? (
+          <>
+            {agent.park_reason && (
+              <p className="font-condensed text-[12px] text-dim mb-2 leading-snug">“{agent.park_reason}”</p>
+            )}
+            <button className={`${BTN_GHOST} w-full py-2`} disabled={busy} onClick={onUnpark}>
+              Unpark — back into the working book
+            </button>
+          </>
+        ) : (
+          <>
+            <textarea
+              value={parkReason}
+              onChange={(e) => setParkReason(e.target.value)}
+              rows={2}
+              placeholder={reasonRequired
+                ? "Why — required (e.g. office personnel, not the freight decision-maker)"
+                : "Why — optional for a spot agent"}
+              className="w-full bg-well border border-hairline rounded-[7px] px-3 py-2 text-ink text-[13px] placeholder:text-faint resize-y"
+            />
+            <button
+              className={`${BTN_GHOST} w-full py-2 mt-2`}
+              style={{ color: "#f2a6a3", borderColor: "rgba(224,82,82,.5)" }}
+              disabled={busy || !canPark}
+              title={canPark ? undefined : "A written reason is required unless the agent is classed spot"}
+              onClick={() => onPark(parkReason.trim())}
+            >
+              Park agent — leaves every queue, keeps every record
+            </button>
+          </>
+        )}
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const ProspectPopup = ({
   brokers, busy, onAdd, onClose,

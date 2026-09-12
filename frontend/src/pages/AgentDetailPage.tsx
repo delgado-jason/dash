@@ -56,6 +56,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   getAgentContacts, deleteAgentContact, type AgentContact,
 } from "@/services/agentContactsService";
+import { patchAgent } from "@/services/patchAgentService";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
@@ -128,6 +129,13 @@ const AgentDetailPage = () => {
         : null,
     [allLoads, agentId],
   );
+
+  // Standing notes = agents.notes — the permanent stuff (preferences, quirks,
+  // who runs the yard). Dated events belong in the timeline below. This field
+  // existed since day one and rendered NOWHERE (handoff §7g, 2026-09-11).
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
 
   // The relationship touches join the same activity stream — deletable,
   // because a mis-log from a truck stop must be fixable or the log rots.
@@ -557,6 +565,67 @@ const AgentDetailPage = () => {
           </p>
           <p className="text-xs text-dim">Preferred</p>
           <p className="text-sm capitalize">{agent.preferred_contact || "—"}</p>
+
+          <p className="text-xs text-dim uppercase tracking-wider mt-4 mb-1.5">
+            Standing notes
+          </p>
+          {editingNotes ? (
+            <>
+              <textarea
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                rows={4}
+                placeholder="The permanent stuff — preferences, quirks, who runs the yard. Dated events go in the timeline."
+                className="w-full bg-well border border-hairline rounded-[7px] px-2.5 py-2 text-sm text-ink placeholder:text-faint resize-y"
+              />
+              <div className="flex gap-2 mt-1.5">
+                <button
+                  className="bg-amber text-steel px-3 py-1 rounded text-xs font-semibold disabled:opacity-50"
+                  disabled={savingNotes}
+                  onClick={async () => {
+                    setSavingNotes(true);
+                    try {
+                      await patchAgent(agent.agent_id, { notes: notesDraft.trim() || null });
+                      setEditingNotes(false);
+                      setRefreshKey((p) => p + 1);
+                    } finally {
+                      setSavingNotes(false);
+                    }
+                  }}
+                >
+                  {savingNotes ? "Saving…" : "Save"}
+                </button>
+                <button
+                  className="text-xs text-dim hover:text-ink"
+                  onClick={() => setEditingNotes(false)}
+                >
+                  cancel
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {agent.notes ? (
+                <p
+                  className="text-sm text-dim leading-snug whitespace-pre-wrap rounded-sm px-2.5 py-2"
+                  style={{ background: "var(--color-well)", borderLeft: "2px solid #3b4660" }}
+                >
+                  {agent.notes}
+                </p>
+              ) : (
+                <p className="text-sm text-faint italic">none yet</p>
+              )}
+              <button
+                className="text-xs text-dim hover:text-ink mt-1.5 underline underline-offset-2"
+                onClick={() => {
+                  setNotesDraft(agent.notes ?? "");
+                  setEditingNotes(true);
+                }}
+              >
+                edit
+              </button>
+            </>
+          )}
         </Panel>
 
         <Panel className="md:col-span-3 p-4">
