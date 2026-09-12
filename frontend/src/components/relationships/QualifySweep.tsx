@@ -3,6 +3,7 @@ import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
 import CoverageEditor from "@/components/relationships/CoverageEditor";
 import { patchAgent } from "@/services/patchAgentService";
+import { createAgent } from "@/services/createAgentService";
 import { createAgentContact } from "@/services/agentContactsService";
 import { createAgentNote } from "@/services/createAgentNoteService";
 import { type AgentCoverage } from "@/services/agentCoverageService";
@@ -60,6 +61,15 @@ export const QualifySweep = ({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // The Mary/Gary control (mockup 2026-09-11): when the person who answers
+  // is not the person on the record, the ENTIRE call diverts to who answered
+  // — class, freight, notes, the qualification contact. The dialed record
+  // gets one breadcrumb and nothing else.
+  const [divertOpen, setDivertOpen] = useState(false);
+  const [divertName, setDivertName] = useState("");
+  // Park-on-spot: spot is the one answer that can park an agent right here.
+  const [parkNow, setParkNow] = useState(false);
+  const [parkReason, setParkReason] = useState("");
 
   // The queue: never-asked agents still in the working book. A pinned class
   // means the question has been answered, so they drop out — including anyone
@@ -131,6 +141,10 @@ export const QualifySweep = ({
     setOutcome("reached");
     setNote("");
     setErr(null);
+    setDivertOpen(false);
+    setDivertName("");
+    setParkNow(false);
+    setParkReason("");
   };
 
   // If nobody was actually spoken to, there is no basis for a class. Selecting
@@ -153,7 +167,37 @@ export const QualifySweep = ({
     setSaving(true);
     setErr(null);
     try {
-      // ORDER MATTERS. Pinning the class is what drops this agent out of the
+      // WHO gets this call's intel. Normally the dialed agent — but when
+      // someone else answered (divert open + named), everything files under
+      // THEM: found on the same agency code, or created there fresh. The
+      // dialed record must never wear another human's answers.
+      const diverting = divertOpen && divertName.trim().length > 0;
+      let target = agent;
+      if (diverting) {
+        const wanted = divertName.trim().replace(/\s+/g, " ");
+        const found = agents.find(
+          (x) =>
+            x.broker_id === agent.broker_id &&
+            `${x.first_name} ${x.last_name}`.trim().toLowerCase() === wanted.toLowerCase(),
+        );
+        if (found) {
+          target = found;
+        } else {
+          const [first, ...rest] = wanted.split(" ");
+          target = await createAgent({
+            broker_id: agent.broker_id,
+            first_name: first,
+            last_name: rest.join(" ") || "—",
+            phone: agent.phone ?? null,
+            email: null,
+            preferred_contact: null,
+            rating: null,
+            notes: null,
+          });
+        }
+      }
+
+      // ORDER MATTERS. Pinning the class is what drops an agent out of the
       // queue, so it goes LAST. Do it first and a later failure leaves the
       // agent classed, gone from the sweep, with no record of the call — and
       // the operator staring at an error, believing nothing saved.
@@ -161,21 +205,29 @@ export const QualifySweep = ({
       // With the class last, every failure mode is recoverable: the agent stays
       // in the queue and the call can simply be logged again.
       await createAgentContact({
-        agent_id: agent.agent_id,
+        agent_id: target.agent_id,
         direction: "outbound",
         method: "call",
         type: "qualification",
         note: `Qualification call — ${outcome.replace("_", " ")}${
           cls ? ` · ${cls}` : ""
-        }`,
+        }${diverting ? ` · diverted from ${agent.first_name} ${agent.last_name}` : ""}`,
       });
 
       // The narrative of the call, kept where it will actually be read again:
       // the agent's own notes on their detail page.
       if (note.trim()) {
-        await createAgentNote(agent.agent_id, {
+        await createAgentNote(target.agent_id, {
           note: `Qualification call — ${note.trim()}`,
           created_by: "DISP", // the sweep is always dispatch; ≤5 chars
+        });
+      }
+
+      // The breadcrumb on the dialed record — the ONLY thing it receives.
+      if (diverting) {
+        await createAgentNote(agent.agent_id, {
+          note: `Qualification call dialed this record — ${divertName.trim()} answered; the call and its intel are filed on their record.`,
+          created_by: "DISP",
         });
       }
 
@@ -184,23 +236,34 @@ export const QualifySweep = ({
       // Guarded on outcome as well as cls — the UI clears one when the other
       // changes, but the write path should not depend on that holding.
       if (cls && outcome === "reached") {
-        await patchAgent(agent.agent_id, {
+        await patchAgent(target.agent_id, {
           agent_class: cls,
           ...(freight.length > 0 ? { freight_types: freight } : {}),
+          // spot is the one answer that can park right here; the DB guard
+          // accepts a spot park with or without a written reason.
+          ...(cls === "spot" && parkNow
+            ? {
+                work_status: "parked" as const,
+                ...(parkReason.trim() ? { park_reason: parkReason.trim() } : {}),
+              }
+            : {}),
         });
       }
 
       resetForm();
 
-      // DO NOT blindly advance the cursor. onChanged() refetches, and a agent
+      // DO NOT blindly advance the cursor. onChanged() refetches, and an agent
       // whose class we just pinned drops OUT of the queue memo — every later
       // index shifts down by one and the next agent slides into the current
       // index. Incrementing as well would step over that agent entirely, so
       // every completed call silently lost one from the sweep.
       //
-      // Advance only when the agent STAYS in the queue (voicemail, no answer,
-      // bad number — no class pinned), because then nothing shifts.
-      if (!cls) setCursor((c) => c + 1);
+      // Advance only when the DIALED agent stays in the queue AND nothing
+      // below the cursor shifted. A diverted call never classes the dialed
+      // agent, so the cursor holds — Brandie sees the dialed record again
+      // (breadcrumb saved) and skips or parks it herself; predictable beats
+      // clever when a save happens mid-phone-call.
+      if (!cls && !diverting) setCursor((c) => c + 1);
       onChanged();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not log the call");
@@ -286,6 +349,30 @@ export const QualifySweep = ({
                 desc="Asked, couldn't tell. Stays in the book, comes round again"
               />
             </div>
+            {cls === "spot" && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={parkNow}
+                    onChange={(e) => setParkNow(e.target.checked)}
+                    className="mt-[3px] accent-[#e8940a]"
+                  />
+                  <span className="text-[13px] text-dim leading-snug">
+                    <b className="text-ink">Park them now</b> — leaves every queue,
+                    keeps every record. They re-enter by bringing loads that meet the floor.
+                  </span>
+                </label>
+                {parkNow && (
+                  <input
+                    value={parkReason}
+                    onChange={(e) => setParkReason(e.target.value)}
+                    placeholder="Reason — optional for spot"
+                    className="w-full mt-2 bg-canvas border border-hairline rounded-[7px] px-3 py-2 text-ink text-[13px] placeholder:text-faint"
+                  />
+                )}
+              </div>
+            )}
           </Panel>
 
           <p className={LBL}>On the call</p>
@@ -342,6 +429,46 @@ export const QualifySweep = ({
           placeholder="What they said, what they cover, anything worth remembering next time…"
           className="w-full bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[14px] placeholder:text-faint resize-y"
         />
+
+        {/* The Mary/Gary control: divert the whole call to who actually answered. */}
+        {!divertOpen ? (
+          <button
+            onClick={() => setDivertOpen(true)}
+            className="mt-3 font-condensed text-[12.5px] text-blue border-b border-dotted border-blue/40 hover:text-ink"
+            style={{ color: "var(--color-blue)" }}
+          >
+            ↪ Someone else answered — log this call under them instead
+          </button>
+        ) : (
+          <div
+            className="mt-3 rounded-[9px] p-3"
+            style={{ background: "rgba(79,140,214,.06)", border: "1px solid rgba(79,140,214,.35)" }}
+          >
+            <p className="font-condensed text-[12px] text-dim mb-2">
+              Who actually controls the freight at this office?
+            </p>
+            <div className="flex gap-2 flex-wrap items-center">
+              <input
+                value={divertName}
+                onChange={(e) => setDivertName(e.target.value)}
+                placeholder="Their name (e.g. Gary Robinson)"
+                className="flex-1 min-w-[180px] bg-canvas border border-hairline rounded-[7px] px-3 py-2 text-ink text-[13.5px] placeholder:text-faint"
+              />
+              <button
+                onClick={() => { setDivertOpen(false); setDivertName(""); }}
+                className="font-condensed text-[11px] uppercase tracking-[.1em] text-faint hover:text-ink"
+              >
+                cancel
+              </button>
+            </div>
+            <p className="font-condensed text-[11.5px] text-faint mt-2 leading-snug">
+              On save, everything from this call — class, freight, markets, notes, the
+              qualification contact — files under <b className="text-ink">{divertName.trim() || "them"}</b>{" "}
+              (found on {agent.broker_name}, or created there). {agent.first_name}'s record gets one
+              breadcrumb note and nothing else; you'll stay on their card to skip or park them.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ---- close the call ---- */}
