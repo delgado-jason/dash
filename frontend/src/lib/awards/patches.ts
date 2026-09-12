@@ -5,7 +5,7 @@
 // function scopes to a driver, a truck, or a trailer just by what you pass in.
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { loadGross, loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadGross, loadNetRevenue } from "@/lib/metrics/rateTargets";
 import { formatInches } from "@/lib/dimensions";
 import { computeStack, type BarOpts } from "./adaptiveBar";
 import { money } from "@/lib/format";
@@ -100,7 +100,7 @@ export const computePatches = (
   }
 
   // ---- Big Month: adaptive over per-month net ----
-  const monthlyNet = bucketed(dl, (l) => monthKey(l.delivery_date!), (ls) => ls.reduce((s, l) => s + loadRevenue(l), 0));
+  const monthlyNet = bucketed(dl, (l) => monthKey(l.delivery_date!), (ls) => ls.reduce((s, l) => s + loadNetRevenue(l), 0));
   const rain = computeStack(monthlyNet, { n: 5, floor: 12000 });
   out.push({ key: "rainmaker", name: "Big Month", icon: "coins", count: rain.count, bar: rain.bar, unit: "money", hint: `${money(rain.bar)} net in a month` });
 

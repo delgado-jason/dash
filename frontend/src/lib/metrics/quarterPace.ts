@@ -5,7 +5,7 @@
 // finish by scaling last quarter's final by that ratio. Paces a REAL-TIME metric
 // (net from delivered loads + load count), never the laggy P&L profit.
 import type { Load } from "@/types/load";
-import { loadRevenue } from "./rateTargets";
+import { loadNetRevenue } from "./rateTargets";
 import { rangeFor, resolvePeriod } from "./recap";
 
 const MS_DAY = 86_400_000;
@@ -26,7 +26,7 @@ const aggregate = (
     if (l.load_status !== "delivered" || !l.delivery_date) continue;
     const t = new Date(l.delivery_date.slice(0, 10) + "T00:00:00Z").getTime();
     if (t >= s && t < c) {
-      net += loadRevenue(l);
+      net += loadNetRevenue(l);
       n++;
     }
   }

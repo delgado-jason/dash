@@ -7,7 +7,7 @@ import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { MaintenanceService } from "@/types/maintenance";
 import type { Truck } from "@/types/truck";
-import { loadRevenue } from "./rateTargets";
+import { loadNetRevenue } from "./rateTargets";
 import { fuelStats } from "./fuelEconomy";
 import { underLoadDaySet } from "./underLoad";
 import { FULL_DEFAULT_SINCE } from "@/lib/perDiem";
@@ -70,7 +70,7 @@ export const computeTruckMetrics = (
   // Loads HAULED is delivered (paid or not) — payment status doesn't change
   // whether the truck ran the load.
   const delivered = truckLoads.filter((l) => l.load_status === "delivered");
-  const netRevenue = earned.reduce((s, l) => s + loadRevenue(l), 0);
+  const netRevenue = earned.reduce((s, l) => s + loadNetRevenue(l), 0);
   const totalMiles = earned.reduce((s, l) => s + loadMiles(l), 0);
 
   const fs = fuelStats(truckFuel, now);

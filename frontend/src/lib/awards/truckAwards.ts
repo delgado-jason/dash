@@ -3,7 +3,7 @@
 // adaptive ratcheting bars for the patches, fixed tiers for the medals.
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadNetRevenue } from "@/lib/metrics/rateTargets";
 import { mpgWindows } from "@/lib/metrics/fuelEconomy";
 import { underLoadRuns } from "@/lib/metrics/underLoad";
 import { computeStack } from "./adaptiveBar";
@@ -102,7 +102,7 @@ export const truckRecords = (truckLoads: Load[], truckFuel: FuelEntry[]): TruckR
   const windows = mpgWindows(truckFuel);
   const monthMiles = byMonth(dl, (ls) => ls.reduce((s, l) => s + loadMiles(l), 0));
   const monthRpm = byMonth(dl, (ls) => {
-    const net = ls.reduce((s, l) => s + loadRevenue(l), 0);
+    const net = ls.reduce((s, l) => s + loadNetRevenue(l), 0);
     const mi = ls.reduce((s, l) => s + loadMiles(l), 0);
     return mi > 0 ? net / mi : 0;
   });

@@ -1,6 +1,6 @@
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
-import { loadRevenue, loadGross } from "./rateTargets";
+import { loadNetRevenue, loadGross } from "./rateTargets";
 import { detentionOwed, detentionMinutes } from "@/lib/detention";
 import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
 import { median } from "./stats";
@@ -9,7 +9,7 @@ import { median } from "./stats";
 // so every dashboard tile reflects money kept, not the full pre-cut rate.
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
-  return loads.reduce((total, load) => total + loadRevenue(load), 0);
+  return loads.reduce((total, load) => total + loadNetRevenue(load), 0);
 };
 
 // ---- GET REVENUE MTD ----

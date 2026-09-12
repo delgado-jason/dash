@@ -31,7 +31,7 @@ import { formatDate, money } from "@/lib/format";
 import {
   getCostBasis,
   getRateLadder,
-  loadRevenue,
+  loadNetRevenue,
   monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
 import {
@@ -204,7 +204,7 @@ const DriverDetailPage = () => {
     const medals = computeMedals({
       lifetimeMiles,
       deliveredCount: del.length,
-      cumulativeNet: del.reduce((s, l) => s + loadRevenue(l), 0),
+      cumulativeNet: del.reduce((s, l) => s + loadNetRevenue(l), 0),
       streak: grind.currentStreak,
       loanPaidPct: paidPcts.length ? Math.max(...paidPcts) : null,
       seasonStrong: appMarginG === "strong", // award criterion — app math, always
@@ -292,7 +292,7 @@ const DriverDetailPage = () => {
       </div>
     );
 
-  const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
+  const revenue = earnedLoads.reduce((s, l) => s + loadNetRevenue(l), 0);
   const milesHauled = driverLoads.reduce(
     (s, l) =>
       l.load_status === "delivered" ? s + (Number(l.loaded_miles) || 0) : s,
@@ -549,7 +549,7 @@ const DriverDetailPage = () => {
                     {l.origin_market} → {l.delivery_market}
                   </span>
                   <span className="text-right font-semibold text-ink tabular-nums">
-                    {money(loadRevenue(l))}
+                    {money(loadNetRevenue(l))}
                   </span>
                 </div>
               ))}

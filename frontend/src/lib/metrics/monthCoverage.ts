@@ -2,7 +2,7 @@ import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 // NET loadRevenue (post-carrier-cut) — the MTD estimate must be the money-kept
 // basis the P&L income line uses and the true-cost threshold is measured on.
-import { getCostBasis, loadRevenue } from "./rateTargets";
+import { getCostBasis, loadNetRevenue } from "./rateTargets";
 
 // THE month metric (Jason, 2026-08-10): "one load will cover my notes — what I
 // really need to track is covering my monthly expense threshold, and whether I
@@ -60,7 +60,7 @@ export const monthCoverage = (
         l.delivery_date &&
         l.delivery_date.slice(0, 7) === nowKey,
     )
-    .reduce((s, l) => s + loadRevenue(l), 0);
+    .reduce((s, l) => s + loadNetRevenue(l), 0);
   const income = posted ? (posted.income_total ?? 0) : mtd;
   const estimated = !posted;
 

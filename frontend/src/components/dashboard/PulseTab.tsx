@@ -12,7 +12,7 @@ import {
   getUpcomingLoads,
 } from "@/lib/metrics/dashboard";
 import { loadRevenue } from "@/lib/metrics/loads";
-import { loadRevenue as loadNet } from "@/lib/metrics/rateTargets";
+import { loadNetRevenue as loadNet } from "@/lib/metrics/rateTargets";
 import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
 import { projectWeek } from "@/lib/metrics/weekProjection";

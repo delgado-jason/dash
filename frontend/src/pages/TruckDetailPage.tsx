@@ -18,7 +18,7 @@ import {
   maxTripOdometer,
 } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
-import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadNetRevenue } from "@/lib/metrics/rateTargets";
 import { getObligations } from "@/services/obligationsService";
 import { getTrips } from "@/services/tripsService";
 import type { Trip } from "@/types/trip";
@@ -203,7 +203,7 @@ const TruckDetailPage = () => {
       </div>
     );
 
-  const revenue = earnedLoads.reduce((s, l) => s + loadRevenue(l), 0);
+  const revenue = earnedLoads.reduce((s, l) => s + loadNetRevenue(l), 0);
   const now = new Date();
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
   const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote);
@@ -687,7 +687,7 @@ const TruckDetailPage = () => {
                     {l.origin_market} → {l.delivery_market}
                   </span>
                   <span className="text-right font-semibold text-ink tabular-nums">
-                    {money(loadRevenue(l))}
+                    {money(loadNetRevenue(l))}
                   </span>
                 </div>
               ))}

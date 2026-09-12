@@ -5,7 +5,7 @@
 // arrives as Postgres numeric strings — coerce here, once.
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
-import { loadRevenue } from "./rateTargets";
+import { loadNetRevenue } from "./rateTargets";
 import { nextSettlementDate } from "./settlement";
 
 const num = (v: string | number | null | undefined): number => {
@@ -119,7 +119,7 @@ const weekSettlements = (
     if (!delivery) continue;
     const pay = expectedPayDate(delivery, settlementDay);
     if (pay >= startKey && pay <= endKey) {
-      total += loadRevenue(l);
+      total += loadNetRevenue(l);
       count++;
     }
   }

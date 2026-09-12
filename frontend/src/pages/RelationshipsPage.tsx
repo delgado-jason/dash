@@ -15,7 +15,7 @@ import {
 } from "@/services/agentContactsService";
 import type { Agent } from "@/types/agent";
 import type { Broker } from "@/types/broker";
-import { loadRevenue } from "@/lib/metrics/rateTargets";
+import { loadNetRevenue } from "@/lib/metrics/rateTargets";
 import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
 import {
   SYSTEM_START, TIER_CADENCE_DAYS,
@@ -152,7 +152,7 @@ const RelationshipsPage = () => {
     for (const l of loads ?? []) {
       if (l.load_status !== "delivered" || !l.agent_id) continue;
       const e = m.get(l.agent_id) ?? { rev: 0, n: 0 };
-      e.rev += loadRevenue(l);
+      e.rev += loadNetRevenue(l);
       e.n++;
       m.set(l.agent_id, e);
     }

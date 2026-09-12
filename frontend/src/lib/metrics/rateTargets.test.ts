@@ -4,7 +4,7 @@ import type { ExpensePeriod } from "@/types/expense";
 import {
   getBookedAheadGross,
   getWeekGrossPipeline,
-  loadRevenue,
+  loadNetRevenue,
   loadGross,
   completeMonthsBefore,
   getCostBasis,
@@ -53,13 +53,13 @@ describe("loadRevenue / loadGross", () => {
       gross_revenue: "5500",
       net_revenue: "4150", // 5000*0.73 + 500
     });
-    expect(loadRevenue(l)).toBe(4150);
+    expect(loadNetRevenue(l)).toBe(4150);
     expect(loadGross(l)).toBe(5500);
   });
 
   it("falls back to the component sum when net/gross are absent (no schedule)", () => {
     const l = load({ linehaul: "5000", fuel_surcharge: "500", total_accessorials: "0" });
-    expect(loadRevenue(l)).toBe(5500);
+    expect(loadNetRevenue(l)).toBe(5500);
     expect(loadGross(l)).toBe(5500);
   });
 });

@@ -19,7 +19,7 @@ import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { computeGrind } from "@/lib/metrics/grind";
 import { marginGoalFrom } from "@/lib/constants/targets";
-import { loadRevenue, monthlyObligationCost } from "@/lib/metrics/rateTargets";
+import { loadNetRevenue, monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { computeAllStatuses } from "@/lib/trophies/status";
 import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
@@ -142,7 +142,7 @@ export const useAwardPops = (
     for (const t of data.trophies) byKey[t.trophy_key] = t;
     const cumulativeGross = loads
       .filter((l) => l.load_status === "delivered")
-      .reduce((s, l) => s + loadRevenue(l), 0);
+      .reduce((s, l) => s + loadNetRevenue(l), 0);
     const statuses = computeAllStatuses(TROPHY_CATALOG, byKey, {
       lifetimeMiles,
       driverCount: data.drivers.filter((d) => d.active).length,

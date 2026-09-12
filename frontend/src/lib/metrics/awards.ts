@@ -15,7 +15,7 @@ import {
   personalBests,
 } from "./playerCard";
 import { resolvePeriod, loadsInRange, type RecapScope } from "./recap";
-import { loadRevenue, loadGross } from "./rateTargets";
+import { loadNetRevenue, loadGross } from "./rateTargets";
 import { computePatches } from "@/lib/awards/patches";
 import { computeMedals } from "@/lib/awards/medals";
 import type { TrophyDef } from "@/lib/trophies/catalog";
@@ -91,7 +91,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   const medals = computeMedals({
     lifetimeMiles: i.lifetimeMiles,
     deliveredCount: del.length,
-    cumulativeNet: del.reduce((s, l) => s + loadRevenue(l), 0),
+    cumulativeNet: del.reduce((s, l) => s + loadNetRevenue(l), 0),
     streak: i.streak ?? 0,
     loanPaidPct: i.loanPaidPct ?? null,
     seasonStrong: marginGrade(season.netMargin, i.marginGoal) === "strong",
