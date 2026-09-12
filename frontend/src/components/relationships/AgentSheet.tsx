@@ -30,7 +30,7 @@ import {
 } from "@/lib/relationships/tierSuggestion";
 import { contactTypeLabel } from "@/lib/relationships/contactTypes";
 import { PREFERRED } from "@/lib/agents/agentEdit";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone, smsHref, telHref } from "@/lib/phone";
 import { nameOf } from "@/lib/relationships/nameOf";
 import { RelSheetShell } from "./RelSheetShell";
 import { LogTouchForm, type ClassPin, type FoldPayload, type LogTouchPayload, type TouchPrefill } from "./LogTouchForm";
@@ -73,8 +73,6 @@ interface Props {
 type Busy = null | "log" | "fold" | "tier" | "park" | "unpark" | "contact";
 type ErrWhere = "log" | "class" | "fold" | "tier" | "park" | "contact";
 
-const telHref = (phone: string) => `tel:${phone.replace(/[^+\d]/g, "")}`;
-const smsHref = (phone: string) => `sms:${phone.replace(/[^+\d]/g, "")}`;
 const weekdayOf = (iso: string): string => new Date(iso).toLocaleDateString("en-US", { weekday: "short" });
 
 // Preferred contact reads 'phone' | 'email' | 'text' in the column.

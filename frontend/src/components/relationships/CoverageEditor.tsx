@@ -7,9 +7,10 @@ import {
 } from "@/services/agentCoverageService";
 import { warmCityCoords } from "@/services/cityCoordsService";
 
-// The footprint editor — markets an agent SAYS they cover. Shared by the Tier 3
-// qualification sweep and the agent detail page so the two can't drift: the
-// same capture rules, the same confidence rendering, one place to change them.
+// The footprint editor — markets an agent SAYS they cover. Shared by the call
+// screen (footprint question 1), the agent sheet and the agent detail page so
+// they can't drift: the same capture rules, the same confidence rendering,
+// one place to change them.
 //
 // Claimed intel, never facilities. `source` renders the difference: a dashed
 // chip is a claim, a solid one has been proven by a load out of that city.

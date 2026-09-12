@@ -1,20 +1,34 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
 import { useAgents } from "@/hooks/useAgents";
 import { useCityCoords } from "@/hooks/useCityCoords";
+import { useRateTargets } from "@/hooks/useRateTargets";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
+import { AlertLamp } from "@/components/ui/StatusPill";
+import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
+import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
+import { isDispatcher } from "@/lib/roles";
+import { money } from "@/lib/format";
+import { shortDate } from "@/lib/relationships/dayKeys";
+import { PARKED_RADIUS_MILES, parkedNearby, parkedNearbyExplicitOnly, type ParkedNearbyRow } from "@/lib/relationships/parkedNearby";
+import { AgentRow } from "@/components/relationships/AgentRow";
+import { AgentSheet } from "@/components/relationships/AgentSheet";
+import { SectionHead } from "@/components/relationships/primitives";
+import { Toast, type ToastState } from "@/components/relationships/Toast";
 import {
   buildForemanBoard,
   distanceLabel,
   TYPE_LABELS,
+  type Anchor,
   type AgentRanking,
   type ForemanMode,
   type LoadTypeFocus,
 } from "@/lib/metrics/foreman";
 
 const money2 = (n: number) => `$${n.toFixed(2)}`;
+const TOAST_MS = 6000;
 
 // The rate benchmark line: how the agent's $/mi compares to your realized median
 // for the load type they're judged on.
@@ -115,7 +129,7 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
 );
 
 // ---- flat reading rows: #2..N ----
-const AgentRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
+const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
   <div className="grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo" style={{ gridTemplateColumns: "20px 1.4fr 80px 72px 92px" }}>
     <span className="font-display text-[17px] text-faint">{rank}</span>
     <div className="min-w-0">
@@ -182,11 +196,58 @@ const RankGroup = ({
         <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
       </div>
       {rows.map((r, i) => (
-        <AgentRow key={r.agentId} r={r} rank={startRank + i} />
+        <RankedRow key={r.agentId} r={r} rank={startRank + i} />
       ))}
     </div>
   );
 };
+
+// ---- PARKED · WITHIN 75 MI (REL-01 v2.0 §4) ----
+// Parked agents are hidden from every list and never owed outreach; when the
+// truck goes empty near their freight they surface here, dimmed, under the
+// ranked rows — grab their board freight, no message owed. Tap → the agent
+// sheet (Unpark, or "a two-way contact brings them back" for the dormant).
+// The row is the nodded mock's .row.wide: name + code + PARKED; line 2
+// "{place} · {n} loads · dormant since {Mon d}" or "parked — {reason}"; then
+// "{mi} mi", "{n} · ${gross}" (delivered count · gross of delivered loads),
+// and "{days}d" quiet — the call list's quiet, "—" when never or not known.
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+const parkedContext = (r: ParkedNearbyRow): string => {
+  const place = `${r.place.city}, ${r.place.state}`;
+  const loads = plural(r.delivered, "load");
+  if (!r.dormant) return `${place} · ${loads} · parked — ${r.reason ?? "no reason recorded"}`;
+  return `${place} · ${loads} · dormant since ${shortDate(r.since) ?? "—"}`;
+};
+
+const ParkedGroup = ({ anchor, rows, onOpen }: { anchor: Anchor; rows: ParkedNearbyRow[]; onOpen: (agentId: string) => void }) => (
+  <div className="ds2-board mt-3 overflow-hidden opacity-70">
+    <SectionHead right={<span>harvest their freight — no outreach owed</span>}>
+      Parked · within {PARKED_RADIUS_MILES} mi of {anchor.city}, {anchor.state} · {rows.length}
+    </SectionHead>
+    {rows.map((r) => (
+      <AgentRow
+        key={r.agent.agent_id}
+        agent={r.agent}
+        chip={{ kind: "parked", label: "Parked" }}
+        context={parkedContext(r)}
+        daysSince={r.daysQuiet}
+        right={{ value: r.daysQuiet == null ? "—" : `${r.daysQuiet}d`, caption: "quiet" }}
+        market={
+          <>
+            <b className="font-semibold text-ink">{Math.round(r.miles)}</b> mi
+          </>
+        }
+        loadsCell={
+          <>
+            <b className="font-semibold text-ink">{r.delivered}</b> · {money(r.gross)}
+          </>
+        }
+        onOpen={() => onOpen(r.agent.agent_id)}
+      />
+    ))}
+  </div>
+);
 
 const FOCUS_TABS: { value: LoadTypeFocus; label: string }[] = [
   { value: "any", label: "Any" },
@@ -213,20 +274,97 @@ const Empty = ({ msg }: { msg: string }) => (
   <div className="ds2-board p-8 text-center text-dim">{msg}</div>
 );
 
+// The contact log and the stated markets — what the parked group and the
+// agent sheet read beyond loads and agents. Refetched with the agents after a
+// write from the sheet (park / unpark / a logged touch).
+//
+// `ready` = the log LANDED without error. Only then may the board judge
+// dormancy (contacts handed over) and the parked group list derived parks;
+// in flight, or after a failure, the Foreman shows the owner's explicit parks
+// only and says so — an empty array is never mistaken for "no contacts",
+// which would park every quiet agent on first paint. The error is kept, not
+// swallowed, so the tab can name it; a refetch keeps the last good log on
+// screen until the new one lands.
+const useForemanBook = (refreshKey: number) => {
+  const [contacts, setContacts] = useState<AgentContact[]>([]);
+  const [coverage, setCoverage] = useState<AgentCoverage[]>([]);
+  const [book, setBook] = useState<{ settled: boolean; error: string | null }>({ settled: false, error: null });
+  // The clock the parked group judges dormancy against — refreshed with the
+  // book so a tab left open does not keep yesterday's "since".
+  const [refreshedAt, setRefreshedAt] = useState(() => Date.now());
+  useEffect(() => {
+    let active = true;
+    Promise.allSettled([getAgentContacts(), getAgentCoverage()]).then(([c, cov]) => {
+      if (!active) return;
+      if (c.status === "fulfilled") setContacts(c.value);
+      if (cov.status === "fulfilled") setCoverage(cov.value); // never rejects — degrades to []
+      setBook({
+        settled: true,
+        error: c.status === "rejected" ? (c.reason instanceof Error ? c.reason.message : "couldn't load the contact log") : null,
+      });
+      setRefreshedAt(Date.now());
+    });
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
+  const now = useMemo(() => new Date(refreshedAt), [refreshedAt]);
+  return {
+    contacts,
+    coverage,
+    now,
+    loading: !book.settled, // the first fetch is still in flight
+    ready: book.settled && book.error == null,
+    error: book.error,
+  };
+};
+
 export const WhoToCallTab = () => {
-  const { loads, isLoading: loadsLoading } = useLoads(0);
-  const { agents, isLoading: agentsLoading } = useAgents();
+  const [bookKey, setBookKey] = useState(0);
+  const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(0);
+  const { agents, isLoading: agentsLoading } = useAgents(bookKey);
   const coords = useCityCoords(loads);
+  const { contacts, coverage, now, loading: bookLoading, ready: contactsReady, error: contactsError } = useForemanBook(bookKey);
+  const targets = useRateTargets(loads);
 
   const [focus, setFocus] = useState<LoadTypeFocus>("any");
   const [mode, setMode] = useState<ForemanMode>("balanced");
+  const [sheetAgentId, setSheetAgentId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const notify = useCallback((message: string, action?: ToastState["action"]) => {
+    setToast({ id: Date.now(), message, action });
+  }, []);
+  // The sheet's refresh after a write — the agents and the book refetch.
+  const reloadBook = useCallback(async () => {
+    setBookKey((k) => k + 1);
+  }, []);
+
+  // The contact log is handed over only once it has landed (undefined = the
+  // documented "explicit parks only" mode); the parked group likewise judges
+  // dormancy only off a real log, and lists the owner's explicit parks alone
+  // until then.
   const board = useMemo(
-    () => buildForemanBoard(loads, agents, coords, { focus, mode }),
-    [loads, agents, coords, focus, mode],
+    () => buildForemanBoard(loads, agents, coords, { focus, mode, contacts: contactsReady ? contacts : undefined, now }),
+    [loads, agents, coords, focus, mode, contactsReady, contacts, now],
   );
+  const parked = useMemo(
+    () =>
+      contactsReady
+        ? parkedNearby(agents, loads, coverage, coords, board.anchor, contacts, now)
+        : parkedNearbyExplicitOnly(agents, loads, coverage, coords, board.anchor, now),
+    [contactsReady, agents, loads, coverage, coords, board.anchor, contacts, now],
+  );
+  const sheetAgent = sheetAgentId ? agents.find((a) => a.agent_id === sheetAgentId) ?? null : null;
 
-  if (loadsLoading || agentsLoading) return <Loading />;
+  // First paint waits for the book too, so the rankings never race the log.
+  if (loadsLoading || agentsLoading || bookLoading) return <Loading />;
   if (!board.anchor)
     return <Empty msg="No committed or delivered loads yet — add a load and the Foreman will tell you who to call." />;
 
@@ -235,6 +373,7 @@ export const WhoToCallTab = () => {
   const restSpot = rest.filter((r) => r.bucket === "spot");
   const anchorHint =
     board.anchor.source === "committed" ? "after your booked load delivers" : "empty here now";
+  const parkedGroup = parked.length > 0 ? <ParkedGroup anchor={board.anchor} rows={parked} onOpen={setSheetAgentId} /> : null;
 
   return (
     <div>
@@ -250,6 +389,15 @@ export const WhoToCallTab = () => {
         </div>
       </div>
 
+      {contactsError && (
+        <AlertLamp category="contacts" className="mb-4">
+          contact log didn't load — parked shows the owner's explicit parks only; the ranked rows are unaffected ·{" "}
+          <button type="button" className="underline underline-offset-2 hover:text-ink" onClick={() => void reloadBook()}>
+            retry
+          </button>
+        </AlertLamp>
+      )}
+
       {/* anchor */}
       <div className="ds2-board flex items-center gap-3 px-4 py-3 mb-4">
         <span className="text-amber text-[15px]">{"◉"}</span>
@@ -263,13 +411,16 @@ export const WhoToCallTab = () => {
       </div>
 
       {board.rankings.length === 0 ? (
-        <Empty
-          msg={
-            focus === "any"
-              ? "No agents to rank yet — book a load and they'll show up here."
-              : `You haven't booked ${TYPE_LABELS[focus].toLowerCase()} freight yet — switch to "Any" to see everyone.`
-          }
-        />
+        <>
+          <Empty
+            msg={
+              focus === "any"
+                ? "No agents to rank yet — book a load and they'll show up here."
+                : `You haven't booked ${TYPE_LABELS[focus].toLowerCase()} freight yet — switch to "Any" to see everyone.`
+            }
+          />
+          {parkedGroup}
+        </>
       ) : (
         <>
           {/* top call */}
@@ -278,6 +429,9 @@ export const WhoToCallTab = () => {
           {/* remaining agents, bucketed — direct always above spot */}
           <RankGroup label="Direct customers" hint="your own — call first" rows={restDirect} startRank={2} tone="direct" />
           <RankGroup label="Spot market" hint="only if nothing direct fits" rows={restSpot} startRank={2 + restDirect.length} tone="spot" />
+
+          {/* parked, within 75 mi — under the ranked rows, dimmed */}
+          {parkedGroup}
 
           {/* footer */}
           <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
@@ -293,6 +447,24 @@ export const WhoToCallTab = () => {
           </div>
         </>
       )}
+
+      {sheetAgent && (
+        <AgentSheet
+          key={sheetAgent.agent_id}
+          agent={sheetAgent}
+          loads={loads}
+          contacts={contacts}
+          coverage={coverage}
+          ladder={targets.bookingLadder}
+          now={now}
+          loadsReady={!loadsLoading && loadsError == null}
+          isAdmin={!isDispatcher()}
+          onClose={() => setSheetAgentId(null)}
+          reload={reloadBook}
+          notify={notify}
+        />
+      )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 };

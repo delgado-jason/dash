@@ -25,6 +25,8 @@ import {
   type GoToTier,
 } from "./agentScorecard";
 import { getRegion, getMacro } from "@/lib/constants/states";
+import { bucketOf } from "@/lib/relationships/buckets";
+import type { MeaningfulContactLike } from "@/lib/relationships/meaningfulContact";
 
 // ---- load types ----
 export const LOAD_TYPES = [
@@ -306,11 +308,24 @@ export const buildForemanBoard = (
     focus?: LoadTypeFocus;
     mode?: ForemanMode;
     now?: Date;
+    // The contact log lets the board judge DORMANT (derived-parked) agents,
+    // not only the owner's explicit parks. Without it (undefined) only
+    // explicit parks leave the rankings — the documented "explicit parks
+    // only" mode. Hand it over only once the log has LANDED: an in-flight or
+    // failed fetch passed as [] would read as "no contacts ever" and park
+    // every quiet agent on first paint (WhoToCallTab's useForemanBook).
+    contacts?: MeaningfulContactLike[];
   } = {},
 ): ForemanBoard => {
   const focus = opts.focus ?? "any";
   const mode = opts.mode ?? "balanced";
   const now = opts.now ?? new Date();
+  // Parked agents (REL-01 v2.0 §4) — the owner's explicit call, or dormant
+  // by derivation — leave the ranked call list. The Foreman surfaces them in
+  // their own PARKED · WITHIN 75 MI group instead (lib/relationships/
+  // parkedNearby): harvest their freight, no outreach owed.
+  const isParked = (a: Agent): boolean =>
+    a.work_status === "parked" || (opts.contacts != null && bucketOf(a, { loads, contacts: opts.contacts, now }) === "parked");
 
   const anchor = emptyNextAnchor(loads);
   const anchorCoord = anchor ? coords.get(cityKey(anchor.city, anchor.state)) ?? null : null;
@@ -333,6 +348,8 @@ export const buildForemanBoard = (
   const rankings: AgentRanking[] = [];
 
   for (const [agentId, card] of scorecards) {
+    const agent = agentById.get(agentId);
+    if (!agent || isParked(agent)) continue;
     // Non-cancelled loads only: a roster agent with no loads — or only cancelled
     // ones — is not on your call list (this is a call list from your history).
     const agentLoads = loads.filter(
@@ -380,7 +397,7 @@ export const buildForemanBoard = (
     const r: AgentRanking = {
       agentId,
       agentName: nameById.get(agentId) ?? "Agent",
-      agencyCode: agentById.get(agentId)?.broker_name?.trim() || null,
+      agencyCode: agent.broker_name?.trim() || null,
       nearestOrigin,
       distanceMiles,
       regionFallback,
@@ -393,7 +410,7 @@ export const buildForemanBoard = (
       daysSince: card.daysSince,
       dwellLoads: card.moneyLostLoads,
       tier: card.tier,
-      bucket: effectiveAgentClass(agentById.get(agentId)!, card).bucket,
+      bucket: effectiveAgentClass(agent, card).bucket,
       isNew: card.loadCount < MIN_SCORE_LOADS,
       score: 0,
       why: "",

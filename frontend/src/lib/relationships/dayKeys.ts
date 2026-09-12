@@ -25,6 +25,11 @@ const atUtcMidnight = (key: string): number => Date.parse(`${key}T00:00:00Z`);
 export const daysBetweenKeys = (fromKey: string, toKey: string): number =>
   Math.round((atUtcMidnight(toKey) - atUtcMidnight(fromKey)) / DAY_MS);
 
+// "Mon" — the LOCAL weekday of a timestamp, for the cap's "touched Mon": the
+// SOP's week is Brandie's calendar, so local on purpose (never UTC).
+export const weekdayShort = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-US", { weekday: "short" });
+
 // "Aug 31" — for the row's context line. null in → null out.
 export const shortDate = (key: string | null | undefined): string | null =>
   key

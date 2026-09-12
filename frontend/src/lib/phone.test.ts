@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatPhone } from "./phone";
+import { formatPhone, smsHref, telHref } from "./phone";
 
 describe("formatPhone", () => {
   it("formats a 10-digit number to the US standard", () => {
@@ -25,5 +25,13 @@ describe("formatPhone", () => {
 
   it("keeps extra digits as an extension rather than mangling them", () => {
     expect(formatPhone("956555014299")).toBe("(956) 555-0142 x99");
+  });
+});
+
+describe("telHref / smsHref", () => {
+  it("keep digits and a leading plus only", () => {
+    expect(telHref("(956) 555-0142")).toBe("tel:9565550142");
+    expect(smsHref("+1 956 555 0142")).toBe("sms:+19565550142");
+    expect(telHref("(956) 555-0142 x99")).toBe("tel:956555014299");
   });
 });

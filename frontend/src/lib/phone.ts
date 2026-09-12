@@ -11,3 +11,9 @@ export const formatPhone = (input: string): string => {
   const base = `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6, 10)}`;
   return d.length <= 10 ? base : `${base} x${d.slice(10)}`;
 };
+
+// The dial / text doors — digits (and a leading +) only, so "(956) 555-0142
+// x99" still opens the dialer. One place for both, shared by the agent sheet
+// and the call screen.
+export const telHref = (phone: string): string => `tel:${phone.replace(/[^+\d]/g, "")}`;
+export const smsHref = (phone: string): string => `sms:${phone.replace(/[^+\d]/g, "")}`;
