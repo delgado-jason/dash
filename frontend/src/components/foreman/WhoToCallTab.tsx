@@ -70,12 +70,19 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
       </span>
     </div>
 
-    <Link
-      to={`/agents/${r.agentId}`}
-      className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors"
-    >
-      {r.agentName}
-    </Link>
+    <div className="flex items-baseline gap-2.5 flex-wrap">
+      <Link
+        to={`/agents/${r.agentId}`}
+        className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors"
+      >
+        {r.agentName}
+      </Link>
+      {r.agencyCode && (
+        <span className="inline-flex items-center h-5 px-[7px] rounded font-condensed font-bold text-[12px] tracking-[.12em] text-ink bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
+          {r.agencyCode}
+        </span>
+      )}
+    </div>
 
     <div className="grid grid-cols-3 gap-3 mt-4 mb-3">
       <div>
@@ -112,9 +119,16 @@ const AgentRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
   <div className="grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo" style={{ gridTemplateColumns: "20px 1.4fr 80px 72px 92px" }}>
     <span className="font-display text-[17px] text-faint">{rank}</span>
     <div className="min-w-0">
-      <Link to={`/agents/${r.agentId}`} className="font-condensed text-[15px] text-amber hover:text-hot transition-colors">
-        {r.agentName}
-      </Link>
+      <div className="flex items-baseline gap-2">
+        <Link to={`/agents/${r.agentId}`} className="font-condensed text-[15px] text-amber hover:text-hot transition-colors">
+          {r.agentName}
+        </Link>
+        {r.agencyCode && (
+          <span className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-ink bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
+            {r.agencyCode}
+          </span>
+        )}
+      </div>
       <div className="text-[11.5px] truncate">
         {r.isNew ? (
           <span className="font-condensed font-semibold uppercase tracking-wide" style={{ color: "#5dcaa5" }}>

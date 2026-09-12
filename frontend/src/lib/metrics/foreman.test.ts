@@ -42,10 +42,10 @@ const mkLoad = (o: Partial<Load>): Load => ({
   ...o,
 });
 
-const mkAgent = (id: string, first: string): Agent => ({
+const mkAgent = (id: string, first: string, brokerName = "EWT"): Agent => ({
   agent_id: id,
   broker_id: "b1",
-  broker_name: "B",
+  broker_name: brokerName,
   first_name: first,
   last_name: "Co",
   relationship_tier: 3,
@@ -236,6 +236,65 @@ describe("buildForemanBoard — measured score ranks; class is the tiebreak", ()
     // the class survives as a badge — it informs, it no longer overrules
     expect(byId.dir.bucket).toBe("direct");
     expect(byId.spt.bucket).toBe("spot");
+  });
+});
+
+describe("buildForemanBoard — agency code", () => {
+  it("carries the agent's 3-letter code from broker_name onto every ranking", () => {
+    const { agents, loads } = buildWorld();
+    const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    expect(board.rankings).toHaveLength(4);
+    for (const r of board.rankings) expect(r.agencyCode).toBe("EWT");
+  });
+
+  it("yields null for a blank or whitespace broker_name", () => {
+    const { agents, loads } = buildWorld();
+    const blank = mkAgent("a1", "Summit", "");
+    const spaces = mkAgent("a2", "Buckeye", "   ");
+    const board = buildForemanBoard(
+      loads,
+      [blank, spaces, ...agents.slice(2)],
+      COORDS,
+      { now: NOW },
+    );
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a1.agencyCode).toBeNull();
+    expect(byId.a2.agencyCode).toBeNull();
+    expect(byId.a3.agencyCode).toBe("EWT");
+  });
+
+  it("keeps each agent's own code when they differ", () => {
+    const { loads } = buildWorld();
+    const mixed = [
+      mkAgent("a1", "Summit", "EWT"),
+      mkAgent("a2", "Buckeye", "JVL"),
+      mkAgent("a3", "GreatLakes", "SRY"),
+      mkAgent("a4", "Keystone", " TTT "),
+    ];
+    const board = buildForemanBoard(loads, mixed, COORDS, { now: NOW });
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a1.agencyCode).toBe("EWT");
+    expect(byId.a2.agencyCode).toBe("JVL");
+    expect(byId.a3.agencyCode).toBe("SRY");
+    expect(byId.a4.agencyCode).toBe("TTT"); // trimmed
+  });
+
+  it("is display only — the code never moves the score or the order", () => {
+    const { agents, loads } = buildWorld();
+    const plain = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    const recoded = buildForemanBoard(
+      loads,
+      [
+        mkAgent("a1", "Summit", "ZZZ"),
+        mkAgent("a2", "Buckeye", ""),
+        mkAgent("a3", "GreatLakes", "AAA"),
+        mkAgent("a4", "Keystone", "MMM"),
+      ],
+      COORDS,
+      { now: NOW },
+    );
+    expect(recoded.rankings.map((r) => r.agentId)).toEqual(plain.rankings.map((r) => r.agentId));
+    recoded.rankings.forEach((r, i) => expect(r.score).toBeCloseTo(plain.rankings[i].score, 10));
   });
 });
 
