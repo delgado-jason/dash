@@ -192,6 +192,7 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export interface AgentRanking {
   agentId: string;
   agentName: string;
+  agencyCode: string | null; // the agency's 3-letter Landstar code (stored as brokers.broker_name); display only — never scored
   // proximity
   nearestOrigin: Place | null;
   distanceMiles: number | null; // straight-line; null when no trusted coord
@@ -207,7 +208,7 @@ export interface AgentRanking {
   daysSince: number | null;
   dwellLoads: number; // confirmed-billable detention left unpaid
   tier: GoToTier;
-  bucket: AgentClass; // direct customer vs spot — direct always ranks first
+  bucket: AgentClass; // direct customer vs spot — breaks score ties only
   isNew: boolean; // < MIN_SCORE_LOADS delivered → "New · building"
   // scoring
   score: number;
@@ -379,6 +380,7 @@ export const buildForemanBoard = (
     const r: AgentRanking = {
       agentId,
       agentName: nameById.get(agentId) ?? "Agent",
+      agencyCode: agentById.get(agentId)?.broker_name?.trim() || null,
       nearestOrigin,
       distanceMiles,
       regionFallback,
