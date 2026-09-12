@@ -11,6 +11,18 @@ export const formatDate = (v: string | null | undefined): string | null => {
   });
 };
 
+// Whole days from one DATE to another; null when either is missing. DATE
+// columns arrive as local-midnight ISO timestamps, so slice to the calendar
+// day and anchor both ends at UTC midnight — the diff can't pick up a DST hour.
+export const daysBetween = (
+  from?: string | null,
+  to?: string | null,
+): number | null => {
+  if (!from || !to) return null;
+  const at = (v: string) => Date.parse(v.slice(0, 10) + "T00:00:00Z");
+  return Math.round((at(to) - at(from)) / 86_400_000);
+};
+
 // ---- Money ----
 // The app's default: whole-dollar money for aggregates, totals, and per-load
 // amounts shown in lists. null/undefined → "—".
