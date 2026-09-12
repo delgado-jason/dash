@@ -59,8 +59,13 @@ const DispatchDashboard = () => {
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
   const now = useMemo(() => new Date(), []);
 
-  // Her board counts only the loads SHE booked (the shared agent race below stays
-  // account-wide). Attribution is booked_by === her own id.
+  // Two scopes on one board (Jason, 2026-09-11: "her goals must align with the
+  // business — my goals — but she achieves her own awards with her own stats"):
+  //   • the BUSINESS — what's booked, rolling, earned, committed this week — is
+  //     account-wide, so her numbers match the owner's board to the dollar;
+  //   • her HEAT streak, rank, and awards stay hers, from booked_by === her id.
+  // Issue #465 was this split done wrong: the pace meter counted only her own
+  // bookings, so a week where Jason booked one of the loads never summed.
   const selfId = localStorage.getItem("user_id") ?? "";
   const mine = useMemo(
     () => (selfId ? loads.filter((l) => l.booked_by === selfId) : []),
@@ -140,11 +145,12 @@ const DispatchDashboard = () => {
       </div>
     );
 
-  const bookedCount = mine.filter((l) => l.load_status === "booked").length;
-  const inTransitCount = mine.filter(
+  // The board she dispatches is the whole board — every load, whoever booked it.
+  const bookedCount = loads.filter((l) => l.load_status === "booked").length;
+  const inTransitCount = loads.filter(
     (l) => l.load_status === "in_transit",
   ).length;
-  const loadsMonthly = getLoadsMonthly(mine);
+  const loadsMonthly = getLoadsMonthly(loads);
   const loadsDeltaPct =
     loadsMonthly.lastMonth > 0
       ? Math.round(
@@ -153,7 +159,7 @@ const DispatchDashboard = () => {
             100,
         )
       : null;
-  const detention = getDetentionOwed(mine, freeHours);
+  const detention = getDetentionOwed(loads, freeHours);
   // Deadhead is truck physics — trips carry no booker, so pairing HER loads with
   // fleet trips would mis-charge fleet empty miles against her loaded miles. Keep
   // it account-wide (the rig's real deadhead), which is what the tile means.
@@ -168,23 +174,25 @@ const DispatchDashboard = () => {
         ? "pos"
         : "neg";
 
-  // Her chase surface — the shop's booking floor + weekly target (account cost),
-  // but the week she's actually filling is HER bookings (earned + committed).
+  // Her chase surface — the shop's booking floor + weekly target (account cost)
+  // and the week the BUSINESS is filling: every load landing this pay week,
+  // hers or Jason's. Same inputs as the owner's pace meter, so the two boards
+  // never disagree on how the week is going (#465).
   const earned =
     targets.weekStart && targets.weekEnd
-      ? getWeekGrossEarned(mine, targets.weekStart, targets.weekEnd)
+      ? getWeekGrossEarned(loads, targets.weekStart, targets.weekEnd)
       : 0;
   // The still-open slice of the week — NOT getWeekGrossCommitted, which
   // includes delivered loads and double-counts them when summed with earned.
   const committed =
     targets.weekStart && targets.weekEnd
-      ? getWeekGrossPipeline(mine, targets.weekStart, targets.weekEnd)
+      ? getWeekGrossPipeline(loads, targets.weekStart, targets.weekEnd)
       : 0;
-  // The pipeline she just built — bookings landing beyond this pay week. The
+  // The pipeline on the board — bookings landing beyond this pay week. The
   // meter can't show them yet (committed counts the landing week), but the
   // work happened NOW, so the card says so (Jason, 2026-08-15: her booked
   // $5,220 was invisible until its week arrived).
-  const bookedAhead = targets.weekEnd ? getBookedAheadGross(mine, targets.weekEnd) : 0;
+  const bookedAhead = targets.weekEnd ? getBookedAheadGross(loads, targets.weekEnd) : 0;
   const weeklyTarget: number | null = targets.gross?.weeklyTarget ?? null;
   const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
   const dailyTarget: number | null = targets.gross?.dailyTarget ?? null;
