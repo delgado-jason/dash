@@ -1,5 +1,5 @@
 import { db } from "../../db/pool.js";
-import { geocodeDetailed, validateGeocodeResult } from "./hereProvider.js";
+import { geocodeCityDetailed, validateGeocodeResult } from "./hereProvider.js";
 
 // The persistent city-coordinate cache behind the Foreman's straight-line
 // distances. Geocode a (city, state) via HERE ONCE, validate it, store it, and
@@ -37,7 +37,9 @@ export async function ensureCityCoords(city, state) {
 
   let detail;
   try {
-    detail = await geocodeDetailed(city, state);
+    // Prominence-aware + locality-only + twin-refusing (2026-09-11). The
+    // plain geocoder stored wrong towns in the right state for weeks.
+    detail = await geocodeCityDetailed(city, state);
   } catch {
     return null; // transient (HTTP / network) — leave absent so we retry later
   }
