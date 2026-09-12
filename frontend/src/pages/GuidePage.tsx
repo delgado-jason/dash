@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { createElement, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
@@ -120,23 +120,23 @@ const AwardLine = ({
   icon: string;
   name: string;
   sub: string;
-}) => {
-  const Icon = awardIcon(icon);
-  return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span
-        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-        style={{ background: "#3a2a0a", color: AMBER_HI }}
-      >
-        <Icon size={16} />
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-medium">{name}</p>
-        <p className="text-xs text-muted-text">{sub}</p>
-      </div>
+}) => (
+  <div className="flex items-center gap-3 py-1.5">
+    <span
+      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: "#3a2a0a", color: AMBER_HI }}
+    >
+      {/* awardIcon returns a static lucide component from a lookup, not a new
+          one — createElement keeps the linter from reading it as one created
+          in render */}
+      {createElement(awardIcon(icon), { size: 16 })}
+    </span>
+    <div className="min-w-0">
+      <p className="text-sm font-medium">{name}</p>
+      <p className="text-xs text-muted-text">{sub}</p>
     </div>
-  );
-};
+  </div>
+);
 
 // ---- building blocks for the money metrics ----
 
@@ -2522,10 +2522,19 @@ const GuidePage = () => {
               board tracks the wait you're owed and lets you mark it paid once
               collected. Your rank rides the top bar — it climbs on lifetime
               loads booked, and the next tier is always shown. The booking
-              floor and week pace share the same meter as the owner's board:
-              the target sits at about three-quarters of the track with
-              overdrive room past it for the weeks you beat it. Below the
-              pace plate and the heat streak sit two
+              floor and week pace share the same meter as the owner's board,
+              and the <span className="text-light">same numbers</span>: the
+              week's earned, committed, and booked-ahead gross count every load
+              landing this pay week, whoever booked it, so your pace and the
+              owner's pace agree to the dollar. The board's counts — booked,
+              in transit, loads this month, detention — are the whole
+              business's too. What stays{" "}
+              <span className="text-light">yours alone</span> is the HEAT
+              streak, your rank, and your awards: those are computed only from
+              loads with you as "Booked by". Your goals are the business's
+              goals; your trophies are your own. The target sits at about
+              three-quarters of the track with overdrive room past it for the
+              weeks you beat it. Below the pace plate and the heat streak sit two
               searchable, paginated tables —{" "}
               <span className="text-light">Loads</span> (with the load on the
               road pulled out on top, and filters for booked / in&#8209;transit
