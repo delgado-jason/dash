@@ -5,7 +5,7 @@
 // attached, gated on printed evidence rules — under the bar the verdict is
 // THIN, never a fake grade.
 import type { Load } from "@/types/load";
-import { loadRevenue, getRateLadder, type RateLadder } from "./rateTargets";
+import { loadNetRevenue, getRateLadder, type RateLadder } from "./rateTargets";
 import { rpmGrade, type Grade } from "./playerCard";
 import { MIN_SCORE_LOADS, type GoToTier } from "./agentScorecard";
 import { prospectState, type ContactLike, type AgentLike } from "./relationships";
@@ -117,7 +117,7 @@ export const buildReview = (
         : Math.max(0, Math.floor((now.getTime() - Date.parse(`${lastDelivery}T00:00:00Z`)) / DAY));
 
     const loads90 = delivered.length;
-    const netRevenue = delivered.reduce((s, l) => s + loadRevenue(l), 0);
+    const netRevenue = delivered.reduce((s, l) => s + loadNetRevenue(l), 0);
     const loadedMiles = delivered.reduce((s, l) => s + (Number(l.loaded_miles) || 0), 0);
     const netRpm =
       loads90 >= MIN_SCORE_LOADS && loadedMiles > 0 ? netRevenue / loadedMiles : null;

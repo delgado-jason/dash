@@ -1,6 +1,6 @@
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { loadRevenue } from "./rateTargets";
+import { loadNetRevenue } from "./rateTargets";
 
 // THE FSC STANDARD (Jason, 2026-09-03). A fuel surcharge is NOT designed to
 // cover 100% of fuel — it pays the price ABOVE a contract peg, on LOADED
@@ -75,7 +75,7 @@ export const fuelVsRevenue = (
   for (const l of loads) {
     if (l.load_status !== "delivered" || !l.delivery_date) continue;
     const k = monthKey(l.delivery_date);
-    net.set(k, (net.get(k) ?? 0) + loadRevenue(l));
+    net.set(k, (net.get(k) ?? 0) + loadNetRevenue(l));
     fsc.set(k, (fsc.get(k) ?? 0) + (Number(l.fuel_surcharge) || 0));
     loaded.set(k, (loaded.get(k) ?? 0) + (Number(l.loaded_miles) || 0));
     const odo =

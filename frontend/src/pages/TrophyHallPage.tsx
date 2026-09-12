@@ -14,7 +14,7 @@ import { getDrivers } from "@/services/driversService";
 import { getTrucks } from "@/services/trucksService";
 import { getFuelEntries } from "@/services/fuelService";
 import { getObligations } from "@/services/obligationsService";
-import { loadRevenue, loadTrailerNet } from "@/lib/metrics/rateTargets";
+import { loadNetRevenue, loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { TROPHY_CATALOG } from "@/lib/trophies/catalog";
@@ -253,7 +253,7 @@ const TrophyHallPage = () => {
     );
     const cumulativeGross = loads
       .filter((l) => l.load_status === "delivered")
-      .reduce((s, l) => s + loadRevenue(l), 0);
+      .reduce((s, l) => s + loadNetRevenue(l), 0);
     const now = new Date();
     return computeAllStatuses(TROPHY_CATALOG, byKey, {
       lifetimeMiles,
@@ -303,7 +303,7 @@ const TrophyHallPage = () => {
       medals: computeMedals({
         lifetimeMiles,
         deliveredCount: del.length,
-        cumulativeNet: del.reduce((sum, l) => sum + loadRevenue(l), 0),
+        cumulativeNet: del.reduce((sum, l) => sum + loadNetRevenue(l), 0),
         streak: grind?.currentStreak ?? 0,
         loanPaidPct: paidPcts.length ? Math.max(...paidPcts) : null,
         seasonStrong,

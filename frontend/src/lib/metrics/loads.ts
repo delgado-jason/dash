@@ -1,7 +1,7 @@
 import type { Load } from "@/types/load";
 // The canonical NET revenue helper (server-computed, after the carrier's cut).
 // Aliased so the money KPIs below report what the company actually keeps.
-import { loadRevenue as loadNet } from "./rateTargets";
+import { loadNetRevenue as loadNet } from "./rateTargets";
 import { loadDeadheadPct } from "./deadhead";
 
 // Total revenue for a load = linehaul + fuel surcharge + accessorials.

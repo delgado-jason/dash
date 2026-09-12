@@ -32,7 +32,7 @@ export const loadGross = (l: Load): number => {
 // to gross when net_revenue is absent (a user with no schedule, or a test fixture).
 // This is THE revenue used everywhere — reporting, RPM, pace, and targets — so
 // every number reflects what the company actually keeps.
-export const loadRevenue = (l: Load): number => {
+export const loadNetRevenue = (l: Load): number => {
   const net = Number(l.net_revenue);
   return Number.isFinite(net) ? net : loadGross(l);
 };
@@ -82,7 +82,7 @@ const monthMiles = (loads: Load[], year: number, month: number) => {
     0,
   );
   const loaded = inMonth.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
-  const revenue = inMonth.reduce((s, l) => s + loadRevenue(l), 0); // net
+  const revenue = inMonth.reduce((s, l) => s + loadNetRevenue(l), 0); // net
   const gross = inMonth.reduce((s, l) => s + loadGross(l), 0); // full customer rate
   return { total, loaded, revenue, gross };
 };
@@ -278,7 +278,7 @@ export const getWeekBookedGross = (
   loads: Load[],
   start: Date,
   end: Date,
-): number => loadsInWeek(loads, start, end).reduce((s, l) => s + loadRevenue(l), 0);
+): number => loadsInWeek(loads, start, end).reduce((s, l) => s + loadNetRevenue(l), 0);
 
 // Delivered-only gross for the week — freight actually HAULED (earned). Booked
 // and in-transit are committed pipeline, not yet earned, so this is the honest
@@ -290,7 +290,7 @@ export const getWeekEarnedGross = (
 ): number =>
   loadsInWeek(loads, start, end)
     .filter((l) => l.load_status === "delivered")
-    .reduce((s, l) => s + loadRevenue(l), 0);
+    .reduce((s, l) => s + loadNetRevenue(l), 0);
 
 // This week's GROSS dollars (full customer rate) — for the rate & pace card, which
 // tracks in gross because that's the number loads are booked at. Committed = all
@@ -347,7 +347,7 @@ export const getWeekRpm = (
   end: Date,
 ): number | null => {
   const wk = loadsInWeek(loads, start, end);
-  const revenue = wk.reduce((s, l) => s + loadRevenue(l), 0);
+  const revenue = wk.reduce((s, l) => s + loadNetRevenue(l), 0);
   const loaded = wk.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
   return loaded > 0 ? revenue / loaded : null;
 };
