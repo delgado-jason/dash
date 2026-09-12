@@ -60,7 +60,7 @@ import { patchAgent } from "@/services/patchAgentService";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
-import { money } from "@/lib/format";
+import { money, daysBetween } from "@/lib/format";
 
 // The activity timeline shows this many entries before "Show all" — recent
 // state is what most visits need; deep history stays one click away.
@@ -73,6 +73,8 @@ const fmtDate = (d?: string | null) =>
         { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" },
       )
     : "—";
+
+const fmtDays = (d: number | null) => (d == null ? "—" : String(d));
 
 const AgentDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -377,13 +379,15 @@ const AgentDetailPage = () => {
           <p className="text-sm text-dim">No loads yet.</p>
         ) : (
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
-            <table className="w-full text-sm min-w-[560px]">
+            <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="text-xs text-dim text-left">
                   <th className="font-normal pb-2 pr-4">Load #</th>
                   <th className="font-normal pb-2 pr-4">Status</th>
                   <th className="font-normal pb-2 pr-4">Lane</th>
                   <th className="font-normal pb-2 pr-4">Pickup</th>
+                  <th className="font-normal pb-2 pr-4">Delivery</th>
+                  <th className="font-normal pb-2 pr-4 text-right">Days</th>
                   <th className="font-normal pb-2 pr-4 text-right">Gross</th>
                   <th className="font-normal pb-2">Payment</th>
                 </tr>
@@ -409,6 +413,12 @@ const AgentDetailPage = () => {
                     </td>
                     <td className="py-2 pr-4 text-dim whitespace-nowrap">
                       {fmtDate(load.pickup_date)}
+                    </td>
+                    <td className="py-2 pr-4 text-dim whitespace-nowrap">
+                      {fmtDate(load.delivery_date)}
+                    </td>
+                    <td className="py-2 pr-4 text-dim text-right tabular-nums whitespace-nowrap">
+                      {fmtDays(daysBetween(load.pickup_date, load.delivery_date))}
                     </td>
                     <td className="py-2 pr-4 text-right whitespace-nowrap">
                       {money(loadRevenue(load))}

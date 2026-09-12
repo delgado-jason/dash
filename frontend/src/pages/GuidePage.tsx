@@ -2264,7 +2264,11 @@ const GuidePage = () => {
               deletes with one tap; the metrics recompute, nothing rots. The
               timeline shows the <span className="text-light">six most
               recent</span> entries; SHOW ALL opens the full history, and the
-              count on that button tells you how deep it runs. Each tier-tree
+              count on that button tells you how deep it runs. The detail page
+              also lists every load with the agent — pickup, delivery and the{" "}
+              <span className="text-light">day span</span> between them — so
+              trip length reads without arithmetic; a booked load with no
+              delivery date yet shows a dash. Each tier-tree
               card carries a live 30-day scoreboard —{" "}
               <span className="text-light">out-days</span> (distinct days you
               touched them, so four notes from one call read as one day of
