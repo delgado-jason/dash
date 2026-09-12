@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getAgentContacts,
   createAgentContact,
+  patchAgentContact,
   deleteAgentContact,
 } from "../services/agentContactServices.js";
 
@@ -23,6 +24,8 @@ const handle = (fn) => async (req, res) => {
 
 router.get("/", handle(async (req) => ({ contacts: await getAgentContacts(req.user.user_id) })));
 router.post("/", handle(async (req) => ({ status: 201, body: { contact: await createAgentContact(req.user.user_id, req.body) } })));
+// The fold / follow-up edit — see agentContactValidation for what may change.
+router.patch("/:contact_id", handle(async (req) => ({ contact: await patchAgentContact(req.user.user_id, req.params.contact_id, req.body) })));
 router.delete("/:contact_id", handle(async (req) => { await deleteAgentContact(req.user.user_id, req.params.contact_id); return { deleted: true }; }));
 
 export default router;

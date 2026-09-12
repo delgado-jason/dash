@@ -74,6 +74,9 @@ export const QualifySweep = ({
   // The queue: never-asked agents still in the working book. A pinned class
   // means the question has been answered, so they drop out — including anyone
   // marked 'unclear', who returns via the normal rotation rather than here.
+  // v2 (073) turned the old Tier 3 long tail into "no tier" — Prospects — so
+  // the sweep walks untiered agents (and any explicit Tier 3) until PR3
+  // rebuilds the Call list on the five buckets.
   const queue = useMemo(() => {
     const revenueOf = new Map<string, number>();
     for (const l of loads) {
@@ -83,7 +86,7 @@ export const QualifySweep = ({
     return agents
       .filter(
         (a) =>
-          a.relationship_tier === 3 &&
+          (a.relationship_tier == null || a.relationship_tier === 3) &&
           a.work_status !== "parked" &&
           (a.agent_class ?? null) === null,
       )
@@ -124,7 +127,7 @@ export const QualifySweep = ({
       <Panel className="p-8 text-center">
         <p className="font-display text-[26px] tracking-[.02em] text-ink">Sweep complete</p>
         <p className="text-dim text-[14px] mt-2">
-          Every Tier 3 agent has been asked. New agents join the queue as they are added.
+          Every prospect has been asked. New agents join the queue as they are added.
         </p>
       </Panel>
     );
@@ -209,6 +212,10 @@ export const QualifySweep = ({
         direction: "outbound",
         method: "call",
         type: "qualification",
+        // The outcome rides as its own column, not only inside the note: a
+        // Reached call is a two-way contact (meaningfulContact / isDormant read
+        // it); a voicemail is not.
+        outcome,
         note: `Qualification call — ${outcome.replace("_", " ")}${
           cls ? ` · ${cls}` : ""
         }${diverting ? ` · diverted from ${agent.first_name} ${agent.last_name}` : ""}`,
@@ -282,7 +289,7 @@ export const QualifySweep = ({
         <div className="flex justify-between items-start gap-4 flex-wrap">
           <div>
             <StatusPill tone="amber">
-              Tier 3 sweep · {cursor + 1} of {queue.length}
+              Prospect sweep · {cursor + 1} of {queue.length}
             </StatusPill>
             <div className="font-display text-[34px] tracking-[.02em] leading-none mt-[9px] mb-[2px] text-ink">
               {agent.first_name} {agent.last_name}

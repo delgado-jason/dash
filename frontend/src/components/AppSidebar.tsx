@@ -58,6 +58,7 @@ const nav: Entry[] = [
       { to: "/trips", label: "Trips" },
       { to: "/lanes", label: "Lanes" },
       { to: "/agents", label: "Agents" },
+      { to: "/relationships", label: "Relationships" }, // Brandie's daily surface — the book of agents, next to the roster
       { to: "/vendors", label: "Vendors" },
       { to: "/facilities", label: "Facilities" },
     ],
@@ -80,7 +81,6 @@ const nav: Entry[] = [
       { to: "/expenses", label: "Expenses", adminOnly: true },
       { to: "/status", label: "Plan", adminOnly: true },
       { to: "/cashflow", label: "Cash Flow", adminOnly: true },
-      { to: "/relationships", label: "Relationships", adminOnly: false }, // Brandie runs the ritual
       { to: "/market", label: "Market", adminOnly: true },
       { to: "/per-diem", label: "Per Diem", adminOnly: true },
       { to: "/recap", label: "Recap", adminOnly: true },

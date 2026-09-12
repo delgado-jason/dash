@@ -1,17 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
 import { Mail, Phone, StickyNote, Star, MessageSquare } from "lucide-react";
-
-const TOUCH_LABEL: Record<string, string> = {
-  capacity: "capacity email",
-  check_in: "check-in",
-  appreciation: "appreciation",
-  close_out: "close-out",
-  cold: "cold outreach",
-  inbound_inquiry: "inbound inquiry",
-  qualification: "qualification call",
-  other: "touch",
-};
+// Touch types read from the v2 registry so the timeline and the log form
+// can never disagree on a word ("Capacity heads-up", "Check-in (retired)").
+import { contactTypeLabel } from "@/lib/relationships/contactTypes";
 
 import { useAgent } from "@/hooks/useAgent";
 import { useLoads } from "@/hooks/useLoads";
@@ -612,7 +604,7 @@ const AgentDetailPage = () => {
                         <Mail size={13} className="inline text-dim -mt-0.5" style={{ display: log.data.method === "email" ? undefined : "none" }} />
                         <MessageSquare size={13} className="inline text-dim -mt-0.5" style={{ display: log.data.method === "text" ? undefined : "none" }} />{" "}
                         {log.data.direction === "inbound" ? "They reached out" : "You reached out"} ·{" "}
-                        <span className="text-light">{TOUCH_LABEL[log.data.type]}</span>
+                        <span className="text-light">{contactTypeLabel(log.data.type)}</span>
                       </p>
                       {log.data.note && <p className="text-sm text-dim">{log.data.note}</p>}
                       <p className="text-xs text-dim mt-1">{fmtDate(log.timestamp)}</p>

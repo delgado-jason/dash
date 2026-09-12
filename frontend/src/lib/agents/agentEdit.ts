@@ -104,7 +104,9 @@ export const buildAgentPatch = (
   const last = d.last_name.trim();
   if (last !== agent.last_name.trim()) patch.last_name = last;
 
-  if (d.broker_id !== agent.broker_id) patch.broker_id = d.broker_id;
+  // The agency code is optional (073): a blank pick clears it to null, and a
+  // codeless agent whose draft is still blank is not a change.
+  if (d.broker_id !== (agent.broker_id ?? "")) patch.broker_id = d.broker_id || null;
 
   const city = norm(d.agent_city);
   if (city !== norm(agent.agent_city)) patch.agent_city = city;
