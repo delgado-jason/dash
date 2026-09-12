@@ -6,7 +6,9 @@ export interface Agent {
   last_name: string;
   phone?: string | null;
   email?: string | null;
-  preferred_contact: string;
+  // 'phone' | 'email' | 'text'; null until someone asks — every cold-pool
+  // prospect starts without one.
+  preferred_contact: string | null;
   rating?: number | null;
   notes?: string | null;
   // Manual relationship-bucket override. Three states with three meanings:
