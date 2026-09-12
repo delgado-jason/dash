@@ -415,13 +415,16 @@ export const buildForemanBoard = (
     }
   }
 
-  // Direct customers always rank above spot agents; the score orders within each
-  // bucket (a closer spot agent never outranks a direct customer).
+  // MEASURED QUALITY ranks the call list; class only breaks ties. Hard-sorting
+  // class above score let a one-round-trip "direct" at 0.54 outrank a
+  // six-load agent at 0.84 from the same origin (2026-09-11) — the label is
+  // context, the score is evidence, and evidence wins. The class badge still
+  // renders on every row.
   const bucketRank = (b: AgentClass) => (b === "direct" ? 0 : 1);
   rankings.sort(
     (a, b) =>
-      bucketRank(a.bucket) - bucketRank(b.bucket) ||
       b.score - a.score ||
+      bucketRank(a.bucket) - bucketRank(b.bucket) ||
       (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9),
   );
   if (anchor) for (const r of rankings) r.why = whyLine(r, anchor);

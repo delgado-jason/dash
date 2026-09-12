@@ -215,23 +215,27 @@ describe("buildForemanBoard — ranking", () => {
   });
 });
 
-describe("buildForemanBoard — direct customers rank above spot", () => {
-  it("a far direct agent (repeat shipper) outranks a closer spot agent", () => {
+describe("buildForemanBoard — measured score ranks; class is the tiebreak", () => {
+  it("a higher-scoring spot agent outranks a weaker direct one (evidence beats the label, 2026-09-11)", () => {
     seq = 0;
     const agents = [mkAgent("dir", "Direct"), mkAgent("spt", "Spot")];
     const loads: Load[] = [
       // spot's booked load sets the anchor (Macedonia OH); spot is close (Akron).
       mkLoad({ agent_id: "spt", load_status: "booked", origin_city: "Akron", origin_state: "OH", destination_city: "Macedonia", destination_state: "OH", pickup_date: "2026-08-17", delivery_date: "2026-08-19" }),
       mkLoad({ agent_id: "spt", shipper_name: "OneOff", origin_city: "Akron", origin_state: "OH", delivery_date: "2026-08-03" }),
-      // direct: same shipper twice, but FAR (Columbus ~122 mi).
+      // direct: same shipper twice, but FAR (Columbus ~122 mi) → lower score.
       mkLoad({ agent_id: "dir", shipper_name: "Acme", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-01" }),
       mkLoad({ agent_id: "dir", shipper_name: "Acme", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-05" }),
     ];
     const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    // the fixture's whole point: spot scores higher than the far direct
+    expect(byId.spt.score).toBeGreaterThan(byId.dir.score);
     const ids = board.rankings.map((r) => r.agentId);
-    expect(ids.indexOf("dir")).toBeLessThan(ids.indexOf("spt"));
-    expect(board.rankings.find((r) => r.agentId === "dir")?.bucket).toBe("direct");
-    expect(board.rankings.find((r) => r.agentId === "spt")?.bucket).toBe("spot");
+    expect(ids.indexOf("spt")).toBeLessThan(ids.indexOf("dir"));
+    // the class survives as a badge — it informs, it no longer overrules
+    expect(byId.dir.bucket).toBe("direct");
+    expect(byId.spt.bucket).toBe("spot");
   });
 });
 
