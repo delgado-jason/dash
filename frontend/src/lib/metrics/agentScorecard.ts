@@ -49,8 +49,10 @@ export type Trend = "up" | "down" | "flat";
 export type GoToTier = "call-first" | "solid" | "watch" | "cold" | "thin";
 export type RatingFlag = "under" | "over"; // your star rating disagrees with the data
 
-// Relationship bucket. An agent you've hit the same shipper OR receiver 2+ times
-// through is a direct customer (their own account); otherwise spot market.
+// Relationship bucket. An agent whose freight repeats the same facility in
+// the SAME ROLE (ships 2+ times, or receives 2+ times) is a direct customer
+// (their own account); otherwise spot market. A single round trip touches
+// both facilities once per role and proves nothing.
 export type AgentClass = "direct" | "spot";
 export interface RepeatCustomer {
   facility: string; // original-cased shipper/receiver name
@@ -124,25 +126,45 @@ const rawScorecard = (
   const collectedLoads = delivered.filter((l) => detentionCollected(l)).length;
   const confirmed = moneyLostLoads + collectedLoads;
 
-  // Relationship bucket: a shipper OR receiver hit 2+ times through this agent is
-  // their own customer. Counts non-cancelled loads (a booked repeat still counts).
-  const facCount = new Map<string, { display: string; count: number }>();
+  // Relationship bucket: a facility is this agent's own customer when it
+  // repeats IN THE SAME ROLE across different loads — ships 2+ times, or
+  // receives 2+ times. Counting "shipper OR receiver" per load minted fake
+  // directs from one out-and-back (A→B then B→A touches both facilities
+  // twice); six prod agents were auto-`direct` off that artifact
+  // (2026-09-11). Counts non-cancelled loads (a booked repeat still counts).
+  const roleCount = new Map<string, { display: string; count: number }>();
   for (const l of loads) {
     if (l.load_status === "cancelled") continue;
     const seenThisLoad = new Set<string>();
-    for (const nm of [l.shipper_name, l.receiver_name]) {
+    for (const [role, nm] of [
+      ["ship", l.shipper_name],
+      ["recv", l.receiver_name],
+    ] as const) {
       const raw = String(nm ?? "").trim();
       if (!raw) continue;
-      const key = raw.toUpperCase();
+      const key = `${role}:${raw.toUpperCase()}`;
       if (seenThisLoad.has(key)) continue; // one load can't make a facility a repeat
       seenThisLoad.add(key);
-      const cur = facCount.get(key);
+      const cur = roleCount.get(key);
       if (cur) cur.count += 1;
-      else facCount.set(key, { display: raw, count: 1 });
+      else roleCount.set(key, { display: raw, count: 1 });
+    }
+  }
+  // Qualification is per role; display merges roles per facility so the card
+  // reads "Fujifilm ×3", not "ship:Fujifilm ×2 · recv:Fujifilm ×1".
+  const facCount = new Map<string, { display: string; count: number; qualifies: boolean }>();
+  for (const [key, v] of roleCount) {
+    const fac = key.slice(5);
+    const cur = facCount.get(fac);
+    if (cur) {
+      cur.count += v.count;
+      cur.qualifies = cur.qualifies || v.count >= 2;
+    } else {
+      facCount.set(fac, { display: v.display, count: v.count, qualifies: v.count >= 2 });
     }
   }
   const repeatCustomers = [...facCount.values()]
-    .filter((v) => v.count >= 2)
+    .filter((v) => v.qualifies)
     .map((v) => ({ facility: v.display, count: v.count }))
     .sort((a, b) => b.count - a.count);
 

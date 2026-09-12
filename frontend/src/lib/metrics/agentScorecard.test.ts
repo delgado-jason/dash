@@ -50,12 +50,27 @@ describe("agent bucket (direct vs spot)", () => {
     expect(c.autoClass).toBe("direct");
   });
 
-  it("direct on a recurring round-trip lane (facility on both sides)", () => {
+  it("a SINGLE round trip proves nothing — spot (the Mary Morrison artifact, 2026-09-11)", () => {
+    // A→B then B→A touches each facility once per ROLE; the old shipper-OR-
+    // receiver count minted six fake directs in prod off exactly this.
     const c = cardFor([
       load({ shipper_name: "Touchstone", receiver_name: "Fujifilm" }),
       load({ shipper_name: "Fujifilm", receiver_name: "Touchstone" }),
     ]);
+    expect(c.autoClass).toBe("spot");
+    expect(c.repeatCustomers).toEqual([]);
+  });
+
+  it("a RECURRING round-trip lane still qualifies — each side ships twice", () => {
+    const c = cardFor([
+      load({ shipper_name: "Touchstone", receiver_name: "Fujifilm" }),
+      load({ shipper_name: "Fujifilm", receiver_name: "Touchstone" }),
+      load({ shipper_name: "Touchstone", receiver_name: "Fujifilm" }),
+      load({ shipper_name: "Fujifilm", receiver_name: "Touchstone" }),
+    ]);
     expect(c.autoClass).toBe("direct");
+    // display merges roles per facility: each facility touched 4 times total
+    expect(c.repeatCustomers.find((r) => r.facility === "Fujifilm")?.count).toBe(4);
   });
 
   it("spot when every facility is a one-off", () => {
