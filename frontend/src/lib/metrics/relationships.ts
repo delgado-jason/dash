@@ -36,7 +36,10 @@ export interface AgentLike {
 
 // Days a tier may go untouched before a touch is DUE. T1 weekly, T2
 // bi-weekly, T3 quarterly. Prospects override below.
-export const TIER_CADENCE_DAYS: Record<number, number> = { 1: 7, 2: 14, 3: 90 };
+// Jason's decided cadence (2026-09-11): Tier 1 weekly, Tier 2 every 30 days.
+// Tier 3 has NO cadence — it gets the one-time qualification sweep, then
+// re-enters attention only by producing; the queue never nags a Tier 3.
+export const TIER_CADENCE_DAYS: Record<number, number> = { 1: 7, 2: 30 };
 // Cold follow-ups: an unanswered cold touch resurfaces in 14 days; a REPLIED
 // prospect tightens to 7 — momentum dies fast.
 export const COLD_FOLLOWUP_DAYS = 14;
@@ -129,7 +132,9 @@ export const dueQueue = (
       // from the pool deliberately, not pushed by the queue.
       continue;
     } else {
-      dueBy = TIER_CADENCE_DAYS[a.relationship_tier] ?? 90;
+      const cadence = TIER_CADENCE_DAYS[a.relationship_tier];
+      if (cadence == null) continue; // Tier 3 rides no clock — sweep, not rotation
+      dueBy = cadence;
       reason = `tier ${a.relationship_tier} cadence — every ${dueBy}d`;
     }
     const overdueDays = daysSince == null ? dueBy : daysSince - dueBy;

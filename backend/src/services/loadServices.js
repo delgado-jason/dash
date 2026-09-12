@@ -346,9 +346,29 @@ export async function createLoad(user_id, data, self_id) {
         `;
 
   const result = await db.query(query, values);
+  const created = result.rows[0];
 
-  // Return created row
-  return result.rows[0];
+  // A real load out of a market an agent merely CLAIMED flips that coverage
+  // from stated to confirmed — the promise the Guide has made since 068.
+  // Best-effort: a failure here never blocks the load (the migration-071
+  // backstop reconciles history, and the next matching load retries).
+  if (created?.agent_id && created?.origin_city && created?.origin_state) {
+    try {
+      await db.query(
+        `UPDATE agent_coverage
+            SET source = 'confirmed', confirmed_load_id = $4, updated_at = now()
+          WHERE user_id = $1 AND agent_id = $2
+            AND upper(city) = upper($3::text)
+            AND upper(state) = upper($5::text)
+            AND source <> 'confirmed'`,
+        [user_id, created.agent_id, created.origin_city, created.load_id, created.origin_state],
+      );
+    } catch {
+      /* coverage stays stated; nothing lost */
+    }
+  }
+
+  return created;
 }
 
 // ---- PATCH LOAD SERVICE ----

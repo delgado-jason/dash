@@ -2224,8 +2224,10 @@ const GuidePage = () => {
           >
             <Why>
               Tiers are <span className="text-light">your call</span> — Tier 1
-              (max 5) gets weekly attention, Tier 2 (max 10) bi-weekly, Tier 3
-              quarterly plus the cold pool. Blue chips flag where the data disagrees with
+              (max 5) gets weekly attention, Tier 2 every 30 days, and Tier 3
+              rides <span className="text-light">no clock at all</span>: it
+              gets the one-time qualification sweep, then earns attention only
+              by producing. Blue chips flag where the data disagrees with
               your placement (a Tier 2 performing call-first, a Tier 1 going
               cold) — same gut-vs-data grammar as the star-rating flags. The
               week runs itself: Monday capacity email to Tier 1 (the empty line
