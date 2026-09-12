@@ -143,6 +143,18 @@ router.delete("/:agent_id", async (req, res) => {
       agent,
     });
   } catch (err) {
+    // FK restraint is doctrine, not an accident: loads, notes and rating
+    // history are ON DELETE RESTRICT so the paper trail can't be orphaned.
+    // Surface that as a decision, not a raw Postgres 500 (handoff §7h).
+    if (err.code === "23503") {
+      return res.status(409).json({
+        error: "Agent has history",
+        message:
+          "This agent has loads, notes, or rating history on record — " +
+          "records are never orphaned. Park the agent instead of deleting.",
+      });
+    }
+
     if (err.type === "validation") {
       return res.status(err.statusCode).json({ error: err.message });
     }
