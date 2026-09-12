@@ -4,6 +4,25 @@ import fs from "fs";
 import path from "path";
 import { db } from "../db/pool.js";
 
+// A bare `npm run migrate` on a dev machine loads .env — which points at
+// PRODUCTION. The dangerous command must be the long, deliberate one, not
+// the short one (handoff §7l, 2026-09-11). Railway is exempt (it owns prod).
+const PROD_REF = "zeeglmaqitxjqzxfikwy";
+if (
+  (process.env.DATABASE_URL ?? "").includes(PROD_REF) &&
+  process.env.MIGRATE_PROD !== "1" &&
+  !process.env.RAILWAY_ENVIRONMENT
+) {
+  console.error(
+    [
+      `REFUSING: DATABASE_URL points at PRODUCTION (${PROD_REF}).`,
+      "  dev:               npm run migrate:dev",
+      "  prod (deliberate): MIGRATE_PROD=1 npm run migrate",
+    ].join("\n"),
+  );
+  process.exit(1);
+}
+
 // recreate dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
