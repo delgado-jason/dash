@@ -2533,11 +2533,15 @@ const GuidePage = () => {
           <Section title="What a dispatcher sees">
             <p className="text-sm text-muted-text">
               A dispatcher's menu is trimmed to the day-to-day: the Dispatch
-              board, Score a Load, Loads, Trips, Lanes, Agents, Facilities, the
-              fleet (Trucks, Trailers, Drivers), Maintenance, Compliance, and
-              this Guide. The money pages — Expenses, Per&nbsp;Diem, Recap,
-              Fuel, Garage, Trophy Room, and Settings — stay owner-only, so the
-              P&amp;L is yours alone.
+              board, Score a Load, The Foreman, Loads, Trips, Lanes, Agents,
+              Vendors, Facilities, the fleet (Trucks, Trailers, Drivers),
+              Maintenance, Relationships, her own{" "}
+              <span className="text-light">Recap</span>, Compliance, The Forge,
+              and this Guide. The money pages — Expenses, Plan, Cash Flow,
+              Market, Per&nbsp;Diem, Fuel, Garage, Trophy Room, and Settings —
+              stay owner-only, so the P&amp;L is yours alone. Her Recap covers
+              the loads <span className="text-light">she</span> booked, in
+              gross; net and profit appear nowhere on her side.
             </p>
           </Section>
 
@@ -2669,7 +2673,10 @@ const GuidePage = () => {
 
           <Section
             title="Dispatcher season &amp; trophies"
-            sources={[{ label: "Dispatch board", to: "/dashboard" }]}
+            sources={[
+              { label: "Dispatch board", to: "/dashboard" },
+              { label: "Recap", to: "/my-recap" },
+            ]}
           >
             <p className="text-sm text-muted-text">
               Her page also carries a{" "}
@@ -2677,12 +2684,17 @@ const GuidePage = () => {
               or year recap of the loads she booked (gross, on her bookings
               only): loads, gross, average rate against target, on-time, and her
               best load. Three <span className="text-light">period trophies</span>{" "}
-              sit under it, each tracked against a personal bar:
+              sit under it, each tracked against a personal bar with a{" "}
+              <span className="text-light">progress meter</span> underneath, so a
+              locked trophy shows how close it is:
             </p>
             <div className="flex flex-col gap-1.5 mt-3">
               <p className="text-sm text-muted-text">
                 <span className="text-light">Booking Champion</span> — a
-                big-volume period (8 loads a month, 24 a quarter, 90 a year).
+                big-volume period: 4 loads a month, 12 a quarter, 40 a year. The
+                bars are sized per booker to the shop's real volume (roughly half
+                of what the whole operation runs), so one person can actually
+                reach them.
               </p>
               <p className="text-sm text-muted-text">
                 <span className="text-light">Rate Champion</span> — the period
@@ -2693,13 +2705,23 @@ const GuidePage = () => {
                 in the period at or above target. The hard one.
               </p>
             </div>
+            <p className="text-sm text-muted-text mt-3">
+              Her <span className="text-light">Recap</span> page is the poster
+              version: pick Month, Quarter, or Year, and step to earlier periods
+              with the arrows. It leads with booked gross, loads, and average
+              gross $/mile, then best load, on-time %, detention collected (in
+              hours), and her best pay-week, then top agent and top lane, then
+              the three trophies with their meters. The footer's best streak is
+              her career best from her own HEAT streak. Older periods read empty
+              on purpose: every load booked before dispatcher logins existed is
+              credited to the owner.
+            </p>
             <Why>
-              A locked trophy shows what's still missing ("3 loads under
-              target"), so it reads as a goal, not a scold. They're personal on
-              purpose: with one person booking most of the freight, a
-              head-to-head "champion" would just be the same name every period —
-              these reward your own best month instead. Earn one and it pops like
-              a patch does.
+              A locked trophy shows what's still missing ("3 / 4 loads"), so it
+              reads as a goal, not a scold. They're personal on purpose: with one
+              person booking most of the freight, a head-to-head "champion" would
+              just be the same name every period — these reward your own best
+              month instead. Earn one and it pops like a patch does.
             </Why>
           </Section>
 

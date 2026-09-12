@@ -145,6 +145,9 @@ const Crown = ({ t, period }: { t: SeasonTrophy; period: string }) => (
     )}
     <div className="font-condensed text-[14.5px] font-bold mt-[7px] text-ink">{t.name}</div>
     <div className={`font-condensed text-[11.5px] mt-[2px] ${t.earned ? "text-amber-hi" : "text-dim"}`}>{t.detail}</div>
+    <div className="mt-2">
+      <MeterCells pct={t.progress} cells={8} />
+    </div>
     <div className="font-condensed text-[10.5px] text-faint mt-[6px] pt-[6px] border-t border-dashed border-hairline-lo">
       {howToEarn(t.key)} · {period}
     </div>

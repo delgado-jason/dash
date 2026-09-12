@@ -84,6 +84,7 @@ const nav: Entry[] = [
       { to: "/market", label: "Market", adminOnly: true },
       { to: "/per-diem", label: "Per Diem", adminOnly: true },
       { to: "/recap", label: "Recap", adminOnly: true },
+      { to: "/my-recap", label: "Recap", dispatcherOnly: true }, // her own bookings, gross
       { to: "/garage", label: "Garage", adminOnly: true },
     ],
   },

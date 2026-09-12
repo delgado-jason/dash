@@ -18,7 +18,7 @@ const inRange = (iso: string | null | undefined, r: RecapRange): boolean => {
 
 // A dispatcher's loads inside a period — booked by them, not cancelled, and
 // picked up in the range (credit follows when the load actually ran).
-const loadsInPeriod = (loads: Load[], userId: string, r: RecapRange): Load[] =>
+export const loadsInPeriod = (loads: Load[], userId: string, r: RecapRange): Load[] =>
   loads.filter(
     (l) => l.booked_by === userId && isReal(l) && inRange(l.pickup_date, r),
   );
@@ -34,12 +34,17 @@ const rpm = (l: Load): number => {
   return m > 0 ? loadGross(l) / m : 0;
 };
 
-// "Booking Champion" bar scales with the period length.
+// "Booking Champion" bar scales with the period length. Sized PER BOOKER at
+// roughly half the shop's real throughput (18 loads in Q3 2026, 64 YTD) — the
+// old 8 / 24 / 90 were account-level bars applied to one person and were never
+// reachable (2026-09-11).
 export const BOOKING_BAR: Record<RecapScope, number> = {
-  month: 8,
-  quarter: 24,
-  year: 90,
+  month: 4,
+  quarter: 12,
+  year: 40,
 };
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 
 export type SeasonTrophyKey = "booking" | "rate" | "perfect";
 export interface SeasonTrophy {
@@ -47,6 +52,7 @@ export interface SeasonTrophy {
   name: string;
   earned: boolean;
   detail: string; // earned blurb, or what's still missing
+  progress: number; // 0..1 toward the bar; 1 once earned
 }
 
 export interface DispatchSeason {
@@ -81,7 +87,11 @@ const topBy = (loads: Load[], keyOf: (l: Load) => string): string | null => {
   }
   let best: string | null = null;
   let n = 0;
-  for (const [k, c] of m) if (c > n) ((n = c), (best = k));
+  for (const [k, c] of m)
+    if (c > n) {
+      n = c;
+      best = k;
+    }
   return best;
 };
 
@@ -96,6 +106,9 @@ const trophiesFor = (
   const underTarget =
     target != null ? withMiles.filter((l) => rpm(l) < target).length : 0;
   const bar = BOOKING_BAR[scope];
+  const rateEarned = avgRpm != null && target != null && avgRpm >= target;
+  const perfectEarned =
+    target != null && withMiles.length > 0 && underTarget === 0;
 
   return [
     {
@@ -106,22 +119,28 @@ const trophiesFor = (
         mine.length >= bar
           ? `${mine.length} loads booked`
           : `${mine.length} / ${bar} loads`,
+      progress: Math.min(1, mine.length / bar),
     },
     {
       key: "rate",
       name: "Rate Champion",
-      earned: avgRpm != null && target != null && avgRpm >= target,
+      earned: rateEarned,
       detail:
         avgRpm == null || target == null
           ? "no rate yet"
           : avgRpm >= target
             ? `$${avgRpm.toFixed(2)} avg rate`
             : `$${avgRpm.toFixed(2)} vs $${target.toFixed(2)} target`,
+      progress: rateEarned
+        ? 1
+        : avgRpm != null && target
+          ? clamp01(avgRpm / target)
+          : 0,
     },
     {
       key: "perfect",
       name: "Perfect Period",
-      earned: target != null && withMiles.length > 0 && underTarget === 0,
+      earned: perfectEarned,
       detail:
         target == null
           ? "no target set"
@@ -130,6 +149,11 @@ const trophiesFor = (
             : underTarget === 0
               ? "every load at target"
               : `${underTarget} load${underTarget === 1 ? "" : "s"} under target`,
+      progress: perfectEarned
+        ? 1
+        : target == null || withMiles.length === 0
+          ? 0
+          : (withMiles.length - underTarget) / withMiles.length,
     },
   ];
 };

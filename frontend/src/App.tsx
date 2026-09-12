@@ -38,6 +38,7 @@ import SignupPage from "@/pages/SignupPage";
 import GuidePage from "@/pages/GuidePage";
 import DispatcherPage from "@/pages/DispatcherPage";
 import DispatchForgePage from "@/pages/DispatchForgePage";
+import DispatcherRecapPage from "@/pages/DispatcherRecapPage";
 import CompliancePage from "@/pages/CompliancePage";
 import RecapPage from "@/pages/RecapPage";
 import TrophyHallPage from "@/pages/TrophyHallPage";
@@ -94,6 +95,7 @@ const App = () => {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/dispatcher/:id" element={<DispatcherPage />} />
           <Route path="/forge" element={<DispatchForgePage />} />
+          <Route path="/my-recap" element={<DispatcherRecapPage />} />
           {/* Brandie's workflow — the ritual, touches, prospects; tier
               controls are gated inside the page (owner only). */}
           <Route path="/relationships" element={<RelationshipsPage />} />
