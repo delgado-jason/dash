@@ -5,12 +5,16 @@
 // every denominator. Pure + clock-injected throughout.
 import type { Load } from "@/types/load";
 import type { ContactType } from "@/lib/relationships/contactTypes";
+import { localDayKey } from "@/lib/relationships/dayKeys";
 
 // The day the relationship system went live — the inbound gauge's baseline.
 export const SYSTEM_START = "2026-09-03";
 
 const DAY = 86_400_000;
-const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+
+// `n` local calendar days before `d` — built from the local y/m/d so a DST
+// hour can't shift the day, the way subtracting milliseconds could.
+const localDaysAgo = (d: Date, n: number): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate() - n);
 
 export interface ContactLike {
   agent_id: string;
@@ -26,28 +30,21 @@ export interface AgentLike {
   first_name: string;
   last_name: string;
   // 1 | 2 | 3, or null = no owner-set tier (v2: a Prospect / dormant-Parked).
-  // The v1 rituals below treat "no tier" the way they treated Tier 3 — the
-  // untiered long tail rides no clock — until PR2 rebuilds them on v2's buckets.
+  // Untiered agents fold into the Tier 3 bar in inboundByTier — the old long
+  // tail — until PR4's Review re-cuts it on v2's buckets.
   relationship_tier: number | null;
-  // 'parked' agents leave every WORKING surface (due queue, Tuesday pick,
-  // Friday list, the sweep). They stay in ANALYTICAL ones — a parked agent's
-  // revenue and rate still happened. Absent/undefined reads as active.
+  // 'parked' agents leave every WORKING surface (Today, the call lists). They
+  // stay in ANALYTICAL ones — a parked agent's revenue and rate still
+  // happened. Absent/undefined reads as active.
   work_status?: "active" | "parked";
   agent_city?: string | null;
   agent_state?: string | null;
   source?: string | null;
 }
 
-// Days a tier may go untouched before a touch is DUE. T1 weekly, T2
-// bi-weekly, T3 quarterly. Prospects override below.
-// Jason's decided cadence (2026-09-11): Tier 1 weekly, Tier 2 every 30 days.
-// Tier 3 has NO cadence — it gets the one-time qualification sweep, then
-// re-enters attention only by producing; the queue never nags a Tier 3.
-export const TIER_CADENCE_DAYS: Record<number, number> = { 1: 7, 2: 30 };
-// Cold follow-ups: an unanswered cold touch resurfaces in 14 days; a REPLIED
-// prospect tightens to 7 — momentum dies fast.
-export const COLD_FOLLOWUP_DAYS = 14;
-export const REPLIED_FOLLOWUP_DAYS = 7;
+// The v1 cadence queue (Tier 1 weekly, Tier 2 monthly, cold follow-ups) and
+// the Tuesday / Friday pickers were retired with REL-01 v2.0: nothing is
+// "due" by a clock anymore, only by a reason — lib/relationships/todayQueue.
 
 export const lastTouchOf = (
   agentId: string,
@@ -98,129 +95,19 @@ export const prospectState = (
   return { stage: "prospect", coldTouches: 0, daysToConvert: null };
 };
 
-export interface DueEntry {
-  agent: AgentLike;
-  daysSince: number | null; // null = never touched
-  dueBy: number; // the cadence that applies
-  overdueDays: number; // how far past due (0 = due today)
-  reason: string; // plain words for the queue row
-}
-
-// Who's owed a touch, most-overdue first. Prospects ride their own cadence;
-// tiered working agents ride TIER_CADENCE_DAYS. Never-touched counts as
-// infinitely overdue within its class (surfaces immediately).
-export const dueQueue = (
-  agents: AgentLike[],
-  contacts: ContactLike[],
-  loads: Load[],
-  now: Date,
-): DueEntry[] => {
-  const nowMs = now.getTime();
-  const out: DueEntry[] = [];
-  for (const a of agents) {
-    if (a.work_status === "parked") continue; // parked is never owed a touch
-    const st = prospectState(a.agent_id, contacts, loads);
-    const last = lastTouchOf(a.agent_id, contacts);
-    // Clamped — a touch stamped moments after `now` must read 0, never −1.
-    const daysSince = last == null ? null : Math.max(0, Math.floor((nowMs - Date.parse(last)) / DAY));
-    let dueBy: number;
-    let reason: string;
-    if (st.stage === "touched") {
-      dueBy = COLD_FOLLOWUP_DAYS;
-      reason = `cold follow-up — ${st.coldTouches} touch${st.coldTouches === 1 ? "" : "es"}, no reply yet`;
-    } else if (st.stage === "replied") {
-      dueBy = REPLIED_FOLLOWUP_DAYS;
-      reason = "they replied — keep the momentum";
-    } else if (st.stage === "prospect") {
-      // Un-touched prospects don't nag on a clock — cold outreach is pulled
-      // from the pool deliberately, not pushed by the queue.
-      continue;
-    } else {
-      // No tier (v2) reads as the old Tier 3 here: no clock.
-      const cadence = TIER_CADENCE_DAYS[a.relationship_tier ?? 3];
-      if (cadence == null) continue; // Tier 3 / untiered rides no clock — sweep, not rotation
-      dueBy = cadence;
-      reason = `tier ${a.relationship_tier} cadence — every ${dueBy}d`;
-    }
-    const overdueDays = daysSince == null ? dueBy : daysSince - dueBy;
-    if (overdueDays >= 0) out.push({ agent: a, daysSince, dueBy, overdueDays, reason });
-  }
-  return out.sort((x, y) => y.overdueDays - x.overdueDays);
-};
-
-// The working book by explicit tier. Parked agents leave every working
-// surface (the tier lists, the Monday blast), and an untiered agent — a v2
-// Prospect — has no tier row to sit in.
-export const activeByTier = <A extends AgentLike>(agents: A[]): Record<1 | 2 | 3, A[]> => {
-  const out: Record<1 | 2 | 3, A[]> = { 1: [], 2: [], 3: [] };
-  for (const a of agents) {
-    if (a.work_status === "parked") continue;
-    const t = a.relationship_tier;
-    if (t === 1 || t === 2 || t === 3) out[t].push(a);
-  }
-  return out;
-};
-
-// Tuesday's call: the TIER-2 agent who's waited longest (never-touched first).
-export const tuesdayPick = (
-  agents: AgentLike[],
-  contacts: ContactLike[],
-  now: Date,
-): { agent: AgentLike; daysSince: number | null } | null => {
-  const t2 = agents.filter(
-    (a) => a.relationship_tier === 2 && a.work_status !== "parked",
-  );
-  if (t2.length === 0) return null;
-  let best: { agent: AgentLike; last: string | null } | null = null;
-  for (const a of t2) {
-    const last = lastTouchOf(a.agent_id, contacts);
-    if (best == null) best = { agent: a, last };
-    else if (last == null && best.last != null) best = { agent: a, last };
-    else if (last != null && best.last != null && last < best.last) best = { agent: a, last };
-  }
-  return best
-    ? {
-        agent: best.agent,
-        daysSince: best.last == null ? null : Math.max(0, Math.floor((now.getTime() - Date.parse(best.last)) / DAY)),
-      }
-    : null;
-};
-
-// Friday's appreciation list: Tier-1 agents with a DELIVERED load this week
-// (week = the trailing 7 days ending `now`).
-export const fridayList = (
-  agents: AgentLike[],
-  loads: Load[],
-  now: Date,
-): { agent: AgentLike; loads: number }[] => {
-  const start = dayKey(new Date(now.getTime() - 6 * DAY));
-  const end = dayKey(now);
-  const t1 = new Map(
-    agents
-      .filter((a) => a.relationship_tier === 1 && a.work_status !== "parked")
-      .map((a) => [a.agent_id, a]),
-  );
-  const counts = new Map<string, number>();
-  for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.delivery_date || !l.agent_id) continue;
-    const k = l.delivery_date.slice(0, 10);
-    if (k < start || k > end) continue;
-    if (!t1.has(l.agent_id)) continue;
-    counts.set(l.agent_id, (counts.get(l.agent_id) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .map(([id, n]) => ({ agent: t1.get(id)!, loads: n }))
-    .sort((a, b) => b.loads - a.loads);
-};
-
-// Delivered loads (trailing `days`) with NO close-out contact linked yet.
+// Delivered loads (trailing `days`) with NO close-out contact linked yet —
+// Today's NOW rows read this with days = 14. The window is `days` LOCAL
+// calendar days ending today: delivery_date is a DATE column (a calendar
+// day), so it compares cleanly against the local key — and Today's "today"
+// is Brandie's, which after ~7pm Central is not UTC's.
 export const closeOutPending = (
   loads: Load[],
   contacts: ContactLike[],
   now: Date,
   days = 7,
 ): Load[] => {
-  const start = dayKey(new Date(now.getTime() - (days - 1) * DAY));
+  const start = localDayKey(localDaysAgo(now, days - 1));
+  const end = localDayKey(now);
   const closed = new Set(
     contacts.filter((c) => c.type === "close_out" && c.load_id).map((c) => c.load_id),
   );
@@ -229,7 +116,7 @@ export const closeOutPending = (
       l.load_status === "delivered" &&
       l.delivery_date &&
       l.delivery_date.slice(0, 10) >= start &&
-      l.delivery_date.slice(0, 10) <= dayKey(now) &&
+      l.delivery_date.slice(0, 10) <= end &&
       !closed.has(l.load_id),
   );
 };

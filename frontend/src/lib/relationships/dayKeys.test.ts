@@ -37,6 +37,20 @@ describe("keyOf / daysBetweenKeys — UTC-anchored calendar days", () => {
   });
 });
 
+describe("the test clock — pinned to Central by vite.config's test.env.TZ", () => {
+  it("runs every suite in America/Chicago, so a local-vs-UTC test is never a tautology", () => {
+    // If this fails the pin is gone (or ignored): 9pm on the wall would no
+    // longer sit past UTC midnight, and every "9pm local" test in the
+    // relationship suites would pass by accident on a UTC machine.
+    const cdt = new Date(2026, 8, 14, 21); // Mon Sep 14, 9pm — daylight time, UTC−5
+    expect(cdt.getTimezoneOffset()).toBe(300);
+    expect(cdt.toISOString()).toBe("2026-09-15T02:00:00.000Z");
+    const cst = new Date(2026, 0, 14, 21); // standard time, UTC−6
+    expect(cst.getTimezoneOffset()).toBe(360);
+    expect(cst.toISOString()).toBe("2026-01-15T03:00:00.000Z");
+  });
+});
+
 describe("localDayKey vs utcDayKey — two clocks on purpose", () => {
   it("localDayKey is the calendar on the wall, whatever the zone", () => {
     expect(localDayKey(new Date(2026, 8, 12, 23, 30))).toBe("2026-09-12");

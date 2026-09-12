@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import type { Agent } from "@/types/agent";
@@ -158,7 +159,9 @@ const Rows = ({ rows, dimmed, onOpen }: { rows: RowModel[]; dimmed?: boolean; on
 
 const TiersView = () => {
   const { agents, loads, contacts, ladder, now, openAgent, loadsReady } = useRelationships();
-  const [query, setQuery] = useState("");
+  // ?q= prefills the search — Today's hygiene line links here by name.
+  const [params] = useSearchParams();
+  const [query, setQuery] = useState(params.get("q") ?? "");
   const [sort, setSort] = useState<BookSort | null>(null); // null = the default shelf order
   const [showProspects, setShowProspects] = useState(false);
   const [showParked, setShowParked] = useState(false);

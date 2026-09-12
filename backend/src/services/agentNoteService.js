@@ -2,6 +2,25 @@ import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
 import { validateAgentNoteCreate } from "../utils/validation/agentNoteValidation.js";
 
+// ---- LIST NOTES SERVICE ----
+// Every note on every agent of this user, newest first. agent_notes carries
+// no user_id of its own — ownership rides the agent, so the join scopes it.
+export async function listNotes(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const query = `
+    SELECT n.id, n.agent_id, n.note, n.created_at, n.created_by
+    FROM agent_notes n
+    JOIN agents a ON a.agent_id = n.agent_id
+    WHERE a.user_id = $1
+    ORDER BY n.created_at DESC;
+  `;
+
+  const result = await db.query(query, [user_id]);
+
+  return result.rows;
+}
+
 // ---- CREATE NOTE SERVICE ----
 export async function createNote(user_id, agent_id, data) {
   // Reject missing user_id

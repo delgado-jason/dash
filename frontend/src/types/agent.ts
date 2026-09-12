@@ -21,8 +21,8 @@ export interface Agent {
   //   'direct' | 'spot'               — asked and answered; only a pinned
   //                                     'spot' may ever park an agent
   agent_class?: "direct" | "unclear" | "spot" | null;
-  // 'parked' leaves every working view (due queue, call lists, sweep) but stays
-  // in every analytical one. The DB refuses to park a non-pinned-'spot' agent.
+  // 'parked' leaves every working view (Today, the Call list, the Foreman) but
+  // stays in every analytical one. The DB refuses to park a non-pinned-'spot' agent.
   work_status?: "active" | "parked";
   // Why they left the call book. Required to park unless agent_class is a
   // pinned 'spot' — so nobody is ever parked by inference.
