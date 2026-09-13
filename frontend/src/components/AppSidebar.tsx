@@ -58,6 +58,7 @@ const nav: Entry[] = [
       { to: "/trips", label: "Trips" },
       { to: "/lanes", label: "Lanes" },
       { to: "/agents", label: "Agents" },
+      { to: "/agencies", label: "Agencies" }, // the same book rolled up by desk — the agency, its codes, its people
       { to: "/relationships", label: "Relationships" }, // Brandie's daily surface — the book of agents, next to the roster
       { to: "/vendors", label: "Vendors" },
       { to: "/facilities", label: "Facilities" },
