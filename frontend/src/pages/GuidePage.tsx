@@ -387,6 +387,10 @@ const NAV: { group: string; items: string[] }[] = [
     ],
   },
   {
+    group: "Compliance",
+    items: ["Compliance — Mark renewed, and the cycle it keeps"],
+  },
+  {
     group: "The award system",
     items: [
       "Four ways to win",
@@ -1976,6 +1980,35 @@ const GuidePage = () => {
               . Miles/month rounds it out — how hard the truck runs.
             </Eg>
           </Metric>
+
+          <GroupHeading>Compliance</GroupHeading>
+
+          <Section title="Compliance — Mark renewed, and the cycle it keeps">
+            <p className="text-sm text-muted-text">
+              Every paper on Compliance carries a{" "}
+              <span className="text-light">Mark renewed</span> button beside Edit.
+              It opens a short sheet with the four things a renewal changes: the
+              day it was renewed (today), the next expiry, the new document
+              number (the old one, ready to be overtyped) and a note. When the
+              item has a cadence — <i>renews every 24 mo</i> — the next expiry
+              comes prefilled at that many calendar months past the renewal day,
+              clamped to the end of the month it lands in (Jan 31 + 1 mo is Feb
+              28, never Mar 3); an item with no cadence leaves it blank and asks
+              you for the date. Saving writes down the cycle you just closed —
+              what it was issued, what it was due, the number it carried — and
+              keeps it as history under the row:{" "}
+              <span className="text-light">
+                renewed Sep 18, 2026 · was due Oct 2, 2026
+              </span>
+              , with "n earlier" folding the ones before it. Only then do the
+              item's own dates roll forward, so the clock cells go green the same
+              second, and nothing touches the cadence unless you change it. The{" "}
+              <span className="text-light">CDL row</span> renews the same way —
+              it lives on the driver record rather than in the paper list, so the
+              sheet asks for the new expiry outright and writes it back to the
+              driver. Owner and dispatcher both.
+            </p>
+          </Section>
 
           <GroupHeading>The award system</GroupHeading>
 

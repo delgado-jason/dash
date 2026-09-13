@@ -4,6 +4,9 @@ import {
   validateDriverPatch,
 } from "../utils/validation/driverValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+// The CDL's renewal history lives in compliance_renewals; the list carries the
+// newest cycle so the compliance page's CDL row needs no second request.
+import { lastRenewalJoin } from "./complianceServices.js";
 
 // ---- CREATE DRIVER SERVICE ----
 
@@ -74,24 +77,27 @@ export async function getDrivers(user_id) {
   const result = await db.query(
     `
         SELECT
-        driver_id,
-        first_name,
-        last_name,
-        phone,
-        email,
-        cdl_number,
-        cdl_state,
-        cdl_expiration,
-        endorsements,
-        hire_date,
-        avatar_url,
-        notes,
-        active,
-        created_at,
-        updated_at
-        FROM drivers
-        WHERE user_id = $1
-        ORDER BY created_at DESC
+        d.driver_id,
+        d.first_name,
+        d.last_name,
+        d.phone,
+        d.email,
+        d.cdl_number,
+        d.cdl_state,
+        d.cdl_expiration,
+        d.endorsements,
+        d.hire_date,
+        d.avatar_url,
+        d.notes,
+        d.active,
+        d.created_at,
+        d.updated_at,
+        lr.last_renewal AS last_cdl_renewal,
+        COALESCE(rc.renewal_count, 0) AS cdl_renewal_count
+        FROM drivers d
+        ${lastRenewalJoin("driver_id", "d")}
+        WHERE d.user_id = $1
+        ORDER BY d.created_at DESC
     `,
     [user_id],
   );

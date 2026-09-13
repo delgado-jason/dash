@@ -7,6 +7,12 @@ import {
   patchDriver,
   deleteDriver,
 } from "../services/driverServices.js";
+// The CDL is a compliance clock that happens to live on the driver record, so
+// its renewal shares the compliance service's transaction and history table.
+import {
+  renewDriverCdl,
+  getDriverCdlRenewals,
+} from "../services/complianceServices.js";
 
 const router = express.Router();
 
@@ -115,6 +121,70 @@ router.patch("/:id", requireAuth, async (req, res) => {
         error: err.message,
         details: err.details,
       });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- RENEW CDL ----
+// Same body as a compliance renewal; the closed cycle is written to
+// compliance_renewals against driver_id and the driver's cdl_expiration rolls
+// forward. Owner and dispatcher both, like every other renewal.
+
+router.post("/:id/cdl-renew", requireAuth, async (req, res) => {
+  try {
+    const driver = await renewDriverCdl(
+      req.user.user_id,
+      req.params.id,
+      req.body,
+      req.user,
+    );
+
+    return res.status(200).json({
+      message: "CDL renewed successfully",
+      driver,
+    });
+  } catch (err) {
+    if (err.type === "not_found") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({
+        error: err.message,
+        details: err.details,
+      });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- CDL RENEWAL HISTORY ----
+
+router.get("/:id/cdl-renewals", requireAuth, async (req, res) => {
+  try {
+    const renewals = await getDriverCdlRenewals(req.user.user_id, req.params.id);
+
+    return res.status(200).json({
+      message: "CDL renewals retrieved successfully",
+      count: renewals.length,
+      renewals,
+    });
+  } catch (err) {
+    if (err.type === "not_found") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({ error: err.message });
     }
 
     return res.status(500).json({
