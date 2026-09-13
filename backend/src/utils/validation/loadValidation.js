@@ -300,6 +300,13 @@ const rules = {
     if (typeof value !== "boolean")
       errors.push("detention_billable must be true, false, or null");
   },
+  // Decision 4 (073): set by Dispatch when an OS&D or damage claim lands. A
+  // plain boolean — the column is NOT NULL DEFAULT false, so null is refused.
+  claim_filed: (value, errors) => {
+    if (value === undefined) return;
+    if (typeof value !== "boolean")
+      errors.push("claim_filed must be true or false");
+  },
   odometer_start: (value, errors) => {
     if (!value) return;
 

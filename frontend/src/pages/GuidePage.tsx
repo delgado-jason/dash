@@ -1530,7 +1530,10 @@ const GuidePage = () => {
               badge: <span className="text-light">on time</span>,{" "}
               <span className="text-light">late</span>, or{" "}
               <span className="text-light">waited</span> (you beat the window
-              open).
+              open). The <span className="text-light">CLAIM FILED</span>{" "}
+              checkbox beside the load’s status marks an OS&amp;D or damage
+              claim — owner or dispatcher — and breaks the agent’s on-time,
+              claim-free streak in Relationships.
             </Why>
           </Metric>
 
@@ -2381,9 +2384,84 @@ const GuidePage = () => {
               uncapped. It never creates a task and never sends anything.
               The <span className="text-light">CALL LIST</span> runs on these
               buckets too — reactivation and prospects, one row, one call
-              screen (its own section below). Review is rebuilt next: until
-              then it is the trailing-90-day table with its move chips — tap a
-              name there to open the agent sheet.
+              screen (its own section below).
+              <br />
+              <br />
+              <span className="text-light">Review is where the month gets
+              judged and signed.</span> Month or quarter, stepped back as far as
+              you like. The scorecard, the tier-move log and the quarter’s
+              checks rest on the period you are standing on; cooling, the
+              milestones, the cap audit, hygiene and IS IT WORKING always read
+              today. <span className="text-light">IS IT WORKING</span> is the
+              one number — inbound share since system start, a plain fraction
+              until ten attributed loads, then a percent — cut by each agent’s
+              current tier and laid out month by month.{" "}
+              <span className="text-light">RE-TIER SUGGESTIONS</span> lists
+              every agent whose all-in RPM band on the live ladder disagrees
+              with the tier they hold, the evidence on the row (“$6.94 all-in
+              on 3 loads · above Strong”), an established agent still without a
+              tier under NEEDS A TIER, and an established agent under walk-away
+              as LOSING MONEY with a park suggestion.{" "}
+              <span className="text-light">APPROVE</span> writes the tier with
+              the reason prefilled from the evidence — editable, never empty —
+              and lands a row in the tier history with who and when;{" "}
+              <span className="text-light">HOLD</span> records your “not now”
+              against that evidence, and the suggestion stays quiet until the
+              numbers behind it change. Nothing re-tiers itself, and Dispatch
+              sees every board read-only — “the owner sets tiers” where the
+              buttons would be.
+              <br />
+              <br />
+              Beneath it: <span className="text-light">COOLING</span>, the
+              same owner’s flag Today carries — monitoring, never a to-do;{" "}
+              <span className="text-light">MILESTONES</span> waiting and sent
+              this month; the <span className="text-light">CONTACT CAP</span>{" "}
+              audit, which should read zero agents over one proactive touch
+              this week and names the two touches when it doesn’t; a{" "}
+              <span className="text-light">HYGIENE</span> line — phones,
+              preferred channels, footprints, best time to call — each name a
+              door into the book; <span className="text-light">TIER MOVES</span>{" "}
+              this month, straight from the history with their reasons;{" "}
+              <span className="text-light">GONE QUIET</span>, every Tier 1 or 2
+              with no two-way contact in thirty days; and the{" "}
+              <span className="text-light">SCORECARD</span> — ninety days per
+              agent: loads, net, net per mile graded against the ladder,
+              deadhead, inbound, last load, the days you reached out and the
+              times they reached in. Its verdict is the suggestion’s direction —
+              ▲ up, ▼ down, HOLD; under three loads in the window it is THIN, no
+              verdict, never a fake grade; and a ▼ on a Tier 1 or 2 you reached
+              out to on fewer than four days reads HOLD, “never fed — the
+              verdict is on us”.
+              <br />
+              <br />
+              <span className="text-light">MARK … REVIEWED</span> signs the
+              month with one to three targets for the month ahead; the pill
+              then reads REVIEWED with the date and your name, and the targets
+              print under the head — with an EDIT link under them that reopens
+              the sheet on what you wrote, so a signed period can be corrected
+              without a second row. Dispatch sees the targets and “the owner
+              signs the month”.
+              Switch to <span className="text-light">QUARTER</span> for the four
+              checks: TOP 3 SHARE of net against last quarter, STEADY AGENTS
+              (two or more loads), MONTHS SIGNED (three of three, or which one
+              is missing) and <span className="text-light">RISERS</span> — a
+              parked agent, by you or by dormancy, who gave two or more loads
+              this quarter wears a RISER chip: the book says promote, you decide
+              from the sheet. Two lists follow: FED, STAYED QUIET — tiered
+              agents you reached out to on four or more days who gave no load
+              and no inbound, the prune candidates (you park from the sheet
+              with a reason, never automatically) — and NEVER FED, the ones you
+              barely touched, a to-do rather than a prune. GROWTH · MARKETS TO
+              HUNT ranks the origin states by average gross per delivered load,
+              with the load count beside each so one lucky haul is never
+              mistaken for a market, and MARK … AUDITED saves one to five
+              names to pursue as the quarter’s targets; while the quarter is
+              still running the head says when its audit opens. The stepper
+              walks back through finished months and quarters — ‹ and › — and
+              the scorecard, the tier-move log and the quarter’s checks rest on
+              the period you are standing on, while cooling, the milestones,
+              the cap audit, hygiene and IS IT WORKING always read today. COPY
+              REPORT puts the whole page on the clipboard as plain text.
             </Why>
           </Metric>
 
@@ -2430,8 +2508,10 @@ const GuidePage = () => {
               The INBOUND chip in the Relationships statusbar carries the
               number since system start — a plain fraction (“4 of 9”) until ten
               attributed loads exist, a percent after that, because a
-              percentage of three loads is noise. The month-by-month and
-              by-tier view returns with the rebuilt Review.
+              percentage of three loads is noise. Review’s IS IT WORKING plate
+              carries the same number cut by each agent’s current tier and laid
+              out month by month since system start; a chart only appears once
+              three months each hold five attributed loads.
             </Why>
           </Metric>
 

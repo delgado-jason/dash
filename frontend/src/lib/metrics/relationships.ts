@@ -127,7 +127,10 @@ export interface InboundShare {
   share: number | null; // inbound ÷ attributed; null when nothing attributed
 }
 
-const shareOf = (loads: Load[]): InboundShare => {
+// Exported: lib/relationships/review re-cuts the very same numbers by v2
+// bucket and must count them identically — one definition of "attributed",
+// one of the fraction, here.
+export const shareOf = (loads: Load[]): InboundShare => {
   const attributed = loads.filter((l) => l.booked_via != null);
   const inbound = attributed.filter((l) => l.booked_via === "agent_reached_out").length;
   return {
@@ -137,22 +140,29 @@ const shareOf = (loads: Load[]): InboundShare => {
   };
 };
 
+// The loads a share may be taken over: booked (non-cancelled) and picked up
+// inside [fromKey, toKey]. Legacy loads carry no booked_via and fall out of
+// every denominator inside shareOf, not here.
+export const bookedInWindow = (
+  loads: Load[],
+  fromKey: string,
+  toKey: string,
+): Load[] =>
+  loads.filter(
+    (l) =>
+      l.load_status !== "cancelled" &&
+      !!l.pickup_date &&
+      l.pickup_date.slice(0, 10) >= fromKey &&
+      l.pickup_date.slice(0, 10) <= toKey,
+  );
+
 // The system's one number, at every altitude: fleet-wide, per tier, per
 // agent. Booked (non-cancelled) loads in [fromKey, toKey]; legacy nulls out.
 export const inboundShare = (
   loads: Load[],
   fromKey: string,
   toKey: string,
-): InboundShare =>
-  shareOf(
-    loads.filter(
-      (l) =>
-        l.load_status !== "cancelled" &&
-        !!l.pickup_date &&
-        l.pickup_date.slice(0, 10) >= fromKey &&
-        l.pickup_date.slice(0, 10) <= toKey,
-    ),
-  );
+): InboundShare => shareOf(bookedInWindow(loads, fromKey, toKey));
 
 export const inboundByTier = (
   agents: AgentLike[],
@@ -162,13 +172,7 @@ export const inboundByTier = (
 ): Record<number, InboundShare> => {
   // Untiered (v2 Prospects) fold into the Tier 3 bar — the old long tail.
   const tierOf = new Map(agents.map((a) => [a.agent_id, a.relationship_tier ?? 3]));
-  const windowed = loads.filter(
-    (l) =>
-      l.load_status !== "cancelled" &&
-      !!l.pickup_date &&
-      l.pickup_date.slice(0, 10) >= fromKey &&
-      l.pickup_date.slice(0, 10) <= toKey,
-  );
+  const windowed = bookedInWindow(loads, fromKey, toKey);
   const out: Record<number, InboundShare> = {};
   for (const t of [1, 2, 3])
     out[t] = shareOf(windowed.filter((l) => l.agent_id && tierOf.get(l.agent_id) === t));

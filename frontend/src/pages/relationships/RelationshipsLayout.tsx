@@ -12,6 +12,7 @@ import { inboundHeadline } from "@/lib/relationships/inboundHeadline";
 import { callListSummary } from "@/lib/relationships/callList";
 import { utcDayKey } from "@/lib/relationships/dayKeys";
 import { buildToday, type TodayModel } from "@/lib/relationships/todayQueue";
+import { reviewStatus, type ReviewStatus } from "@/lib/relationships/review";
 import { AgentSheet } from "@/components/relationships/AgentSheet";
 import { ProspectSheet } from "@/components/relationships/ProspectSheet";
 import { Toast, type ToastState } from "@/components/relationships/Toast";
@@ -31,13 +32,14 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "tiers", label: "Tiers" },
   { value: "review", label: "Review" },
 ];
-// Today and the Call list read their live context from the derived models
-// (below) once the data is in; these are the fixed words and the fallbacks.
+// Today, the Call list and the Review read their live context from the
+// derived models (below) once the data is in; these are the fixed words and
+// the fallbacks.
 const SUB_LINE: Record<Tab, string> = {
   today: "the day's job — nothing sends itself",
   calls: "reactivation and prospects — the call list",
   tiers: "the owner sets the tiers — dash only suggests",
-  review: "moving here in the next build",
+  review: "suggestions you approve — nothing re-tiers itself",
 };
 const isTab = (v: string | undefined): v is Tab => v === "today" || v === "calls" || v === "tiers" || v === "review";
 
@@ -58,12 +60,23 @@ const callsSubLine = (calls: CallsSummary | null): string => {
   return `${calls.lapsed} lapsed · ${plural(calls.prospects, "prospect")} · ${calls.caption}`;
 };
 
+// The Review's live context: "4 suggestions · 1 cooling · September unsigned".
+// With the sign-offs missing the month is neither signed nor unsigned — it is
+// unknown, and the line says so with a dash rather than a claim.
+const reviewSubLine = (review: ReviewStatus | null, signOffsMissing: boolean): string => {
+  if (!review) return SUB_LINE.review;
+  const word = signOffsMissing ? "—" : review.signed ? "signed" : "unsigned";
+  return `${plural(review.suggestions, "suggestion")} · ${review.cooling} cooling · ${review.periodName} ${word}`;
+};
+
 // Tab labels carry their counts once the data is in: "Today · 6",
-// "Call list · 17" (this rotation — the recycle fold is not counted).
-const tabLabel = (tab: Tab, today: TodayModel | null, calls: CallsSummary | null): string => {
+// "Call list · 17" (this rotation — the recycle fold is not counted),
+// "Review · 4" — the suggestions waiting for the owner's call.
+const tabLabel = (tab: Tab, today: TodayModel | null, calls: CallsSummary | null, review: ReviewStatus | null): string => {
   const base = TABS.find((t) => t.value === tab)?.label ?? tab;
   if (tab === "today" && today) return `${base} · ${today.count}`;
   if (tab === "calls" && calls) return `${base} · ${calls.lapsed}`;
+  if (tab === "review" && review && review.suggestions > 0) return `${base} · ${review.suggestions}`;
   return base;
 };
 
@@ -141,16 +154,42 @@ const RelationshipsLayout = () => {
     [data.loadsReady, data.agents, data.loads, data.contacts, data.coverage, data.now],
   );
 
+  // The Review's three numbers for the tab suffix and the sub-line, read from
+  // the same derivations the Review itself draws. null while the loads slice is
+  // missing — a suggestion rests on RPM, and no loads means no verdict.
+  const review = useMemo<ReviewStatus | null>(
+    () =>
+      data.loadsReady && !data.loading
+        ? reviewStatus({
+            agents: data.agents,
+            loads: data.loads,
+            contacts: data.contacts,
+            history: data.history,
+            reviews: data.reviews,
+            ladder: data.ladder,
+            now: data.now,
+          })
+        : null,
+    [data.loadsReady, data.loading, data.agents, data.loads, data.contacts, data.history, data.reviews, data.ladder, data.now],
+  );
+
   const ctx: RelationshipsContext = useMemo(
     () => ({ ...data, isAdmin, today, openAgent, openProspect, notify }),
     [data, isAdmin, today, openAgent, openProspect, notify],
   );
 
   const tabs = useMemo(
-    () => TABS.map((t) => ({ value: t.value, label: tabLabel(t.value, today, calls) })),
-    [today, calls],
+    () => TABS.map((t) => ({ value: t.value, label: tabLabel(t.value, today, calls, review) })),
+    [today, calls, review],
   );
-  const subLine = tab === "today" ? todaySubLine(today, data.now) : tab === "calls" ? callsSubLine(calls) : SUB_LINE[tab];
+  const subLine =
+    tab === "today"
+      ? todaySubLine(today, data.now)
+      : tab === "calls"
+        ? callsSubLine(calls)
+        : tab === "review"
+          ? reviewSubLine(review, data.errors.reviews != null)
+          : SUB_LINE[tab];
 
   const sheetAgent = sheetAgentId ? data.agents.find((a) => a.agent_id === sheetAgentId) ?? null : null;
   const bookError = data.errors.agents ?? data.errors.contacts ?? data.errors.brokers;
@@ -207,6 +246,25 @@ const RelationshipsLayout = () => {
         {data.errors.notes && (
           <AlertLamp category="notes" className="mt-3">
             agent notes didn't come through — a nurture flag you skipped may show again until they do ·{" "}
+            <button type="button" className="underline underline-offset-2 hover:text-ink" onClick={() => void data.reload()}>
+              retry
+            </button>
+          </AlertLamp>
+        )}
+        {/* A failed history or sign-off read must never pass for truth: without
+            the trail a hold looks lifted, and without the sign-offs a signed
+            month looks unsigned. */}
+        {data.errors.history && (
+          <AlertLamp category="history" className="mt-3">
+            the tier history didn't come through — a suggestion you held may show again until it does ·{" "}
+            <button type="button" className="underline underline-offset-2 hover:text-ink" onClick={() => void data.reload()}>
+              retry
+            </button>
+          </AlertLamp>
+        )}
+        {data.errors.reviews && (
+          <AlertLamp category="reviews" className="mt-3">
+            the sign-offs didn't come through — the month may read unsigned ·{" "}
             <button type="button" className="underline underline-offset-2 hover:text-ink" onClick={() => void data.reload()}>
               retry
             </button>

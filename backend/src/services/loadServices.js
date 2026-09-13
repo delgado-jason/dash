@@ -298,6 +298,7 @@ export async function createLoad(user_id, data, self_id) {
     "detention_paid",
     "detention_billable",
     "tonu_paid",
+    "claim_filed", // decision 4 (073): an OS&D / damage claim — breaks the agent's streak
     "commodity",
     "weight",
     "length_in",
@@ -413,6 +414,7 @@ export async function patchLoad(user_id, load_id, data) {
     "detention_paid",
     "detention_billable",
     "tonu_paid",
+    "claim_filed", // decision 4 (073): an OS&D / damage claim — breaks the agent's streak
     "commodity",
     "weight",
     "length_in",

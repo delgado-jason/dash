@@ -10,6 +10,8 @@ import { getBrokers } from "@/services/brokersService";
 import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
 import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
 import { getAgentNotes } from "@/services/agentNotesService";
+import { getTierHistory, type TierHistoryRow } from "@/services/agentTierHistoryService";
+import { getRelationshipReviews, type RelationshipReview } from "@/services/relationshipReviewsService";
 import { getUser } from "@/services/teamService";
 
 // Everything the Relationships surface reads, fetched once in the layout and
@@ -21,15 +23,19 @@ import { getUser } from "@/services/teamService";
 // list), every agent note (for skipped nurture flags — a failed read is its
 // own slice error, since an empty list would quietly reopen every skipped
 // flag) and the logged-in user's display name (every draft is signed by
-// whoever is on shift). The clock ticks once a minute so a tab left open
-// rolls over on its own — the day plan at midnight, the cap week on Monday,
-// callbacks coming due, this week's ghosting — without a hard refresh.
+// whoever is on shift). Review adds the tier history (the owner's holds hide
+// a suggestion — a failed read must not quietly bring every hold back) and
+// the month / quarter sign-offs. The clock ticks once a minute so a tab left
+// open rolls over on its own — the day plan at midnight, the cap week on
+// Monday, callbacks coming due, this week's ghosting — without a hard refresh.
 
 export interface SliceErrors {
   agents?: string;
   contacts?: string;
   brokers?: string;
   notes?: string;
+  history?: string;
+  reviews?: string;
 }
 
 export const CLOCK_TICK_MS = 60_000;
@@ -46,6 +52,8 @@ const fetchBook = () =>
     getBrokers(),
     getAgentCoverage(), // never rejects — degrades to []
     getAgentNotes(), // rejects on failure — its own slice error, never a silent []
+    getTierHistory(), // its own slice error — an empty trail would lift every hold
+    getRelationshipReviews(), // its own slice error — an empty list would read "unsigned"
   ]);
 type BookResults = Awaited<ReturnType<typeof fetchBook>>;
 
@@ -75,6 +83,8 @@ export const useRelationshipsData = () => {
   const [contacts, setContacts] = useState<AgentContact[]>([]);
   const [coverage, setCoverage] = useState<AgentCoverage[]>([]);
   const [notes, setNotes] = useState<AgentNote[]>([]);
+  const [history, setHistory] = useState<TierHistoryRow[]>([]);
+  const [reviews, setReviews] = useState<RelationshipReview[]>([]);
   const [signer, setSigner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<SliceErrors>({});
@@ -82,17 +92,21 @@ export const useRelationshipsData = () => {
   // tab left open does not keep yesterday's "days since".
   const [refreshedAt, setRefreshedAt] = useState(() => Date.now());
 
-  const applyBook = useCallback(([a, c, b, cov, n]: BookResults) => {
+  const applyBook = useCallback(([a, c, b, cov, n, h, r]: BookResults) => {
     if (a.status === "fulfilled") setAgents(a.value);
     if (c.status === "fulfilled") setContacts(c.value);
     if (b.status === "fulfilled") setBrokers(b.value);
     if (cov.status === "fulfilled") setCoverage(cov.value);
     if (n.status === "fulfilled") setNotes(n.value);
+    if (h.status === "fulfilled") setHistory(h.value);
+    if (r.status === "fulfilled") setReviews(r.value);
     setErrors({
       agents: messageOf(a, "couldn't load the agents"),
       contacts: messageOf(c, "couldn't load the contact log"),
       brokers: messageOf(b, "couldn't load the agency codes"),
       notes: messageOf(n, "couldn't load the agent notes"),
+      history: messageOf(h, "couldn't load the tier history"),
+      reviews: messageOf(r, "couldn't load the sign-offs"),
     });
     setRefreshedAt(Date.now());
     setLoading(false);
@@ -134,6 +148,8 @@ export const useRelationshipsData = () => {
     contacts,
     coverage,
     notes,
+    history,
+    reviews,
     coords,
     signer,
     loads,

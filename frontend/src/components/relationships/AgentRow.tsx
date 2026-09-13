@@ -23,6 +23,9 @@ import { CodeChip, ParkedChip } from "./primitives";
 // (the nod sheet's .row.wide) fills the two md+ cells with "{mi} mi" and
 // "{n} · ${gross}" — a bold number each, so they are ReactNodes — and hands a
 // `right` override so the days cell reads "—" rather than "never".
+//
+// Review hands the row an `actions` slot — the owner's Approve / Hold, or the
+// dispatcher's "the owner sets tiers" — drawn where the door would be.
 
 export type RowChipKind =
   | "parked"
@@ -30,6 +33,8 @@ export type RowChipKind =
   | "suggest"
   | "progress"
   | "never"
+  | "up" // the data says a higher tier — good
+  | "down" // the data says a lower tier — bad
   | "now" // an operational row — hot
   | "callback" // a promise — amber
   | "touched" // already had this week's proactive touch — red
@@ -40,6 +45,13 @@ export type RowChip =
   // Any other single word the caller has already decided on — the class
   // (Direct / Spot / Unclear / Not yet asked), a prospect's stage, BAD #.
   | { kind: "pill"; tone: PillTone; label: string };
+
+// The grid both the row and a header line above it share, so the md+ cells
+// line up under their column words. `_ACTIONS` swaps the 44px door for an
+// auto-width slot; `_METER` adds the footprint cell the Call list draws.
+export const AGENT_ROW_GRID = "grid-cols-[minmax(0,1fr)_72px_44px] md:grid-cols-[minmax(0,1fr)_130px_110px_72px_44px]";
+export const AGENT_ROW_GRID_ACTIONS = "grid-cols-[minmax(0,1fr)_72px_auto] md:grid-cols-[minmax(0,1fr)_130px_110px_72px_auto]";
+const AGENT_ROW_GRID_METER = "grid-cols-[minmax(0,1fr)_72px_44px] md:grid-cols-[minmax(0,1fr)_130px_110px_96px_72px_44px]";
 
 export interface RowRight {
   value: string; // the big number — "141", "1d", "Mon"
@@ -63,22 +75,30 @@ export interface AgentRowProps {
   daysCaption?: string; // under a number — default "since contact"
   neverCaption?: string; // under "never" — default "contact"
   right?: RowRight | null; // replaces the days cell outright (the Foreman's miles, Today's "Mon promised")
-  market?: ReactNode | null; // md+ cell — a place, or the parked group's "{mi} mi"
-  loadsCell?: ReactNode | null; // md+ cell — "6 · $5.01"
+  // The md+ cells. Text on most surfaces; the parked group's "{mi} mi" and
+  // Review's verdict cell ("Tier 2 → [Tier 1]") are nodes, so both take one.
+  market?: ReactNode | null;
+  loadsCell?: ReactNode | null; // "6 · $5.01"
   meter?: { on: number; cells: number } | null; // md+ cell — the footprint six
   dimmed?: boolean;
   ghosted?: boolean; // half-faded — the row is shown, not offered
   // Absent → a read-only row: no door, no button role (the dispatcher's view
   // of the owner's cooling section).
   onOpen?: () => void;
+  // Drawn in place of the door: Review's Approve / Hold, or the dispatcher's
+  // sentence. Clicks inside it never open the row.
+  actions?: ReactNode;
 }
 
 const RowChipPill = ({ chip }: { chip: RowChip }) => {
   switch (chip.kind) {
     case "parked":
       return <ParkedChip />;
+    case "up":
+      return <StatusPill tone="good">{chip.label}</StatusPill>;
     case "losing":
     case "touched":
+    case "down":
       return <StatusPill tone="bad">{chip.label}</StatusPill>;
     case "suggest":
     case "cool":
@@ -108,6 +128,7 @@ export const AgentRow = ({
   dimmed = false,
   ghosted = false,
   onOpen,
+  actions,
 }: AgentRowProps) => {
   const name = nameOf(agent);
   const interactive = onOpen != null;
@@ -123,16 +144,14 @@ export const AgentRow = ({
   };
   const stop = (e: MouseEvent) => e.stopPropagation();
   const fade = ghosted ? "opacity-50" : dimmed ? "opacity-70" : "";
-  const cols = meter
-    ? "md:grid-cols-[minmax(0,1fr)_130px_110px_96px_72px_44px]"
-    : "md:grid-cols-[minmax(0,1fr)_130px_110px_72px_44px]";
+  const grid = actions !== undefined ? AGENT_ROW_GRID_ACTIONS : meter ? AGENT_ROW_GRID_METER : AGENT_ROW_GRID;
   return (
     <div
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
       onClick={onOpen}
       onKeyDown={onKeyDown}
-      className={`grid items-center gap-3 px-3.5 py-2.5 border-t border-hairline-lo min-h-[56px] transition-colors grid-cols-[minmax(0,1fr)_72px_44px] ${cols} ${
+      className={`grid items-center gap-3 px-3.5 py-2.5 border-t border-hairline-lo min-h-[56px] transition-colors ${grid} ${
         interactive ? "cursor-pointer hover:bg-white/[.02]" : ""
       } ${fade}`}
     >
@@ -174,7 +193,11 @@ export const AgentRow = ({
           {right ? right.caption : daysSince === null ? neverCaption : daysCaption}
         </span>
       </span>
-      {interactive ? (
+      {actions !== undefined ? (
+        <div onClick={stop} onKeyDown={(e) => e.stopPropagation()} className="justify-self-end flex items-center gap-1.5 flex-wrap justify-end">
+          {actions}
+        </div>
+      ) : interactive ? (
         <button
           type="button"
           aria-label={agent.phone ? `Open ${name} — ${agent.phone}` : `Open ${name}`}
