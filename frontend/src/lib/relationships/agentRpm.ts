@@ -20,17 +20,16 @@ export interface AgentRpm {
 const isDelivered = (l: Load, agentId: string): boolean =>
   l.agent_id === agentId && l.load_status === "delivered";
 
-export const agentAllInRpm = (loads: Load[], agentId: string, now: Date): AgentRpm => {
-  const toKey = utcDayKey(now);
-  const fromKey = utcDayKey(new Date(now.getTime() - RPM_WINDOW_DAYS * DAY_MS));
+// The all-in ARITHMETIC itself, over whatever set of loads the caller has
+// already chosen. Exported so a whole agency desk is graded with the very same
+// definition that grades one person (lib/agencies/agencyMetrics) — one rule,
+// two altitudes, and no second copy to drift.
+export const allInOver = (loads: Iterable<Load>): AgentRpm => {
   let gross = 0;
   let miles = 0;
   let n = 0;
   let partial = false;
   for (const l of loads) {
-    if (!isDelivered(l, agentId) || !l.pickup_date) continue;
-    const k = keyOf(l.pickup_date);
-    if (k < fromKey || k > toKey) continue;
     n++;
     gross += loadGross(l);
     miles += Number(l.loaded_miles) || 0;
@@ -38,6 +37,19 @@ export const agentAllInRpm = (loads: Load[], agentId: string, now: Date): AgentR
     else miles += Number(l.deadhead_miles) || 0;
   }
   return { rpm: miles > 0 ? gross / miles : null, loads: n, partial, gross };
+};
+
+export const agentAllInRpm = (loads: Load[], agentId: string, now: Date): AgentRpm => {
+  const toKey = utcDayKey(now);
+  const fromKey = utcDayKey(new Date(now.getTime() - RPM_WINDOW_DAYS * DAY_MS));
+  const mine: Load[] = [];
+  for (const l of loads) {
+    if (!isDelivered(l, agentId) || !l.pickup_date) continue;
+    const k = keyOf(l.pickup_date);
+    if (k < fromKey || k > toKey) continue;
+    mine.push(l);
+  }
+  return allInOver(mine);
 };
 
 // Lifetime delivered loads — the ≥3 "established footprint" gate reads this,

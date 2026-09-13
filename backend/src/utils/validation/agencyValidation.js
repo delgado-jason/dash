@@ -13,6 +13,56 @@ import { isValidType } from "../helper.js";
 // on the agent. One shape, one rule.
 export const CODE_PATTERN = /^[A-Z]{3}$/;
 
+// A calendar day, the only shape a `since` floor may take.
+export const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// The account's calendar — Brandie's, the one the SOP's week and year are
+// written in. Every "what year is it" question on this surface is asked in
+// Central time.
+export const ACCOUNT_TIME_ZONE = "America/Chicago";
+
+// The year the ACCOUNT is living in, named in Central time whatever the
+// container's clock is set to. Not `now.getFullYear()` (that is the server's
+// own local calendar — a UTC container rolls over at 6pm Central on Dec 31 and
+// empties the shelf hours early) and not `toISOString()` (same bug, one time
+// zone over).
+const accountYear = (now) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: ACCOUNT_TIME_ZONE, year: "numeric" }).format(now);
+
+// The settlement-only shelf's floor (Agencies Nod Sheet, decision 8 as Jason
+// amended it): dash started tracking in 2026, so settlements older than the
+// current year are history nobody entered and stay off the page. The default
+// is Jan 1 of the year the ACCOUNT is living in — Central, per above.
+//
+// Pure on purpose: `{ since, error }` rather than a throw, so the rule can be
+// proved without booting the service and its database pool. The service turns
+// a non-null `error` into the 400.
+export const parseSettlementSince = (value, now = new Date()) => {
+  if (value === undefined || value === null || value === "") {
+    return { since: `${accountYear(now)}-01-01`, error: null };
+  }
+
+  if (!isValidType("string", value)) {
+    return { since: null, error: "since must be a YYYY-MM-DD date" };
+  }
+
+  const trimmed = value.trim();
+
+  if (!DAY_PATTERN.test(trimmed)) {
+    return { since: null, error: "since must be a YYYY-MM-DD date" };
+  }
+
+  // The shape is right; is it a day that exists? `new Date` happily rolls
+  // 2026-02-30 forward to March 2, so the round-trip is the real check.
+  const parsed = new Date(`${trimmed}T00:00:00Z`);
+
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== trimmed) {
+    return { since: null, error: "since is not a real calendar date" };
+  }
+
+  return { since: trimmed, error: null };
+};
+
 // The only fields a CLIENT may write on an agency, and the list the service
 // refuses everything else against. It lives here, next to the rules that judge
 // those same fields, so the whitelist and the validators can never drift — and

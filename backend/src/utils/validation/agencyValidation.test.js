@@ -4,6 +4,7 @@ import {
   AGENCY_CREATE_FIELDS,
   AGENCY_PATCH_FIELDS,
   normalizeAgencyText,
+  parseSettlementSince,
   validateAgencyCreate,
   validateAgencyPatch,
   postingCodeRule,
@@ -214,5 +215,77 @@ describe("posting_codes is never client-written", () => {
   test("the lists are frozen — nothing widens the whitelist at runtime", () => {
     assert.equal(Object.isFrozen(AGENCY_CREATE_FIELDS), true);
     assert.equal(Object.isFrozen(AGENCY_PATCH_FIELDS), true);
+  });
+});
+
+// The settlement-only shelf's year rule. The clock is injected in every case
+// that depends on one — a default read off the real calendar would start
+// failing on January 1st.
+describe("since — the settlement-only floor", () => {
+  test("absent, null or blank → Jan 1 of the account's current year", () => {
+    const now = new Date("2026-09-13T15:00:00Z"); // 10am Central
+    for (const nothing of [undefined, null, ""]) {
+      assert.deepEqual(parseSettlementSince(nothing, now), {
+        since: "2026-01-01",
+        error: null,
+      });
+    }
+  });
+
+  // The year is BRANDIE's, not the container's. Both instants below are still
+  // Dec 31 in Central time, and both must still floor the shelf at 2026-01-01
+  // — the second one is the bug: a UTC container (or toISOString) already says
+  // 2027 and would empty the 2026 shelf five and a half hours early.
+  test("New Year's Eve stays in the old year until Central says otherwise", () => {
+    const afternoon = new Date("2026-12-31T23:30:00Z"); // 5:30pm Central, Dec 31
+    assert.equal(parseSettlementSince(undefined, afternoon).since, "2026-01-01");
+
+    const lateNight = new Date("2027-01-01T05:30:00Z"); // 11:30pm Central, Dec 31
+    assert.equal(parseSettlementSince(undefined, lateNight).since, "2026-01-01");
+  });
+
+  test("and rolls over when Central actually reaches the new year", () => {
+    // 12:30am Central, Jan 1 — now it IS 2027 on Brandie's calendar.
+    assert.equal(parseSettlementSince(undefined, new Date("2027-01-01T06:30:00Z")).since, "2027-01-01");
+  });
+
+  test("a real day passes through, padding and all", () => {
+    assert.deepEqual(parseSettlementSince("2026-01-01"), {
+      since: "2026-01-01",
+      error: null,
+    });
+    assert.deepEqual(parseSettlementSince(" 2025-06-30 "), {
+      since: "2025-06-30",
+      error: null,
+    });
+  });
+
+  test("a malformed date is refused — the route answers 400", () => {
+    for (const bad of ["2026", "26-01-01", "2026/01/01", "Jan 1 2026", "yesterday"]) {
+      assert.deepEqual(
+        parseSettlementSince(bad),
+        { since: null, error: "since must be a YYYY-MM-DD date" },
+        bad,
+      );
+    }
+  });
+
+  test("a non-string is refused without throwing", () => {
+    // ?since=2026-01-01&since=2025-01-01 hands Express an ARRAY.
+    for (const bad of [42, true, ["2026-01-01"], {}]) {
+      assert.equal(parseSettlementSince(bad).error, "since must be a YYYY-MM-DD date");
+      assert.equal(parseSettlementSince(bad).since, null);
+    }
+  });
+
+  test("a well-shaped day that does not exist is refused, not rolled forward", () => {
+    // new Date('2026-02-30') silently becomes March 2 — the round-trip catches it.
+    for (const bad of ["2026-02-30", "2026-13-01", "2026-00-10", "2025-11-31"]) {
+      assert.deepEqual(
+        parseSettlementSince(bad),
+        { since: null, error: "since is not a real calendar date" },
+        bad,
+      );
+    }
   });
 });

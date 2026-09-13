@@ -401,6 +401,7 @@ const NAV: { group: string; items: string[] }[] = [
     items: [
       "Relationships — the book of agents",
       "Agencies and posting codes",
+      "Agencies — the book by agency",
       "Editing an agent",
       "Inbound share — is the system working?",
       "Prospects — from stranger to agent",
@@ -2357,7 +2358,12 @@ const GuidePage = () => {
               gone dormant (no load, no two-way contact, nothing at all for 180
               days). Search finds them here, and the Foreman surfaces a parked
               agent’s freight when the truck is within 75 miles — harvest it,
-              no outreach owed.
+              no outreach owed. This book is by{" "}
+              <span className="text-light">person</span>; for the same freight
+              rolled up by the desk they work — an agency, its codes and what it
+              has delivered — see{" "}
+              <span className="text-light">Agencies — the book by agency</span>{" "}
+              below.
               <br />
               <br />
               <span className="text-light">The owner sets every tier, always
@@ -2561,9 +2567,83 @@ const GuidePage = () => {
               confirms the person you booked through or flags a mismatch the day
               the money lands. A load whose settlement lines disagree with each
               other stays blank for you to look at. The{" "}
-              <span className="text-light">Agencies page</span> (next build)
-              rolls the whole book up by agency — every code, every person, and
-              what the agency has delivered.
+              <span className="text-light">Agencies page</span> rolls the whole
+              book up by agency — every code, every person, and what the agency
+              has delivered; it is the next section.
+            </p>
+          </Section>
+
+          <Section
+            title="Agencies — the book by agency"
+            sources={[{ label: "Agencies", to: "/agencies" }]}
+          >
+            <p className="text-sm text-muted-text">
+              <span className="text-light">Agencies</span> is the same book from
+              the desk's side: one row per agency, biggest first by gross. The
+              row carries what that desk{" "}
+              <span className="text-light">delivered</span> and what it grossed,
+              its <span className="text-light">all-in RPM</span> with the rate
+              ladder's word under it (above Strong, above Target, above Minimum,
+              under Minimum, losing money), how many agents work there and how
+              many of them you have tiered, and how long since its last load.
+              Tap the row for the agency's own page.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              <span className="text-light">What it rolls up, and what it does
+              not.</span> An agency's numbers come off the{" "}
+              <span className="text-light">loads booked through it</span> — the
+              agency is stamped on the load, so a person who moves to another
+              desk leaves their history behind and the old agency keeps the
+              revenue it earned. The people do not get rolled up: an agent's
+              delivered count, all-in RPM and tier on this page are the same
+              figures their own row shows on Relationships, over every load
+              they have ever booked. That is deliberate — a tier is about a
+              relationship with a <span className="text-light">person</span>,
+              and Eric can be a Tier 1 inside an agency running under Minimum.
+              So an agency's delivered count and the sum of its agents' counts
+              can disagree; they answer two different questions.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              <span className="text-light">The chips are the paper trail.</span>{" "}
+              The agency's own code is lit; every other code the desk has posted
+              under is dashed — its agents' codes, and older desks nobody works
+              any more. The agency page's{" "}
+              <span className="text-light">CODE TRAIL</span> checks that set
+              against what the settlements actually paid: "7 of 7 delivered
+              loads post a code this agency owns. Nothing to reconcile." When
+              one doesn't, the load is listed with the code it posted under — a
+              load filed under the wrong agency, or a desk nobody has recorded
+              yet. A load the settlements have not spoken for is neither; it
+              waits.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              <span className="text-light">SETTLEMENT-ONLY</span>, folded under
+              the list, is freight Landstar{" "}
+              <span className="text-light">paid</span> that never became a load
+              in dash: a trip line on a settlement with no load record, grouped
+              by the code it posted under. A code you already know shows its
+              agency and a door; a code dash has never seen shows the code
+              itself and a <span className="text-light">+</span> that names the
+              agency behind it. These rows carry no miles, no agent and no
+              footprint, so they never enter the ladder, the tiers or the
+              Foreman — they are history and a prompt to enter the load. The
+              shelf shows the <span className="text-light">current year
+              only</span>: dash started tracking in 2026, and settlements older
+              than that are from before the books existed.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              <span className="text-light">The window</span> — 12 months, 90
+              days or all time — moves the delivered count, the gross, the RPM
+              and the loads list. It does not move the inbound share, which is
+              always measured since the system started, and it never hides the
+              last load: a desk quiet for six months still says when it last
+              ran. Agencies with nothing delivered in the window fold below the
+              ones that ran. <span className="text-light">COPY REPORT</span>{" "}
+              puts the list as shown — search applied — on the clipboard as
+              plain text. A{" "}
+              <span className="text-light">+ Agency</span> button names a new
+              desk — Dispatch can do that too; correcting one that already
+              exists is the owner's EDIT on the agency page.
             </p>
           </Section>
 

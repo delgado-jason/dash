@@ -53,6 +53,11 @@ import SettingsPage from "@/pages/SettingsPage";
 // load when the page is actually visited, not on every app start.
 const LanesPage = lazy(() => import("@/pages/LanesPage"));
 
+// The agency book, split the same way: it pulls the whole relationships data
+// hook and the rollup, which nothing else on a cold start needs.
+const AgenciesPage = lazy(() => import("@/pages/agencies/AgenciesPage"));
+const AgencyPage = lazy(() => import("@/pages/agencies/AgencyPage"));
+
 const App = () => {
   return (
     <Routes>
@@ -86,6 +91,34 @@ const App = () => {
           <Route path="/compliance" element={<CompliancePage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
+          <Route
+            path="/agencies"
+            element={
+              <Suspense
+                fallback={
+                  <div className="p-6 bg-iron text-light font-body">
+                    <p className="text-muted-text">Loading agencies...</p>
+                  </div>
+                }
+              >
+                <AgenciesPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/agencies/:agency_id"
+            element={
+              <Suspense
+                fallback={
+                  <div className="p-6 bg-iron text-light font-body">
+                    <p className="text-muted-text">Loading the agency...</p>
+                  </div>
+                }
+              >
+                <AgencyPage />
+              </Suspense>
+            }
+          />
           <Route path="/vendors" element={<VendorsPage />} />
           <Route path="/vendors/:vendor_id" element={<VendorDetailPage />} />
           <Route path="/trucks" element={<TrucksPage />} />

@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getAgencies,
   getAgency,
+  getSettlementOnly,
   createAgency,
   patchAgency,
   deleteAgency,
@@ -22,6 +23,33 @@ router.get("/", async (req, res) => {
       message: "agencies retrieved successfully",
       count: agencies.length,
       agencies,
+    });
+  } catch (err) {
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- GET SETTLEMENT-ONLY HISTORY ----
+// MUST stay above /:agency_id — Express matches in order, and the parameter
+// route would otherwise swallow "settlement-only" as an agency id.
+router.get("/settlement-only", async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const { since, rows } = await getSettlementOnly(user_id, req.query.since);
+
+    return res.status(200).json({
+      message: "settlement-only history retrieved successfully",
+      count: rows.length,
+      since,
+      rows,
     });
   } catch (err) {
     if (err.type === "validation") {

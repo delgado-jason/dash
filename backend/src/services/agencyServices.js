@@ -3,6 +3,7 @@ import {
   AGENCY_CREATE_FIELDS,
   AGENCY_PATCH_FIELDS,
   normalizeAgencyText,
+  parseSettlementSince,
   validateAgencyCreate,
   validateAgencyPatch,
 } from "../utils/validation/agencyValidation.js";
@@ -36,6 +37,78 @@ export async function getAgencies(user_id) {
   const result = await db.query(query, [user_id]);
 
   return result.rows;
+}
+
+// ---- GET SETTLEMENT-ONLY SERVICE ----
+// Freight Landstar PAID for that never became a load in dash: a trip line on a
+// settlement with no load_id, carrying the posting code it was booked under.
+// One row per code per load number — the grain the shelf groups by — with the
+// first statement that paid it, what it paid, and the agency that owns the
+// code today (NULL when nobody has named it yet; that row's `+` on the page is
+// the door to naming it).
+//
+// The year rule lives HERE, in the query, not in the page: `since` defaults to
+// Jan 1 of the account's current year, so 2025's settlements — 69 loads across
+// 56 codes, all from before dash tracked anything — never reach the client.
+// A load_number is required: it is the group key, and a trip line without one
+// is not a load anybody can go look for.
+//
+// The code is resolved against the agency's WHOLE set of posting codes, not
+// just its own agency_code: a settlement posted under MAM belongs to Central
+// Pennsylvania (MAM is Eric's desk inside it), and matching on agency_code
+// alone would hand the page an "unknown" code whose `+` offers to create a
+// duplicate agency for a desk that already exists.
+//
+// That resolution is a correlated subquery rather than a LEFT JOIN on purpose.
+// Nothing enforces that a code appears in only one agency's posting_codes —
+// migration 075 §5d builds the set from the agency's own code, its agents'
+// codes AND its loads' codes, so a load filed under the wrong agency (exactly
+// what the code trail exists to surface) leaves the same code in two sets. A
+// join would then emit the settlement line twice and DOUBLE SUM(revenue); a
+// subquery returns one agency or none. The agency that owns the code outright
+// wins over one that has merely posted under it.
+export async function getSettlementOnly(user_id, since_param) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const { since, error } = parseSettlementSince(since_param);
+
+  if (error) throw new ValidationError(error);
+
+  const query = `
+        SELECT
+            sl.agent_code,
+            sl.load_number,
+            to_char(MIN(s.period_ending), 'YYYY-MM-DD') AS first_period,
+            SUM(COALESCE(sl.revenue, 0)) AS revenue,
+            (
+              SELECT a.agency_id::text
+              FROM agencies a
+              WHERE a.user_id = $1
+                AND (a.agency_code = sl.agent_code OR sl.agent_code = ANY(a.posting_codes))
+              ORDER BY (a.agency_code = sl.agent_code) DESC, a.agency_id ASC
+              LIMIT 1
+            ) AS agency_id
+        FROM
+            settlement_lines sl
+            JOIN settlements s
+              ON s.settlement_id = sl.settlement_id
+             AND s.user_id = $1
+        WHERE sl.user_id = $1
+          AND sl.kind = 'trip'
+          AND sl.load_id IS NULL
+          AND sl.agent_code IS NOT NULL
+          AND sl.load_number IS NOT NULL
+          AND s.period_ending >= $2::date
+        GROUP BY sl.agent_code, sl.load_number
+        ORDER BY sl.agent_code ASC, sl.load_number ASC;
+    `;
+
+  const result = await db.query(query, [user_id, since]);
+
+  // The resolved floor rides back with the rows: the shelf prints the year it
+  // is showing, and it must be the year the QUERY used, not one the page
+  // guessed from its own clock.
+  return { since, rows: result.rows };
 }
 
 // ---- GET AGENCY SERVICE ----
