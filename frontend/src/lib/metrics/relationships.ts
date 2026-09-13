@@ -5,7 +5,7 @@
 // every denominator. Pure + clock-injected throughout.
 import type { Load } from "@/types/load";
 import type { ContactType } from "@/lib/relationships/contactTypes";
-import { localDayKey } from "@/lib/relationships/dayKeys";
+import { keyOf, localDayKey } from "@/lib/relationships/dayKeys";
 
 // The day the relationship system went live — the inbound gauge's baseline.
 export const SYSTEM_START = "2026-09-03";
@@ -140,24 +140,26 @@ export const shareOf = (loads: Load[]): InboundShare => {
   };
 };
 
-// The loads a share may be taken over: booked (non-cancelled) and picked up
-// inside [fromKey, toKey]. Legacy loads carry no booked_via and fall out of
+// The loads a share may be taken over: non-cancelled, and BOOKED inside
+// [fromKey, toKey]. The booking day is `created_at`'s UTC day key — the day
+// the load was written into dash, the same convention SYSTEM_START is a key
+// in — and never the pickup: the agent reached out when the load was BOOKED,
+// so a Monday booking for Thursday's pickup counts on Monday, not three days
+// later when the truck rolls. Legacy loads carry no booked_via and fall out of
 // every denominator inside shareOf, not here.
 export const bookedInWindow = (
   loads: Load[],
   fromKey: string,
   toKey: string,
 ): Load[] =>
-  loads.filter(
-    (l) =>
-      l.load_status !== "cancelled" &&
-      !!l.pickup_date &&
-      l.pickup_date.slice(0, 10) >= fromKey &&
-      l.pickup_date.slice(0, 10) <= toKey,
-  );
+  loads.filter((l) => {
+    if (l.load_status === "cancelled" || !l.created_at) return false;
+    const booked = keyOf(l.created_at);
+    return booked >= fromKey && booked <= toKey;
+  });
 
 // The system's one number, at every altitude: fleet-wide, per tier, per
-// agent. Booked (non-cancelled) loads in [fromKey, toKey]; legacy nulls out.
+// agent. Non-cancelled loads BOOKED in [fromKey, toKey]; legacy nulls out.
 export const inboundShare = (
   loads: Load[],
   fromKey: string,
@@ -180,13 +182,16 @@ export const inboundByTier = (
 };
 
 // Monthly inbound-share series for the trend (months with ≥1 attributed load).
+// The month is the BOOKING month — created_at's, the same day key
+// bookedInWindow filters on — so a load booked in September for an October
+// pickup belongs to September, the month the agent actually called.
 export const inboundTrend = (
   loads: Load[],
 ): { month: string; share: number; attributed: number }[] => {
   const byMonth = new Map<string, Load[]>();
   for (const l of loads) {
-    if (l.load_status === "cancelled" || !l.pickup_date || l.booked_via == null) continue;
-    const k = l.pickup_date.slice(0, 7);
+    if (l.load_status === "cancelled" || !l.created_at || l.booked_via == null) continue;
+    const k = keyOf(l.created_at).slice(0, 7);
     const arr = byMonth.get(k) ?? [];
     arr.push(l);
     byMonth.set(k, arr);

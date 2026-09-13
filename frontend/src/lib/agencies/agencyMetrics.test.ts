@@ -359,15 +359,16 @@ describe("agencyRollup", () => {
     expect(rows[0].tieredCount).toBe(1);
   });
 
-  it("counts inbound since system start, not over the window", () => {
+  it("counts inbound since system start, not over the window — and on the BOOKING day, not the pickup", () => {
     const rows = agencyRollup(
       [agency("ag1", "CPL")],
       [],
       [
-        // Before the system started — no answer on file, outside every denominator.
-        load("old", { agency_id: "ag1", pickup_date: "2026-08-01" }),
-        load("l1", { agency_id: "ag1", pickup_date: "2026-09-05", booked_via: "agent_reached_out" }),
-        load("l2", { agency_id: "ag1", pickup_date: "2026-09-06", booked_via: "i_reached_out" }),
+        // Booked before the system started — no answer on file, outside every denominator.
+        load("old", { agency_id: "ag1", created_at: "2026-08-01T12:00:00Z", pickup_date: "2026-09-05" }),
+        load("l1", { agency_id: "ag1", created_at: "2026-09-05T14:00:00Z", pickup_date: "2026-09-09", booked_via: "agent_reached_out" }),
+        // Booked yesterday for a pickup NEXT WEEK — it counts today, not when the truck rolls.
+        load("l2", { agency_id: "ag1", created_at: "2026-09-12T14:00:00Z", pickup_date: "2026-09-20", booked_via: "i_reached_out" }),
       ],
       [],
       LADDER,

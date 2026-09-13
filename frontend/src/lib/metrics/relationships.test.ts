@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import {
+  SYSTEM_START,
+  bookedInWindow,
   lastTouchOf,
   prospectState,
   closeOutPending,
@@ -28,11 +30,14 @@ const touch = (o: Partial<ContactLike>): ContactLike =>
     ...o,
   });
 
+// created_at is the BOOKING day every inbound number is windowed on, so the
+// factory carries one — the default books the load the morning it picks up.
 const load = (o: Partial<Load>): Load =>
   ({
     load_id: "l1",
     agent_id: "a1",
     load_status: "delivered",
+    created_at: "2026-08-20T12:00:00Z",
     pickup_date: "2026-08-20",
     delivery_date: "2026-08-22",
     ...o,
@@ -99,26 +104,70 @@ describe("closeOutPending — the NOW rows", () => {
   });
 });
 
-describe("inbound share — the one number, legacy nulls outside the math", () => {
+describe("inbound share — the one number, attributed on the BOOKING day", () => {
   // "t3" is UNTIERED (v2's Prospect) — its attributed loads fold into the Tier 3 bar.
   const agents = [agent("t1", 1), agent("t3", null)];
   const loads = [
-    load({ load_id: "1", agent_id: "t1", pickup_date: "2026-09-01", booked_via: "agent_reached_out" }),
-    load({ load_id: "2", agent_id: "t1", pickup_date: "2026-09-02", booked_via: "i_reached_out" }),
-    load({ load_id: "3", agent_id: "t3", pickup_date: "2026-09-02", booked_via: "i_reached_out" }),
-    load({ load_id: "4", agent_id: "t3", pickup_date: "2026-09-03" }), // legacy null — excluded
-    load({ load_id: "5", agent_id: "t1", pickup_date: "2026-07-01", booked_via: "agent_reached_out" }), // outside window
+    load({ load_id: "1", agent_id: "t1", created_at: "2026-09-01T15:00:00Z", pickup_date: "2026-09-05", booked_via: "agent_reached_out" }),
+    load({ load_id: "2", agent_id: "t1", created_at: "2026-09-02T15:00:00Z", pickup_date: "2026-09-06", booked_via: "i_reached_out" }),
+    load({ load_id: "3", agent_id: "t3", created_at: "2026-09-02T15:00:00Z", pickup_date: "2026-09-06", booked_via: "i_reached_out" }),
+    load({ load_id: "4", agent_id: "t3", created_at: "2026-09-03T15:00:00Z", pickup_date: "2026-09-07" }), // legacy null — excluded
+    load({ load_id: "5", agent_id: "t1", created_at: "2026-07-01T15:00:00Z", pickup_date: "2026-07-05", booked_via: "agent_reached_out" }), // booked before the window
   ];
 
-  it("windows by pickup date and ignores unattributed loads", () => {
+  it("windows by BOOKING day and ignores unattributed loads", () => {
     const s = inboundShare(loads, "2026-09-01", "2026-09-30");
     expect(s.attributed).toBe(3);
     expect(s.inbound).toBe(1);
     expect(s.share).toBeCloseTo(1 / 3, 5);
   });
 
+  // The bug this rule fixes: load 8336008, booked Sep 11 for a Sep 14 pickup,
+  // was invisible to every inbound number until the truck picked up.
+  it("booked yesterday for a pickup NEXT WEEK is attributed — and inbound when the agent reached out", () => {
+    const booked = [
+      load({ load_id: "ahead", created_at: "2026-09-12T14:00:00Z", pickup_date: "2026-09-19", booked_via: "agent_reached_out" }),
+    ];
+    expect(bookedInWindow(booked, SYSTEM_START, "2026-09-13").map((l) => l.load_id)).toEqual(["ahead"]);
+    const s = inboundShare(booked, SYSTEM_START, "2026-09-13");
+    expect(s).toEqual({ attributed: 1, inbound: 1, share: 1 });
+  });
+
+  it("a load created before SYSTEM_START carries no booked_via — out of the window AND out of the math", () => {
+    const legacy = [load({ load_id: "legacy", created_at: "2026-08-20T12:00:00Z", pickup_date: "2026-09-06" })];
+    expect(bookedInWindow(legacy, SYSTEM_START, "2026-09-13")).toEqual([]);
+    expect(inboundShare(legacy, SYSTEM_START, "2026-09-13")).toEqual({ attributed: 0, inbound: 0, share: null });
+  });
+
+  it("created inside the window but CANCELLED — never counted, however it was booked", () => {
+    const killed = [
+      load({ load_id: "x", load_status: "cancelled", created_at: "2026-09-10T14:00:00Z", pickup_date: "2026-09-15", booked_via: "agent_reached_out" }),
+    ];
+    expect(bookedInWindow(killed, SYSTEM_START, "2026-09-13")).toEqual([]);
+    expect(inboundShare(killed, SYSTEM_START, "2026-09-13").share).toBeNull();
+  });
+
+  // 23:30 Central on Sep 13 is 04:30Z on Sep 14: the key is the UTC day, the
+  // same convention SYSTEM_START is written in, so it belongs to Sep 14.
+  it("created 23:30 local on the window's last day keys to the NEXT UTC day (Sep 14) — out of a window ending Sep 13, in one ending Sep 14", () => {
+    const late = [
+      load({ load_id: "late", created_at: "2026-09-14T04:30:00Z", pickup_date: "2026-09-20", booked_via: "agent_reached_out" }),
+    ];
+    expect(bookedInWindow(late, SYSTEM_START, "2026-09-13")).toEqual([]);
+    expect(bookedInWindow(late, SYSTEM_START, "2026-09-14").map((l) => l.load_id)).toEqual(["late"]);
+  });
+
   it("null share when nothing attributed — never a false 0%", () => {
-    expect(inboundShare([load({ load_id: "4", pickup_date: "2026-09-03" })], "2026-09-01", "2026-09-30").share).toBeNull();
+    expect(inboundShare([load({ load_id: "4", created_at: "2026-09-03T15:00:00Z" })], "2026-09-01", "2026-09-30").share).toBeNull();
+  });
+
+  it("no loads at all → zeros and a null share, never a 0% claim", () => {
+    expect(inboundShare([], SYSTEM_START, "2026-09-13")).toEqual({ attributed: 0, inbound: 0, share: null });
+    expect(bookedInWindow([], SYSTEM_START, "2026-09-13")).toEqual([]);
+    expect(inboundTrend([])).toEqual([]);
+    const byTier = inboundByTier([], [], SYSTEM_START, "2026-09-13");
+    expect(byTier[1].share).toBeNull();
+    expect(byTier[3]).toEqual({ attributed: 0, inbound: 0, share: null });
   });
 
   it("splits by tier — the thesis check; an untiered agent's attributed loads land in [3]", () => {
@@ -129,10 +178,20 @@ describe("inbound share — the one number, legacy nulls outside the math", () =
     expect(byTier[2].share).toBeNull();
   });
 
-  it("trend groups by month over attributed loads only", () => {
+  it("trend groups by BOOKING month over attributed loads only", () => {
     const t = inboundTrend(loads);
     expect(t.map((r) => r.month)).toEqual(["2026-07", "2026-09"]);
     expect(t[1].share).toBeCloseTo(1 / 3, 5);
+  });
+
+  it("the trend's month is the month it was BOOKED, not the month it picks up", () => {
+    const t = inboundTrend([
+      load({ load_id: "sep", created_at: "2026-09-30T14:00:00Z", pickup_date: "2026-10-02", booked_via: "agent_reached_out" }),
+      load({ load_id: "oct", created_at: "2026-10-01T14:00:00Z", pickup_date: "2026-10-03", booked_via: "i_reached_out" }),
+    ]);
+    expect(t.map((r) => r.month)).toEqual(["2026-09", "2026-10"]);
+    expect(t[0]).toMatchObject({ month: "2026-09", attributed: 1, share: 1 });
+    expect(t[1]).toMatchObject({ month: "2026-10", attributed: 1, share: 0 });
   });
 });
 

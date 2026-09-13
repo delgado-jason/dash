@@ -149,7 +149,9 @@ export interface AgencyRow {
   band: string | null; // null without a ladder — no fake grade
   // Inbound since SYSTEM_START, not since the window: the page prints
   // "attributed since Sep 3", so the number has to be measured there or the
-  // caption lies. Same definition the Relationships shell's chip uses.
+  // caption lies. Same definition the Relationships shell's chip uses —
+  // inboundShare keys on the BOOKING day, so a desk that booked today for next
+  // week's pickup already counts here, not once the truck has loaded.
   inbound: InboundShare;
   lastLoad: string | null; // max pickup_date over non-cancelled loads, any window
   // Days since that pickup, clamped at 0 — a load booked for next week is

@@ -167,9 +167,11 @@ export const monthWord = (monthKey: string): string =>
 // ---------------------------------------------------------------------------
 // 1. IS IT WORKING — inbound share, by the agent's CURRENT bucket
 // ---------------------------------------------------------------------------
-// Attributed = a booked_via on a non-cancelled load picked up inside the
-// window. Legacy (pre-system) loads carry no attribution and sit outside every
-// denominator — never counted as "we chased it".
+// Attributed = a booked_via on a non-cancelled load BOOKED inside the window —
+// keyed on the booking day (created_at), never on the pickup, so freight booked
+// for a pickup next week is already in this month's answer. Legacy (pre-system)
+// loads carry no attribution and sit outside every denominator — never counted
+// as "we chased it".
 
 // The fraction and the window filter are lib/metrics/relationships' — the ONE
 // definition of "attributed" — imported rather than re-spelled here. null when
@@ -209,7 +211,7 @@ export const inboundByBucket = <A extends ReviewAgentLike>(
 };
 
 export interface InboundMonth extends InboundCut {
-  month: string; // 'YYYY-MM'
+  month: string; // 'YYYY-MM' — the BOOKING month, the window filter's own key
 }
 
 // The calendar months from the system's start through today, inclusive.
@@ -246,6 +248,8 @@ export const inboundMonths = <A extends ReviewAgentLike>(
 ): InboundMonth[] =>
   monthsSince(startKey, nowKey).map((month) => {
     const b = monthBounds(month);
+    // Each row is the month's BOOKINGS — attributedIn keys on the booking day,
+    // so a load booked on the 30th for the 2nd sits in the month it was booked.
     // The first month starts the day the system did, not the 1st.
     const from = month === startKey.slice(0, 7) ? startKey : b.from;
     const to = b.to < nowKey ? b.to : nowKey;
