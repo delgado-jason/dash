@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { utcDayKey, localDayKey, keyOf, daysBetweenKeys, shortDate } from "./dayKeys";
+import { utcDayKey, localDayKey, keyOf, daysBetweenKeys, shortDate, weekdayShort } from "./dayKeys";
+
+describe("weekdayShort — the cap's 'touched Mon', on the local calendar", () => {
+  it("names the local weekday of a timestamp, however late in the evening", () => {
+    // Local-time dates on purpose: 2026-09-14 is a Monday everywhere.
+    expect(weekdayShort(new Date(2026, 8, 14, 10, 0).toISOString())).toBe("Mon");
+    expect(weekdayShort(new Date(2026, 8, 14, 23, 45).toISOString())).toBe("Mon");
+    expect(weekdayShort(new Date(2026, 8, 20, 0, 5).toISOString())).toBe("Sun");
+  });
+});
 
 describe("shortDate — the row's 'Aug 31'", () => {
   it("reads the day off a DATE that arrives as a timestamp, and off a bare day key", () => {

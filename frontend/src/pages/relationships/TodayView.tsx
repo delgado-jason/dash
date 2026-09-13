@@ -6,7 +6,7 @@ import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
-import { createAgentContact, deleteAgentContact, type AgentContact, type CreateAgentContactInput } from "@/services/agentContactsService";
+import { createAgentContact, deleteAgentContact, type AgentContact, type ContactMethod, type CreateAgentContactInput } from "@/services/agentContactsService";
 import { createAgentNote } from "@/services/createAgentNoteService";
 import { copyText } from "@/lib/clipboard";
 import { money } from "@/lib/format";
@@ -14,6 +14,7 @@ import { nameOf } from "@/lib/relationships/nameOf";
 import { shortDate } from "@/lib/relationships/dayKeys";
 import { contactTypeLabel } from "@/lib/relationships/contactTypes";
 import { alreadyCarries } from "@/lib/relationships/contactCap";
+import { capDoors } from "@/lib/relationships/touchOptions";
 import { skippedMarker } from "@/lib/relationships/markers";
 import { emptyTense, emptyWhenLabel, placeLabel, roundMiles, type EmptyNext } from "@/lib/relationships/capacityList";
 import { fiveText } from "@/lib/relationships/fridayFive";
@@ -309,9 +310,11 @@ const ReactivationPlate = ({ today, plate, mobile, onOpen }: PlateProps & { plat
   const { hero, heroTouched, lapsed } = plate;
   // The cap's own rule (LogTouchForm): a second reason folds into the week's
   // message — unless that message already carries it, when there is nothing
-  // to fold and only "log anyway" (with a reason) is left.
+  // to fold. `carried` is what the sentence below says out loud; the button's
+  // door is decided by the METHOD, just under it.
   const carried = heroTouched != null && alreadyCarries(heroTouched.contact, "reactivation");
-  const prefill: TouchPrefill = { direction: "outbound", method: "call", type: "reactivation" };
+  const method: ContactMethod = "call";
+  const prefill: TouchPrefill = { direction: "outbound", method, type: "reactivation" };
   return (
     <>
       <div className="flex items-center gap-2 flex-wrap">
@@ -342,8 +345,11 @@ const ReactivationPlate = ({ today, plate, mobile, onOpen }: PlateProps & { plat
           )}
           <PlateActions mobile={mobile}>
             {heroTouched ? (
+              // The door the button promises is the door the sheet opens: a
+              // reactivation is a CALL, and a call is never folded — it
+              // carries an outcome a fold would erase (touchOptions.capDoors).
               <GhostButton size="sm" onClick={() => onOpen(hero.agent, prefill)}>
-                {carried ? "Log anyway" : `Fold into ${heroTouched.day}'s message`}
+                {carried || !capDoors(method).fold ? "Log anyway" : `Fold into ${heroTouched.day}'s message`}
               </GhostButton>
             ) : (
               <>
@@ -385,6 +391,10 @@ const NurturePlate = ({ today, plate, signer, mobile, busy, error, onOpen, onLog
   // nothing to fold — Skip, or log anyway with a reason.
   const carried = hero != null && heroTouched != null && alreadyCarries(heroTouched.contact, nurtureType(hero));
   const prefill = (f: NurtureFlag, a: Agent): TouchPrefill => ({ direction: "outbound", method: methodFor(a.preferred_contact), type: nurtureType(f), note: `${nurtureMarker(f)} ` });
+  // The door the button promises is the door the sheet opens: a note that
+  // goes out on the phone is a CALL, and a call is never folded — it carries
+  // an outcome a fold would erase (touchOptions.capDoors).
+  const foldable = agent != null && capDoors(methodFor(agent.preferred_contact)).fold;
   return (
     <>
       <div className="flex items-center gap-2 flex-wrap">
@@ -409,7 +419,9 @@ const NurturePlate = ({ today, plate, signer, mobile, busy, error, onOpen, onLog
                 heroTouched
                   ? carried
                     ? `${contactTypeLabel(heroTouched.contact.type)} went out ${heroTouched.day} — nothing to fold`
-                    : `proactive touch ${heroTouched.day} · fold this in`
+                    : foldable
+                      ? `proactive touch ${heroTouched.day} · fold this in`
+                      : `proactive touch ${heroTouched.day} · a call logs on its own`
                   : "proactive touches · clear to send"
               }
             />
@@ -422,7 +434,7 @@ const NurturePlate = ({ today, plate, signer, mobile, busy, error, onOpen, onLog
           <ErrorLine>{error}</ErrorLine>
           <PlateActions mobile={mobile}>
             {heroTouched ? (
-              carried ? (
+              carried || !foldable ? (
                 <GhostButton size="sm" onClick={() => onOpen(agent, prefill(hero, agent))}>
                   Log anyway
                 </GhostButton>

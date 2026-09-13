@@ -1,7 +1,8 @@
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Phone } from "lucide-react";
-import { StatusPill } from "@/components/ui/StatusPill";
+import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
+import { MeterCells } from "@/components/awards/HardwareBoard";
 import { nameOf } from "@/lib/relationships/nameOf";
 import { CodeChip, ParkedChip } from "./primitives";
 
@@ -15,6 +16,13 @@ import { CodeChip, ParkedChip } from "./primitives";
 // adds a LEAD chip before the name (the queue section — NOW, CAPACITY, CALL
 // BACK…), a TOUCHED {DAY} status chip, its own right cell ("141 miles",
 // "Mon promised") and a ghosted state for rows not offered a second touch.
+//
+// Call-list mode: the same row with a `meter` (the footprint six as
+// MeterCells on md+), the right cell captioned "quiet", and a `pill` chip for
+// the class / stage / BAD # / Touched {Day} words. The Foreman's parked group
+// (the nod sheet's .row.wide) fills the two md+ cells with "{mi} mi" and
+// "{n} · ${gross}" — a bold number each, so they are ReactNodes — and hands a
+// `right` override so the days cell reads "—" rather than "never".
 
 export type RowChipKind =
   | "parked"
@@ -27,10 +35,11 @@ export type RowChipKind =
   | "touched" // already had this week's proactive touch — red
   | "cool" // the owner's cooling flag — info
   | "section"; // a plain section word — neutral
-export interface RowChip {
-  kind: RowChipKind;
-  label: string;
-}
+export type RowChip =
+  | { kind: RowChipKind; label: string }
+  // Any other single word the caller has already decided on — the class
+  // (Direct / Spot / Unclear / Not yet asked), a prospect's stage, BAD #.
+  | { kind: "pill"; tone: PillTone; label: string };
 
 export interface RowRight {
   value: string; // the big number — "141", "1d", "Mon"
@@ -51,9 +60,12 @@ export interface AgentRowProps {
   // Days since the last two-way contact. null = never; undefined = not known
   // (the loads slice didn't come through, and a load IS contact) → "—".
   daysSince: number | null | undefined;
-  right?: RowRight | null; // overrides the days-since cell
-  market?: string | null; // md+ cell
-  loadsCell?: string | null; // md+ cell — "6 · $5.01"
+  daysCaption?: string; // under a number — default "since contact"
+  neverCaption?: string; // under "never" — default "contact"
+  right?: RowRight | null; // replaces the days cell outright (the Foreman's miles, Today's "Mon promised")
+  market?: ReactNode | null; // md+ cell — a place, or the parked group's "{mi} mi"
+  loadsCell?: ReactNode | null; // md+ cell — "6 · $5.01"
+  meter?: { on: number; cells: number } | null; // md+ cell — the footprint six
   dimmed?: boolean;
   ghosted?: boolean; // half-faded — the row is shown, not offered
   // Absent → a read-only row: no door, no button role (the dispatcher's view
@@ -74,6 +86,8 @@ const RowChipPill = ({ chip }: { chip: RowChip }) => {
     case "now":
     case "callback":
       return <StatusPill tone="amber">{chip.label}</StatusPill>;
+    case "pill":
+      return <StatusPill tone={chip.tone}>{chip.label}</StatusPill>;
     default:
       return <StatusPill tone="neutral">{chip.label}</StatusPill>;
   }
@@ -85,9 +99,12 @@ export const AgentRow = ({
   lead,
   context,
   daysSince,
+  daysCaption = "since contact",
+  neverCaption = "contact",
   right,
   market,
   loadsCell,
+  meter,
   dimmed = false,
   ghosted = false,
   onOpen,
@@ -106,13 +123,16 @@ export const AgentRow = ({
   };
   const stop = (e: MouseEvent) => e.stopPropagation();
   const fade = ghosted ? "opacity-50" : dimmed ? "opacity-70" : "";
+  const cols = meter
+    ? "md:grid-cols-[minmax(0,1fr)_130px_110px_96px_72px_44px]"
+    : "md:grid-cols-[minmax(0,1fr)_130px_110px_72px_44px]";
   return (
     <div
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
       onClick={onOpen}
       onKeyDown={onKeyDown}
-      className={`grid items-center gap-3 px-3.5 py-2.5 border-t border-hairline-lo min-h-[56px] transition-colors grid-cols-[minmax(0,1fr)_72px_44px] md:grid-cols-[minmax(0,1fr)_130px_110px_72px_44px] ${
+      className={`grid items-center gap-3 px-3.5 py-2.5 border-t border-hairline-lo min-h-[56px] transition-colors grid-cols-[minmax(0,1fr)_72px_44px] ${cols} ${
         interactive ? "cursor-pointer hover:bg-white/[.02]" : ""
       } ${fade}`}
     >
@@ -137,12 +157,21 @@ export const AgentRow = ({
       <span className="hidden md:block font-condensed text-[13px] text-dim text-right tabular-nums">
         {loadsCell || "—"}
       </span>
+      {meter && (
+        <span
+          className="hidden md:flex items-center justify-end"
+          title={`footprint ${meter.on} of ${meter.cells}`}
+          aria-label={`footprint ${meter.on} of ${meter.cells}`}
+        >
+          <MeterCells pct={meter.cells > 0 ? meter.on / meter.cells : 0} cells={meter.cells} />
+        </span>
+      )}
       <span className="text-right">
         <span className="block font-display text-[17px] text-ink tabular-nums leading-none">
           {right ? right.value : daysSince === undefined ? "—" : daysSince === null ? "never" : `${daysSince}d`}
         </span>
         <span className="block font-condensed text-[10px] tracking-[.08em] uppercase text-faint mt-0.5">
-          {right ? right.caption : daysSince === null ? "contact" : "since contact"}
+          {right ? right.caption : daysSince === null ? neverCaption : daysCaption}
         </span>
       </span>
       {interactive ? (

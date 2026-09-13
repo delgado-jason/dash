@@ -403,7 +403,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Editing an agent",
       "Inbound share — is the system working?",
       "Prospects — from stranger to agent",
-      "The qualify sweep — does this agent have their own customers?",
+      "The call list — reactivation, prospects, the one question",
       "Agent ratings",
       "Reading the roster — the Go-to score",
       "The quarterly leaderboard",
@@ -715,6 +715,32 @@ const GuidePage = () => {
               straight-line estimates (shown with a ~) and sharpen to real miles as the
               app geocodes each city quietly in the background; a city it can't place
               yet falls back to region-level rather than a fake number.
+            </p>
+
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Parked agents within 75 miles
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              Parked agents — one you parked with a written reason, or one gone{" "}
+              <span className="text-light">dormant</span> (no load, no two-way
+              contact, nothing at all for 180 days) — never sit in the ranked rows
+              above and are never owed a message. They surface here only when the
+              truck is close: a dimmed group,{" "}
+              <span className="text-light">PARKED · WITHIN 75 MI OF {"{"}your
+              empty-next city{"}"}</span>, lists every parked agent whose footprint —
+              a city they've loaded you from, or a market they named on a call —
+              sits within 75 straight-line miles of where you'll be empty. Each row
+              carries the PARKED chip and why they're parked ("dormant since Mar
+              27" or your own reason), then the miles, their loads and gross, and
+              how many days they've been quiet. If the contact log didn't load,
+              the group lists only the agents you parked yourself and says so —
+              dash never calls an agent dormant on half the evidence. The point
+              is their <span className="text-light">freight</span>: grab a board
+              load out of their town while you're there — no outreach owed, no
+              touch to log. Tap a row for the agent sheet: Unpark puts them back
+              in the book as a Prospect (or their tier); a dormant agent comes back
+              on its own the day a load or a reached call happens. An agent with
+              no footprint the app can place is left out rather than guessed.
             </p>
           </Section>
 
@@ -2258,9 +2284,9 @@ const GuidePage = () => {
               <span className="text-light">Parked</span> is hidden from the
               working list: an agent you parked with a written reason, or one
               gone dormant (no load, no two-way contact, nothing at all for 180
-              days). Search finds them here, and the Foreman will surface a
-              parked agent’s freight when the truck is within 75 miles — harvest
-              it, no outreach owed.
+              days). Search finds them here, and the Foreman surfaces a parked
+              agent’s freight when the truck is within 75 miles — harvest it,
+              no outreach owed.
               <br />
               <br />
               <span className="text-light">The owner sets every tier, always
@@ -2353,9 +2379,11 @@ const GuidePage = () => {
               or a one-way email does not. Dispatch sees it read-only; the
               owner taps a row to log their own thread — Owner personal,
               uncapped. It never creates a task and never sends anything.
-              Call list and Review are rebuilt next on these buckets: until
-              then Call list holds the qualify sweep and Review is the
-              trailing-90-day table with its move chips.
+              The <span className="text-light">CALL LIST</span> runs on these
+              buckets too — reactivation and prospects, one row, one call
+              screen (its own section below). Review is rebuilt next: until
+              then it is the trailing-90-day table with its move chips — tap a
+              name there to open the agent sheet.
             </Why>
           </Metric>
 
@@ -2442,59 +2470,122 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="The qualify sweep — does this agent have their own customers?"
-            answers="One call, one question, per prospect. Sorts the long tail into agents worth working and agents to park."
-            sources={[{ label: "Relationships", to: "/relationships/calls" }]}
+            title="The call list — reactivation, prospects, the one question"
+            answers="Two working lists — lapsed prospects who hauled, and prospects who never ran — and one call screen that captures the footprint, the outcome, the one question and the next step in the order that survives a bad signal."
+            sources={[{ label: "Call list", to: "/relationships/calls" }]}
           >
             <Why>
-              Most of the long tail hauled once and never came back, and the
-              reason matters: an agent working the Landstar board has no
-              customers of their own, so no amount of nurture creates freight
-              that isn’t there. Until the next build the sweep lives under the{" "}
-              <span className="text-light">CALL LIST</span> tab; it walks the
-              never-asked prospects one at a time, richest first, and asks the
-              only question that decides everything downstream —{" "}
-              <span className="text-light">direct, spot, or unclear</span>. The
-              same question appears in the agent sheet’s log form after any
-              reached call to an untiered agent, so it gets asked wherever the
-              conversation actually happens.
+              <span className="text-light">Two lists, one switch.</span>{" "}
+              <span className="text-light">REACTIVATION</span> is the Gameplan’s
+              target list: every Prospect who has hauled for you at least once
+              and has gone quiet — no load and no two-way contact (a reached
+              call, anything inbound, a pickup or a delivery) in 42 days. A
+              tiered agent rides the nurture method instead, a Parked agent is
+              on no list, and an agent you promised to call back stays off the
+              list until that day comes (it shows up on Today). A voicemail
+              does not reset the clock — it sinks the row to the end of its
+              group and counts as an unreached attempt; three unreached calls
+              in two weeks move the row to a{" "}
+              <span className="text-light">RECYCLE — NEXT ROTATION</span> fold,
+              because persistence is a channel problem, not a frequency one:
+              find the number or the time they answer. They re-enter on their
+              own after 42 quiet days.{" "}
+              <span className="text-light">PROSPECTS</span> is everyone with no
+              delivered load yet — the row’s chip reads NEW, TOUCHED ×2 or
+              REPLIED, replied first, then whoever has waited longest — and the
+              head counts how many converted (a first load inside 90 days). In
+              season a third tab joins them,{" "}
+              <span className="text-light">HOLIDAY · NOV 26</span> — the active
+              book, Tier 1 first, minus everyone already wished this
+              holiday-year — and a row there opens the note on the agent’s
+              sheet to copy and send, not a call screen.
               <br />
               <br />
-              Those three are not the same as blank.{" "}
-              <span className="text-light">Blank means nobody has asked yet</span>,
-              and the class you see is derived from loads. Unclear means you
-              asked and couldn’t tell — they stay in the book and come round
-              again. Only a{" "}
-              <span className="text-light">spot you pinned yourself</span> can
-              ever park an agent, so an inconclusive call can never drop a real
-              customer out of your book by accident. The database enforces
-              that, not just the screen.
+              <span className="text-light">Market grades are generated, not
+              typed.</span> Every origin state with two or more delivered loads
+              in the trailing twelve months is ranked by average gross revenue
+              per delivered load: the top third is A, the middle third B, the
+              rest — and any state with fewer than two loads — C. The caption
+              under the controls spells it out (“A = GA, SC · B = TX, OH · C =
+              everyone else …”), the Market switch filters to a grade, and the
+              reactivation list runs A → B → C, warmest first inside each grade
+              — 60% how many loads they’ve given you, 40% how recently. Every
+              row: the class chip (DIRECT, SPOT, UNCLEAR, or NOT YET ASKED —
+              from the pin or from repeat facilities, never a default), their
+              top market and grade, loads and average, the footprint meter,
+              and days quiet.
               <br />
               <br />
-              While you talk, capture the markets they name. Agents say “I’ve
-              got shippers in Savannah and Charleston” without naming the
-              shipper, so a market alone is enough —{" "}
-              <span className="text-light">the shipper name is optional</span>{" "}
-              and fills in later. Pick the city from the dropdown rather than
-              typing it free: that’s what gives the Foreman a real coordinate,
-              so a market you’ve never hauled can still be ranked by distance
-              when you go empty nearby. A claimed market shows as a dashed
-              chip; it turns solid the day a load actually comes out of there.
+              <span className="text-light">The call screen.</span> Tap a row
+              and it opens as a full-screen card on the phone (back chevron,
+              “3 of 17”) or the right-hand pane on a desktop — its own address,
+              so a refresh mid-call lands you back on the call. The header is
+              who they are and how to reach them (the CALL button dials);
+              beneath it, why they’re on the list, then the{" "}
+              <span className="text-light">SCRIPT</span> — the reactivation or
+              prospecting opener and voicemail from ADMIN-02, filled in from
+              their record, open on your first call of the day and folded
+              after. Then <span className="text-light">THE FOOTPRINT</span>:
+              the six questions every call should capture, as a checklist with
+              the answer captured inline — which shippers out of which cities
+              (pick the city from the dropdown so the Foreman gets a real
+              coordinate; a market they named is a dashed chip, one a load
+              proved is solid); what moves most (the four freight chips,
+              prefilled and clearable); their typical lane, anything regular,
+              and what’s moving now — three one-liners that fold into the note
+              as [lane] · [regular] · [season] so the next call can read them
+              back; and the best number and time to call. The head counts
+              “4 of 6”, and the{" "}
+              <span className="text-light">FOOTPRINT CAPTURED</span> toggle
+              lights itself once a market, a freight type and a best time are
+              on file — flip it either way; it writes on the call.
               <br />
               <br />
-              Two controls protect the record itself.{" "}
-              <span className="text-light">Someone else answered?</span> Use
-              the divert link before saving — everything the call produced
-              (class, freight, markets, notes, the contact) files under the
-              person who actually answered, found on the same agency code or
-              created there, and the dialed record gets a single breadcrumb
-              note. Never file one human’s answers on another human’s record.
-              And <span className="text-light">parking</span> lives in the
-              app: classing an agent spot offers “park them now” on the spot,
-              and the agent sheet can park (written reason required unless
-              they’re spot) or unpark — back into the working list as a
-              Prospect, or as their tier if the owner had set one. Parked =
-              out of every list; the record and loads stay forever.
+              <span className="text-light">Outcome, the one question, next
+              step.</span> Reached, voicemail, no answer or bad number — anything
+              but Reached clears any class you picked, because nobody was
+              spoken to. A bad number marks the row BAD # until a later call
+              gets through, and question 6 offers the fix. When you reached an
+              untiered agent whose class is blank or unclear, the one question
+              appears —{" "}
+              <span className="text-light">do they have their own customers?
+              Direct, Spot, or Unclear</span>; Spot offers “park them now”. An
+              agent already pinned shows the pin as a chip with a{" "}
+              <span className="text-light">change</span> link, so a wrong pin
+              has an exit. Next step is Nothing owed, Call back (Thu · +1 wk ·
+              +2 wk · +1 mo · pick a date — Today shows it when it’s due), On
+              their list, or Send capacity; the note is one line — what
+              happened, what was promised, what’s owed, load # if any.
+              <br />
+              <br />
+              <span className="text-light">Someone else answered?</span> Say so
+              before you log. Type the name — the search covers every agent in
+              the book by name, any agency code, because the person is the
+              anchor — pick the match, or create them on the code you type (or
+              none). Everything from the call files under them; the dialed
+              record gets one breadcrumb note and nothing else, and you stay
+              on that card to skip or park it. Reactivation and prospecting are
+              proactive touches, so the one-a-week cap applies: an agent who
+              already had a proactive touch this week sits dimmed in the list
+              with a <span className="text-light">TOUCHED MON</span> chip, and
+              the call screen wears the same chip in its header — you see the
+              cap before you dial. A call that happens anyway is logged as it
+              happened — reached, voicemail, no answer or bad number — with a
+              reason in the note; a call is never folded into a message,
+              because the outcome is the record.
+              <br />
+              <br />
+              <span className="text-light">LOG & NEXT</span> writes in a fixed
+              order — the contact first, then the breadcrumb if the call was
+              diverted, and the agent’s record (class, freight, best time,
+              phone, a park) last — so a dropped signal can never leave an
+              agent classed with no record of the call; if a later step fails
+              the error names it and a second tap retries only what’s left.
+              Then the screen moves to the next row you haven’t handled — no
+              counter to lose its place: skipped and logged rows are remembered
+              for the day, dimmed in the list, and the next call is simply the
+              first row that isn’t one of them. When none are left the list
+              says so and points at Prospects.
             </Why>
           </Metric>
 

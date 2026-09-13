@@ -16,11 +16,11 @@ export interface AgentCoverage {
 }
 
 // Non-fatal on failure, matching getCityCoords: this read is one of several in
-// the Relationships page's Promise.all, and coverage is optional to every view
-// except the sweep. Letting it reject would take the whole page — the book and
-// the monthly review included — down to its error state over a feature they
-// don't use. An empty list degrades the sweep to "nothing captured yet" and
-// leaves everything else working.
+// the Relationships page's fetch, and coverage is optional to every view
+// except the call screen's footprint. Letting it reject would take the whole
+// page — the book and the review included — down to its error state over a
+// feature they don't use. An empty list degrades the footprint to "nothing
+// captured yet" and leaves everything else working.
 //
 // The WRITES below still throw: those are user actions, and a silent failure
 // there would lose a market she just captured on a call.

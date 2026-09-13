@@ -21,8 +21,10 @@ import {
   type ContactType,
 } from "@/lib/relationships/contactTypes";
 import { alreadyCarries, capStatus, foldPatch } from "@/lib/relationships/contactCap";
-import { localDayKey } from "@/lib/relationships/dayKeys";
-import { FieldLabel, GhostButton, PrimaryButton, ErrorLine } from "./primitives";
+import { weekdayShort } from "@/lib/relationships/dayKeys";
+import { CLASS_HELP, CLASS_TABS, NEXT_TABS, OUTCOME_TABS, capDoors, dateChips, type ClassPick } from "@/lib/relationships/touchOptions";
+import { CapGate } from "./CapGate";
+import { FieldLabel, PrimaryButton, ErrorLine } from "./primitives";
 
 // LOG A TOUCH, v2 — one component, used by the agent sheet now and by Today /
 // Call list later. Two taps for the common case: the direction · method ·
@@ -34,7 +36,7 @@ import { FieldLabel, GhostButton, PrimaryButton, ErrorLine } from "./primitives"
 //
 // The class pin ("the one question") is handed back separately — with a log
 // AND with a fold — so the parent writes it LAST, after the contact: it is an
-// AGENT patch, independent of the touch (the sweep's ordering, kept).
+// AGENT patch, independent of the touch (the call screen's write order).
 
 export interface TouchPrefill {
   direction?: ContactDirection;
@@ -94,42 +96,10 @@ const METHOD_TABS: { value: ContactMethod; label: string }[] = [
   { value: "text", label: "Text" },
   { value: "email", label: "Email" },
 ];
-const OUTCOME_TABS: { value: ContactOutcome; label: string }[] = [
-  { value: "reached", label: "Reached" },
-  { value: "voicemail", label: "Voicemail" },
-  { value: "no_answer", label: "No answer" },
-  { value: "bad_number", label: "Bad number" },
-];
-const NEXT_TABS: { value: ContactNextStep; label: string }[] = [
-  { value: "none", label: "Nothing owed" },
-  { value: "call_back", label: "Call back" },
-  { value: "on_their_list", label: "On their list" },
-  { value: "send_capacity", label: "Send capacity" },
-];
-type ClassPick = "direct" | "spot" | "unclear";
-const CLASS_TABS: { value: ClassPick; label: string }[] = [
-  { value: "direct", label: "Direct" },
-  { value: "spot", label: "Spot" },
-  { value: "unclear", label: "Unclear" },
-];
-
+// The outcome / next-step / class tabs and the callback date chips live in
+// lib/relationships/touchOptions — shared with the Call list's call screen.
 const METHOD_WORD: Record<ContactMethod, string> = { call: "call", text: "text", email: "email" };
 const KIND_WORD = { proactive: "proactive", operational: "operational", inbound: "inbound", owner: "owner personal" } as const;
-
-// Callback date chips, in local calendar days — the SOP's Thursday is
-// Brandie's Thursday.
-const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-const nextThursday = (d: Date) => addDays(d, ((4 - d.getDay() + 7) % 7) || 7);
-const addMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
-const dateChips = (now: Date): { label: string; key: string }[] => [
-  { label: "Thu", key: localDayKey(nextThursday(now)) },
-  { label: "+1 wk", key: localDayKey(addDays(now, 7)) },
-  { label: "+2 wk", key: localDayKey(addDays(now, 14)) },
-  { label: "+1 mo", key: localDayKey(addMonth(now)) },
-];
-
-const weekdayOf = (iso: string): string =>
-  new Date(iso).toLocaleDateString("en-US", { weekday: "short" });
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="mt-3">
@@ -176,6 +146,12 @@ export const LogTouchForm = ({
   // The chosen reason is already in this week's message — as its own type or
   // an earlier fold — so there is nothing to PATCH.
   const carried = capped && cap.first != null && alreadyCarries(cap.first, type);
+  // THE RULING (REL-01 v2.0 §4, PR 3): a call is never folded — here on the
+  // agent sheet as much as on the call screen — because a fold would erase
+  // the outcome the call carries. On a call the gate loses its Fold door and
+  // offers only "Log anyway", which writes cap_override with the note as the
+  // reason; a message keeps both doors. lib/relationships/touchOptions.
+  const doors = capDoors(method);
 
   const showOutcome = direction === "outbound" && method === "call";
   const spoke = method === "call" && (direction === "inbound" || outcome === "reached");
@@ -281,9 +257,7 @@ export const LogTouchForm = ({
       {showQuestion && (
         <Field label="The one question — do they have their own customers?">
           <SegmentedTabs tabs={CLASS_TABS} value={cls ?? ("" as ClassPick)} onChange={setCls} size="sm" ariaLabel="Agent class" />
-          <p className="font-condensed text-[11.5px] text-faint mt-1">
-            Direct — their own shippers · Spot — works the board (the only answer that can park them) · Unclear — asked, couldn't tell
-          </p>
+          <p className="font-condensed text-[11.5px] text-faint mt-1">{CLASS_HELP}</p>
           {cls === "spot" && (
             <div className="mt-2">
               <label className="flex items-start gap-2 cursor-pointer text-[13px] text-dim leading-snug">
@@ -354,43 +328,22 @@ export const LogTouchForm = ({
 
       {promised && proactive && cap.blocked && cap.first && (
         <p className="font-condensed text-[12.5px] text-faint mt-3 leading-snug">
-          {agent.first_name} already had a proactive touch this week ({contactTypeLabel(cap.first.type)}, {weekdayOf(cap.first.contacted_at)}) — a promised call-back is
+          {agent.first_name} already had a proactive touch this week ({contactTypeLabel(cap.first.type)}, {weekdayShort(cap.first.contacted_at)}) — a promised call-back is
           kept anyway; this one logs with the cap overridden.
         </p>
       )}
 
       {capped && cap.first ? (
-        <div className="mt-3">
-          <p className="font-condensed text-[13px] text-ink leading-snug">
-            {agent.first_name} already had a proactive touch this week — {contactTypeLabel(cap.first.type)},{" "}
-            {weekdayOf(cap.first.contacted_at)}.{" "}
-            {carried
-              ? `${contactTypeLabel(type)} is already in ${weekdayOf(cap.first.contacted_at)}'s message — nothing to fold. Pick another reason, or wait.`
-              : "One per week: fold this reason into that message, or wait."}
-          </p>
-          <div className="flex gap-2 flex-wrap mt-2">
-            <PrimaryButton
-              size="lg"
-              disabled={busy || carried}
-              title={carried ? `already in ${weekdayOf(cap.first.contacted_at)}'s message` : undefined}
-              onClick={() => cap.first && !carried && onFold(buildFold(cap.first))}
-            >
-              {busy
-                ? "Saving…"
-                : carried
-                  ? `Already in ${weekdayOf(cap.first.contacted_at)}'s message`
-                  : `Fold into ${weekdayOf(cap.first.contacted_at)}'s message`}
-            </PrimaryButton>
-            <GhostButton
-              size="lg"
-              disabled={busy || note.trim().length === 0}
-              title={note.trim().length === 0 ? "Say why in the note — a second touch needs a reason" : undefined}
-              onClick={() => onLog(build(true))}
-            >
-              Log anyway
-            </GhostButton>
-          </div>
-        </div>
+        <CapGate
+          firstName={agent.first_name}
+          first={cap.first}
+          type={type}
+          carried={carried}
+          busy={busy}
+          noteEmpty={note.trim().length === 0}
+          onFold={doors.fold ? () => cap.first && onFold(buildFold(cap.first)) : undefined}
+          onLogAnyway={() => onLog(build(true))}
+        />
       ) : (
         <PrimaryButton size="lg" className="w-full mt-4" disabled={busy} onClick={() => onLog(build(false))}>
           {busy ? "Logging…" : "Log it"}

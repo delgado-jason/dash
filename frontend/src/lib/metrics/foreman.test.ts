@@ -346,6 +346,87 @@ describe("buildForemanBoard — membership", () => {
   });
 });
 
+describe("buildForemanBoard — parked agents leave the rankings (REL-01 v2.0 §4)", () => {
+  it("an explicitly parked agent with loads is not ranked, contacts or no contacts", () => {
+    const { agents, loads } = buildWorld();
+    const parked = agents.map((a) => (a.agent_id === "a3" ? { ...a, work_status: "parked" as const, park_reason: "spot only" } : a));
+    const plain = buildForemanBoard(loads, parked, COORDS, { now: NOW });
+    expect(plain.rankings.find((r) => r.agentId === "a3")).toBeUndefined();
+    expect(plain.rankings).toHaveLength(3);
+    expect(plain.coverage).toEqual({ withCoords: 3, total: 3 });
+    const withContacts = buildForemanBoard(loads, parked, COORDS, { now: NOW, contacts: [] });
+    expect(withContacts.rankings.find((r) => r.agentId === "a3")).toBeUndefined();
+  });
+
+  it("a dormant untiered agent (nothing two-way in 180 days) leaves once the contact log is handed over", () => {
+    const { agents, loads } = buildWorld();
+    // Keystone's one load is old; make the record old too so nothing keeps it live.
+    const aged = agents.map((a) => (a.agent_id === "a4" ? { ...a, created_at: "2025-01-01" } : a));
+    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-05", delivery_date: "2026-01-07" } : l));
+    // Legacy callers (no contacts) still see the agent — only explicit parks are judged.
+    expect(buildForemanBoard(old, aged, COORDS, { now: NOW }).rankings.find((r) => r.agentId === "a4")).toBeDefined();
+    // With the contact log, dormancy is judged and the agent leaves the rankings.
+    const board = buildForemanBoard(old, aged, COORDS, { now: NOW, contacts: [] });
+    expect(board.rankings.find((r) => r.agentId === "a4")).toBeUndefined();
+    expect(board.rankings).toHaveLength(3);
+    // A reached call inside 180 days wakes them back into the rankings.
+    const woke = buildForemanBoard(old, aged, COORDS, {
+      now: NOW,
+      contacts: [{ agent_id: "a4", contacted_at: "2026-08-01T10:00:00Z", direction: "outbound", method: "call", outcome: "reached" }],
+    });
+    expect(woke.rankings.find((r) => r.agentId === "a4")).toBeDefined();
+  });
+
+  it("a tiered agent is never dormant-parked — the owner's tier stands", () => {
+    const { agents, loads } = buildWorld();
+    const tiered = agents.map((a) => (a.agent_id === "a4" ? { ...a, relationship_tier: 3, created_at: "2025-01-01" } : a));
+    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-05", delivery_date: "2026-01-07" } : l));
+    expect(buildForemanBoard(old, tiered, COORDS, { now: NOW, contacts: [] }).rankings.find((r) => r.agentId === "a4")).toBeDefined();
+  });
+});
+
+// The contact log decides whether dormancy may be judged at all: an in-flight
+// or failed fetch must NOT be handed over as [] — that would park every quiet
+// agent on first paint. `contacts` undefined = explicit parks only.
+describe("buildForemanBoard — no dormancy verdict without the contact log", () => {
+  // Keystone (a4): an untiered agent whose one load is 200 days old and whose
+  // record is older than that — dormant IF the log is in hand.
+  const agedWorld = () => {
+    const { agents, loads } = buildWorld();
+    const aged = agents.map((a) => (a.agent_id === "a4" ? { ...a, created_at: "2025-01-01" } : a));
+    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-25", delivery_date: "2026-01-25" } : l)); // NOW − 200 days
+    return { aged, old };
+  };
+
+  it("contacts undefined → an untiered agent with only a 200-day-old load stays ranked (not parked)", () => {
+    const { aged, old } = agedWorld();
+    const board = buildForemanBoard(old, aged, COORDS, { now: NOW });
+    expect(board.rankings.find((r) => r.agentId === "a4")).toBeDefined();
+    expect(board.rankings).toHaveLength(4);
+  });
+
+  it("contacts given, with a reached call 30 days ago → stays ranked", () => {
+    const { aged, old } = agedWorld();
+    const board = buildForemanBoard(old, aged, COORDS, {
+      now: NOW,
+      contacts: [{ agent_id: "a4", contacted_at: "2026-07-14T10:00:00Z", direction: "outbound", method: "call", outcome: "reached" }], // NOW − 30 days
+    });
+    expect(board.rankings.find((r) => r.agentId === "a4")).toBeDefined();
+    expect(board.rankings).toHaveLength(4);
+  });
+
+  it("contacts given, nothing two-way in 180 days → parked and out of the rankings; the remaining rows keep the same score and order as the un-parked board", () => {
+    const { aged, old } = agedWorld();
+    const plain = buildForemanBoard(old, aged, COORDS, { now: NOW });
+    const board = buildForemanBoard(old, aged, COORDS, { now: NOW, contacts: [] });
+    expect(board.rankings.find((r) => r.agentId === "a4")).toBeUndefined();
+    expect(board.rankings).toHaveLength(3);
+    expect(board.rankings.map((r) => r.agentId)).toEqual(plain.rankings.map((r) => r.agentId).filter((id) => id !== "a4"));
+    const plainScore = Object.fromEntries(plain.rankings.map((r) => [r.agentId, r.score]));
+    for (const r of board.rankings) expect(r.score).toBeCloseTo(plainScore[r.agentId], 10);
+  });
+});
+
 describe("buildForemanBoard — region fallback (no coords)", () => {
   it("still ranks by region + relationship, marking region fallback", () => {
     const { agents, loads } = buildWorld();

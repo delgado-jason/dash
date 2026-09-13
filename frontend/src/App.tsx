@@ -105,7 +105,10 @@ const App = () => {
           <Route path="/relationships" element={<RelationshipsLayout />}>
             <Route index element={<Navigate to="today" replace />} />
             <Route path="today" element={<TodayView />} />
-            <Route path="calls" element={<CallsView />} />
+            {/* /calls/:agentId is the call screen — a route, so a refresh
+                mid-call lands back on the call; one element so the list's
+                filters survive the push. */}
+            <Route path="calls/:agentId?" element={<CallsView />} />
             <Route path="tiers" element={<TiersView />} />
             <Route path="review" element={<ReviewView />} />
           </Route>

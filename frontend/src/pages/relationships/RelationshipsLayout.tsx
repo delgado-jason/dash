@@ -9,6 +9,7 @@ import { useRelationshipsData } from "@/hooks/useRelationshipsData";
 import { isDispatcher } from "@/lib/roles";
 import { SYSTEM_START, inboundShare } from "@/lib/metrics/relationships";
 import { inboundHeadline } from "@/lib/relationships/inboundHeadline";
+import { callListSummary } from "@/lib/relationships/callList";
 import { utcDayKey } from "@/lib/relationships/dayKeys";
 import { buildToday, type TodayModel } from "@/lib/relationships/todayQueue";
 import { AgentSheet } from "@/components/relationships/AgentSheet";
@@ -30,13 +31,17 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "tiers", label: "Tiers" },
   { value: "review", label: "Review" },
 ];
+// Today and the Call list read their live context from the derived models
+// (below) once the data is in; these are the fixed words and the fallbacks.
 const SUB_LINE: Record<Tab, string> = {
   today: "the day's job — nothing sends itself",
-  calls: "moving here in the next build",
+  calls: "reactivation and prospects — the call list",
   tiers: "the owner sets the tiers — dash only suggests",
   review: "moving here in the next build",
 };
 const isTab = (v: string | undefined): v is Tab => v === "today" || v === "calls" || v === "tiers" || v === "review";
+
+type CallsSummary = ReturnType<typeof callListSummary>;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -47,10 +52,18 @@ const todaySubLine = (today: TodayModel | null, now: Date): string => {
   return `${day} · ${plural(today.closeOuts.length, "close-out")} · ${plural(today.callbacks.length, "callback")}`;
 };
 
-// Tab labels carry their queue counts once the data is in: "Today · 6".
-const tabLabel = (tab: Tab, today: TodayModel | null): string => {
+// The Call list's live context: "{n} lapsed · {k} prospects · {grades caption}".
+const callsSubLine = (calls: CallsSummary | null): string => {
+  if (!calls) return SUB_LINE.calls;
+  return `${calls.lapsed} lapsed · ${plural(calls.prospects, "prospect")} · ${calls.caption}`;
+};
+
+// Tab labels carry their counts once the data is in: "Today · 6",
+// "Call list · 17" (this rotation — the recycle fold is not counted).
+const tabLabel = (tab: Tab, today: TodayModel | null, calls: CallsSummary | null): string => {
   const base = TABS.find((t) => t.value === tab)?.label ?? tab;
   if (tab === "today" && today) return `${base} · ${today.count}`;
+  if (tab === "calls" && calls) return `${base} · ${calls.lapsed}`;
   return base;
 };
 
@@ -121,12 +134,23 @@ const RelationshipsLayout = () => {
     [data.loadsReady, data.loading, data.agents, data.loads, data.contacts, data.coverage, data.notes, data.coords, data.ladder, data.now],
   );
 
+  // The Call list's numbers for its tab and sub-line; withheld while the
+  // loads are in flight, the same way.
+  const calls = useMemo<CallsSummary | null>(
+    () => (data.loadsReady ? callListSummary(data.agents, data.loads, data.contacts, data.coverage, data.now) : null),
+    [data.loadsReady, data.agents, data.loads, data.contacts, data.coverage, data.now],
+  );
+
   const ctx: RelationshipsContext = useMemo(
     () => ({ ...data, isAdmin, today, openAgent, openProspect, notify }),
     [data, isAdmin, today, openAgent, openProspect, notify],
   );
 
-  const tabs = useMemo(() => TABS.map((t) => ({ value: t.value, label: tabLabel(t.value, today) })), [today]);
+  const tabs = useMemo(
+    () => TABS.map((t) => ({ value: t.value, label: tabLabel(t.value, today, calls) })),
+    [today, calls],
+  );
+  const subLine = tab === "today" ? todaySubLine(today, data.now) : tab === "calls" ? callsSubLine(calls) : SUB_LINE[tab];
 
   const sheetAgent = sheetAgentId ? data.agents.find((a) => a.agent_id === sheetAgentId) ?? null : null;
   const bookError = data.errors.agents ?? data.errors.contacts ?? data.errors.brokers;
@@ -138,8 +162,8 @@ const RelationshipsLayout = () => {
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           <h1 className="font-display text-[26px] tracking-[.06em] leading-none">RELATIONSHIPS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
-            {tab === "today" ? todaySubLine(today, data.now) : SUB_LINE[tab]}
+          <span className="font-condensed font-medium text-[15px] text-dim min-w-0 truncate max-w-full" title={subLine}>
+            {subLine}
           </span>
           <span className="flex-1" />
           <Link
