@@ -12,6 +12,9 @@ const coerce = (f: any): FuelEntry => ({
   gallons: Number(f.gallons),
   price_per_gallon: Number(f.price_per_gallon),
   odometer_reading: Number(f.odometer_reading),
+  // Optional: an integer column, but a missing reading must stay null — a
+  // Number(null) of 0 would be a meter reading nobody took.
+  apu_hours: f.apu_hours == null ? null : Number(f.apu_hours),
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

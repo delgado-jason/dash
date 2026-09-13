@@ -7,8 +7,12 @@ import {
   deleteMaintenanceService,
   type ServiceInput,
 } from "@/services/maintenanceService";
-import { ServiceForm } from "./ServiceForm";
+import { LogServiceSheet } from "./LogServiceSheet";
+import { StatusPill } from "@/components/ui/StatusPill";
 import { moneyCents } from "@/lib/format";
+// Flagging two spellings of one shop is all this page does: the MERGE lives on
+// the vendor page.
+import { spellingKey } from "@/lib/maintenance/spellingKey";
 
 interface Props {
   services: MaintenanceService[];
@@ -19,8 +23,8 @@ interface Props {
 
 const num = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
 
-// The reading cell: truck odometer, trailer hub, or both stacked for a
-// combined service.
+// The reading cell — each unit's own meter. An APU visit reads HOURS; a
+// combined service stacks the truck odometer over the trailer hub.
 const reading = (s: MaintenanceService) => {
   if (s.unit === "both")
     return (
@@ -31,7 +35,17 @@ const reading = (s: MaintenanceService) => {
         )}
       </>
     );
+  if (s.unit === "apu")
+    return s.apu_hours == null ? "—" : `${num(s.apu_hours)} hrs`;
   return num(s.unit === "trailer" ? s.trailer_hub : s.odometer);
+};
+
+// The units a vendor has worked on, as the pills its row wears.
+const UNIT_PILL: Record<string, string[]> = {
+  tractor: ["Truck"],
+  trailer: ["Trailer"],
+  both: ["Truck", "Trailer"],
+  apu: ["APU"],
 };
 
 const fmtDate = (iso: string) =>
@@ -65,6 +79,39 @@ const PRESETS: [RangeMode, string][] = [
   ["all", "All time"],
   ["custom", "Custom"],
 ];
+
+// A vendor name, linked to its card when the rolodex has it filed. Module-level
+// (the house rule: no component is ever defined inside a render body), so the
+// name→id map it needs comes in as a prop.
+const VendorCell = ({
+  name,
+  location,
+  vendorIdByName,
+}: {
+  name: string | null;
+  location?: string | null;
+  vendorIdByName: Map<string, string>;
+}) => {
+  if (!name) return <span className="text-faint">—</span>;
+  const id = vendorIdByName.get(name.trim().toLowerCase());
+  return (
+    <span className="min-w-0">
+      {id ? (
+        <Link to={`/vendors/${id}`} className="font-semibold text-amber-hi hover:text-hot">
+          {name}
+        </Link>
+      ) : (
+        <>
+          <span className="text-dim">{name}</span>{" "}
+          <Link to="/vendors" className="text-[10.5px] text-faint hover:text-amber-hi">
+            · file it →
+          </Link>
+        </>
+      )}
+      {location && <span className="block text-xs text-faint">{location}</span>}
+    </span>
+  );
+};
 
 export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props) => {
   // The rolodex, for linking vendor names through the bridge (same name rule
@@ -132,17 +179,33 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
   const rangeTotal = filtered.reduce((sum, s) => sum + (s.cost ?? 0), 0);
 
   // Vendor pricing (over the selected range): what each shop has cost you.
-  const byVendor = new Map<string, { count: number; total: number; priced: number }>();
+  // The math is untouched — each service is summed exactly once. What's new is
+  // what each row WEARS: the unit(s) that shop works on, and a flag when the
+  // same shop is filed under two spellings (which splits its real total).
+  const byVendor = new Map<
+    string,
+    { count: number; total: number; priced: number; units: Set<string> }
+  >();
   for (const s of filtered) {
     if (!s.vendor) continue;
-    const v = byVendor.get(s.vendor) ?? { count: 0, total: 0, priced: 0 };
+    const v = byVendor.get(s.vendor) ?? {
+      count: 0,
+      total: 0,
+      priced: 0,
+      units: new Set<string>(),
+    };
     v.count++;
+    for (const u of UNIT_PILL[s.unit] ?? []) v.units.add(u);
     if (s.cost != null) {
       v.total += s.cost;
       v.priced++;
     }
     byVendor.set(s.vendor, v);
   }
+  // Names that collapse to the same letters are one shop under two spellings.
+  const spellings = new Map<string, number>();
+  for (const name of byVendor.keys())
+    spellings.set(spellingKey(name), (spellings.get(spellingKey(name)) ?? 0) + 1);
   const vendors = [...byVendor.entries()].sort((a, b) => b[1].total - a[1].total);
 
   const run = async (fn: () => Promise<void>) => {
@@ -166,31 +229,6 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
       window.setTimeout(() => setJustLogged(false), 2600);
     });
 
-  const VendorCell = ({ name, location }: { name: string | null; location?: string | null }) => {
-    if (!name) return <span className="text-faint">—</span>;
-    const id = vendorIdByName.get(name.trim().toLowerCase());
-    return (
-      <span className="min-w-0">
-        {id ? (
-          <Link
-            to={`/vendors/${id}`}
-            className="font-semibold text-amber-hi hover:text-hot"
-          >
-            {name}
-          </Link>
-        ) : (
-          <>
-            <span className="text-dim">{name}</span>{" "}
-            <Link to="/vendors" className="text-[10.5px] text-faint hover:text-amber-hi">
-              · file it →
-            </Link>
-          </>
-        )}
-        {location && <span className="block text-xs text-faint">{location}</span>}
-      </span>
-    );
-  };
-
   return (
     <div>
       {justLogged && (
@@ -208,7 +246,7 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
 
       {showForm && (
         <div className="mt-4">
-          <ServiceForm
+          <LogServiceSheet
             items={items}
             onSave={save}
             onCancel={() => setShowForm(false)}
@@ -276,25 +314,36 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
               By vendor
             </span>
             <span className="font-condensed text-[12px] text-faint">
-              · the range's shop money · filed names link to their card
+              · the range's shop money · the unit each shop works on · filed names link to their card
             </span>
           </div>
-          {vendors.map(([vendor, v]) => (
-            <div
-              key={vendor}
-              className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
-            >
-              <span className="font-semibold text-[14.5px] flex-1 min-w-0 truncate">
-                <VendorCell name={vendor} />
-              </span>
-              <span className="text-[12.5px] text-faint w-[80px] text-right">
-                {v.count} visit{v.count === 1 ? "" : "s"}
-              </span>
-              <span className="font-semibold text-[14.5px] w-[100px] text-right tabular-nums">
-                {moneyCents(v.total)}
-              </span>
-            </div>
-          ))}
+          {vendors.map(([vendor, v]) => {
+            const twins = spellings.get(spellingKey(vendor)) ?? 1;
+            return (
+              <div
+                key={vendor}
+                className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
+              >
+                <span className="font-semibold text-[14.5px] flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                  <VendorCell name={vendor} vendorIdByName={vendorIdByName} />
+                  {[...v.units].map((u) => (
+                    <StatusPill key={u} tone="info">
+                      {u}
+                    </StatusPill>
+                  ))}
+                  {twins > 1 && (
+                    <StatusPill tone="amber">{twins} spellings</StatusPill>
+                  )}
+                </span>
+                <span className="text-[12.5px] text-faint w-[80px] text-right">
+                  {v.count} visit{v.count === 1 ? "" : "s"}
+                </span>
+                <span className="font-semibold text-[14.5px] w-[100px] text-right tabular-nums">
+                  {moneyCents(v.total)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -340,7 +389,11 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
                       </span>
                     )}
                   </span>
-                  <VendorCell name={sv.vendor} location={sv.location} />
+                  <VendorCell
+                    name={sv.vendor}
+                    location={sv.location}
+                    vendorIdByName={vendorIdByName}
+                  />
                   <span className="text-right text-faint text-[12.5px] tabular-nums whitespace-nowrap">
                     {reading(sv)}
                     <span className="block text-[10px] uppercase tracking-[.08em]">

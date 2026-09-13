@@ -1,11 +1,13 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
-
-const UNITS = ["tractor", "trailer"];
-const isUnit = (u) => UNITS.includes(u);
-// A schedule item belongs to one unit; a service (shop visit) can cover both.
-const SERVICE_UNITS = ["tractor", "trailer", "both"];
-const isServiceUnit = (u) => SERVICE_UNITS.includes(u);
+import {
+  isUnit,
+  isServiceUnit,
+  apuHoursErrors,
+  READING_FIELD,
+  UNIT_ERROR,
+  SERVICE_UNIT_ERROR,
+} from "../utils/validation/maintenanceValidation.js";
 
 // Resolve the user's single active truck/trailer so maintenance auto-links to
 // the right entity when there's only one — no picker needed. Returns null when
@@ -24,9 +26,11 @@ async function resolveFleet(runner, user_id) {
     trailerId: await singleEntity(runner, "trailers", "trailer_id", user_id),
   };
 }
+// The APU hangs on the truck, so an 'apu' row links to the same truck a
+// 'tractor' row would — it just reads a different meter.
 const linkFor = (unit, ids, data) => ({
   truck_id:
-    unit === "tractor" || unit === "both"
+    unit === "tractor" || unit === "both" || unit === "apu"
       ? (data.truck_id ?? ids.truckId)
       : null,
   trailer_id:
@@ -41,8 +45,8 @@ export async function getMaintenanceItems(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT item_id, unit, name, category, interval_miles, interval_months,
-            interval_hours, last_done_miles, last_done_date, active, notes,
-            warn_lead_days, truck_id, trailer_id
+            interval_hours, last_done_miles, last_done_hours, last_done_date,
+            active, notes, warn_lead_days, truck_id, trailer_id
      FROM maintenance_items
      WHERE user_id = $1
      ORDER BY category, name`,
@@ -59,6 +63,9 @@ const ITEM_FIELDS = [
   "interval_months",
   "interval_hours",
   "last_done_miles",
+  // The APU's baseline: the hour meter when this item was last done. Editable
+  // by hand, and stamped by a service that carries a reading.
+  "last_done_hours",
   "last_done_date",
   "active",
   "notes",
@@ -68,19 +75,21 @@ const ITEM_FIELDS = [
 export async function createMaintenanceItem(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!data.name) throw new ValidationError("name is required");
-  if (!isUnit(data.unit)) throw new ValidationError("unit must be tractor or trailer");
+  if (!isUnit(data.unit)) throw new ValidationError(UNIT_ERROR);
+  const hoursErrors = apuHoursErrors(data.last_done_hours, "last_done_hours");
+  if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
 
   const link = linkFor(data.unit, await resolveFleet(db, user_id), data);
 
   const result = await db.query(
     `INSERT INTO maintenance_items
        (user_id, unit, name, category, interval_miles, interval_months,
-        interval_hours, last_done_miles, last_done_date, notes, warn_lead_days,
-        truck_id, trailer_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        interval_hours, last_done_miles, last_done_hours, last_done_date, notes,
+        warn_lead_days, truck_id, trailer_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING item_id, unit, name, category, interval_miles, interval_months,
-               interval_hours, last_done_miles, last_done_date, active, notes,
-               warn_lead_days, truck_id, trailer_id`,
+               interval_hours, last_done_miles, last_done_hours, last_done_date,
+               active, notes, warn_lead_days, truck_id, trailer_id`,
     [
       user_id,
       data.unit,
@@ -90,6 +99,7 @@ export async function createMaintenanceItem(user_id, data) {
       data.interval_months ?? null,
       data.interval_hours ?? null,
       data.last_done_miles ?? null,
+      data.last_done_hours ?? null,
       data.last_done_date ?? null,
       data.notes ?? null,
       data.warn_lead_days ?? 14,
@@ -104,7 +114,9 @@ export async function patchMaintenanceItem(user_id, item_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!item_id) throw new ValidationError("Missing item_id");
   if (data.unit !== undefined && !isUnit(data.unit))
-    throw new ValidationError("unit must be tractor or trailer");
+    throw new ValidationError(UNIT_ERROR);
+  const hoursErrors = apuHoursErrors(data.last_done_hours, "last_done_hours");
+  if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
 
   const updates = [];
   const values = [];
@@ -125,7 +137,8 @@ export async function patchMaintenanceItem(user_id, item_id, data) {
     `UPDATE maintenance_items SET ${updates.join(", ")}
      WHERE item_id = $${i} AND user_id = $${i + 1}
      RETURNING item_id, unit, name, category, interval_miles, interval_months,
-               interval_hours, last_done_miles, last_done_date, active, notes, warn_lead_days`,
+               interval_hours, last_done_miles, last_done_hours, last_done_date,
+               active, notes, warn_lead_days`,
     values,
   );
   if (result.rowCount === 0) throw new NotFoundError("Maintenance item not found");
@@ -150,8 +163,8 @@ export async function getMaintenanceServices(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT s.service_id, s.unit, s.service_date, s.odometer, s.trailer_hub,
-            s.vendor, s.location, s.description, s.cost, s.invoice_number,
-            s.receipt_ref, s.notes,
+            s.apu_hours, s.vendor, s.location, s.description, s.cost,
+            s.invoice_number, s.receipt_ref, s.notes,
             COALESCE(
               array_agg(si.item_id) FILTER (WHERE si.item_id IS NOT NULL), '{}'
             ) AS item_ids
@@ -171,15 +184,20 @@ export async function createMaintenanceService(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!data.service_date) throw new ValidationError("service_date is required");
   if (!data.description) throw new ValidationError("description is required");
-  if (!isServiceUnit(data.unit))
-    throw new ValidationError("unit must be tractor, trailer, or both");
+  if (!isServiceUnit(data.unit)) throw new ValidationError(SERVICE_UNIT_ERROR);
+  const hoursErrors = apuHoursErrors(data.apu_hours);
+  if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
 
   const itemIds = Array.isArray(data.item_ids) ? data.item_ids : [];
-  // `odometer` is the truck reading, `trailer_hub` the trailer reading. A
-  // combined ("both") service carries both; each completed item is reset with
-  // the reading for its own unit.
-  const truckOdo = data.odometer ?? null;
-  const trailerHub = data.trailer_hub ?? null;
+  // Three meters, one per unit: `odometer` is the truck reading, `trailer_hub`
+  // the trailer's hub, `apu_hours` the APU's hour meter. A combined ("both")
+  // service carries the first two; each completed item is reset with the
+  // reading for its OWN unit, and a missing reading stays null.
+  const readings = {
+    odometer: data.odometer ?? null,
+    trailer_hub: data.trailer_hub ?? null,
+    apu_hours: data.apu_hours ?? null,
+  };
 
   const client = await db.pool.connect();
   try {
@@ -189,18 +207,20 @@ export async function createMaintenanceService(user_id, data) {
 
     const svc = await client.query(
       `INSERT INTO maintenance_services
-         (user_id, unit, service_date, odometer, trailer_hub, vendor, location,
-          description, cost, invoice_number, receipt_ref, notes, truck_id,
-          trailer_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-       RETURNING service_id, unit, service_date, odometer, trailer_hub, vendor,
-                 location, description, cost, invoice_number, receipt_ref, notes`,
+         (user_id, unit, service_date, odometer, trailer_hub, apu_hours, vendor,
+          location, description, cost, invoice_number, receipt_ref, notes,
+          truck_id, trailer_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       RETURNING service_id, unit, service_date, odometer, trailer_hub,
+                 apu_hours, vendor, location, description, cost, invoice_number,
+                 receipt_ref, notes`,
       [
         user_id,
         data.unit,
         data.service_date,
-        truckOdo,
-        trailerHub,
+        readings.odometer,
+        readings.trailer_hub,
+        readings.apu_hours,
         data.vendor ?? null,
         data.location ?? null,
         data.description,
@@ -230,11 +250,25 @@ export async function createMaintenanceService(user_id, data) {
         [service_id, item_id],
       );
 
-      const reading = owned.rows[0].unit === "trailer" ? trailerHub : truckOdo;
-      // Don't let a back-dated entry clobber a newer completion.
+      // The item's own meter: hours for an APU item, the hub for a trailer
+      // item, the odometer for everything else. An APU item's baseline lives
+      // in `last_done_hours`, so it resets a different column.
+      const unit = owned.rows[0].unit;
+      const reading = readings[READING_FIELD[unit] ?? "odometer"] ?? null;
+      const column = unit === "apu" ? "last_done_hours" : "last_done_miles";
+      // THE COMPLETION RULE — blank reading → NULL baseline, deliberately.
+      // The item's baseline must describe THIS completion, so a service logged
+      // without a meter stamps the date and clears the reading: the clock now
+      // says "needs a meter before it can count" instead of measuring the new
+      // interval from a meter that was read at the PREVIOUS service. A truck PM
+      // logged without an odometer behaves exactly as it did before the APU
+      // work. (Keeping the old number with a COALESCE would be worse than a
+      // blank: it reads as a real baseline and silently runs the interval long.)
+      // The date guard is separate — it stops a back-dated entry from
+      // clobbering a newer completion.
       await client.query(
         `UPDATE maintenance_items
-           SET last_done_miles = $1, last_done_date = $2, updated_at = NOW()
+           SET ${column} = $1, last_done_date = $2, updated_at = NOW()
          WHERE item_id = $3 AND user_id = $4
            AND (last_done_date IS NULL OR last_done_date <= $2)`,
         [reading, data.service_date, item_id, user_id],
@@ -256,6 +290,7 @@ const SERVICE_FIELDS = [
   "service_date",
   "odometer",
   "trailer_hub",
+  "apu_hours",
   "vendor",
   "location",
   "description",
@@ -265,13 +300,21 @@ const SERVICE_FIELDS = [
   "notes",
 ];
 
-// Edits scalar fields only. Re-linking items / re-resetting is not handled here
-// (delete + re-add if the item links change).
+// Which fields on a patch carry a METER — derived from READING_FIELD so the
+// two can never drift apart. Any of them arriving means the visit's readings
+// changed, so the clocks this visit reset have to be re-stamped.
+const READING_FIELDS = Object.values(READING_FIELD);
+
+// Edits scalar fields only. Re-linking items is not handled here (delete +
+// re-add if the item links change) — but a reading typed in AFTER the fact IS,
+// see below.
 export async function patchMaintenanceService(user_id, service_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!service_id) throw new ValidationError("Missing service_id");
   if (data.unit !== undefined && !isServiceUnit(data.unit))
-    throw new ValidationError("unit must be tractor, trailer, or both");
+    throw new ValidationError(SERVICE_UNIT_ERROR);
+  const hoursErrors = apuHoursErrors(data.apu_hours);
+  if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
 
   const updates = [];
   const values = [];
@@ -288,15 +331,68 @@ export async function patchMaintenanceService(user_id, service_id, data) {
   updates.push(`updated_at = NOW()`);
   values.push(service_id, user_id);
 
-  const result = await db.query(
-    `UPDATE maintenance_services SET ${updates.join(", ")}
-     WHERE service_id = $${i} AND user_id = $${i + 1}
-     RETURNING service_id, unit, service_date, odometer, trailer_hub, vendor,
-               location, description, cost, invoice_number, receipt_ref, notes`,
-    values,
-  );
-  if (result.rowCount === 0) throw new NotFoundError("Service not found");
-  return result.rows[0];
+  const carriesReading = READING_FIELDS.some((f) => data[f] !== undefined);
+
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const result = await client.query(
+      `UPDATE maintenance_services SET ${updates.join(", ")}
+       WHERE service_id = $${i} AND user_id = $${i + 1}
+       RETURNING service_id, unit, service_date, odometer, trailer_hub, apu_hours,
+                 vendor, location, description, cost, invoice_number, receipt_ref,
+                 notes`,
+      values,
+    );
+    if (result.rowCount === 0) throw new NotFoundError("Service not found");
+
+    // The meter usually shows up late: the Thermo King invoice surfaces a week
+    // after the visit, or he finally reads the hour meter and edits the row.
+    // That number has to reach the clocks this visit reset, or the schedule
+    // keeps saying "needs a reading" for a number it is already holding.
+    //
+    // Same rule as create, field for field: each linked item is stamped with
+    // the reading for its OWN unit (apu → apu_hours, trailer → trailer_hub,
+    // everything else → odometer), a BLANK reading writes NULL rather than
+    // leaving a baseline from some earlier visit standing, and the date guard
+    // still stops a back-dated row from clobbering a newer completion.
+    // Done in SQL off the service row itself so the DATE never round-trips
+    // through JavaScript, and inside the transaction so the patch and the
+    // stamps land together.
+    if (carriesReading) {
+      const stamp = (column, expr, unitTest) =>
+        client.query(
+          `UPDATE maintenance_items mi
+              SET ${column} = ${expr},
+                  last_done_date = s.service_date,
+                  updated_at = NOW()
+             FROM maintenance_services s
+             JOIN maintenance_service_items si ON si.service_id = s.service_id
+            WHERE s.service_id = $1
+              AND s.user_id = $2
+              AND mi.item_id = si.item_id
+              AND mi.user_id = $2
+              AND mi.unit ${unitTest}
+              AND (mi.last_done_date IS NULL OR mi.last_done_date <= s.service_date)`,
+          [service_id, user_id],
+        );
+      await stamp("last_done_hours", "s.apu_hours", "= 'apu'");
+      await stamp(
+        "last_done_miles",
+        "CASE WHEN mi.unit = 'trailer' THEN s.trailer_hub ELSE s.odometer END",
+        "<> 'apu'",
+      );
+    }
+
+    await client.query("COMMIT");
+    return result.rows[0];
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function deleteMaintenanceService(user_id, service_id) {
@@ -314,7 +410,8 @@ export async function deleteMaintenanceService(user_id, service_id) {
 // ---- STARTER SCHEDULE ---- (severe-duty LT625 + X15 + Eaton Fuller; user edits)
 // Inserted only when the user has no items yet. Compliance/DOT lives on its own
 // page, so it's intentionally NOT seeded here. Sections come from category:
-// transmission → Transmission, trailer unit → Trailer, else → Truck.
+// transmission → Transmission, trailer unit → Trailer, apu unit → APU,
+// else → Truck.
 // [unit, name, category, interval_miles, interval_months, interval_hours, warn_lead_days]
 const STARTER_ITEMS = [
   // Engine — Cummins X15
@@ -339,6 +436,12 @@ const STARTER_ITEMS = [
   // Trailer
   ["trailer", "Trailer lube / grease", "trailer", 25000, null, null, 14],
   ["trailer", "Trailer brakes / ABS / lights / tape", "trailer", 25000, null, null, 14],
+  // APU — Thermo King TriPac Evolution. Hours, not miles: the APU runs while
+  // the truck sits, so its odometer says nothing about its wear.
+  ["apu", "APU oil & filter", "apu", null, 12, 1000, 30],
+  ["apu", "APU belt & alternator", "apu", null, null, 500, 14],
+  ["apu", "APU air filter", "apu", null, null, 1000, 14],
+  ["apu", "APU coolant", "apu", null, 24, null, 14],
 ];
 
 export async function seedMaintenanceItems(user_id) {

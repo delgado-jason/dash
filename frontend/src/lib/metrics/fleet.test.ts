@@ -16,6 +16,7 @@ const svc = (over: Partial<MaintenanceService>): MaintenanceService => ({
   service_date: "2026-08-01",
   odometer: null,
   trailer_hub: null,
+  apu_hours: null,
   vendor: null,
   location: null,
   description: "PM",

@@ -16,6 +16,7 @@ const coerceItem = (i: any): MaintenanceItem => ({
   interval_months: numOrNull(i.interval_months),
   interval_hours: numOrNull(i.interval_hours),
   last_done_miles: numOrNull(i.last_done_miles),
+  last_done_hours: numOrNull(i.last_done_hours),
   last_done_date: dateOrNull(i.last_done_date),
   warn_lead_days: numOrNull(i.warn_lead_days) ?? 14,
   truck_id: i.truck_id ?? null,
@@ -30,6 +31,7 @@ const coerceService = (s: any): MaintenanceService => ({
   service_date: dateOrNull(s.service_date) as string,
   odometer: numOrNull(s.odometer),
   trailer_hub: numOrNull(s.trailer_hub),
+  apu_hours: numOrNull(s.apu_hours),
   vendor: s.vendor ?? null,
   location: s.location ?? null,
   description: s.description,
@@ -83,6 +85,7 @@ export interface ServiceInput {
   service_date: string;
   odometer?: number | null; // truck reading (tractor / both)
   trailer_hub?: number | null; // trailer reading (trailer / both)
+  apu_hours?: number | null; // APU hour meter (apu)
   vendor?: string | null;
   location?: string | null;
   description: string;

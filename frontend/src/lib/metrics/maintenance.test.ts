@@ -21,6 +21,7 @@ const item = (over: Partial<MaintenanceItem>): MaintenanceItem => ({
   interval_months: null,
   interval_hours: null,
   last_done_miles: null,
+  last_done_hours: null,
   last_done_date: null,
   warn_lead_days: 30,
   truck_id: null,
@@ -168,6 +169,223 @@ describe("computeDue — 'soon' is lead-time based, not percentage", () => {
   });
 });
 
+describe("computeDue — hours (the APU lens)", () => {
+  const apu = (over: Partial<MaintenanceItem> = {}) =>
+    item({ unit: "apu", interval_hours: 1000, last_done_hours: 1000, ...over });
+
+  it("no reading → no baseline, and never a fake 0 hrs", () => {
+    const d = computeDue(apu(), null, now, null, { currentHours: null });
+    expect(d.level).toBe("unknown");
+    expect(d.progress).toBeNull();
+    expect(d.hoursRemaining).toBeNull();
+    expect(d.dueHours).toBeNull();
+  });
+
+  it("no baseline hours → unknown even with a live reading", () => {
+    // The Sep 3 belt job is dated but its hours were never written down.
+    const d = computeDue(
+      apu({ last_done_hours: null, last_done_date: "2026-09-03" }),
+      null,
+      now,
+      null,
+      { currentHours: 1240 },
+    );
+    expect(d.level).toBe("unknown");
+    expect(d.hoursRemaining).toBeNull();
+  });
+
+  // THE SEEDED SHAPE — "APU oil & filter" straight out of migration 078:
+  // 1,000 hours or 12 months, done Apr 23, hours never written down. The months
+  // lens can answer and it must NOT: an hours clock with no reading is
+  // unanswered, not fine, and not overdue either.
+  it("the seeded oil-and-filter shape is unknown — the months lens does not answer for it", () => {
+    const seeded = apu({
+      interval_hours: 1000,
+      interval_months: 12,
+      last_done_date: "2026-04-23",
+      last_done_hours: null,
+    });
+    const d = computeDue(seeded, null, now, null, {
+      currentHours: 1240,
+      hoursPerRoadDay: 8,
+      roadDayShare: 0.7,
+    });
+    expect(d.level).toBe("unknown");
+    expect(d.decidedBy).toBeNull(); // nothing decided it → the row reads "—"
+    expect(d.progress).toBeNull();
+    expect(d.hoursRemaining).toBeNull();
+  });
+
+  it("the same item with a reading lets the hours lens count", () => {
+    const d = computeDue(
+      apu({
+        interval_hours: 1000,
+        interval_months: 12,
+        last_done_date: "2026-04-23",
+        last_done_hours: 1000,
+      }),
+      null,
+      now,
+      null,
+      { currentHours: 1240, hoursPerRoadDay: 8, roadDayShare: 0.7 },
+    );
+    expect(d.hoursRemaining).toBe(760);
+    expect(d.decidedBy).toBe("hours");
+    expect(d.level).toBe("ok");
+  });
+
+  it("hours + months both present: the most-elapsed lens decides", () => {
+    // 24% of the hours run, but 26 of 12 months gone — the calendar wins.
+    const d = computeDue(
+      apu({
+        interval_hours: 1000,
+        interval_months: 12,
+        last_done_date: "2025-05-01",
+        last_done_hours: 1000,
+      }),
+      null,
+      now,
+      null,
+      { currentHours: 1240, hoursPerRoadDay: 8, roadDayShare: 0.7 },
+    );
+    expect(d.decidedBy).toBe("months");
+    expect(d.level).toBe("overdue");
+  });
+
+  it("no rate given: the default carries it, the ETA lands, and it says so", () => {
+    const d = computeDue(apu({ last_done_hours: 1000 }), null, now, null, {
+      currentHours: 1920, // 80 hrs left
+      // no hoursPerRoadDay, no roadDayShare — both fall back
+    });
+    expect(d.hoursRemaining).toBe(80);
+    expect(d.etaDate).not.toBeNull(); // 80 ÷ 8 = 10 road days out
+    expect(d.etaEstimated).toBe(true);
+  });
+
+  it("counts hours off the projection: due at 2,000, 760 left", () => {
+    const d = computeDue(apu(), null, now, null, {
+      currentHours: 1240,
+      hoursPerRoadDay: 8,
+      roadDayShare: 0.7,
+    });
+    expect(d.dueHours).toBe(2000);
+    expect(d.hoursRemaining).toBe(760);
+    expect(d.progress).toBeCloseTo(0.24, 5);
+    expect(d.level).toBe("ok");
+  });
+
+  it("overdue once the meter runs past the interval", () => {
+    const d = computeDue(apu(), null, now, null, { currentHours: 2100, hoursPerRoadDay: 8 });
+    expect(d.hoursRemaining).toBe(-100);
+    expect(d.level).toBe("overdue");
+  });
+
+  it("the ETA converts road days back to calendar days at the road-day share", () => {
+    // 80 hrs left at 8/road-day = 10 road days. At 100% road that is 10 days
+    // out; at 50% it is 20 — so a 14-day lead flags only the first.
+    const tight = apu({ interval_hours: 1000, last_done_hours: 1000, warn_lead_days: 14 });
+    const busy = computeDue(tight, null, now, null, {
+      currentHours: 1920,
+      hoursPerRoadDay: 8,
+      roadDayShare: 1,
+    });
+    expect(busy.level).toBe("soon");
+    const homebody = computeDue(tight, null, now, null, {
+      currentHours: 1920,
+      hoursPerRoadDay: 8,
+      roadDayShare: 0.5,
+    });
+    expect(homebody.level).toBe("ok");
+  });
+
+  it("hours + months: the more-elapsed lens wins", () => {
+    // Barely any hours run, but the annual clock is 14 months past.
+    const d = computeDue(
+      apu({ interval_months: 12, last_done_date: "2025-05-01" }),
+      null,
+      now,
+      null,
+      { currentHours: 1100, hoursPerRoadDay: 8 },
+    );
+    expect(d.hoursRemaining).toBe(900); // hours lens says plenty of room
+    expect(d.level).toBe("overdue"); // the calendar does not
+  });
+});
+
+describe("computeDue — a reading below the baseline is bad data", () => {
+  it("hours below the last service → unknown, not a healthy negative fraction", () => {
+    // Meter replaced, or a digit dropped: 1,000 at the service, 400 today.
+    const d = computeDue(
+      item({ unit: "apu", interval_hours: 1000, last_done_hours: 1000 }),
+      null,
+      now,
+      null,
+      { currentHours: 400, hoursPerRoadDay: 8 },
+    );
+    expect(d.level).toBe("unknown");
+    expect(d.progress).toBeNull();
+    expect(d.decidedBy).toBeNull();
+    expect(d.hoursRemaining).toBeNull(); // never 1,600 "left"
+  });
+
+  it("miles below the last service → unknown, and the calendar cannot cover for it", () => {
+    const d = computeDue(
+      item({
+        interval_miles: 25000,
+        last_done_miles: 560000,
+        interval_months: 6,
+        last_done_date: "2026-06-01",
+      }),
+      540000, // 20k BELOW the baseline
+      now,
+      8000,
+    );
+    expect(d.level).toBe("unknown");
+    expect(d.progress).toBeNull();
+    expect(d.milesRemaining).toBeNull();
+  });
+
+  it("a reading exactly AT the baseline still counts — a fresh service is 0% elapsed", () => {
+    const d = computeDue(
+      item({ interval_miles: 25000, last_done_miles: 560000 }),
+      560000,
+      now,
+      8000,
+    );
+    expect(d.progress).toBe(0);
+    expect(d.decidedBy).toBe("miles");
+    expect(d.level).toBe("ok");
+  });
+});
+
+describe("computeDue — decidedBy is the lens the row prints", () => {
+  it("miles-only item is decided by miles", () => {
+    const d = computeDue(
+      item({ interval_miles: 25000, last_done_miles: 560000 }),
+      565000,
+      now,
+      8000,
+    );
+    expect(d.decidedBy).toBe("miles");
+  });
+
+  it("months-only item is decided by months", () => {
+    const d = computeDue(
+      item({ interval_months: 12, last_done_date: "2026-01-01" }),
+      null,
+      now,
+      null,
+    );
+    expect(d.decidedBy).toBe("months");
+  });
+
+  it("an item nothing can count has no deciding lens", () => {
+    const d = computeDue(item({ interval_miles: 25000 }), 565000, now, 8000);
+    expect(d.decidedBy).toBeNull();
+    expect(d.level).toBe("unknown");
+  });
+});
+
 describe("maintenanceAlerts", () => {
   it("emits overdue (critical) first, then soon (warning); skips ok/inactive", () => {
     const items = [
@@ -192,6 +410,69 @@ describe("maintenanceAlerts", () => {
     expect(alerts[0].message).toContain("Oil");
     expect(alerts[1].severity).toBe("warning");
     expect(alerts[1].actionHref).toBe("/maintenance");
+  });
+
+  it("an APU item alerts off the projection, in hours", () => {
+    const items = [
+      item({
+        item_id: "apu",
+        unit: "apu",
+        name: "APU oil & filter",
+        interval_hours: 1000,
+        last_done_hours: 1000,
+      }),
+    ];
+    const alerts = maintenanceAlerts(
+      items,
+      { tractor: 567000, apu: 2100 },
+      now,
+      8000,
+      { hoursPerRoadDay: 8, roadDayShare: 0.7 },
+    );
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].severity).toBe("critical");
+    expect(alerts[0].message).toBe("APU oil & filter overdue · 100 hrs over");
+  });
+
+  it("hours off a PROJECTION wear a ~; an exact meter reading does not", () => {
+    const items = [
+      item({
+        item_id: "apu",
+        unit: "apu",
+        name: "APU oil & filter",
+        interval_hours: 1000,
+        last_done_hours: 1000,
+      }),
+    ];
+    const projected = maintenanceAlerts(
+      items,
+      { tractor: 567000, apu: 2100, apuEstimated: true },
+      now,
+      8000,
+      { hoursPerRoadDay: 8, roadDayShare: 0.7 },
+    );
+    expect(projected[0].message).toBe("APU oil & filter overdue · ~100 hrs over");
+    const read = maintenanceAlerts(
+      items,
+      { tractor: 567000, apu: 2100, apuEstimated: false },
+      now,
+      8000,
+      { hoursPerRoadDay: 8, roadDayShare: 0.7 },
+    );
+    expect(read[0].message).toBe("APU oil & filter overdue · 100 hrs over");
+  });
+
+  it("an APU item with no reading raises nothing — silence beats a guess", () => {
+    const items = [
+      item({
+        item_id: "apu",
+        unit: "apu",
+        name: "APU air filter",
+        interval_hours: 1000,
+        last_done_hours: null,
+      }),
+    ];
+    expect(maintenanceAlerts(items, { apu: null }, now, 8000)).toEqual([]);
   });
 });
 

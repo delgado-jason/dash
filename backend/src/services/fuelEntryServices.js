@@ -18,6 +18,7 @@ export async function getFuelEntries(user_id, truck_id) {
       gallons,
       price_per_gallon,
       odometer_reading,
+      apu_hours,
       company_name,
       fuel_city,
       fuel_state,
@@ -61,6 +62,7 @@ export async function getFuelEntry(user_id, fuel_entry_id) {
       gallons,
       price_per_gallon,
       odometer_reading,
+      apu_hours,
       company_name,
       fuel_city,
       fuel_state,
@@ -90,6 +92,9 @@ export async function createFuelEntry(user_id, truck_id, trip_id, data) {
     "gallons",
     "price_per_gallon",
     "odometer_reading",
+    // The APU's hour meter, read while he's standing at the truck. Optional —
+    // most fill-ups won't carry one, and a null says "not read", not "zero".
+    "apu_hours",
     "company_name",
     "fuel_city",
     "fuel_state",
@@ -181,6 +186,7 @@ export async function patchFuelEntry(user_id, fuel_entry_id, data) {
     "gallons",
     "price_per_gallon",
     "odometer_reading",
+    "apu_hours",
     "company_name",
     "fuel_city",
     "fuel_state",

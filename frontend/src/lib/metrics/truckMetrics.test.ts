@@ -167,6 +167,17 @@ describe("computeTruckMetrics — fuel $/mi rides the 90-day tank windows", () =
     expect(m.costToRunPerMile).toBeCloseTo(0.6 + 1.0 + m.notePerMile!, 6);
   });
 
+  it("counts the APU's invoices — the TriPac hangs on this truck", () => {
+    const services = [
+      { unit: "tractor", cost: 400 },
+      { unit: "apu", cost: 100 }, // Thermo King — the truck's shop money
+      { unit: "trailer", cost: 999 }, // still the trailer's, still excluded
+    ] as unknown as MaintenanceService[];
+    const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000, fuel, services);
+    expect(m.maintSpend).toBeCloseTo(500, 6);
+    expect(m.maintPerMile).toBeCloseTo(1.0, 6); // $500 over 500 paid miles
+  });
+
   it("fuel known but ZERO paid-load miles → maint basis is unknown → cost-to-run null", () => {
     // Fresh install: fuel logged first, delivered loads still unpaid. There are
     // no miles to spread maintenance over, so the total waits — it must not

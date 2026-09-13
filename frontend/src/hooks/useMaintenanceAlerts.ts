@@ -1,11 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import type { Load } from "@/types/load";
 import type { Alert } from "@/types/alert";
-import type {
-  MaintenanceItem,
-  MaintenanceService,
-  MaintenanceUnit,
-} from "@/types/maintenance";
+import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { Trip } from "@/types/trip";
 import {
@@ -20,7 +16,9 @@ import {
   recentMilesPerMonth,
   maxOdometer,
   maxTripOdometer,
+  type CurrentReading,
 } from "@/lib/metrics/maintenance";
+import { apuDueOptions } from "@/lib/metrics/apuHours";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 
 // Overdue / due-soon maintenance items as dashboard alerts. Empty (renders no
@@ -55,8 +53,8 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
   return useMemo(() => {
     const now = new Date();
     // A "both" service covers this unit too; the trailer reads its hub, the
-    // truck its odometer.
-    const svcOdo = (unit: MaintenanceUnit): number | null => {
+    // truck its odometer. An APU service reads neither — it reads hours.
+    const svcOdo = (unit: "tractor" | "trailer"): number | null => {
       const read = (s: (typeof services)[number]) =>
         unit === "trailer" ? s.trailer_hub : s.odometer;
       return services
@@ -66,7 +64,15 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
           return m == null || v > m ? v : m;
         }, null);
     };
-    const currentMiles: Record<MaintenanceUnit, number | null> = {
+    // The APU alerts off the same projection the Maintenance page draws — the
+    // reading is softer than an odometer, the clock is not.
+    const { apu, hoursPerRoadDay, roadDayShare } = apuDueOptions(
+      services,
+      fuelEntries,
+      loads,
+      now,
+    );
+    const currentReading: CurrentReading = {
       tractor: maxOdometer(
         currentTractorMiles(loads),
         svcOdo("tractor"),
@@ -74,7 +80,15 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
         maxTripOdometer(trips),
       ),
       trailer: maxOdometer(svcOdo("trailer")),
+      apu: apu.hours,
+      apuEstimated: apu.estimated,
     };
-    return maintenanceAlerts(items, currentMiles, now, recentMilesPerMonth(loads, now));
+    return maintenanceAlerts(
+      items,
+      currentReading,
+      now,
+      recentMilesPerMonth(loads, now),
+      { hoursPerRoadDay, roadDayShare },
+    );
   }, [items, services, fuelEntries, trips, loads]);
 };

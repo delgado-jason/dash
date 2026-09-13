@@ -1,9 +1,10 @@
 import { isValidType, isDateValid } from "../helper.js";
+import { apuHoursErrors } from "./maintenanceValidation.js";
 
 /**
  * Fields to validate:
  * fuel_date, gallons, price_per_gallon,
- * odometer_reading, company_name,
+ * odometer_reading, apu_hours, company_name,
  * fuel_city, fuel_state
  */
 
@@ -69,6 +70,13 @@ const rules = {
     if (value > 5000000) {
       errors.push("odometer_reading cannot be greater than 5 million");
     }
+  },
+  // The APU's hour meter, optionally read at the pump — the cheap capture that
+  // re-anchors the APU schedule. null/absent means "not read", never zero.
+  apu_hours: (value, errors) => {
+    if (value === undefined || value === null) return;
+
+    for (const e of apuHoursErrors(value)) errors.push(e);
   },
   company_name: (value, errors) => {
     if (value === undefined) return;
