@@ -15,6 +15,7 @@
 import type { Load } from "@/types/load";
 import { loadGross } from "@/lib/metrics/rateTargets";
 import { keyOf, localDayKey } from "./dayKeys";
+import { footprintPoint } from "@/lib/loads/customerEnd";
 import type { FootprintCoverageLike, FootprintLoadLike } from "./capacityList";
 
 export interface FiveContactLike {
@@ -166,15 +167,16 @@ export interface HygieneItem<A> {
 }
 
 // Active agents (the caller passes the active book) missing a phone, a
-// preferred channel, or any footprint at all — a delivered-load origin or a
-// stated market.
+// preferred channel, or any footprint at all — a delivered load's footprint
+// point (decision 5A: the origin, or the destination when the agent's
+// customer took delivery; a 'neither' load proves no market) or a stated one.
 export const hygiene = <A extends HygieneAgentLike>(
   activeAgents: A[],
   loads: FootprintLoadLike[],
   coverage: FootprintCoverageLike[],
 ): HygieneItem<A>[] => {
   const withOrigin = new Set<string>();
-  for (const l of loads) if (l.agent_id && l.load_status === "delivered" && (l.origin_city ?? "").trim()) withOrigin.add(l.agent_id);
+  for (const l of loads) if (l.agent_id && l.load_status === "delivered" && footprintPoint(l)) withOrigin.add(l.agent_id);
   const withStated = new Set(coverage.map((c) => c.agent_id));
   const items: HygieneItem<A>[] = [
     { key: "phone", label: "missing a phone", agents: activeAgents.filter((a) => !(a.phone ?? "").trim()) },

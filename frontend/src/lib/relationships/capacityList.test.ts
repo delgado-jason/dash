@@ -221,3 +221,68 @@ describe("emptyNextWhen / emptyWhenLabel — the day and time the truck goes emp
     expect(roundMiles(3)).toBe(10);
   });
 });
+
+// Decision 5A: a load contributes its FOOTPRINT point, not blindly its origin.
+describe("footprintPoints — the customer-end mark decides the point", () => {
+  it("a receiver-end load places the agent at the DESTINATION", () => {
+    const loads = [
+      load({
+        agent_id: "a",
+        customer_end: "receiver",
+        origin_city: "Columbus", // the tradeshow marshalling yard
+        origin_state: "OH",
+        destination_city: "Archbold", // the agent's own customer
+        destination_state: "OH",
+      }),
+    ];
+    expect(footprintPoints("a", loads, [])).toEqual([
+      { city: "Archbold", state: "OH", source: "load" },
+    ]);
+  });
+
+  it("a 'neither' load contributes nothing at all", () => {
+    const loads = [
+      load({ agent_id: "a", customer_end: "neither", origin_city: "Columbus", origin_state: "OH" }),
+    ];
+    expect(footprintPoints("a", loads, [])).toEqual([]);
+    // the market they NAMED still counts — a claim is not a load
+    expect(footprintPoints("a", loads, [{ agent_id: "a", city: "Archbold", state: "OH" }])).toEqual([
+      { city: "Archbold", state: "OH", source: "coverage" },
+    ]);
+  });
+
+  it("an un-marked load reads as shipper — the origin, exactly as before 074", () => {
+    const loads = [load({ agent_id: "a", origin_city: "Archbold", origin_state: "OH" })];
+    expect(footprintPoints("a", loads, [])).toEqual([
+      { city: "Archbold", state: "OH", source: "load" },
+    ]);
+  });
+
+  it("the capacity list measures from the marked end — a receiver-end load brings the agent into the 150", () => {
+    const agents = [agent("mike")];
+    const loads = [
+      load({
+        agent_id: "mike",
+        customer_end: "receiver",
+        origin_city: "Columbus", // ~250 mi — outside the radius
+        origin_state: "OH",
+        destination_city: "Archbold", // ~126 mi — inside it
+        destination_state: "OH",
+      }),
+    ];
+    const out = capacityList(agents, loads, [], COORDS, WALKER, { contacts: [], now: NOW });
+    expect(out.rows.map((r) => r.agent.agent_id)).toEqual(["mike"]);
+    expect(out.rows[0].nearestPlace).toEqual({ city: "Archbold", state: "OH" });
+    expect(Math.round(out.rows[0].miles)).toBeGreaterThan(100);
+    expect(Math.round(out.rows[0].miles)).toBeLessThan(150);
+  });
+
+  it("a book of nothing but 'neither' loads yields an empty list, not a guess", () => {
+    const agents = [agent("mike")];
+    const loads = [
+      load({ agent_id: "mike", customer_end: "neither", origin_city: "Archbold", origin_state: "OH" }),
+    ];
+    const out = capacityList(agents, loads, [], COORDS, WALKER, { contacts: [], now: NOW });
+    expect(out).toEqual({ anchorResolved: true, rows: [], touched: [], parkedNearby: 0 });
+  });
+});

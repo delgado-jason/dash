@@ -1,5 +1,8 @@
 import { isValidType, isDateValid, isValidUUID } from "../helper.js";
 
+// Decision 5A (074): whose customer a load is. Mirrors the column's CHECK.
+export const CUSTOMER_ENDS = ["shipper", "receiver", "neither"];
+
 const rules = {
   load_number: (value, errors) => {
     if (!isValidType("string", value)) {
@@ -306,6 +309,15 @@ const rules = {
     if (value === undefined) return;
     if (typeof value !== "boolean")
       errors.push("claim_filed must be true or false");
+  },
+  // Decision 5A (074): which end of the load the agent's customer sits on.
+  // Optional on create and on patch — the column is NOT NULL DEFAULT
+  // 'shipper', so null is refused along with every other non-member. The
+  // three strings are the same set the CHECK constraint enforces.
+  customer_end: (value, errors) => {
+    if (value === undefined) return;
+    if (!CUSTOMER_ENDS.includes(value))
+      errors.push("customer_end must be one of: shipper, receiver, neither");
   },
   odometer_start: (value, errors) => {
     if (!value) return;

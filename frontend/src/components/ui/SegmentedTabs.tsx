@@ -17,6 +17,9 @@ interface SegmentedTabsProps<T extends string | number> {
   size?: "sm" | "md";
   className?: string;
   ariaLabel?: string;
+  // A control whose choice is being SAVED: dimmed, inert, and announced as
+  // disabled, so a second tap can't race the first write's refetch.
+  disabled?: boolean;
 }
 
 export function SegmentedTabs<T extends string | number>({
@@ -26,13 +29,17 @@ export function SegmentedTabs<T extends string | number>({
   size = "md",
   className,
   ariaLabel,
+  disabled = false,
 }: SegmentedTabsProps<T>) {
   const pad = size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm";
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`inline-flex gap-1 bg-steel rounded-lg p-1 max-w-full overflow-x-auto ${className ?? ""}`}
+      aria-disabled={disabled || undefined}
+      className={`inline-flex gap-1 bg-steel rounded-lg p-1 max-w-full overflow-x-auto ${
+        disabled ? "opacity-50 pointer-events-none" : ""
+      } ${className ?? ""}`}
     >
       {tabs.map((t) => {
         const active = t.value === value;

@@ -634,7 +634,7 @@ const GuidePage = () => {
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
-              Direct or Spot — the score picks the Top Call
+              One list — Direct or Spot is a chip, not a rank
             </p>
             <p className="text-sm text-muted-text mb-3">
               Agents split into two buckets:{" "}
@@ -642,18 +642,36 @@ const GuidePage = () => {
               hit the same shipper or receiver 2+ times through (their own account,
               worth a relationship) — and <span className="text-light">Spot</span>{" "}
               market agents (load-board one-offs). The bucket does{" "}
-              <span className="text-light">not</span> pick the Top Call: that plate
-              goes to the highest measured score, direct or spot, and direct-over-spot
-              only breaks a tie — so a six-load spot agent loading out of the town
-              you'll be empty in can take it over a one-trip direct customer three
-              states away. Evidence beats the label. Below the Top Call the remaining
-              agents are listed in two groups —{" "}
-              <span className="text-light">Direct customers</span> first, then{" "}
-              <span className="text-light">Spot market</span> — each group in score
-              order. The Top Call carries a DIRECT or SPOT badge and every row below
-              sits under its group's header, so you know which kind of call you're
-              making. The bucket auto-updates as loads come in; you can pin an agent
-              either way on the Agents page.
+              <span className="text-light">not</span> order the board. The Top Call
+              plate goes to the highest measured score, direct or spot, and every
+              agent below it sits in{" "}
+              <span className="text-light">one list, in score order</span>, wearing a
+              DIRECT or SPOT chip. Direct-over-spot only breaks a tie between two
+              equal scores — so a six-load spot agent loading out of the town you'll
+              be empty in outranks a one-trip direct customer three states away, and
+              the screen says so. (It didn't always: the rows used to be split into a
+              Direct group above a Spot group, which put a 0.54 direct customer over a
+              0.81 spot agent — the label overruling the evidence.) The bucket
+              auto-updates as loads come in; you can pin an agent either way on the
+              Agents page.
+            </p>
+
+            <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
+              Proved or claimed — where an agent's freight sits
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              An agent's footprint is made of two kinds of point, and the proximity
+              cell captions which one it measured.{" "}
+              <span className="text-light">Proved</span> is a market one of their
+              loads put on the map. <span className="text-light">Claimed</span> —
+              drawn with a dashed underline — is a market they{" "}
+              <span className="text-light">named on a call</span>, captured on the
+              footprint six on the call screen. A claim counts as a real point with
+              the same distance math: a market Brandie wrote down is either a market
+              or it isn't, and discounting it would be a knob nobody asked for. So an
+              agent who has hauled you one load out of nowhere useful can still be 95
+              miles away because they told you where their freight is. The caption
+              flips to proved on its own the first time a load lands from that city.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
@@ -672,9 +690,12 @@ const GuidePage = () => {
               <li>
                 <span className="text-light">Proximity</span> — straight-line miles
                 from your empty-next point to the{" "}
-                <span className="text-light">nearest</span> origin that agent has
-                loaded you from (their closest origin, not their average — the
-                question is "can they load me near here").
+                <span className="text-light">nearest</span> point on that agent's
+                footprint, proved or claimed (their closest one, not their average —
+                the question is "can they load me near here"). Which end of a load
+                lands on the footprint follows{" "}
+                <span className="text-light">the customer mark</span> on that load,
+                below.
               </li>
               <li>
                 <span className="text-light">Rate</span> — the agent's gross dollars
@@ -1534,6 +1555,49 @@ const GuidePage = () => {
               checkbox beside the load’s status marks an OS&amp;D or damage
               claim — owner or dispatcher — and breaks the agent’s on-time,
               claim-free streak in Relationships.
+              <br />
+              <br />
+              <span className="text-light">
+                Whose customer is this load?
+              </span>{" "}
+              Under the stamps sits{" "}
+              <span className="text-light">the agent’s customer on this load</span>
+              — three options, one lit. It exists because dash used to read a
+              load’s <span className="text-light">origin</span> as the agent’s
+              market on every load, and that is wrong the moment their customer
+              is the one receiving: a machine picked up at a tradeshow
+              marshalling yard in Atlanta and delivered to the agent’s own
+              shipper in Troutman, NC put Atlanta in his footprint and left
+              Troutman out, so the Foreman measured from a parking lot he will
+              never load out of again.{" "}
+              <span className="text-light">Shipper</span> is the default and
+              right for almost every load — the origin is the market, nothing
+              changes. <span className="text-light">Receiver</span> makes the{" "}
+              <span className="text-light">destination</span> the footprint
+              point and treats the shipper as a one-time place.{" "}
+              <span className="text-light">Neither</span> is a load that says
+              nothing about where their freight lives — a spot load through a
+              stranger — and puts no point on the map at all. Owner or
+              dispatcher sets it, and it can be changed any time.
+              <br />
+              <br />
+              <span className="text-light">dash suggests; it never decides.</span>{" "}
+              When this load’s receiver keeps turning up on the agent’s other
+              loads and its shipper doesn’t, a line appears under the control —
+              “C R Onsrud is the shipper on 5 other loads with Mike — this one
+              is theirs coming home” — with a{" "}
+              <span className="text-light">Mark Receiver</span> button. Nothing
+              is written until you tap it. If both parties recur, or neither
+              does, dash says nothing rather than guess, and a load you have
+              already marked is never nagged. Reading the mark: the Foreman’s
+              proximity, the 150-mile capacity list, the parked 75-mile harvest
+              group, the call screen’s “hauled from”, the footprint count on
+              the Friday five, and the step that promotes a market an agent{" "}
+              <span className="text-light">claimed</span> to one a load{" "}
+              <span className="text-light">proved</span> (a load marked Neither
+              promotes nothing). Lanes, the markets pages and the load’s own
+              origin and destination are untouched — those are about where the
+              truck went, not whose freight it was.
             </Why>
           </Metric>
 
@@ -2610,7 +2674,11 @@ const GuidePage = () => {
               the answer captured inline — which shippers out of which cities
               (pick the city from the dropdown so the Foreman gets a real
               coordinate; a market they named is a dashed chip, one a load
-              proved is solid); what moves most (the four freight chips,
+              proved is solid, and the{" "}
+              <span className="text-light">hauled from</span> line beside them
+              follows each load’s customer mark — the origin normally, the
+              destination when their own customer took delivery, and nothing at
+              all from a load marked Neither); what moves most (the four freight chips,
               prefilled and clearable); their typical lane, anything regular,
               and what’s moving now — three one-liners that fold into the note
               as [lane] · [regular] · [season] so the next call can read them

@@ -3,6 +3,7 @@ import {
   validateLoadCreate,
   validateLoadPatch,
 } from "../utils/validation/loadValidation.js";
+import { footprintPointOf } from "../utils/footprintPoint.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
 
 // ---- GET LOADS SERVICE ----
@@ -45,6 +46,7 @@ export async function getLoads(user_id) {
             detention_billable,
             tonu_paid,
             claim_filed,
+            customer_end,
             deadhead_miles,
             loaded_miles,
             linehaul,
@@ -160,6 +162,7 @@ export async function getLoad(user_id, load_id) {
             detention_billable,
             tonu_paid,
             claim_filed,
+            customer_end,
             deadhead_miles,
             loaded_miles,
             linehaul,
@@ -252,6 +255,71 @@ export async function getLoad(user_id, load_id) {
   return result.rows[0];
 }
 
+// Keep an agent's coverage rows honest about THIS load, in both directions.
+//
+// A real load out of a market an agent merely CLAIMED flips that coverage from
+// stated to confirmed — the promise the Guide has made since 068. Which city
+// proves it is the load's FOOTPRINT point (decision 5A, 074): the origin when
+// the agent's customer is the shipper, the destination when it is the
+// receiver, and nothing at all on a 'neither' load — a one-off through a
+// stranger proves no market.
+//
+// The mark moves, so the confirmation has to move with it. Load 2543056 was
+// entered as a normal load and confirmed ATLANTA — the tradeshow yard it was
+// picked up at. The moment someone marks it Receiver, Atlanta is a place the
+// freight touched once and must un-confirm, while Troutman (C R Onsrud, Mike's
+// actual customer) becomes the proved market. A promotion that only ever ran
+// on INSERT could never do that: the only writer of customer_end is a PATCH.
+// So every write recomputes the point and:
+//   1. demotes every row this load had confirmed that the point no longer
+//      names (including all of them when the point is null), back to stated
+//   2. promotes the row that matches the new point to confirmed
+//
+// Best-effort inside the caller's transaction: the whole sync runs in a
+// SAVEPOINT, so a failure here rolls back the coverage work alone and never
+// blocks the load itself (the migration-071 backstop reconciles history, and
+// the next write retries).
+async function syncFootprintCoverage(client, { user_id, load }) {
+  if (!load?.load_id) return;
+  const point = footprintPointOf(load);
+  try {
+    await client.query("SAVEPOINT footprint_sync");
+
+    // 1. un-confirm what this load no longer proves
+    await client.query(
+      `UPDATE agent_coverage
+          SET source = 'stated', confirmed_load_id = NULL, updated_at = now()
+        WHERE user_id = $1
+          AND confirmed_load_id = $2
+          AND ($3::text IS NULL
+               OR upper(city) <> upper($3::text)
+               OR upper(state) <> upper($4::text))`,
+      [user_id, load.load_id, point?.city ?? null, point?.state ?? null],
+    );
+
+    // 2. prove the market the mark now points at
+    if (load.agent_id && point) {
+      await client.query(
+        `UPDATE agent_coverage
+            SET source = 'confirmed', confirmed_load_id = $4, updated_at = now()
+          WHERE user_id = $1 AND agent_id = $2
+            AND upper(city) = upper($3::text)
+            AND upper(state) = upper($5::text)
+            AND source <> 'confirmed'`,
+        [user_id, load.agent_id, point.city, load.load_id, point.state],
+      );
+    }
+
+    await client.query("RELEASE SAVEPOINT footprint_sync");
+  } catch {
+    try {
+      await client.query("ROLLBACK TO SAVEPOINT footprint_sync");
+    } catch {
+      /* the transaction is already going down; the load write decides */
+    }
+  }
+}
+
 // ---- CREATE LOAD SERVICE ----
 // A load's booker defaults to WHOEVER CREATES IT (self_id — the logged-in
 // person), so a dispatcher's bookings are credited to her (and the owner's to
@@ -299,6 +367,7 @@ export async function createLoad(user_id, data, self_id) {
     "detention_billable",
     "tonu_paid",
     "claim_filed", // decision 4 (073): an OS&D / damage claim — breaks the agent's streak
+    "customer_end", // decision 5A (074): whose customer this load is — the footprint follows it
     "commodity",
     "weight",
     "length_in",
@@ -348,30 +417,24 @@ export async function createLoad(user_id, data, self_id) {
             RETURNING *;
         `;
 
-  const result = await db.query(query, values);
-  const created = result.rows[0];
-
-  // A real load out of a market an agent merely CLAIMED flips that coverage
-  // from stated to confirmed — the promise the Guide has made since 068.
-  // Best-effort: a failure here never blocks the load (the migration-071
-  // backstop reconciles history, and the next matching load retries).
-  if (created?.agent_id && created?.origin_city && created?.origin_state) {
-    try {
-      await db.query(
-        `UPDATE agent_coverage
-            SET source = 'confirmed', confirmed_load_id = $4, updated_at = now()
-          WHERE user_id = $1 AND agent_id = $2
-            AND upper(city) = upper($3::text)
-            AND upper(state) = upper($5::text)
-            AND source <> 'confirmed'`,
-        [user_id, created.agent_id, created.origin_city, created.load_id, created.origin_state],
-      );
-    } catch {
-      /* coverage stays stated; nothing lost */
-    }
+  // ---- Transaction ----
+  // The load and the coverage it proves land together: the footprint sync runs
+  // on this same client, inside this same transaction, so nobody can ever read
+  // a confirmed market whose load was rolled back.
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(query, values);
+    const created = result.rows[0];
+    await syncFootprintCoverage(client, { user_id, load: created });
+    await client.query("COMMIT");
+    return created;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return created;
 }
 
 // ---- PATCH LOAD SERVICE ----
@@ -415,6 +478,7 @@ export async function patchLoad(user_id, load_id, data) {
     "detention_billable",
     "tonu_paid",
     "claim_filed", // decision 4 (073): an OS&D / damage claim — breaks the agent's streak
+    "customer_end", // decision 5A (074): whose customer this load is — the footprint follows it
     "commodity",
     "weight",
     "length_in",
@@ -489,13 +553,35 @@ export async function patchLoad(user_id, load_id, data) {
 
   values.push(user_id, load_id);
 
-  const result = await db.query(query, values);
+  // ---- Transaction ----
+  // The customer mark is the ONLY writer of customer_end, so this is the path
+  // that has to keep the footprint honest: a load re-marked Receiver must
+  // un-confirm the market its origin proved and confirm the one its
+  // destination does (2543056 — Atlanta out, Troutman in). The sync runs only
+  // when the mark itself is in the patch; every other field leaves the
+  // footprint exactly where it was.
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(query, values);
 
-  if (result.rowCount === 0) {
-    throw new NotFoundError("Load not found");
+    if (result.rowCount === 0) {
+      throw new NotFoundError("Load not found");
+    }
+
+    const patched = result.rows[0];
+    if (data.customer_end !== undefined) {
+      await syncFootprintCoverage(client, { user_id, load: patched });
+    }
+
+    await client.query("COMMIT");
+    return patched;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-
-  return result.rows[0];
 }
 
 // ---- DELETE LOAD SERVICE ----

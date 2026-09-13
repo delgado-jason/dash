@@ -51,11 +51,54 @@ const historySub = (r: AgentRanking) => {
   return `last ${r.daysSince}d ago · ${dwell}`;
 };
 
+// The place under the miles, led by what backs it. The word comes first
+// because that is the question a number invites — "~95 mi" from a market
+// nobody has shipped out of yet is a different call than 95 miles from a
+// market two loads proved (6A).
 const originSub = (r: AgentRanking) => {
   if (!r.nearestOrigin) return "";
-  const verb = r.regionFallback ? "sources out of" : "loads out of";
-  return `${verb} ${r.nearestOrigin.city}, ${r.nearestOrigin.state}`;
+  const place = `${r.nearestOrigin.city}, ${r.nearestOrigin.state}`;
+  return r.nearestSource === "claimed"
+    ? `claimed — freight out of ${place}`
+    : `proved — loads out of ${place}`;
 };
+
+// Decision 6A: a market an agent NAMED on a call measures exactly like one
+// their loads proved — the caption is the only difference, drawn dashed the
+// way the CoverageEditor draws a stated market, so nobody mistakes a claim
+// for a fact.
+const ProofWord = ({ r, className = "" }: { r: AgentRanking; className?: string }) => {
+  if (!r.nearestOrigin || r.nearestSource == null) return null;
+  const claimed = r.nearestSource === "claimed";
+  return (
+    <span
+      className={`font-condensed text-[11px] text-faint ${claimed ? "border-b border-dashed border-faint" : ""} ${className}`}
+      title={
+        claimed
+          ? "a market this agent named on a call — measured the same, not yet proved by a load"
+          : "proved by a load this agent gave you"
+      }
+    >
+      {claimed ? "claimed" : "proved"}
+    </span>
+  );
+};
+
+// Direct or Spot as a chip. The class NEVER sorts the list (it breaks score
+// ties inside the scorer and nowhere else) — it just says which kind of call
+// you're about to make.
+const ClassChip = ({ r, size = "md" }: { r: AgentRanking; size?: "sm" | "md" }) => (
+  <span
+    className={`font-condensed font-semibold rounded ${size === "sm" ? "text-[10px] px-1.5 py-px" : "text-[11px] px-2 py-0.5"}`}
+    style={
+      r.bucket === "direct"
+        ? { color: "#5dcaa5", background: "rgba(93,202,165,.13)" }
+        : { color: "#8494ab", background: "rgba(132,148,171,.10)" }
+    }
+  >
+    {r.bucket === "direct" ? "DIRECT" : "SPOT"}
+  </span>
+);
 
 // ---- the one forged plate: the top call ----
 const TopCall = ({ r }: { r: AgentRanking }) => (
@@ -72,16 +115,7 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
           NEW
         </span>
       )}
-      <span
-        className="font-condensed text-[11px] font-semibold px-2 py-0.5 rounded"
-        style={
-          r.bucket === "direct"
-            ? { color: "#5dcaa5", background: "rgba(93,202,165,.13)" }
-            : { color: "#8494ab", background: "rgba(132,148,171,.10)" }
-        }
-      >
-        {r.bucket === "direct" ? "DIRECT" : "SPOT"}
-      </span>
+      <ClassChip r={r} />
     </div>
 
     <div className="flex items-baseline gap-2.5 flex-wrap">
@@ -101,7 +135,9 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
     <div className="grid grid-cols-3 gap-3 mt-4 mb-3">
       <div>
         <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">Proximity</p>
-        <p className="font-display text-[24px] text-ink leading-none mt-1">{distanceLabel(r)}</p>
+        <p className="font-display text-[24px] text-ink leading-none mt-1">
+          {distanceLabel(r)} <ProofWord r={r} className="ml-1" />
+        </p>
         <p className="text-[12px] text-dim mt-1">{originSub(r)}</p>
       </div>
       <div>
@@ -129,11 +165,22 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
 );
 
 // ---- flat reading rows: #2..N ----
+// ONE list, in score order. The class rides as a chip, never as a section:
+// hard-sorting Direct above Spot put a 0.54 direct customer over a 0.81 spot
+// agent on screen, which is not what the scorer decided (decision 6A).
+//
+// The grid the rows and the header word above them share. On a phone only the
+// name and the miles survive — the two-column shape AgentRow uses everywhere
+// else, so the Foreman reads like the rest of the app on a 390px screen. On
+// md+ the sheet's five fields: # · agent · proximity · rate · history. There
+// is no sixth door column — the agent's name is already the link.
+const ROW_GRID = "grid-cols-[minmax(0,1fr)_72px] md:grid-cols-[20px_minmax(0,1fr)_78px_70px_88px]";
+
 const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
-  <div className="grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo" style={{ gridTemplateColumns: "20px 1.4fr 80px 72px 92px" }}>
-    <span className="font-display text-[17px] text-faint">{rank}</span>
+  <div className={`grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo ${ROW_GRID}`}>
+    <span className="hidden md:block font-display text-[17px] text-faint">{rank}</span>
     <div className="min-w-0">
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-2 flex-wrap">
         <Link to={`/agents/${r.agentId}`} className="font-condensed text-[15px] text-amber hover:text-hot transition-colors">
           {r.agentName}
         </Link>
@@ -142,6 +189,7 @@ const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
             {r.agencyCode}
           </span>
         )}
+        <ClassChip r={r} size="sm" />
       </div>
       <div className="text-[11.5px] truncate">
         {r.isNew ? (
@@ -153,46 +201,35 @@ const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
         )}
       </div>
     </div>
-    <span className="font-display text-[17px] text-ink text-right">{distanceLabel(r)}</span>
-    <span className="font-display text-[17px] text-right" >{r.rpm != null ? money2(r.rpm) : <span className="text-faint">{"—"}</span>}</span>
-    <span className="font-condensed text-[13px] text-dim text-right">
-      {r.loadCount} load{r.loadCount === 1 ? "" : "s"}
-      {r.daysSince != null ? ` · ${r.daysSince}d` : ""}
+    <span className="text-right leading-tight">
+      <span className="font-display text-[17px] text-ink block">{distanceLabel(r)}</span>
+      <ProofWord r={r} />
+    </span>
+    <span className="hidden md:block text-right leading-tight">
+      <span className="font-display text-[17px] block">
+        {r.rpm != null ? money2(r.rpm) : <span className="text-faint">{"—"}</span>}
+      </span>
+      {r.rpm != null && <span className="font-condensed text-[11px] text-faint">/mi gross</span>}
+    </span>
+    <span className="hidden md:block text-right leading-tight">
+      <span className="font-condensed text-[13px] text-dim block">
+        {r.loadCount} load{r.loadCount === 1 ? "" : "s"}
+      </span>
+      <span className="font-condensed text-[11px] text-faint">{historySub(r)}</span>
     </span>
   </div>
 );
 
-// A labeled tier of rows (Direct customers / Spot market). Hidden when empty.
-const RankGroup = ({
-  label,
-  hint,
-  rows,
-  startRank,
-  tone,
-}: {
-  label: string;
-  hint: string;
-  rows: AgentRanking[];
-  startRank: number;
-  tone: "direct" | "spot";
-}) => {
+// The ranked rows under the Top Call — one list, score order, no groups.
+const RankedList = ({ rows, startRank }: { rows: AgentRanking[]; startRank: number }) => {
   if (rows.length === 0) return null;
   return (
     <div className="ds2-board mt-3">
-      <div className="flex items-center gap-2 px-3.5 pt-3 pb-1">
-        <span
-          className="text-[12px] font-bold uppercase tracking-[.09em]"
-          style={{ color: tone === "direct" ? "#5dcaa5" : "#8494ab" }}
-        >
-          {label}
-        </span>
-        <span className="text-[11px] text-faint">{hint}</span>
-      </div>
-      <div className="grid gap-3 px-3.5 pt-1 pb-1.5" style={{ gridTemplateColumns: "20px 1.4fr 80px 72px 92px" }}>
-        <span />
+      <div className={`hidden md:grid gap-3 px-3.5 pt-3 pb-1.5 ${ROW_GRID}`}>
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">#</span>
         <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Agent</span>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Away</span>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">$/mi</span>
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Proximity</span>
+        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Rate</span>
         <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
       </div>
       {rows.map((r, i) => (
@@ -323,8 +360,11 @@ export const WhoToCallTab = () => {
   const [bookKey, setBookKey] = useState(0);
   const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(0);
   const { agents, isLoading: agentsLoading } = useAgents(bookKey);
-  const coords = useCityCoords(loads);
   const { contacts, coverage, now, loading: bookLoading, ready: contactsReady, error: contactsError } = useForemanBook(bookKey);
+  // The claimed markets warm the coordinate cache alongside the loads —
+  // decision 6A ranks a claim by real miles, which it can only do once that
+  // city holds a coordinate.
+  const coords = useCityCoords(loads, coverage);
   const targets = useRateTargets(loads);
 
   const [focus, setFocus] = useState<LoadTypeFocus>("any");
@@ -350,9 +390,18 @@ export const WhoToCallTab = () => {
   // documented "explicit parks only" mode); the parked group likewise judges
   // dormancy only off a real log, and lists the owner's explicit parks alone
   // until then.
+  // The stated markets ride along with the contact log: decision 6A counts a
+  // market an agent NAMED as a footprint point, measured like any other.
   const board = useMemo(
-    () => buildForemanBoard(loads, agents, coords, { focus, mode, contacts: contactsReady ? contacts : undefined, now }),
-    [loads, agents, coords, focus, mode, contactsReady, contacts, now],
+    () =>
+      buildForemanBoard(loads, agents, coords, {
+        focus,
+        mode,
+        contacts: contactsReady ? contacts : undefined,
+        coverage,
+        now,
+      }),
+    [loads, agents, coords, focus, mode, contactsReady, contacts, coverage, now],
   );
   const parked = useMemo(
     () =>
@@ -369,8 +418,6 @@ export const WhoToCallTab = () => {
     return <Empty msg="No committed or delivered loads yet — add a load and the Foreman will tell you who to call." />;
 
   const [top, ...rest] = board.rankings;
-  const restDirect = rest.filter((r) => r.bucket === "direct");
-  const restSpot = rest.filter((r) => r.bucket === "spot");
   const anchorHint =
     board.anchor.source === "committed" ? "after your booked load delivers" : "empty here now";
   const parkedGroup = parked.length > 0 ? <ParkedGroup anchor={board.anchor} rows={parked} onOpen={setSheetAgentId} /> : null;
@@ -426,9 +473,8 @@ export const WhoToCallTab = () => {
           {/* top call */}
           {top && <TopCall r={top} />}
 
-          {/* remaining agents, bucketed — direct always above spot */}
-          <RankGroup label="Direct customers" hint="your own — call first" rows={restDirect} startRank={2} tone="direct" />
-          <RankGroup label="Spot market" hint="only if nothing direct fits" rows={restSpot} startRank={2 + restDirect.length} tone="spot" />
+          {/* the rest — ONE list, in the score's own order */}
+          <RankedList rows={rest} startRank={2} />
 
           {/* parked, within 75 mi — under the ranked rows, dimmed */}
           {parkedGroup}
@@ -436,8 +482,10 @@ export const WhoToCallTab = () => {
           {/* footer */}
           <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
             <p className="text-[11.5px] text-faint max-w-xl">
-              Ranked on straight-line distance to where you'll be empty, your gross $/mi within load type,
-              and your history — a call list from who you've booked, not a live load feed.
+              One list, in score order: straight-line distance to where you'll be empty — from a market a
+              load proved or one they claimed on a call — your gross $/mi within load type, and your
+              history. Direct or Spot is a chip, not a rank; it only breaks a tie. A call list from who
+              you've booked, not a live load feed.
               {board.coverage.withCoords < board.coverage.total &&
                 " Distances sharpen to real miles as new cities finish geocoding."}
             </p>
