@@ -1,7 +1,9 @@
 import { isValidType, isValidUUID } from "../helper.js";
+import { postingCodeRule } from "./agencyValidation.js";
 
 //** Rules for allowed fields
-// broker_id,
+// agency_id,
+// posting_code,
 // first_name,
 // last_name,
 // phone,
@@ -11,14 +13,17 @@ import { isValidType, isValidUUID } from "../helper.js";
 // notes */
 
 const rules = {
-  // Optional since 073: a prospect is a person first, the agency code is
-  // billing paperwork that may not be known yet. null clears it.
-  broker_id: (value, errors) => {
+  // Optional since 073: a prospect is a person first, the agency is billing
+  // paperwork that may not be known yet. null clears it.
+  agency_id: (value, errors) => {
     if (value === null || value === undefined) return;
     if (!isValidType("string", value) || !isValidUUID(value)) {
-      errors.push("not a valid UUID");
+      errors.push("agency_id is not a valid UUID");
     }
   },
+  // The agent's OWN code on the freight bill (MAM). Optional and nullable —
+  // null means they post from the agency's own desk, under its agency code.
+  posting_code: postingCodeRule,
   first_name: (value, errors) => {
     if (!isValidType("string", value)) {
       errors.push("first_name must be a string");
@@ -255,6 +260,14 @@ export const normalizeAgentText = (data) => {
     const t = data.best_time_to_call.trim();
     data.best_time_to_call = t === "" ? null : t;
   }
+  // The posting code is a Landstar code: uppercase on every bill, so a typed
+  // "mam" is normalized rather than refused. Blank means they post from the
+  // agency's own desk — that is NULL, never "" (varchar(3) would store it and
+  // codeOf would then draw an empty chip).
+  if (typeof data.posting_code === "string") {
+    const t = data.posting_code.trim().toUpperCase();
+    data.posting_code = t === "" ? null : t;
+  }
   return data;
 };
 
@@ -283,7 +296,7 @@ export const tierChangeGate = ({ from, to, reason, role }) => {
 export const validateAgentCreate = (data) => {
   const errors = [];
 
-  // broker_id is optional since 073 — a prospect may arrive without a code.
+  // agency_id is optional since 073 — a prospect may arrive without a code.
   if (!data.first_name) errors.push("Missing first_name");
   if (!data.last_name) errors.push("Missing last_name");
 

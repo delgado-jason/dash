@@ -1,6 +1,8 @@
 export interface AgentPatchPayload {
-  // null clears the agency code — a prospect is a person first (073).
-  broker_id?: string | null;
+  // null clears the agency — a prospect is a person first (073).
+  agency_id?: string | null;
+  // null clears the person's own posting code back to the agency's desk.
+  posting_code?: string | null;
   first_name?: string;
   last_name?: string;
   phone?: string | null;

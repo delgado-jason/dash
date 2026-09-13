@@ -295,7 +295,9 @@ export const getMonthlyRPM = (
 export interface OutstandingLoad {
   load_id: string;
   load_number: string;
-  broker: string;
+  // null when the load has no agency (nullable since 075) — the list renders
+  // an em dash. Formatting is the UI's job, so the null travels as a null.
+  agency_code: string | null;
   revenue: number;
   daysOutstanding: number;
 }
@@ -345,7 +347,7 @@ export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
       return {
         load_id: load.load_id,
         load_number: load.load_number,
-        broker: load.broker,
+        agency_code: load.agency_code,
         revenue: getLoadRevenue([load]) ?? 0,
         daysOutstanding,
       };

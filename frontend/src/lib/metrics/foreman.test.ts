@@ -8,6 +8,7 @@ import {
   cityKey,
   type CoordMap,
 } from "./foreman";
+import { codeOf } from "@/lib/agencies/codeOf";
 
 // ---- fixtures ----
 let seq = 0;
@@ -16,8 +17,9 @@ const mkLoad = (o: Partial<Load>): Load => ({
   load_number: "N",
   load_type: "standard flatbed",
   load_status: "delivered",
-  broker_id: "b1",
-  broker: "B",
+  agency_id: "b1",
+  agency_code: "B",
+  posting_code: null,
   agent_id: "a1",
   agent: "Agent",
   agent_email: null,
@@ -42,10 +44,17 @@ const mkLoad = (o: Partial<Load>): Load => ({
   ...o,
 });
 
-const mkAgent = (id: string, first: string, brokerName = "EWT"): Agent => ({
+const mkAgent = (
+  id: string,
+  first: string,
+  agencyCode = "EWT",
+  postingCode: string | null = null,
+): Agent => ({
   agent_id: id,
-  broker_id: "b1",
-  broker_name: brokerName,
+  agency_id: "b1",
+  agency_code: agencyCode,
+  agency_name: null,
+  posting_code: postingCode,
   first_name: first,
   last_name: "Co",
   relationship_tier: null, // v2: no owner-set tier — the Foreman ranks on loads, never on this
@@ -240,14 +249,14 @@ describe("buildForemanBoard — measured score ranks; class is the tiebreak", ()
 });
 
 describe("buildForemanBoard — agency code", () => {
-  it("carries the agent's 3-letter code from broker_name onto every ranking", () => {
+  it("carries the agent's 3-letter code from the agency onto every ranking", () => {
     const { agents, loads } = buildWorld();
     const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
     expect(board.rankings).toHaveLength(4);
     for (const r of board.rankings) expect(r.agencyCode).toBe("EWT");
   });
 
-  it("yields null for a blank or whitespace broker_name", () => {
+  it("yields null for a blank or whitespace agency code", () => {
     const { agents, loads } = buildWorld();
     const blank = mkAgent("a1", "Summit", "");
     const spaces = mkAgent("a2", "Buckeye", "   ");
@@ -261,6 +270,10 @@ describe("buildForemanBoard — agency code", () => {
     expect(byId.a1.agencyCode).toBeNull();
     expect(byId.a2.agencyCode).toBeNull();
     expect(byId.a3.agencyCode).toBe("EWT");
+    // No code, no KIND — the chip has nothing to draw and draws nothing.
+    expect(byId.a1.codeKind).toBeNull();
+    expect(byId.a2.codeKind).toBeNull();
+    expect(byId.a3.codeKind).toBe("agency");
   });
 
   it("keeps each agent's own code when they differ", () => {
@@ -277,6 +290,46 @@ describe("buildForemanBoard — agency code", () => {
     expect(byId.a2.agencyCode).toBe("JVL");
     expect(byId.a3.agencyCode).toBe("SRY");
     expect(byId.a4.agencyCode).toBe("TTT"); // trimmed
+  });
+
+  it("wears the person's OWN posting code when it differs from the agency's", () => {
+    const { loads } = buildWorld();
+    // Eric Hesketh posts MAM out of Central Pennsylvania Logistics (CPL);
+    // Rich Stewart has no code of his own and posts from the CPL desk itself.
+    const mixed = [
+      mkAgent("a1", "Summit", "CPL", "MAM"),
+      mkAgent("a2", "Buckeye", "CPL"),
+      mkAgent("a3", "GreatLakes", "SRY"),
+      mkAgent("a4", "Keystone", "EWT"),
+    ];
+    const board = buildForemanBoard(loads, mixed, COORDS, { now: NOW });
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a1.agencyCode).toBe("MAM");
+    expect(byId.a2.agencyCode).toBe("CPL");
+    // …and they are different KINDS of code: a1's is dashed (their own desk),
+    // a2's is lit (the shared agency desk). The RANKING has to say which, or
+    // WhoToCallTab can only guess at the chip.
+    expect(byId.a1.codeKind).toBe("posting");
+    expect(byId.a2.codeKind).toBe("agency");
+    expect(byId.a3.codeKind).toBe("agency"); // only an agency code on file
+    expect(codeOf(mixed[0])).toEqual({ code: "MAM", kind: "posting" });
+    expect(codeOf(mixed[1])).toEqual({ code: "CPL", kind: "agency" });
+  });
+
+  // Posting the agency's OWN code is working the shared desk, not a code of
+  // your own: the chip stays LIT even though posting_code is filled.
+  it("reads a posting code equal to the agency's as the shared desk — lit, not dashed", () => {
+    const { loads } = buildWorld();
+    const mixed = [
+      mkAgent("a1", "Summit", "CPL", "CPL"),
+      mkAgent("a2", "Buckeye", "CPL", "MAM"),
+      mkAgent("a3", "GreatLakes", "SRY"),
+      mkAgent("a4", "Keystone", "EWT"),
+    ];
+    const board = buildForemanBoard(loads, mixed, COORDS, { now: NOW });
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a1).toMatchObject({ agencyCode: "CPL", codeKind: "agency" });
+    expect(byId.a2).toMatchObject({ agencyCode: "MAM", codeKind: "posting" });
   });
 
   it("is display only — the code never moves the score or the order", () => {

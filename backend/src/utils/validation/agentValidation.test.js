@@ -7,22 +7,79 @@ import {
   tierChangeGate,
 } from "./agentValidation.js";
 
-describe("broker_id — optional since 073", () => {
+describe("agency_id — optional since 073", () => {
   test("null and undefined pass; a blank code is a person with no agency yet", () => {
-    assert.deepEqual(validateAgentPatch({ broker_id: null }), []);
-    assert.deepEqual(validateAgentPatch({ broker_id: undefined }), []);
+    assert.deepEqual(validateAgentPatch({ agency_id: null }), []);
+    assert.deepEqual(validateAgentPatch({ agency_id: undefined }), []);
   });
 
   test("a real UUID passes, anything else is refused without throwing", () => {
-    assert.deepEqual(validateAgentPatch({ broker_id: "3f6b2c1e-9c2b-4d0e-8a2f-1b2c3d4e5f60" }), []);
-    assert.deepEqual(validateAgentPatch({ broker_id: "EWT" }), ["not a valid UUID"]);
-    assert.deepEqual(validateAgentPatch({ broker_id: 42 }), ["not a valid UUID"]);
+    assert.deepEqual(validateAgentPatch({ agency_id: "3f6b2c1e-9c2b-4d0e-8a2f-1b2c3d4e5f60" }), []);
+    // The sentence names the field: a payload can carry two uuids, and
+    // "not a valid UUID" alone never said which one was wrong.
+    assert.deepEqual(validateAgentPatch({ agency_id: "EWT" }), ["agency_id is not a valid UUID"]);
+    assert.deepEqual(validateAgentPatch({ agency_id: 42 }), ["agency_id is not a valid UUID"]);
   });
 
   test("create no longer requires a code — only the person's name", () => {
     assert.deepEqual(validateAgentCreate({ first_name: "Dana", last_name: "Ruiz" }), []);
-    assert.deepEqual(validateAgentCreate({ first_name: "Dana", last_name: "Ruiz", broker_id: null }), []);
+    assert.deepEqual(validateAgentCreate({ first_name: "Dana", last_name: "Ruiz", agency_id: null }), []);
     assert.deepEqual(validateAgentCreate({ last_name: "Ruiz" }), ["Missing first_name"]);
+  });
+
+  test("create refuses an agency_id that is not a UUID, by name", () => {
+    assert.deepEqual(
+      validateAgentCreate({ first_name: "Dana", last_name: "Ruiz", agency_id: "CPL" }),
+      ["agency_id is not a valid UUID"],
+    );
+  });
+});
+
+describe("posting_code — the agent's own code on the bill", () => {
+  test("null and undefined pass: they post from the agency's desk", () => {
+    assert.deepEqual(validateAgentPatch({ posting_code: null }), []);
+    assert.deepEqual(validateAgentPatch({ posting_code: undefined }), []);
+  });
+
+  test("three letters is the only shape — two or four is refused", () => {
+    assert.deepEqual(validateAgentPatch({ posting_code: "MAM" }), []);
+    for (const bad of ["MA", "MAMA", "M1M"]) {
+      assert.deepEqual(
+        validateAgentPatch({ posting_code: bad }),
+        ["posting_code must be 3 uppercase letters"],
+        bad,
+      );
+    }
+    assert.deepEqual(validateAgentPatch({ posting_code: 42 }), ["posting_code must be a string"]);
+  });
+
+  // The service normalizes before it validates, so this is what a person
+  // typing "mam" actually gets: the stored code, not a 400.
+  test("case and padding are normalized, never refused — ' mam ' is stored MAM", () => {
+    const data = normalizeAgentText({ posting_code: " mam " });
+    assert.equal(data.posting_code, "MAM");
+    assert.deepEqual(validateAgentPatch(data), []);
+
+    const created = normalizeAgentText({ first_name: "Eric", last_name: "Hesketh", posting_code: "mam" });
+    assert.equal(created.posting_code, "MAM");
+    assert.deepEqual(validateAgentCreate(created), []);
+  });
+
+  test("blank is not a code — it clears back to the agency's desk (null)", () => {
+    const data = normalizeAgentText({ posting_code: "   " });
+    assert.equal(data.posting_code, null);
+    assert.deepEqual(validateAgentPatch(data), []);
+  });
+
+  test("create takes one, and is just as happy without", () => {
+    assert.deepEqual(
+      validateAgentCreate({ first_name: "Eric", last_name: "Hesketh", posting_code: "MAM" }),
+      [],
+    );
+    assert.deepEqual(
+      validateAgentCreate({ first_name: "Rich", last_name: "Stewart", posting_code: null }),
+      [],
+    );
   });
 });
 

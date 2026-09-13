@@ -1039,7 +1039,7 @@ const ReviewView = () => {
                 <Link to={`/agents/${h.agent_id}`} className="text-amber-hi hover:text-hot">
                   {`${h.first_name ?? ""} ${h.last_name ?? ""}`.trim() || "—"}
                 </Link>
-                {h.broker_name ? ` ${h.broker_name}` : ""} · {tierWord(h.from_tier)} → {tierWord(h.to_tier)} · “{h.reason}” ·{" "}
+                {h.agency_code ? ` ${h.agency_code}` : ""} · {tierWord(h.from_tier)} → {tierWord(h.to_tier)} · “{h.reason}” ·{" "}
                 {h.changed_by_name ?? "—"}
               </li>
             ))}

@@ -140,7 +140,9 @@ const touchedDay = (agentId: string, contacts: AgentContact[], now: Date): strin
   return cap.blocked && cap.first ? weekdayShort(cap.first.contacted_at) : null;
 };
 
-const matches = (a: Agent, q: string) => nameOf(a).toLowerCase().includes(q) || (a.broker_name ?? "").toLowerCase().includes(q);
+const matches = (a: Agent, q: string) =>
+  nameOf(a).toLowerCase().includes(q) ||
+  `${a.posting_code ?? ""} ${a.agency_code ?? ""}`.toLowerCase().includes(q);
 const keep = (r: ViewRow, market: MarketFilter, q: string) => (market === "all" || r.grade === market) && (!q || matches(r.agent, q));
 
 // Line 1's one chip slot, in priority: BAD # (the last call bounced) →
@@ -262,7 +264,7 @@ const Caption = ({ children }: { children: string }) => (
 );
 
 const CallsView = () => {
-  const { agents, brokers, loads, contacts, coverage, notes, now, loadsReady, openAgent, openProspect, notify, reload } = useRelationships();
+  const { agents, agencies, loads, contacts, coverage, notes, now, loadsReady, openAgent, openProspect, notify, reload } = useRelationships();
   const { agentId } = useParams<{ agentId: string }>();
   const navigate = useNavigate();
   const today = localDayKey(now);
@@ -579,7 +581,7 @@ const CallsView = () => {
               key={`${callAgent.agent_id}:${formKey}`}
               agent={callAgent}
               agents={agents}
-              brokers={brokers}
+              agencies={agencies}
               loads={loads}
               contacts={contacts}
               coverage={coverage}

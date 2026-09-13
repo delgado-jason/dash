@@ -35,7 +35,7 @@ import { nameOf } from "@/lib/relationships/nameOf";
 import { RelSheetShell } from "./RelSheetShell";
 import { LogTouchForm, type ClassPin, type FoldPayload, type LogTouchPayload, type TouchPrefill } from "./LogTouchForm";
 import {
-  CodeChip,
+  AgentCodeChip,
   ErrorLine,
   FieldLabel,
   GhostButton,
@@ -293,7 +293,7 @@ export const AgentSheet = ({
           <Link to={`/agents/${agent.agent_id}`} className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors">
             {name}
           </Link>
-          <CodeChip code={agent.broker_name} />
+          <AgentCodeChip agent={agent} />
           {bucket === "parked" && <ParkedChip />}
         </div>
         <p className="font-condensed text-[13.5px] text-dim mt-1.5">

@@ -1,27 +1,27 @@
 import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
-  getBrokers,
-  getBroker,
-  createBroker,
-  patchBroker,
-  deleteBroker,
-} from "../services/brokerServices.js";
+  getAgencies,
+  getAgency,
+  createAgency,
+  patchAgency,
+  deleteAgency,
+} from "../services/agencyServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
 
-// ---- GET ALL BROKERS ----
+// ---- GET ALL AGENCIES ----
 router.get("/", async (req, res) => {
   try {
     const user_id = req.user.user_id;
 
-    const brokers = await getBrokers(user_id);
+    const agencies = await getAgencies(user_id);
 
     return res.status(200).json({
-      message: "brokers retrieved successfully",
-      count: brokers.length,
-      brokers,
+      message: "agencies retrieved successfully",
+      count: agencies.length,
+      agencies,
     });
   } catch (err) {
     if (err.type === "validation") {
@@ -35,17 +35,17 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ---- GET BROKER BY ID ----
-router.get("/:broker_id", async (req, res) => {
+// ---- GET AGENCY BY ID ----
+router.get("/:agency_id", async (req, res) => {
   try {
     const user_id = req.user.user_id;
-    const broker_id = req.params.broker_id;
+    const agency_id = req.params.agency_id;
 
-    const broker = await getBroker(user_id, broker_id);
+    const agency = await getAgency(user_id, agency_id);
 
     return res.status(200).json({
-      message: "broker retrieved successfully",
-      broker,
+      message: "agency retrieved successfully",
+      agency,
     });
   } catch (err) {
     if (err.type === "validation") {
@@ -63,19 +63,27 @@ router.get("/:broker_id", async (req, res) => {
   }
 });
 
-// ---- CREATE BROKER ----
+// ---- CREATE AGENCY ----
 router.post("/", async (req, res) => {
   try {
     const user_id = req.user.user_id;
     const data = req.body;
 
-    const broker = await createBroker(user_id, data);
+    const agency = await createAgency(user_id, data);
 
     return res.status(201).json({
-      message: "broker created successfully",
-      broker,
+      message: "agency created successfully",
+      agency,
     });
   } catch (err) {
+    // agencies are UNIQUE(user_id, agency_code) — unique_agency_code_per_user.
+    // A code already on the book is the user's call, not a raw Postgres 500.
+    if (err.code === "23505") {
+      return res.status(409).json({
+        error: "That agency code is already on file.",
+      });
+    }
+
     if (err.type === "validation") {
       return res.status(err.statusCode).json({
         error: err.message,
@@ -90,21 +98,28 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ---- PATCH BROKER ----
+// ---- PATCH AGENCY ----
 
-router.patch("/:broker_id", async (req, res) => {
+router.patch("/:agency_id", async (req, res) => {
   try {
     const user_id = req.user.user_id;
-    const broker_id = req.params.broker_id;
+    const agency_id = req.params.agency_id;
     const data = req.body;
 
-    const broker = await patchBroker(user_id, broker_id, data);
+    const agency = await patchAgency(user_id, agency_id, data);
 
     return res.status(200).json({
-      message: "broker updated successfully",
-      broker,
+      message: "agency updated successfully",
+      agency,
     });
   } catch (err) {
+    // Recoding an agency onto a code already on the book — same 409.
+    if (err.code === "23505") {
+      return res.status(409).json({
+        error: "That agency code is already on file.",
+      });
+    }
+
     if (err.type === "not_found") {
       return res.status(err.statusCode).json({ error: err.message });
     }
@@ -123,18 +138,18 @@ router.patch("/:broker_id", async (req, res) => {
   }
 });
 
-// ---- DELETE BROKER ----
+// ---- DELETE AGENCY ----
 
-router.delete("/:broker_id", async (req, res) => {
+router.delete("/:agency_id", async (req, res) => {
   try {
     const user_id = req.user.user_id;
-    const broker_id = req.params.broker_id;
+    const agency_id = req.params.agency_id;
 
-    const broker = await deleteBroker(user_id, broker_id);
+    const agency = await deleteAgency(user_id, agency_id);
 
     return res.status(200).json({
-      message: "broker deleted successfully",
-      broker,
+      message: "agency deleted successfully",
+      agency,
     });
   } catch (err) {
     if (err.type === "validation") {

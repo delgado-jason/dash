@@ -18,6 +18,55 @@ function num(v, name, { optional = false } = {}) {
   return n;
 }
 
+// A load's posting code is EVIDENCE, not a typed field: the settlement is what
+// says which code the freight actually posted under. Once lines are linked to
+// loads, stamp every still-blank load whose lines agree on one agent_code —
+// the same rule migration 075 applied once to the history. A load whose lines
+// disagree stays NULL for a person to look at, and a code already on file is
+// never overwritten.
+const STAMP_POSTING_CODES = `
+  UPDATE loads l
+  SET posting_code = s.code
+  FROM (
+    SELECT load_id, min(agent_code) AS code
+    FROM settlement_lines
+    WHERE user_id = $1 AND load_id IS NOT NULL AND agent_code IS NOT NULL
+    GROUP BY load_id
+    HAVING count(DISTINCT agent_code) = 1
+  ) s
+  WHERE s.load_id = l.load_id AND l.user_id = $1 AND l.posting_code IS NULL`;
+
+// An agency owns a SET of posting codes over time (075 §5d): its own, each
+// agent's, and desks nobody works any more. A code the settlement just stamped
+// onto a load may be one the set has never seen — append it so the trail knows
+// the desk belongs to that agency. Scoped to the account, and never a
+// duplicate (the NOT ... = ANY guard). Runs in the same transaction as the
+// stamp above, so the set and the loads can never disagree.
+//
+// AGGREGATED, and that is the whole point: `UPDATE agencies FROM loads` joins
+// one loads row per agency row, so a week that stamped THREE new desks onto
+// one agency appended exactly one of them and silently dropped the rest until
+// some later settlement happened to re-stamp them. array_agg collapses every
+// missing code for an agency into ONE array, so one statement lands all of
+// them. DISTINCT keeps a code seen on five loads from landing five times.
+// The sub-select reads posting_codes as it stands BEFORE this statement, so a
+// re-run finds nothing missing and writes no rows — idempotent, and
+// updated_at only moves on an agency that actually gained a code.
+const APPEND_AGENCY_POSTING_CODES = `
+  UPDATE agencies a
+  SET posting_codes = a.posting_codes || sub.missing,
+      updated_at = now()
+  FROM (
+    SELECT l.agency_id, array_agg(DISTINCT l.posting_code) AS missing
+    FROM loads l
+    JOIN agencies g ON g.agency_id = l.agency_id AND g.user_id = l.user_id
+    WHERE l.user_id = $1
+      AND l.posting_code IS NOT NULL
+      AND NOT (l.posting_code = ANY(g.posting_codes))
+    GROUP BY l.agency_id
+  ) sub
+  WHERE a.agency_id = sub.agency_id AND a.user_id = $1`;
+
 // The DTS server feeds one parsed, self-reconciled Contractor Statement.
 // A week the archive already has is refused (inserted: false) — never
 // overwritten. Lines land transactionally with their settlement; per-line
@@ -95,6 +144,8 @@ export async function ingestSettlement(user_id, body) {
            AND l.user_id = $1 AND l.load_number = sl.load_number`,
         [user_id],
       );
+      await client.query(STAMP_POSTING_CODES, [user_id]);
+      await client.query(APPEND_AGENCY_POSTING_CODES, [user_id]);
       await client.query("COMMIT");
       return { inserted: false, relinked: healed.rowCount };
     }
@@ -131,6 +182,8 @@ export async function ingestSettlement(user_id, body) {
          AND l.user_id = $1 AND l.load_number = sl.load_number`,
       [user_id],
     );
+    await client.query(STAMP_POSTING_CODES, [user_id]);
+    await client.query(APPEND_AGENCY_POSTING_CODES, [user_id]);
     await client.query("COMMIT");
     return { inserted: true, settlement_id, unmatched_loads: numbers.filter((n) => !loadMap.has(n)) };
   } catch (err) {

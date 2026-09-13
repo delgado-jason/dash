@@ -132,3 +132,35 @@ describe("customer_end — decision 5A's one mark", () => {
     assert.deepEqual(endErrors(null), BAD);
   });
 });
+
+describe("agency_id — required on a create, clearable on a patch", () => {
+  // Only the agency_id verdict is asked for: a bare body reports its own
+  // missing mandatory fields, which is a different test's business.
+  const agencyErrors = (data) =>
+    validateLoadCreate(data).filter((e) => e.includes("agency_id"));
+
+  test("a create without one is refused — a new load is posted through an agency", () => {
+    assert.deepEqual(agencyErrors({}), ["Missing agency_id"]);
+    assert.deepEqual(agencyErrors({ agency_id: null }), ["Missing agency_id"]);
+  });
+
+  test("a create with a real UUID passes", () => {
+    assert.deepEqual(agencyErrors({ agency_id: "3f6b2c1e-9c2b-4d0e-8a2f-1b2c3d4e5f60" }), []);
+  });
+
+  test("null on a PATCH clears it — loads.agency_id is nullable since 075", () => {
+    assert.deepEqual(validateLoadPatch({ agency_id: null }), []);
+    assert.deepEqual(validateLoadPatch({ agency_id: undefined }), []);
+  });
+
+  test("a non-uuid is refused by name, on create and on patch, without throwing", () => {
+    assert.deepEqual(validateLoadPatch({ agency_id: "CPL" }), ["agency_id is not a valid UUID"]);
+    assert.deepEqual(validateLoadPatch({ agency_id: 42 }), ["agency_id is not a valid UUID"]);
+    assert.deepEqual(agencyErrors({ agency_id: "CPL" }), ["agency_id is not a valid UUID"]);
+  });
+
+  test("agent_id names its own field too", () => {
+    assert.deepEqual(validateLoadPatch({ agent_id: "nope" }), ["agent_id is not a valid UUID"]);
+    assert.deepEqual(validateLoadPatch({ agent_id: null }), ["agent_id is not a valid UUID"]);
+  });
+});

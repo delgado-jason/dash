@@ -24,8 +24,9 @@ const baseLoad: Load = {
   load_number: "1",
   load_type: "standard flatbed",
   load_status: "delivered",
-  broker_id: "b",
-  broker: "B",
+  agency_id: "b",
+  agency_code: "B",
+  posting_code: null,
   agent_id: "a",
   agent: "A",
   agent_email: null,
@@ -269,9 +270,9 @@ describe("getRecentDeliveredLoads", () => {
 describe("getOutstandingSummary", () => {
   it("totals revenue and reports median + oldest aging", () => {
     const summary = getOutstandingSummary([
-      { load_id: "1", load_number: "1", broker: "B", revenue: 1000, daysOutstanding: 10 },
-      { load_id: "2", load_number: "2", broker: "B", revenue: 500, daysOutstanding: 20 },
-      { load_id: "3", load_number: "3", broker: "B", revenue: 300, daysOutstanding: 61 },
+      { load_id: "1", load_number: "1", agency_code: "B", revenue: 1000, daysOutstanding: 10 },
+      { load_id: "2", load_number: "2", agency_code: "B", revenue: 500, daysOutstanding: 20 },
+      { load_id: "3", load_number: "3", agency_code: "B", revenue: 300, daysOutstanding: 61 },
     ]);
     expect(summary.total).toBe(1800);
     expect(summary.medianDaysOutstanding).toBe(20); // not the 30.3 mean the 61 would force
@@ -332,13 +333,13 @@ describe("getUpcomingLoads", () => {
 // ---- GET REVENUE MTD TEST ----
 describe("getRevenueMTD", () => {
   it("returns the total revenue MTD", () => {
-    const loads = [
+    const loads: Partial<Load>[] = [
       {
         load_id: "4e519969-9069-4482-9342-dcb60e88115c",
         load_number: "5138745",
         load_type: "standard flatbed",
         load_status: "in_transit",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: null,
         pickup_date: "2026-06-08T04:00:00.000Z",
@@ -357,7 +358,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "0",
         commodity: null,
         weight: null,
-        dimensions: null,
         odometer_start: 200000,
         odometer_end: 201000,
         payment_status: "unpaid",
@@ -369,7 +369,7 @@ describe("getRevenueMTD", () => {
         load_number: "AGJ-6455657",
         load_type: "heavy haul",
         load_status: "delivered",
-        broker: "AGJ",
+        agency_code: "AGJ",
         agent: "Ausra Jaronis",
         shipper_name: "Ohio Heavy Equipment",
         pickup_date: "2026-06-06T04:00:00.000Z",
@@ -388,7 +388,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "175.00",
         commodity: "Excavator",
         weight: 78000,
-        dimensions: null,
         odometer_start: 314697,
         odometer_end: null,
         payment_status: "unpaid",
@@ -400,7 +399,7 @@ describe("getRevenueMTD", () => {
         load_number: "LLL-9476094",
         load_type: "standard flatbed",
         load_status: "delivered",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: "Troutman Industries",
         pickup_date: "2026-06-03T04:00:00.000Z",
@@ -419,7 +418,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "200.00",
         commodity: "Equipment",
         weight: 28000,
-        dimensions: null,
         odometer_start: 313935,
         odometer_end: 314697,
         payment_status: "unpaid",
@@ -431,7 +429,7 @@ describe("getRevenueMTD", () => {
         load_number: "LLL-9900001",
         load_type: "standard flatbed",
         load_status: "tonu",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: null,
         pickup_date: "2026-06-02T04:00:00.000Z",
@@ -450,7 +448,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "0",
         commodity: null,
         weight: null,
-        dimensions: null,
         odometer_start: null,
         odometer_end: null,
         payment_status: "unpaid",
@@ -462,7 +459,7 @@ describe("getRevenueMTD", () => {
         load_number: "BMA-5359618",
         load_type: "hazmat",
         load_status: "delivered",
-        broker: "BMA",
+        agency_code: "BMA",
         agent: "Hailee Cartwright",
         shipper_name: "Roofing Supply Co",
         pickup_date: "2026-05-31T04:00:00.000Z",
@@ -481,7 +478,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "150.00",
         commodity: "Roofing Materials",
         weight: 36000,
-        dimensions: null,
         odometer_start: 313397,
         odometer_end: 314512,
         payment_status: "paid",
@@ -493,7 +489,7 @@ describe("getRevenueMTD", () => {
         load_number: "AGJ-9012345",
         load_type: "oversize",
         load_status: "delivered",
-        broker: "AGJ",
+        agency_code: "AGJ",
         agent: "Ausra Jaronis",
         shipper_name: "Crane Works",
         pickup_date: "2026-05-28T04:00:00.000Z",
@@ -512,7 +508,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "625.00",
         commodity: "Industrial Crane",
         weight: 68000,
-        dimensions: null,
         odometer_start: 312302,
         odometer_end: 313397,
         payment_status: "paid",
@@ -524,7 +519,7 @@ describe("getRevenueMTD", () => {
         load_number: "LLL-2881760",
         load_type: "standard flatbed",
         load_status: "delivered",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: "ABC Manufacturing",
         pickup_date: "2026-05-24T04:00:00.000Z",
@@ -543,7 +538,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "0",
         commodity: "Steel Coils",
         weight: 42000,
-        dimensions: null,
         odometer_start: 311800,
         odometer_end: 312302,
         payment_status: "paid",
@@ -555,7 +549,7 @@ describe("getRevenueMTD", () => {
         load_number: "KJK-1100234",
         load_type: "standard flatbed",
         load_status: "booked",
-        broker: "KJK",
+        agency_code: "KJK",
         agent: "Jennifer Heggen",
         shipper_name: null,
         pickup_date: "2026-01-09T05:00:00.000Z",
@@ -574,7 +568,6 @@ describe("getRevenueMTD", () => {
         total_accessorials: "0",
         commodity: "Machinery",
         weight: null,
-        dimensions: null,
         odometer_start: null,
         odometer_end: null,
         payment_status: "unpaid",
@@ -583,7 +576,7 @@ describe("getRevenueMTD", () => {
       },
     ];
 
-    const result = getRevenueMTD(loads as any);
+    const result = getRevenueMTD(loads as Load[]);
 
     expect(result).toBe(11495);
   });
@@ -592,13 +585,13 @@ describe("getRevenueMTD", () => {
 // ---- GET LAST MONTHS REVENUE TEST ----
 describe("getRevenueLastMonth", () => {
   it("returns the total revenue for previous month", () => {
-    const loads = [
+    const loads: Partial<Load>[] = [
       {
         load_id: "4e519969-9069-4482-9342-dcb60e88115c",
         load_number: "5138745",
         load_type: "standard flatbed",
         load_status: "in_transit",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: null,
         pickup_date: "2026-06-08T04:00:00.000Z",
@@ -617,7 +610,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "0",
         commodity: null,
         weight: null,
-        dimensions: null,
         odometer_start: 200000,
         odometer_end: 201000,
         payment_status: "unpaid",
@@ -629,7 +621,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "AGJ-6455657",
         load_type: "heavy haul",
         load_status: "delivered",
-        broker: "AGJ",
+        agency_code: "AGJ",
         agent: "Ausra Jaronis",
         shipper_name: "Ohio Heavy Equipment",
         pickup_date: "2026-06-06T04:00:00.000Z",
@@ -648,7 +640,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "175.00",
         commodity: "Excavator",
         weight: 78000,
-        dimensions: null,
         odometer_start: 314697,
         odometer_end: null,
         payment_status: "unpaid",
@@ -660,7 +651,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "LLL-9476094",
         load_type: "standard flatbed",
         load_status: "delivered",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: "Troutman Industries",
         pickup_date: "2026-06-03T04:00:00.000Z",
@@ -679,7 +670,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "200.00",
         commodity: "Equipment",
         weight: 28000,
-        dimensions: null,
         odometer_start: 313935,
         odometer_end: 314697,
         payment_status: "unpaid",
@@ -691,7 +681,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "LLL-9900001",
         load_type: "standard flatbed",
         load_status: "tonu",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: null,
         pickup_date: "2026-06-02T04:00:00.000Z",
@@ -710,7 +700,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "0",
         commodity: null,
         weight: null,
-        dimensions: null,
         odometer_start: null,
         odometer_end: null,
         payment_status: "unpaid",
@@ -722,7 +711,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "BMA-5359618",
         load_type: "hazmat",
         load_status: "delivered",
-        broker: "BMA",
+        agency_code: "BMA",
         agent: "Hailee Cartwright",
         shipper_name: "Roofing Supply Co",
         pickup_date: "2026-05-31T04:00:00.000Z",
@@ -741,7 +730,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "150.00",
         commodity: "Roofing Materials",
         weight: 36000,
-        dimensions: null,
         odometer_start: 313397,
         odometer_end: 314512,
         payment_status: "paid",
@@ -753,7 +741,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "AGJ-9012345",
         load_type: "oversize",
         load_status: "delivered",
-        broker: "AGJ",
+        agency_code: "AGJ",
         agent: "Ausra Jaronis",
         shipper_name: "Crane Works",
         pickup_date: "2026-05-28T04:00:00.000Z",
@@ -772,7 +760,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "625.00",
         commodity: "Industrial Crane",
         weight: 68000,
-        dimensions: null,
         odometer_start: 312302,
         odometer_end: 313397,
         payment_status: "paid",
@@ -784,7 +771,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "LLL-2881760",
         load_type: "standard flatbed",
         load_status: "delivered",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: "ABC Manufacturing",
         pickup_date: "2026-05-24T04:00:00.000Z",
@@ -803,7 +790,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "0",
         commodity: "Steel Coils",
         weight: 42000,
-        dimensions: null,
         odometer_start: 311800,
         odometer_end: 312302,
         payment_status: "paid",
@@ -815,7 +801,7 @@ describe("getRevenueLastMonth", () => {
         load_number: "KJK-1100234",
         load_type: "standard flatbed",
         load_status: "booked",
-        broker: "KJK",
+        agency_code: "KJK",
         agent: "Jennifer Heggen",
         shipper_name: null,
         pickup_date: "2026-01-09T05:00:00.000Z",
@@ -834,7 +820,6 @@ describe("getRevenueLastMonth", () => {
         total_accessorials: "0",
         commodity: "Machinery",
         weight: null,
-        dimensions: null,
         odometer_start: null,
         odometer_end: null,
         payment_status: "unpaid",
@@ -843,7 +828,7 @@ describe("getRevenueLastMonth", () => {
       },
     ];
 
-    const result = getRevenueLastMonth(loads as any);
+    const result = getRevenueLastMonth(loads as Load[]);
 
     expect(result).toBe(7124);
   });
@@ -853,7 +838,7 @@ describe("getRevenueLastMonth", () => {
     // filter demanded the current year, so December's revenue read as $0 and
     // the month-over-month delta broke for all of January.
     vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
-    const loads = [
+    const loads: Partial<Load>[] = [
       // December 2025 — this is "last month" and must count.
       {
         load_status: "delivered",
@@ -880,20 +865,20 @@ describe("getRevenueLastMonth", () => {
       },
     ];
 
-    expect(getRevenueLastMonth(loads as any)).toBe(3500);
+    expect(getRevenueLastMonth(loads as Load[])).toBe(3500);
   });
 });
 
 // ---- GET REVENUE YTD ----
 describe("getRevenueYTD", () => {
   it("returns the total revenue for the year", () => {
-    const loads = [
+    const loads: Partial<Load>[] = [
       {
         load_id: "4e519969-9069-4482-9342-dcb60e88115c",
         load_number: "5138745",
         load_type: "standard flatbed",
         load_status: "in_transit",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: null,
         pickup_date: "2026-06-08T04:00:00.000Z",
@@ -912,7 +897,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "0",
         commodity: null,
         weight: null,
-        dimensions: null,
         odometer_start: 200000,
         odometer_end: 201000,
         payment_status: "unpaid",
@@ -924,7 +908,7 @@ describe("getRevenueYTD", () => {
         load_number: "AGJ-6455657",
         load_type: "heavy haul",
         load_status: "delivered",
-        broker: "AGJ",
+        agency_code: "AGJ",
         agent: "Ausra Jaronis",
         shipper_name: "Ohio Heavy Equipment",
         pickup_date: "2026-06-06T04:00:00.000Z",
@@ -943,7 +927,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "175.00",
         commodity: "Excavator",
         weight: 78000,
-        dimensions: null,
         odometer_start: 314697,
         odometer_end: null,
         payment_status: "unpaid",
@@ -955,7 +938,7 @@ describe("getRevenueYTD", () => {
         load_number: "LLL-9476094",
         load_type: "standard flatbed",
         load_status: "delivered",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: "Troutman Industries",
         pickup_date: "2026-06-03T04:00:00.000Z",
@@ -974,7 +957,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "200.00",
         commodity: "Equipment",
         weight: 28000,
-        dimensions: null,
         odometer_start: 313935,
         odometer_end: 314697,
         payment_status: "unpaid",
@@ -986,7 +968,7 @@ describe("getRevenueYTD", () => {
         load_number: "LLL-9900001",
         load_type: "standard flatbed",
         load_status: "tonu",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: null,
         pickup_date: "2026-06-02T04:00:00.000Z",
@@ -1005,7 +987,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "0",
         commodity: null,
         weight: null,
-        dimensions: null,
         odometer_start: null,
         odometer_end: null,
         payment_status: "unpaid",
@@ -1017,7 +998,7 @@ describe("getRevenueYTD", () => {
         load_number: "BMA-5359618",
         load_type: "hazmat",
         load_status: "delivered",
-        broker: "BMA",
+        agency_code: "BMA",
         agent: "Hailee Cartwright",
         shipper_name: "Roofing Supply Co",
         pickup_date: "2026-05-31T04:00:00.000Z",
@@ -1036,7 +1017,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "150.00",
         commodity: "Roofing Materials",
         weight: 36000,
-        dimensions: null,
         odometer_start: 313397,
         odometer_end: 314512,
         payment_status: "paid",
@@ -1048,7 +1028,7 @@ describe("getRevenueYTD", () => {
         load_number: "AGJ-9012345",
         load_type: "oversize",
         load_status: "delivered",
-        broker: "AGJ",
+        agency_code: "AGJ",
         agent: "Ausra Jaronis",
         shipper_name: "Crane Works",
         pickup_date: "2026-05-28T04:00:00.000Z",
@@ -1067,7 +1047,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "625.00",
         commodity: "Industrial Crane",
         weight: 68000,
-        dimensions: null,
         odometer_start: 312302,
         odometer_end: 313397,
         payment_status: "paid",
@@ -1079,7 +1058,7 @@ describe("getRevenueYTD", () => {
         load_number: "LLL-2881760",
         load_type: "standard flatbed",
         load_status: "delivered",
-        broker: "LLL",
+        agency_code: "LLL",
         agent: "Mike Sorrentino",
         shipper_name: "ABC Manufacturing",
         pickup_date: "2026-05-24T04:00:00.000Z",
@@ -1098,7 +1077,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "0",
         commodity: "Steel Coils",
         weight: 42000,
-        dimensions: null,
         odometer_start: 311800,
         odometer_end: 312302,
         payment_status: "paid",
@@ -1110,7 +1088,7 @@ describe("getRevenueYTD", () => {
         load_number: "KJK-1100234",
         load_type: "standard flatbed",
         load_status: "booked",
-        broker: "KJK",
+        agency_code: "KJK",
         agent: "Jennifer Heggen",
         shipper_name: null,
         pickup_date: "2026-01-09T05:00:00.000Z",
@@ -1129,7 +1107,6 @@ describe("getRevenueYTD", () => {
         total_accessorials: "0",
         commodity: "Machinery",
         weight: null,
-        dimensions: null,
         odometer_start: null,
         odometer_end: null,
         payment_status: "unpaid",
@@ -1138,7 +1115,7 @@ describe("getRevenueYTD", () => {
       },
     ];
 
-    const result = getRevenueYTD(loads as any);
+    const result = getRevenueYTD(loads as Load[]);
 
     expect(result).toBe(18619);
   });
@@ -1147,7 +1124,7 @@ describe("getRevenueYTD", () => {
 // ---- GET MONTHLY REVENUE TEST ----
 describe("getMonthlyRevenue", () => {
   it("returns continuous months with zeros for empty months", () => {
-    const loads = [
+    const loads: Partial<Load>[] = [
       {
         load_status: "delivered",
         delivery_date: "2026-05-30T04:00:00.000Z",
@@ -1182,7 +1159,7 @@ describe("getMonthlyRevenue", () => {
       },
     ];
 
-    const result = getMonthlyRevenue(loads as any, 12);
+    const result = getMonthlyRevenue(loads as Load[], 12);
 
     // 12 months, Jul 2025 → Jun 2026 (frozen "now" = 2026-06-22)
     expect(result).toHaveLength(12);
@@ -1202,7 +1179,7 @@ describe("getMonthlyRevenue", () => {
 // ---- GET MONTHLY RPM TEST ----
 describe("getMonthlyRPM", () => {
   it("returns continuous months with null RPM for empty months", () => {
-    const loads = [
+    const loads: Partial<Load>[] = [
       {
         load_status: "delivered",
         delivery_date: "2026-05-30T04:00:00.000Z",
@@ -1229,7 +1206,7 @@ describe("getMonthlyRPM", () => {
       },
     ];
 
-    const result = getMonthlyRPM(loads as any, 12);
+    const result = getMonthlyRPM(loads as Load[], 12);
 
     expect(result).toHaveLength(12);
 
@@ -1245,11 +1222,11 @@ describe("getMonthlyRPM", () => {
 // ---- GET OUTSTANDING LOADS TEST ----
 describe("getOutstandingLoads", () => {
   it("returns delivered unpaid/invoiced loads, aged from delivery, oldest first", () => {
-    const loads = [
+    const loads: Partial<Load>[] = [
       // delivered + unpaid, delivered 2026-06-01 → 21 days ago (from 06-22)
       {
         load_number: "BMA-5359618",
-        broker: "BMA",
+        agency_code: "BMA",
         load_status: "delivered",
         payment_status: "unpaid",
         delivery_date: "2026-06-01T04:00:00.000Z",
@@ -1260,7 +1237,7 @@ describe("getOutstandingLoads", () => {
       // delivered + invoiced, delivered 2026-05-30 → 23 days ago (oldest → should be first)
       {
         load_number: "AGJ-9012345",
-        broker: "AGJ",
+        agency_code: "AGJ",
         load_status: "delivered",
         payment_status: "invoiced",
         delivery_date: "2026-05-30T04:00:00.000Z",
@@ -1271,7 +1248,7 @@ describe("getOutstandingLoads", () => {
       // delivered + PAID → excluded
       {
         load_number: "LLL-2881760",
-        broker: "LLL",
+        agency_code: "LLL",
         load_status: "delivered",
         payment_status: "paid",
         delivery_date: "2026-05-25T04:00:00.000Z",
@@ -1282,7 +1259,7 @@ describe("getOutstandingLoads", () => {
       // unpaid but NOT delivered (booked) → excluded
       {
         load_number: "KJK-1100234",
-        broker: "KJK",
+        agency_code: "KJK",
         load_status: "booked",
         payment_status: "unpaid",
         delivery_date: "2026-06-11T04:00:00.000Z",
@@ -1292,7 +1269,7 @@ describe("getOutstandingLoads", () => {
       },
     ];
 
-    const result = getOutstandingLoads(loads as any);
+    const result = getOutstandingLoads(loads as Load[]);
 
     // Only the two delivered + unpaid/invoiced loads
     expect(result).toHaveLength(2);

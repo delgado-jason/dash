@@ -14,11 +14,11 @@ import {
 // person who signed may since have left the account.
 const FIELDS = `h.history_id, h.agent_id, h.from_tier, h.to_tier, h.reason, h.source,
   h.changed_by, h.changed_at,
-  a.first_name, a.last_name, b.broker_name,
+  a.first_name, a.last_name, ag.agency_code,
   u.display_name AS changed_by_name`;
 const FROM = `FROM agent_tier_history h
   JOIN agents a ON a.agent_id = h.agent_id
-  LEFT JOIN brokers b ON b.broker_id = a.broker_id
+  LEFT JOIN agencies ag ON ag.agency_id = a.agency_id
   LEFT JOIN users u ON u.user_id = h.changed_by`;
 
 export async function getTierHistory(user_id, query = {}) {

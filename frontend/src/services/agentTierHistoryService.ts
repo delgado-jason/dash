@@ -16,7 +16,7 @@ export interface TierHistoryRow {
   changed_at: string; // ISO
   first_name: string;
   last_name: string;
-  broker_name: string | null;
+  agency_code: string | null;
   changed_by_name: string | null;
 }
 

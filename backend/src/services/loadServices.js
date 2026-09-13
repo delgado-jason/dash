@@ -18,7 +18,9 @@ export async function getLoads(user_id) {
             load_status,
             booked_via,
             loads.agent_id,
-            brokers.broker_name AS broker,
+            loads.agency_id,
+            agencies.agency_code AS agency_code,
+            loads.posting_code AS posting_code,
             agents.first_name || ' ' || agents.last_name AS agent,
             shipper_name,
             shipper_facility_id,
@@ -100,8 +102,10 @@ export async function getLoads(user_id) {
             loads.created_at AS created_at,
             loads.updated_at AS updated_at
         FROM loads
-        JOIN brokers
-        ON loads.broker_id = brokers.broker_id
+        -- LEFT: loads.agency_id is nullable since 075 (an inner join would
+        -- silently drop every load whose agency isn't on file yet).
+        LEFT JOIN agencies
+        ON loads.agency_id = agencies.agency_id
         JOIN agents
         ON loads.agent_id = agents.agent_id
         JOIN markets AS origin_market
@@ -131,8 +135,9 @@ export async function getLoad(user_id, load_id) {
             load_type,
             load_status,
             booked_via,
-            brokers.broker_id,
-            brokers.broker_name AS broker,
+            agencies.agency_id,
+            agencies.agency_code AS agency_code,
+            l.posting_code AS posting_code,
             agents.agent_id,
             agents.first_name || ' ' || agents.last_name AS agent,
             agents.email AS agent_email,
@@ -224,8 +229,10 @@ export async function getLoad(user_id, load_id) {
             l.created_at AS created_at,
             l.updated_at AS updated_at
         FROM loads AS l
-        JOIN brokers
-        ON l.broker_id = brokers.broker_id
+        -- LEFT: l.agency_id is nullable since 075 — a load without an agency
+        -- must still open.
+        LEFT JOIN agencies
+        ON l.agency_id = agencies.agency_id
         JOIN agents
         ON l.agent_id = agents.agent_id
         JOIN markets AS origin_market
@@ -343,7 +350,7 @@ export async function createLoad(user_id, data, self_id) {
     "payment_status",
     "booked_via",
     "load_type",
-    "broker_id",
+    "agency_id",
     "agent_id",
     "origin_city",
     "origin_state",
@@ -454,7 +461,7 @@ export async function patchLoad(user_id, load_id, data) {
     "payment_status",
     "booked_via",
     "load_type",
-    "broker_id",
+    "agency_id",
     "agent_id",
     "origin_city",
     "origin_state",

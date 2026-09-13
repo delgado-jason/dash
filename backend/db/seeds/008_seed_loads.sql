@@ -9,7 +9,7 @@ INSERT INTO loads (
   user_id,
   load_number,
   load_type,
-  broker_id,
+  agency_id,
   agent_id,
   origin_city, origin_state,
   destination_city, destination_state,

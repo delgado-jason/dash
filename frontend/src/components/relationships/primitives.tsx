@@ -1,4 +1,5 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import { codeOf, type CodedAgentLike, type CodeKind } from "@/lib/agencies/codeOf";
 
 // The Relationships surface's small shared pieces, all built from the house
 // grammar (DispatchDashboard's gradient CTA, WhoToCallTab's code chip,
@@ -115,16 +116,45 @@ export const SectionHead = ({
 );
 
 // The agency-code plate; a codeless prospect wears a faint dashed NO CODE.
-export const CodeChip = ({ code }: { code: string | null | undefined }) =>
+// A 3-letter code chip, drawn the two ways the Agencies Nod Sheet draws it:
+//   kind="agency"   the agency's own code — the shared desk, LIT (.code.home)
+//   kind="posting"  the person's own code — dashed and dim (.code.post)
+// No code at all keeps the NO CODE placeholder.
+export const CodeChip = ({
+  code,
+  kind = "agency",
+}: {
+  code: string | null | undefined;
+  kind?: CodeKind;
+}) =>
   code ? (
-    <span className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-ink bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
-      {code}
-    </span>
+    kind === "posting" ? (
+      <span
+        title="their own posting code"
+        className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-dim border border-dashed border-hairline"
+      >
+        {code}
+      </span>
+    ) : (
+      <span
+        title="the agency code — the shared desk"
+        className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-hot bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10"
+      >
+        {code}
+      </span>
+    )
   ) : (
     <span className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-semibold text-[10px] tracking-[.12em] uppercase text-faint border border-dashed border-hairline">
       no code
     </span>
   );
+
+// The chip for a PERSON: their own posting code when they have one, else their
+// agency's — codeOf decides which, and the chip draws it accordingly.
+export const AgentCodeChip = ({ agent }: { agent: CodedAgentLike | null | undefined }) => {
+  const worn = codeOf(agent);
+  return <CodeChip code={worn?.code ?? null} kind={worn?.kind} />;
+};
 
 // PARKED — outlined red, transparent (the nod sheet's .pill.parked).
 export const ParkedChip = () => (

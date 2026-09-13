@@ -27,7 +27,7 @@ const load = (over: Partial<Load>): Load =>
   }) as Load;
 
 const agent = (id: string, rating: number | null): Agent =>
-  ({ agent_id: id, rating, first_name: id, last_name: "X", broker_name: "B" }) as Agent;
+  ({ agent_id: id, rating, first_name: id, last_name: "X", agency_code: "B" }) as Agent;
 
 describe("agent bucket (direct vs spot)", () => {
   const cardFor = (loads: Load[]) =>

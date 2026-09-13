@@ -1,9 +1,15 @@
 export interface Agent {
   agent_id: string;
-  // The agency code is billing paperwork; a prospect may not have one yet
-  // (073). null → the book shows a NO CODE chip.
-  broker_id: string | null;
-  broker_name: string | null;
+  // The agency is billing paperwork; a prospect may not have one yet (073).
+  // null → the book shows a NO CODE chip.
+  agency_id: string | null;
+  // The agency's own code (CPL) and legal name, joined on every agent read.
+  agency_code: string | null;
+  agency_name: string | null;
+  // The person's OWN code on the freight bill (MAM). null = they post from the
+  // agency's desk, under the agency code. lib/agencies/codeOf picks which one
+  // the book shows.
+  posting_code: string | null;
   first_name: string;
   last_name: string;
   phone?: string | null;

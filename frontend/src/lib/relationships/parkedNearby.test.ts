@@ -4,6 +4,7 @@ import type { Load } from "@/types/load";
 import { cityKey, haversineMiles, type CoordMap } from "@/lib/metrics/foreman";
 import type { MeaningfulContactLike } from "./meaningfulContact";
 import { parkedNearby, parkedNearbyExplicitOnly } from "./parkedNearby";
+import { codeOf } from "@/lib/agencies/codeOf";
 
 const NOW = new Date("2026-09-12T15:00:00Z");
 
@@ -13,8 +14,9 @@ const mkLoad = (o: Partial<Load>): Load => ({
   load_number: "N",
   load_type: "standard flatbed",
   load_status: "delivered",
-  broker_id: "b1",
-  broker: "B",
+  agency_id: "b1",
+  agency_code: "B",
+  posting_code: null,
   agent_id: "a1",
   agent: "Agent",
   agent_email: null,
@@ -42,8 +44,10 @@ const mkLoad = (o: Partial<Load>): Load => ({
 
 const mkAgent = (id: string, o: Partial<Agent> = {}): Agent => ({
   agent_id: id,
-  broker_id: "b1",
-  broker_name: "EWT",
+  agency_id: "b1",
+  agency_code: "EWT",
+  agency_name: null,
+  posting_code: null,
   first_name: id,
   last_name: "Agent",
   preferred_contact: null,
@@ -236,5 +240,36 @@ describe("parkedNearby — the customer-end mark decides the point", () => {
     const loads = [mkLoad({ agent_id: "mike", origin_city: "Akron", origin_state: "OH", destination_city: "Columbus", destination_state: "OH" })];
     const rows = parkedNearby(agents, loads, [], COORDS, ANCHOR, [], NOW);
     expect(rows[0].place).toEqual({ city: "Akron", state: "OH" });
+  });
+});
+
+// The Foreman's parked-nearby card draws each row's chip from the agent it
+// carries — the person's own posting code when they have one.
+describe("the code a parked-nearby row wears", () => {
+  it("is the agent's own posting code, dashed, when it differs from the agency's", () => {
+    // Eric Hesketh posts MAM out of Central Pennsylvania Logistics (CPL).
+    const eric = mkAgent("eric", {
+      work_status: "parked",
+      park_reason: "spot only",
+      agency_code: "CPL",
+      posting_code: "MAM",
+      agent_city: "Akron",
+      agent_state: "OH",
+    });
+    const rows = parkedNearby([eric], [mkLoad({ agent_id: "eric" })], [], COORDS, ANCHOR, [], NOW);
+    expect(rows.map((r) => r.agent.agent_id)).toEqual(["eric"]);
+    expect(codeOf(rows[0].agent)).toEqual({ code: "MAM", kind: "posting" });
+  });
+
+  it("is the agency code, lit, for someone who posts from the desk itself", () => {
+    const rich = mkAgent("rich", {
+      work_status: "parked",
+      park_reason: "spot only",
+      agency_code: "CPL",
+      agent_city: "Akron",
+      agent_state: "OH",
+    });
+    const rows = parkedNearby([rich], [mkLoad({ agent_id: "rich" })], [], COORDS, ANCHOR, [], NOW);
+    expect(codeOf(rows[0].agent)).toEqual({ code: "CPL", kind: "agency" });
   });
 });

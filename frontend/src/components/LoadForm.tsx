@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import type { Broker } from "@/types/broker";
+import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
 import type { Load } from "@/types/load";
@@ -11,15 +11,15 @@ import { getTrucks } from "@/services/trucksService";
 import { getDrivers } from "@/services/driversService";
 import { getTrailers } from "@/services/trailersService";
 import { getTeam, type TeamMember } from "@/services/teamService";
-import { QuickAddBroker } from "./QuickAddBroker";
+import { QuickAddAgency } from "./QuickAddAgency";
 import { QuickAddAgent } from "./QuickAddAgent";
 import { QuickAddMarket } from "./QuickAddMarket";
 
 import { Textarea } from "@/components/ui/textarea";
-import { createBroker } from "@/services/createBrokerService";
+import { createAgency } from "@/services/createAgencyService";
 import { createAgent } from "@/services/createAgentService";
 import { createMarket } from "@/services/createMarketService";
-import type { CreateBrokerInput } from "@/types/createBrokerInput";
+import type { CreateAgencyInput } from "@/types/createAgencyInput";
 import type { CreateAgentInput } from "@/types/createAgentInput";
 import type { CreateMarketInput } from "@/types/createMarketInput";
 import type { Facility } from "@/types/facility";
@@ -62,7 +62,7 @@ const NO_LOADS: Load[] = [];
 interface LoadFormProps {
   initialData?: LoadInput;
   mode: "create" | "edit";
-  brokers: Broker[];
+  agencies: Agency[];
   agents: Agent[];
   markets: Market[];
   // Account load history — powers the market recommender. Optional: absent on the
@@ -70,7 +70,7 @@ interface LoadFormProps {
   loads?: Load[];
   facilities: Facility[];
   onSuccess: () => void;
-  onBrokerCreated: () => void;
+  onAgencyCreated: () => void;
   onAgentCreated: () => void;
   onMarketCreated: () => void;
   onFacilityCreated?: () => void;
@@ -135,25 +135,33 @@ const DimensionField = ({
 const LoadForm = ({
   initialData,
   mode,
-  brokers,
+  agencies,
   agents,
   markets,
   loads = NO_LOADS,
   facilities,
   onSuccess,
   onSubmit,
-  onBrokerCreated,
+  onAgencyCreated,
   onAgentCreated,
   onMarketCreated,
   onFacilityCreated,
   onClose,
 }: LoadFormProps) => {
+  // Booking credit. Anyone on the account (owner or a dispatcher) can attribute
+  // a load; the picker below defaults to WHOEVER IS CREATING IT, so a
+  // dispatcher's bookings are credited to her and count toward her scorecards
+  // + forge awards. localStorage answers synchronously, so this is known on
+  // the first render and belongs in the initial state — not in an effect that
+  // sets state after it.
+  const selfId = localStorage.getItem("user_id");
+
   // --- STATE ---
-  const [formData, setFormData] = useState<LoadInput>(
+  const [formData, setFormData] = useState<LoadInput>(() =>
     initialData
       ? {
           load_number: initialData.load_number,
-          broker_id: initialData.broker_id,
+          agency_id: initialData.agency_id,
           agent_id: initialData.agent_id,
           load_type: initialData.load_type,
           load_status: initialData.load_status,
@@ -197,7 +205,7 @@ const LoadForm = ({
         }
       : {
           load_number: "",
-          broker_id: "",
+          agency_id: "",
           agent_id: "",
           booked_via: null,
           load_type: "standard flatbed",
@@ -237,12 +245,13 @@ const LoadForm = ({
           truck_id: null,
           driver_id: null,
           trailer_id: null,
-          // Booker defaults to the account owner once the team loads (below).
-          booked_by: null,
+          // Booker defaults to whoever is creating the load. Matches the
+          // backend default (createLoad → self_id); a manual pick overwrites it.
+          booked_by: selfId,
         },
   );
 
-  const [brokerList, setBrokerList] = useState<Broker[]>(brokers);
+  const [agencyList, setAgencyList] = useState<Agency[]>(agencies);
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
 
@@ -402,23 +411,12 @@ const LoadForm = ({
   };
   const [facilityList, setFacilityList] = useState<Facility[]>(facilities);
 
-  // Booking credit. Anyone on the account (owner or a dispatcher) can attribute
-  // a load; the picker below defaults to WHOEVER IS CREATING IT, so a dispatcher's
-  // bookings are credited to her and count toward her scorecards + forge awards.
-  const selfId = localStorage.getItem("user_id");
+  // The team list only fills the picker's labels — the default booker is
+  // already in the initial state (see selfId at the top).
   const [team, setTeam] = useState<TeamMember[]>([]);
   useEffect(() => {
     getTeam().then(setTeam).catch(() => {});
   }, []);
-  // New load: default the booker to the logged-in creator (self). Edit mode keeps
-  // the load's existing booker; a manual pick wins (we only fill a still-empty
-  // booked_by). Matches the backend default (createLoad → self_id).
-  useEffect(() => {
-    if (initialData || !selfId) return;
-    setFormData((prev) =>
-      prev.booked_by ? prev : { ...prev, booked_by: selfId },
-    );
-  }, [initialData, selfId]);
 
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -450,20 +448,21 @@ const LoadForm = ({
     };
   }, []);
 
-  // Form controll states for brokers, agents, and markets
-  const [showBrokerForm, setShowBrokerForm] = useState(false);
-  const [newBroker, setNewBroker] = useState<CreateBrokerInput>({
-    broker_name: "",
+  // Form controll states for agencies, agents, and markets
+  const [showAgencyForm, setShowAgencyForm] = useState(false);
+  const [newAgency, setNewAgency] = useState<CreateAgencyInput>({
+    agency_code: "",
+    name: null,
     phone: null,
     email: null,
     rating: null,
     notes: null,
   });
-  const [brokerFormError, setBrokerFormError] = useState<string | null>(null);
+  const [agencyFormError, setAgencyFormError] = useState<string | null>(null);
 
   const [showAgentForm, setShowAgentForm] = useState(false);
   const [newAgent, setNewAgent] = useState<CreateAgentInput>({
-    broker_id: "",
+    agency_id: "",
     first_name: "",
     last_name: "",
     phone: null,
@@ -484,25 +483,25 @@ const LoadForm = ({
   });
   const [marketFormError, setMarketFormError] = useState<string | null>(null);
 
-  // Filters agents to the broker
+  // Filters agents to the agency
   const filteredAgents = agentList.filter(
-    (agent) => agent.broker_id === formData.broker_id,
+    (agent) => agent.agency_id === formData.agency_id,
   );
 
   // ---- HANDLERS ----
-  const handleBrokerCreated = (newBroker: Broker) => {
-    setBrokerList([...brokerList, newBroker]);
-    setFormData({ ...formData, broker_id: newBroker.broker_id, agent_id: "" });
+  const handleAgencyCreated = (created: Agency) => {
+    setAgencyList([...agencyList, created]);
+    setFormData({ ...formData, agency_id: created.agency_id, agent_id: "" });
   };
 
-  const handleCreateBroker = async () => {
+  const handleCreateAgency = async () => {
     try {
-      const created = await createBroker(newBroker);
-      handleBrokerCreated(created);
-      setShowBrokerForm(false);
-      onBrokerCreated();
+      const created = await createAgency(newAgency);
+      handleAgencyCreated(created);
+      setShowAgencyForm(false);
+      onAgencyCreated();
     } catch {
-      setBrokerFormError("Unable to create broker");
+      setAgencyFormError("Unable to create agency");
     }
   };
 
@@ -577,7 +576,7 @@ const LoadForm = ({
       await onSubmit(formData);
       onSuccess();
       onClose();
-    } catch (e) {
+    } catch {
       setError("Unable to create a new load");
     }
   };
@@ -736,45 +735,47 @@ const LoadForm = ({
                 ))}
               </div>
             </div>
-            {/* Broker selects */}
+            {/* Agency selects */}
             <div className="flex gap-2 items-end">
               <div className="flex-1">
-                <Label htmlFor="broker">Broker</Label>
+                <Label htmlFor="agency">Agency</Label>
                 <Select
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      broker_id: value,
+                      agency_id: value,
                       agent_id: "",
                     })
                   }
-                  value={formData.broker_id}
+                  value={formData.agency_id}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a broker" />
+                    <SelectValue placeholder="Select an agency" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {brokerList.map((broker) => (
+                      {agencyList.map((agency) => (
                         <SelectItem
-                          key={broker.broker_id}
-                          value={broker.broker_id}
+                          key={agency.agency_id}
+                          value={agency.agency_id}
                         >
-                          {broker.broker_name}
+                          {agency.name
+                            ? `${agency.agency_code} · ${agency.name}`
+                            : agency.agency_code}
                         </SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
-              <QuickAddBroker onOpen={() => setShowBrokerForm(true)} />
+              <QuickAddAgency onOpen={() => setShowAgencyForm(true)} />
             </div>
             {/* Agent selects */}
             <div className="flex flex-2 items-end">
               <div className="flex-1">
                 <Label htmlFor="agent">Agent</Label>
                 <Select
-                  disabled={!formData.broker_id}
+                  disabled={!formData.agency_id}
                   onValueChange={(value) =>
                     setFormData({ ...formData, agent_id: value })
                   }
@@ -797,46 +798,67 @@ const LoadForm = ({
               <QuickAddAgent onOpen={() => setShowAgentForm(true)} />
             </div>
           </div>
-          {/* ---- QUICK ADD BROKER FORM ---- */}
-          {showBrokerForm && (
+          {/* ---- QUICK ADD AGENCY FORM ---- */}
+          {showAgencyForm && (
             <div className="col-span-2 border rounded p-4 mt-2">
-              <h4 className="text-sm font-semibold mb-3">New Broker</h4>
+              <h4 className="text-sm font-semibold mb-3">New Agency</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="new_broker_name">Broker Name</Label>
+                  <Label htmlFor="new_agency_code">Agency Code</Label>
                   <Input
-                    name="broker_name"
-                    id="new_broker_name"
+                    name="agency_code"
+                    id="new_agency_code"
+                    maxLength={3}
+                    placeholder="CPL"
+                    className="uppercase tracking-[.08em]"
                     onChange={(e) =>
-                      setNewBroker({
-                        ...newBroker,
-                        broker_name: e.target.value,
+                      setNewAgency({
+                        ...newAgency,
+                        agency_code: e.target.value.toUpperCase(),
                       })
                     }
                   />
                 </div>
                 <div>
-                  <Label htmlFor="new_broker_phone">Phone</Label>
+                  <Label htmlFor="new_agency_name">Agency Name</Label>
+                  <Input
+                    name="name"
+                    id="new_agency_name"
+                    maxLength={120}
+                    placeholder="leave blank until a bill names it"
+                    onChange={(e) =>
+                      setNewAgency({
+                        ...newAgency,
+                        // Trimmed on the way out: " Momentum " and
+                        // "Momentum" are the same agency, and a blank is
+                        // "not on file" — NULL, never "".
+                        name: e.target.value.trim() || null,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new_agency_phone">Phone</Label>
                   <Input
                     name="phone"
-                    id="new_broker_phone"
-                    value={newBroker.phone ?? ""}
+                    id="new_agency_phone"
+                    value={newAgency.phone ?? ""}
                     onChange={(e) =>
-                      setNewBroker({
-                        ...newBroker,
+                      setNewAgency({
+                        ...newAgency,
                         phone: formatPhone(e.target.value),
                       })
                     }
                   />
                 </div>
                 <div>
-                  <Label htmlFor="new_broker_email">Email</Label>
+                  <Label htmlFor="new_agency_email">Email</Label>
                   <Input
                     type="email"
                     name="email"
-                    id="new_broker_email"
+                    id="new_agency_email"
                     onChange={(e) =>
-                      setNewBroker({ ...newBroker, email: e.target.value })
+                      setNewAgency({ ...newAgency, email: e.target.value })
                     }
                   />
                 </div>
@@ -844,7 +866,7 @@ const LoadForm = ({
                   <Label>Rating</Label>
                   <Select
                     onValueChange={(value) =>
-                      setNewBroker({ ...newBroker, rating: Number(value) })
+                      setNewAgency({ ...newAgency, rating: Number(value) })
                     }
                   >
                     <SelectTrigger>
@@ -862,23 +884,23 @@ const LoadForm = ({
                   </Select>
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="new_broker_notes">Notes</Label>
+                  <Label htmlFor="new_agency_notes">Notes</Label>
                   <Textarea
-                    id="new_broker_notes"
+                    id="new_agency_notes"
                     onChange={(e) =>
-                      setNewBroker({ ...newBroker, notes: e.target.value })
+                      setNewAgency({ ...newAgency, notes: e.target.value })
                     }
                   />
                 </div>
               </div>
-              {brokerFormError && (
-                <p className="text-destructive text-sm mt-2">{brokerFormError}</p>
+              {agencyFormError && (
+                <p className="text-destructive text-sm mt-2">{agencyFormError}</p>
               )}
               <div className="flex gap-2 mt-3">
-                <Button onClick={handleCreateBroker}>Create Broker</Button>
+                <Button onClick={handleCreateAgency}>Create Agency</Button>
                 <Button
                   variant="outline"
-                  onClick={() => setShowBrokerForm(false)}
+                  onClick={() => setShowAgencyForm(false)}
                 >
                   Cancel
                 </Button>
@@ -891,28 +913,52 @@ const LoadForm = ({
               <h4 className="text-sm font-semibold mb-3">New Agent</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Broker</Label>
+                  <Label>Agency</Label>
                   <Select
                     onValueChange={(value) =>
-                      setNewAgent({ ...newAgent, broker_id: value })
+                      setNewAgent({ ...newAgent, agency_id: value })
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a broker" />
+                      <SelectValue placeholder="Select an agency" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {brokerList.map((broker) => (
+                        {agencyList.map((agency) => (
                           <SelectItem
-                            key={broker.broker_id}
-                            value={broker.broker_id}
+                            key={agency.agency_id}
+                            value={agency.agency_id}
                           >
-                            {broker.broker_name}
+                            {agency.name
+                              ? `${agency.agency_code} · ${agency.name}`
+                              : agency.agency_code}
                           </SelectItem>
                         ))}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="new_agent_posting_code">Posting code</Label>
+                  <Input
+                    id="new_agent_posting_code"
+                    maxLength={3}
+                    placeholder="MAM"
+                    className="uppercase tracking-[.08em]"
+                    onChange={(e) =>
+                      setNewAgent({
+                        ...newAgent,
+                        posting_code:
+                          e.target.value.trim() === ""
+                            ? null
+                            : e.target.value.toUpperCase(),
+                      })
+                    }
+                  />
+                  <span className="text-[11px] text-muted-text">
+                    their own code on the freight bill — leave blank if they post
+                    under the agency's
+                  </span>
                 </div>
                 <div>
                   <Label htmlFor="new_agent_first_name">First Name</Label>

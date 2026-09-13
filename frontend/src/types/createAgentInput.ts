@@ -1,6 +1,9 @@
 export interface CreateAgentInput {
-  // Optional since 073 — a prospect may arrive with no agency code.
-  broker_id: string | null;
+  // Optional since 073 — a prospect may arrive with no agency.
+  agency_id: string | null;
+  // Their own code on the freight bill; absent (or null) means they post from
+  // the agency's desk.
+  posting_code?: string | null;
   first_name: string;
   last_name: string;
   phone: string | null;

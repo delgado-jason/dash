@@ -10,8 +10,10 @@ import {
 
 const agent: Agent = {
   agent_id: "a1",
-  broker_id: "b1",
-  broker_name: "EWT",
+  agency_id: "b1",
+  agency_code: "EWT",
+  agency_name: null,
+  posting_code: null,
   first_name: "Dana",
   last_name: "Ruiz",
   phone: "(918) 555-0100",
@@ -30,7 +32,8 @@ const agent: Agent = {
 const draft: AgentEditDraft = {
   first_name: "Dana",
   last_name: "Ruiz",
-  broker_id: "b1",
+  agency_id: "b1",
+  posting_code: "",
   agent_city: "Tulsa",
   agent_state: "OK",
   phone: "(918) 555-0100",
@@ -137,6 +140,26 @@ describe("validateDraft", () => {
   });
 });
 
+describe("validateDraft posting_code", () => {
+  it("blank is fine — they post from the agency's desk", () => {
+    expect(validateDraft({ ...draft, posting_code: "" })).toBeNull();
+    expect(validateDraft({ ...draft, posting_code: "   " })).toBeNull();
+  });
+
+  it("takes three letters in either case", () => {
+    expect(validateDraft({ ...draft, posting_code: "MAM" })).toBeNull();
+    expect(validateDraft({ ...draft, posting_code: "cjy" })).toBeNull();
+  });
+
+  it("refuses anything that is not three letters", () => {
+    for (const bad of ["MA", "MAMA", "M1M"]) {
+      expect(validateDraft({ ...draft, posting_code: bad })).toBe(
+        "A posting code is 3 letters — leave it blank if they post under the agency's.",
+      );
+    }
+  });
+});
+
 describe("buildAgentPatch", () => {
   it("returns null when nothing changed", () => {
     expect(buildAgentPatch(agent, draft)).toBeNull();
@@ -147,8 +170,8 @@ describe("buildAgentPatch", () => {
       agent_city: "Broken Arrow",
     });
     expect(
-      buildAgentPatch(agent, { ...draft, broker_id: "b2", preferred_contact: "text" }),
-    ).toEqual({ broker_id: "b2", preferred_contact: "text" });
+      buildAgentPatch(agent, { ...draft, agency_id: "b2", preferred_contact: "text" }),
+    ).toEqual({ agency_id: "b2", preferred_contact: "text" });
   });
 
   it("trims names and treats a whitespace-only change as no change", () => {
@@ -190,12 +213,24 @@ describe("buildAgentPatch", () => {
     });
   });
 
+  it("sends the posting code uppercased, and null to clear it back to the desk", () => {
+    // Eric Hesketh posts MAM out of CPL; blanking it puts him on the agency desk.
+    expect(buildAgentPatch(agent, { ...draft, posting_code: "mam" })).toEqual({
+      posting_code: "MAM",
+    });
+    const coded: Agent = { ...agent, posting_code: "MAM" };
+    expect(buildAgentPatch(coded, { ...draft, posting_code: "MAM" })).toBeNull();
+    expect(buildAgentPatch(coded, { ...draft, posting_code: "  " })).toEqual({
+      posting_code: null,
+    });
+  });
+
   it("never carries rating, tier, tier_set_at or notes, even when the agent has them", () => {
     const patch = buildAgentPatch(agent, {
       ...draft,
       first_name: "Dani",
       last_name: "R",
-      broker_id: "b2",
+      agency_id: "b2",
       agent_city: "Austin",
       agent_state: "TX",
       phone: "",
@@ -208,9 +243,9 @@ describe("buildAgentPatch", () => {
     expect(patch).not.toHaveProperty("tier_set_at");
     expect(patch).not.toHaveProperty("notes");
     expect(Object.keys(patch!).sort()).toEqual([
+      "agency_id",
       "agent_city",
       "agent_state",
-      "broker_id",
       "email",
       "first_name",
       "last_name",

@@ -2,7 +2,7 @@ export interface LoadInput {
   // Attribution (relationship system): required on NEW loads by the form.
   booked_via?: "agent_reached_out" | "i_reached_out" | null;
   load_number: string;
-  broker_id: string;
+  agency_id: string;
   agent_id: string;
   load_type: string;
   load_status: string;

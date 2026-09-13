@@ -1,10 +1,10 @@
 -- ============================================================
 -- 006_seed_agents.sql
--- Agents belong to brokers. Real agent data for Jason's operation.
+-- Agents belong to agencies. Real agent data for Jason's operation.
 -- ============================================================
 
 INSERT INTO agents (
-  agent_id, user_id, broker_id,
+  agent_id, user_id, agency_id,
   first_name, last_name,
   phone, email,
   preferred_contact, rating, notes
@@ -52,7 +52,7 @@ VALUES
     'Charlie', 'Miltner',
     NULL, 'cmiltner@landstar-agent.com',
     'email', NULL,
-    'Cold outreach target - Momentum'
+    'Cold outreach target - JVL/Momentum Transportation'
   ),
   -- Alice agents
   (

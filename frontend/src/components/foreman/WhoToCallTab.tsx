@@ -15,7 +15,7 @@ import { shortDate } from "@/lib/relationships/dayKeys";
 import { PARKED_RADIUS_MILES, parkedNearby, parkedNearbyExplicitOnly, type ParkedNearbyRow } from "@/lib/relationships/parkedNearby";
 import { AgentRow } from "@/components/relationships/AgentRow";
 import { AgentSheet } from "@/components/relationships/AgentSheet";
-import { SectionHead } from "@/components/relationships/primitives";
+import { CodeChip, SectionHead } from "@/components/relationships/primitives";
 import { Toast, type ToastState } from "@/components/relationships/Toast";
 import {
   buildForemanBoard,
@@ -84,6 +84,15 @@ const ProofWord = ({ r, className = "" }: { r: AgentRanking; className?: string 
   );
 };
 
+// The 3-letter code the agent wears, drawn the two ways the Agencies Nod Sheet
+// draws it — their OWN posting code dashed, the agency's shared desk lit. Same
+// CodeChip the book uses everywhere else, so a name reads identically on the
+// Foreman and on the Relationships rows. Nothing renders when neither code is
+// on file: the board stays quiet rather than running a NO CODE plate down every
+// row (the ranked list is your own booked agents, not a roster to fill in).
+const RankCodeChip = ({ r }: { r: AgentRanking }) =>
+  r.agencyCode ? <CodeChip code={r.agencyCode} kind={r.codeKind ?? "agency"} /> : null;
+
 // Direct or Spot as a chip. The class NEVER sorts the list (it breaks score
 // ties inside the scorer and nowhere else) — it just says which kind of call
 // you're about to make.
@@ -125,11 +134,7 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
       >
         {r.agentName}
       </Link>
-      {r.agencyCode && (
-        <span className="inline-flex items-center h-5 px-[7px] rounded font-condensed font-bold text-[12px] tracking-[.12em] text-ink bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
-          {r.agencyCode}
-        </span>
-      )}
+      <RankCodeChip r={r} />
     </div>
 
     <div className="grid grid-cols-3 gap-3 mt-4 mb-3">
@@ -184,11 +189,7 @@ const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
         <Link to={`/agents/${r.agentId}`} className="font-condensed text-[15px] text-amber hover:text-hot transition-colors">
           {r.agentName}
         </Link>
-        {r.agencyCode && (
-          <span className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-ink bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
-            {r.agencyCode}
-          </span>
-        )}
+        <RankCodeChip r={r} />
         <ClassChip r={r} size="sm" />
       </div>
       <div className="text-[11.5px] truncate">

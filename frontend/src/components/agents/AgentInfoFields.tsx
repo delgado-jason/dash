@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { Broker } from "@/types/broker";
+import type { Agency } from "@/types/agency";
+import { agencyOptions } from "@/lib/agencies/agencyOptions";
 import { STATES } from "@/lib/constants/states";
 import { formatPhone } from "@/lib/phone";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
@@ -34,15 +35,16 @@ const Field = ({
 export const IdentityFields = ({
   draft,
   onChange,
-  brokers,
+  agencies,
 }: {
   draft: AgentEditDraft;
   onChange: (patch: DraftPatch) => void;
-  brokers: Broker[];
+  agencies: Agency[];
 }) => {
-  const agencies = [...brokers].sort((a, b) =>
-    a.broker_name.localeCompare(b.broker_name),
-  );
+  // Named agencies read as a book; the ones no bill has named yet fall in by
+  // code — the API already ordered them that way (`ORDER BY name NULLS LAST,
+  // agency_code`), so agencyOptions only labels them and keeps that order.
+  const options = agencyOptions(agencies);
   return (
     <div className="flex flex-col gap-2.5 min-w-0">
       <div className="grid grid-cols-2 gap-2.5">
@@ -65,23 +67,36 @@ export const IdentityFields = ({
           />
         </Field>
       </div>
-      <div className="grid grid-cols-[1fr_1.6fr_1fr] gap-2.5">
+      <div className="grid grid-cols-[1.9fr_1fr] gap-2.5">
         <Field id="agent-agency" label="Agency">
           <select
             id="agent-agency"
             className={INPUT}
-            value={draft.broker_id}
-            onChange={(e) => onChange({ broker_id: e.target.value })}
+            value={draft.agency_id}
+            onChange={(e) => onChange({ agency_id: e.target.value })}
           >
-            {/* A prospect may have no code yet (073) — blank is a real state. */}
+            {/* A prospect may have no agency yet (073) — blank is a real state. */}
             <option value="">— no code —</option>
-            {agencies.map((b) => (
-              <option key={b.broker_id} value={b.broker_id}>
-                {b.broker_name}
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
               </option>
             ))}
           </select>
         </Field>
+        <Field id="agent-posting-code" label="Posting code">
+          <input
+            id="agent-posting-code"
+            className={`${INPUT} uppercase tracking-[.08em]`}
+            value={draft.posting_code}
+            maxLength={3}
+            autoComplete="off"
+            placeholder="MAM"
+            onChange={(e) => onChange({ posting_code: e.target.value.toUpperCase() })}
+          />
+        </Field>
+      </div>
+      <div className="grid grid-cols-[1.9fr_1fr] gap-2.5">
         <Field id="agent-city" label="City">
           <input
             id="agent-city"
@@ -108,7 +123,8 @@ export const IdentityFields = ({
         </Field>
       </div>
       <p className="text-[11px] text-faint leading-snug">
-        Loads already booked keep their own agency.
+        Their own code on the freight bill — leave blank if they post under the
+        agency's. Loads already booked keep their own agency.
       </p>
     </div>
   );

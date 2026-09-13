@@ -49,8 +49,10 @@ import {
   getAgentContacts, deleteAgentContact, type AgentContact,
 } from "@/services/agentContactsService";
 import { patchAgent } from "@/services/patchAgentService";
-import { useBrokers } from "@/hooks/useBrokers";
+import { useAgencies } from "@/hooks/useAgencies";
 import { IdentityFields, ContactFields } from "@/components/agents/AgentInfoFields";
+import { CodeChip } from "@/components/relationships/primitives";
+import { otherCodes } from "@/lib/agencies/otherCodes";
 import {
   draftFromAgent,
   validateDraft,
@@ -145,7 +147,7 @@ const AgentDetailPage = () => {
   const [draft, setDraft] = useState<AgentEditDraft | null>(null);
   const [savingInfo, setSavingInfo] = useState(false);
   const [infoError, setInfoError] = useState<string | null>(null);
-  const { brokers } = useBrokers(0);
+  const { agencies } = useAgencies(0);
 
   // The relationship touches join the same activity stream — deletable,
   // because a mis-log from a truck stop must be fixable or the log rots.
@@ -243,7 +245,8 @@ const AgentDetailPage = () => {
     setEditingInfo(true);
   };
 
-  // PATCH returns the row without broker_name, so on success the page refetches
+  // PATCH returns the row without the joined agency columns, so on success the
+  // page refetches
   // (same as the standing-notes editor) rather than trusting the response.
   const handleSaveInfo = async () => {
     if (!draft) return;
@@ -272,6 +275,16 @@ const AgentDetailPage = () => {
   const whereabouts = [agent.agent_city, agent.agent_state]
     .filter(Boolean)
     .join(", ");
+
+  // The agency's OTHER desks — every code it has posted under except its own
+  // (075 §5d), drawn dashed beside the lit agency code. This agent's own
+  // posting code is in that set; it is folded in here as well so a code just
+  // typed onto the person still shows before a settlement feed appends it.
+  const agency = agencies.find((a) => a.agency_id === agent.agency_id) ?? null;
+  const deskCodes = otherCodes({
+    agency_code: agent.agency_code,
+    posting_codes: [...(agency?.posting_codes ?? []), agent.posting_code ?? ""],
+  });
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -308,7 +321,7 @@ const AgentDetailPage = () => {
               <IdentityFields
                 draft={draft}
                 onChange={patchDraft}
-                brokers={brokers}
+                agencies={agencies}
               />
             </div>
           ) : (
@@ -316,11 +329,23 @@ const AgentDetailPage = () => {
               <h1 className="font-display text-[27px] tracking-[.05em] leading-none">
                 {agent.first_name} {agent.last_name}
               </h1>
-              <p className="text-sm text-dim mt-1">
-                {agent.broker_name}
-                {whereabouts ? ` · ${whereabouts}` : ""}
-                {carrierName ? ` · ${carrierName} Agent` : ""}
-              </p>
+              {/* The agency reads as a name plus its lit code (the shared desk),
+                  with EVERY other code the agency has posted under dashed
+                  beside it — this person's own among them. No name on file
+                  yet — the code alone says it. */}
+              <div className="text-sm text-dim mt-1 flex items-center gap-2 flex-wrap">
+                {agent.agency_name && (
+                  <span className="text-ink">{agent.agency_name}</span>
+                )}
+                {agent.agency_code || deskCodes.length === 0 ? (
+                  <CodeChip code={agent.agency_code} kind="agency" />
+                ) : null}
+                {deskCodes.map((code) => (
+                  <CodeChip key={code} code={code} kind="posting" />
+                ))}
+                {whereabouts ? <span>· {whereabouts}</span> : null}
+                {carrierName ? <span>· {carrierName} Agent</span> : null}
+              </div>
               {prestige.label && (
                 <span className="inline-flex items-center gap-2 mt-1.5">
                   <Coin
