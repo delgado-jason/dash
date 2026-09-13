@@ -2689,9 +2689,13 @@ const GuidePage = () => {
               from Tier 3’s</span>. If it doesn’t within a quarter or two, the
               method isn’t landing — change the plays, not the goal. Loads
               from before the system carry no answer and sit outside the math.
-              The INBOUND chip in the Relationships statusbar carries the
-              number since system start — a plain fraction (“4 of 9”) until ten
-              attributed loads exist, a percent after that, because a
+              A load lands in the number on the{" "}
+              <span className="text-light">day it was booked</span>, not the day
+              it picks up: book it today for next week’s pickup and it counts
+              today, and the month-by-month rows are booking months for the same
+              reason. The INBOUND chip in the Relationships statusbar carries
+              the number since system start — a plain fraction (“4 of 9”) until
+              ten attributed loads exist, a percent after that, because a
               percentage of three loads is noise. Review’s IS IT WORKING plate
               carries the same number cut by each agent’s current tier and laid
               out month by month since system start; a chart only appears once

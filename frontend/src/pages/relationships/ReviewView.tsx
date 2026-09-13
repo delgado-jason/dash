@@ -828,8 +828,9 @@ const ReviewView = () => {
         <Well className="mt-3 px-3 py-2.5 flex gap-3 items-start">
           <span className="font-condensed text-[11px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
           <p className="text-[13.5px] text-ink/90 leading-snug">
-            Inbound = loads where the agent reached out first, over loads booked since system start. Pre-system loads carry no
-            attribution and sit outside the math. The percent appears at {INBOUND_HEADLINE_MIN} attributed loads.
+            Inbound = loads where the agent reached out first, over loads booked since system start. A load counts on the day it
+            was booked, not the day it picks up — book it today for next week and it is in today's number. Pre-system loads carry
+            no attribution and sit outside the math. The percent appears at {INBOUND_HEADLINE_MIN} attributed loads.
           </p>
         </Well>
       </ForgedPlate>

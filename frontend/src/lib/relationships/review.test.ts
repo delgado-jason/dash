@@ -65,10 +65,13 @@ const agent = (id: string, tier: number | null, o: Partial<ReviewAgentLike> = {}
 });
 
 // A delivered load: gross drives the all-in RPM, net drives the scorecard.
+// created_at is the BOOKING day — what every inbound window keys on — so the
+// factory carries one; the default books the load the morning it picks up.
 const load = (o: Partial<Load> & { agent_id: string }): Load =>
   ({
     load_id: Math.random().toString(36).slice(2),
     load_status: "delivered",
+    created_at: "2026-08-01T12:00:00Z",
     pickup_date: "2026-08-01",
     delivery_date: "2026-08-03",
     origin_city: "Houston",
@@ -126,12 +129,14 @@ describe("reviewPeriod — ago 0 is the period we are IN", () => {
 
 describe("IS IT WORKING — the cut by CURRENT bucket", () => {
   const agents = [agent("t1", 1), agent("t2", 2), agent("p", null)];
+  // The window is walked by the BOOKING day (created_at), never the pickup —
+  // the pickups below deliberately run past the window's last day to prove it.
   const loads = [
-    load({ agent_id: "t1", pickup_date: "2026-09-04", booked_via: "agent_reached_out" }),
-    load({ agent_id: "t2", pickup_date: "2026-09-05", booked_via: "i_reached_out" }),
-    load({ agent_id: "p", pickup_date: "2026-09-06", booked_via: "agent_reached_out" }),
-    load({ agent_id: "t1", pickup_date: "2026-09-07" }), // legacy — no attribution, outside the math
-    load({ agent_id: "t1", pickup_date: "2026-08-20", booked_via: "agent_reached_out" }), // before the window
+    load({ agent_id: "t1", created_at: "2026-09-04T14:00:00Z", pickup_date: "2026-09-18", booked_via: "agent_reached_out" }),
+    load({ agent_id: "t2", created_at: "2026-09-05T14:00:00Z", pickup_date: "2026-09-19", booked_via: "i_reached_out" }),
+    load({ agent_id: "p", created_at: "2026-09-06T14:00:00Z", pickup_date: "2026-09-20", booked_via: "agent_reached_out" }),
+    load({ agent_id: "t1", created_at: "2026-09-07T14:00:00Z", pickup_date: "2026-09-21" }), // legacy — no attribution, outside the math
+    load({ agent_id: "t1", created_at: "2026-08-20T14:00:00Z", pickup_date: "2026-09-08", booked_via: "agent_reached_out" }), // booked before the window
   ];
 
   it("untiered agents sit in their own cell, never folded into Tier 3", () => {
@@ -157,6 +162,18 @@ describe("IS IT WORKING — the cut by CURRENT bucket", () => {
     expect(months[1].all.attributed).toBe(3);
   });
 
+  it("a load booked Aug 30 for a Sep 2 pickup is AUGUST's row — the table is booking months", () => {
+    const seam = [
+      load({ agent_id: "t1", created_at: "2026-08-30T14:00:00Z", pickup_date: "2026-09-02", booked_via: "agent_reached_out" }),
+    ];
+    const months = inboundMonths(agents, seam, "2026-08-25", "2026-09-12", ctxOf(seam));
+    expect(months.map((m) => [m.month, m.all.attributed])).toEqual([
+      ["2026-08", 1],
+      ["2026-09", 0],
+    ]);
+    expect(months[1].all.share).toBeNull(); // a month with no bookings is not 0%
+  });
+
   it("the chart waits for three months carrying five attributed loads each", () => {
     const months = inboundMonths(agents, loads, "2026-08-25", "2026-09-12", ctxOf(loads));
     expect(chartEarned(months)).toBe(false);
@@ -165,15 +182,22 @@ describe("IS IT WORKING — the cut by CURRENT bucket", () => {
 
   it("…and it IS earned at three months of five — the line has something to say", () => {
     const a = [agent("t1", 1)];
-    // Five attributed pickups in each of Jul, Aug and Sep.
+    // Five attributed BOOKINGS in each of Jul, Aug and Sep.
     const fat = ["07", "08", "09"].flatMap((m) =>
-      [1, 2, 3, 4, 5].map((d) => load({ agent_id: "t1", pickup_date: `2026-${m}-0${d}`, booked_via: d === 1 ? "agent_reached_out" : "i_reached_out" })),
+      [1, 2, 3, 4, 5].map((d) =>
+        load({
+          agent_id: "t1",
+          created_at: `2026-${m}-0${d}T14:00:00Z`,
+          pickup_date: `2026-${m}-0${d}`,
+          booked_via: d === 1 ? "agent_reached_out" : "i_reached_out",
+        }),
+      ),
     );
     const months = inboundMonths(a, fat, "2026-07-01", "2026-09-12", ctxOf(fat));
     expect(months.map((m) => m.all.attributed)).toEqual([5, 5, 5]);
     expect(chartEarned(months)).toBe(true);
     // Four in one month and it is three dots pretending to be a line again.
-    const thin = fat.filter((l) => l.pickup_date !== "2026-08-05");
+    const thin = fat.filter((l) => l.created_at !== "2026-08-05T14:00:00Z");
     expect(chartEarned(inboundMonths(a, thin, "2026-07-01", "2026-09-12", ctxOf(thin)))).toBe(false);
   });
 });
