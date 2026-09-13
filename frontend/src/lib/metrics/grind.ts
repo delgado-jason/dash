@@ -195,8 +195,13 @@ export const computePersonalGrind = (
   const targets: GrossTargets = {
     weeklyBreakEven: typical != null ? typical * PERSONAL_FLOOR : null,
     weeklyTarget: typical != null ? typical * PERSONAL_SOLID : null,
+    // The dispatcher's personal ladder is built from their own typical week,
+    // not from a cost basis — there is no daily bar to hand out, working-day
+    // or calendar.
     dailyBreakEven: null,
     dailyTarget: null,
+    dailyBreakEvenCalendar: null,
+    dailyTargetCalendar: null,
   };
   return {
     ...grindFrom(mine, targets, now, weeksToShow, hasLadder),

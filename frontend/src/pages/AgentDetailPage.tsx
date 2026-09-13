@@ -26,7 +26,8 @@ import { RatingStamp } from "@/components/agents/RatingStamp";
 import { TrophyCase } from "@/components/agents/TrophyCase";
 import { PRESTIGE_META } from "@/components/agents/PrestigeBadge";
 import { Coin, type CoinMetal } from "@/components/forge/Coin";
-import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
+import { fmtRpm, rpmTextClass, perDayTextClass } from "@/components/lanes/rpmStyle";
+import { fmtPerDay, perDayOver, perDayTone, perDayToneWord } from "@/lib/metrics/perDay";
 
 import {
   agentPrestige,
@@ -200,6 +201,11 @@ const AgentDetailPage = () => {
   const prestige = PRESTIGE_META[tier];
   const grossRev = getGrossRevenue(loads);
   const rpm = getAverageRPM(loads);
+  // What their freight pays per DAY of the truck — weighted Σgross ÷ Σdays
+  // over the same delivered loads the RPM stat reads (perDayOver keeps only
+  // the delivered, dated ones). Graded against the ladder's daily target.
+  const perDay = perDayOver(loads ?? []).perDay;
+  const perDayT = perDayTone(perDay, overallTargets.gross);
   const lastWorked = getLastLoadDate(loads);
   const logs = buildTimeline(notes, ratingHistory, touches);
   const visibleLogs = activityExpanded
@@ -408,7 +414,7 @@ const AgentDetailPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         <Kpi label="Loads" value={String(getLoadCount(loads))} />
         <Kpi
           label="Gross revenue"
@@ -423,6 +429,14 @@ const AgentDetailPage = () => {
               ? `${rpm >= overallTargets.rollingRpm ? "▲" : "▼"} ${fmtRpm(Math.abs(rpm - overallTargets.rollingRpm))} vs your overall`
               : undefined
           }
+        />
+        <Kpi
+          label="$ / day"
+          value={fmtPerDay(perDay)}
+          // No ladder yet (no P&L) is no verdict — the figure still prints,
+          // in the strip's own colour, rather than wearing a fake grade.
+          valueClass={perDayT ? perDayTextClass(perDayT) : undefined}
+          sub={perDayToneWord(perDayT) ?? undefined}
         />
         <Kpi label="Cancelled" value={String(getCancelledCount(loads))} />
         <Kpi

@@ -222,12 +222,36 @@ describe("getGrossTargets", () => {
     const g = getGrossTargets(26000, 0, 22);
     expect(g.weeklyTarget).toBeCloseTo(g.weeklyBreakEven!, 5);
     expect(g.dailyTarget).toBeCloseTo(g.dailyBreakEven!, 5);
+    expect(g.dailyTargetCalendar).toBeCloseTo(g.dailyBreakEvenCalendar!, 5);
   });
 
   it("null when there's no cost basis", () => {
     const g = getGrossTargets(null, 0.35, 22);
     expect(g.weeklyBreakEven).toBeNull();
     expect(g.dailyTarget).toBeNull();
+    expect(g.dailyBreakEvenCalendar).toBeNull();
+    expect(g.dailyTargetCalendar).toBeNull();
+  });
+
+  // A LOAD owns calendar days — the truck is under it over the weekend too —
+  // so the $/day figure is judged against a calendar-day bar, not the
+  // working-day one the dashboard asks "what must today earn?" with.
+  it("spreads the same cost over calendar days as well as working days", () => {
+    const g = getGrossTargets(26000, 0.2, 22);
+    expect(g.dailyBreakEvenCalendar).toBeCloseTo(26000 / (365 / 12), 5); // ≈ 855
+    expect(g.dailyTargetCalendar).toBeCloseTo((26000 / (365 / 12)) / 0.8, 5);
+  });
+
+  it("the calendar bar sits BELOW the working-day bar — 30.4 days, not 22", () => {
+    const g = getGrossTargets(26000, 0.2, 22);
+    expect(g.dailyBreakEvenCalendar!).toBeLessThan(g.dailyBreakEven!);
+    expect(g.dailyTargetCalendar!).toBeLessThan(g.dailyTarget!);
+  });
+
+  it("the two pairs carry the same margin uplift", () => {
+    const g = getGrossTargets(22000, 0.15, 22);
+    expect(g.dailyTarget! / g.dailyBreakEven!).toBeCloseTo(1 / 0.85, 10);
+    expect(g.dailyTargetCalendar! / g.dailyBreakEvenCalendar!).toBeCloseTo(1 / 0.85, 10);
   });
 });
 

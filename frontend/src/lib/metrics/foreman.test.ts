@@ -723,3 +723,96 @@ describe("buildForemanBoard — proved and claimed footprint points", () => {
     expect(rankings[0].score).toBeGreaterThan(rankings[1].score);
   });
 });
+
+// ---- $/day on the ranked row (PR D, decision 3A) ----
+describe("AgentRanking.perDay", () => {
+  const world = () => {
+    seq = 0;
+    const agents = [mkAgent("a1", "Summit")];
+    const loads: Load[] = [
+      // the anchor
+      mkLoad({
+        agent_id: "a1",
+        load_status: "booked",
+        origin_city: "Akron",
+        origin_state: "OH",
+        destination_city: "Macedonia",
+        destination_state: "OH",
+        pickup_date: "2026-08-17",
+        delivery_date: "2026-08-19",
+      }),
+      // $2,300 over two days (Aug 3 → 4)
+      mkLoad({
+        agent_id: "a1",
+        origin_city: "Akron",
+        origin_state: "OH",
+        linehaul: "2300",
+        fuel_surcharge: "0",
+        pickup_date: "2026-08-03",
+        delivery_date: "2026-08-04",
+      }),
+      // $5,220 over five days (Aug 6 → 10)
+      mkLoad({
+        agent_id: "a1",
+        origin_city: "Akron",
+        origin_state: "OH",
+        linehaul: "5220",
+        fuel_surcharge: "0",
+        pickup_date: "2026-08-06",
+        delivery_date: "2026-08-10",
+      }),
+    ];
+    return { agents, loads };
+  };
+
+  it("is the WEIGHTED $/day over the agent's delivered loads of the judged type", () => {
+    const { agents, loads } = world();
+    const [r] = buildForemanBoard(loads, agents, COORDS, { now: NOW }).rankings;
+    // $7,520 ÷ 7 days = $1,074 — not the $1,097 mean of $1,150 and $1,044.
+    expect(r.perDay).toBeCloseTo(7520 / 7, 5);
+    expect(Math.round(r.perDay as number)).toBe(1074);
+  });
+
+  it("leaves the BOOKED anchor load out of the roll-up", () => {
+    const { agents, loads } = world();
+    const [r] = buildForemanBoard(loads, agents, COORDS, { now: NOW }).rankings;
+    // The booked Aug 17 → 19 load would drag 3 more days in for no gross.
+    expect(r.perDay).toBeCloseTo(7520 / 7, 5);
+  });
+
+  it("is null — never $0 — when no delivered load of the type carries both dates", () => {
+    const { agents, loads } = world();
+    const undated = loads.map((l) =>
+      l.load_status === "delivered" ? { ...l, delivery_date: null } : l,
+    );
+    const [r] = buildForemanBoard(undated, agents, COORDS, { now: NOW }).rankings;
+    expect(r.perDay).toBeNull();
+  });
+
+  it("reads the SAME loads the $/mi does — a different judged type gets its own figure", () => {
+    const { agents, loads } = world();
+    const withOversize = [
+      ...loads,
+      mkLoad({
+        agent_id: "a1",
+        load_type: "oversize",
+        origin_city: "Akron",
+        origin_state: "OH",
+        linehaul: "9000",
+        fuel_surcharge: "0",
+        pickup_date: "2026-08-01",
+        delivery_date: "2026-08-03", // 3 days → $3,000/day
+      }),
+    ];
+    const flat = buildForemanBoard(withOversize, agents, COORDS, {
+      focus: "standard flatbed",
+      now: NOW,
+    }).rankings[0];
+    const os = buildForemanBoard(withOversize, agents, COORDS, {
+      focus: "oversize",
+      now: NOW,
+    }).rankings[0];
+    expect(flat.perDay).toBeCloseTo(7520 / 7, 5);
+    expect(os.perDay).toBeCloseTo(3000, 5);
+  });
+});

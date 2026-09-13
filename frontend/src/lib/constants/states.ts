@@ -110,3 +110,29 @@ export const getStateAbbr = (name: string | null | undefined): string | null => 
   if (!name) return null;
   return NAME_TO_ABBR[name] ?? null;
 };
+
+// Issue #228 — every state inside a freight region, by the FULL NAME the map
+// topology keys its shapes on, so clicking "Southeast" on the lanes table can
+// light that region up on the map. A blank, unknown, or Unknown region
+// highlights nothing: an empty set, never the whole country.
+//
+// State names on purpose (not codes): the map draws one shape per state at
+// every zoom level — the 30d macro and 60d region views just group them — so
+// a set of names lights the right shapes whatever level is showing.
+export const statesInRegion = (region: string | null | undefined): Set<string> => {
+  const out = new Set<string>();
+  if (!region || region === UNKNOWN_REGION) return out;
+  for (const info of Object.values(STATES)) if (info.region === region) out.add(info.name);
+  return out;
+};
+
+// "Is this shape lit?" — the other half of #228, and the half BOTH boards ask.
+// The SVG fallback and the WebGL board draw the highlight differently (an
+// amber outline vs. a warmer emissive) but they must agree on WHICH states are
+// lit, so the predicate lives here rather than being re-typed on each board.
+// No highlight set at all (the caller has no map, or nothing is open) lights
+// nothing.
+export const litFor = (
+  stateName: string,
+  highlightStates: ReadonlySet<string> | null | undefined,
+): boolean => highlightStates?.has(stateName) ?? false;

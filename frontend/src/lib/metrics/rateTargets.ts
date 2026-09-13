@@ -206,12 +206,23 @@ export const bookedRate = (net: number | null, take: number): number | null =>
   net == null || take <= 0 ? null : take >= 1 ? net : net / take;
 
 const WEEKS_PER_MONTH = 52 / 12;
+const CALENDAR_DAYS_PER_MONTH = 365 / 12;
 
 export interface GrossTargets {
   weeklyBreakEven: number | null; // revenue needed to cover true cost
   weeklyTarget: number | null; // revenue that hits the margin goal
+  // WORKING-day pair — the same cost spread over the days you plan to work
+  // (WORKING_DAYS_PER_MONTH). "What must today earn?" — the dashboard's bar.
   dailyBreakEven: number | null;
   dailyTarget: number | null;
+  // CALENDAR-day pair — the same cost spread over every day of the month,
+  // worked or not. A LOAD owns calendar days: the truck sits under it over
+  // the weekend too, so a $/day figure whose denominator counts weekends has
+  // to be judged against a bar that counts them as well (lib/metrics/perDay).
+  // Judging a Fri→Mon run against the working-day bar would call a fair load
+  // a loser purely for spanning a weekend.
+  dailyBreakEvenCalendar: number | null;
+  dailyTargetCalendar: number | null;
 }
 
 // Weekly/daily REVENUE targets from your true cost and your target profit margin
@@ -230,14 +241,19 @@ export const getGrossTargets = (
       weeklyTarget: null,
       dailyBreakEven: null,
       dailyTarget: null,
+      dailyBreakEvenCalendar: null,
+      dailyTargetCalendar: null,
     };
   const weekly = trueMonthlyCost / WEEKS_PER_MONTH;
   const daily = trueMonthlyCost / workingDaysPerMonth;
+  const dailyCalendar = trueMonthlyCost / CALENDAR_DAYS_PER_MONTH;
   return {
     weeklyBreakEven: weekly,
     weeklyTarget: weekly * uplift,
     dailyBreakEven: daily,
     dailyTarget: daily * uplift,
+    dailyBreakEvenCalendar: dailyCalendar,
+    dailyTargetCalendar: dailyCalendar * uplift,
   };
 };
 

@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
+import { useRateTargets } from "@/hooks/useRateTargets";
+import { statesInRegion } from "@/lib/constants/states";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import {
@@ -64,8 +66,15 @@ const LanesPage = () => {
   const [windowDays, setWindowDays] = useState(90);
   const [mode, setMode] = useState<MapMode>("rate");
   const [selected, setSelected] = useState<string | null>(null);
+  // Issue #228 — the region row that is lighting its states on the map.
+  // Clicking the same row again clears it.
+  const [litRegion, setLitRegion] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
   const { loads, isLoading, error } = useLoads(refreshKey);
+  // The ladder's daily break-even / target — what the $/day column is graded
+  // against (decision 2A). Above the early returns: hooks never sit under one.
+  const targets = useRateTargets(loads);
+  const litStates = useMemo(() => statesInRegion(litRegion), [litRegion]);
 
   useEffect(() => {
     getSettlementSchedule().then(setSchedule).catch(() => {});
@@ -129,6 +138,7 @@ const LanesPage = () => {
             onChange={(w) => {
               setWindowDays(w);
               setSelected(null); // a state/region key won't exist at the new level
+              setLitRegion(null); // and the rollup behind the highlight is rebuilt
             }}
           />
           <Seg
@@ -173,6 +183,7 @@ const LanesPage = () => {
             mode={mode}
             onModeChange={setMode}
             windowLoads={windowLoads}
+            highlightStates={litStates}
           />
         </div>
 
@@ -187,10 +198,16 @@ const LanesPage = () => {
         ) : (
           <div className="ds2-board mt-4 p-4">
             <p className="text-xs text-faint mb-2">
-              By region · last {windowDays} days · expand a market for its
-              lanes · or click the map to drill in
+              By region · last {windowDays} days · a region row lights its
+              states on the map and expands its markets · click it again to
+              clear · or click the map to drill in
             </p>
-            <LanesTable rollup={rollup} />
+            <LanesTable
+              rollup={rollup}
+              daily={targets.gross}
+              highlightedRegion={litRegion}
+              onHighlightRegion={setLitRegion}
+            />
           </div>
         )}
       </div>

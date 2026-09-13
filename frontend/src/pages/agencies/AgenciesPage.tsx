@@ -12,6 +12,8 @@ import { inboundHeadline } from "@/lib/relationships/inboundHeadline";
 import { shortDate, utcDayKey } from "@/lib/relationships/dayKeys";
 import { nameOf } from "@/lib/relationships/nameOf";
 import { money, rpm as fmtRpm } from "@/lib/format";
+import { fmtPerDay, perDayTone, type DailyTargets } from "@/lib/metrics/perDay";
+import { perDayTextClass } from "@/components/lanes/rpmStyle";
 import { copyText } from "@/lib/clipboard";
 import {
   AGENCY_WINDOWS,
@@ -83,6 +85,21 @@ const ListSkeleton = () => (
     <Skeleton className="h-64" style={{ borderRadius: 12 }} />
   </div>
 );
+
+// "$1,7xx /day · above Strong" — the $/day first, in the ladder's colour,
+// then whatever band the row already carried. Nothing to say on either side
+// draws nothing rather than a lone separator. A plain function, not a
+// component: it is called inline for a prop, so nothing remounts.
+const perDaySub = (perDay: number | null, daily: DailyTargets | null, band: string | null) => {
+  if (perDay == null) return band;
+  const tone = perDayTone(perDay, daily);
+  return (
+    <>
+      <span className={tone ? perDayTextClass(tone) : undefined}>{fmtPerDay(perDay)}</span> /day
+      {band ? ` · ${band}` : ""}
+    </>
+  );
+};
 
 const AgenciesPage = () => {
   const data = useRelationshipsData();
@@ -190,7 +207,10 @@ const AgenciesPage = () => {
         <RowCell
           key="rpm"
           value={<b className="text-ink">{row.allInRpm == null ? "—" : `${fmtRpm(row.allInRpm)}${row.partialRpm ? "*" : ""}`}</b>}
-          sub={row.band}
+          // $/day beside $/mi (decision 3A), graded on the ladder's daily
+          // target. The band keeps its place after it — the nod was "beside
+          // every $/mi", not instead of the grade.
+          sub={perDaySub(row.perDay, data.targets.gross, row.band)}
         />,
         <RowCell
           key="agents"

@@ -713,7 +713,14 @@ const GuidePage = () => {
                 rate for that type</span> (your flatbed rate runs far under your
                 oversize rate, so the yardstick has to be per-type). Loaded-mile, the
                 same basis as the Agents page, so an agent is never dinged for a
-                deadhead they didn't cause.
+                deadhead they didn't cause. The rate cell also carries that
+                agent's <span className="text-light">$/day</span> — what their
+                freight pays per day of the truck, weighted over the same
+                delivered loads of that type, miles or no miles, and coloured
+                against your own daily target from the rate ladder, per
+                calendar day (see{" "}
+                <span className="text-light">Lane rate — typical vs blended</span>
+                ) — though the score itself still runs on the $/mi.
               </li>
               <li>
                 <span className="text-light">History</span> — loads you've run
@@ -1184,6 +1191,33 @@ const GuidePage = () => {
               A lane with only a handful of loads is easily skewed by a single
               high-accessorial run. The median asks "what does a normal load
               here pay," which is the honest basis for deciding where to book.
+            </Why>
+            <Why>
+              <span className="text-light">Dollars per day</span> — the fourth
+              column, beside the $/mi. A load pays for the days it owns the
+              truck, not just the miles, so{" "}
+              <span className="text-light">$/day = gross ÷ days from pickup to
+              delivery, inclusive, never under one day</span>. Rolled up for a
+              region, a market or a lane it is{" "}
+              <span className="text-light">total gross ÷ total days</span> —
+              weighted, so a two-day $2,300 load and a five-day $5,220 load read
+              $1,074 a day together rather than the $1,097 neither of them
+              earned. The colours are your own{" "}
+              <span className="text-light">daily target from the rate ladder,
+              per calendar day</span> — true monthly cost spread over every day
+              of the month, worked or not, lifted to your margin goal — because
+              a load owns calendar days: the truck sits under it over the
+              weekend the same as over a Tuesday. Green at or above that
+              target, amber at or above break-even, red below it. (That is your
+              own P&L talking, not the $/mi column's fixed rate tiers beside
+              it — the two columns wear the same three colours but answer to
+              different yardsticks.) A row under the{" "}
+              <span className="text-light">3-load bar</span> still prints its
+              figure but carries no colour, and a lane whose loads have no
+              pickup date yet shows an em dash — never a guessed dollar. The
+              same number rides the Foreman's rate cell, the agent page, the
+              Relationships Review scorecard, the Agencies rows and the load
+              header.
             </Why>
             <Why>
               The <span className="text-light">map</span> shades by your own
@@ -2532,8 +2566,13 @@ const GuidePage = () => {
               <span className="text-light">GONE QUIET</span>, every Tier 1 or 2
               with no two-way contact in thirty days; and the{" "}
               <span className="text-light">SCORECARD</span> — ninety days per
-              agent: loads, net, net per mile graded against the ladder,
-              deadhead, inbound, last load, the days you reached out and the
+              agent: loads, net, net per mile graded against the ladder,{" "}
+              <span className="text-light">$/day</span> — the window's gross
+              over the days their freight owned the truck, weighted and
+              coloured against your own daily target from the rate ladder, per
+              calendar day (see{" "}
+              <span className="text-light">Lane rate — typical vs blended</span>
+              ) — deadhead, inbound, last load, the days you reached out and the
               times they reached in. Its verdict is the suggestion’s direction —
               ▲ up, ▼ down, HOLD; under three loads in the window it is THIN, no
               verdict, never a fake grade; and a ▼ on a Tier 1 or 2 you reached
@@ -2619,7 +2658,13 @@ const GuidePage = () => {
               ladder's word under it (above Strong, above Target, above Minimum,
               under Minimum, losing money), how many agents work there and how
               many of them you have tiered, and how long since its last load.
-              Tap the row for the agency's own page.
+              Beside that RPM sits the desk's{" "}
+              <span className="text-light">$/day</span> — the window's gross
+              over the days its freight owned the truck, weighted and coloured
+              against your own daily target from the rate ladder, per calendar
+              day (see{" "}
+              <span className="text-light">Lane rate — typical vs blended</span>
+              ). Tap the row for the agency's own page.
             </p>
             <p className="text-sm text-muted-text mt-3">
               <span className="text-light">What it rolls up, and what it does

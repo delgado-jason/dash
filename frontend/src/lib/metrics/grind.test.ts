@@ -24,6 +24,8 @@ const targets = {
   weeklyTarget: 7353,
   dailyBreakEven: null,
   dailyTarget: null,
+  dailyBreakEvenCalendar: null,
+  dailyTargetCalendar: null,
 };
 
 describe("classify", () => {

@@ -7,6 +7,7 @@ import {
   UNKNOWN_REGION,
 } from "@/lib/constants/states";
 import { median } from "./stats";
+import { perDayOver, type PerDayTotals } from "./perDay";
 import { agentStops, scoreStops } from "./stopScore";
 
 // Minimum loads before a lane/market can win an RPM-based KPI — keeps a single
@@ -24,6 +25,12 @@ export interface LaneStat {
   gross: number; // all-in gross over the lane's loads (market value)
   avgRpm: number | null;
   medianRpm: number | null;
+  // Typical $/day — WEIGHTED, Σgross ÷ Σdays over the delivered loads here
+  // (lib/metrics/perDay). Never a mean of per-load rates: a five-day haul
+  // owns five days of the truck and has to weigh five times as much.
+  // `.perDay` is null when none of the loads carry both dates; `.loads` is how
+  // many of `loadCount` actually fed it, which is what the colour gates on.
+  perDay: PerDayTotals;
 }
 
 export interface MarketStat {
@@ -31,6 +38,7 @@ export interface MarketStat {
   loadCount: number;
   avgRpm: number | null;
   medianRpm: number | null;
+  perDay: PerDayTotals; // weighted — see LaneStat.perDay
   lanes: LaneStat[];
 }
 
@@ -39,6 +47,7 @@ export interface RegionStat {
   loadCount: number;
   avgRpm: number | null;
   medianRpm: number | null;
+  perDay: PerDayTotals; // weighted — see LaneStat.perDay
   markets: MarketStat[];
 }
 
@@ -96,6 +105,13 @@ const loadRpm = (load: Load): number | null => {
 // what "expect on the next load" looks like, so it ranks the KPIs.
 const medianRpm = (loads: Load[]): number | null =>
   median(loads.map(loadRpm).filter((r): r is number => r !== null));
+
+// Typical $/day for a set of lane loads — weighted, one rule, shared with
+// every other surface that shows a $/day. The whole totals object, not just
+// the rate: the table colours on how many loads actually FED the figure, and
+// the group's load count is not that number (a load with no pickup date is in
+// the group and out of the figure).
+const perDayOf = (loads: Load[]): PerDayTotals => perDayOver(loads);
 
 const groupBy = <T>(items: T[], key: (item: T) => string): Map<string, T[]> => {
   const map = new Map<string, T[]>();
@@ -156,6 +172,7 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
           gross: grossRevenue(laneLoads),
           avgRpm: avgRpm(laneLoads),
           medianRpm: medianRpm(laneLoads),
+          perDay: perDayOf(laneLoads),
         });
       }
 
@@ -165,6 +182,7 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
         loadCount: marketLoads.length,
         avgRpm: avgRpm(marketLoads),
         medianRpm: medianRpm(marketLoads),
+        perDay: perDayOf(marketLoads),
         lanes,
       });
     }
@@ -175,6 +193,7 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
       loadCount: regionLoads.length,
       avgRpm: avgRpm(regionLoads),
       medianRpm: medianRpm(regionLoads),
+      perDay: perDayOf(regionLoads),
       markets,
     });
   }
@@ -380,6 +399,7 @@ const buildDetail = (
       gross: grossRevenue(laneLoads),
       avgRpm: avgRpm(laneLoads),
       medianRpm: medianRpm(laneLoads),
+      perDay: perDayOf(laneLoads),
     });
   }
   lanes.sort(
@@ -533,3 +553,21 @@ export const getOriginStateRollup = (loads: Load[]): OriginStateRollup => {
       best = r;
   return { rows, singles: all.length - rows.length, best };
 };
+
+// ---- #228: WHICH REGION IS LIT ON THE MAP ----
+// One click on a region row does two jobs: it opens/closes that region's
+// markets AND it lights (or clears) that region's states on the map. The two
+// must never drift apart, so the next highlight is a pure function of what the
+// click is about to do:
+//
+//   • opening a region       → light IT, whatever was lit before
+//   • collapsing the LIT row → clear the map
+//   • collapsing another row → leave the lit row alone
+//
+// That last case is the one a naive "willOpen ? region : null" gets wrong:
+// closing Midwest would blank a map that is showing the Gulf.
+export const nextHighlight = (
+  willOpen: boolean,
+  region: string,
+  highlighted: string | null,
+): string | null => (willOpen ? region : highlighted === region ? null : highlighted);

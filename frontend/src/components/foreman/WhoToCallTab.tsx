@@ -11,6 +11,8 @@ import { getAgentContacts, type AgentContact } from "@/services/agentContactsSer
 import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
 import { isDispatcher } from "@/lib/roles";
 import { money } from "@/lib/format";
+import { fmtPerDay, perDayTone, perDayToneWord, type DailyTargets } from "@/lib/metrics/perDay";
+import { perDayTextClass } from "@/components/lanes/rpmStyle";
 import { shortDate } from "@/lib/relationships/dayKeys";
 import { PARKED_RADIUS_MILES, parkedNearby, parkedNearbyExplicitOnly, type ParkedNearbyRow } from "@/lib/relationships/parkedNearby";
 import { AgentRow } from "@/components/relationships/AgentRow";
@@ -42,6 +44,36 @@ const RateNote = ({ r }: { r: AgentRanking }) => {
       {up ? "+" : "−"}
       {money2(Math.abs(r.rateDelta)).slice(1)} vs your {TYPE_LABELS[r.loadType].toLowerCase()} avg
     </span>
+  );
+};
+
+// The $/day that rides under every $/mi on this board (decision 3A): what the
+// agent's freight pays per DAY of the truck, weighted over the same delivered
+// loads the $/mi reads. Green/amber/red against the ladder's daily target
+// (2A), with the verdict said in words. Nothing renders without a figure —
+// the board never draws a $0 day for an agent whose loads have no dates.
+const PerDayNote = ({
+  r,
+  daily,
+  withWord,
+}: {
+  r: AgentRanking;
+  daily: DailyTargets | null;
+  withWord?: boolean;
+}) => {
+  if (r.perDay == null) return null;
+  const tone = perDayTone(r.perDay, daily);
+  const word = withWord ? perDayToneWord(tone) : null;
+  return (
+    <>
+      {/* No ladder yet (no P&L) is no verdict, not "no data" — the figure
+          stays in the board's own ink rather than going grey. */}
+      <b className={`font-semibold ${tone ? perDayTextClass(tone) : "text-ink"}`}>
+        {fmtPerDay(r.perDay)}
+      </b>
+      <span className="text-dim"> /day</span>
+      {word && <span className="text-dim"> · {word}</span>}
+    </>
   );
 };
 
@@ -110,7 +142,7 @@ const ClassChip = ({ r, size = "md" }: { r: AgentRanking; size?: "sm" | "md" }) 
 );
 
 // ---- the one forged plate: the top call ----
-const TopCall = ({ r }: { r: AgentRanking }) => (
+const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) => (
   <ForgedPlate chamfer tilt className="p-4 sm:p-5">
     <div className="flex items-center gap-2 mb-2">
       <span className="font-forge text-[12px] tracking-wider px-2.5 py-1 rounded-md bg-amber text-canvas font-bold">
@@ -151,6 +183,15 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
           {r.rpm != null ? money2(r.rpm) : "—"}
           {r.rpm != null && <span className="font-condensed text-[13px] text-dim"> /mi gross</span>}
         </p>
+        {/* The mock's Rate cell: the $/mi, then the $/day with the ladder's
+            word under it. The benchmark line the cell has always carried
+            keeps its place below — "$/day BESIDE every $/mi" was the nod,
+            not instead of the comparison that earns the rate score. */}
+        {r.perDay != null && (
+          <p className="font-condensed text-[12px] mt-1">
+            <PerDayNote r={r} daily={daily} withWord />
+          </p>
+        )}
         <p className="text-[12px] mt-1"><RateNote r={r} /></p>
       </div>
       <div>
@@ -181,7 +222,15 @@ const TopCall = ({ r }: { r: AgentRanking }) => (
 // is no sixth door column — the agent's name is already the link.
 const ROW_GRID = "grid-cols-[minmax(0,1fr)_72px] md:grid-cols-[20px_minmax(0,1fr)_78px_70px_88px]";
 
-const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
+const RankedRow = ({
+  r,
+  rank,
+  daily,
+}: {
+  r: AgentRanking;
+  rank: number;
+  daily: DailyTargets | null;
+}) => (
   <div className={`grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo ${ROW_GRID}`}>
     <span className="hidden md:block font-display text-[17px] text-faint">{rank}</span>
     <div className="min-w-0">
@@ -206,11 +255,20 @@ const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
       <span className="font-display text-[17px] text-ink block">{distanceLabel(r)}</span>
       <ProofWord r={r} />
     </span>
+    {/* The mock's pair: $5.01 /mi over $1,360 /day, coloured by the ladder.
+        With no $/day the second line is simply absent — line 1 already says
+        "/mi", so a "/mi gross" caption under it would only repeat the unit
+        the reader just read. */}
     <span className="hidden md:block text-right leading-tight">
       <span className="font-display text-[17px] block">
         {r.rpm != null ? money2(r.rpm) : <span className="text-faint">{"—"}</span>}
+        {r.rpm != null && <span className="font-condensed text-[11px] text-dim"> /mi</span>}
       </span>
-      {r.rpm != null && <span className="font-condensed text-[11px] text-faint">/mi gross</span>}
+      {r.perDay != null && (
+        <span className="font-condensed text-[11px]">
+          <PerDayNote r={r} daily={daily} />
+        </span>
+      )}
     </span>
     <span className="hidden md:block text-right leading-tight">
       <span className="font-condensed text-[13px] text-dim block">
@@ -222,7 +280,15 @@ const RankedRow = ({ r, rank }: { r: AgentRanking; rank: number }) => (
 );
 
 // The ranked rows under the Top Call — one list, score order, no groups.
-const RankedList = ({ rows, startRank }: { rows: AgentRanking[]; startRank: number }) => {
+const RankedList = ({
+  rows,
+  startRank,
+  daily,
+}: {
+  rows: AgentRanking[];
+  startRank: number;
+  daily: DailyTargets | null;
+}) => {
   if (rows.length === 0) return null;
   return (
     <div className="ds2-board mt-3">
@@ -234,7 +300,7 @@ const RankedList = ({ rows, startRank }: { rows: AgentRanking[]; startRank: numb
         <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
       </div>
       {rows.map((r, i) => (
-        <RankedRow key={r.agentId} r={r} rank={startRank + i} />
+        <RankedRow key={r.agentId} r={r} rank={startRank + i} daily={daily} />
       ))}
     </div>
   );
@@ -472,10 +538,10 @@ export const WhoToCallTab = () => {
       ) : (
         <>
           {/* top call */}
-          {top && <TopCall r={top} />}
+          {top && <TopCall r={top} daily={targets.gross} />}
 
           {/* the rest — ONE list, in the score's own order */}
-          <RankedList rows={rest} startRank={2} />
+          <RankedList rows={rest} startRank={2} daily={targets.gross} />
 
           {/* parked, within 75 mi — under the ranked rows, dimmed */}
           {parkedGroup}

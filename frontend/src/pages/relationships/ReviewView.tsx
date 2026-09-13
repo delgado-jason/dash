@@ -8,6 +8,8 @@ import { BoardCell } from "@/components/ui/Board";
 import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
 import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
 import { money, rpm as fmtRpm } from "@/lib/format";
+import { fmtPerDay, perDayTone, perDayToneWord, type DailyTargets } from "@/lib/metrics/perDay";
+import { perDayTextClass } from "@/components/lanes/rpmStyle";
 import { copyText } from "@/lib/clipboard";
 import { SYSTEM_START } from "@/lib/metrics/relationships";
 import { INBOUND_HEADLINE_MIN, inboundHeadline } from "@/lib/relationships/inboundHeadline";
@@ -223,10 +225,28 @@ const VERDICT_META: Record<Verdict, { label: string; tone: PillTone }> = {
 const lastLoadTone = (days: number | null): string =>
   days == null ? "var(--color-faint)" : days > 60 ? "var(--color-status-negative-text)" : days > 30 ? "#f5c37a" : "var(--color-ink)";
 
-const scoreFacts = (r: ScoreRow<Agent>): { label: string; value: string; sub?: string; tone?: string }[] => [
+// The $/day verdict, once, so the table column and the phone's fact grid say
+// the same thing: green/amber/red against the ladder's daily target (2A),
+// with the word under the figure. No targets, no figure — no verdict, and the
+// sub says WHICH of the two is missing rather than going blank: a column that
+// silently drops its caption reads as "nothing to say about this agent".
+const perDayCell = (r: ScoreRow<Agent>, daily: DailyTargets | null) => {
+  const tone = perDayTone(r.perDay, daily);
+  return {
+    value: fmtPerDay(r.perDay),
+    sub: perDayToneWord(tone) ?? (r.perDay == null ? "no dated loads" : "no daily target"),
+    cls: perDayTextClass(tone),
+  };
+};
+
+const scoreFacts = (
+  r: ScoreRow<Agent>,
+  daily: DailyTargets | null,
+): { label: string; value: string; sub?: string; tone?: string }[] => [
   { label: "Loads", value: String(r.loads) },
   { label: "Net", value: money(r.net) },
   { label: "Net $/mi", value: fmtRpm(r.netRpm), sub: r.grade ?? "no ladder" },
+  { label: "$ / day", value: fmtPerDay(r.perDay), sub: perDayCell(r, daily).sub },
   { label: "Deadhead", value: pct0(r.deadheadPct) },
   { label: "Inbound", value: shareCell(r.inbound) },
   // The phone carries the same amber-over-30 / red-over-60 the table does —
@@ -241,10 +261,10 @@ const scoreFacts = (r: ScoreRow<Agent>): { label: string; value: string; sub?: s
   { label: "Inbound touches", value: String(r.inboundTouches) },
 ];
 
-const ScoreExpansion = ({ row }: { row: ScoreRow<Agent> }) => (
+const ScoreExpansion = ({ row, daily }: { row: ScoreRow<Agent>; daily: DailyTargets | null }) => (
   <div className="px-3.5 pb-3.5 -mt-1">
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2.5">
-      {scoreFacts(row).map((f) => (
+      {scoreFacts(row, daily).map((f) => (
         <div key={f.label} className="min-w-0">
           <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint">{f.label}</p>
           <p className="font-condensed font-semibold text-[15px] text-ink tabular-nums" style={f.tone ? { color: f.tone } : undefined}>
@@ -268,12 +288,12 @@ const NAME_COL_PX = 150;
 const NAME_COL: CSSProperties = { width: NAME_COL_PX, maxWidth: NAME_COL_PX };
 const VERDICT_COL: CSSProperties = { left: NAME_COL_PX };
 
-const ScoreTable = ({ rows }: { rows: ScoreRow<Agent>[] }) => (
+const ScoreTable = ({ rows, daily }: { rows: ScoreRow<Agent>[]; daily: DailyTargets | null }) => (
   <div className="hidden md:block overflow-x-auto">
     <table className="w-full text-[13px] tabular-nums font-condensed" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
       <thead>
         <tr className="text-[10.5px] tracking-[.1em] uppercase text-faint">
-          {["Agent", "Verdict", "Loads", "Net", "Net $/mi", "Deadhead", "Inbound", "Last load", "Touched / in"].map((h, i) => (
+          {["Agent", "Verdict", "Loads", "Net", "Net $/mi", "$ / day", "Deadhead", "Inbound", "Last load", "Touched / in"].map((h, i) => (
             <th
               key={h}
               className={`${i < 2 ? "text-left" : "text-right"} px-3 py-2 border-b border-hairline whitespace-nowrap ${
@@ -289,11 +309,12 @@ const ScoreTable = ({ rows }: { rows: ScoreRow<Agent>[] }) => (
       <tbody>
         {rows.map((r, i) => {
           const groupHead = i === 0 || rows[i - 1].bucket !== r.bucket;
+          const pd = perDayCell(r, daily);
           return (
             <Fragment key={r.agent.agent_id}>
               {groupHead && (
                 <tr>
-                  <td colSpan={9} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[13px] tracking-[.08em] text-amber-hi" style={{ background: "rgba(232,148,10,.05)" }}>
+                  <td colSpan={10} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[13px] tracking-[.08em] text-amber-hi" style={{ background: "rgba(232,148,10,.05)" }}>
                     {bucketWord(r.bucket).toUpperCase()}
                   </td>
                 </tr>
@@ -319,6 +340,10 @@ const ScoreTable = ({ rows }: { rows: ScoreRow<Agent>[] }) => (
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">
                   {fmtRpm(r.netRpm)}
                   {r.grade && <span className="block text-[10.5px] text-faint">{r.grade}</span>}
+                </td>
+                <td className="text-right px-3 py-2 border-b border-hairline-lo">
+                  <span className={pd.cls}>{pd.value}</span>
+                  <span className="block text-[10.5px] text-faint">{pd.sub}</span>
                 </td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{pct0(r.deadheadPct)}</td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{shareCell(r.inbound)}</td>
@@ -551,7 +576,10 @@ const tierOfSuggestion = (word: SuggestionRow<Agent>["suggestion"]): number | nu
   word === "tier1" ? 1 : word === "tier2" ? 2 : word === "tier3" ? 3 : null;
 
 const ReviewView = () => {
-  const { agents, loads, contacts, notes, coverage, history, reviews, ladder, now, isAdmin, loadsReady, errors, openAgent, notify, reload } =
+  // The rate targets ride along with the ladder: `.gross` carries the daily
+  // break-even and daily target the scorecard's $/day column is graded on.
+  // Aliased — `targets` in this view is already the sign-off's target lines.
+  const { agents, loads, contacts, notes, coverage, history, reviews, ladder, targets: rateTargets, now, isAdmin, loadsReady, errors, openAgent, notify, reload } =
     useRelationships();
   // A failed slice is never read as truth: without the sign-offs the month is
   // not "unsigned", it is unknown; without the tier history a suggestion the
@@ -1090,17 +1118,27 @@ const ReviewView = () => {
                     <AgentRow
                       agent={r.agent}
                       chip={{ kind: r.verdict === "up" ? "up" : r.verdict === "down" ? "down" : r.verdict === "thin" ? "suggest" : "section", label: VERDICT_META[r.verdict].label }}
-                      context={`${plural(r.loads, "load")} · ${money(r.net)} · ${fmtRpm(r.netRpm)}${r.grade ? ` ${r.grade}` : ""}`}
+                      // The mock's line 2: what the row is MADE of, so the
+                      // $/day beside it is readable as a division rather than
+                      // a number to take on faith. Only when something fed it
+                      // — "$0 gross · 0 days" would be a lie about an agent
+                      // whose loads simply have no pickup dates.
+                      context={
+                        `${plural(r.loads, "load")} · ${money(r.net)} · ${fmtRpm(r.netRpm)}${r.grade ? ` ${r.grade}` : ""}` +
+                        (r.perDayDays > 0
+                          ? ` · ${money(r.perDayGross)} gross · ${plural(r.perDayDays, "day")} on the truck`
+                          : "")
+                      }
                       daysSince={undefined}
                       right={{ value: r.lastLoadDays == null ? "never" : `${r.lastLoadDays}d`, caption: "last load" }}
                       onOpen={() => setOpenScore((id) => (id === r.agent.agent_id ? null : r.agent.agent_id))}
                     />
-                    {openScore === r.agent.agent_id && <ScoreExpansion row={r} />}
+                    {openScore === r.agent.agent_id && <ScoreExpansion row={r} daily={rateTargets.gross} />}
                   </Fragment>
                 );
               })}
             </div>
-            <ScoreTable rows={model.scores} />
+            <ScoreTable rows={model.scores} daily={rateTargets.gross} />
           </>
         )}
         <FootLine>

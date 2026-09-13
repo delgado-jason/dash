@@ -30,6 +30,7 @@ import {
   type InboundShare,
 } from "@/lib/metrics/relationships";
 import { agentAllInRpm, allInOver, deliveredCount } from "@/lib/relationships/agentRpm";
+import { perDayOver } from "@/lib/metrics/perDay";
 import {
   lastMeaningfulContact,
   type MeaningfulContactLike,
@@ -146,6 +147,11 @@ export interface AgencyRow {
   gross: number; // their gross — 0 when nothing delivered; the UI draws "—"
   allInRpm: number | null; // null when no miles were logged, never $0.00
   partialRpm: boolean;
+  // What the desk's freight paid per DAY of the truck over the window —
+  // WEIGHTED, Σgross ÷ Σdays (lib/metrics/perDay), measured over the very
+  // same windowed delivered loads the gross and the RPM read. null when none
+  // of them carry both dates; never $0.
+  perDay: number | null;
   band: string | null; // null without a ladder — no fake grade
   // Inbound since SYSTEM_START, not since the window: the page prints
   // "attributed since Sep 3", so the number has to be measured there or the
@@ -242,6 +248,7 @@ export const agencyRollup = (
       gross: desk.gross,
       allInRpm: desk.rpm,
       partialRpm: desk.partial,
+      perDay: perDayOver(windowed).perDay,
       band: agencyBand(desk.rpm, ladder),
       inbound: inboundShare(mine, SYSTEM_START, todayKey),
       lastLoad: last,
