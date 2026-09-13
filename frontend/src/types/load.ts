@@ -1,3 +1,5 @@
+import type { CustomerEnd } from "@/lib/loads/customerEnd";
+
 export interface Load {
   load_id: string;
   load_number: string;
@@ -69,6 +71,13 @@ export interface Load {
   // Decision 4 (073): set by Dispatch when an OS&D or damage claim lands.
   // Breaks the agent's on-time, claim-free streak. Absent on fixtures → false.
   claim_filed?: boolean;
+  // Decision 5A (074): which end of this load the AGENT'S customer sits on —
+  // 'shipper' (the origin is their market, the default), 'receiver' (the
+  // destination is), 'neither' (a one-off that says nothing). Every footprint
+  // reader follows it through lib/loads/customerEnd. The column is NOT NULL
+  // DEFAULT 'shipper' and the load services coerce a missing value, so absent
+  // (fixtures, cached rows) reads as 'shipper' — exactly as before 074.
+  customer_end?: CustomerEnd;
   truck_id?: string | null;
   driver_id?: string | null;
   trailer_id?: string | null;

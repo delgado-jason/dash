@@ -443,3 +443,230 @@ describe("buildForemanBoard — region fallback (no coords)", () => {
     expect(board.rankings[0].nearestOrigin).not.toBeNull();
   });
 });
+
+// ---- decision 6A: claimed markets are footprint points ----
+// A market an agent NAMED on a call measures exactly like one a load proved;
+// only the caption differs. Decision 5A decides which end of a load counts.
+describe("buildForemanBoard — proved and claimed footprint points", () => {
+  const anchorLoad = () =>
+    mkLoad({
+      agent_id: "a1",
+      load_status: "booked",
+      origin_city: "Akron",
+      origin_state: "OH",
+      destination_city: "Macedonia",
+      destination_state: "OH",
+      pickup_date: "2026-08-17",
+      delivery_date: "2026-08-19",
+    });
+
+  it("a claimed market ranks an agent with no delivered loads by REAL miles", () => {
+    seq = 0;
+    const agents = [mkAgent("a1", "Summit"), mkAgent("clm", "Harrison")];
+    const loads: Load[] = [
+      anchorLoad(),
+      // Harrison has one booked load out of a city with no trusted
+      // coordinate — nothing proved, nothing measurable.
+      mkLoad({
+        agent_id: "clm",
+        load_status: "booked",
+        origin_city: "Nowhere",
+        origin_state: "OH",
+        destination_city: "Elsewhere",
+        destination_state: "OH",
+        pickup_date: "2026-08-01",
+        delivery_date: "2026-08-02",
+      }),
+    ];
+    const coverage = [{ agent_id: "clm", city: "Youngstown", state: "OH", source: "stated" }];
+
+    const without = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    const nobody = without.rankings.find((r) => r.agentId === "clm")!;
+    expect(nobody.distanceMiles).toBeNull(); // no coordinate → region-level only
+    expect(nobody.regionFallback).toBe(true);
+    expect(without.coverage).toEqual({ withCoords: 1, total: 2 });
+
+    const board = buildForemanBoard(loads, agents, COORDS, { now: NOW, coverage });
+    const clm = board.rankings.find((r) => r.agentId === "clm")!;
+    expect(clm.nearestOrigin).toEqual({ city: "Youngstown", state: "OH" });
+    expect(clm.nearestSource).toBe("claimed");
+    expect(clm.distanceMiles).toBeGreaterThan(40);
+    expect(clm.distanceMiles).toBeLessThan(55);
+    expect(clm.regionFallback).toBe(false);
+    // the claimed point is a real coordinate — it counts in the coverage meter
+    expect(board.coverage).toEqual({ withCoords: 2, total: 2 });
+  });
+
+  it("the NEAREST point wins whichever kind it is, and says which kind", () => {
+    seq = 0;
+    const agents = [mkAgent("a1", "Summit"), mkAgent("m", "Mixed")];
+    const far = mkLoad({ agent_id: "m", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-01" });
+    const near = mkLoad({ agent_id: "m", origin_city: "Akron", origin_state: "OH", delivery_date: "2026-08-01" });
+
+    // proved far (Columbus ~122) + claimed near (Akron ~16) → the claim wins
+    const claimNear = buildForemanBoard([anchorLoad(), far], agents, COORDS, {
+      now: NOW,
+      coverage: [{ agent_id: "m", city: "Akron", state: "OH", source: "stated" }],
+    }).rankings.find((r) => r.agentId === "m")!;
+    expect(claimNear.nearestOrigin).toEqual({ city: "Akron", state: "OH" });
+    expect(claimNear.nearestSource).toBe("claimed");
+    expect(claimNear.distanceMiles).toBeLessThan(19);
+
+    // proved near (Akron) + claimed far (Columbus) → the load wins
+    const provedNear = buildForemanBoard([anchorLoad(), near], agents, COORDS, {
+      now: NOW,
+      coverage: [{ agent_id: "m", city: "Columbus", state: "OH", source: "stated" }],
+    }).rankings.find((r) => r.agentId === "m")!;
+    expect(provedNear.nearestOrigin).toEqual({ city: "Akron", state: "OH" });
+    expect(provedNear.nearestSource).toBe("proved");
+  });
+
+  it("coverage a load already CONFIRMED reads as proved, not claimed", () => {
+    seq = 0;
+    const agents = [mkAgent("a1", "Summit"), mkAgent("c", "Confirmed")];
+    const board = buildForemanBoard(
+      [
+        anchorLoad(),
+        mkLoad({ agent_id: "c", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-01" }),
+      ],
+      agents,
+      COORDS,
+      { now: NOW, coverage: [{ agent_id: "c", city: "Youngstown", state: "OH", source: "confirmed" }] },
+    );
+    const c = board.rankings.find((r) => r.agentId === "c")!;
+    expect(c.nearestOrigin).toEqual({ city: "Youngstown", state: "OH" });
+    expect(c.nearestSource).toBe("proved");
+  });
+
+  it("a 'neither' load contributes no point at all", () => {
+    seq = 0;
+    const agents = [mkAgent("a1", "Summit"), mkAgent("n", "OneOff")];
+    const oneOff = mkLoad({
+      agent_id: "n",
+      customer_end: "neither",
+      origin_city: "Akron", // would have been ~16 mi
+      origin_state: "OH",
+      destination_city: "Akron",
+      destination_state: "OH",
+      delivery_date: "2026-08-01",
+    });
+
+    const bare = buildForemanBoard([anchorLoad(), oneOff], agents, COORDS, { now: NOW })
+      .rankings.find((r) => r.agentId === "n")!;
+    expect(bare.nearestOrigin).toBeNull();
+    expect(bare.nearestSource).toBeNull();
+    expect(bare.distanceMiles).toBeNull();
+
+    // only what they claimed is left to measure from
+    const claimed = buildForemanBoard([anchorLoad(), oneOff], agents, COORDS, {
+      now: NOW,
+      coverage: [{ agent_id: "n", city: "Columbus", state: "OH", source: "stated" }],
+    }).rankings.find((r) => r.agentId === "n")!;
+    expect(claimed.nearestOrigin).toEqual({ city: "Columbus", state: "OH" });
+    expect(claimed.nearestSource).toBe("claimed");
+  });
+
+  it("a receiver-end load puts the DESTINATION on the footprint (the Atlanta load)", () => {
+    seq = 0;
+    const agents = [mkAgent("a1", "Summit"), mkAgent("mike", "Sorrentino")];
+    const board = buildForemanBoard(
+      [
+        anchorLoad(),
+        mkLoad({
+          agent_id: "mike",
+          customer_end: "receiver",
+          origin_city: "Columbus", // the tradeshow yard — ~122 mi
+          origin_state: "OH",
+          destination_city: "Akron", // his own customer — ~16 mi
+          destination_state: "OH",
+          delivery_date: "2026-08-01",
+        }),
+      ],
+      agents,
+      COORDS,
+      { now: NOW },
+    );
+    const mike = board.rankings.find((r) => r.agentId === "mike")!;
+    expect(mike.nearestOrigin).toEqual({ city: "Akron", state: "OH" });
+    expect(mike.nearestSource).toBe("proved");
+    expect(mike.distanceMiles).toBeLessThan(19);
+  });
+
+  it("an empty coverage list changes nothing, and an un-marked load still reads as shipper", () => {
+    const { agents, loads } = buildWorld();
+    const plain = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    const withEmpty = buildForemanBoard(loads, agents, COORDS, { now: NOW, coverage: [] });
+    expect(withEmpty.rankings.map((r) => [r.agentId, r.distanceMiles, r.nearestSource])).toEqual(
+      plain.rankings.map((r) => [r.agentId, r.distanceMiles, r.nearestSource]),
+    );
+    for (const r of plain.rankings) expect(r.nearestSource).toBe("proved");
+    // a blank coverage row is skipped rather than keyed as ","
+    const blank = buildForemanBoard(loads, agents, COORDS, {
+      now: NOW,
+      coverage: [{ agent_id: "a1", city: "  ", state: "OH" }],
+    });
+    expect(blank.rankings.find((r) => r.agentId === "a1")!.nearestSource).toBe("proved");
+  });
+
+  it("the ranked list is ONE list in score order — the class never lifts a row", () => {
+    seq = 0;
+    const agents = [mkAgent("dir", "Direct"), mkAgent("spt", "Spot")];
+    const loads: Load[] = [
+      mkLoad({ agent_id: "spt", load_status: "booked", origin_city: "Akron", origin_state: "OH", destination_city: "Macedonia", destination_state: "OH", pickup_date: "2026-08-17", delivery_date: "2026-08-19" }),
+      mkLoad({ agent_id: "spt", shipper_name: "OneOff", origin_city: "Akron", origin_state: "OH", delivery_date: "2026-08-03" }),
+      mkLoad({ agent_id: "dir", shipper_name: "Acme", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-01" }),
+      mkLoad({ agent_id: "dir", shipper_name: "Acme", origin_city: "Columbus", origin_state: "OH", delivery_date: "2026-08-05" }),
+    ];
+    const rankings = buildForemanBoard(loads, agents, COORDS, { now: NOW }).rankings;
+    // WhoToCallTab renders rankings[0] as the TOP CALL and rankings[1..] as
+    // one ranked list, in this exact order — so score order IS screen order.
+    for (let i = 1; i < rankings.length; i++) {
+      expect(rankings[i - 1].score).toBeGreaterThanOrEqual(rankings[i].score);
+    }
+    expect(rankings.map((r) => r.bucket)).toEqual(["spot", "direct"]);
+  });
+
+  // The bug decision 6A retired, pinned to the numbers that showed it: the tab
+  // used to hard-sort Direct above Spot, so a 0.54 Direct sat on top of a 0.81
+  // Spot. `rankings` IS the screen order — rankings[0] is the TOP CALL plate
+  // and the rest render in this array's order — so the measured score has to
+  // win here or it doesn't win anywhere.
+  it("a Spot at ~0.81 outranks a Direct at ~0.54", () => {
+    seq = 0;
+    const agents = [
+      { ...mkAgent("dir", "Direct"), agent_class: "direct" as const },
+      { ...mkAgent("spt", "Spot"), agent_class: "spot" as const },
+    ];
+    const delivered = (agent_id: string, city: string, delivery_date: string) =>
+      mkLoad({ agent_id, origin_city: city, origin_state: "OH", delivery_date });
+    const loads: Load[] = [
+      // the anchor: a booked load nobody on the roster owns → Macedonia, OH
+      mkLoad({
+        agent_id: "ghost",
+        load_status: "booked",
+        origin_city: "Akron",
+        origin_state: "OH",
+        destination_city: "Macedonia",
+        destination_state: "OH",
+        pickup_date: "2026-08-17",
+        delivery_date: "2026-08-19",
+      }),
+      // Spot: four loads out of Akron (~16 mi), the last of them two days ago
+      delivered("spt", "Akron", "2026-08-11"),
+      delivered("spt", "Akron", "2026-08-04"),
+      delivered("spt", "Akron", "2026-07-28"),
+      delivered("spt", "Akron", "2026-07-20"),
+      // Direct: two loads out of Columbus (~122 mi), nothing since May
+      delivered("dir", "Columbus", "2026-05-20"),
+      delivered("dir", "Columbus", "2026-05-12"),
+    ];
+    const rankings = buildForemanBoard(loads, agents, COORDS, { now: NOW }).rankings;
+    expect(rankings.map((r) => [r.agentId, r.bucket])).toEqual([
+      ["spt", "spot"],
+      ["dir", "direct"],
+    ]);
+    expect(rankings[0].score).toBeCloseTo(0.81, 1);
+    expect(rankings[1].score).toBeCloseTo(0.54, 1);
+    expect(rankings[0].score).toBeGreaterThan(rankings[1].score);
+  });
+});

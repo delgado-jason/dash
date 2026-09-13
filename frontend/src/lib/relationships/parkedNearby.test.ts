@@ -188,3 +188,53 @@ describe("parkedNearby — parked agents within 75 straight-line miles of the an
     expect(parkedNearbyExplicitOnly([], [], [], COORDS, ANCHOR, NOW)).toEqual([]);
   });
 });
+
+// Decision 5A: the footprint follows the load's customer-end mark, so the
+// parked harvest group measures from the end the agent's customer sits on.
+describe("parkedNearby — the customer-end mark decides the point", () => {
+  it("a receiver-end load places the agent at the DESTINATION", () => {
+    seq = 0;
+    const agents = [mkAgent("mike")];
+    const loads = [
+      mkLoad({
+        agent_id: "mike",
+        customer_end: "receiver",
+        origin_city: "Columbus", // ~122 mi — a one-time pickup, outside the radius
+        origin_state: "OH",
+        destination_city: "Akron", // ~16 mi — the agent's own customer
+        destination_state: "OH",
+      }),
+    ];
+    const rows = parkedNearby(agents, loads, [], COORDS, ANCHOR, [], NOW);
+    expect(rows.map((r) => r.agent.agent_id)).toEqual(["mike"]);
+    expect(rows[0].place).toEqual({ city: "Akron", state: "OH" });
+    expect(rows[0].miles).toBeLessThan(19);
+  });
+
+  it("a 'neither' load contributes no point — the agent drops out entirely", () => {
+    seq = 0;
+    const agents = [mkAgent("mike")];
+    const loads = [
+      mkLoad({
+        agent_id: "mike",
+        customer_end: "neither",
+        origin_city: "Akron",
+        origin_state: "OH",
+        destination_city: "Akron",
+        destination_state: "OH",
+      }),
+    ];
+    expect(parkedNearby(agents, loads, [], COORDS, ANCHOR, [], NOW)).toEqual([]);
+    // ... unless a market they NAMED still puts them in range.
+    const rows = parkedNearby(agents, loads, [{ agent_id: "mike", city: "Akron", state: "OH" }], COORDS, ANCHOR, [], NOW);
+    expect(rows.map((r) => r.agent.agent_id)).toEqual(["mike"]);
+  });
+
+  it("an un-marked load still reads as shipper — the origin, exactly as before 074", () => {
+    seq = 0;
+    const agents = [mkAgent("mike")];
+    const loads = [mkLoad({ agent_id: "mike", origin_city: "Akron", origin_state: "OH", destination_city: "Columbus", destination_state: "OH" })];
+    const rows = parkedNearby(agents, loads, [], COORDS, ANCHOR, [], NOW);
+    expect(rows[0].place).toEqual({ city: "Akron", state: "OH" });
+  });
+});

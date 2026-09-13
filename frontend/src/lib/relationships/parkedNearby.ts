@@ -4,11 +4,13 @@
 //
 // Parked = the owner's explicit call (work_status 'parked') OR dormant by
 // derivation (no tier, nothing two-way in 180 days — lib/relationships/
-// buckets). Their footprint = the origin cities of their delivered loads plus
-// the markets they named (agent_coverage), each resolved through the same
-// coordinate cache the Foreman ranks with; the NEAREST point decides. An
-// agent with no point that resolves to a coordinate is left out — never a
-// guessed distance. Straight-line miles, like the Foreman.
+// buckets). Their footprint = their delivered loads' FOOTPRINT POINTS (the
+// origin, or the destination when the agent's customer took delivery —
+// decision 5A; a 'neither' load contributes nothing) plus the markets they
+// named (agent_coverage), each resolved through the same coordinate cache the
+// Foreman ranks with; the NEAREST point decides. An agent with no point that
+// resolves to a coordinate is left out — never a guessed distance.
+// Straight-line miles, like the Foreman.
 //
 // Two doors: `parkedNearby` judges dormancy off the contact log;
 // `parkedNearbyExplicitOnly` is for a log that has not landed (in flight, or
@@ -17,6 +19,7 @@
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import { cityKey, haversineMiles, type CoordMap } from "@/lib/metrics/foreman";
+import { footprintPoint } from "@/lib/loads/customerEnd";
 import { loadGross } from "@/lib/metrics/rateTargets";
 import { bucketOf } from "./buckets";
 import { lastMeaningfulContact, type MeaningfulContactLike } from "./meaningfulContact";
@@ -64,7 +67,7 @@ const collect = (
   const anchorCoord = coords.get(cityKey(anchor.city, anchor.state));
   if (!anchorCoord) return []; // the anchor itself has no trusted coordinate — nothing to measure from
 
-  // Footprint points per agent: delivered origins + stated markets.
+  // Footprint points per agent: delivered loads' footprint points + stated markets.
   const points = new Map<string, { city: string; state: string }[]>();
   const push = (agentId: string | null | undefined, city: string | null | undefined, state: string | null | undefined) => {
     if (!agentId || !city || !state) return;
@@ -73,7 +76,8 @@ const collect = (
   const grossBy = new Map<string, number>();
   for (const l of loads) {
     if (l.load_status !== "delivered") continue; // booked / cancelled never count
-    push(l.agent_id, l.origin_city, l.origin_state);
+    const p = footprintPoint(l); // follows the load's customer-end mark
+    push(l.agent_id, p?.city, p?.state);
     if (l.agent_id) grossBy.set(l.agent_id, (grossBy.get(l.agent_id) ?? 0) + loadGross(l));
   }
   for (const c of coverage) push(c.agent_id, c.city, c.state);

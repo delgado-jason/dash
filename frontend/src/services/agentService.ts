@@ -3,6 +3,7 @@ import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import type { AgentRatingHistory } from "@/types/agentRatingHistory";
 import type { AgentNote } from "@/types/agentNote";
+import { withCustomerEnd } from "./loadsService";
 
 interface GetAgentResponse {
   agent: Agent;
@@ -16,7 +17,10 @@ export const getAgent = async (agent_id: string): Promise<GetAgentResponse> => {
     const response = await api.get(`/agents/${agent_id}`);
     return {
       agent: response.data.agent,
-      loads: response.data.loads,
+      // Decision 5A (074): the agent dossier's loads are footprint readers too
+      // — coerce the mark here, exactly as loadsService does, so a row served
+      // without customer_end reads as 'shipper' instead of undefined.
+      loads: (response.data.loads as Load[]).map(withCustomerEnd),
       notes: response.data.notes,
       ratingHistory: response.data.ratingHistory,
     };

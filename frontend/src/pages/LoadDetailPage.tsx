@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -77,6 +77,15 @@ import { getFuelEntries } from "@/services/fuelService";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
 import { money, moneyCents } from "@/lib/format";
+import { Well } from "@/components/ui/ForgedPlate";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import {
+  CUSTOMER_ENDS,
+  customerEndOf,
+  partyLabel,
+  suggestCustomerEnd,
+  type CustomerEnd,
+} from "@/lib/loads/customerEnd";
 
 const fmtDate = (d?: string | null) =>
   d
@@ -235,6 +244,29 @@ export const LoadDetailPage = () => {
     }
   };
 
+  // Decision 5A (074): which end of this load the agent's customer sits on.
+  // Owner and dispatcher alike; every footprint reader follows it — the
+  // Foreman's proximity, the capacity and parked lists, "hauled from", and
+  // the stated → confirmed promotion. Written ONLY by this tap.
+  // One write at a time: the control and the suggestion's ghost button both go
+  // inert until the PATCH and its refetch have landed. Two taps in flight
+  // would race, and the loser would repaint the mark the person didn't pick.
+  const [endError, setEndError] = useState<string | null>(null);
+  const [savingEnd, setSavingEnd] = useState(false);
+  const setCustomerEnd = async (value: CustomerEnd) => {
+    if (!load || savingEnd || value === customerEndOf(load)) return;
+    setEndError(null);
+    setSavingEnd(true);
+    try {
+      await patchLoad(load.load_id, { customer_end: value });
+      setRefreshKey((p) => p + 1);
+    } catch (e) {
+      setEndError(e instanceof Error ? e.message : "Couldn't save the customer mark");
+    } finally {
+      setSavingEnd(false);
+    }
+  };
+
   // Record the detention decision: true = confirmed owed (agent says it pays),
   // false = dismissed (shipper won't pay). Flips the recommend card into the
   // owed/collected flow or clears it.
@@ -299,6 +331,23 @@ export const LoadDetailPage = () => {
       .then((rs) => setAccTypes(rs.map((r) => r.accessorial_type)))
       .catch(() => {});
   }, []);
+
+  // Decision 5A: dash's READ on whose customer this load is — never a write.
+  // It looks at the agent's other loads for a party name that recurs, and
+  // offers one sentence and one tap. Silent when the mark already says so.
+  // A load with no agent has no "the agent's other loads" to reason from —
+  // filtering on a null agent_id would gather every OTHER agent-less load and
+  // suggest a mark off strangers' party names.
+  const suggestion = useMemo(
+    () =>
+      load
+        ? suggestCustomerEnd(
+            load,
+            load.agent_id ? allLoads.filter((l) => l.agent_id === load.agent_id) : [],
+          )
+        : null,
+    [load, allLoads],
+  );
 
   if (isLoading)
     return (
@@ -576,6 +625,54 @@ export const LoadDetailPage = () => {
             {load.broker} · {load.agent} · {capitalize(load.load_type)}
             {load.booked_by_name ? ` · booked by ${load.booked_by_name}` : ""}
           </p>
+
+          {/* Decision 5A: whose customer this load is. One mark, set by a
+              person — owner or dispatcher — and every footprint reader
+              follows it. On a phone it wraps under the stamps. */}
+          <div className="mt-3 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">
+                The agent's customer on this load
+              </span>
+              <SegmentedTabs
+                size="sm"
+                ariaLabel="The agent's customer on this load"
+                disabled={savingEnd}
+                value={customerEndOf(load)}
+                onChange={(v) => void setCustomerEnd(v)}
+                tabs={CUSTOMER_ENDS.map((end) => ({
+                  value: end,
+                  label: partyLabel(load, end),
+                }))}
+              />
+              {endError && (
+                <span role="alert" className="font-condensed text-[11.5px] text-destructive">
+                  {endError}
+                </span>
+              )}
+            </div>
+            <p className="text-[11.5px] text-faint mt-1.5">
+              Shipper puts the origin on the agent's footprint, Receiver the destination, Neither
+              nothing at all.
+            </p>
+
+            {suggestion && (
+              <Well className="mt-2 px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="text-[11px] uppercase tracking-widest text-amber font-condensed shrink-0">
+                  dash
+                </span>
+                <span className="text-[13px] text-ink/90 flex-1 min-w-[12rem]">{suggestion.why}</span>
+                <button
+                  type="button"
+                  disabled={savingEnd}
+                  onClick={() => void setCustomerEnd(suggestion.end)}
+                  className="h-7 px-3 rounded-[9px] border border-hairline text-dim hover:text-ink text-[12.5px] font-condensed font-semibold shrink-0 disabled:opacity-50 disabled:hover:text-dim"
+                >
+                  Mark {suggestion.end === "receiver" ? "Receiver" : "Shipper"}
+                </button>
+              </Well>
+            )}
+          </div>
         </div>
         <div className="flex gap-2 shrink-0">
           <button

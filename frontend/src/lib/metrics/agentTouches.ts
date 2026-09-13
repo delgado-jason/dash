@@ -1,6 +1,7 @@
 // The tier tree's live scoreboard: rolling-window touch counts and the
-// markets an agent has DEMONSTRABLY shipped from (their loads' origin
-// cities — derived, never typed, so it can't go stale or lie).
+// markets an agent has DEMONSTRABLY shipped from (their loads' FOOTPRINT
+// points — the origin, or the destination when the agent's customer took
+// delivery, decision 5A; derived, never typed, so it can't go stale or lie).
 //
 // Out-days count DISTINCT DAYS with an outbound touch — four logs from one
 // long Carolyn conversation read as ONE day of attention, so logging
@@ -8,6 +9,7 @@
 // agent initiated; it's the only touch number that ever argues for a tier.
 // Day keys are the ISO date already inside contacted_at (string compare —
 // no timezone math, the same discipline as the monthly review window).
+import { footprintPoint, type CustomerEndLoadLike } from "@/lib/loads/customerEnd";
 
 export interface ContactLike {
   agent_id: string;
@@ -15,10 +17,8 @@ export interface ContactLike {
   contacted_at: string; // ISO
 }
 
-export interface LoadLike {
+export interface LoadLike extends CustomerEndLoadLike {
   agent_id?: string | null;
-  origin_city?: string | null;
-  origin_state?: string | null;
 }
 
 export interface TouchCounts {
@@ -63,7 +63,9 @@ export interface OriginMarket {
   n: number;
 }
 
-// One pass over every load → each agent's top origin markets by load count.
+// One pass over every load → each agent's top footprint markets by load
+// count. A 'neither' load contributes nothing, and a receiver-end load counts
+// its destination — the mark decides, not the direction of travel.
 // Ties break alphabetically so the order is stable render to render.
 export const originMarketsByAgent = (
   loads: LoadLike[],
@@ -72,9 +74,9 @@ export const originMarketsByAgent = (
   const perAgent = new Map<string, Map<string, OriginMarket>>();
   for (const l of loads) {
     if (!l.agent_id) continue;
-    const city = (l.origin_city ?? "").trim();
-    const state = (l.origin_state ?? "").trim();
-    if (!city || !state) continue;
+    const point = footprintPoint(l);
+    if (!point) continue;
+    const { city, state } = point;
     let markets = perAgent.get(l.agent_id);
     if (!markets) {
       markets = new Map();

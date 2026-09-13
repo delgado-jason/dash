@@ -150,4 +150,28 @@ describe("hygiene — what the Friday afternoon fixes", () => {
     expect(hygiene([], loads, coverage)).toEqual([]);
     expect(hygiene([agents[0]], loads, coverage)).toEqual([]);
   });
+
+  // Decision 5A: a footprint is what the MARK proves. A 'neither' load is a
+  // one-off through a stranger and proves no market at all; a receiver-end
+  // load proves the destination (2543056 → Troutman, not Atlanta).
+  it("a 'neither'-only agent is still missing a footprint; a receiver-end load gives them one", () => {
+    const settled = [agents[0]]; // has a phone and a preferred channel
+    const neither = [
+      {
+        agent_id: "a",
+        load_status: "delivered",
+        customer_end: "neither" as const,
+        origin_city: "Atlanta",
+        origin_state: "GA",
+        destination_city: "Troutman",
+        destination_state: "NC",
+      },
+    ];
+    expect(hygiene(settled, neither, []).map((i) => [i.key, i.agents.map((a) => a.agent_id)])).toEqual([
+      ["footprint", ["a"]],
+    ]);
+
+    const receiverEnd = [{ ...neither[0], customer_end: "receiver" as const }];
+    expect(hygiene(settled, receiverEnd, [])).toEqual([]);
+  });
 });

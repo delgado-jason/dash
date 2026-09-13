@@ -5,9 +5,11 @@
 //              resolved through the same trusted city_coords cache; no
 //              coordinate → no list, the plate says so and points at the
 //              Foreman rather than inventing miles.
-//   Footprint  DISTINCT origin cities of the agent's DELIVERED loads plus the
-//              markets they named (agent_coverage) — decision 5, no new
-//              geometry. A point without a trusted coordinate is skipped.
+//   Footprint  DISTINCT footprint cities of the agent's DELIVERED loads — the
+//              origin, or the destination when the agent's customer took
+//              delivery (decision 5A) — plus the markets they named
+//              (agent_coverage); no new geometry. A point without a trusted
+//              coordinate is skipped.
 //   Who        the active book (tiered or prospect) — Parked, explicit or
 //              dormant, never gets a capacity email; parked agents within 75
 //              mi are counted for the Foreman's harvest group instead.
@@ -15,6 +17,7 @@
 //              out into "already touched this week" — one message a week.
 import type { Load } from "@/types/load";
 import { cityKey, haversineMiles, type CityCoord, type CoordMap } from "@/lib/metrics/foreman";
+import { footprintPoint, type CustomerEndLoadLike } from "@/lib/loads/customerEnd";
 import { bucketOf, type Bucket, type BookAgentLike } from "./buckets";
 import { capStatus, type CapContactLike } from "./contactCap";
 import { keyOf } from "./dayKeys";
@@ -32,11 +35,12 @@ export interface FootprintPoint extends Place {
   source: "load" | "coverage";
 }
 
-export interface FootprintLoadLike {
+// A load contributes its FOOTPRINT POINT, not blindly its origin: the origin
+// on a normal load, the destination when the agent's customer took delivery,
+// nothing at all on a 'neither' load (decision 5A).
+export interface FootprintLoadLike extends CustomerEndLoadLike {
   agent_id?: string | null;
   load_status: string;
-  origin_city?: string | null;
-  origin_state?: string | null;
 }
 
 export interface FootprintCoverageLike {
@@ -45,8 +49,10 @@ export interface FootprintCoverageLike {
   state: string;
 }
 
-// Where an agent's freight has actually come from, plus where they say it
-// does — one entry per distinct city.
+// Where an agent's freight actually sits, plus where they say it does — one
+// entry per distinct city. A load's contribution follows its customer-end
+// mark (decision 5A), so the Atlanta tradeshow pickup delivered to the
+// agent's own customer puts Troutman on the list, not Atlanta.
 export const footprintPoints = (
   agentId: string,
   loads: FootprintLoadLike[],
@@ -63,7 +69,11 @@ export const footprintPoints = (
     seen.add(k);
     out.push({ city: c, state: s, source });
   };
-  for (const l of loads) if (l.agent_id === agentId && l.load_status === "delivered") add(l.origin_city, l.origin_state, "load");
+  for (const l of loads)
+    if (l.agent_id === agentId && l.load_status === "delivered") {
+      const p = footprintPoint(l);
+      if (p) add(p.city, p.state, "load");
+    }
   for (const c of coverage) if (c.agent_id === agentId) add(c.city, c.state, "coverage");
   return out;
 };

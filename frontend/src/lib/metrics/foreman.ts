@@ -12,8 +12,18 @@
 // load feed. Everything is GROSS (agents are a market-value lens), matching
 // agentScorecard. Distances come from the persisted city_coords cache; a city we
 // can't trust a coordinate for falls back to region-level, never a fake number.
+//
+// An agent's footprint is TWO kinds of point (decision 6A): the loads they have
+// actually given you — PROVED, and read through the load's customer-end mark
+// (decision 5A), so the origin on a normal load and the destination when the
+// agent's customer took delivery — plus the markets they CLAIMED on a call
+// (agent_coverage, still 'stated'). A claim gets the same distance math as a
+// proved point and is captioned "claimed": a market Brandie wrote down on a
+// call is either a market or it isn't, and 70 % of one is a knob nobody asked
+// for. Coverage already confirmed by a load reads as proved.
 import type { Load } from "@/types/load";
 import type { Agent } from "@/types/agent";
+import { footprintPoint } from "@/lib/loads/customerEnd";
 import { loadRevenue } from "./loads"; // GROSS per load
 import { median } from "./stats";
 import {
@@ -115,16 +125,40 @@ export const emptyNextAnchor = (loads: Load[]): Anchor | null => {
 // ---- per-agent helpers ----
 type Place = { city: string; state: string };
 
-// Every origin an agent has loaded you from (non-cancelled), so we can find the
-// one closest to where you'll be empty.
-const agentOrigins = (loads: Load[]): Map<string, Place[]> => {
-  const m = new Map<string, Place[]>();
+// How much a footprint point is backed by. Both measure the same way; only the
+// caption differs, and the Foreman says which one it used.
+export type PointSource = "proved" | "claimed";
+type FootPoint = Place & { source: PointSource };
+
+// The stated-markets rows (agent_coverage) as the board needs them. `source`
+// is 068's confidence flag: 'stated' until a load proves it 'confirmed'.
+export interface CoveragePointLike {
+  agent_id: string;
+  city: string;
+  state: string;
+  source?: string | null;
+}
+
+// Every point an agent's freight sits on, so we can find the one closest to
+// where you'll be empty: their loads' footprint points (non-cancelled), plus
+// the markets they named. A 'neither' load contributes nothing.
+const agentPoints = (loads: Load[], coverage: CoveragePointLike[]): Map<string, FootPoint[]> => {
+  const m = new Map<string, FootPoint[]>();
+  const push = (agentId: string | null | undefined, place: Place | null, source: PointSource) => {
+    if (!agentId || !place) return;
+    const arr = m.get(agentId) ?? [];
+    arr.push({ ...place, source });
+    m.set(agentId, arr);
+  };
   for (const l of loads) {
-    if (l.load_status === "cancelled" || !l.agent_id || !l.origin_city || !l.origin_state)
-      continue;
-    const arr = m.get(l.agent_id) ?? [];
-    arr.push({ city: l.origin_city, state: l.origin_state });
-    m.set(l.agent_id, arr);
+    if (l.load_status === "cancelled") continue;
+    push(l.agent_id, footprintPoint(l), "proved");
+  }
+  for (const c of coverage) {
+    const city = String(c.city ?? "").trim();
+    const state = String(c.state ?? "").trim();
+    if (!city || !state) continue;
+    push(c.agent_id, { city, state }, c.source === "confirmed" ? "proved" : "claimed");
   }
   return m;
 };
@@ -197,6 +231,9 @@ export interface AgentRanking {
   agencyCode: string | null; // the agency's 3-letter Landstar code (stored as brokers.broker_name); display only — never scored
   // proximity
   nearestOrigin: Place | null;
+  // What backs the point above — a load they ran ("proved") or a market they
+  // named on a call ("claimed"). null only when there is no point at all.
+  nearestSource: PointSource | null;
   distanceMiles: number | null; // straight-line; null when no trusted coord
   regionFallback: boolean; // true → ranked by region, not miles
   // rate (for the judged type)
@@ -274,19 +311,27 @@ export const distanceLabel = (r: AgentRanking): string => {
   return "—";
 };
 
+// The miles, and what backs them. A claimed market measures exactly like a
+// proved one (6A) — so the sentence has to say which it is, or "~47 mi from
+// your drop" reads as a load they actually ran out of there.
+const dropBit = (r: AgentRanking): string =>
+  `${distanceLabel(r)} from your drop${
+    r.nearestSource === "claimed" ? " — a market they claimed, no load yet" : ""
+  }`;
+
 const whyLine = (r: AgentRanking, anchor: Anchor): string => {
   const bits: string[] = [];
   const where = r.nearestOrigin ? `${r.nearestOrigin.city}, ${r.nearestOrigin.state}` : "";
   if (r.isNew) {
     bits.push(`New tie — ${r.loadCount} load${r.loadCount === 1 ? "" : "s"} so far`);
-    if (r.distanceMiles != null) bits.push(`${distanceLabel(r)} from your drop`);
+    if (r.distanceMiles != null) bits.push(dropBit(r));
     else if (where) bits.push(`sources out of ${where}`);
     bits.push("a relationship worth building");
     return capitalize(bits.join(", ")) + ".";
   }
   bits.push(`Your ${r.loadCount >= REL_FULL_LOADS ? "deepest" : "strongest"} tie near ${anchor.city}`);
   bits.push(`${r.loadCount} loads`);
-  if (r.distanceMiles != null) bits.push(`${distanceLabel(r)} from your drop`);
+  if (r.distanceMiles != null) bits.push(dropBit(r));
   if (r.rateDelta != null)
     bits.push(
       r.rateDelta >= 0
@@ -315,6 +360,11 @@ export const buildForemanBoard = (
     // failed fetch passed as [] would read as "no contacts ever" and park
     // every quiet agent on first paint (WhoToCallTab's useForemanBook).
     contacts?: MeaningfulContactLike[];
+    // The markets agents named on calls (agent_coverage). Decision 6A: a
+    // stated market is a footprint point measured exactly like a proved one
+    // and captioned "claimed"; one a load already confirmed reads as proved.
+    // Absent → loads only, as before.
+    coverage?: CoveragePointLike[];
   } = {},
 ): ForemanBoard => {
   const focus = opts.focus ?? "any";
@@ -331,7 +381,7 @@ export const buildForemanBoard = (
   const anchorCoord = anchor ? coords.get(cityKey(anchor.city, anchor.state)) ?? null : null;
 
   const scorecards = buildAgentScorecards(agents, loads, now);
-  const origins = agentOrigins(loads);
+  const points = agentPoints(loads, opts.coverage ?? []);
   const nameById = new Map(agents.map((a) => [a.agent_id, agentName(a)]));
   const agentById = new Map(agents.map((a) => [a.agent_id, a]));
 
@@ -366,29 +416,32 @@ export const buildForemanBoard = (
       judgedType = focus;
     }
 
-    // nearest origin with a trusted coordinate → straight-line miles
-    const myOrigins = origins.get(agentId) ?? [];
-    let nearestOrigin: Place | null = null;
+    // nearest footprint point with a trusted coordinate → straight-line miles.
+    // Proved and claimed points measure identically (6A) and compete on
+    // distance alone; the winner's kind rides along as the caption.
+    const myPoints = points.get(agentId) ?? [];
+    let nearest: FootPoint | null = null;
     let distanceMiles: number | null = null;
     if (anchorCoord) {
-      for (const o of myOrigins) {
-        const c = coords.get(cityKey(o.city, o.state));
+      for (const p of myPoints) {
+        const c = coords.get(cityKey(p.city, p.state));
         if (!c) continue;
         const d = haversineMiles(anchorCoord, c);
         if (distanceMiles == null || d < distanceMiles) {
           distanceMiles = d;
-          nearestOrigin = o;
+          nearest = p;
         }
       }
     }
     const regionFallback = distanceMiles == null;
-    // For the label/region fallback, still surface an origin even without coords:
+    // For the label/region fallback, still surface a point even without coords:
     // the one in the closest region to the anchor.
-    if (!nearestOrigin && myOrigins.length && anchor) {
-      nearestOrigin = [...myOrigins].sort(
+    if (!nearest && myPoints.length && anchor) {
+      nearest = [...myPoints].sort(
         (a, b) => regionRank(anchor.state, a.state) - regionRank(anchor.state, b.state),
       )[0];
     }
+    const nearestOrigin: Place | null = nearest ? { city: nearest.city, state: nearest.state } : null;
     if (distanceMiles != null) withCoords++;
 
     const bench = benchFor(judgedType);
@@ -399,6 +452,7 @@ export const buildForemanBoard = (
       agentName: nameById.get(agentId) ?? "Agent",
       agencyCode: agent.broker_name?.trim() || null,
       nearestOrigin,
+      nearestSource: nearest?.source ?? null,
       distanceMiles,
       regionFallback,
       loadType: judgedType,

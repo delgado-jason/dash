@@ -139,6 +139,8 @@ export async function getAgent(user_id, agent_id) {
             payment_status,
             detention_paid,
             detention_billable,
+            claim_filed, -- decision 4 (073): the streak-breaking OS&D claim
+            customer_end, -- decision 5A (074): whose customer — the footprint follows it
             loads.created_at AS created_at,
             loads.updated_at AS updated_at
         FROM loads

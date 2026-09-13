@@ -89,4 +89,38 @@ describe("originMarketsByAgent", () => {
     const loads = [l(null, "Savannah", "GA"), l("a1", "", "GA"), l("a1", "Savannah", null)];
     expect(originMarketsByAgent(loads).get("a1")).toBeUndefined();
   });
+
+  // Decision 5A: the MARK decides which end is the market, not the direction
+  // of travel. 2543056 is the case — Atlanta was only a tradeshow yard.
+  it("a receiver-end load counts its DESTINATION", () => {
+    const loads = [
+      {
+        agent_id: "mike",
+        customer_end: "receiver" as const,
+        origin_city: "Atlanta",
+        origin_state: "GA",
+        destination_city: "Troutman",
+        destination_state: "NC",
+      },
+    ];
+    expect(originMarketsByAgent(loads).get("mike")).toEqual([
+      { city: "Troutman", state: "NC", n: 1 },
+    ]);
+  });
+
+  it("a 'neither' load drops out of the footprint entirely", () => {
+    const spot = {
+      agent_id: "a1",
+      customer_end: "neither" as const,
+      origin_city: "Laredo",
+      origin_state: "TX",
+      destination_city: "Tulsa",
+      destination_state: "OK",
+    };
+    expect(originMarketsByAgent([spot]).get("a1")).toBeUndefined();
+    // and it leaves the agent's real markets alone
+    expect(originMarketsByAgent([spot, l("a1", "Savannah", "GA")]).get("a1")).toEqual([
+      { city: "Savannah", state: "GA", n: 1 },
+    ]);
+  });
 });

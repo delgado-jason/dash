@@ -98,3 +98,37 @@ describe("validateLoadPatch claim_filed — decision 4's one checkbox", () => {
     assert.deepEqual(claimErrors("false"), ["claim_filed must be true or false"]);
   });
 });
+
+describe("customer_end — decision 5A's one mark", () => {
+  const BAD = ["customer_end must be one of: shipper, receiver, neither"];
+
+  test("the three ends pass on a patch", () => {
+    assert.deepEqual(validateLoadPatch({ customer_end: "shipper" }), []);
+    assert.deepEqual(validateLoadPatch({ customer_end: "receiver" }), []);
+    assert.deepEqual(validateLoadPatch({ customer_end: "neither" }), []);
+  });
+
+  test("absent passes — the column is NOT NULL DEFAULT 'shipper'", () => {
+    assert.deepEqual(validateLoadPatch({ customer_end: undefined }), []);
+    assert.deepEqual(validateLoadPatch({}), []);
+  });
+
+  test("anything else is refused by name — null included", () => {
+    for (const bad of [null, "buyer", "Shipper", "", 1, true, ["receiver"]]) {
+      assert.deepEqual(validateLoadPatch({ customer_end: bad }), BAD, JSON.stringify(bad));
+    }
+  });
+
+  test("a CREATE carries the same rule", () => {
+    // Only the customer_end verdict is asked for: a bare body reports its own
+    // missing mandatory fields, which is a different test's business.
+    const endErrors = (value) =>
+      validateLoadCreate({ customer_end: value }).filter((e) => e.includes("customer_end"));
+    assert.deepEqual(endErrors("shipper"), []);
+    assert.deepEqual(endErrors("receiver"), []);
+    assert.deepEqual(endErrors("neither"), []);
+    assert.deepEqual(endErrors(undefined), []);
+    assert.deepEqual(endErrors("buyer"), BAD);
+    assert.deepEqual(endErrors(null), BAD);
+  });
+});
