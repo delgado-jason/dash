@@ -2,6 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   validateDateOrder,
+  validateLoadCreate,
   validateLoadPatch,
 } from "./loadValidation.js";
 
@@ -71,5 +72,29 @@ describe("validateLoadPatch date order", () => {
 
   test("ignores date order on a patch that touches neither date", () => {
     assert.deepEqual(validateLoadPatch({ loaded_miles: 900 }, stored), []);
+  });
+});
+
+describe("validateLoadPatch claim_filed — decision 4's one checkbox", () => {
+  test("true and false pass", () => {
+    assert.deepEqual(validateLoadPatch({ claim_filed: true }), []);
+    assert.deepEqual(validateLoadPatch({ claim_filed: false }), []);
+  });
+
+  test("anything but a boolean is refused by name — the column is NOT NULL", () => {
+    for (const bad of [null, "yes", 1, "true"]) {
+      assert.deepEqual(validateLoadPatch({ claim_filed: bad }), ["claim_filed must be true or false"], String(bad));
+    }
+  });
+
+  test("a CREATE carries the same rule — a checkbox value that arrived as text is caught there too", () => {
+    // Only the claim_filed verdict is asked for: a bare body reports its own
+    // missing mandatory fields, which is a different test's business.
+    const claimErrors = (value) => validateLoadCreate({ claim_filed: value }).filter((e) => e.includes("claim_filed"));
+    assert.deepEqual(claimErrors(true), []);
+    assert.deepEqual(claimErrors(false), []);
+    assert.deepEqual(claimErrors(undefined), []); // absent — the column defaults to false
+    assert.deepEqual(claimErrors("true"), ["claim_filed must be true or false"]);
+    assert.deepEqual(claimErrors("false"), ["claim_filed must be true or false"]);
   });
 });

@@ -220,6 +220,21 @@ export const LoadDetailPage = () => {
     }
   };
 
+  // Decision 4 (REL-01 v2.0): an OS&D or damage claim landed on this load.
+  // One checkbox, owner and dispatcher alike; it breaks the agent's on-time,
+  // claim-free streak in Relationships. The error shows by name, in place.
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const setClaimFiled = async (value: boolean) => {
+    if (!load) return;
+    setClaimError(null);
+    try {
+      await patchLoad(load.load_id, { claim_filed: value });
+      setRefreshKey((p) => p + 1);
+    } catch (e) {
+      setClaimError(e instanceof Error ? e.message : "Couldn't save the claim flag");
+    }
+  };
+
   // Record the detention decision: true = confirmed owed (agent says it pays),
   // false = dismissed (shipper won't pay). Flips the recommend card into the
   // owed/collected flow or clears it.
@@ -532,6 +547,29 @@ export const LoadDetailPage = () => {
                 <StatusBadge value={load.load_status} />
                 <StatusBadge value={load.payment_status} />
               </>
+            )}
+            {/* Decision 4: the claim flag — breaks the agent's on-time,
+                claim-free streak. Owner and dispatcher both set it. */}
+            <label
+              className={`inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-[13px] border font-condensed font-semibold text-[11px] tracking-[.08em] uppercase cursor-pointer select-none ${
+                load.claim_filed === true
+                  ? "border-status-negative-text/50 bg-status-negative-text/10 text-status-negative-text"
+                  : "border-hairline text-dim hover:text-ink"
+              }`}
+              title="An OS&D or damage claim on this load — breaks the agent's on-time, claim-free streak"
+            >
+              <input
+                type="checkbox"
+                checked={load.claim_filed === true}
+                onChange={(e) => void setClaimFiled(e.target.checked)}
+                className="accent-[#e8940a]"
+              />
+              Claim filed
+            </label>
+            {claimError && (
+              <span role="alert" className="font-condensed text-[11.5px] text-destructive">
+                {claimError}
+              </span>
             )}
           </div>
           <p className="text-dim text-sm mt-1">

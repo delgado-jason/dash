@@ -39,6 +39,8 @@ import vendorRouter from "./routes/vendorRoutes.js";
 import documentRouter from "./routes/documentRoutes.js";
 import settlementRouter from "./routes/settlementRoutes.js";
 import cityCoordsRouter from "./routes/cityCoordsRoutes.js";
+import agentTierHistoryRouter from "./routes/agentTierHistoryRoutes.js";
+import relationshipReviewRouter from "./routes/relationshipReviewRoutes.js";
 
 const app = express();
 
@@ -74,7 +76,11 @@ app.use("/loads", loadRouter);
 app.use("/accessorials", accessorialRouter);
 app.use("/fuel", fuelEntryRouter);
 app.use("/brokers", brokerRouter);
+// Literal path first: the agent router's GET /:agent_id would otherwise read
+// "tier-history" as an agent id.
+app.use("/agents/tier-history", agentTierHistoryRouter);
 app.use("/agents", agentRouter);
+app.use("/relationship-reviews", relationshipReviewRouter);
 app.use("/markets", marketRouter);
 app.use("/facilities", facilityRouter);
 app.use("/per-diem", perDiemRouter);

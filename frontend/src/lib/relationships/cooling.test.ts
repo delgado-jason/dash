@@ -4,10 +4,15 @@ import type { MeaningfulContactLike, MeaningfulLoadLike } from "./meaningfulCont
 
 const NOW = new Date("2026-09-12T15:00:00Z");
 
+// created_at is a live record by default: the book shelves an agent nobody has
+// heard from in 180 days as Parked (dormant), and Parked never cools.
 const agent = (id: string, tier: number | null, o: Partial<CoolingAgentLike> = {}): CoolingAgentLike => ({
   agent_id: id,
+  first_name: id,
+  last_name: "X",
   relationship_tier: tier,
   work_status: "active",
+  created_at: "2026-08-01T00:00:00Z",
   ...o,
 });
 
@@ -38,6 +43,18 @@ describe("coolingRows — thresholds by CURRENT tier, from the last two-way cont
     expect(rows).toEqual([]);
   });
 
+  it("a dormant agent never cools — a Tier 1 nothing two-way has touched in 200 days is gone, not cooling", () => {
+    const dormant = agent("z", 1, { created_at: "2025-06-01T00:00:00Z" });
+    const quiet = [reached("z", "2026-02-24")]; // 200 days before NOW
+    expect(coolingRows([dormant], quiet, [], NOW)).toEqual([]);
+    expect(coolingSection([dormant], quiet, [], NOW)).toEqual({ flagged: [], watch: [] });
+    // …and a Tier 1 quiet for 100 days is still on the book, and still cools.
+    const live = agent("y", 1, { created_at: "2025-06-01T00:00:00Z" });
+    const [r] = coolingRows([live], [reached("y", "2026-06-04")], [], NOW);
+    expect(r.flagged).toBe(true);
+    expect(r.days).toBe(100);
+  });
+
   it("a Tier 2 reached 4 days ago is under threshold and flags 42 days after that contact", () => {
     const [r] = coolingRows([agent("d", 2)], [reached("d", "2026-09-08")], [], NOW);
     expect(r.days).toBe(4);
@@ -64,7 +81,33 @@ describe("coolingRows — thresholds by CURRENT tier, from the last two-way cont
 
   it("a tiered agent with no two-way contact ever is flagged with null days", () => {
     const [r] = coolingRows([agent("n", 3)], [], [], NOW);
-    expect(r).toMatchObject({ days: null, last: null, flagged: true, flagsOn: null, threshold: 90 });
+    expect(r).toMatchObject({ days: null, last: null, lastLoad: null, flagged: true, flagsOn: null, threshold: 90 });
+  });
+
+  it("lastLoad is carried beside the two-way day — the Review prints both", () => {
+    const contacts = [reached("r", "2026-09-08")];
+    const loads = [load("r", "2026-08-31"), { agent_id: "r", load_status: "cancelled", pickup_date: "2026-09-11", delivery_date: "2026-09-11" }];
+    const [r] = coolingRows([agent("r", 2)], contacts, loads, NOW);
+    expect(r.last).toBe("2026-09-08"); // the call came after the freight
+    expect(r.lastLoad).toBe("2026-08-31"); // a cancelled booking is not a load
+    const [never] = coolingRows([agent("x", 2)], contacts.map((c) => ({ ...c, agent_id: "x" })), [], NOW);
+    expect(never.lastLoad).toBeNull();
+  });
+
+  it("a load that hasn't delivered yet counts by its PICKUP day", () => {
+    // In transit: no delivery_date, so the pickup is the last load day — and a
+    // booked load is still a two-way contact.
+    const booked: MeaningfulLoadLike = { agent_id: "t", load_status: "in_transit", pickup_date: "2026-09-09", delivery_date: null };
+    const [r] = coolingRows([agent("t", 1)], [], [booked], NOW);
+    expect(r.lastLoad).toBe("2026-09-09");
+    expect(r.days).toBe(3);
+    // A delivery beats the pickup of the same load; a cancelled booking counts
+    // for neither.
+    const delivered = load("t", "2026-09-10");
+    const [both] = coolingRows([agent("t", 1)], [], [booked, delivered], NOW);
+    expect(both.lastLoad).toBe("2026-09-10");
+    const [none] = coolingRows([agent("t", 1)], [], [{ ...booked, load_status: "cancelled" }], NOW);
+    expect(none.lastLoad).toBeNull();
   });
 
   it("an empty book → no rows", () => {

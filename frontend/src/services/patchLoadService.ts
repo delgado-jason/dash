@@ -8,6 +8,8 @@ interface PatchLoadInput {
   detention_paid?: boolean;
   tonu_paid?: boolean;
   detention_billable?: boolean | null;
+  // Decision 4 (073): an OS&D / damage claim — breaks the agent's streak.
+  claim_filed?: boolean;
 }
 
 export const patchLoad = async (
