@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { Billboard, Text } from "@react-three/drei";
@@ -7,7 +7,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { AreaMapDatum, MapLevel } from "@/lib/metrics/lanes";
 import { groupKeyForStateName } from "@/lib/metrics/lanes";
-import { getStateAbbr } from "@/lib/constants/states";
+import { getStateAbbr, litFor } from "@/lib/constants/states";
 import { rpm as fmtRpm } from "@/lib/format";
 import {
   colorFor,
@@ -38,6 +38,9 @@ interface Props {
   onSelect: (key: string) => void;
   mode: MapMode;
   flows: LaneFlow[];
+  // Issue #228 — the states the open region row lights up, by the full names
+  // the topology keys on. Optional: a caller with no table lights nothing.
+  highlightStates?: ReadonlySet<string>;
 }
 
 interface HoverState {
@@ -54,6 +57,9 @@ const MAX_H = 0.85;
 const AMBER = new THREE.Color("#e8940a");
 const AMBER_HI = new THREE.Color("#f5b03a");
 
+// The boot clock both children read during their frames (0 → 1 over the sweep).
+type BootClock = { states: number; arcs: number };
+
 // Per-state boot stagger: west→east sweep, keyed off the centroid.
 const sweepT = (cx: number) => (cx + 16) / 32;
 
@@ -62,6 +68,7 @@ const StateMesh = ({
   height,
   color,
   lit,
+  isLit,
   isSelected,
   hovered,
   boot,
@@ -72,10 +79,11 @@ const StateMesh = ({
   solid: StateSolid;
   height: number;
   color: string;
-  lit: boolean;
+  lit: boolean; // has freight in the window — the slab is "live"
+  isLit: boolean; // #228: the open region row is pointing at it
   isSelected: boolean;
   hovered: boolean;
-  boot: { states: number };
+  boot: RefObject<BootClock>;
   onOver: (e: ThreeEvent<PointerEvent>) => void;
   onOut: () => void;
   onClick: () => void;
@@ -95,10 +103,14 @@ const StateMesh = ({
     if (!mesh.current || !mat.current) return;
     // Rise with the sweep; hover/selection warm the metal.
     const t0 = sweepT(solid.centroid[0]) * 0.55;
-    const local = Math.min(1, Math.max(0.001, (boot.states - t0) / 0.45));
+    const local = Math.min(1, Math.max(0.001, (boot.current.states - t0) / 0.45));
     const eased = 1 - Math.pow(1 - local, 3);
     mesh.current.scale.z = Math.max(0.001, height * eased);
-    const targetE = isSelected ? 0.5 : hovered ? 0.3 : lit ? 0.16 : 0.04;
+    // The ladder, in order of precedence: where you ARE (selected) wins, then
+    // what the pointer is on, then the states the open region row lit (#228 —
+    // warm enough to read as a group at a glance, well clear of a merely live
+    // slab), then live freight, then dark.
+    const targetE = isSelected ? 0.5 : hovered ? 0.3 : isLit ? 0.34 : lit ? 0.16 : 0.04;
     mat.current.emissiveIntensity +=
       (targetE - mat.current.emissiveIntensity) * 0.12;
   });
@@ -146,12 +158,14 @@ const Arc = ({
   centroids: Map<string, [number, number]>;
   heights: Map<string, number>;
   maxGross: number;
-  boot: { arcs: number };
+  boot: RefObject<BootClock>;
   index: number;
 }) => {
   const tube = useRef<THREE.Mesh>(null);
   const dot = useRef<THREE.Mesh>(null);
-  const t = useRef(Math.random());
+  // A fixed per-arc phase (golden-ratio spread by index) so arcs don't pulse in
+  // step — deterministic, so render stays pure (react-hooks/purity).
+  const t = useRef((index * 0.6180339887) % 1);
 
   const built = useMemo(() => {
     const a = centroids.get(flow.from);
@@ -176,7 +190,7 @@ const Arc = ({
   useFrame(() => {
     if (!built) return;
     // Draw-in: reveal tube indices as the boot's arc phase reaches this arc.
-    const local = Math.min(1, Math.max(0, boot.arcs * 5 - index * 0.55));
+    const local = Math.min(1, Math.max(0, boot.current.arcs * 5 - index * 0.55));
     if (tube.current) {
       built.geom.setDrawRange(0, Math.floor(built.indexCount * local));
     }
@@ -247,6 +261,7 @@ const LanesMap3D = ({
   onSelect,
   mode,
   flows,
+  highlightStates,
 }: Props) => {
   const wrap = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0 });
@@ -344,9 +359,12 @@ const LanesMap3D = ({
   // One boot timeline: states sweep up, then the arcs draw and pulses launch.
   // The full ceremony plays ONCE, on mount. Filter changes (level/window)
   // settle in a quick beat instead of re-erecting the country every click.
-  const boot = useRef({ states: 0, arcs: 0 }).current;
+  // The boot clock GSAP tweens: a ref, written only inside the effect and read
+  // only inside the children's frame callbacks — never during render.
+  const bootRef = useRef<BootClock>({ states: 0, arcs: 0 });
   const booted = useRef(false);
   useGSAP(() => {
+    const boot = bootRef.current;
     boot.states = 0;
     boot.arcs = 0;
     const tl = gsap.timeline();
@@ -410,9 +428,10 @@ const LanesMap3D = ({
                 height={p.height}
                 color={p.color}
                 lit={!!p.datum}
+                isLit={litFor(s.name, highlightStates)}
                 isSelected={selected === p.key}
                 hovered={hoverKey === p.key}
-                boot={boot}
+                boot={bootRef}
                 onOver={overState(s.name)}
                 onOut={out}
                 onClick={() => p.datum && onSelect(p.key)}
@@ -426,7 +445,7 @@ const LanesMap3D = ({
               centroids={centroids}
               heights={stateHeights}
               maxGross={maxGross}
-              boot={boot}
+              boot={bootRef}
               index={i}
             />
           ))}

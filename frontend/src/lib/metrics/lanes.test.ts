@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Load } from "@/types/load";
 import { getRegion, getStateName } from "@/lib/constants/states";
 import {
+  nextHighlight,
   getRegionRollup,
   getStateLoadMap,
   getLanesSummary,
@@ -377,5 +378,105 @@ describe("getOriginStateRollup", () => {
     expect(r.rows).toEqual([]);
     expect(r.singles).toBe(2);
     expect(r.best).toBeNull();
+  });
+});
+
+// ---- Typical $/day (PR D, decision 1A) ----
+describe("perDay on the region / market / lane rollup", () => {
+  it("is WEIGHTED at every level — Σgross ÷ Σdays, never a mean of rates", () => {
+    const [region] = getRegionRollup([
+      // GA → TX, $2,300 over two days (Jun 1 → 2)
+      makeLoad({
+        linehaul: "2300",
+        pickup_date: "2026-06-01",
+        delivery_date: "2026-06-02",
+      }),
+      // GA → TX, $5,220 over five days (Jun 5 → 9)
+      makeLoad({
+        linehaul: "5220",
+        pickup_date: "2026-06-05",
+        delivery_date: "2026-06-09",
+      }),
+    ]);
+    const weighted = 7520 / 7; // $1,074 — not the $1,097 mean
+    expect(region.perDay.perDay).toBeCloseTo(weighted, 5);
+    expect(region.markets[0].perDay.perDay).toBeCloseTo(weighted, 5);
+    expect(region.markets[0].lanes[0].perDay.perDay).toBeCloseTo(weighted, 5);
+    // …and the totals it was divided out of ride along, so the table can gate
+    // its colour on the loads that actually fed the figure.
+    expect(region.perDay).toEqual({ perDay: weighted, days: 7, gross: 7520, loads: 2 });
+  });
+
+  it("counts gross — linehaul plus the fuel surcharge and accessorials", () => {
+    const [region] = getRegionRollup([
+      makeLoad({
+        linehaul: "1000",
+        fuel_surcharge: "300",
+        total_accessorials: "200",
+        pickup_date: "2026-06-01",
+        delivery_date: "2026-06-03", // 3 days
+      }),
+    ]);
+    expect(region.perDay.perDay).toBeCloseTo(1500 / 3, 5);
+  });
+
+  it("leaves out a load with no delivery date, and is null when none has one", () => {
+    const [region] = getRegionRollup([
+      makeLoad({ linehaul: "3000", pickup_date: "2026-06-01", delivery_date: "2026-06-03" }),
+      makeLoad({ linehaul: "9999", delivery_date: null }),
+    ]);
+    expect(region.perDay.perDay).toBeCloseTo(1000, 5);
+    // Two loads in the group, ONE behind the figure — the number the colour
+    // has to gate on.
+    expect(region.loadCount).toBe(2);
+    expect(region.perDay.loads).toBe(1);
+
+    const [bare] = getRegionRollup([makeLoad({ delivery_date: null })]);
+    expect(bare.perDay.perDay).toBeNull();
+    expect(bare.perDay.loads).toBe(0);
+  });
+
+  it("rides the state drill-down's lanes too", () => {
+    // `now` is injected, not read off the wall clock — this test can't rot.
+    const detail = getStateDetail(
+      [
+        makeLoad({
+          linehaul: "4000",
+          pickup_date: "2026-06-01",
+          delivery_date: "2026-06-04", // 4 days → $1,000/day
+        }),
+      ],
+      "Georgia",
+      3,
+      90,
+      Date.parse("2026-06-15T00:00:00Z"),
+    );
+    expect(detail.lanes[0].perDay.perDay).toBeCloseTo(1000, 5);
+  });
+});
+
+// ---- #228: which region is lit on the map ----
+// One click opens/closes a region row AND sets the map highlight. The rule is
+// pure so the two states can never drift out of step.
+describe("nextHighlight", () => {
+  it("lights the region you just opened", () => {
+    expect(nextHighlight(true, "Gulf", null)).toBe("Gulf");
+  });
+
+  it("moves the light when you open a second region", () => {
+    expect(nextHighlight(true, "Midwest", "Gulf")).toBe("Midwest");
+  });
+
+  it("clears the map when you collapse the LIT row", () => {
+    expect(nextHighlight(false, "Gulf", "Gulf")).toBeNull();
+  });
+
+  it("leaves the lit row alone when you collapse a DIFFERENT row", () => {
+    // The desync: closing Midwest must not blank a map showing the Gulf.
+    expect(nextHighlight(false, "Midwest", "Gulf")).toBe("Gulf");
+  });
+
+  it("stays cleared when you collapse a row with nothing lit", () => {
+    expect(nextHighlight(false, "Midwest", null)).toBeNull();
   });
 });

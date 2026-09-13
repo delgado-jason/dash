@@ -33,6 +33,10 @@ interface Props {
   mode: MapMode;
   onModeChange: (m: MapMode) => void;
   windowLoads: Load[];
+  // Issue #228 — the states the open region row lights up. BOTH boards get it:
+  // the WebGL board is the one nearly every machine actually shows, so a
+  // highlight that only reached the SVG fallback reached almost nobody.
+  highlightStates?: ReadonlySet<string>;
 }
 
 export const LanesMapBoard = ({
@@ -44,8 +48,11 @@ export const LanesMapBoard = ({
   mode,
   onModeChange,
   windowLoads,
+  highlightStates,
 }: Props) => {
-  const gl = useMemo(webglOK, []);
+  // Inline arrow, not the bare reference: react-hooks/use-memo wants to see
+  // the function expression to check it (same one-shot capability probe).
+  const gl = useMemo(() => webglOK(), []);
   const flows = useMemo(() => buildFlows(windowLoads), [windowLoads]);
 
   const levelWord =
@@ -66,6 +73,7 @@ export const LanesMapBoard = ({
         onSelect={onSelect}
         mode={mode}
         onModeChange={onModeChange}
+        highlightStates={highlightStates}
       />
     );
 
@@ -107,6 +115,7 @@ export const LanesMapBoard = ({
             onSelect={onSelect}
             mode={mode}
             flows={flows}
+            highlightStates={highlightStates}
           />
         </Suspense>
       </div>

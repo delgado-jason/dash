@@ -5,6 +5,7 @@ import type { Feature, FeatureCollection, Geometry, MultiPolygon } from "geojson
 import statesTopo from "us-atlas/states-10m.json";
 import type { AreaMapDatum, MapLevel } from "@/lib/metrics/lanes";
 import { groupKeyForStateName } from "@/lib/metrics/lanes";
+import { litFor } from "@/lib/constants/states";
 import { rpm as fmtRpm } from "@/lib/format";
 import {
   colorFor,
@@ -22,6 +23,10 @@ interface Props {
   noir?: boolean; // legacy flag, kept for the dashboard tab call site
   mode?: MapMode; // controlled from the page statusbar; falls back to internal state
   onModeChange?: (m: MapMode) => void;
+  // Issue #228 — the states to light up, by full name, from the region row
+  // the lanes table has open (lib/constants/states → statesInRegion). Empty
+  // or absent: nothing is lit and the map draws exactly as it always did.
+  highlightStates?: ReadonlySet<string>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,6 +64,7 @@ export const LanesMap = ({
   onSelect,
   mode: modeProp,
   onModeChange,
+  highlightStates,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -168,6 +174,10 @@ export const LanesMap = ({
         {shapes.map((s, i) => {
           const datum = data[s.key];
           const isSel = selected === s.key;
+          // #228: the region row's states wear the amber outline. A drilled-in
+          // state still wins the white one — the selection is where you ARE,
+          // the highlight is only what you pointed at.
+          const isLit = litFor(s.name, highlightStates);
           return (
             <path
               key={i}
@@ -176,9 +186,11 @@ export const LanesMap = ({
               stroke={
                 isSel && level === "state"
                   ? "#f4f7fb"
-                  : "rgba(255,255,255,0.12)"
+                  : isLit
+                    ? "#f5b03a"
+                    : "rgba(255,255,255,0.12)"
               }
-              strokeWidth={isSel && level === "state" ? 2 : 0.5}
+              strokeWidth={isSel && level === "state" ? 2 : isLit ? 1.6 : 0.5}
               style={{ cursor: datum ? "pointer" : "default" }}
               onClick={() => datum && onSelect(s.key)}
               onMouseMove={(e) => {

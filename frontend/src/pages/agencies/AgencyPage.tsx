@@ -14,6 +14,8 @@ import { bucketLabel, bucketOf } from "@/lib/relationships/buckets";
 import { keyOf, shortDate } from "@/lib/relationships/dayKeys";
 import { loadGross } from "@/lib/metrics/rateTargets";
 import { money, rpm as fmtRpm } from "@/lib/format";
+import { fmtPerDay, perDayTone, perDayToneWord } from "@/lib/metrics/perDay";
+import { perDayTextClass } from "@/components/lanes/rpmStyle";
 import type { Load } from "@/types/load";
 import {
   AGENCY_WINDOWS,
@@ -168,6 +170,9 @@ const AgencyPage = () => {
       .filter((f): f is string => f != null)
       .join(" · ");
 
+  // The desk's $/day and its verdict, read once for the ALL-IN RPM cell.
+  const deskPerDay = row?.perDay ?? null;
+  const deskPerDayTone = perDayTone(deskPerDay, data.targets.gross);
   const place = row ? placeOfAgency(row.agents) : null;
   const domain = row ? sharedDomain(row.agents) : null;
   // The agencies slice leads here: this page IS one agency, so a failed read
@@ -283,7 +288,26 @@ const AgencyPage = () => {
                 className="border-b sm:border-b-0 sm:border-r ds2-cell-rule"
                 label="All-in RPM"
                 // No miles, or no ladder — an em dash, never a fake grade.
-                value={row.allInRpm == null ? "—" : `${fmtRpm(row.allInRpm)}${row.partialRpm ? "*" : ""}`}
+                // The $/day is the cell's SECOND line (decision 3A): what this
+                // desk's freight paid per day of the truck over the window,
+                // weighted, in the ladder's colour. Absent when the window's
+                // loads carry no dates — never a $0 day.
+                value={
+                  <>
+                    {row.allInRpm == null ? "—" : `${fmtRpm(row.allInRpm)}${row.partialRpm ? "*" : ""}`}
+                    {deskPerDay != null && (
+                      <span className="block font-condensed text-[15px] mt-0.5">
+                        <span className={deskPerDayTone ? perDayTextClass(deskPerDayTone) : undefined}>
+                          {fmtPerDay(deskPerDay)}
+                        </span>
+                        <span className="text-faint"> /day</span>
+                        {deskPerDayTone && (
+                          <span className="text-faint"> · {perDayToneWord(deskPerDayTone)}</span>
+                        )}
+                      </span>
+                    )}
+                  </>
+                }
                 sub={row.band ?? (row.allInRpm == null ? "no miles logged" : "no rate ladder yet")}
               />
               <BoardCell

@@ -25,6 +25,7 @@ import type { Load } from "@/types/load";
 import type { Agent } from "@/types/agent";
 import { footprintPoint } from "@/lib/loads/customerEnd";
 import { loadRevenue } from "./loads"; // GROSS per load
+import { perDayOver } from "./perDay";
 import { median } from "./stats";
 import {
   buildAgentScorecards,
@@ -182,6 +183,17 @@ const agentTypeRpm = (loads: Load[], type: LoadType): number | null => {
 const agentTypeCount = (loads: Load[], type: LoadType): number =>
   loads.filter((l) => l.load_status === "delivered" && l.load_type === type).length;
 
+// The agent's $/day over the same delivered loads of the judged type — miles
+// or no miles — weighted Σgross ÷ Σdays. Not quite the same SET as
+// `agentTypeRpm`: a load with no loaded miles has no $/mi to take a median of
+// and drops out of that figure, while it still owns days of the truck and
+// still counts here. That is the point of the pair — the $/mi is a median (one
+// fluke can't crown an agent), the $/day is weighted (a five-day haul owns
+// five days), and between them they judge freight that a rate per mile alone
+// would miss.
+const agentTypePerDay = (loads: Load[], type: LoadType): number | null =>
+  perDayOver(loads.filter((l) => l.load_type === type)).perDay;
+
 // The type an agent brings you most (for focus = "any").
 const dominantType = (loads: Load[]): LoadType => {
   let best: LoadType = STANDARD_TYPE;
@@ -244,6 +256,10 @@ export interface AgentRanking {
   // rate (for the judged type)
   loadType: LoadType; // the type this agent is judged on
   rpm: number | null; // gross ÷ loaded mile for that type
+  // What their freight pays PER DAY of the truck — Σgross ÷ Σdays over the
+  // same delivered loads `rpm` reads. null when none of them carry both
+  // dates; never 0. Judged against the ladder's daily target by perDayTone.
+  perDay: number | null;
   benchmark: number | null; // your realized median gross/loaded for this type
   rateDelta: number | null; // rpm − benchmark
   typeLoadCount: number; // delivered loads of the judged type
@@ -466,6 +482,7 @@ export const buildForemanBoard = (
       regionFallback,
       loadType: judgedType,
       rpm,
+      perDay: agentTypePerDay(agentLoads, judgedType),
       benchmark: bench,
       rateDelta: rpm != null && bench != null ? rpm - bench : null,
       typeLoadCount: agentTypeCount(agentLoads, judgedType),

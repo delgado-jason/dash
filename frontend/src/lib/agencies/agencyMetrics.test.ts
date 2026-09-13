@@ -189,6 +189,36 @@ describe("agencyRollup", () => {
     expect(rows[0].band).toBeNull();
   });
 
+  it("carries the desk's $/day — WEIGHTED, gross over days on the truck", () => {
+    const rows = agencyRollup(
+      [agency("ag1", "CPL")],
+      [],
+      [
+        // $2,300 over two days (Aug 3 → 4)
+        load("l1", { agency_id: "ag1", linehaul: "2300", fuel_surcharge: "0", pickup_date: "2026-08-03", delivery_date: "2026-08-04" }),
+        // $5,220 over five days (Aug 6 → 10)
+        load("l2", { agency_id: "ag1", linehaul: "5220", fuel_surcharge: "0", pickup_date: "2026-08-06", delivery_date: "2026-08-10" }),
+      ],
+      [],
+      LADDER,
+      "12m",
+      NOW,
+    );
+    // $7,520 ÷ 7 days = $1,074 — not the $1,097 mean of $1,150 and $1,044.
+    expect(rows[0].perDay).toBeCloseTo(7520 / 7, 5);
+  });
+
+  it("$/day is windowed with the rest, and null — never $0 — with nothing to count", () => {
+    const inside = load("l1", { agency_id: "ag1", linehaul: "4000", fuel_surcharge: "0", pickup_date: "2026-08-01", delivery_date: "2026-08-04" });
+    // Picked up two years ago: outside 12m, inside "all".
+    const old = load("l2", { agency_id: "ag1", linehaul: "9999", fuel_surcharge: "0", pickup_date: "2024-08-01", delivery_date: "2024-08-02" });
+    expect(agencyRollup([agency("ag1", "CPL")], [], [inside, old], [], LADDER, "12m", NOW)[0].perDay).toBeCloseTo(1000, 5);
+
+    // A desk with nothing delivered in the window shows no figure at all.
+    expect(agencyRollup([agency("ag1", "CPL")], [], [old], [], LADDER, "12m", NOW)[0].perDay).toBeNull();
+    expect(agencyRollup([agency("ag1", "CPL")], [], [], [], LADDER, "12m", NOW)[0].perDay).toBeNull();
+  });
+
   it("a load counts for the agency on the LOAD — a person who moved desks leaves history behind", () => {
     // Drew booked l1 at CPL; he now works for Momentum. The load stays CPL's.
     const drew = agent("drew", { agency_id: "mom" });

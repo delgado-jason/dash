@@ -66,6 +66,14 @@ import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
 import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import {
+  fmtPerDay,
+  loadDays,
+  loadPerDay,
+  perDayTone,
+  perDayToneWord,
+  PER_DAY_TONE_VAR,
+} from "@/lib/metrics/perDay";
 import { loadEmptyMiles } from "@/lib/metrics/deadhead";
 import {
   estimateLoadFuel,
@@ -588,6 +596,34 @@ export const LoadDetailPage = () => {
                     {meta.label}
                   </span>
                   <span className="font-condensed font-semibold text-[10.5px] text-faint">booked grade</span>
+                </span>
+              );
+            })()}
+            {/* What this load pays per DAY of the truck — planned while it is
+                booked, actual once delivered. Toned against the ladder's
+                daily target. No dates, no chip: "—" is never drawn here. */}
+            {(() => {
+              const perDay = loadPerDay(load);
+              const days = loadDays(load);
+              if (perDay == null || days == null) return null;
+              const tone = perDayTone(perDay, targets.gross);
+              const word = perDayToneWord(tone);
+              // One colour rule, off perDay.ts's own list — no verdict (no
+              // ladder yet) wears the header's ink rather than a colour.
+              const fg = tone ? PER_DAY_TONE_VAR[tone] : "var(--color-ink)";
+              return (
+                <span
+                  className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10"
+                  title={`${fmtPerDay(perDay)} a day over ${days} day${days === 1 ? "" : "s"} on the truck${
+                    load.load_status === "delivered" ? "" : " — planned, this load has not delivered yet"
+                  }${word ? ` · ${word}` : ""}`}
+                >
+                  <span className="font-forge font-bold text-[11px] tracking-[.14em]" style={{ color: fg }}>
+                    {fmtPerDay(perDay)} /DAY
+                  </span>
+                  <span className="font-condensed font-semibold text-[10.5px] text-faint">
+                    {load.load_status === "delivered" ? `${days}d on the truck` : `${days}d planned`}
+                  </span>
                 </span>
               );
             })()}

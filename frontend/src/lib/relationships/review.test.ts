@@ -517,6 +517,32 @@ describe("THE SCORECARD — the verdict is the suggestion's own direction", () =
     expect(r.outDays).toBe(4);
   });
 
+  it("carries the window's $/day — WEIGHTED, gross over days on the truck", () => {
+    const a = agent("a", 1);
+    const rows = score([a], [
+      // $2,300 over two days (Aug 3 → 4)
+      load({ agent_id: "a", gross_revenue: "2300", pickup_date: "2026-08-03", delivery_date: "2026-08-04" }),
+      // $5,220 over five days (Aug 6 → 10)
+      load({ agent_id: "a", gross_revenue: "5220", pickup_date: "2026-08-06", delivery_date: "2026-08-10" }),
+      // $3,000 over one day — same-day pickup and delivery still owns a day
+      load({ agent_id: "a", gross_revenue: "3000", pickup_date: "2026-08-12", delivery_date: "2026-08-12" }),
+    ]);
+    // $10,520 ÷ 8 days = $1,315 — not the $1,398 mean of the three rates.
+    expect(rows[0].perDay).toBeCloseTo(10520 / 8, 5);
+  });
+
+  it("counts only the window's delivered loads for $/day, and is null with none", () => {
+    const a = agent("a", 1);
+    const inside = load({ agent_id: "a", gross_revenue: "4000", pickup_date: "2026-08-01", delivery_date: "2026-08-04" });
+    // Delivered before the 90-day window opens (it starts 2026-06-15).
+    const outside = load({ agent_id: "a", gross_revenue: "9999", pickup_date: "2026-01-02", delivery_date: "2026-01-03" });
+    expect(score([a], [inside, outside])[0].perDay).toBeCloseTo(1000, 5);
+
+    // An agent the window has nothing delivered for still earns a row (Tier 1
+    // is always answerable for) and shows null — never $0.
+    expect(score([a], [outside])[0].perDay).toBeNull();
+  });
+
   it("out-days count DISTINCT days — four notes from one call is one day of attention", () => {
     const a = agent("a", 1);
     const contacts = [
@@ -859,6 +885,48 @@ describe("the whole model, and the sub-line's three numbers", () => {
     const text = reviewReportText(m);
     expect(text).toContain("eric X MAM:");
     expect(text).not.toContain("eric X CPL:");
+  });
+
+  it("the scorecard line carries the $/day beside the $/mi", () => {
+    // The copy report IS the page — what the scorecard shows has to survive
+    // the paste into an email. threeGood: three same-day loads at $3,200 gross
+    // = three days on the truck, $3,200 a day.
+    const a = agent("a", 2);
+    const m = buildReviewModel({
+      agents: [a],
+      loads: threeGood("a"),
+      contacts: [],
+      notes: [],
+      coverage: [],
+      history: [],
+      reviews: [],
+      ladder: LADDER,
+      period: reviewPeriod("month", 0, NOW),
+      systemStart: "2026-09-03",
+      now: NOW,
+    });
+    expect(m.scores[0].perDay).toBeCloseTo(3200, 5);
+    const text = reviewReportText(m);
+    expect(text).toContain("$3,200/day · deadhead");
+  });
+
+  it("a scorecard row with no dated loads prints an em dash, never $0/day", () => {
+    const a = agent("a", 2);
+    const m = buildReviewModel({
+      agents: [a],
+      loads: threeGood("a").map((l) => ({ ...l, pickup_date: null }) as unknown as Load),
+      contacts: [],
+      notes: [],
+      coverage: [],
+      history: [],
+      reviews: [],
+      ladder: LADDER,
+      period: reviewPeriod("month", 0, NOW),
+      systemStart: "2026-09-03",
+      now: NOW,
+    });
+    expect(m.scores[0].perDay).toBeNull();
+    expect(reviewReportText(m)).not.toContain("$0/day");
   });
 
   it("an empty book still produces a report — and it never invents a percentage", () => {
