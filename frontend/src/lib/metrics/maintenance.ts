@@ -1,7 +1,8 @@
-import type { MaintenanceItem } from "@/types/maintenance";
+import type { MaintenanceItem, MaintenanceUnit } from "@/types/maintenance";
 import type { Load } from "@/types/load";
 import type { Alert } from "@/types/alert";
 import { median } from "./stats";
+import { DEFAULT_APU_HOURS_PER_ROAD_DAY } from "./apuHours";
 
 const MS_DAY = 86_400_000;
 const DAYS_PER_MONTH = 30.44;
@@ -12,14 +13,46 @@ const SOON_FRACTION = 0.85;
 
 export type DueLevel = "overdue" | "soon" | "ok" | "unknown";
 
+// The three lenses an item can be due through.
+export type DueLens = "hours" | "miles" | "months";
+
+// The three lenses an item can be due through. Most items use one or two;
+// the most-elapsed lens is the one that decides.
 export interface Due {
   level: DueLevel;
   dueMiles: number | null;
   milesRemaining: number | null;
+  dueHours: number | null; // the APU hour meter this item comes due at
+  hoursRemaining: number | null; // negative = run past it
   dueDate: string | null; // from the time interval ('YYYY-MM-DD')
   daysRemaining: number | null;
-  progress: number | null; // max of mileage/time fraction elapsed (0..1+)
-  etaDate: string | null; // effective predicted due date (earliest of the two lenses)
+  progress: number | null; // max of the mileage/hours/time fractions (0..1+)
+  etaDate: string | null; // effective predicted due date (earliest lens)
+  // Which lens is the most elapsed — the one that set `level`. The row's right
+  // cell prints THIS lens's remaining figure, so an item overdue on months
+  // never prints healthy hours in red. null when nothing can be counted.
+  decidedBy: DueLens | null;
+  // The ETA leaned on a default: an APU rate nobody has taught us yet, or a
+  // road-day share the window could not supply. The figure wears a "~".
+  etaEstimated: boolean;
+}
+
+// What a unit's meter reads right now: miles for the tractor and the trailer,
+// projected engine hours for the APU (null until a reading exists).
+// One entry per unit, plus one flag: the APU number is a PROJECTION whenever a
+// road day has passed since the last reading, and everything derived from it
+// wears a "~" — a number the meter did not give is never drawn as if it did.
+export type CurrentReading = Record<MaintenanceUnit, number | null> & {
+  apuEstimated: boolean;
+};
+
+// The hours lens's extra inputs. Separate from the positional arguments so the
+// six call sites that only care about miles never have to know about them.
+export interface DueOptions {
+  currentHours?: number | null; // the APU projection's hours
+  hoursPerRoadDay?: number | null; // this APU's learned rate
+  roadDayShare?: number | null; // road days ÷ calendar days, for the ETA
+  soonWithinDays?: number;
 }
 
 // Add whole months to a 'YYYY-MM-DD' date, UTC-safe.
@@ -31,23 +64,55 @@ export const addMonths = (iso: string, months: number): string => {
   return r.toISOString().slice(0, 10);
 };
 
-// When is this item due, and how close? Handles mileage-based, time-based, or
-// both (the more-elapsed lens wins). etaDate blends the time interval with a
-// mileage projection (miles remaining ÷ your recent miles/month).
+// When is this item due, and how close? Handles mileage-based, hours-based,
+// time-based, or any mix (the more-elapsed lens wins). etaDate blends the time
+// interval with a mileage projection (miles remaining ÷ your recent
+// miles/month) and an hours projection (hours remaining ÷ this APU's rate, in
+// ROAD days, converted back to calendar days at the recent road-day share).
 export const computeDue = (
   item: MaintenanceItem,
   currentMiles: number | null,
   now: Date,
   milesPerMonth: number | null,
-  soonWithinDays: number = SOON_WITHIN_DAYS,
+  opts: DueOptions = {},
 ): Due => {
+  const soonWithinDays = opts.soonWithinDays ?? SOON_WITHIN_DAYS;
+  // A lens whose own meter cannot answer BLOCKS the item: nothing else gets to
+  // answer in its place. An oil change that runs on hours is not "fine" because
+  // the calendar is comfortable — it is unanswered until the meter is read.
+  let blocked = false;
+
   let mileFrac: number | null = null;
   let dueMiles: number | null = null;
   let milesRemaining: number | null = null;
   if (item.interval_miles && item.last_done_miles != null && currentMiles != null) {
-    dueMiles = item.last_done_miles + item.interval_miles;
-    milesRemaining = dueMiles - currentMiles;
-    mileFrac = (currentMiles - item.last_done_miles) / item.interval_miles;
+    // A reading BELOW the last service is bad data — a swapped meter, a typo,
+    // a hub that was replaced. A negative fraction would read as "plenty of
+    // room left"; the honest answer is "check the meter".
+    if (currentMiles < item.last_done_miles) blocked = true;
+    else {
+      dueMiles = item.last_done_miles + item.interval_miles;
+      milesRemaining = dueMiles - currentMiles;
+      mileFrac = (currentMiles - item.last_done_miles) / item.interval_miles;
+    }
+  }
+
+  // The hours lens. It needs all three — an interval, a baseline the meter
+  // gave, and a current reading. Any one missing and the APU item has no
+  // baseline; it says so rather than counting from an invented zero, and the
+  // months lens does NOT get to answer for it.
+  let hoursFrac: number | null = null;
+  let dueHours: number | null = null;
+  let hoursRemaining: number | null = null;
+  const currentHours = opts.currentHours ?? null;
+  if (item.interval_hours) {
+    if (item.last_done_hours == null || currentHours == null) blocked = true;
+    else if (currentHours < item.last_done_hours) blocked = true; // below the baseline
+    else {
+      dueHours = item.last_done_hours + item.interval_hours;
+      hoursRemaining = dueHours - currentHours;
+      hoursFrac = (currentHours - item.last_done_hours) / item.interval_hours;
+    }
   }
 
   let timeFrac: number | null = null;
@@ -62,22 +127,61 @@ export const computeDue = (
     daysRemaining = (new Date(dueDate).getTime() - now.getTime()) / MS_DAY;
   }
 
-  // Effective due date = whichever lens comes first (time interval, or the
-  // mileage projection from recent pace).
-  const candidates: string[] = [];
-  if (dueDate) candidates.push(dueDate);
+  // Effective due date = whichever lens comes first (time interval, the
+  // mileage projection from recent pace, or the hours projection). Each
+  // candidate remembers whether it had to lean on a default.
+  const candidates: { date: string; estimated: boolean }[] = [];
+  if (dueDate) candidates.push({ date: dueDate, estimated: false });
   if (milesRemaining != null && milesPerMonth && milesPerMonth > 0) {
     const daysOut = (milesRemaining / milesPerMonth) * DAYS_PER_MONTH;
-    candidates.push(new Date(now.getTime() + daysOut * MS_DAY).toISOString().slice(0, 10));
+    candidates.push({
+      date: new Date(now.getTime() + daysOut * MS_DAY).toISOString().slice(0, 10),
+      estimated: false,
+    });
   }
-  const etaDate = candidates.length ? candidates.sort()[0] : null;
+  // Hours only accrue on road days, so the hours ETA lands in ROAD days first
+  // and is stretched back onto the calendar by the recent road-day share — 40
+  // road days at 2 days home a week is not 40 days from now.
+  //
+  // Two defaults live here, and both make the answer an ESTIMATE rather than a
+  // wrong number: with no learned rate we assume DEFAULT_APU_HOURS_PER_ROAD_DAY
+  // (8 — a TriPac idling through a 10-hour break), and with no road-day share
+  // we treat every calendar day as a road day (share 1), which is the soonest
+  // the clock could come due. Both are surfaced as `etaEstimated` so the UI can
+  // wear the "~" instead of pretending the date was computed from his numbers.
+  const rate = opts.hoursPerRoadDay ?? DEFAULT_APU_HOURS_PER_ROAD_DAY;
+  const share = opts.roadDayShare ?? null;
+  if (hoursRemaining != null && rate > 0) {
+    const roadDaysOut = hoursRemaining / rate;
+    const daysOut = share && share > 0 ? roadDaysOut / share : roadDaysOut;
+    candidates.push({
+      date: new Date(now.getTime() + daysOut * MS_DAY).toISOString().slice(0, 10),
+      estimated: opts.hoursPerRoadDay == null || share == null || share <= 0,
+    });
+  }
+  const eta = candidates.length
+    ? candidates.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))[0]
+    : null;
+  const etaDate = eta?.date ?? null;
   const daysToEta =
     etaDate != null ? (new Date(etaDate).getTime() - now.getTime()) / MS_DAY : null;
 
-  const fracs = [mileFrac, timeFrac].filter((f): f is number => f != null);
-  const progress = fracs.length ? Math.max(...fracs) : null;
+  // The most-elapsed lens is the one that decides, and the one the row prints.
+  const lenses: [DueLens, number | null][] = [
+    ["hours", hoursFrac],
+    ["miles", mileFrac],
+    ["months", timeFrac],
+  ];
+  const counted = lenses.filter((l): l is [DueLens, number] => l[1] != null);
+  const progress = blocked || !counted.length
+    ? null
+    : Math.max(...counted.map(([, f]) => f));
+  const decidedBy =
+    progress == null
+      ? null
+      : counted.reduce((best, l) => (l[1] > best[1] ? l : best))[0];
 
-  // Overdue if past either threshold. Otherwise "soon" when the projected date
+  // Overdue if past any threshold. Otherwise "soon" when the projected date
   // is within the item's own warning lead (falls back to % elapsed with no
   // projection). Per-item lead lets a truck wash warn at 2 weeks while a DOT
   // inspection warns at 30 days.
@@ -86,13 +190,26 @@ export const computeDue = (
   if (progress != null) {
     const past =
       (milesRemaining != null && milesRemaining < 0) ||
+      (hoursRemaining != null && hoursRemaining < 0) ||
       (daysRemaining != null && daysRemaining < 0) ||
       progress >= 1;
     const soon = daysToEta != null ? daysToEta <= lead : progress >= SOON_FRACTION;
     level = past ? "overdue" : soon ? "soon" : "ok";
   }
 
-  return { level, dueMiles, milesRemaining, dueDate, daysRemaining, progress, etaDate };
+  return {
+    level,
+    dueMiles,
+    milesRemaining,
+    dueHours,
+    hoursRemaining,
+    dueDate,
+    daysRemaining,
+    progress,
+    etaDate,
+    decidedBy,
+    etaEstimated: eta?.estimated ?? false,
+  };
 };
 
 // Highest odometer across any sources that carry one — loads, services, and
@@ -156,25 +273,40 @@ export const recentMilesPerMonth = (loads: Load[], now: Date): number | null => 
 };
 
 // Overdue / due-soon items → dashboard alerts (overdue = critical, first).
+// An APU item alerts off the PROJECTION, exactly like a truck item alerts off
+// the odometer — the reading is softer, the clock is not.
 export const maintenanceAlerts = (
   items: MaintenanceItem[],
-  currentMiles: Record<string, number | null>,
+  currentReading: Partial<CurrentReading>,
   now: Date,
   milesPerMonth: number | null,
+  hoursOpts: Pick<DueOptions, "hoursPerRoadDay" | "roadDayShare"> = {},
 ): Alert[] => {
   const ranked: { alert: Alert; rank: number }[] = [];
   for (const it of items) {
     if (!it.active) continue;
-    const due = computeDue(it, currentMiles[it.unit] ?? null, now, milesPerMonth);
+    const reading = currentReading[it.unit] ?? null;
+    const due = computeDue(it, it.unit === "apu" ? null : reading, now, milesPerMonth, {
+      ...hoursOpts,
+      currentHours: it.unit === "apu" ? reading : null,
+    });
     if (due.level !== "overdue" && due.level !== "soon") continue;
+    // Hours off a PROJECTION wear a "~" — the meter gave the anchor, the road
+    // days gave the rest, and the banner says so.
+    const tilde =
+      it.unit === "apu" && currentReading.apuEstimated === true ? "~" : "";
 
     let suffix = "";
     if (due.milesRemaining != null && due.milesRemaining < 0)
       suffix = `${Math.round(-due.milesRemaining).toLocaleString("en-US")} mi over`;
+    else if (due.hoursRemaining != null && due.hoursRemaining < 0)
+      suffix = `${tilde}${Math.round(-due.hoursRemaining).toLocaleString("en-US")} hrs over`;
     else if (due.daysRemaining != null && due.daysRemaining < 0)
       suffix = `${Math.round(-due.daysRemaining)} days over`;
     else if (due.milesRemaining != null && due.milesRemaining >= 0)
       suffix = `${Math.round(due.milesRemaining).toLocaleString("en-US")} mi left`;
+    else if (due.hoursRemaining != null && due.hoursRemaining >= 0)
+      suffix = `${tilde}${Math.round(due.hoursRemaining).toLocaleString("en-US")} hrs left`;
     else if (due.etaDate)
       suffix = `in ${Math.max(0, Math.round((new Date(due.etaDate).getTime() - now.getTime()) / MS_DAY))} days`;
 

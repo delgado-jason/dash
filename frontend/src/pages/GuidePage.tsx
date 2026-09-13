@@ -373,7 +373,7 @@ const NAV: { group: string; items: string[] }[] = [
     items: [
       "Bottleneck — your three profit levers",
       "This quarter — on track to beat last?",
-      "Equipment mix — oversize &amp; heavy haul",
+      "Equipment mix — oversize and heavy haul",
       "Hometime — days since you were home",
     ],
   },
@@ -389,6 +389,15 @@ const NAV: { group: string; items: string[] }[] = [
   {
     group: "Compliance",
     items: ["Compliance — Mark renewed, and the cycle it keeps"],
+  },
+  {
+    group: "The shop",
+    items: [
+      "Maintenance — four units, four meters",
+      "APU hours — the projection",
+      "Due next and the unit boards",
+      "Logging a service",
+    ],
   },
   {
     group: "The award system",
@@ -427,10 +436,10 @@ const NAV: { group: string; items: string[] }[] = [
       "Adding a dispatcher",
       "What a dispatcher sees",
       "The Dispatch board",
-      "Agents &amp; lanes are graded on gross",
+      "Agents and lanes are graded on gross",
       "The Dispatcher Card",
-      "Dispatcher achievements — patches &amp; medals",
-      "Dispatcher season &amp; trophies",
+      "Dispatcher achievements — patches and medals",
+      "Dispatcher season and trophies",
       "The Dispatch Forge",
     ],
   },
@@ -1463,7 +1472,13 @@ const GuidePage = () => {
               A fill of <span className="text-light">120+ gallons</span> is a
               full tank; smaller top-offs roll into the next full. Measuring
               full-to-full is why it's honest — actual pump gallons against
-              actual odometer miles.
+              actual odometer miles. The fill-up form also takes an optional{" "}
+              <span className="text-light">APU hours</span> reading — nothing to
+              do with MPG, but it re-anchors the APU's{" "}
+              <a href="#apu-hours-the-projection" className="text-amber-light">
+                hours projection
+              </a>{" "}
+              for free while you're standing at the truck.
             </Why>
           </Metric>
 
@@ -1846,7 +1861,7 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="Equipment mix — oversize &amp; heavy haul"
+            title="Equipment mix — oversize and heavy haul"
             answers="How much of your delivered work is oversize, and separately, heavy haul. Clear a high bar in either and the card names you a specialist."
             sources={[{ label: "Driver card", to: "/drivers" }]}
           >
@@ -2043,6 +2058,141 @@ const GuidePage = () => {
               driver. Owner and dispatcher both.
             </p>
           </Section>
+
+          <GroupHeading>The shop</GroupHeading>
+
+          <Metric
+            title="Maintenance — four units, four meters"
+            answers="What's due on the truck, the transmission, the trailer and the APU — each counted on the meter it actually runs on."
+            sources={[{ label: "Maintenance", to: "/maintenance" }]}
+          >
+            <Why>
+              A clock belongs to one <span className="text-light">unit</span>,
+              and every unit reads its own meter. The{" "}
+              <span className="text-light">truck</span> counts miles off its
+              odometer. The <span className="text-light">trailer</span> counts
+              its hubodometer, which only moves when a service writes one down.
+              The <span className="text-light">APU</span> counts{" "}
+              <span className="text-light">engine hours</span> — it runs while
+              the truck sits, so its odometer says nothing about its wear.
+              Transmission work gets its own board but still rides the truck's
+              odometer. Any clock can also carry a{" "}
+              <span className="text-light">month</span> interval; when an item
+              has two, whichever is further along is the one that decides.
+            </Why>
+            <Why>
+              A clock with no baseline — no last-done reading to count from —
+              reads <span className="text-light">No baseline</span> and shows a
+              dash, not a zero. Give it one by tapping the row, or just log the
+              next service that completes it.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="APU hours — the projection"
+            answers="Your APU has no odometer and nobody reads its meter weekly, so dash carries the last reading forward instead of going blind."
+            sources={[
+              { label: "Maintenance", to: "/maintenance" },
+              { label: "Fuel", to: "/fuel-entries" },
+            ]}
+          >
+            <Formula>
+              hours today = your last reading + road days since × this APU's own
+              hours per road day
+            </Formula>
+            <Why>
+              A <span className="text-light">road day</span> is a day the truck
+              was working — a load in progress, plus a single empty day between
+              two loads, because that's repositioning, not sitting. Days at the
+              house add nothing: the APU isn't running. The{" "}
+              <span className="text-light">rate</span> is learned from your own
+              last two readings — the hours they differ by, divided by the road
+              days between them. Until there are two, dash assumes{" "}
+              <span className="text-light">8 hours per road day</span>, roughly
+              a ten-hour break with the unit on.
+            </Why>
+            <Why>
+              A reading is just a row you already keep: the hour meter on an APU
+              service, or the optional{" "}
+              <span className="text-light">APU hours</span> box on a fuel-up.
+              Whichever is newest re-anchors the count, so typing the meter at
+              the pump resets the drift for free.
+            </Why>
+            <Why>
+              Anything projected is <span className="text-light">marked</span>.
+              The number wears a <span className="text-light">~</span> and the
+              page says which reading it's counting from ("est. from road days
+              since Sep 3"); an exact number means the meter was read today. If
+              no reading exists at all, the page says{" "}
+              <span className="text-light">needs a reading</span> and every APU
+              clock sits out — dash will not draw hours the meter never gave.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Due next and the unit boards"
+            answers="Overdue, Soon and Then across the whole rig, then every clock shelved by the unit it belongs to."
+            sources={[{ label: "Maintenance", to: "/maintenance" }]}
+          >
+            <Why>
+              The plate at the top of the Schedule is{" "}
+              <span className="text-light">Due next</span>, and it always has
+              the same three slots:{" "}
+              <span className="text-light">Overdue</span>,{" "}
+              <span className="text-light">Soon</span>,{" "}
+              <span className="text-light">Then</span>. Each one holds the most
+              urgent clock at that level, with its unit and what's left — miles,
+              hours or days. A slot with nothing in it says so ("nothing
+              overdue"), so a bad week never gets to fill the plate twice. Under
+              it sit four boards —{" "}
+              <span className="text-light">Truck</span>,{" "}
+              <span className="text-light">Transmission</span>,{" "}
+              <span className="text-light">Trailer</span>,{" "}
+              <span className="text-light">APU</span> — and each board's heading
+              carries that unit's current meter.
+            </Why>
+            <Why>
+              Inside a board the rows are sorted by urgency, and the clocks that
+              are fine fold behind a{" "}
+              <span className="text-light">"n more · fine"</span> line — tap it
+              to see them. Every row's right-hand number is what is{" "}
+              <span className="text-light">left</span> on the lens that is
+              furthest along — so a clock that's overdue on months shows the
+              days, not comfortable hours — coloured by how close it is; tap the
+              row to edit the clock or set a baseline by hand. To keep a clock
+              of your own, use{" "}
+              <span className="text-light">+ Add clock</span> at the top of the
+              page, beside <span className="text-light">Log service</span>.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Logging a service"
+            answers="One sheet for a shop visit: what it was on, the meter, who did it, where, and which clocks it reset."
+            sources={[{ label: "Maintenance", to: "/maintenance" }]}
+          >
+            <Why>
+              Pick the <span className="text-light">unit</span> first — it
+              decides which meter the sheet asks for.{" "}
+              <span className="text-light">Truck</span> wants an odometer,{" "}
+              <span className="text-light">Trailer</span> a hubodometer,{" "}
+              <span className="text-light">Both</span> reads both on one
+              invoice, and <span className="text-light">APU</span> reads hours.
+              The <span className="text-light">City</span> box is the same
+              picker the load form uses: pick a suggestion and it fills the
+              state for you, storing a clean "Carlisle, PA".
+            </Why>
+            <Why>
+              <span className="text-light">Completes</span> is the part that
+              matters — tick the clocks this visit reset and they restart from
+              this service's date and reading. An APU clock you tick takes its
+              new baseline from the <span className="text-light">APU hours</span>{" "}
+              on the sheet; leave that blank and the clock keeps its date but
+              still needs a meter before it can count. Costs on this page are{" "}
+              <span className="text-light">vendor pricing only</span> — what
+              each shop charges you — and are never rolled into your P&amp;L.
+            </Why>
+          </Metric>
 
           <GroupHeading>The award system</GroupHeading>
 
@@ -3127,7 +3277,7 @@ const GuidePage = () => {
             </p>
           </Section>
 
-          <Section title="Agents &amp; lanes are graded on gross">
+          <Section title="Agents and lanes are graded on gross">
             <p className="text-sm text-muted-text">
               Everywhere an <span className="text-light">agent</span> or a{" "}
               <span className="text-light">lane</span> is ranked — the
@@ -3174,7 +3324,7 @@ const GuidePage = () => {
           </Section>
 
           <Section
-            title="Dispatcher achievements — patches &amp; medals"
+            title="Dispatcher achievements — patches and medals"
             sources={[{ label: "Dispatch board", to: "/dashboard" }]}
           >
             <p className="text-sm text-muted-text">
@@ -3217,7 +3367,7 @@ const GuidePage = () => {
           </Section>
 
           <Section
-            title="Dispatcher season &amp; trophies"
+            title="Dispatcher season and trophies"
             sources={[
               { label: "Dispatch board", to: "/dashboard" },
               { label: "Recap", to: "/my-recap" },

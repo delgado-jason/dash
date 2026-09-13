@@ -47,10 +47,12 @@ const loadMiles = (l: Load): number => {
 };
 
 // Maintenance services attributable to the tractor (no per-truck link exists yet,
-// so tractor + both count; fine for a single truck).
+// so tractor + both count; fine for a single truck). The APU counts too: the
+// TriPac hangs on this truck, its invoices are this truck's shop money, and
+// leaving them out would quietly understate what the rig costs to run.
 const truckServiceSpend = (services: MaintenanceService[]): number =>
   services
-    .filter((s) => s.unit === "tractor" || s.unit === "both")
+    .filter((s) => s.unit === "tractor" || s.unit === "both" || s.unit === "apu")
     .reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
 
 export const computeTruckMetrics = (

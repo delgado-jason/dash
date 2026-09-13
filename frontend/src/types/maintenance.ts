@@ -1,6 +1,8 @@
-export type MaintenanceUnit = "tractor" | "trailer";
-// A schedule item belongs to one unit; a service (shop visit) can cover both.
-export type ServiceUnit = "tractor" | "trailer" | "both";
+// Four units (078). Each reads its OWN meter: the tractor an odometer, the
+// trailer a hubodometer, the APU an hour meter. A schedule item belongs to one
+// unit; a service (shop visit) can cover the truck and trailer together.
+export type MaintenanceUnit = "tractor" | "trailer" | "apu";
+export type ServiceUnit = "tractor" | "trailer" | "both" | "apu";
 
 export interface MaintenanceItem {
   item_id: string;
@@ -11,6 +13,7 @@ export interface MaintenanceItem {
   interval_months: number | null;
   interval_hours: number | null;
   last_done_miles: number | null;
+  last_done_hours: number | null; // the APU hour meter at the last completion
   last_done_date: string | null; // 'YYYY-MM-DD'
   warn_lead_days: number; // start flagging "due soon" this many days before due
   truck_id: string | null;
@@ -27,6 +30,7 @@ export interface MaintenanceService {
   service_date: string; // 'YYYY-MM-DD'
   odometer: number | null; // truck reading (tractor / both)
   trailer_hub: number | null; // trailer reading (trailer / both)
+  apu_hours: number | null; // APU hour meter at the visit (apu)
   vendor: string | null;
   location: string | null;
   description: string;

@@ -65,6 +65,9 @@ const FuelEntriesPage = () => {
   const [truckId, setTruckId] = useState("");
   const [date, setDate] = useState("");
   const [odometer, setOdometer] = useState("");
+  // Optional APU hour-meter reading. He is standing at the truck with the meter
+  // in front of him; one box re-anchors the whole APU schedule.
+  const [apuHours, setApuHours] = useState("");
   const [gallons, setGallons] = useState("");
   const [total, setTotal] = useState("");
   // Vendor + state default to your last fill-up (remembered across reloads), so
@@ -109,8 +112,10 @@ const FuelEntriesPage = () => {
     load();
   }, []);
 
-  const now = new Date();
-  const stats = useMemo(() => fuelStats(entries, now), [entries]);
+  // The clock is read INSIDE the memo: a `now` from the render body would be a
+  // new Date every render, so listing it as a dependency would recompute the
+  // tank windows on every keystroke. Same numbers, one less trap.
+  const stats = useMemo(() => fuelStats(entries, new Date()), [entries]);
   // The latest completed tank, scored against his history (the "last tank" card).
   const recap = useMemo(
     () => latestTankRecap(stats, nationalSeries),
@@ -172,6 +177,7 @@ const FuelEntriesPage = () => {
   const resetFields = () => {
     setDate("");
     setOdometer("");
+    setApuHours("");
     setGallons("");
     setTotal("");
     setCity("");
@@ -190,6 +196,7 @@ const FuelEntriesPage = () => {
     setEditingId(e.fuel_entry_id);
     setDate(e.fuel_date);
     setOdometer(String(e.odometer_reading));
+    setApuHours(e.apu_hours == null ? "" : String(e.apu_hours));
     setGallons(String(e.gallons));
     setTotal(entryCost(e).toFixed(2));
     setCompany(e.company_name ?? "");
@@ -225,6 +232,11 @@ const FuelEntriesPage = () => {
     if (!odometer.trim()) e.odometer = "Required.";
     else if (!Number.isInteger(od) || od < 1 || od > 5_000_000)
       e.odometer = "Enter a whole number up to 5,000,000.";
+    if (apuHours.trim()) {
+      const h = parseInt(numOf(apuHours), 10);
+      if (!Number.isInteger(h) || h < 0 || h > 100_000)
+        e.apuHours = "Whole hours, 0 to 100,000.";
+    }
     if (!gallons.trim()) e.gallons = "Required.";
     else if (!(g >= 1 && g <= 400))
       e.gallons = "Must be between 1 and 400 gal.";
@@ -253,6 +265,8 @@ const FuelEntriesPage = () => {
         gallons: parseFloat(numOf(gallons)),
         price_per_gallon: Number(computedPpg!.toFixed(3)),
         odometer_reading: parseInt(numOf(odometer), 10),
+        // Blank stays null — a reading nobody took is not a zero.
+        apu_hours: apuHours.trim() ? parseInt(numOf(apuHours), 10) : null,
         company_name: company.trim() || null,
         fuel_city: city.trim() || null,
         fuel_state: stateCode.trim().toUpperCase(),
@@ -543,6 +557,26 @@ const FuelEntriesPage = () => {
                   clr("odometer");
                 }}
               />
+            </Field>
+            <Field
+              label="APU hours"
+              hint="· optional"
+              error={errs.apuHours}
+            >
+              <AffixInput
+                suffix="hrs"
+                inputMode="numeric"
+                placeholder="1,240"
+                value={apuHours}
+                invalid={!!errs.apuHours}
+                onChange={(e) => {
+                  setApuHours(e.target.value);
+                  clr("apuHours");
+                }}
+              />
+              <p className="font-condensed text-[11px] text-faint mt-1">
+                meter reading — keeps the APU schedule honest
+              </p>
             </Field>
             <Field label="Gallons" error={errs.gallons}>
               <AffixInput

@@ -4,6 +4,7 @@ import type { Load } from "@/types/load";
 import { useFleetData } from "@/hooks/useFleetData";
 import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
 import { computeDue, fleetHealth, type Due, type DueLevel } from "@/lib/metrics/maintenance";
+import { apuDueOptions } from "@/lib/metrics/apuHours";
 import { shopSpend, fleetHeatmap, lastHomeDay, type DayStatus } from "@/lib/metrics/fleet";
 import { hometimeStatus } from "@/lib/metrics/hometime";
 import { itemToCheckable, cdlToCheckable, computeComplianceDue, type ComplianceLevel } from "@/lib/metrics/compliance";
@@ -37,12 +38,17 @@ const H3 = ({ children, right }: { children: React.ReactNode; right?: React.Reac
   </h3>
 );
 
-// miles preferred, else days; sign → overdue / remaining
+// miles preferred, then the APU's hours, else days; sign → overdue / remaining
 const remain = (d: Due): string => {
   if (d.milesRemaining != null)
     return d.milesRemaining < 0
       ? `overdue ${Math.abs(Math.round(d.milesRemaining)).toLocaleString()} mi`
       : `in ${Math.round(d.milesRemaining).toLocaleString()} mi`;
+  // An APU clock has no miles at all — it would otherwise print nothing here.
+  if (d.hoursRemaining != null)
+    return d.hoursRemaining < 0
+      ? `overdue ${Math.abs(Math.round(d.hoursRemaining)).toLocaleString()} hrs`
+      : `in ${Math.round(d.hoursRemaining).toLocaleString()} hrs`;
   if (d.daysRemaining != null)
     return d.daysRemaining < 0 ? `overdue ${Math.abs(Math.round(d.daysRemaining))}d` : `in ${Math.round(d.daysRemaining)}d`;
   return "";
@@ -70,15 +76,32 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const dues = useMemo(() => {
     const cur = truck ? Number(truck.current_odometer) || null : null;
     const mpm = metrics?.milesPerMonth ?? null;
+    // An APU clock is graded on HOURS — the same projection the Maintenance
+    // page and the alert banners use. Handing it the truck odometer would make
+    // a 568,737-mile number answer a 1,000-hour question.
+    const { apu, hoursPerRoadDay, roadDayShare } = apuDueOptions(
+      fleet.services,
+      fleet.fuel,
+      loads,
+      now,
+    );
     return fleet.items
       .filter((i) => i.active)
-      .map((i) => ({ name: i.name, item: i, due: computeDue(i, cur, now, mpm) }))
+      .map((i) => ({
+        name: i.name,
+        item: i,
+        due: computeDue(i, i.unit === "apu" ? null : cur, now, mpm, {
+          currentHours: i.unit === "apu" ? apu.hours : null,
+          hoursPerRoadDay,
+          roadDayShare,
+        }),
+      }))
       .sort(
         (a, b) =>
           DUE_RANK[a.due.level] - DUE_RANK[b.due.level] ||
           (a.due.etaDate ?? "9999").localeCompare(b.due.etaDate ?? "9999"),
       );
-  }, [fleet.items, truck, metrics, now]);
+  }, [fleet.items, fleet.services, fleet.fuel, loads, truck, metrics, now]);
 
   const counts = {
     overdue: dues.filter((d) => d.due.level === "overdue").length,
@@ -115,7 +138,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const costParts = (
     [
       { key: "fuel", label: "fuel (90-day)", v: fuelPerMile, color: "var(--color-cat1)" },
-      { key: "maint", label: "maintenance", v: maintPerMile, color: "var(--color-cat5)" },
+      { key: "maint", label: "maintenance (incl. APU)", v: maintPerMile, color: "var(--color-cat5)" },
       { key: "note", label: "truck + trailer note", v: notePerMile, color: "var(--color-cat3)" },
     ] as { key: string; label: string; v: number | null; color: string }[]
   ).filter((p): p is { key: string; label: string; v: number; color: string } => p.v != null);
