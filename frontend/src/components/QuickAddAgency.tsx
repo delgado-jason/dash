@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 
 // ---- PROP INTERFACE ----
 
-interface QuickAddBrokerProp {
+interface QuickAddAgencyProp {
   onOpen: () => void;
 }
 
-export const QuickAddBroker = ({ onOpen }: QuickAddBrokerProp) => {
+export const QuickAddAgency = ({ onOpen }: QuickAddAgencyProp) => {
   // ---- JSX ----
   return <Button onClick={onOpen}>+ New</Button>;
 };

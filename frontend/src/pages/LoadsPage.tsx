@@ -6,7 +6,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { getSettlementsByLoad } from "@/services/settlementsService";
 import { settlementDelta } from "@/lib/metrics/settlements";
 import type { LoadSettlementSummary } from "@/types/settlement";
-import { useBrokers } from "@/hooks/useBrokers";
+import { useAgencies } from "@/hooks/useAgencies";
 import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useFacilities } from "@/hooks/useFacilities";
@@ -125,7 +125,7 @@ const LoadRow = ({
         <StatusBadge value={load.load_status} />
       </td>
       <td className="py-2">
-        {load.broker}
+        {load.agency_code ?? "—"}
         <span className="text-xs block">
           <Link
             to={`/agents/${load.agent_id}`}
@@ -155,12 +155,12 @@ const LoadRow = ({
 
 const LoadsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
-  const [brokerRefreshKey, setBrokerRefreshKey] = useState(0);
+  const [agencyRefreshKey, setAgencyRefreshKey] = useState(0);
   const [agentRefreshKey, setAgentRefreshKey] = useState(0);
   const [marketRefreshKey, setMarketRefreshKey] = useState(0);
   const [facilityRefreshKey, setFacilityRefreshKey] = useState(0);
 
-  const { brokers } = useBrokers(brokerRefreshKey);
+  const { agencies } = useAgencies(agencyRefreshKey);
   const { loads, isLoading, error } = useLoads(refreshKey);
   const { agents } = useAgents(agentRefreshKey);
   const { markets } = useMarkets(marketRefreshKey);
@@ -207,7 +207,7 @@ const LoadsPage = () => {
       if (!q) return true;
       return [
         l.load_number,
-        l.broker,
+        l.agency_code ?? "",
         l.agent,
         l.origin_city,
         l.origin_state,
@@ -273,7 +273,7 @@ const LoadsPage = () => {
           <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-panel text-ink overflow-y-auto shadow-xl rounded-xl p-4 sm:p-6 border border-hairline">
             <LoadForm
               mode="create"
-              brokers={brokers}
+              agencies={agencies}
               agents={agents}
               markets={markets}
               loads={loads}
@@ -282,7 +282,7 @@ const LoadsPage = () => {
                 await createLoad(data);
               }}
               onSuccess={() => setRefreshKey((p) => p + 1)}
-              onBrokerCreated={() => setBrokerRefreshKey((p) => p + 1)}
+              onAgencyCreated={() => setAgencyRefreshKey((p) => p + 1)}
               onAgentCreated={() => setAgentRefreshKey((p) => p + 1)}
               onMarketCreated={() => setMarketRefreshKey((p) => p + 1)}
               onFacilityCreated={() => setFacilityRefreshKey((p) => p + 1)}
@@ -323,7 +323,7 @@ const LoadsPage = () => {
       <div className="flex flex-wrap items-center gap-2.5 mt-3">
         <input
           className="h-9 rounded-[10px] px-3.5 text-sm flex-1 min-w-[180px] text-ink placeholder:text-faint bg-well border-0" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
-          placeholder="Search load #, broker, city"
+          placeholder="Search load #, agency, city"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -411,7 +411,7 @@ const LoadsPage = () => {
               <tr className="text-[10px] uppercase tracking-[.12em] text-faint text-left">
                 <th className="font-normal pb-2">Load #</th>
                 <th className="font-normal pb-2">Status</th>
-                <th className="font-normal pb-2">Broker · agent</th>
+                <th className="font-normal pb-2">Agency · agent</th>
                 <th className="font-normal pb-2">Lane</th>
                 <th className="font-normal pb-2">Pickup</th>
                 <th className="font-normal pb-2 text-right">Gross</th>

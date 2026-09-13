@@ -116,7 +116,7 @@ export const RateDial = ({
       {atFloor && (
         <p className="text-[12px] mt-2 font-semibold" style={{ color: "#f87171" }}>
           ⚠ AT BREAK-EVEN — the handle stops here. Everything left of the marker is
-          the red zone: every mile there pays the broker.
+          the red zone: every mile there pays the agency.
         </p>
       )}
       {under && (

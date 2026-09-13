@@ -5,8 +5,14 @@ export interface Load {
   load_number: string;
   load_type: string;
   load_status: string;
-  broker_id: string;
-  broker: string;
+  // Nullable since 075 — a load can sit without an agency, and the read is a
+  // LEFT JOIN, so the joined code comes back null with it.
+  agency_id: string | null;
+  // The agency's own code, joined on read. null when the load has no agency.
+  agency_code: string | null;
+  // What the settlement or the freight bill posted for this load — evidence,
+  // filled by the settlement feed and never typed. null until a feed says.
+  posting_code: string | null;
   agent_id: string;
   // Attribution (relationship system): who initiated this booking. Required
   // on NEW loads by the form; legacy nulls sit outside every inbound %.

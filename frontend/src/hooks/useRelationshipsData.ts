@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Agent } from "@/types/agent";
-import type { Broker } from "@/types/broker";
+import type { Agency } from "@/types/agency";
 import type { AgentNote } from "@/types/agentNote";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useCityCoords } from "@/hooks/useCityCoords";
 import { getAgents } from "@/services/agentsService";
-import { getBrokers } from "@/services/brokersService";
+import { getAgencies } from "@/services/agenciesService";
 import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
 import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
 import { getAgentNotes } from "@/services/agentNotesService";
@@ -32,7 +32,7 @@ import { getUser } from "@/services/teamService";
 export interface SliceErrors {
   agents?: string;
   contacts?: string;
-  brokers?: string;
+  agencies?: string;
   notes?: string;
   history?: string;
   reviews?: string;
@@ -49,7 +49,7 @@ const fetchBook = () =>
   Promise.allSettled([
     getAgents(),
     getAgentContacts(),
-    getBrokers(),
+    getAgencies(),
     getAgentCoverage(), // never rejects — degrades to []
     getAgentNotes(), // rejects on failure — its own slice error, never a silent []
     getTierHistory(), // its own slice error — an empty trail would lift every hold
@@ -79,7 +79,7 @@ export const useRelationshipsData = () => {
   const { loads, isFetching: loadsLoading, error: loadsError } = useLoads(loadsKey);
   const coords = useCityCoords(loads);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [brokers, setBrokers] = useState<Broker[]>([]);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
   const [contacts, setContacts] = useState<AgentContact[]>([]);
   const [coverage, setCoverage] = useState<AgentCoverage[]>([]);
   const [notes, setNotes] = useState<AgentNote[]>([]);
@@ -95,7 +95,7 @@ export const useRelationshipsData = () => {
   const applyBook = useCallback(([a, c, b, cov, n, h, r]: BookResults) => {
     if (a.status === "fulfilled") setAgents(a.value);
     if (c.status === "fulfilled") setContacts(c.value);
-    if (b.status === "fulfilled") setBrokers(b.value);
+    if (b.status === "fulfilled") setAgencies(b.value);
     if (cov.status === "fulfilled") setCoverage(cov.value);
     if (n.status === "fulfilled") setNotes(n.value);
     if (h.status === "fulfilled") setHistory(h.value);
@@ -103,7 +103,7 @@ export const useRelationshipsData = () => {
     setErrors({
       agents: messageOf(a, "couldn't load the agents"),
       contacts: messageOf(c, "couldn't load the contact log"),
-      brokers: messageOf(b, "couldn't load the agency codes"),
+      agencies: messageOf(b, "couldn't load the agencies"),
       notes: messageOf(n, "couldn't load the agent notes"),
       history: messageOf(h, "couldn't load the tier history"),
       reviews: messageOf(r, "couldn't load the sign-offs"),
@@ -144,7 +144,7 @@ export const useRelationshipsData = () => {
 
   return {
     agents,
-    brokers,
+    agencies,
     contacts,
     coverage,
     notes,

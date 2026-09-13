@@ -1,9 +1,11 @@
 import type { Agent } from "@/types/agent";
+import { codeOf } from "@/lib/agencies/codeOf";
 
-// In dash, an agent's 3-letter Landstar code is stored as the "broker" on the
-// agent record (broker_name — e.g. EWT, JVL). That's the code Jason searches by
-// off the load board; the person's name identifies which agent under it.
-export const agentCode = (a: Agent): string => (a.broker_name ?? "").trim();
+// The 3-letter code an agent wears off the load board — their own posting code
+// (MAM) when they have one, otherwise their agency's (CPL, the shared desk).
+// That's the code Jason searches by; the person's name identifies which agent
+// under it.
+export const agentCode = (a: Agent): string => codeOf(a)?.code ?? "";
 export const agentFullName = (a: Agent): string =>
   `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim();
 

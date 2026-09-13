@@ -13,7 +13,7 @@ import tripStopRouter from "./routes/tripStopRoutes.js";
 import loadRouter from "./routes/loadRoutes.js";
 import accessorialRouter from "./routes/accessorialRoutes.js";
 import fuelEntryRouter from "./routes/fuelEntryRoutes.js";
-import brokerRouter from "./routes/brokerRoutes.js";
+import agencyRouter from "./routes/agencyRoutes.js";
 import agentRouter from "./routes/agentRoutes.js";
 import marketRouter from "./routes/marketRoutes.js";
 import facilityRouter from "./routes/facilityRoutes.js";
@@ -75,7 +75,7 @@ app.use("/stops", tripStopRouter);
 app.use("/loads", loadRouter);
 app.use("/accessorials", accessorialRouter);
 app.use("/fuel", fuelEntryRouter);
-app.use("/brokers", brokerRouter);
+app.use("/agencies", agencyRouter);
 // Literal path first: the agent router's GET /:agent_id would otherwise read
 // "tier-history" as an agent id.
 app.use("/agents/tier-history", agentTierHistoryRouter);

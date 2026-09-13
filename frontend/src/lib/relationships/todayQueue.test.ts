@@ -5,6 +5,7 @@ import type { AgentContact } from "@/services/agentContactsService";
 import type { AgentCoverage } from "@/services/agentCoverageService";
 import { cityKey, type CoordMap } from "@/lib/metrics/foreman";
 import { buildToday, methodFor, openCallbacks, promisedWord, settlesCallback, type TodayInput } from "./todayQueue";
+import { codeOf } from "@/lib/agencies/codeOf";
 
 // Local clocks on purpose: the day plan and the cap week are Brandie's calendar.
 const local = (y: number, m: number, d: number, h = 10) => new Date(y, m - 1, d, h, 0, 0);
@@ -26,8 +27,10 @@ const COORDS: CoordMap = new Map([
 const agent = (id: string, o: Partial<Agent> = {}): Agent =>
   ({
     agent_id: id,
-    broker_id: null,
-    broker_name: id.toUpperCase().slice(0, 3),
+    agency_id: null,
+    agency_code: id.toUpperCase().slice(0, 3),
+    agency_name: null,
+    posting_code: null,
     first_name: id,
     last_name: "X",
     preferred_contact: null,
@@ -470,5 +473,26 @@ describe("DONE TODAY and the cooling section", () => {
     expect(methodFor("text")).toBe("text");
     expect(methodFor("email")).toBe("email");
     expect(methodFor(null)).toBe("email");
+  });
+});
+
+// Every Today row carries the agent, and the chip beside their name is drawn
+// from codeOf — their own posting code when they have one, the agency's desk
+// code when they don't.
+describe("the code a Today row wears", () => {
+  it("is the agent's own posting code, dashed, when it differs from the agency's", () => {
+    // Eric Hesketh posts MAM out of Central Pennsylvania Logistics (CPL).
+    const eric = agent("eric", { agency_code: "CPL", posting_code: "MAM" });
+    const l = load({ agent_id: "eric", delivery_date: "2026-09-11" });
+    const t = build(MON, { agents: [eric], loads: [l] });
+    expect(t.closeOuts).toHaveLength(1);
+    expect(codeOf(t.closeOuts[0].agent)).toEqual({ code: "MAM", kind: "posting" });
+  });
+
+  it("is the agency code, lit, for someone who posts from the desk itself", () => {
+    const rich = agent("rich", { agency_code: "CPL" });
+    const l = load({ agent_id: "rich", delivery_date: "2026-09-11" });
+    const t = build(MON, { agents: [rich], loads: [l] });
+    expect(codeOf(t.closeOuts[0].agent)).toEqual({ code: "CPL", kind: "agency" });
   });
 });

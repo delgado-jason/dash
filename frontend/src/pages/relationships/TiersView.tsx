@@ -137,7 +137,8 @@ const buildRow = (
 };
 
 const matches = (a: Agent, q: string) =>
-  nameOf(a).toLowerCase().includes(q) || (a.broker_name ?? "").toLowerCase().includes(q);
+  nameOf(a).toLowerCase().includes(q) ||
+  `${a.posting_code ?? ""} ${a.agency_code ?? ""}`.toLowerCase().includes(q);
 
 const Rows = ({ rows, dimmed, onOpen }: { rows: RowModel[]; dimmed?: boolean; onOpen: (id: string) => void }) => (
   <>

@@ -400,6 +400,7 @@ const NAV: { group: string; items: string[] }[] = [
     group: "Agents",
     items: [
       "Relationships — the book of agents",
+      "Agencies and posting codes",
       "Editing an agent",
       "Inbound share — is the system working?",
       "Prospects — from stranger to agent",
@@ -627,10 +628,13 @@ const GuidePage = () => {
               list built from your own history —{" "}
               <span className="text-light">not a live load feed</span>: it can't know
               who has freight posted today, only who's your best bet to call from
-              here. Every name on the board carries the agency's 3-letter Landstar
-              code as a small plate chip — the code you'd key into the load board or
-              say on the phone — so "Linda Janzen · EWT" reads at a glance. No chip
-              shows when an agency has no code on file.
+              here. Every name on the board carries the 3-letter code{" "}
+              <span className="text-light">that agent wears</span> as a small plate
+              chip — their own posting code, drawn{" "}
+              <span className="text-light">dashed</span>, or their agency's shared
+              desk, drawn <span className="text-light">lit</span> — the code you'd
+              key into the load board or say on the phone, so "Linda Janzen · EWT"
+              reads at a glance. No chip shows when neither is on file.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
@@ -884,7 +888,7 @@ const GuidePage = () => {
               + markup)), which is why the ladder prints both on every rung.
               Slide the dial left in a soft market to stay competitive; below
               your goal it warns, below 0% it flags every mile as paying the
-              broker. There are <span className="text-light">two dials</span>,
+              agency. There are <span className="text-light">two dials</span>,
               both shown on the ladder above.{" "}
               <span className="text-light">Standard</span> (seeded +10 / 20 / 30%)
               is your everyday freight and carries the full bar plus your rate
@@ -2529,15 +2533,51 @@ const GuidePage = () => {
             </Why>
           </Metric>
 
+          <Section title="Agencies and posting codes">
+            <p className="text-sm text-muted-text">
+              A Landstar <span className="text-light">agency</span> is a
+              business with its own 3-letter code — Central Pennsylvania
+              Logistics Inc is <span className="text-light">CPL</span>. The
+              agents inside it each post under their{" "}
+              <span className="text-light">own</span> code: Eric Hesketh posts
+              MAM, Drew Hannon posts CJY. The agency code is the shared desk —
+              whoever posts from it, like Rich Stewart, wears CPL itself. That
+              is why one agency used to look like three separate names in dash:
+              three codes, one business. So a code on its own never tells you
+              who you're talking to; the person does.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              dash draws the two apart. An agent's{" "}
+              <span className="text-light">own code is dashed</span> and an{" "}
+              <span className="text-light">agency code is lit</span> — so a
+              glance at the book says whether you're looking at a person's code
+              or the desk they share. Their posting code is optional: leave it
+              blank and they wear the agency's.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              A <span className="text-light">load</span> carries a posting code
+              too, and it is never typed. The settlement feed fills it from what
+              the freight bill actually posted, so it is evidence: it either
+              confirms the person you booked through or flags a mismatch the day
+              the money lands. A load whose settlement lines disagree with each
+              other stays blank for you to look at. The{" "}
+              <span className="text-light">Agencies page</span> (next build)
+              rolls the whole book up by agency — every code, every person, and
+              what the agency has delivered.
+            </p>
+          </Section>
+
           <Section title="Editing an agent">
             <p className="text-sm text-muted-text">
               <span className="text-light">EDIT INFO</span> on an agent's page
               turns the header and the Contact panel into fields — first and
-              last name, agency, city and state, phone, email and how they
-              prefer to be reached (call, text or email) — and SAVE CHANGES
-              writes them in place. Names are required; everything else can be
-              left blank — including the agency: a prospect is a person first,
-              and a codeless agent wears NO CODE until you learn it. A name
+              last name, agency, their posting code, city and state, phone,
+              email and how they prefer to be reached (call, text or email) —
+              and SAVE CHANGES writes them in place. Names are required;
+              everything else can be left blank — including the agency: a
+              prospect is a person first, and a codeless agent wears NO CODE
+              until you learn it. A blank posting code means they post from the
+              agency's own desk. A name
               that's already on your book is refused, since two agents can't
               share one. Changing the agency moves the{" "}
               <span className="text-light">person</span> to the new code — the

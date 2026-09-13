@@ -45,7 +45,7 @@ import {
   type Signer,
 } from "@/lib/relationshipTemplates";
 import { AgentRow, type RowChip } from "@/components/relationships/AgentRow";
-import { CodeChip, ErrorLine, GhostButton, PrimaryButton, PrimaryLink, SectionHead } from "@/components/relationships/primitives";
+import { AgentCodeChip, ErrorLine, GhostButton, PrimaryButton, PrimaryLink, SectionHead } from "@/components/relationships/primitives";
 import type { TouchPrefill } from "@/components/relationships/LogTouchForm";
 import { useRelationships } from "./context";
 
@@ -112,7 +112,7 @@ const Hero = ({ agent }: { agent: Agent }) => (
     <Link to={`/agents/${agent.agent_id}`} className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors">
       {nameOf(agent)}
     </Link>
-    <CodeChip code={agent.broker_name} />
+    <AgentCodeChip agent={agent} />
   </p>
 );
 

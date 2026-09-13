@@ -82,7 +82,7 @@ const AgentsPage = () => {
         if (!card) return false;
         if (
           q &&
-          !`${agent.first_name} ${agent.last_name} ${agent.broker_name}`
+          !`${agent.first_name} ${agent.last_name} ${agent.posting_code ?? ""} ${agent.agency_code ?? ""}`
             .toLowerCase()
             .includes(q)
         )
@@ -202,7 +202,7 @@ const AgentsPage = () => {
 
       <input
         className="h-9 rounded-[10px] px-3.5 text-sm w-full max-w-md text-ink placeholder:text-faint bg-well border-0 mb-4" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
-        placeholder="Search name or broker"
+        placeholder="Search name or code"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />

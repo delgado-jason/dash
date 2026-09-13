@@ -4,7 +4,7 @@ import { ChevronRight, Phone } from "lucide-react";
 import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
 import { MeterCells } from "@/components/awards/HardwareBoard";
 import { nameOf } from "@/lib/relationships/nameOf";
-import { CodeChip, ParkedChip } from "./primitives";
+import { AgentCodeChip, ParkedChip } from "./primitives";
 
 // The one row for an agent anywhere on the Relationships surface (the nodded
 // mock's .row): name + code + exactly ONE status chip, a context line, the
@@ -63,7 +63,9 @@ export interface AgentRowProps {
     agent_id: string;
     first_name: string;
     last_name: string;
-    broker_name: string | null;
+    // codeOf picks the chip: their own posting code, else the agency's.
+    agency_code: string | null;
+    posting_code: string | null;
     phone?: string | null;
   };
   chip: RowChip | null;
@@ -165,7 +167,7 @@ export const AgentRow = ({
           >
             {name}
           </Link>
-          <CodeChip code={agent.broker_name} />
+          <AgentCodeChip agent={agent} />
           {chip && <RowChipPill chip={chip} />}
         </div>
         <div className="text-[11.5px] text-dim truncate mt-0.5">{context}</div>

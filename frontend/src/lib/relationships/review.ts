@@ -26,6 +26,7 @@ import {
   type BucketSuggestion,
 } from "./tierSuggestion";
 import { lastMeaningfulContact } from "./meaningfulContact";
+import { codeOf } from "@/lib/agencies/codeOf";
 import { proactiveTouchesThisWeek, weekKey } from "./contactCap";
 import { daysBetweenKeys, keyOf, localDayKey, utcDayKey, weekdayShort } from "./dayKeys";
 import { milestoneFlags, type MilestoneFlag } from "./milestones";
@@ -43,7 +44,8 @@ export const bucketWord = (b: Bucket): string =>
 // ---------------------------------------------------------------------------
 
 export interface ReviewAgentLike extends BookAgentLike {
-  broker_name?: string | null;
+  agency_code?: string | null;
+  posting_code?: string | null;
   phone?: string | null;
   preferred_contact: string | null;
   best_time_to_call?: string | null;
@@ -82,7 +84,7 @@ export interface TierHistoryLike {
   changed_at: string; // ISO
   first_name?: string;
   last_name?: string;
-  broker_name?: string | null;
+  agency_code?: string | null;
   changed_by_name?: string | null;
 }
 
@@ -1033,7 +1035,8 @@ export const reviewReportText = <A extends ReviewAgentLike>(m: ReviewModel<A>): 
   head(`RE-TIER SUGGESTIONS · ${m.suggestions.count}`);
   if (m.suggestions.count === 0) L.push("  nothing to approve — the book agrees with the numbers");
   for (const r of [...m.suggestions.rows, ...m.suggestions.needsTier]) {
-    L.push(`  ${nameOf(r.agent)}${r.agent.broker_name ? ` ${r.agent.broker_name}` : ""}: ${bucketWord(r.bucket)} → ${r.suggestionWord} · ${r.context}`);
+    const worn = codeOf(r.agent);
+    L.push(`  ${nameOf(r.agent)}${worn ? ` ${worn.code}` : ""}: ${bucketWord(r.bucket)} → ${r.suggestionWord} · ${r.context}`);
   }
   if (m.suggestions.held.length > 0) L.push(`  (${m.suggestions.held.length} held — the evidence has not moved)`);
 

@@ -17,6 +17,7 @@ import {
   reactivationList,
 } from "./callList";
 import { localDayKey } from "./dayKeys";
+import { codeOf } from "@/lib/agencies/codeOf";
 
 const NOW = new Date("2026-09-12T15:00:00Z");
 const DAY = 86_400_000;
@@ -33,8 +34,9 @@ const mkLoad = (o: Partial<Load>): Load => ({
   load_number: "N",
   load_type: "standard flatbed",
   load_status: "delivered",
-  broker_id: "b1",
-  broker: "B",
+  agency_id: "b1",
+  agency_code: "B",
+  posting_code: null,
   agent_id: "a1",
   agent: "Agent",
   agent_email: null,
@@ -62,8 +64,10 @@ const mkLoad = (o: Partial<Load>): Load => ({
 
 const mkAgent = (id: string, o: Partial<Agent> = {}): Agent => ({
   agent_id: id,
-  broker_id: "b1",
-  broker_name: "EWT",
+  agency_id: "b1",
+  agency_code: "EWT",
+  agency_name: null,
+  posting_code: null,
   first_name: id,
   last_name: "Agent",
   preferred_contact: null,
@@ -585,5 +589,24 @@ describe("callListSummary — the statusbar's numbers", () => {
     expect(s.lapsed).toBe(1);
     // the fold still lists them — they are only out of the count
     expect(reactivationList(agents, loads, contacts, [], NOW, marketGrades(loads, NOW)).recycle.map((r) => r.agent.agent_id)).toEqual(["rec"]);
+  });
+});
+
+// The chip a call-list row wears is the PERSON's code when they have one —
+// their agency's only when they post from its desk. codeOf decides; the row
+// carries the agent, so the fixture is what proves it.
+describe("the code a call-list row wears", () => {
+  it("is the agent's own posting code, dashed, when it differs from the agency's", () => {
+    // Eric Hesketh posts MAM out of Central Pennsylvania Logistics (CPL).
+    const eric = mkAgent("eric", { agency_code: "CPL", posting_code: "MAM", created_at: daysAgo(30) });
+    const list = prospectsList([eric], [], [], NOW);
+    expect(list.rows).toHaveLength(1);
+    expect(codeOf(list.rows[0].agent)).toEqual({ code: "MAM", kind: "posting" });
+  });
+
+  it("is the agency code, lit, for someone who posts from the desk itself", () => {
+    const rich = mkAgent("rich", { agency_code: "CPL", created_at: daysAgo(30) });
+    const list = prospectsList([rich], [], [], NOW);
+    expect(codeOf(list.rows[0].agent)).toEqual({ code: "CPL", kind: "agency" });
   });
 });

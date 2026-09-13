@@ -8,6 +8,7 @@ import type {
 } from "@/lib/metrics/agentLeaderboard";
 import { effectiveAgentClass, type AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { agentPrestige } from "@/lib/metrics/agentLeaderboard";
+import { codeOf } from "@/lib/agencies/codeOf";
 import { RatingMedallion } from "./RatingMedallion";
 import { PRESTIGE_META } from "./PrestigeBadge";
 import { Coin, type CoinMetal } from "@/components/forge/Coin";
@@ -108,7 +109,7 @@ export const AgentCard = ({
             )}
           </div>
           <p className="text-xs text-dim truncate">
-            {agent.broker_name}
+            {codeOf(agent)?.code ?? ""}
             {carrierName ? ` · ${carrierName}` : ""}
           </p>
         </div>

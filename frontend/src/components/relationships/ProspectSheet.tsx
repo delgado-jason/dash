@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import type { Agent } from "@/types/agent";
-import type { Broker } from "@/types/broker";
+import type { Agency } from "@/types/agency";
 import { createAgent } from "@/services/createAgentService";
-import { createBroker } from "@/services/createBrokerService";
+import { createAgency } from "@/services/createAgencyService";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { PREFERRED } from "@/lib/agents/agentEdit";
 import { formatPhone } from "@/lib/phone";
 import { nameOf } from "@/lib/relationships/nameOf";
 import { RelSheetShell } from "./RelSheetShell";
-import { CodeChip, ErrorLine, FieldLabel, GhostButton, PrimaryButton } from "./primitives";
+import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, PrimaryButton } from "./primitives";
 
 // + Prospect — person first. A name and a way to reach them is enough; the
 // agency code is optional and can be created on the spot; a typed code that
@@ -18,7 +18,7 @@ import { CodeChip, ErrorLine, FieldLabel, GhostButton, PrimaryButton } from "./p
 interface Props {
   open: boolean;
   agents: Agent[];
-  brokers: Broker[];
+  agencies: Agency[];
   onClose: () => void;
   onOpenAgent: (agentId: string) => void;
   reload: () => Promise<void>;
@@ -33,7 +33,7 @@ const SOURCE_TABS = [
   { value: "other", label: "Other" },
 ];
 
-export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, reload, notify }: Props) => {
+export const ProspectSheet = ({ open, agents, agencies, onClose, onOpenAgent, reload, notify }: Props) => {
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [phone, setPhone] = useState("");
@@ -47,10 +47,10 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  // A code this sheet already created (the brokers prop is stale until the
+  // A code this sheet already created (the agencies prop is stale until the
   // next reload). If the agent create then fails — a 409 duplicate name, say —
-  // the retry reuses it instead of tripping UNIQUE(user_id, broker_name).
-  const [createdCode, setCreatedCode] = useState<{ name: string; broker_id: string } | null>(null);
+  // the retry reuses it instead of tripping unique_agency_code_per_user.
+  const [createdCode, setCreatedCode] = useState<{ code: string; agency_id: string } | null>(null);
 
   // Duplicate hint as you type — searching EVERY agent by name, whatever code.
   const dup = useMemo(() => {
@@ -61,12 +61,12 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
 
   const codeUpper = code.trim().toUpperCase();
   const codeMatches = useMemo(
-    () => (codeUpper ? brokers.filter((b) => b.broker_name.toUpperCase().startsWith(codeUpper)).slice(0, 6) : []),
-    [brokers, codeUpper],
+    () => (codeUpper ? agencies.filter((a) => a.agency_code.toUpperCase().startsWith(codeUpper)).slice(0, 6) : []),
+    [agencies, codeUpper],
   );
   const exact = useMemo(
-    () => brokers.find((b) => b.broker_name.toUpperCase() === codeUpper) ?? null,
-    [brokers, codeUpper],
+    () => agencies.find((a) => a.agency_code.toUpperCase() === codeUpper) ?? null,
+    [agencies, codeUpper],
   );
 
   const reset = () => {
@@ -86,24 +86,31 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
     if (!phone.trim() && !email.trim()) return setErr("A phone or an email — one way to reach them.");
     const em = email.trim();
     if (em && (!em.includes("@") || !em.includes("."))) return setErr("That doesn't look like an email address.");
+    // A Landstar code is three letters — the same rule agentEdit applies to a
+    // posting code, and the same one the backend enforces. Caught here the
+    // person sees a sentence instead of a round trip to a 400.
+    if (codeUpper && !/^[A-Za-z]{3}$/.test(codeUpper))
+      return setErr("An agency code is three letters — or leave it blank.");
     setBusy(true);
     setErr(null);
     try {
-      let brokerId: string | null = null;
+      let agencyId: string | null = null;
       if (codeUpper) {
         // A typed code that already exists (unique per user) just matches —
         // in the list, or created by an earlier attempt from this sheet.
-        if (exact) brokerId = exact.broker_id;
-        else if (createdCode && createdCode.name === codeUpper) brokerId = createdCode.broker_id;
+        // A brand-new one is an AGENCY with only its code; the legal name is
+        // NULL until a freight bill says it.
+        if (exact) agencyId = exact.agency_id;
+        else if (createdCode && createdCode.code === codeUpper) agencyId = createdCode.agency_id;
         else {
-          const b = await createBroker({ broker_name: codeUpper, phone: null, email: null, rating: null, notes: null });
-          setCreatedCode({ name: codeUpper, broker_id: b.broker_id });
-          brokerId = b.broker_id;
+          const a = await createAgency({ agency_code: codeUpper, name: null, phone: null, email: null, rating: null, notes: null });
+          setCreatedCode({ code: codeUpper, agency_id: a.agency_id });
+          agencyId = a.agency_id;
         }
       }
       // No relationship_tier: a new agent has no tier — the server refuses one.
       const created = await createAgent({
-        broker_id: brokerId,
+        agency_id: agencyId,
         first_name: f,
         last_name: l,
         phone: phone.trim() || null,
@@ -145,7 +152,7 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
         {dup && (
           <p className="font-condensed text-[13px] text-dim -mt-1">
             Looks like <b className="text-ink">{nameOf(dup)}</b>
-            {dup.broker_name ? <> · <CodeChip code={dup.broker_name} /></> : null} —{" "}
+            {dup.agency_code || dup.posting_code ? <> · <AgentCodeChip agent={dup} /></> : null} —{" "}
             <button
               type="button"
               className="text-amber-hi hover:text-hot"
@@ -183,7 +190,7 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
             onFocus={() => setCodeOpen(true)}
             onBlur={() => setTimeout(() => setCodeOpen(false), 150)}
             placeholder="EWT"
-            maxLength={10}
+            maxLength={3}
             autoComplete="off"
             role="combobox"
             aria-expanded={codeOpen && codeMatches.length > 0}
@@ -191,18 +198,19 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
           />
           {codeOpen && codeMatches.length > 0 && (
             <ul role="listbox" className="absolute left-0 right-0 z-30 mt-1 p-1 rounded-[9px] border border-hairline bg-panel shadow-xl max-h-52 overflow-y-auto">
-              {codeMatches.map((b) => (
-                <li key={b.broker_id} role="option" aria-selected={b.broker_id === exact?.broker_id}>
+              {codeMatches.map((a) => (
+                <li key={a.agency_id} role="option" aria-selected={a.agency_id === exact?.agency_id}>
                   <button
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      setCode(b.broker_name.toUpperCase());
+                      setCode(a.agency_code.toUpperCase());
                       setCodeOpen(false);
                     }}
                     className="w-full text-left px-2.5 py-1.5 rounded-[6px] font-condensed text-[14px] text-ink hover:bg-white/5"
                   >
-                    {b.broker_name}
+                    {a.agency_code}
+                    {a.name ? <span className="text-faint"> · {a.name}</span> : null}
                   </button>
                 </li>
               ))}
@@ -212,8 +220,8 @@ export const ProspectSheet = ({ open, agents, brokers, onClose, onOpenAgent, rel
             {!codeUpper
               ? "blank is fine — they'll wear NO CODE until you learn it"
               : exact
-                ? `matches ${exact.broker_name}`
-                : `create ${codeUpper} — a new agency code`}
+                ? `matches ${exact.name ? `${exact.agency_code} · ${exact.name}` : exact.agency_code}`
+                : `create ${codeUpper} — a new agency`}
           </p>
         </div>
         <div>

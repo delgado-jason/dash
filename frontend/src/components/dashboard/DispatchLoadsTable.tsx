@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import type { Load } from "@/types/load";
@@ -70,8 +70,17 @@ export const DispatchLoadsTable = ({
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(0);
 
-  // Any change to what's shown snaps back to the first page.
-  useEffect(() => setPage(0), [search, filter]);
+  // Any change to what's shown snaps back to the first page. Done in the two
+  // events that change it — typing and picking a filter — rather than in an
+  // effect that watches them and sets state after the render.
+  const onSearch = (value: string) => {
+    setSearch(value);
+    setPage(0);
+  };
+  const onFilter = (value: Filter) => {
+    setFilter(value);
+    setPage(0);
+  };
 
   // The one (or few) loads on the road right now — pulled out on top.
   const active = useMemo(
@@ -85,7 +94,7 @@ export const DispatchLoadsTable = ({
       !q ||
       [
         l.load_number,
-        l.broker,
+        l.agency_code ?? "",
         l.agent,
         l.origin_market,
         l.delivery_market,
@@ -126,7 +135,7 @@ export const DispatchLoadsTable = ({
         <Search size={13} className="text-dim shrink-0" />
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => onSearch(e.target.value)}
           placeholder="Search # · lane · city"
           className="bg-transparent outline-none text-sm text-ink placeholder:text-dim w-full"
         />
@@ -164,7 +173,7 @@ export const DispatchLoadsTable = ({
         {FILTERS.map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => onFilter(f.key)}
             className="rounded-full px-2.5 py-0.5 text-[11px]"
             style={
               filter === f.key

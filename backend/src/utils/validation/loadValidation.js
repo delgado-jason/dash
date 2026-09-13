@@ -163,14 +163,19 @@ const rules = {
       errors.push(`${value} is not a valid load type`);
     }
   },
-  broker_id: (value, errors) => {
-    if (!isValidUUID(value)) {
-      errors.push("not a valid UUID");
+  // loads.agency_id is nullable since 075, so a PATCH may clear it with null.
+  // A create still REQUIRES one — validateLoadCreate says so below. Anything
+  // that is neither null nor a uuid string is refused (and isValidUUID would
+  // throw on a non-string, so the type is checked first).
+  agency_id: (value, errors) => {
+    if (value === null || value === undefined) return;
+    if (!isValidType("string", value) || !isValidUUID(value)) {
+      errors.push("agency_id is not a valid UUID");
     }
   },
   agent_id: (value, errors) => {
-    if (!isValidUUID(value)) {
-      errors.push("not a valid UUID");
+    if (!isValidType("string", value) || !isValidUUID(value)) {
+      errors.push("agent_id is not a valid UUID");
     }
   },
   origin_city: (value, errors) => {
@@ -391,7 +396,9 @@ export const validateLoadCreate = (data) => {
   if (data.fuel_surcharge === undefined) errors.push("Missing fuel_surcharge");
   if (data.loaded_miles === undefined) errors.push("Missing loaded_miles");
   if (data.payment_status === undefined) errors.push("Missing payment_status");
-  if (data.broker_id === undefined) errors.push("Missing broker_id");
+  // A new load is always posted through an agency; only a PATCH may clear it.
+  if (data.agency_id === undefined || data.agency_id === null)
+    errors.push("Missing agency_id");
   if (data.agent_id === undefined) errors.push("Missing agent_id");
   if (data.origin_city === undefined) errors.push("Missing origin_city");
   if (data.origin_state === undefined) errors.push("Missing origin_state");

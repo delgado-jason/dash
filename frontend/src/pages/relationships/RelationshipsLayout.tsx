@@ -192,7 +192,7 @@ const RelationshipsLayout = () => {
           : SUB_LINE[tab];
 
   const sheetAgent = sheetAgentId ? data.agents.find((a) => a.agent_id === sheetAgentId) ?? null : null;
-  const bookError = data.errors.agents ?? data.errors.contacts ?? data.errors.brokers;
+  const bookError = data.errors.agents ?? data.errors.contacts ?? data.errors.agencies;
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -294,7 +294,7 @@ const RelationshipsLayout = () => {
       <ProspectSheet
         open={prospectOpen}
         agents={data.agents}
-        brokers={data.brokers}
+        agencies={data.agencies}
         onClose={() => setProspectOpen(false)}
         onOpenAgent={(id) => openAgent(id)}
         reload={data.reload}

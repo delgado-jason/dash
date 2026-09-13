@@ -12,16 +12,18 @@ import {
 } from "../utils/error.js";
 
 // ---- GET AGENTS SERVICE ----
-// LEFT JOIN brokers: a prospect may have no agency code yet (073), and an
-// inner join would silently drop them from the book.
+// LEFT JOIN agencies: a prospect may have no agency yet (073), and an inner
+// join would silently drop them from the book.
 export async function getAgents(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
 
   const query = `
         SELECT
             agent_id,
-            brokers.broker_id AS broker_id,
-            brokers.broker_name AS broker_name,
+            ag.agency_id AS agency_id,
+            ag.agency_code AS agency_code,
+            ag.name AS agency_name,
+            agents.posting_code AS posting_code,
             first_name,
             last_name,
             relationship_tier,
@@ -43,8 +45,8 @@ export async function getAgents(user_id) {
             agents.updated_at AS updated_at
         FROM
             agents
-        LEFT JOIN brokers
-        ON agents.broker_id = brokers.broker_id
+        LEFT JOIN agencies ag
+        ON ag.agency_id = agents.agency_id
         WHERE agents.user_id = $1
         ORDER BY last_name;
     `;
@@ -62,8 +64,10 @@ export async function getAgent(user_id, agent_id) {
   const agentQuery = `
         SELECT
             agents.agent_id AS agent_id,
-            brokers.broker_id AS broker_id,
-            brokers.broker_name AS broker_name,
+            ag.agency_id AS agency_id,
+            ag.agency_code AS agency_code,
+            ag.name AS agency_name,
+            agents.posting_code AS posting_code,
             agents.first_name AS first_name,
             agents.last_name AS last_name,
             agents.relationship_tier AS relationship_tier,
@@ -85,8 +89,8 @@ export async function getAgent(user_id, agent_id) {
             agents.updated_at AS updated_at
         FROM
             agents
-        LEFT JOIN brokers
-        ON agents.broker_id = brokers.broker_id
+        LEFT JOIN agencies ag
+        ON ag.agency_id = agents.agency_id
         WHERE agents.user_id = $1
         AND agents.agent_id = $2;
     `;
@@ -101,7 +105,9 @@ export async function getAgent(user_id, agent_id) {
             load_number,
             load_type,
             load_status,
-            brokers.broker_name AS broker,
+            loads.agency_id,
+            ag.agency_code AS agency_code,
+            loads.posting_code AS posting_code,
             agents.first_name || ' ' || agents.last_name AS agent,
             shipper_name,
             shipper_in,
@@ -144,8 +150,10 @@ export async function getAgent(user_id, agent_id) {
             loads.created_at AS created_at,
             loads.updated_at AS updated_at
         FROM loads
-        JOIN brokers
-        ON loads.broker_id = brokers.broker_id
+        -- LEFT: loads.agency_id is nullable since 075, and an inner join here
+        -- would drop those loads off the agent's own card.
+        LEFT JOIN agencies ag
+        ON ag.agency_id = loads.agency_id
         JOIN agents
         ON loads.agent_id = agents.agent_id
         JOIN markets AS origin_market
@@ -192,7 +200,8 @@ export async function createAgent(user_id, data) {
 
   // Reject unknown fields
   const allowedFields = [
-    "broker_id",
+    "agency_id",
+    "posting_code",
     "first_name",
     "last_name",
     "phone",
@@ -267,7 +276,8 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
 
   // Reject unknown fields
   const allowedFields = [
-    "broker_id",
+    "agency_id",
+    "posting_code",
     "first_name",
     "last_name",
     "phone",

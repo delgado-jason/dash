@@ -10,7 +10,10 @@ import type { AgentPatchPayload } from "@/types/agentPatchPayload";
 export type AgentEditDraft = {
   first_name: string;
   last_name: string;
-  broker_id: string;
+  agency_id: string;
+  // Their own code on the freight bill — blank means they post from the
+  // agency's desk, under its agency code.
+  posting_code: string;
   agent_city: string;
   agent_state: string;
   phone: string;
@@ -38,7 +41,8 @@ const CITY_MAX = 100;
 export const draftFromAgent = (agent: Agent): AgentEditDraft => ({
   first_name: agent.first_name ?? "",
   last_name: agent.last_name ?? "",
-  broker_id: agent.broker_id ?? "",
+  agency_id: agent.agency_id ?? "",
+  posting_code: agent.posting_code ?? "",
   agent_city: agent.agent_city ?? "",
   agent_state: agent.agent_state ?? "",
   phone: agent.phone ?? "",
@@ -74,6 +78,10 @@ export const validateDraft = (d: AgentEditDraft): string | null => {
   if (state && !/^[A-Za-z]{2}$/.test(state))
     return "State should be the 2-letter code.";
 
+  const posting = d.posting_code.trim();
+  if (posting && !/^[A-Za-z]{3}$/.test(posting))
+    return "A posting code is 3 letters — leave it blank if they post under the agency's.";
+
   if (d.preferred_contact && !PREFERRED_VALUES.includes(d.preferred_contact))
     return "Pick how they prefer to be reached.";
 
@@ -104,9 +112,16 @@ export const buildAgentPatch = (
   const last = d.last_name.trim();
   if (last !== agent.last_name.trim()) patch.last_name = last;
 
-  // The agency code is optional (073): a blank pick clears it to null, and a
+  // The agency is optional (073): a blank pick clears it to null, and a
   // codeless agent whose draft is still blank is not a change.
-  if (d.broker_id !== (agent.broker_id ?? "")) patch.broker_id = d.broker_id || null;
+  if (d.agency_id !== (agent.agency_id ?? "")) patch.agency_id = d.agency_id || null;
+
+  // Their own posting code. Blank clears it back to the agency's desk; the
+  // column is varchar(3) and the server insists on 3 uppercase letters, so
+  // send what validateDraft already checked.
+  const posting = norm(d.posting_code)?.toUpperCase() ?? null;
+  if (posting !== (norm(agent.posting_code)?.toUpperCase() ?? null))
+    patch.posting_code = posting;
 
   const city = norm(d.agent_city);
   if (city !== norm(agent.agent_city)) patch.agent_city = city;

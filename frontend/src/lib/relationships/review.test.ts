@@ -813,6 +813,30 @@ describe("the whole model, and the sub-line's three numbers", () => {
     expect(text).toContain("logged over the cap: “he asked for the Tulsa lane”");
   });
 
+  it("a suggestion row carries the code the agent WEARS — their own posting code", () => {
+    // Eric Hesketh posts MAM out of Central Pennsylvania Logistics (CPL). The
+    // evidence line names the desk the freight actually posted under, not the
+    // agency's shared one.
+    const eric = agent("eric", 2, { agency_code: "CPL", posting_code: "MAM" });
+    const m = buildReviewModel({
+      agents: [eric],
+      loads: threeGood("eric"),
+      contacts: [],
+      notes: [],
+      coverage: [],
+      history: [],
+      reviews: [],
+      ladder: LADDER,
+      period: reviewPeriod("month", 0, NOW),
+      systemStart: "2026-09-03",
+      now: NOW,
+    });
+    expect(m.suggestions.count).toBe(1);
+    const text = reviewReportText(m);
+    expect(text).toContain("eric X MAM:");
+    expect(text).not.toContain("eric X CPL:");
+  });
+
   it("an empty book still produces a report — and it never invents a percentage", () => {
     const period = reviewPeriod("quarter", 0, NOW);
     const m = buildReviewModel({

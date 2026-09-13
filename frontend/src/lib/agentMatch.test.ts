@@ -1,11 +1,20 @@
 import { describe, it, expect } from "vitest";
 import type { Agent } from "@/types/agent";
 import { matchAgents, agentLabel, agentCode, agentFullName } from "./agentMatch";
+import { codeOf } from "@/lib/agencies/codeOf";
 
-const mk = (id: string, code: string, first: string, last: string): Agent => ({
+const mk = (
+  id: string,
+  code: string,
+  first: string,
+  last: string,
+  posting_code: string | null = null,
+): Agent => ({
   agent_id: id,
-  broker_id: "b",
-  broker_name: code,
+  agency_id: "b",
+  agency_code: code,
+  agency_name: null,
+  posting_code,
   first_name: first,
   last_name: last,
   preferred_contact: "phone",
@@ -19,6 +28,9 @@ const roster = [
   mk("2", "EWT", "Erica", "Kohout"),
   mk("3", "JVL", "Charlie", "Miltner"),
   mk("4", "ROS", "Jennifer", "Heggen"),
+  // Eric Hesketh posts MAM out of Central Pennsylvania Logistics (CPL) — the
+  // code he wears is HIS, not the desk's.
+  mk("5", "CPL", "Eric", "Hesketh", "MAM"),
 ];
 
 describe("agentMatch", () => {
@@ -46,5 +58,14 @@ describe("agentMatch", () => {
     expect(agentLabel(roster[0])).toBe("EWT · Danielle Carder");
     expect(agentCode(roster[0])).toBe("EWT");
     expect(agentFullName(roster[0])).toBe("Danielle Carder");
+  });
+
+  it("wears the agent's OWN posting code when it differs from the agency's", () => {
+    const eric = roster[4];
+    expect(codeOf(eric)).toEqual({ code: "MAM", kind: "posting" });
+    expect(agentCode(eric)).toBe("MAM");
+    expect(agentLabel(eric)).toBe("MAM · Eric Hesketh");
+    // …and he is found by the code he posts under, not only the desk's.
+    expect(matchAgents(roster, "MAM").map((a) => a.agent_id)).toEqual(["5"]);
   });
 });

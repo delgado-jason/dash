@@ -36,6 +36,7 @@ import {
 } from "./agentScorecard";
 import { getRegion, getMacro } from "@/lib/constants/states";
 import { bucketOf } from "@/lib/relationships/buckets";
+import { codeOf, type CodeKind } from "@/lib/agencies/codeOf";
 import type { MeaningfulContactLike } from "@/lib/relationships/meaningfulContact";
 
 // ---- load types ----
@@ -228,7 +229,11 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export interface AgentRanking {
   agentId: string;
   agentName: string;
-  agencyCode: string | null; // the agency's 3-letter Landstar code (stored as brokers.broker_name); display only — never scored
+  agencyCode: string | null; // the 3-letter code they wear (their posting code, else the agency's); display only — never scored
+  // WHICH code that is, so the chip can be drawn the two ways the Agencies Nod
+  // Sheet draws it: "posting" dashed (their own desk), "agency" lit (the shared
+  // one). null exactly when agencyCode is null — no code on file, no chip.
+  codeKind: CodeKind | null;
   // proximity
   nearestOrigin: Place | null;
   // What backs the point above — a load they ran ("proved") or a market they
@@ -447,10 +452,14 @@ export const buildForemanBoard = (
     const bench = benchFor(judgedType);
     const rpm = agentTypeRpm(agentLoads, judgedType);
 
+    // One read of codeOf, so the code and its kind can never disagree.
+    const worn = codeOf(agent);
+
     const r: AgentRanking = {
       agentId,
       agentName: nameById.get(agentId) ?? "Agent",
-      agencyCode: agent.broker_name?.trim() || null,
+      agencyCode: worn?.code ?? null,
+      codeKind: worn?.kind ?? null,
       nearestOrigin,
       nearestSource: nearest?.source ?? null,
       distanceMiles,

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Check, ChevronDown, ChevronLeft, ChevronUp, CornerDownRight, Mail, MessageSquare, Phone } from "lucide-react";
 import type { Agent } from "@/types/agent";
-import type { Broker } from "@/types/broker";
+import type { Agency } from "@/types/agency";
 import type { Load } from "@/types/load";
 import type { AgentPatchPayload } from "@/types/agentPatchPayload";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -20,7 +20,7 @@ import {
 import type { AgentCoverage } from "@/services/agentCoverageService";
 import { patchAgent } from "@/services/patchAgentService";
 import { createAgent } from "@/services/createAgentService";
-import { createBroker } from "@/services/createBrokerService";
+import { createAgency } from "@/services/createAgencyService";
 import { createAgentNote } from "@/services/createAgentNoteService";
 import { formatPhone, smsHref, telHref } from "@/lib/phone";
 import { money } from "@/lib/format";
@@ -53,7 +53,7 @@ import {
 } from "@/lib/relationships/callScripts";
 import CoverageEditor from "./CoverageEditor";
 import { CapGate } from "./CapGate";
-import { CodeChip, ErrorLine, FieldLabel, GhostButton, GhostLink, PrimaryButton, PrimaryLink, SectionHead } from "./primitives";
+import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, GhostLink, PrimaryButton, PrimaryLink, SectionHead } from "./primitives";
 
 // THE CALL SCREEN — /relationships/calls/:agentId. One screen, one job:
 // Brandie is on the phone and cannot navigate, so everything the Gameplan
@@ -102,7 +102,7 @@ export type Working = "reactivation" | "prospects";
 export interface CallScreenProps {
   agent: Agent; // the record dialed
   agents: Agent[]; // every agent — the divert search is person-first, any code
-  brokers: Broker[];
+  agencies: Agency[];
   loads: Load[];
   contacts: AgentContact[];
   coverage: AgentCoverage[];
@@ -213,7 +213,7 @@ const Stat = ({ label, value, sub }: { label: string; value: string; sub: string
 export const CallScreen = ({
   agent,
   agents,
-  brokers,
+  agencies,
   loads,
   contacts,
   coverage,
@@ -255,16 +255,16 @@ export const CallScreen = ({
   const [divertOpen, setDivertOpen] = useState(false);
   const [divertName, setDivertName] = useState("");
   const [divertPick, setDivertPick] = useState<Agent | null>(null);
-  const [divertCode, setDivertCode] = useState(agent.broker_name ?? "");
+  const [divertCode, setDivertCode] = useState(agent.agency_code ?? "");
   // chrome
   const [scriptOpen, setScriptOpen] = useState(firstCallOfDay);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // What already saved in this form session, so a retry after a partial
   // failure never doubles a contact or a breadcrumb.
-  const progress = useRef<{ target: Agent | null; brokerId: { code: string; id: string } | null; contactId: string | null; breadcrumb: boolean }>({
+  const progress = useRef<{ target: Agent | null; agencyId: { code: string; id: string } | null; contactId: string | null; breadcrumb: boolean }>({
     target: null,
-    brokerId: null, // a code this form already created — a retry reuses it (UNIQUE per user)
+    agencyId: null, // a code this form already created — a retry reuses it (UNIQUE per user)
     contactId: null,
     breadcrumb: false,
   });
@@ -426,20 +426,21 @@ export const CallScreen = ({
     if (divertPick) return divertPick;
     // Create who answered — on the code typed (matched, or created), or none.
     const code = divertCode.trim().toUpperCase();
-    let brokerId: string | null = null;
+    let agencyId: string | null = null;
     if (code) {
-      const found = brokers.find((b) => b.broker_name.toUpperCase() === code);
-      if (found) brokerId = found.broker_id;
-      else if (progress.current.brokerId?.code === code) brokerId = progress.current.brokerId.id;
+      const found = agencies.find((a) => a.agency_code.toUpperCase() === code);
+      if (found) agencyId = found.agency_id;
+      else if (progress.current.agencyId?.code === code) agencyId = progress.current.agencyId.id;
       else {
-        const b = await createBroker({ broker_name: code, phone: null, email: null, rating: null, notes: null });
-        progress.current.brokerId = { code, id: b.broker_id };
-        brokerId = b.broker_id;
+        // A brand-new AGENCY, code only — its legal name is NULL until a bill.
+        const a = await createAgency({ agency_code: code, name: null, phone: null, email: null, rating: null, notes: null });
+        progress.current.agencyId = { code, id: a.agency_id };
+        agencyId = a.agency_id;
       }
     }
     const [first, ...rest] = divertWords;
     const created = await createAgent({
-      broker_id: brokerId,
+      agency_id: agencyId,
       first_name: first,
       last_name: rest.join(" "),
       phone: phone.trim() || agent.phone || null, // they answered this number
@@ -486,6 +487,14 @@ export const CallScreen = ({
 
   const logCall = async (mode: WriteMode) => {
     if (busy) return;
+    // A Landstar code is three letters — the same rule agentEdit applies to a
+    // posting code, and the same one the backend enforces. Only a DIVERT that
+    // is creating the person types one; say so before the round trip.
+    const typedCode = divertCode.trim();
+    if (diverting && !divertPick && typedCode && !/^[A-Za-z]{3}$/.test(typedCode)) {
+      setErr("An agency code is three letters — or leave it blank.");
+      return;
+    }
     setBusy(true);
     setErr(null);
     let stage = "The call";
@@ -596,7 +605,7 @@ export const CallScreen = ({
             <Link to={`/agents/${agent.agent_id}`} className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors">
               {name}
             </Link>
-            <CodeChip code={agent.broker_name} />
+            <AgentCodeChip agent={agent} />
             <StatusPill tone={classChip.label === "Direct" ? "good" : "neutral"}>
               {classChip.label}
               {classChip.derived ? " · from loads" : ""}
@@ -879,7 +888,7 @@ export const CallScreen = ({
               {divertPick ? (
                 <div className="flex items-center gap-2 flex-wrap font-condensed text-[13.5px]">
                   <span className="text-ink font-semibold">{nameOf(divertPick)}</span>
-                  <CodeChip code={divertPick.broker_name} />
+                  <AgentCodeChip agent={divertPick} />
                   <span className="text-dim">found</span>
                   <button
                     type="button"
@@ -913,7 +922,7 @@ export const CallScreen = ({
                             onClick={() => setDivertPick(a)}
                             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] font-condensed text-[14px] text-ink hover:bg-white/5 text-left"
                           >
-                            {nameOf(a)} <CodeChip code={a.broker_name} />
+                            {nameOf(a)} <AgentCodeChip agent={a} />
                             {a.agent_city && <span className="text-faint text-[12px]">{a.agent_city}{a.agent_state ? `, ${a.agent_state}` : ""}</span>}
                           </button>
                         </li>
@@ -931,12 +940,12 @@ export const CallScreen = ({
                         onChange={(e) => setDivertCode(e.target.value.toUpperCase())}
                         placeholder="code — optional"
                         aria-label="Agency code for the new agent"
-                        maxLength={10}
+                        maxLength={3}
                         className="ds-input w-[130px] uppercase tracking-[.08em]"
                       />
                       <span className="font-condensed text-[11.5px] text-faint">
                         {divertCode.trim()
-                          ? brokers.some((b) => b.broker_name.toUpperCase() === divertCode.trim().toUpperCase())
+                          ? agencies.some((a) => a.agency_code.toUpperCase() === divertCode.trim().toUpperCase())
                             ? "an existing code"
                             : "a new code — created on log"
                           : "no code — they wear NO CODE"}

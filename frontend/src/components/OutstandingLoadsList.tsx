@@ -58,7 +58,7 @@ export const OutstandingLoadsList = ({ loads }: Props) => {
               <div>
                 <p className="text-sm text-foreground">{load.load_number}</p>
                 <p className={`text-xs ${ageColor(load.daysOutstanding)}`}>
-                  {load.broker} · {load.daysOutstanding} days
+                  {load.agency_code ?? "—"} · {load.daysOutstanding} days
                 </p>
               </div>
               <span className="text-sm text-status-aware-text font-medium">

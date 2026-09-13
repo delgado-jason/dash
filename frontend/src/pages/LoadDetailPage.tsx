@@ -16,7 +16,7 @@ import { getLoadRoute, type RouteGeo } from "@/services/routingService";
 import MissionMap from "@/components/MissionMap";
 import { formatLoadDims } from "@/lib/dimensions";
 import { useAccessorials } from "@/hooks/useAccessorials";
-import { useBrokers } from "@/hooks/useBrokers";
+import { useAgencies } from "@/hooks/useAgencies";
 import { useAgents } from "@/hooks/useAgents";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useFacilities } from "@/hooks/useFacilities";
@@ -202,7 +202,7 @@ export const LoadDetailPage = () => {
 
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { brokers } = useBrokers(0);
+  const { agencies } = useAgencies(0);
   const { agents } = useAgents(0);
   const { markets } = useMarkets(0);
   const { facilities } = useFacilities(0);
@@ -474,7 +474,9 @@ export const LoadDetailPage = () => {
               mode="edit"
               initialData={{
                 load_number: load.load_number,
-                broker_id: load.broker_id,
+                // Nullable on the row since 075; the form's picker is a
+                // required select, so "no agency" opens as an empty choice.
+                agency_id: load.agency_id ?? "",
                 agent_id: load.agent_id,
                 load_type: load.load_type,
                 load_status: load.load_status,
@@ -516,7 +518,7 @@ export const LoadDetailPage = () => {
                 booked_by: load.booked_by ?? null,
             booked_via: load.booked_via ?? null,
               }}
-              brokers={brokers}
+              agencies={agencies}
               agents={agents}
               markets={markets}
               facilities={facilities}
@@ -524,7 +526,7 @@ export const LoadDetailPage = () => {
                 await patchLoad(load.load_id, data);
               }}
               onSuccess={() => setRefreshKey((p) => p + 1)}
-              onBrokerCreated={() => {}}
+              onAgencyCreated={() => {}}
               onAgentCreated={() => {}}
               onMarketCreated={() => {}}
               onClose={() => setShowEditForm(false)}
@@ -622,7 +624,7 @@ export const LoadDetailPage = () => {
             )}
           </div>
           <p className="text-dim text-sm mt-1">
-            {load.broker} · {load.agent} · {capitalize(load.load_type)}
+            {load.agency_code ?? "—"} · {load.agent} · {capitalize(load.load_type)}
             {load.booked_by_name ? ` · booked by ${load.booked_by_name}` : ""}
           </p>
 
@@ -1032,8 +1034,8 @@ export const LoadDetailPage = () => {
           />
           </div>
           <div className="mt-3 pt-3 border-t border-hairline-lo">
-          <p className={cardLbl}>Broker · agent</p>
-          <p className="text-sm">{load.broker}</p>
+          <p className={cardLbl}>Agency · agent</p>
+          <p className="text-sm">{load.agency_code ?? "—"}</p>
           <p className="text-sm text-dim">
             <Link
               to={`/agents/${load.agent_id}`}
