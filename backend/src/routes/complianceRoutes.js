@@ -5,6 +5,8 @@ import {
   createComplianceItem,
   patchComplianceItem,
   deleteComplianceItem,
+  renewComplianceItem,
+  getComplianceRenewals,
 } from "../services/complianceServices.js";
 
 const router = express.Router();
@@ -62,6 +64,42 @@ router.patch("/:compliance_item_id", async (req, res) => {
     return res
       .status(200)
       .json({ message: "Compliance item updated successfully", compliance_item });
+  } catch (err) {
+    return handle(err, res);
+  }
+});
+
+// ---- RENEW ----
+// Owner and dispatcher both renew papers — requireAuth is the whole gate; the
+// data is scoped to the account (user_id) while self_id stamps who tapped it.
+router.post("/:compliance_item_id/renew", async (req, res) => {
+  try {
+    const compliance_item = await renewComplianceItem(
+      req.user.user_id,
+      req.params.compliance_item_id,
+      req.body,
+      req.user,
+    );
+    return res
+      .status(200)
+      .json({ message: "Compliance item renewed successfully", compliance_item });
+  } catch (err) {
+    return handle(err, res);
+  }
+});
+
+// ---- RENEWAL HISTORY ----
+router.get("/:compliance_item_id/renewals", async (req, res) => {
+  try {
+    const renewals = await getComplianceRenewals(
+      req.user.user_id,
+      req.params.compliance_item_id,
+    );
+    return res.status(200).json({
+      message: "Compliance renewals retrieved successfully",
+      count: renewals.length,
+      renewals,
+    });
   } catch (err) {
     return handle(err, res);
   }
