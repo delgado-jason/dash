@@ -17,6 +17,18 @@ class NotFoundError extends Error {
   }
 }
 
+// The request was well-formed but collides with something already on file —
+// a name that already belongs to another vendor, say. Not a 400 (nothing is
+// wrong with what was sent) and not a 404; the client shows the message.
+class ConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ConflictError";
+    this.statusCode = 409;
+    this.type = "conflict";
+  }
+}
+
 class AuthError extends Error {
   constructor(message) {
     super(message);
@@ -35,4 +47,10 @@ class ForbiddenError extends Error {
   }
 }
 
-export { ValidationError, NotFoundError, AuthError, ForbiddenError };
+export {
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+  AuthError,
+  ForbiddenError,
+};

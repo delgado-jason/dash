@@ -1,8 +1,10 @@
 import { useState } from "react";
 import type { MaintenanceItem, ServiceUnit } from "@/types/maintenance";
 import type { ServiceInput } from "@/services/maintenanceService";
+import type { Vendor } from "@/types/vendor";
 import { Board } from "@/components/ui/Board";
 import CityAutocomplete from "@/components/CityAutocomplete";
+import VendorAutocomplete from "@/components/vendors/VendorAutocomplete";
 import { parseReading, parseCost } from "@/lib/maintenance/parseReading";
 import {
   FieldLabel,
@@ -18,7 +20,9 @@ import {
 // The unit decides which meter the sheet asks for — Truck an odometer, Trailer
 // a hubodometer, Both reads both, APU reads HOURS (decision 4A). The city box
 // is the HERE picker the load form already uses; it writes "City, ST" into
-// `location` and nothing else (decision 7A).
+// `location` and nothing else (decision 7A). The vendor box is the rolodex
+// typeahead, which turns a merged spelling into the vendor's own name as he
+// types it (decision 12A).
 
 // [value, label] — the segmented control, in the mock's order.
 const UNITS: [ServiceUnit, string][] = [
@@ -39,11 +43,13 @@ const completableBy = (unit: ServiceUnit, items: MaintenanceItem[]) =>
 
 export const LogServiceSheet = ({
   items,
+  vendors,
   onSave,
   onCancel,
   busy,
 }: {
   items: MaintenanceItem[];
+  vendors: Vendor[];
   onSave: (data: ServiceInput) => void;
   onCancel: () => void;
   busy: boolean;
@@ -188,12 +194,13 @@ export const LogServiceSheet = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
             <FieldLabel htmlFor="svc-vendor">Vendor</FieldLabel>
-            <input
+            <VendorAutocomplete
               id="svc-vendor"
-              className="ds-input"
               value={vendor}
-              onChange={(e) => setVendor(e.target.value)}
+              onChange={setVendor}
+              vendors={vendors}
               placeholder="Thermo King"
+              inputClassName="ds-input"
             />
           </div>
           <div>

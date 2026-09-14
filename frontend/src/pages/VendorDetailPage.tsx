@@ -4,6 +4,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { useVendor } from "@/hooks/useVendor";
 import { deleteVendor } from "@/services/deleteVendorService";
+import { removeVendorAlias } from "@/services/mergeVendorService";
 import { serviceAreaStates } from "@/lib/metrics/vendorLeaderboard";
 
 import VendorRatingForm from "@/components/vendors/VendorRatingForm";
@@ -24,6 +25,23 @@ const PlateLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
     {children}
   </p>
+);
+
+// Another spelling this vendor answers to — what a merge filed (12A). The × is
+// the undo: drop the alias and the vendor stops claiming that name. The log
+// rows that were rewritten keep the canonical name, which is why the confirm
+// says so out loud.
+const AliasChip = ({ alias, onDrop }: { alias: string; onDrop: () => void }) => (
+  <span className="inline-flex items-center gap-[5px] font-condensed font-semibold text-[11px] text-dim bg-well border border-hairline-lo rounded-[4px] px-[5px] py-[1px]">
+    also "{alias}"
+    <button
+      onClick={onDrop}
+      aria-label={`Remove alias ${alias}`}
+      className="text-faint hover:text-[#e05252] leading-none"
+    >
+      ×
+    </button>
+  </span>
 );
 
 const VendorDetailPage = () => {
@@ -63,6 +81,19 @@ const VendorDetailPage = () => {
     setRefreshKey((p) => p + 1);
     setShowRating(false);
     setShowEdit(false);
+  };
+
+  const dropAlias = async (alias: string) => {
+    if (
+      !window.confirm(`Drop the alias "${alias}"? Log rows keep ${vendor.name}.`)
+    )
+      return;
+    try {
+      await removeVendorAlias(vendor.vendor_id, alias);
+      setRefreshKey((p) => p + 1);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to remove the alias");
+    }
   };
 
   const handleDelete = async () => {
@@ -121,6 +152,9 @@ const VendorDetailPage = () => {
             {vendor.category}
             {place ? ` · ${place}` : ""}
           </span>
+          {(vendor.aliases ?? []).map((alias) => (
+            <AliasChip key={alias} alias={alias} onDrop={() => dropAlias(alias)} />
+          ))}
           <VendorTrustTag rating={vendor.rating} />
           {vendor.status === "inactive" && (
             <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] text-faint border border-hairline rounded-[4px] px-[6px] py-[1px]">
@@ -232,8 +266,8 @@ const VendorDetailPage = () => {
               </div>
             ) : (
               <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
-                No matched maintenance yet. Spend links when a service's vendor name
-                matches this one exactly.
+                No matched maintenance yet. Spend links when a service's vendor
+                name matches this name or one of its aliases.
               </p>
             )}
           </div>

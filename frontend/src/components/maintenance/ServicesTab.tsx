@@ -117,9 +117,14 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
   // The rolodex, for linking vendor names through the bridge (same name rule
   // the spend readout uses).
   const { vendors: rolodex } = useVendors(0);
+  // Name AND alias: a row still carrying a spelling a merge filed (12A) links
+  // to the card that owns it, the same way the spend readout counts it.
   const vendorIdByName = useMemo(() => {
     const m = new Map<string, string>();
-    for (const v of rolodex) m.set(v.name.trim().toLowerCase(), v.vendor_id);
+    for (const v of rolodex) {
+      m.set(v.name.trim().toLowerCase(), v.vendor_id);
+      for (const a of v.aliases ?? []) m.set(a.trim().toLowerCase(), v.vendor_id);
+    }
     return m;
   }, [rolodex]);
   const [showForm, setShowForm] = useState(false);
@@ -248,6 +253,7 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
         <div className="mt-4">
           <LogServiceSheet
             items={items}
+            vendors={rolodex}
             onSave={save}
             onCancel={() => setShowForm(false)}
             busy={busy}

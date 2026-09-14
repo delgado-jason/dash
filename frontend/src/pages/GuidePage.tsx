@@ -428,7 +428,12 @@ const NAV: { group: string; items: string[] }[] = [
   },
   {
     group: "Vendors",
-    items: ["Vendor ratings", "Best per category", "Shop spend"],
+    items: [
+      "Vendor ratings",
+      "Best per category",
+      "Shop spend",
+      "One-offs and merged spellings",
+    ],
   },
   {
     group: "Team &amp; roles",
@@ -3162,9 +3167,57 @@ const GuidePage = () => {
             <Why>
               It's matched by <span className="text-light">name</span>: a shop's
               spend links when the vendor name on a maintenance service matches
-              the vendor's name here. Escorts, permits, and the rest just carry
+              the vendor's name here — or a spelling you've merged into it.
+              Escorts, permits, and the rest just carry
               the rating for now — the spend score grows from the shops, where
               the data already lives.
+            </Why>
+          </Section>
+
+          <Section
+            title="One-offs and merged spellings"
+            sources={[
+              { label: "Vendors", to: "/vendors" },
+              { label: "Maintenance", to: "/maintenance" },
+            ]}
+          >
+            <p className="text-sm text-muted-text">
+              Every vendor name on a maintenance service that the rolodex doesn't
+              know yet shows up on the Vendors page under{" "}
+              <span className="text-light">From your maintenance log</span>, with
+              what you've spent there and when you were last in. Each one has
+              three doors: <span className="text-light">Add</span> files it as a
+              new vendor, <span className="text-light">Merge into</span> folds it
+              into a vendor you already have, and{" "}
+              <span className="text-light">One-off</span> says you're never going
+              back. dash never taps a door for you — the lit one is only its
+              lean.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              A <span className="text-light">one-off</span> is remembered, not
+              erased. The name stays in your log exactly as you typed it; it just
+              stops being offered. Every one you've set aside is listed under the{" "}
+              <span className="text-light">DISMISSED · ONE-OFF STOPS</span> fold
+              at the bottom of the board, and Undo puts it straight back on the
+              list.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              A <span className="text-light">merge</span> does two things at
+              once. The vendor keeps the log's spelling as an{" "}
+              <span className="text-light">alias</span>, and the log rows written
+              under that spelling are rewritten to the vendor's name. From then
+              on the vendor's spend, the shop tab's BY VENDOR board and the
+              truck's card all add up the same way, because there's only one
+              spelling left to add up. The log sheet's vendor box helps you keep
+              it that way: it autocompletes from the rolodex, and typing an alias
+              turns it into the vendor's own name as you go.
+            </p>
+            <Why>
+              Merged wrong? Open the vendor's page and drop the alias with the ×
+              on the <span className="text-light">also "…"</span> chip. The alias
+              goes and the vendor stops claiming that name — the log rows keep the
+              name they were rewritten to, so if a couple of them really belonged
+              somewhere else, retype those two.
             </Why>
           </Section>
 

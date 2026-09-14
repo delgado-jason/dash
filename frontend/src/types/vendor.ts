@@ -1,6 +1,9 @@
 export interface Vendor {
   vendor_id: string;
   name: string;
+  // Every other spelling of this name — what a merge filed (12A). Always
+  // present (the column defaults to '{}'), empty when nothing was merged.
+  aliases: string[];
   category: string;
   rating?: number | null;
   contact_name?: string | null;

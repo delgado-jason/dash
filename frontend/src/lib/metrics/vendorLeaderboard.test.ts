@@ -10,6 +10,7 @@ const v = (over: Partial<Vendor>): Vendor => ({
   vendor_id: over.name ?? Math.random().toString(),
   name: over.name ?? "x",
   category: over.category ?? "Shop",
+  aliases: [],
   rating: over.rating ?? null,
   status: "active",
   created_at: "2026-01-01",
