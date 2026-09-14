@@ -20,6 +20,40 @@ export const VENDOR_CATEGORIES = [
 
 const VENDOR_STATUSES = ["active", "inactive"];
 
+// vendors.name is VARCHAR(120); an alias is one more spelling of that same
+// name, so it keeps the same cap. A dismissed one-off is a log spelling, which
+// is the same text again — one number for all three.
+export const ALIAS_MAX = 120;
+
+// Postgres's btrim / TRIM strip ASCII spaces only; JS's trim() strips every
+// Unicode space (tabs, newlines, NBSP). A log row pasted with a trailing NBSP
+// is grouped by SQL under a key that still ends in that NBSP, so the app must
+// never out-trim the database — or the key it sends misses the key the DB
+// generated for the same text, and a One-off or a Merge silently does nothing.
+export const asciiTrim = (s) => String(s).replace(/^ +| +$/g, "");
+
+// The one match key for a vendor name — the SAME key the DB generates for
+// maintenance_vendor_dismissals.name_key (`lower(btrim(name))`): trim the
+// ASCII-space ends, lowercase, and nothing else. No inner-whitespace collapsing,
+// or the app would say two names match where the UNIQUE constraint says they
+// don't.
+export const nameKey = (s) => asciiTrim(s).toLowerCase();
+
+// A name arriving in a body — the alias to merge, the one-off to dismiss, the
+// one-off to restore. Same three questions every time.
+export const validateVendorName = (value, label = "name") => {
+  const errors = [];
+  if (!isValidType("string", value)) {
+    errors.push(`${label} must be a string`);
+    return errors;
+  }
+  // Blank by any whitespace is blank; the length cap is on what gets stored.
+  if (value.trim().length === 0) errors.push(`${label} cannot be blank`);
+  else if (asciiTrim(value).length > ALIAS_MAX)
+    errors.push(`${label} must be ${ALIAS_MAX} characters or fewer`);
+  return errors;
+};
+
 const nonBlankString = (label) => (value, errors) => {
   if (!value) return;
   if (!isValidType("string", value)) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useVendors } from "@/hooks/useVendors";
 import { useUnfiledVendors } from "@/hooks/useUnfiledVendors";
+import { useDismissedVendors } from "@/hooks/useDismissedVendors";
 import {
   groupVendorsByCategory,
   trustCounts,
@@ -11,10 +12,19 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusPill } from "@/components/ui/StatusPill";
+import { ErrorLine } from "@/components/relationships/primitives";
 import { VendorPips } from "@/components/vendors/VendorPips";
 import { VendorTrustTag, vendorTrust } from "@/components/vendors/VendorTrustTag";
 import VendorForm from "@/components/vendors/VendorForm";
+import MergeVendorSheet from "@/components/vendors/MergeVendorSheet";
+import { looksLike, type LooksLikeHit } from "@/lib/vendors/looksLike";
+import { unitWord } from "@/lib/vendors/unitWord";
+import { shortDay } from "@/lib/vendors/mergeSentence";
+import { dismissVendor, restoreVendor } from "@/services/dismissedVendorsService";
 import type { Vendor } from "@/types/vendor";
+import type { UnfiledShop } from "@/types/unfiledShop";
+import type { DismissedShop } from "@/types/dismissedShop";
 import { money } from "@/lib/format";
 
 // Maintenance-spend line, derived from the maintenance log. The backend gates
@@ -65,15 +75,162 @@ const StateChips = ({ area }: { area: string | null | undefined }) => {
   );
 };
 
+// ---- the bridge board ----
+// The three doors on a bridge row, and the fold's Undo. Exactly one door per
+// row is LIT, and dash never taps it (13A): the lit one is the lean, nothing
+// more. A row that looks like a name he already has leans MERGE; every other
+// row leans ADD. One-off is never lit — setting a stop aside is his call alone.
+const DoorButton = ({
+  lit = false,
+  disabled = false,
+  onClick,
+  children,
+}: {
+  lit?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) =>
+  lit ? (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] tracking-[.05em] text-canvas whitespace-nowrap disabled:opacity-40"
+      style={{
+        background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
+        boxShadow: "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+      }}
+    >
+      {children}
+    </button>
+  ) : (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline whitespace-nowrap disabled:opacity-40"
+      style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+    >
+      {children}
+    </button>
+  );
+
+// A log name the rolodex doesn't know yet, with what the log knows about it and
+// the three doors out. Module-level (the house rule: no component is ever
+// defined inside a render body), so everything it needs arrives as a prop.
+const UnfiledRow = ({
+  row,
+  hit,
+  error,
+  busy,
+  onAdd,
+  onMerge,
+  onOneOff,
+}: {
+  row: UnfiledShop;
+  hit: LooksLikeHit | null;
+  error?: string;
+  busy: boolean;
+  onAdd: () => void;
+  onMerge: () => void;
+  onOneOff: () => void;
+}) => {
+  const word = unitWord(row.units);
+  return (
+    <div className="flex items-center gap-[14px] px-4 py-3 border-t ds2-cell-rule first:border-t-0">
+      <div className="min-w-0 flex-1">
+        <div className="font-condensed font-semibold text-[16px] flex items-center gap-[9px] flex-wrap">
+          <span className="truncate">{row.name}</span>
+          {hit && <StatusPill tone="amber">looks like {hit.target}</StatusPill>}
+        </div>
+        <div className="font-condensed text-[13px] text-dim">
+          {row.service_count} service{row.service_count === 1 ? "" : "s"}
+          {row.total_spend != null && (
+            <>
+              {" · "}
+              <span className="text-ink tabular-nums">{money(Number(row.total_spend))}</span>
+            </>
+          )}
+          {row.last_service && ` · ${shortDay(row.last_service)}`}
+          {word && ` · ${word}`}
+        </div>
+        <ErrorLine>{error}</ErrorLine>
+      </div>
+      <div className="shrink-0 flex items-center gap-2">
+        <DoorButton lit={!hit} disabled={busy} onClick={onAdd}>
+          Add
+        </DoorButton>
+        <DoorButton lit={!!hit} disabled={busy} onClick={onMerge}>
+          Merge into ▾
+        </DoorButton>
+        <DoorButton disabled={busy} onClick={onOneOff}>
+          One-off
+        </DoorButton>
+      </div>
+    </div>
+  );
+};
+
+// A name he waved off. The log rows are still there — this row reads them live,
+// which is why it can say "no log rows now" when they were since deleted.
+const DismissedRow = ({
+  row,
+  error,
+  busy,
+  onUndo,
+}: {
+  row: DismissedShop;
+  error?: string;
+  busy: boolean;
+  onUndo: () => void;
+}) => (
+  <div className="flex items-center gap-[14px] px-4 py-[11px] border-t ds2-cell-rule">
+    <div className="min-w-0 flex-1">
+      <div className="font-condensed font-semibold text-[15px] text-dim truncate">
+        {row.name}
+      </div>
+      <div className="font-condensed text-[12.5px] text-faint">
+        {row.service_count === 0 ? (
+          "no log rows now"
+        ) : (
+          <>
+            {row.service_count} service{row.service_count === 1 ? "" : "s"}
+            {row.total_spend != null && ` · ${money(Number(row.total_spend))}`}
+            {row.last_service && ` · ${shortDay(row.last_service)}`}
+          </>
+        )}
+      </div>
+      <ErrorLine>{error}</ErrorLine>
+    </div>
+    <DoorButton disabled={busy} onClick={onUndo}>
+      Undo
+    </DoorButton>
+  </div>
+);
+
+// The fold's standing explanation — what a dismissal does, and where the pill
+// comes from. Shown whenever the fold is on screen, collapsed or not.
+const DISMISSED_NOTE =
+  'A dismissed name stays in the log exactly as typed; it just stops being offered. Undo puts it back on the list. The "looks like" pill fires when the first two words of a name match a vendor or another log name — the same rule the shop\'s BY VENDOR board uses.';
+
 const VendorsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const { vendors, isLoading, error } = useVendors(refreshKey);
   const { unfiled } = useUnfiledVendors(refreshKey);
+  const { dismissed } = useDismissedVendors(refreshKey);
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
   // Filing a shop from the maintenance log — seeds the create form with the
   // log's exact spelling so the spend readout attaches on save.
   const [filePrefill, setFilePrefill] = useState<{ name: string; category: string } | null>(null);
+  // The merge sheet, and what the row's pill says to start it with.
+  const [merging, setMerging] = useState<{
+    row: UnfiledShop;
+    prefill: { vendor: Vendor | null; text: string };
+  } | null>(null);
+  const [showDismissed, setShowDismissed] = useState(false);
+  // A failed write speaks under the row it happened on, by name.
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [busyName, setBusyName] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const filtered = useMemo(() => {
@@ -88,6 +245,54 @@ const VendorsPage = () => {
 
   const groups = useMemo(() => groupVendorsByCategory(filtered), [filtered]);
   const trust = useMemo(() => trustCounts(vendors), [vendors]);
+
+  // Which name each bridge row looks like — the rolodex first, then the other
+  // unfiled names. Keyed by the row's own name, the way the list is keyed.
+  const hits = useMemo(() => {
+    const names = unfiled.map((u) => u.name);
+    const m = new Map<string, LooksLikeHit | null>();
+    for (const u of unfiled) m.set(u.name, looksLike(u.name, vendors, names));
+    return m;
+  }, [unfiled, vendors]);
+
+  // Every write on this board refetches both lists — a name that leaves one
+  // arrives on the other.
+  const runOnRow = async (name: string, fn: () => Promise<unknown>) => {
+    setBusyName(name);
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    try {
+      await fn();
+      setRefreshKey((p) => p + 1);
+    } catch (e) {
+      setRowErrors((prev) => ({
+        ...prev,
+        [name]: e instanceof Error ? e.message : "Something went wrong",
+      }));
+    } finally {
+      setBusyName(null);
+    }
+  };
+
+  // The pill decides what the merge sheet opens with: a vendor it already
+  // named, or the longer log spelling as text (so "Create … and merge" leads).
+  const openMerge = (row: UnfiledShop) => {
+    const hit = hits.get(row.name) ?? null;
+    const vendor =
+      hit?.kind === "vendor"
+        ? (vendors.find((v) => v.name === hit.target) ?? null)
+        : null;
+    setMerging({
+      row,
+      prefill: {
+        vendor,
+        text: vendor ? vendor.name : hit?.kind === "unfiled" ? hit.target : "",
+      },
+    });
+  };
 
   const openCreate = (prefill: { name: string; category: string } | null = null) => {
     setFilePrefill(prefill);
@@ -180,8 +385,20 @@ const VendorsPage = () => {
           </div>
         )}
 
-        {/* the bridge — maintenance-log names not in the rolodex yet */}
-        {unfiled.length > 0 && (
+        {merging && (
+          <MergeVendorSheet
+            row={merging.row}
+            vendors={vendors}
+            prefill={merging.prefill}
+            onClose={() => setMerging(null)}
+            onMerged={() => setRefreshKey((p) => p + 1)}
+          />
+        )}
+
+        {/* the bridge — maintenance-log names not in the rolodex yet. The board
+            also renders with nothing unfiled, so the DISMISSED fold stays
+            reachable: an Undo he can't get to isn't an undo. */}
+        {(unfiled.length > 0 || dismissed.length > 0) && (
           <div className="ds2-board overflow-hidden mt-4">
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
               <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
@@ -192,31 +409,46 @@ const VendorsPage = () => {
               </span>
             </div>
             {unfiled.map((u) => (
-              <div
+              <UnfiledRow
                 key={u.name.toLowerCase()}
-                className="flex items-center gap-[14px] px-4 py-3 border-t ds2-cell-rule first:border-t-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-condensed font-semibold text-[16px] truncate">{u.name}</div>
-                  <div className="font-condensed text-[13px] text-dim">
-                    {u.service_count} service{u.service_count === 1 ? "" : "s"}
-                    {u.total_spend != null && (
-                      <>
-                        {" · "}
-                        <span className="text-ink tabular-nums">{money(Number(u.total_spend))}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => openCreate({ name: u.name, category: "Shop" })}
-                  className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-amber-hi bg-well border border-amber/35"
-                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
-                >
-                  ADD TO ROLODEX
-                </button>
-              </div>
+                row={u}
+                hit={hits.get(u.name) ?? null}
+                error={rowErrors[u.name]}
+                busy={busyName === u.name}
+                onAdd={() => openCreate({ name: u.name, category: "Shop" })}
+                onMerge={() => openMerge(u)}
+                onOneOff={() => runOnRow(u.name, () => dismissVendor(u.name))}
+              />
             ))}
+
+            {dismissed.length > 0 && (
+              <>
+                <div className="flex items-center gap-2.5 px-4 pt-2.5 pb-[7px] border-t ds2-cell-rule">
+                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                    DISMISSED · ONE-OFF STOPS · {dismissed.length}
+                  </span>
+                  <button
+                    onClick={() => setShowDismissed((v) => !v)}
+                    className="ml-auto font-condensed font-semibold text-[12px] text-amber-hi"
+                  >
+                    {showDismissed ? "hide" : "show · undo"}
+                  </button>
+                </div>
+                <p className="font-condensed text-[12.5px] text-dim leading-[1.5] px-4 pb-3">
+                  {DISMISSED_NOTE}
+                </p>
+                {showDismissed &&
+                  dismissed.map((d) => (
+                    <DismissedRow
+                      key={d.dismissal_id}
+                      row={d}
+                      error={rowErrors[d.name]}
+                      busy={busyName === d.name}
+                      onUndo={() => runOnRow(d.name, () => restoreVendor(d.name))}
+                    />
+                  ))}
+              </>
+            )}
           </div>
         )}
 

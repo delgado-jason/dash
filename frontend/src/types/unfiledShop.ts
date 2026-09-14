@@ -5,4 +5,7 @@ export interface UnfiledShop {
   service_count: number;
   total_spend: string | null;
   last_service: string | null;
+  // The units this name has worked on ('tractor' | 'trailer' | 'both' | 'apu'),
+  // distinct — one of them tells the row what it fixed.
+  units: string[];
 }

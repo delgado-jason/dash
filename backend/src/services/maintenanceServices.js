@@ -1,5 +1,7 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import { canonicalVendorName } from "../utils/vendorNames.js";
+import { listVendorNames } from "./vendorServices.js";
 import {
   isUnit,
   isServiceUnit,
@@ -28,6 +30,19 @@ async function resolveFleet(runner, user_id) {
 }
 // The APU hangs on the truck, so an 'apu' row links to the same truck a
 // 'tractor' row would — it just reads a different meter.
+// The log's vendor column is free text, so one shop drifts into two spellings
+// and every board that groups by it splits the total. A name that matches a
+// vendor — its own name, or a spelling a merge filed as an alias (12A) — is
+// written down as the vendor spells it; anything else is kept as typed. Read on
+// the transaction's own client so the write sees the rolodex the merge left.
+async function canonicalizeVendor(client, user_id, data) {
+  if (typeof data.vendor !== "string" || data.vendor.trim() === "") return;
+  data.vendor = canonicalVendorName(
+    data.vendor,
+    await listVendorNames(client, user_id),
+  );
+}
+
 const linkFor = (unit, ids, data) => ({
   truck_id:
     unit === "tractor" || unit === "both" || unit === "apu"
@@ -203,6 +218,8 @@ export async function createMaintenanceService(user_id, data) {
   try {
     await client.query("BEGIN");
 
+    await canonicalizeVendor(client, user_id, data);
+
     const link = linkFor(data.unit, await resolveFleet(client, user_id), data);
 
     const svc = await client.query(
@@ -319,10 +336,14 @@ export async function patchMaintenanceService(user_id, service_id, data) {
   const updates = [];
   const values = [];
   let i = 1;
+  // Where the vendor's value sits in `values`, so the canonical spelling can be
+  // dropped in once the transaction is open (-1 = the patch doesn't touch it).
+  let vendorSlot = -1;
   for (const field of SERVICE_FIELDS) {
     if (data[field] !== undefined) {
       updates.push(`${field} = $${i}`);
       values.push(data[field]);
+      if (field === "vendor") vendorSlot = values.length - 1;
       i++;
     }
   }
@@ -336,6 +357,11 @@ export async function patchMaintenanceService(user_id, service_id, data) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+
+    if (vendorSlot !== -1) {
+      await canonicalizeVendor(client, user_id, data);
+      values[vendorSlot] = data.vendor;
+    }
 
     const result = await client.query(
       `UPDATE maintenance_services SET ${updates.join(", ")}
