@@ -376,11 +376,64 @@ describe("buildForemanBoard — membership", () => {
     expect(board.rankings[0].loadType).toBe("oversize");
   });
 
-  it("excludes roster agents you've never booked", () => {
+  it("excludes roster agents you've never booked who claimed nothing", () => {
     const { agents, loads } = buildWorld();
-    const stranger = mkAgent("a9", "Stranger"); // on the roster, zero loads
+    const stranger = mkAgent("a9", "Stranger"); // on the roster, zero loads, no claim
     const board = buildForemanBoard(loads, [...agents, stranger], COORDS, { now: NOW });
     expect(board.rankings.find((r) => r.agentId === "a9")).toBeUndefined();
+  });
+
+  // Brandie's qualification sweep writes agents down with a market and no load
+  // (Gary Robinson, Houston, 2026-09-15). Until this test existed the gate was
+  // "at least one load", and every one of them was invisible to the Foreman.
+  it("a claim-only agent — no load at all — is on the list, measured by the claim", () => {
+    const { agents, loads } = buildWorld();
+    const gary = mkAgent("g", "Gary");
+    const coverage = [{ agent_id: "g", city: "Youngstown", state: "OH", source: "stated" }];
+    const board = buildForemanBoard(loads, [...agents, gary], COORDS, { now: NOW, coverage });
+    const r = board.rankings.find((x) => x.agentId === "g")!;
+    expect(r).toBeDefined();
+    expect(r.nearestOrigin).toEqual({ city: "Youngstown", state: "OH" });
+    expect(r.nearestSource).toBe("claimed");
+    expect(r.distanceMiles).toBeGreaterThan(40);
+    expect(r.distanceMiles).toBeLessThan(55);
+    expect(r.loadCount).toBe(0);
+    expect(r.isNew).toBe(true);
+    expect(r.rpm).toBeNull();
+    expect(r.perDay).toBeNull();
+    expect(r.why).toContain("nothing hauled yet");
+    expect(r.why).toContain("a market they claimed");
+    expect(r.why).not.toContain("no load yet, no load yet");
+    // it counts in the coverage meter like any measured row
+    expect(board.coverage.total).toBe(board.rankings.length);
+  });
+
+  it("a claim-only agent is judged on the freight they claimed, and meets a focus by claiming it", () => {
+    const { agents, loads } = buildWorld();
+    const gary: Agent = { ...mkAgent("g", "Gary"), freight_types: ["oversize", "standard flatbed"] };
+    const coverage = [{ agent_id: "g", city: "Youngstown", state: "OH", source: "stated" }];
+    const any = buildForemanBoard(loads, [...agents, gary], COORDS, { now: NOW, coverage });
+    expect(any.rankings.find((x) => x.agentId === "g")!.loadType).toBe("oversize");
+    const oversize = buildForemanBoard(loads, [...agents, gary], COORDS, { now: NOW, coverage, focus: "oversize" });
+    expect(oversize.rankings.find((x) => x.agentId === "g")!.loadType).toBe("oversize");
+    const hazmat = buildForemanBoard(loads, [...agents, gary], COORDS, { now: NOW, coverage, focus: "hazmat" });
+    expect(hazmat.rankings.find((x) => x.agentId === "g")).toBeUndefined();
+    // an unknown claim vocabulary never becomes a judged type
+    const odd: Agent = { ...mkAgent("h", "Odd"), freight_types: ["reefer"] };
+    const board = buildForemanBoard(loads, [...agents, odd], COORDS, {
+      now: NOW,
+      coverage: [{ agent_id: "h", city: "Akron", state: "OH", source: "stated" }],
+    });
+    expect(board.rankings.find((x) => x.agentId === "h")!.loadType).toBe("standard flatbed");
+  });
+
+  it("hauled freight stays the evidence once anything has been delivered", () => {
+    const { agents, loads } = buildWorld();
+    // A2 Buckeye delivered oversize only; claiming hazmat does not make them a hazmat call.
+    const a2 = agents.find((a) => a.agent_id === "a2")!;
+    a2.freight_types = ["hazmat"];
+    const board = buildForemanBoard(loads, agents, COORDS, { now: NOW, focus: "hazmat" });
+    expect(board.rankings.find((x) => x.agentId === "a2")).toBeUndefined();
   });
 
   it("excludes an agent whose only load is cancelled", () => {
@@ -389,6 +442,17 @@ describe("buildForemanBoard — membership", () => {
     loads.push(mkLoad({ agent_id: "a8", load_status: "cancelled", origin_city: "Akron", origin_state: "OH" }));
     const board = buildForemanBoard(loads, [...agents, cancelledOnly], COORDS, { now: NOW });
     expect(board.rankings.find((r) => r.agentId === "a8")).toBeUndefined();
+  });
+
+  it("a cancelled-only agent who claimed a market is on the list by the claim alone", () => {
+    const { agents, loads } = buildWorld();
+    const ghost = mkAgent("a8", "Ghost");
+    loads.push(mkLoad({ agent_id: "a8", load_status: "cancelled", origin_city: "Akron", origin_state: "OH" }));
+    const coverage = [{ agent_id: "a8", city: "Pittsburgh", state: "PA", source: "stated" }];
+    const board = buildForemanBoard(loads, [...agents, ghost], COORDS, { now: NOW, coverage });
+    const r = board.rankings.find((x) => x.agentId === "a8")!;
+    expect(r.nearestOrigin).toEqual({ city: "Pittsburgh", state: "PA" }); // the cancelled load adds no point
+    expect(r.nearestSource).toBe("claimed");
   });
 
   it("returns no rankings for a focus type you've never hauled", () => {
