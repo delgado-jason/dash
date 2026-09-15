@@ -552,7 +552,7 @@ export const WhoToCallTab = () => {
               One list, in score order: straight-line distance to where you'll be empty — from a market a
               load proved or one they claimed on a call — your gross $/mi within load type, and your
               history. Direct or Spot is a chip, not a rank; it only breaks a tie. A call list from who
-              you've booked, not a live load feed.
+              you've booked or who told you where their freight is, not a live load feed.
               {board.coverage.withCoords < board.coverage.total &&
                 " Distances sharpen to real miles as new cities finish geocoding."}
             </p>

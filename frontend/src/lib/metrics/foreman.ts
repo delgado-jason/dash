@@ -8,8 +8,8 @@
 //                  so an agent is never dinged for a deadhead they didn't cause).
 //   • History    — loads together, recency, and dwell (money left sitting).
 //
-// It is a call list from who you've booked, ranked by history + fit — NOT a live
-// load feed. Everything is GROSS (agents are a market-value lens), matching
+// It is a call list from who you've booked — and who told you where their
+// freight is — ranked by history + fit — NOT a live load feed. Everything is GROSS (agents are a market-value lens), matching
 // agentScorecard. Distances come from the persisted city_coords cache; a city we
 // can't trust a coordinate for falls back to region-level, never a fake number.
 //
@@ -50,6 +50,8 @@ export const LOAD_TYPES = [
 export type LoadType = (typeof LOAD_TYPES)[number];
 export type LoadTypeFocus = "any" | LoadType;
 const STANDARD_TYPE: LoadType = "standard flatbed";
+// agents.freight_types is free text[] on the wire; only the four load types count.
+const isLoadType = (t: string): t is LoadType => (LOAD_TYPES as readonly string[]).includes(t);
 // Specialized = anything non-standard → the Specialized tier set (oversize /
 // hazmat / heavy haul), matching lib/constants/targets.
 export const isSpecialized = (type: string): boolean => type !== STANDARD_TYPE;
@@ -182,6 +184,10 @@ const agentTypeRpm = (loads: Load[], type: LoadType): number | null => {
 
 const agentTypeCount = (loads: Load[], type: LoadType): number =>
   loads.filter((l) => l.load_status === "delivered" && l.load_type === type).length;
+
+// Delivered loads of ANY type — "have they hauled you anything yet".
+const agentTypeCountAll = (loads: Load[]): number =>
+  loads.filter((l) => l.load_status === "delivered").length;
 
 // The agent's $/day over the same delivered loads of the judged type — miles
 // or no miles — weighted Σgross ÷ Σdays. Not quite the same SET as
@@ -337,14 +343,22 @@ export const distanceLabel = (r: AgentRanking): string => {
 // your drop" reads as a load they actually ran out of there.
 const dropBit = (r: AgentRanking): string =>
   `${distanceLabel(r)} from your drop${
-    r.nearestSource === "claimed" ? " — a market they claimed, no load yet" : ""
+    r.nearestSource !== "claimed"
+      ? ""
+      : r.loadCount === 0
+        ? " — a market they claimed" // "nothing hauled yet" was just said
+        : " — a market they claimed, no load yet"
   }`;
 
 const whyLine = (r: AgentRanking, anchor: Anchor): string => {
   const bits: string[] = [];
   const where = r.nearestOrigin ? `${r.nearestOrigin.city}, ${r.nearestOrigin.state}` : "";
   if (r.isNew) {
-    bits.push(`New tie — ${r.loadCount} load${r.loadCount === 1 ? "" : "s"} so far`);
+    bits.push(
+      r.loadCount === 0
+        ? "New tie — nothing hauled yet"
+        : `New tie — ${r.loadCount} load${r.loadCount === 1 ? "" : "s"} so far`,
+    );
     if (r.distanceMiles != null) bits.push(dropBit(r));
     else if (where) bits.push(`sources out of ${where}`);
     bits.push("a relationship worth building");
@@ -421,26 +435,41 @@ export const buildForemanBoard = (
   for (const [agentId, card] of scorecards) {
     const agent = agentById.get(agentId);
     if (!agent || isParked(agent)) continue;
-    // Non-cancelled loads only: a roster agent with no loads — or only cancelled
-    // ones — is not on your call list (this is a call list from your history).
+    // Who is on the call list: anyone with a footprint to measure. That is an
+    // agent you've booked (non-cancelled loads), OR one with no load yet who
+    // named a market on a call — decision 6A made a claim a real point, and a
+    // point is what this board ranks, so a claim-only agent from Brandie's
+    // qualification sweep reaches the board before the first load. A roster
+    // agent with neither — or only cancelled loads and no claim — has nothing
+    // to measure and stays off. (Until 2026-09-15 the gate was "at least one
+    // load", which silently hid every claim-only agent.)
     const agentLoads = loads.filter(
       (l) => l.agent_id === agentId && l.load_status !== "cancelled",
     );
-    if (agentLoads.length === 0) continue;
+    const myPoints = points.get(agentId) ?? [];
+    if (agentLoads.length === 0 && myPoints.length === 0) continue;
 
     // The type this agent is judged on, and whether they qualify under a focus.
+    // With nothing delivered yet, the only word on their freight is what they
+    // claimed on the qualification call (agents.freight_types): the first
+    // claimed type is the judged one, and a focus is met by claiming it. Once
+    // they've hauled something, hauled freight is the evidence, as before.
+    const delivered = agentTypeCountAll(agentLoads);
+    const claimedTypes = (agent.freight_types ?? []).filter(isLoadType);
     let judgedType: LoadType;
     if (focus === "any") {
-      judgedType = dominantType(agentLoads);
+      judgedType =
+        delivered === 0 && claimedTypes.length ? claimedTypes[0] : dominantType(agentLoads);
     } else {
-      if (agentTypeCount(agentLoads, focus) === 0) continue; // no such freight from them
+      const hauledIt = agentTypeCount(agentLoads, focus) > 0;
+      const claimsIt = delivered === 0 && claimedTypes.includes(focus);
+      if (!hauledIt && !claimsIt) continue; // no such freight from them, hauled or claimed
       judgedType = focus;
     }
 
     // nearest footprint point with a trusted coordinate → straight-line miles.
     // Proved and claimed points measure identically (6A) and compete on
     // distance alone; the winner's kind rides along as the caption.
-    const myPoints = points.get(agentId) ?? [];
     let nearest: FootPoint | null = null;
     let distanceMiles: number | null = null;
     if (anchorCoord) {

@@ -694,7 +694,10 @@ const GuidePage = () => {
               or it isn't, and discounting it would be a knob nobody asked for. So an
               agent who has hauled you one load out of nowhere useful can still be 95
               miles away because they told you where their freight is. The caption
-              flips to proved on its own the first time a load lands from that city.
+              flips to proved on its own the first time a load lands from that city. An
+              agent with no load yet but a claimed market is on the list too, wearing
+              New · building — that is how an agent from Brandie's qualification
+              sweep reaches the board before the first load.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
