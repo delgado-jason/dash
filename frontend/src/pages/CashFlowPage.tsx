@@ -132,7 +132,8 @@ const CashFlowPage = () => {
   const beginning = beginOverride ?? snapOps;
 
   // Settlement-feed measurements (locked 2026-09-06): fuel = rolling 30d
-  // from the fuel log (cash job; the 90d window stays on cost-per-mile);
+  // from the fuel log (the cost-per-mile rate runs on 30d as well since
+  // 2026-09-16);
   // deductions = two ex-advance buckets over the last 12 settlements,
   // applied by each week's settlement-date calendar position. Hand-set
   // assumptions remain the FALLBACK when a measurement has no data.

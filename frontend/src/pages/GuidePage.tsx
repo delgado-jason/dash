@@ -1501,9 +1501,9 @@ const GuidePage = () => {
               average (with vs-last-tank as a side note),{" "}
               <span className="text-light">fuel cost per mile</span> — this
               tank's $/gal ÷ MPG — against your{" "}
-              <span className="text-light">90-day average</span> (it needs at
-              least two recent tanks; one tank alone has nothing honest to
-              compare against), and the tank's{" "}
+              <span className="text-light">30-day average</span> (it needs at
+              least two tanks inside that month; one tank alone has nothing
+              honest to compare against), and the tank's{" "}
               <span className="text-light">$/gal versus the national price</span>.
               Green is better, red is worse. It leans on your{" "}
               <span className="text-light">average</span> rather than just the
@@ -1535,7 +1535,12 @@ const GuidePage = () => {
                 national retail diesel price
               </span>{" "}
               (the U.S. EIA weekly number, rolled up to monthly). Buying under
-              the national line means you're routing fuel stops well.
+              the national line means you're routing fuel stops well. The card
+              above the chart, <span className="text-light">You vs. national diesel</span>,
+              puts every gallon you bought in the{" "}
+              <span className="text-light">last 30 days</span> against the
+              EIA's latest week — a lifetime average against this week's price
+              would flatter you every time diesel climbs.
             </Why>
           </Metric>
 
@@ -1998,7 +2003,7 @@ const GuidePage = () => {
           >
             {/* Illustrative round numbers — the app computes yours live. */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
-              <ChainBox top="$0.70" bottom="fuel / mi (90-day)" />
+              <ChainBox top="$0.70" bottom="fuel / mi (30-day)" />
               <span className="text-muted-text">+</span>
               <ChainBox top="$0.10" bottom="maintenance / mi" />
               <span className="text-muted-text">+</span>
@@ -2007,19 +2012,22 @@ const GuidePage = () => {
               <ChainBox top="$1.30" bottom="cost to run / mi" />
             </div>
             <Formula>
-              fuel (90-day tank windows) + maintenance ÷ miles driven + note ÷
+              fuel (30-day tank windows) + maintenance ÷ miles driven + note ÷
               miles per month
             </Formula>
             <Why>
               The real cost of keeping the rig rolling — the note included, so the
               number reflects what actually leaves your pocket each mile. Fuel is
-              the <span className="text-light">90-day tank-window rate</span> —
+              the <span className="text-light">30-day tank-window rate</span> —
               the same number the Fuel page answers with — because diesel prices
-              swing too much for an all-time average to mean anything today, and
-              because dollars and miles must cover the{" "}
+              swing too much for a long average to mean anything today (it ran
+              on 90 days until September 2026, when diesel climbed $1.45 a
+              gallon in three months and the 90-day blend was quoting seventy
+              cents under the pump), and because dollars and miles must cover
+              the{" "}
               <span className="text-light">same stretch of road</span> (miles you
               drove before you started logging fuel don't get to water it down).
-              No full-tank window in the last 90 days means fuel is unknown, so
+              No full-tank window in the last 30 days means fuel is unknown, so
               the whole number waits rather than showing a fuel-less total. The
               same payment also shows on the payoff tracker, but as balance paid
               down, not a per-mile cost.

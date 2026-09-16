@@ -127,7 +127,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
   // Cost to run, all-in: fuel + maintenance + the rig's own note (monthly
   // truck + trailer payment ÷ miles/month). Fuel and maintenance come from
-  // computeTruckMetrics — fuel is the 90-day tank-window rate, the SAME number
+  // computeTruckMetrics — fuel is the 30-day tank-window rate, the SAME number
   // the fuel page answers with. Shares are by per-mile component so they
   // always sum to 100%. Fuel unknown (no recent full-tank window) ghosts the
   // whole stack — a fuel-less "cost to run" would understate by half.
@@ -137,7 +137,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
   const notePerMile = mpm && mpm > 0 && fleet.assetNote > 0 ? fleet.assetNote / mpm : null;
   const costParts = (
     [
-      { key: "fuel", label: "fuel (90-day)", v: fuelPerMile, color: "var(--color-cat1)" },
+      { key: "fuel", label: "fuel (30-day)", v: fuelPerMile, color: "var(--color-cat1)" },
       { key: "maint", label: "maintenance (incl. APU)", v: maintPerMile, color: "var(--color-cat5)" },
       { key: "note", label: "truck + trailer note", v: notePerMile, color: "var(--color-cat3)" },
     ] as { key: string; label: string; v: number | null; color: string }[]
@@ -225,7 +225,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
                 <p className="text-[11.5px] text-faint mt-1">
                   {costPerMile != null
                     ? costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")
-                    : "forges after a full-tank fuel window in the last 90 days"}
+                    : "forges after a full-tank fuel window in the last 30 days"}
                   {" · "}
                   <span className="text-dim tabular-nums">{odo.toLocaleString("en-US")} on the clock</span>
                   {club.next ? (
@@ -451,7 +451,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           <H3 right={<span className="normal-case tracking-normal font-normal">per mile</span>}>Cost to run</H3>
           {costPerMile == null ? (
             <p className="text-xs text-muted-text">
-              Needs a full-tank fuel window closed in the last 90 days — fuel is
+              Needs a full-tank fuel window closed in the last 30 days — fuel is
               the biggest slice, so there's no honest total without it.
             </p>
           ) : (

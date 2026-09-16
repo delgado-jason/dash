@@ -9,8 +9,12 @@ const fmtWeek = (d: string) =>
     timeZone: "UTC",
   });
 
-// "You vs. national" — your blended cost/gal against the EIA weekly U.S. retail
-// diesel number. Beating the national average earns a comic win stamp.
+// "You vs. national" — your blended cost/gal over the LAST 30 DAYS of fills
+// (fuelStats.paidPerGallon30) against the EIA weekly U.S. retail diesel
+// number. Beating the national average earns a comic win stamp. Thirty days,
+// not lifetime: the national figure is this week's, so the honest opponent is
+// what you paid this month — a lifetime average sits under a rising market
+// by construction and would stamp the win every time diesel climbs.
 export const DieselCompareCard = ({
   national,
   yourCostPerGallon,
@@ -47,7 +51,7 @@ export const DieselCompareCard = ({
           </p>
         </div>
         <div>
-          <p className="text-xs text-faint">Your avg / gal</p>
+          <p className="text-xs text-faint">You · last 30 days</p>
           <p className="text-2xl font-condensed mt-1 text-ink">
             {yourCostPerGallon == null ? "—" : dieselPrice(yourCostPerGallon)}
           </p>

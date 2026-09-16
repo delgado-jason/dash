@@ -344,14 +344,20 @@ const FuelEntriesPage = () => {
           <span className="text-[13.5px] text-faint">
             · <b className="font-semibold text-ink tabular-nums">{Math.round(stats.totalGallons).toLocaleString("en-US")} gal</b>
             {" "}· <b className="font-semibold text-ink tabular-nums">{money(stats.totalSpend)}</b>
-            {stats.avgCostPerGallon != null && (
-              <> · <b className="font-semibold text-ink tabular-nums">${stats.avgCostPerGallon.toFixed(2)}</b>/gal avg</>
-            )}
             {stats.avgMpg != null && (
               <> · <b className="font-semibold text-ink tabular-nums">{stats.avgMpg.toFixed(1)}</b> MPG avg</>
             )}
-            {stats.costPerMile90 != null && (
-              <> · <b className="font-semibold text-ink tabular-nums">${stats.costPerMile90.toFixed(2)}</b>/mi · 90-day</>
+            {/* the priced figures ride the last 30 days — diesel moves too fast for a lifetime average to mean anything today */}
+            {(stats.paidPerGallon30 != null || stats.costPerMile30 != null) && (
+              <>
+                {stats.paidPerGallon30 != null && (
+                  <> · <b className="font-semibold text-ink tabular-nums">${stats.paidPerGallon30.toFixed(2)}</b>/gal</>
+                )}
+                {stats.costPerMile30 != null && (
+                  <> · <b className="font-semibold text-ink tabular-nums">${stats.costPerMile30.toFixed(2)}</b>/mi</>
+                )}
+                {" · last 30 days"}
+              </>
             )}
             {realStates > 0 && <> · <b className="font-semibold text-ink">{realStates}</b> states</>}
           </span>
@@ -364,9 +370,12 @@ const FuelEntriesPage = () => {
           <DieselPriceChart data={dieselData} />
         </div>
 
+        {/* your last 30 days of gallons against the EIA's latest week — a
+            lifetime average against this week's price would flatter you every
+            time diesel climbs */}
         <DieselCompareCard
           national={national}
-          yourCostPerGallon={stats.avgCostPerGallon}
+          yourCostPerGallon={stats.paidPerGallon30}
         />
 
         <FuelVsRevenueCard data={fuelRev} />

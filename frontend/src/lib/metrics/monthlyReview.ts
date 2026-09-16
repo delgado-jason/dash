@@ -1,7 +1,8 @@
 // THE MONTHLY REVIEW (Jason, 2026-09-04; v2 mockup approved): review MONTHLY,
 // judge on the TRAILING 90 DAYS — at ~8 loads/month a single month is noise
-// and the quarter is evidence. Same ~90-day doctrine as break-even, fuel
-// windows, and the QBO margin. The verdicts themselves moved to
+// and the quarter is evidence. Same ~90-day doctrine as break-even and the
+// QBO margin (fuel dropped to 30 days on 2026-09-16 — diesel moves faster
+// than a book of agents does). The verdicts themselves moved to
 // lib/relationships/review.ts with REL-01 v2.0 (they are the re-tier
 // suggestion's direction now); what stays here is the window every board on
 // the Review judges on.
