@@ -4,7 +4,8 @@
 //    the bank isn't a cost). First-settlement-of-month runs heavy —
 //    insurance is due that week — so a flat average lies twice a month.
 //  * fuel: rolling 30 DAYS from the fuel log — the cash job wants
-//    responsiveness; the 90-day window stays on cost-per-mile (the rate job).
+//    responsiveness. (The cost-per-mile rate job ran on 90 days until
+//    2026-09-16; it is 30 now too — fuelEconomy.FUEL_WINDOW_DAYS.)
 //  * per-load rollup: a load's settlement truth is CUMULATIVE — original
 //    payment plus every later adjustment, verified against dash's expected
 //    net; a named late fee reads informational, an unexplained revenue

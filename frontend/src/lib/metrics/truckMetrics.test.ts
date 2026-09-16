@@ -103,7 +103,7 @@ describe("computeTruckMetrics — days-based utilization", () => {
 describe("computeTruckMetrics — all-in cost to run (note)", () => {
   const truck = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
   const loads = [load("2026-01-05", "2026-01-07")]; // 500 loaded miles, delivered+paid
-  // 600 mi on $360 closing Jan 20 — inside 90 days of `now` → fuel $0.60/mi.
+  // 600 mi on $360 closing Jan 20 — inside 30 days of `now` → fuel $0.60/mi.
   const fuel = tankWindow(100000, 600, 360, "2026-01-20");
 
   it("no fuel logged → cost to run is NULL (fuel unknown), never a fuel-less total", () => {
@@ -129,9 +129,9 @@ describe("computeTruckMetrics — all-in cost to run (note)", () => {
   });
 });
 
-describe("computeTruckMetrics — fuel $/mi rides the 90-day tank windows", () => {
+describe("computeTruckMetrics — fuel $/mi rides the 30-day tank windows", () => {
   const truck = { in_service_date: "2025-01-01", current_odometer: 0 } as Truck;
-  // 600 mi on $360 closing Jan 20 2026 → $0.60/mi, well inside 90 days of `now`.
+  // 600 mi on $360 closing Jan 20 2026 → $0.60/mi, 12 days inside the 30-day window.
   const fuel = tankWindow(100000, 600, 360, "2026-01-20");
 
   it("load miles outside the fuel log do NOT dilute fuel $/mi (the 31¢-vs-68¢ bug)", () => {
@@ -146,16 +146,19 @@ describe("computeTruckMetrics — fuel $/mi rides the 90-day tank windows", () =
     expect(m.costToRunPerMile).toBeCloseTo(0.6, 6); // no maint, no note
   });
 
-  it("fuel windows older than 90 days → fuel and cost-to-run go null, MPG stays", () => {
+  it("fuel windows older than 30 days → fuel and cost-to-run go null, MPG stays", () => {
     // Same window but closed 2025-10-01 — 123 days before `now` (2026-02-01).
     const stale = tankWindow(100000, 600, 360, "2025-10-01");
     const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000, stale);
     expect(m.fuelPerMile).toBeNull();
     expect(m.costToRunPerMile).toBeNull(); // even with a note — fuel is unknown
     expect(m.avgMpg).not.toBeNull(); // lifetime MPG is mechanical, not priced
+    // 43 days back was IN under the old 90-day window; it is out now.
+    const sixWeeks = tankWindow(100000, 600, 360, "2025-12-20");
+    expect(run(truck, [load("2026-01-05", "2026-01-07")], [], [], 0, sixWeeks).fuelPerMile).toBeNull();
   });
 
-  it("folds real maintenance dollars in: fuel(90d) + maint ÷ miles + note", () => {
+  it("folds real maintenance dollars in: fuel(30d) + maint ÷ miles + note", () => {
     const services = [
       { unit: "tractor", cost: "400" }, // numeric string, like Postgres sends it
       { unit: "both", cost: 100 },
