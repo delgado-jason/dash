@@ -1,31 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { statesInRegion } from "@/lib/constants/states";
+import { useCityCoords } from "@/hooks/useCityCoords";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import { cityKey, emptyNextAnchor } from "@/lib/metrics/foreman";
+import { getRegion } from "@/lib/constants/states";
 import {
-  getRecentLoads,
-  getRegionRollup,
-  getWindowTotals,
-  getOriginStateRollup,
-  getAreaMapData,
-  getAreaDetail,
-  levelForWindow,
-} from "@/lib/metrics/lanes";
-import { OriginMarkets } from "@/components/lanes/OriginMarkets";
-import { LanesMapBoard } from "@/components/lanes/LanesMapBoard";
-import { LanesTable } from "@/components/lanes/LanesTable";
-import { StateDetailPanel } from "@/components/lanes/StateDetailPanel";
-import type { MapMode } from "@/components/lanes/mapColor";
+  LEDGER_WINDOWS,
+  DEFAULT_WINDOW,
+  buildLedger,
+  ledgerHeadline,
+  marketDetail,
+  repeatLanes,
+  sequenceLoads,
+  windowLoads,
+  type LedgerGrain,
+  type LedgerWindow,
+} from "@/lib/metrics/marketLedger";
+import { LanesMap, type MapPin } from "@/components/lanes/LanesMap";
+import { MarketLedger } from "@/components/lanes/MarketLedger";
+import { RepeatLanesBoard } from "@/components/lanes/RepeatLanesBoard";
+import { MarketDetailPanel } from "@/components/lanes/MarketDetailPanel";
+import type { MapMetric } from "@/components/lanes/mapColor";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { rpm as fmtRpm } from "@/lib/format";
 
-const WINDOWS = [30, 60, 90];
+const LANES_KEY = "dash.lanes.showLanes";
 
-// Night Cab segmented control (the statusbar owns window + shade mode,
-// per the approved Lanes mockup).
+// The answering line never prints a figure it doesn't have.
+const days1 = (n: number | null): string => (n == null ? "—" : n.toFixed(1));
+const miles0 = (n: number | null): string =>
+  n == null ? "—" : String(Math.round(n));
+
+const METRICS: { value: MapMetric; label: string }[] = [
+  { value: "out", label: "OUT · $/mi" },
+  { value: "in", label: "IN · reload" },
+  { value: "volume", label: "Volume" },
+];
+
+const GRAINS: { value: LedgerGrain; label: string }[] = [
+  { value: "state", label: "States" },
+  { value: "region", label: "Regions" },
+];
+
+// Night Cab segmented control — the statusbar owns the window, the metric and
+// the grain, per the approved Lanes mockup.
 const Seg = <T extends string | number>({
   options,
   value,
@@ -50,9 +72,7 @@ const Seg = <T extends string | number>({
         aria-selected={value === o.value}
         onClick={() => onChange(o.value)}
         className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] tracking-[.05em] transition-colors ${
-          value === o.value
-            ? "bg-amber text-canvas"
-            : "text-dim hover:text-ink"
+          value === o.value ? "bg-amber text-canvas" : "text-dim hover:text-ink"
         }`}
       >
         {o.label}
@@ -61,24 +81,77 @@ const Seg = <T extends string | number>({
   </div>
 );
 
+const readShowLanes = (): boolean => {
+  try {
+    return localStorage.getItem(LANES_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
 const LanesPage = () => {
   const [refreshKey] = useState(0);
-  const [windowDays, setWindowDays] = useState(90);
-  const [mode, setMode] = useState<MapMode>("rate");
+  // One clock for the whole render, taken once — every window boundary and
+  // every day-key comparison below has to agree with itself.
+  const [now] = useState(() => new Date());
+  const [win, setWin] = useState<LedgerWindow>(DEFAULT_WINDOW);
+  const [metric, setMetric] = useState<MapMetric>("out");
+  const [grain, setGrain] = useState<LedgerGrain>("state");
   const [selected, setSelected] = useState<string | null>(null);
-  // Issue #228 — the region row that is lighting its states on the map.
-  // Clicking the same row again clears it.
-  const [litRegion, setLitRegion] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [showLanes, setShowLanes] = useState<boolean>(readShowLanes);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+
   const { loads, isLoading, error } = useLoads(refreshKey);
-  // The ladder's daily break-even / target — what the $/day column is graded
-  // against (decision 2A). Above the early returns: hooks never sit under one.
+  // Hooks never sit under an early return.
   const targets = useRateTargets(loads);
-  const litStates = useMemo(() => statesInRegion(litRegion), [litRegion]);
+  const coords = useCityCoords(loads);
+
+  const seq = useMemo(() => sequenceLoads(loads), [loads]);
+  // The window's own loads — the ledger rolls the rows up from exactly these,
+  // and the answering line counts exactly these.
+  const scoped = useMemo(() => windowLoads(loads, win, now), [loads, win, now]);
+  const rows = useMemo(
+    () => buildLedger(loads, win, now, grain),
+    [loads, win, now, grain],
+  );
+  const head = useMemo(
+    () => ledgerHeadline(rows, scoped, grain),
+    [rows, scoped, grain],
+  );
+  const lanes = useMemo(() => repeatLanes(loads, win, now), [loads, win, now]);
+
+  const freeHours = schedule ? Number(schedule.detention_free_hours) : 3;
+  const detail = useMemo(
+    () =>
+      selected
+        ? marketDetail(loads, seq, win, now, selected, grain, freeHours)
+        : null,
+    [selected, loads, seq, win, now, grain, freeHours],
+  );
+
+  // Where you'll be empty next, straight from the Foreman, projected with the
+  // map's own projection. Nothing drawn when the city has no coordinate yet.
+  const pin = useMemo<MapPin | null>(() => {
+    const anchor = emptyNextAnchor(loads);
+    if (!anchor) return null;
+    const c = coords.get(cityKey(anchor.city, anchor.state));
+    return c
+      ? { city: anchor.city, state: anchor.state, lat: c.lat, lng: c.lng }
+      : null;
+  }, [loads, coords]);
 
   useEffect(() => {
     getSettlementSchedule().then(setSchedule).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LANES_KEY, showLanes ? "1" : "0");
+    } catch {
+      /* a browser with storage blocked still gets the toggle, just not the memory */
+    }
+  }, [showLanes]);
 
   if (isLoading)
     return (
@@ -97,28 +170,10 @@ const LanesPage = () => {
       </div>
     );
 
-  // The tab drives both the time window and the map's spatial granularity:
-  // 30d → macro-regions, 60d → freight regions, 90d → states. Coarser on the
-  // sparser window so it still reads; finer once there's data to justify it.
-  const level = levelForWindow(windowDays);
-  const windowLoads = getRecentLoads(loads, windowDays);
-  const rollup = getRegionRollup(windowLoads);
-  const totals = getWindowTotals(windowLoads);
-  const origins = getOriginStateRollup(windowLoads);
-  const mapData = getAreaMapData(loads, windowDays, level);
-  const freeHours = schedule?.detention_free_hours ?? 3;
-  const detail = selected
-    ? getAreaDetail(loads, level, selected, freeHours, windowDays)
-    : null;
+  const areaWord = grain === "state" ? "state" : "region";
+  const emptyPct =
+    head.emptyShare == null ? null : Math.round(head.emptyShare * 100);
 
-  const levelWord =
-    level === "macro"
-      ? "macro-regions"
-      : level === "region"
-        ? "freight regions"
-        : "states";
-
-  // Full-bleed per the mockup: canvas to the top, controls in the statusbar.
   return (
     <div className="min-h-screen text-ink font-body">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
@@ -128,87 +183,157 @@ const LanesPage = () => {
             LANES
           </h1>
           <span className="font-condensed font-medium text-[15px] text-dim">
-            last {windowDays} days · {levelWord}
+            where your freight is born, and what each stop leaves you
           </span>
           <span className="flex-1" />
           <Seg
-            ariaLabel="Lane window"
-            options={WINDOWS.map((w) => ({ value: w, label: `${w}d` }))}
-            value={windowDays}
-            onChange={(w) => {
-              setWindowDays(w);
-              setSelected(null); // a state/region key won't exist at the new level
-              setLitRegion(null); // and the rollup behind the highlight is rebuilt
-            }}
+            ariaLabel="Ledger window"
+            options={LEDGER_WINDOWS}
+            value={win}
+            onChange={setWin}
           />
           <Seg
-            ariaLabel="Shade mode"
-            options={[
-              { value: "volume" as MapMode, label: "Volume" },
-              { value: "rate" as MapMode, label: "Rate" },
-            ]}
-            value={mode}
-            onChange={setMode}
+            ariaLabel="Map metric"
+            options={METRICS}
+            value={metric}
+            onChange={setMetric}
+          />
+          <Seg
+            ariaLabel="Ledger grain"
+            options={GRAINS}
+            value={grain}
+            onChange={(g) => {
+              setGrain(g);
+              setSelected(null); // a state key doesn't exist at region grain
+              setHovered(null);
+            }}
           />
         </div>
 
-        {/* answering line — the window in three numbers; the map is the story */}
-        <div className="flex items-baseline gap-3 flex-wrap mt-4">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
-            {totals.loads} LOAD{totals.loads === 1 ? "" : "S"}
+        {/* the answering line — every clause drops out when its figure is null */}
+        <div className="flex items-baseline gap-3 flex-wrap mt-4 font-condensed text-[14px] text-dim">
+          <span className="font-display text-[21px] tracking-[.03em] tabular-nums text-ink">
+            {head.loads} LOAD{head.loads === 1 ? "" : "S"}
           </span>
-          <span className="font-condensed text-[13.5px] text-faint">
-            · <b className="font-semibold text-ink">
-              ${Math.round(totals.linehaul).toLocaleString("en-US")}
-            </b>{" "}
-            linehaul
-            {totals.blendedRpm != null && (
+          <span>
+            · {head.originStates} origin {areaWord}
+            {head.originStates === 1 ? "" : "s"} · {head.deliveryStates} delivery{" "}
+            {areaWord}
+            {head.deliveryStates === 1 ? "" : "s"}
+            {emptyPct != null && (
               <>
                 {" "}
-                · <b className="font-semibold text-ink">${totals.blendedRpm.toFixed(2)}</b>
-                /mi blended
+                · <b className="font-semibold text-ink">{emptyPct}%</b> of your miles
+                empty
               </>
-            )}{" "}
-            · click a state to drill
+            )}
+            {head.bestOut && (
+              <>
+                {" "}
+                · best market to load{" "}
+                <b className="font-semibold text-status-positive-text">
+                  {head.bestOut.state} {fmtRpm(head.bestOut.out.typicalRpm)}/mi
+                </b>{" "}
+                ({head.bestOut.out.loads})
+              </>
+            )}
+            {head.easiestIn && (
+              <>
+                {" "}
+                · easiest place to get empty{" "}
+                <b className="font-semibold text-status-positive-text">
+                  {head.easiestIn.state}
+                </b>{" "}
+                ({miles0(head.easiestIn.in.reloadMilesMedian)} mi,{" "}
+                {days1(head.easiestIn.in.idleDaysAvg)} days)
+              </>
+            )}
+            {head.costliestIn && (
+              <>
+                {" "}
+                · costliest{" "}
+                <b className="font-semibold text-status-negative-text">
+                  {head.costliestIn.state}
+                </b>{" "}
+                ({miles0(head.costliestIn.in.reloadMilesMedian)} mi,{" "}
+                {days1(head.costliestIn.in.idleDaysAvg)} days)
+              </>
+            )}
+            {/* said once, here: a delivered load with no pickup date can't be
+                sequenced, so it is out of every IN figure on the page */}
+            {head.undated > 0 && <> · {head.undated} undated</>}
           </span>
         </div>
 
-        <div className="mt-4">
-          <LanesMapBoard
-            data={mapData}
-            level={level}
-            windowDays={windowDays}
-            selected={selected}
-            onSelect={setSelected}
-            mode={mode}
-            onModeChange={setMode}
-            windowLoads={windowLoads}
-            highlightStates={litStates}
-          />
-        </div>
-
-        <OriginMarkets rollup={origins} windowDays={windowDays} />
-
-        {detail ? (
-          <StateDetailPanel
-            detail={detail}
-            windowDays={windowDays}
-            onClear={() => setSelected(null)}
-          />
-        ) : (
-          <div className="ds2-board mt-4 p-4">
-            <p className="text-xs text-faint mb-2">
-              By region · last {windowDays} days · a region row lights its
-              states on the map and expands its markets · click it again to
-              clear · or click the map to drill in
-            </p>
-            <LanesTable
-              rollup={rollup}
-              daily={targets.gross}
-              highlightedRegion={litRegion}
-              onHighlightRegion={setLitRegion}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-4 mt-4 items-start">
+          <div className="ds2-board p-3.5 lg:sticky lg:top-4 self-start">
+            <div className="flex items-center gap-2.5 flex-wrap pb-2.5">
+              <span className="ds2-label">Where the freight lives</span>
+              <span className="ml-auto flex items-center gap-2.5 font-condensed text-[11.5px] text-amber-hi">
+                hover a {areaWord} · click to pin ·
+                <label className="flex items-center gap-1.5 text-dim cursor-pointer select-none">
+                  lanes
+                  <input
+                    type="checkbox"
+                    checked={showLanes}
+                    onChange={(e) => setShowLanes(e.target.checked)}
+                    className="accent-[#e8940a]"
+                  />
+                </label>
+              </span>
+            </div>
+            <LanesMap
+              rows={rows}
+              metric={metric}
+              selected={selected}
+              onSelect={setSelected}
+              showLanes={showLanes}
+              lanes={lanes.rows}
+              pin={pin}
+              hoverRow={(row) => setHovered(row?.state ?? null)}
+              hovered={hovered}
             />
           </div>
+
+          <div className="ds2-board overflow-hidden">
+            <div className="flex items-center gap-2.5 px-3.5 pt-2.5 pb-1.5">
+              <span className="ds2-label">The market ledger</span>
+              <span className="ml-auto font-condensed text-[11.5px] text-amber-hi">
+                sorted by OUT $/mi · 2+ loads
+              </span>
+            </div>
+            <MarketLedger
+              rows={rows}
+              daily={targets.gross}
+              selected={selected}
+              onSelect={setSelected}
+              hovered={hovered}
+              onHover={setHovered}
+              grainWord={areaWord}
+            />
+          </div>
+        </div>
+
+        <RepeatLanesBoard
+          lanes={lanes}
+          daily={targets.gross}
+          onSelect={(state) => {
+            // A lane row knows its origin STATE; at region grain the ledger is
+            // keyed by the freight region that state belongs to.
+            const key = grain === "state" ? state : getRegion(state);
+            setSelected(rows.some((r) => r.state === key) ? key : null);
+          }}
+        />
+
+        {detail && selected && (
+          <MarketDetailPanel
+            detail={detail}
+            market={selected}
+            outGrade={
+              rows.find((r) => r.state === selected)?.out.grade ?? "thin"
+            }
+            onClear={() => setSelected(null)}
+          />
         )}
       </div>
     </div>

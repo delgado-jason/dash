@@ -10,6 +10,9 @@ import { loadRevenue } from "./loads"; // GROSS per load
 import { median } from "./stats";
 import { haversineMiles, cityKey, type CoordMap } from "./foreman";
 import type { AgentScorecard } from "./agentScorecard";
+// Type-only (erased at build, so no import cycle): the load sequence the IN
+// half grades lives with the ledger that builds it.
+import type { SequencedLoad } from "./marketLedger";
 
 const up = (s?: string | null): string => String(s ?? "").trim().toUpperCase();
 const loadedRpm = (l: Load): number | null => {
@@ -39,7 +42,15 @@ export interface OutboundMarket {
 // Your outbound strength per origin state, from delivered loads. Grade is relative
 // to your OWN overall outbound rate, so it means "good/soft FOR ME," not a market
 // absolute.
-export const outboundStrength = (loads: Load[]): Map<string, OutboundMarket> => {
+//
+// `keyFor` is how a load is bucketed — the origin STATE by default, which is what
+// the Load Scorer asks for. The Lanes ledger passes a freight-region key at region
+// grain so the region rows are graded by this same arithmetic on the region's own
+// loads, rather than by averaging state grades (which would be a second rule).
+export const outboundStrength = (
+  loads: Load[],
+  keyFor: (l: Load) => string = (l) => up(l.origin_state),
+): Map<string, OutboundMarket> => {
   const delivered = loads.filter((l) => l.load_status === "delivered");
   const overall = median(
     delivered.map(loadedRpm).filter((r): r is number => r != null),
@@ -47,7 +58,7 @@ export const outboundStrength = (loads: Load[]): Map<string, OutboundMarket> => 
 
   const byState = new Map<string, Load[]>();
   for (const l of delivered) {
-    const s = up(l.origin_state);
+    const s = keyFor(l);
     if (!s) continue;
     (byState.get(s) ?? byState.set(s, []).get(s)!).push(l);
   }
@@ -70,6 +81,117 @@ export const outboundStrength = (loads: Load[]): Map<string, OutboundMarket> => 
       grade = "fair";
     }
     out.set(state, { state, loadsOut, medianRpm, agents, grade });
+  }
+  return out;
+};
+
+// ---- the IN half: what a delivery there LEAVES you ----
+//
+// The other side of the same question. `outboundStrength` grades the freight a
+// market gives you; this grades the cost of getting empty in it — read off your
+// own load sequence (the next load's deadhead and how long you waited for it),
+// relative to YOUR median reload, exactly as the OUT half is relative to your
+// own median rate. Lives here beside it so Score a Load can read one module.
+// Calibrated on the real book 2026-09-16 (median reload 162 mi over 55 logged
+// reloads): the sheet's 70 % / 150 % turned nearly every market "fair". At
+// 85 % / 125 % PA and OH read strong, TX/VA/KY/MI soft, NC and IN fair —
+// a spread a dispatcher can act on.
+export const IN_STRONG_MULT = 0.85; // reload ≤ 85% of your median → cheap to leave
+export const IN_SOFT_MULT = 1.25; // ≥ 125% of it → expensive
+export const IN_STRONG_MIN = 3; // …and enough deliveries to mean it
+export const IN_IDLE_STRONG = 2; // days waiting for the next pickup
+export const IN_IDLE_SOFT = 3;
+
+export interface InboundMarket {
+  state: string;
+  // Delivered loads that ENDED here AND carry a pickup date, i.e. the legs the
+  // sequence can actually read a reload off. One delivery set for the grade and
+  // for the ledger row beside it — an undated load is counted in neither.
+  deliveries: number;
+  reloadMilesMedian: number | null; // typical empty run to the next pickup
+  idleDaysAvg: number | null; // days between delivery and the next pickup
+  nextRpmMedian: number | null; // what the load you found here paid
+  grade: MarketGrade;
+}
+
+const mean = (xs: number[]): number | null =>
+  xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null;
+
+// YOUR median reload — the yardstick every market is judged against. It is
+// computed over the WHOLE sequence (every delivered load, all time), never over
+// the window being displayed: a market's grade answers "how does this stop
+// compare to my book", so flipping 12 months → this year → all time must not
+// move the yardstick under a market whose own numbers didn't change.
+export const reloadYardstick = (seq: SequencedLoad[]): number | null =>
+  median(
+    seq.map((s) => s.next?.deadheadMiles).filter((m): m is number => m != null),
+  );
+
+// A 0 deadhead is "not logged", never free — `sequenceLoads` already nulls it,
+// so every figure here is over the legs that actually carry a number.
+//
+// `yardstick` is required and passed in on purpose (`reloadYardstick` builds
+// it): when it was derived from `seq` inside, a caller handing in one window's
+// legs silently graded that window against itself.
+export const inboundStrength = (
+  seq: SequencedLoad[],
+  yardstick: number | null,
+  keyFor: (s: SequencedLoad) => string = (s) => up(s.load.destination_state),
+): Map<string, InboundMarket> => {
+  const yourMedian = yardstick;
+
+  const byState = new Map<string, SequencedLoad[]>();
+  for (const s of seq) {
+    const k = keyFor(s);
+    if (!k) continue;
+    (byState.get(k) ?? byState.set(k, []).get(k)!).push(s);
+  }
+
+  const out = new Map<string, InboundMarket>();
+  for (const [state, group] of byState) {
+    const reloads = group
+      .map((s) => s.next?.deadheadMiles)
+      .filter((m): m is number => m != null);
+    // A week off doesn't grade a market: home entries leave the idle average.
+    const idles = group
+      .filter((s) => !s.home)
+      .map((s) => s.next?.idleDays)
+      .filter((d): d is number => d != null);
+    const rpms = group
+      .map((s) => s.next?.rpm)
+      .filter((r): r is number => r != null);
+
+    const reloadMilesMedian = median(reloads);
+    const idleDaysAvg = mean(idles);
+
+    let grade: MarketGrade;
+    if (group.length < 2 || reloadMilesMedian == null) {
+      grade = "thin";
+    } else if (
+      yourMedian != null &&
+      reloadMilesMedian <= yourMedian * IN_STRONG_MULT &&
+      idleDaysAvg != null &&
+      idleDaysAvg <= IN_IDLE_STRONG &&
+      group.length >= IN_STRONG_MIN
+    ) {
+      grade = "strong";
+    } else if (
+      (yourMedian != null && reloadMilesMedian >= yourMedian * IN_SOFT_MULT) ||
+      (idleDaysAvg != null && idleDaysAvg >= IN_IDLE_SOFT)
+    ) {
+      grade = "soft";
+    } else {
+      grade = "fair";
+    }
+
+    out.set(state, {
+      state,
+      deliveries: group.length,
+      reloadMilesMedian,
+      idleDaysAvg,
+      nextRpmMedian: median(rpms),
+      grade,
+    });
   }
   return out;
 };
@@ -144,6 +266,9 @@ export const theCall = (
   verdict: Verdict | null,
   dest: DestinationFactor | null,
   agent: AgentScorecard | null | undefined,
+  // Kept in the signature for the Scorer's call site (and so the flag is there
+  // when the copy starts using it); deliberately unread today.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _isNewAgent: boolean,
 ): TheCall | null => {
   if (!verdict) return null;
