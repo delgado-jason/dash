@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { requireServiceToken } from "../middleware/requireServiceToken.js";
 import {
   getDocumentsForLoad,
+  loadExists,
   registerDocument,
 } from "../services/documentServices.js";
 
@@ -17,6 +18,23 @@ router.get("/load/:load_id", requireAuth, async (req, res) => {
       count: documents.length,
       documents,
     });
+  } catch (err) {
+    if (err.type === "validation") return res.status(err.statusCode).json({ error: err.message });
+    return res.status(500).json({ error: "Internal Server Error", message: err.message });
+  }
+});
+
+// The vault's gate: the DTS server asks BEFORE it creates a load folder
+// (Vault Door Nod Sheet, decision 10). The status is the answer the robot
+// reads — 200 the load exists, 404 it doesn't — and the body says the same
+// thing for a human. Service token only, like /ingest.
+router.get("/load-exists", requireServiceToken, async (req, res) => {
+  try {
+    const found = await loadExists(req.user.user_id, req.query.load_number);
+    if (!found.exists) {
+      return res.status(404).json({ ...found, error: `No load with number ${found.load_number}` });
+    }
+    return res.status(200).json(found);
   } catch (err) {
     if (err.type === "validation") return res.status(err.statusCode).json({ error: err.message });
     return res.status(500).json({ error: "Internal Server Error", message: err.message });
