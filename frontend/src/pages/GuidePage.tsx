@@ -342,6 +342,8 @@ const NAV: { group: string; items: string[] }[] = [
       "Market & Rates — reading the cycle",
       "Rate per mile (RPM)",
       "Lane rate — typical vs blended",
+      "The market ledger — out and in",
+      "The reload cost — what a stop leaves you",
       "Outstanding loads — how long money sits",
       "Two-week cash — will you clear the drafts",
       "The settlements — Landstar's actuals",
@@ -610,10 +612,10 @@ const GuidePage = () => {
                 every week.)
               </TabLine>
               <TabLine name="Lanes" q="Where does my freight run?">
-                The U.S. map shaded by your $/mi (fire marks your best-paying
-                markets), your top lanes by gross, and your load-type mix —
-                oversize, flatbed, specialized. The 30/60/90 toggle sets both the
-                window and how finely the map groups.
+                The U.S. map shaded by one metric at a time — what a market pays
+                when you load there, what it costs you to get empty there, or
+                plain volume — beside the market ledger that carries both halves
+                of every market, with your repeat lanes underneath.
               </TabLine>
               <TabLine name="Agents" q="Who should I call?">
                 Your bench plotted by rate × volume, who you're running with lately
@@ -1237,16 +1239,117 @@ const GuidePage = () => {
               header.
             </Why>
             <Why>
-              The <span className="text-light">map</span> shades by your own
-              median $/mi (toggle to volume for load count) — thin areas dim so
-              one fluke doesn't light one up, and a flame marks your best-paying
-              spots. Its <span className="text-light">detail follows the tab</span>:
-              30d groups the country into a few big macro-regions, 60d into
-              freight regions, 90d down to individual states — coarser when the
-              window's sparse so it still reads, finer once there's enough data to
-              trust. <span className="text-light">Click any area</span> to see the
-              agents you've booked out of it (rate, volume, on-time, each linking
-              to their page) and your top lanes from it — all your own history.
+              The same typical-vs-blended rule governs every $/mi in the market
+              ledger and the repeat-lane board on that page — see{" "}
+              <span className="text-light">The market ledger — out and in</span>,
+              below, for what the two halves of a market row mean and how the map
+              shades them.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="The market ledger — out and in"
+            answers="Every market you touch, in two halves: what the freight born there pays you, and what a delivery there leaves you."
+            sources={[{ label: "Lanes", to: "/lanes" }]}
+          >
+            <Formula>
+              one row per market · OUT = loads born here · IN = when you deliver
+              here
+            </Formula>
+            <Why>
+              Spot oversize barely repeats a <span className="text-light">lane</span>{" "}
+              — you've run 57 different market-to-market lanes and only four of
+              them twice. It does repeat <span className="text-light">markets</span>,
+              so the unit on the Lanes page is the market, and every market gets a
+              row with two halves. Lanes keep one honest board of their own
+              underneath: the ones you've run more than once.
+            </Why>
+            <Why>
+              <span className="text-light">OUT</span> — the freight born there:
+              how many loads, the typical $/mi, the $/day, and how many agents
+              source it. Its grade is not a second opinion: it is the{" "}
+              <span className="text-light">Load Scorer's own market rule</span>{" "}
+              (strong ≥ 105% of your overall typical rate over at least four
+              loads, soft ≤ 85% of it, thin under two loads), computed on the
+              window's loads, so this page and Score a Load can never disagree
+              about whether a market is worth loading in.
+            </Why>
+            <Why>
+              <span className="text-light">IN</span> — what a delivery there
+              leaves you: how many deliveries, the typical empty miles to your
+              next pickup, the days you waited, and what that next load paid. That
+              is the number the page was missing, and it has its own section
+              below.
+            </Why>
+            <Why>
+              <span className="text-light">Regions</span> flips the same ledger to
+              the nine freight regions. The rows aren't averaged from the state
+              rows — every rate, every $/day and both grades are recomputed from
+              the region's own loads, so a region row is the same arithmetic on a
+              bigger pile.
+            </Why>
+            <Why>
+              The <span className="text-light">windows</span> are 12 months (the
+              default), this year, and all time. The old 30/60/90 tabs came off:
+              on a spot book they were showing four loads and a blank map, which
+              is a smaller sample than any of these numbers can survive.
+            </Why>
+            <Why>
+              The <span className="text-light">map</span> shades one metric at a
+              time — OUT $/mi, IN reload miles, or volume — and both money metrics
+              read the same way, brighter is better, so the IN ramp is inverted
+              (fewer empty miles is the bright end). A market with a{" "}
+              <span className="text-light">single load</span> on the metric's own
+              side is hatched rather than shaded: one haul is a story, not a
+              market. A market you've never touched stays dark. Hover a state for
+              its ledger row, click it to pin the row and open its detail, and
+              flip "lanes" on to draw your repeat lanes as lines. The blue pin is
+              where you'll be empty next, straight from the Foreman.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="The reload cost — what a stop leaves you"
+            answers="The price of getting empty in a market: the empty miles to your next pickup and the days you waited for it, graded against your own median."
+            sources={[{ label: "Lanes", to: "/lanes" }]}
+          >
+            <Formula>
+              reload miles = the NEXT load's deadhead · idle days = its pickup −
+              this delivery
+            </Formula>
+            <Why>
+              Nothing new to enter: this is read straight off your own{" "}
+              <span className="text-light">load sequence</span>. Sort every
+              delivered load by pickup date, and the load after this one tells you
+              what this stop cost — how far you ran empty to reach it, and how many
+              days the truck sat first. The market's figures are the{" "}
+              <span className="text-light">median</span> reload and the average
+              idle over every delivery there.
+            </Why>
+            <Why>
+              A deadhead of <span className="text-light">0</span> on the next load
+              is <span className="text-light">"not logged"</span>, never free. It
+              is missing data, so it is left out of the median rather than counted
+              as a reload that cost you nothing — which would flatter every market
+              you've been sloppy in.
+            </Why>
+            <Why>
+              Idle over <span className="text-light">seven days</span> is home
+              time, not a market's fault. Those legs are marked{" "}
+              <span className="text-light">home</span>, shown in the detail as "17
+              d (home)", and kept out of every idle average and every grade — a
+              week off shouldn't grade a market soft.
+            </Why>
+            <Why>
+              The <span className="text-light">grade</span> is relative to your own
+              book, like every other verdict in dash.{" "}
+              <span className="text-light">Strong</span> = a median reload at or
+              under 85% of your own median reload AND two idle days or fewer, over
+              at least three deliveries. <span className="text-light">Soft</span> =
+              a median reload at or over 125% of yours, OR three idle days or more.{" "}
+              <span className="text-light">Thin</span> = fewer than two deliveries,
+              or no reload ever logged there — shown, never graded. Everything else
+              is <span className="text-light">fair</span>.
             </Why>
           </Metric>
 

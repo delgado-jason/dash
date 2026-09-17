@@ -1,32 +1,52 @@
-import { useMemo, useRef, useState } from "react";
-import { geoAlbersUsa, geoPath } from "d3-geo";
-import { feature, merge } from "topojson-client";
-import type { Feature, FeatureCollection, Geometry, MultiPolygon } from "geojson";
-import statesTopo from "us-atlas/states-10m.json";
-import type { AreaMapDatum, MapLevel } from "@/lib/metrics/lanes";
-import { groupKeyForStateName } from "@/lib/metrics/lanes";
-import { litFor } from "@/lib/constants/states";
-import { rpm as fmtRpm } from "@/lib/format";
 import {
-  colorFor,
-  maxLoadsOf,
-  maxRateOf,
-  type MapMode,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
+import { geoAlbersUsa, geoPath } from "d3-geo";
+import { feature } from "topojson-client";
+import type { FeatureCollection, Geometry } from "geojson";
+import statesTopo from "us-atlas/states-10m.json";
+import type { LaneRow, LedgerRow } from "@/lib/metrics/marketLedger";
+import { getStateName, statesInRegion } from "@/lib/constants/states";
+import { money, rpm as fmtRpm } from "@/lib/format";
+import {
+  colorForRow,
+  mapScale,
+  metricThin,
+  HATCH_ID,
+  IN_RAMP,
+  METRIC_LEGEND,
+  RATE_RAMP,
+  VOL_RAMP,
+  type MapMetric,
+  type MapScale,
 } from "@/components/lanes/mapColor";
 
+// The map, flat (decision 3A): real state shapes, one metric at a time, no
+// WebGL and no animation. The 3-D board and its three.js/GSAP chunk are gone —
+// this reads at a glance and loads in nothing.
+export interface MapPin {
+  city: string;
+  state: string;
+  lat: number;
+  lng: number;
+}
+
 interface Props {
-  data: Record<string, AreaMapDatum>;
-  level: MapLevel;
-  windowDays: number;
+  rows: LedgerRow[];
+  metric: MapMetric;
   selected: string | null;
-  onSelect: (key: string) => void;
-  noir?: boolean; // legacy flag, kept for the dashboard tab call site
-  mode?: MapMode; // controlled from the page statusbar; falls back to internal state
-  onModeChange?: (m: MapMode) => void;
-  // Issue #228 — the states to light up, by full name, from the region row
-  // the lanes table has open (lib/constants/states → statesInRegion). Empty
-  // or absent: nothing is lit and the map draws exactly as it always did.
-  highlightStates?: ReadonlySet<string>;
+  onSelect: (state: string | null) => void;
+  showLanes: boolean;
+  lanes: LaneRow[];
+  pin: MapPin | null;
+  // The page mirrors the hover onto the matching ledger row, and back.
+  hoverRow?: (row: LedgerRow | null) => void;
+  hovered?: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,246 +60,331 @@ const projection = geoAlbersUsa().scale(1100).translate([450, 280]);
 const pathGen = geoPath(projection);
 
 interface Shape {
-  key: string; // group key (state name, or region / macro label)
-  d: string; // filled path (a single state, or a member state at grouped levels)
-  name: string; // the underlying state name (for keys)
-}
-interface Outline {
-  key: string;
+  name: string; // the topology's full state name
   d: string;
-  cx: number;
-  cy: number;
 }
+
+// Geometry is static — built once at module load, never per render.
+const SHAPES: Shape[] = usStates.features
+  .map((f) => ({ name: f.properties.name, d: pathGen(f) ?? "" }))
+  .filter((s) => !!s.d);
+
+const CENTROIDS = new Map<string, [number, number]>(
+  usStates.features
+    .map((f): [string, [number, number]] => [
+      f.properties.name,
+      pathGen.centroid(f) as [number, number],
+    ])
+    .filter(([, c]) => Number.isFinite(c[0]) && Number.isFinite(c[1])),
+);
+
+const centroidOfCode = (code: string): [number, number] | null => {
+  const name = getStateName(code);
+  return (name && CENTROIDS.get(name)) || null;
+};
+
+const num = (n: number | null | undefined, digits = 0): string =>
+  n == null ? "—" : n.toFixed(digits);
+
+interface LaneLine {
+  key: string;
+  a: [number, number];
+  b: [number, number];
+  loads: number;
+}
+
+// ------------------------------------------------------------ the shape layer
+
+// ~50 <path>s, the lane lines and the pin — everything that is expensive to
+// draw and cheap to leave alone. It is a module-level memo (never a component
+// declared inside a render body) so moving the pointer WITHIN a state repaints
+// only the tooltip: the layer's props don't change until the hovered state
+// does, and then it repaints once to move the amber outline.
+interface ShapeLayerProps {
+  rowByStateName: Map<string, LedgerRow>;
+  metric: MapMetric;
+  scale: MapScale;
+  selected: string | null;
+  hovered: string | null;
+  laneLines: LaneLine[];
+  pin: MapPin | null;
+  pinAt: [number, number] | null;
+  onPick: (row: LedgerRow) => void;
+  onMove: (row: LedgerRow, e: ReactMouseEvent<SVGPathElement>) => void;
+  onEnter: (row: LedgerRow | undefined) => void;
+  onLeave: () => void;
+}
+
+const ShapeLayerInner = ({
+  rowByStateName,
+  metric,
+  scale,
+  selected,
+  hovered,
+  laneLines,
+  pin,
+  pinAt,
+  onPick,
+  onMove,
+  onEnter,
+  onLeave,
+}: ShapeLayerProps) => (
+  <>
+    {SHAPES.map((s) => {
+      const row = rowByStateName.get(s.name);
+      const thin = metricThin(row, metric);
+      const isSel = !!row && selected === row.state;
+      const isHot = !!row && hovered === row.state;
+      return (
+        <path
+          key={s.name}
+          d={s.d}
+          fill={thin ? `url(#${HATCH_ID})` : colorForRow(row, metric, scale)}
+          stroke={isSel ? "#f4f7fb" : isHot ? "#f5b03a" : "rgba(255,255,255,0.12)"}
+          strokeWidth={isSel ? 2 : isHot ? 1.6 : 0.5}
+          style={{ cursor: row ? "pointer" : "default" }}
+          onClick={() => row && onPick(row)}
+          onMouseMove={(e) => row && onMove(row, e)}
+          onMouseEnter={() => onEnter(row)}
+          onMouseLeave={onLeave}
+        />
+      );
+    })}
+
+    {laneLines.map((l) => (
+      <line
+        key={l.key}
+        x1={l.a[0]}
+        y1={l.a[1]}
+        x2={l.b[0]}
+        y2={l.b[1]}
+        stroke="#e8940a"
+        strokeOpacity={0.55}
+        strokeWidth={1 + l.loads}
+        strokeLinecap="round"
+        style={{ pointerEvents: "none" }}
+      />
+    ))}
+
+    {pinAt && pin && (
+      <g style={{ pointerEvents: "none" }}>
+        <circle
+          cx={pinAt[0]}
+          cy={pinAt[1]}
+          r={7}
+          fill="var(--color-status-info-text)"
+          stroke="var(--color-canvas)"
+          strokeWidth={2}
+        />
+        <text
+          x={pinAt[0] + 12}
+          y={pinAt[1] + 4}
+          style={{
+            font: "600 11px sans-serif",
+            fill: "#cdd8e8",
+            paintOrder: "stroke",
+            stroke: "#0b0f16",
+            strokeWidth: 3,
+          }}
+        >
+          empty next · {pin.city}, {pin.state}
+        </text>
+      </g>
+    )}
+  </>
+);
+
+const ShapeLayer = memo(ShapeLayerInner);
+
+// --------------------------------------------------------------- the tooltip
+
+const TIP_W = 320; // the tip's maxWidth
+const TIP_GAP = 14; // how far off the pointer it sits
+const TIP_SPAN = TIP_W + TIP_GAP; // 334 — the room a right-hand tip needs
+const TIP_H = 64; // two condensed lines plus padding
+
 interface HoverState {
   x: number;
   y: number;
-  datum: AreaMapDatum;
+  // The board's own size, measured in the pointer handler (never read off the
+  // ref during render) so the tip can be clamped inside it.
+  w: number;
+  h: number;
+  row: LedgerRow;
 }
 
 export const LanesMap = ({
-  data,
-  level,
-  windowDays,
+  rows,
+  metric,
   selected,
   onSelect,
-  mode: modeProp,
-  onModeChange,
-  highlightStates,
+  showLanes,
+  lanes,
+  pin,
+  hoverRow,
+  hovered,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
-  const [modeState, setModeState] = useState<MapMode>("rate");
-  const mode = modeProp ?? modeState;
-  const setMode = onModeChange ?? setModeState;
 
-  // Every state gets a filled path, tagged with the group it belongs to at this
-  // level (state name / region / macro). Geometry is static → memo on level.
-  const shapes = useMemo<Shape[]>(
-    () =>
-      usStates.features
-        .map((f) => {
-          const name = f.properties.name;
-          const key = groupKeyForStateName(name, level);
-          const d = pathGen(f) ?? "";
-          return key && d ? { key, d, name } : null;
-        })
-        .filter((s): s is Shape => s !== null),
-    [level],
+  // A row is keyed by state code at state grain and by freight region at
+  // region grain; either way it paints every state that belongs to it, so the
+  // map needs no separate grain flag.
+  const rowByStateName = useMemo(() => {
+    const map = new Map<string, LedgerRow>();
+    for (const row of rows) {
+      const name = getStateName(row.state);
+      if (name) map.set(name, row);
+      else for (const member of statesInRegion(row.state)) map.set(member, row);
+    }
+    return map;
+  }, [rows]);
+
+  const scale = useMemo(() => mapScale(rows), [rows]);
+
+  // Straight lines between the two states' centroids — no geocoding, no arcs.
+  const laneLines = useMemo<LaneLine[]>(() => {
+    if (!showLanes) return [];
+    return lanes
+      .map((l) => {
+        const a = centroidOfCode(l.originState);
+        const b = centroidOfCode(l.destState);
+        return a && b ? { key: l.lane, a, b, loads: l.loads } : null;
+      })
+      .filter((l): l is LaneLine => !!l);
+  }, [showLanes, lanes]);
+
+  const pinAt = useMemo(() => {
+    if (!pin) return null;
+    const p = projection([pin.lng, pin.lat]);
+    return p && Number.isFinite(p[0]) ? (p as [number, number]) : null;
+  }, [pin]);
+
+  const handlePick = useCallback(
+    (row: LedgerRow) => onSelect(selected === row.state ? null : row.state),
+    [onSelect, selected],
   );
 
-  // Merged outlines per group (the "bigger region" borders) — only for the
-  // grouped levels; state level draws its own state borders.
-  const outlines = useMemo<Outline[]>(() => {
-    if (level === "state") return [];
-    const buckets = new Map<string, Geometry[]>();
-    for (const g of topo.objects.states.geometries) {
-      const name = g.properties?.name as string | undefined;
-      if (!name) continue;
-      const key = groupKeyForStateName(name, level);
-      if (!key) continue;
-      const arr = buckets.get(key);
-      if (arr) arr.push(g);
-      else buckets.set(key, [g]);
-    }
-    const out: Outline[] = [];
-    for (const [key, geoms] of buckets) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const merged = merge(topo, geoms as any) as MultiPolygon;
-      const geo = { type: "Feature", properties: {}, geometry: merged } as Feature;
-      const d = pathGen(geo);
-      const [cx, cy] = pathGen.centroid(geo);
-      if (d && Number.isFinite(cx)) out.push({ key, d, cx, cy });
-    }
-    return out;
-  }, [level]);
+  const handleMove = useCallback(
+    (row: LedgerRow, e: ReactMouseEvent<SVGPathElement>) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setHover({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        w: rect.width,
+        h: rect.height,
+        row,
+      });
+    },
+    [],
+  );
 
-  const maxLoads = useMemo(() => maxLoadsOf(data), [data]);
-  const maxRate = useMemo(() => maxRateOf(data), [data]);
+  const handleEnter = useCallback(
+    (row: LedgerRow | undefined) => hoverRow?.(row ?? null),
+    [hoverRow],
+  );
 
-  // Top-paying groups (>= 3 loads) get a flame at their centroid.
-  const hot = useMemo(() => {
-    const centroid = (key: string): [number, number] => {
-      if (level !== "state") {
-        const o = outlines.find((x) => x.key === key);
-        return o ? [o.cx, o.cy] : [NaN, NaN];
+  const handleLeave = useCallback(() => {
+    setHover(null);
+    hoverRow?.(null);
+  }, [hoverRow]);
+
+  const legend = METRIC_LEGEND[metric];
+  const ramp = metric === "volume" ? VOL_RAMP : metric === "in" ? IN_RAMP : RATE_RAMP;
+
+  // Kept inside the board: a tip that would run off the right edge flips to the
+  // pointer's left, and it never drops below the bottom.
+  const tip = hover
+    ? {
+        left: Math.max(
+          0,
+          hover.x + TIP_SPAN > hover.w ? hover.x - TIP_SPAN : hover.x + TIP_GAP,
+        ),
+        top: Math.max(0, Math.min(hover.y + TIP_GAP, hover.h - TIP_H)),
       }
-      const f = usStates.features.find((s) => s.properties.name === key);
-      return f ? (pathGen.centroid(f) as [number, number]) : [NaN, NaN];
-    };
-    return Object.values(data)
-      .filter((d) => d.medianRpm != null && d.loadCount >= 3)
-      .sort((a, b) => (b.medianRpm as number) - (a.medianRpm as number))
-      .slice(0, 3)
-      .map((d) => ({ key: d.key, c: centroid(d.key) }))
-      .filter((h) => Number.isFinite(h.c[0]));
-  }, [data, outlines, level]);
-
-  const fillFor = (key: string): string =>
-    colorFor(data[key], mode, maxLoads, maxRate);
-
-  const toggle = (m: MapMode, label: string) => (
-    <button
-      onClick={() => setMode(m)}
-      className={`text-[11px] rounded-full px-2.5 py-0.5 transition-colors ${
-        mode === m
-          ? "bg-amber text-canvas font-semibold"
-          : "border border-hairline text-dim hover:text-ink"
-      }`}
-    >
-      {label}
-    </button>
-  );
-
-  const levelWord =
-    level === "macro" ? "macro-regions" : level === "region" ? "freight regions" : "states";
-  const drillHint = level === "state" ? "click a state to drill in" : "click a region to drill in";
+    : null;
 
   return (
-    <div ref={containerRef} className="ds2-board p-4 relative">
-      <div className="text-xs text-dim mb-2 flex items-center gap-2 flex-wrap">
-        <span className="ds2-label">Shade by</span>
-        {toggle("rate", "your $/mi")}
-        {toggle("volume", "volume")}
-        <span className="flex items-center gap-1.5">
-          ·{" "}
-          <span
-            className="inline-block w-2.5 h-2.5 rounded-full border-2 border-amber-hi"
-            style={{ boxShadow: "0 0 6px rgba(245,176,58,.7)" }}
-          />{" "}
-          best-paying
+    <div ref={containerRef} className="relative">
+      <svg viewBox="0 0 900 560" className="w-full block">
+        <defs>
+          <pattern
+            id={HATCH_ID}
+            width="6"
+            height="6"
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(135)"
+          >
+            <rect width="6" height="6" fill="var(--color-well)" />
+            <rect width="2" height="6" fill="var(--color-plate-lo)" />
+          </pattern>
+        </defs>
+
+        <ShapeLayer
+          rowByStateName={rowByStateName}
+          metric={metric}
+          scale={scale}
+          selected={selected}
+          hovered={hovered ?? null}
+          laneLines={laneLines}
+          pin={pin}
+          pinAt={pinAt}
+          onPick={handlePick}
+          onMove={handleMove}
+          onEnter={handleEnter}
+          onLeave={handleLeave}
+        />
+      </svg>
+
+      <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap pt-2.5 text-[10.5px] text-faint font-condensed">
+        <span className="flex items-center gap-[5px]">
+          {legend.label}
+          {ramp.map((c) => (
+            <span key={c} className="w-4 h-2 rounded-[2px]" style={{ background: c }} />
+          ))}
+          {legend.more}
         </span>
-        <span className="text-faint">· grouped by {levelWord} · {drillHint}</span>
-      </div>
-      <svg viewBox="0 0 900 560" className="w-full">
-        {shapes.map((s, i) => {
-          const datum = data[s.key];
-          const isSel = selected === s.key;
-          // #228: the region row's states wear the amber outline. A drilled-in
-          // state still wins the white one — the selection is where you ARE,
-          // the highlight is only what you pointed at.
-          const isLit = litFor(s.name, highlightStates);
-          return (
-            <path
-              key={i}
-              d={s.d}
-              fill={fillFor(s.key)}
-              stroke={
-                isSel && level === "state"
-                  ? "#f4f7fb"
-                  : isLit
-                    ? "#f5b03a"
-                    : "rgba(255,255,255,0.12)"
-              }
-              strokeWidth={isSel && level === "state" ? 2 : isLit ? 1.6 : 0.5}
-              style={{ cursor: datum ? "pointer" : "default" }}
-              onClick={() => datum && onSelect(s.key)}
-              onMouseMove={(e) => {
-                const rect = containerRef.current?.getBoundingClientRect();
-                if (datum && rect) {
-                  setHover({ x: e.clientX - rect.left, y: e.clientY - rect.top, datum });
-                }
-              }}
-              onMouseLeave={() => setHover(null)}
-            />
-          );
-        })}
-        {outlines.map((o) => {
-          const lit = !!data[o.key];
-          const isSel = selected === o.key;
-          return (
-            <path
-              key={o.key}
-              d={o.d}
-              fill="none"
-              stroke={isSel ? "#f4f7fb" : lit ? "rgba(244,247,251,0.85)" : "rgba(255,255,255,0.14)"}
-              strokeWidth={isSel ? 2.4 : lit ? 1.6 : 0.8}
-              strokeLinejoin="round"
-              style={{ pointerEvents: "none" }}
-            />
-          );
-        })}
-        {level !== "state" &&
-          outlines.map((o) => {
-            const datum = data[o.key];
-            if (!datum) return null;
-            return (
-              <g key={`lbl-${o.key}`} style={{ pointerEvents: "none" }}>
-                <text
-                  x={o.cx}
-                  y={o.cy}
-                  textAnchor="middle"
-                  style={{ font: "700 12px sans-serif", fill: "#f4f7fb", paintOrder: "stroke", stroke: "#0b0f16", strokeWidth: 3 }}
-                >
-                  {o.key}
-                </text>
-                <text
-                  x={o.cx}
-                  y={o.cy + 13}
-                  textAnchor="middle"
-                  style={{ font: "9.5px sans-serif", fill: "#cdd8e8", paintOrder: "stroke", stroke: "#0b0f16", strokeWidth: 2.5 }}
-                >
-                  {datum.loadCount} {datum.loadCount === 1 ? "load" : "loads"}
-                </text>
-              </g>
-            );
-          })}
-        {hot.map((h) => (
-          <circle
-            key={h.key}
-            cx={h.c[0]}
-            cy={h.c[1]}
-            r={8}
-            fill="none"
-            stroke="#f5b03a"
-            strokeWidth={2.5}
+        <span className="flex items-center gap-[5px]">
+          <span
+            className="w-4 h-2 rounded-[2px] border border-hairline"
             style={{
-              pointerEvents: "none",
-              filter: "drop-shadow(0 0 4px rgba(245,176,58,.8))",
+              background:
+                "repeating-linear-gradient(135deg, var(--color-well) 0 3px, var(--color-plate-lo) 3px 5px)",
             }}
           />
-        ))}
-      </svg>
-      {hover && (
+          thin (1 load)
+        </span>
+        <span className="flex items-center gap-[5px]">
+          <span
+            className="w-[10px] h-[10px] rounded-full"
+            style={{ background: "var(--color-status-info-text)" }}
+          />
+          empty next
+        </span>
+      </div>
+
+      {hover && tip && (
         <div
-          className="absolute pointer-events-none bg-[#040609] border border-hairline rounded-md p-2 text-xs text-dim z-10"
-          style={{ left: hover.x + 12, top: hover.y + 12, maxWidth: 220 }}
+          className="absolute pointer-events-none bg-panel border border-hairline rounded-lg px-2.5 py-2 text-[12px] text-dim font-condensed z-10 shadow-lg"
+          style={{ left: tip.left, top: tip.top, maxWidth: TIP_W }}
         >
-          <div className="font-semibold text-ink">{hover.datum.key}</div>
           <div>
-            {hover.datum.loadCount} load{hover.datum.loadCount === 1 ? "" : "s"} · {windowDays}d
+            <b className="text-ink font-semibold">{hover.row.name}</b> · OUT{" "}
+            {hover.row.out.loads} load{hover.row.out.loads === 1 ? "" : "s"} · typical{" "}
+            <b className="text-ink font-semibold">{fmtRpm(hover.row.out.typicalRpm)}</b>/mi ·{" "}
+            {money(hover.row.out.perDay.perDay)}/day · {hover.row.out.agents} agent
+            {hover.row.out.agents === 1 ? "" : "s"}
           </div>
           <div>
-            {hover.datum.medianRpm == null ? (
-              <span>no rate</span>
-            ) : (
-              <>
-                <span className="font-semibold text-ink">{fmtRpm(hover.datum.medianRpm)}</span> /mi median
-              </>
-            )}
+            IN {hover.row.in.deliveries} deliver
+            {hover.row.in.deliveries === 1 ? "y" : "ies"} · reload{" "}
+            <b className="text-ink font-semibold">
+              {num(hover.row.in.reloadMilesMedian)}
+            </b>{" "}
+            mi · {num(hover.row.in.idleDaysAvg, 1)} days idle · next load{" "}
+            {fmtRpm(hover.row.in.nextRpmMedian)}/mi
           </div>
-          {hover.datum.members.length > 0 && (
-            <div className="text-faint">{hover.datum.members.join(", ")}</div>
-          )}
         </div>
       )}
     </div>

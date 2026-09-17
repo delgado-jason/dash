@@ -2,17 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Load } from "@/types/load";
 import { getRegion, getStateName } from "@/lib/constants/states";
 import {
-  nextHighlight,
   getRegionRollup,
-  getStateLoadMap,
   getLanesSummary,
   getRecentLoads,
   getAreaMapData,
-  getAreaDetail,
   levelForWindow,
-  getStateDetail,
-  getWindowTotals,
-  getOriginStateRollup,
 } from "./lanes";
 
 const makeLoad = (over: Partial<Load>): Load => ({
@@ -116,23 +110,6 @@ describe("getRegionRollup", () => {
   });
 });
 
-describe("getStateLoadMap", () => {
-  it("keys by full state name and skips unrecognized states", () => {
-    const loads = [
-      makeLoad({ origin_state: "GA" }),
-      makeLoad({ origin_state: "GA" }),
-      makeLoad({ origin_state: "TX", origin_market: "Dallas" }),
-      makeLoad({ origin_state: "ZZ" }), // unknown → skipped
-    ];
-    const map = getStateLoadMap(loads);
-    expect(map["Georgia"].loadCount).toBe(2);
-    expect(map["Georgia"].markets).toEqual(["Atlanta"]);
-    expect(map["Texas"].loadCount).toBe(1);
-    expect(Object.keys(map)).not.toContain("");
-    expect(Object.keys(map).length).toBe(2);
-  });
-});
-
 describe("getLanesSummary", () => {
   it("requires >= 3 loads for the top RPM lane (ignores lucky singletons)", () => {
     const loads = [
@@ -226,7 +203,7 @@ describe("recency windowing", () => {
   });
 });
 
-describe("granularity map (levelForWindow / getAreaMapData / getAreaDetail)", () => {
+describe("granularity map (levelForWindow / getAreaMapData)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-08T12:00:00Z"));
@@ -282,106 +259,8 @@ describe("granularity map (levelForWindow / getAreaMapData / getAreaDetail)", ()
     const d = getAreaMapData([makeLoad({ origin_state: "ZZ", delivery_date: recent })], 90, "state");
     expect(Object.keys(d)).toHaveLength(0);
   });
-
-  it("getAreaDetail scopes agents + lanes to the clicked group", () => {
-    const region = getAreaDetail(loads, "region", "Gulf", 3, 90);
-    expect(region.state).toBe("Gulf");
-    expect(region.loadCount).toBe(1); // TX only
-    expect(region.lanes[0].lane).toBe("Dallas → Atlanta");
-
-    const macro = getAreaDetail(loads, "macro", "South", 3, 60);
-    expect(macro.loadCount).toBe(2); // GA + TX
-
-    // level 'state' delegates to the state detail
-    const state = getAreaDetail(loads, "state", "Illinois", 3, 90);
-    expect(state.state).toBe("Illinois");
-    expect(state.loadCount).toBe(1);
-  });
 });
 
-describe("getStateDetail", () => {
-  const NOW = new Date("2026-06-10T00:00:00Z").getTime();
-  const loads = [
-    makeLoad({ origin_state: "GA", origin_market: "Atlanta", delivery_market: "Dallas", agent_id: "a1", agent: "Mike", linehaul: "2000", loaded_miles: 1000, delivery_date: "2026-06-01" }),
-    makeLoad({ origin_state: "GA", origin_market: "Atlanta", delivery_market: "Dallas", agent_id: "a1", agent: "Mike", linehaul: "2400", loaded_miles: 1000, delivery_date: "2026-06-03" }),
-    makeLoad({ origin_state: "GA", origin_market: "Savannah", delivery_market: "Miami", agent_id: "a2", agent: "Dana", linehaul: "1800", loaded_miles: 1000, delivery_date: "2026-06-04" }),
-    makeLoad({ origin_state: "TX", agent_id: "a3", agent: "Rick", linehaul: "3000", loaded_miles: 1000, delivery_date: "2026-06-05" }),
-    makeLoad({ origin_state: "GA", load_status: "booked", agent_id: "a1", agent: "Mike", delivery_date: "2026-06-06" }),
-  ];
-
-  it("groups your agents out of the state, most-used first; excludes other states + non-delivered", () => {
-    const d = getStateDetail(loads, "Georgia", 3, 90, NOW);
-    expect(d.state).toBe("Georgia");
-    expect(d.loadCount).toBe(3);
-    expect(d.agents.map((a) => a.agent)).toEqual(["Mike", "Dana"]);
-    expect(d.agents[0]).toMatchObject({ agentId: "a1", loadCount: 2 });
-    expect(d.agents[0].medianRpm).toBeCloseTo(2.2); // median of 2.0, 2.4
-    expect(d.agents.find((a) => a.agent === "Rick")).toBeUndefined();
-  });
-
-  it("lists your lanes out of the state, most-run first", () => {
-    const d = getStateDetail(loads, "Georgia", 3, 90, NOW);
-    expect(d.lanes[0]).toMatchObject({ lane: "Atlanta → Dallas", loadCount: 2 });
-    expect(d.lanes.map((l) => l.lane)).toContain("Savannah → Miami");
-  });
-
-  it("empty for a state you haven't run", () => {
-    const d = getStateDetail(loads, "Wyoming", 3, 90, NOW);
-    expect(d.loadCount).toBe(0);
-    expect(d.agents).toHaveLength(0);
-  });
-});
-
-describe("getWindowTotals", () => {
-  it("sums linehaul for the dollar total but blends the rate on GROSS", () => {
-    const t = getWindowTotals([
-      makeLoad({ linehaul: "1000", fuel_surcharge: "200", loaded_miles: 200 }),
-      makeLoad({ linehaul: "500.50", loaded_miles: 100 }),
-    ]);
-    expect(t.loads).toBe(2);
-    expect(t.linehaul).toBeCloseTo(1500.5, 5); // dollar total stays linehaul-only
-    // GROSS ÷ miles (incl. the $200 FSC) = 1700.5/300, NOT linehaul-only 1500.5/300
-    expect(t.blendedRpm).toBeCloseTo(1700.5 / 300, 5);
-  });
-
-  it("blends to null with no miles, and zeros on empty", () => {
-    expect(getWindowTotals([makeLoad({ loaded_miles: 0 })]).blendedRpm).toBeNull();
-    expect(getWindowTotals([])).toEqual({ loads: 0, linehaul: 0, blendedRpm: null });
-  });
-});
-
-describe("getOriginStateRollup", () => {
-  it("ranks repeats by volume then rate, counts singles, crowns the best rate", () => {
-    const r = getOriginStateRollup([
-      // AL carries a fuel surcharge, so its blended rate is GROSS-based ($1,500/load
-      // ÷ 500mi = $3/mi), not linehaul-only ($2/mi) — guards the gross accumulation.
-      makeLoad({ origin_state: "AL", linehaul: "1000", fuel_surcharge: "500", loaded_miles: 500 }),
-      makeLoad({ origin_state: "AL", linehaul: "1000", fuel_surcharge: "500", loaded_miles: 500 }),
-      makeLoad({ origin_state: "AL", linehaul: "1000", fuel_surcharge: "500", loaded_miles: 500 }),
-      makeLoad({ origin_state: "SC", linehaul: "3000", loaded_miles: 250 }),
-      makeLoad({ origin_state: "SC", linehaul: "3000", loaded_miles: 250 }),
-      makeLoad({ origin_state: "NV", linehaul: "900", loaded_miles: 300 }),
-    ]);
-    expect(r.rows.map((x) => x.state)).toEqual(["AL", "SC"]);
-    expect(r.rows[0].name).toBe("Alabama");
-    expect(r.rows[0].blendedRpm).toBeCloseTo(3, 5); // GROSS, not linehaul-only ($2)
-    expect(r.singles).toBe(1);
-    // SC blends $12/mi vs AL's gross $3/mi — best is rate, not volume.
-    expect(r.best?.state).toBe("SC");
-  });
-
-  it("has no best when no origin repeats", () => {
-    const r = getOriginStateRollup([
-      makeLoad({ origin_state: "GA" }),
-      makeLoad({ origin_state: "TX" }),
-    ]);
-    expect(r.rows).toEqual([]);
-    expect(r.singles).toBe(2);
-    expect(r.best).toBeNull();
-  });
-});
-
-// ---- Typical $/day (PR D, decision 1A) ----
 describe("perDay on the region / market / lane rollup", () => {
   it("is WEIGHTED at every level — Σgross ÷ Σdays, never a mean of rates", () => {
     const [region] = getRegionRollup([
@@ -434,49 +313,5 @@ describe("perDay on the region / market / lane rollup", () => {
     const [bare] = getRegionRollup([makeLoad({ delivery_date: null })]);
     expect(bare.perDay.perDay).toBeNull();
     expect(bare.perDay.loads).toBe(0);
-  });
-
-  it("rides the state drill-down's lanes too", () => {
-    // `now` is injected, not read off the wall clock — this test can't rot.
-    const detail = getStateDetail(
-      [
-        makeLoad({
-          linehaul: "4000",
-          pickup_date: "2026-06-01",
-          delivery_date: "2026-06-04", // 4 days → $1,000/day
-        }),
-      ],
-      "Georgia",
-      3,
-      90,
-      Date.parse("2026-06-15T00:00:00Z"),
-    );
-    expect(detail.lanes[0].perDay.perDay).toBeCloseTo(1000, 5);
-  });
-});
-
-// ---- #228: which region is lit on the map ----
-// One click opens/closes a region row AND sets the map highlight. The rule is
-// pure so the two states can never drift out of step.
-describe("nextHighlight", () => {
-  it("lights the region you just opened", () => {
-    expect(nextHighlight(true, "Gulf", null)).toBe("Gulf");
-  });
-
-  it("moves the light when you open a second region", () => {
-    expect(nextHighlight(true, "Midwest", "Gulf")).toBe("Midwest");
-  });
-
-  it("clears the map when you collapse the LIT row", () => {
-    expect(nextHighlight(false, "Gulf", "Gulf")).toBeNull();
-  });
-
-  it("leaves the lit row alone when you collapse a DIFFERENT row", () => {
-    // The desync: closing Midwest must not blank a map showing the Gulf.
-    expect(nextHighlight(false, "Midwest", "Gulf")).toBe("Gulf");
-  });
-
-  it("stays cleared when you collapse a row with nothing lit", () => {
-    expect(nextHighlight(false, "Midwest", null)).toBeNull();
   });
 });

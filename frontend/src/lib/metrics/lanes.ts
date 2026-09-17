@@ -3,7 +3,6 @@ import {
   getRegion,
   getStateName,
   getMacro,
-  getStateAbbr,
   UNKNOWN_REGION,
 } from "@/lib/constants/states";
 import { median } from "./stats";
@@ -49,14 +48,6 @@ export interface RegionStat {
   medianRpm: number | null;
   perDay: PerDayTotals; // weighted — see LaneStat.perDay
   markets: MarketStat[];
-}
-
-export interface StateLoadStat {
-  state: string; // full name, e.g. "Georgia"
-  loadCount: number;
-  avgRpm: number | null;
-  medianRpm: number | null;
-  markets: string[];
 }
 
 export interface LanesSummary {
@@ -202,28 +193,6 @@ export const getRegionRollup = (loads: Load[]): RegionStat[] => {
   return regions;
 };
 
-// ---- STATE LOAD MAP ---- (for the choropleth; keyed by full state name)
-export const getStateLoadMap = (
-  loads: Load[],
-): Record<string, StateLoadStat> => {
-  const delivered = deliveredOnly(loads);
-  const out: Record<string, StateLoadStat> = {};
-
-  for (const [abbr, stateLoads] of groupBy(delivered, (l) => l.origin_state)) {
-    const name = getStateName(abbr);
-    if (!name) continue; // skip blank / unrecognized states
-    out[name] = {
-      state: name,
-      loadCount: stateLoads.length,
-      avgRpm: avgRpm(stateLoads),
-      medianRpm: medianRpm(stateLoads),
-      markets: [...new Set(stateLoads.map((l) => l.origin_market))],
-    };
-  }
-
-  return out;
-};
-
 // ---- GRANULARITY-AWARE MAP DATA ----
 // The map's spatial resolution follows the window: a short (sparse) window
 // groups coarsely so it still reads, a longer window can afford fine detail.
@@ -247,15 +216,6 @@ export const groupKeyForState = (
   if (level === "state") return name;
   const key = level === "macro" ? getMacro(originStateAbbr) : getRegion(originStateAbbr);
   return key === UNKNOWN_REGION ? null : key;
-};
-
-// Same, but from a full state name (what the topology gives the map component).
-export const groupKeyForStateName = (
-  name: string,
-  level: MapLevel,
-): string | null => {
-  if (level === "state") return name;
-  return groupKeyForState(getStateAbbr(name), level);
 };
 
 export interface AreaMapDatum {
@@ -354,23 +314,17 @@ export interface AgentStat {
   onTimePct: number | null; // 0..1 of graded stops on time; null when none graded
 }
 
-export interface StateDetail {
-  state: string;
-  loadCount: number;
-  avgRpm: number | null;
-  medianRpm: number | null;
-  agents: AgentStat[]; // who you've booked out of here, most-used first
-  lanes: LaneStat[]; // your lanes out of here, most-run first
-}
-
-// Shared drill-down builder: the agents you've booked out of an already-scoped
-// set of delivered loads (rate / volume / on-time) and your top lanes from it.
-// `freeHours` drives on-time (from settlement). `label` names the area.
-const buildDetail = (
+// The agents you've booked out of an already-scoped set of delivered loads —
+// rate, volume, on-time — most-used first. `freeHours` (from the settlement
+// schedule) is what on-time is graded against.
+//
+// One place, because two surfaces ask the same question: the Lanes page's
+// market detail ("agents you've booked out of PA") and anything else that
+// drills into a scoped slice of the book.
+export const agentRows = (
   scopedLoads: Load[],
-  label: string,
   freeHours: number,
-): StateDetail => {
+): AgentStat[] => {
   const agents: AgentStat[] = [];
   for (const [agentId, agentLoads] of groupBy(scopedLoads, (l) => l.agent_id)) {
     agents.push({
@@ -384,69 +338,7 @@ const buildDetail = (
   agents.sort(
     (a, b) => b.loadCount - a.loadCount || (b.medianRpm ?? 0) - (a.medianRpm ?? 0),
   );
-
-  const lanes: LaneStat[] = [];
-  for (const [, laneLoads] of groupBy(
-    scopedLoads,
-    (l) => `${l.origin_market} → ${l.delivery_market}`,
-  )) {
-    const first = laneLoads[0];
-    lanes.push({
-      lane: `${first.origin_market} → ${first.delivery_market}`,
-      origin: first.origin_market,
-      destination: first.delivery_market,
-      loadCount: laneLoads.length,
-      gross: grossRevenue(laneLoads),
-      avgRpm: avgRpm(laneLoads),
-      medianRpm: medianRpm(laneLoads),
-      perDay: perDayOf(laneLoads),
-    });
-  }
-  lanes.sort(
-    (a, b) => b.loadCount - a.loadCount || (b.medianRpm ?? 0) - (a.medianRpm ?? 0),
-  );
-
-  return {
-    state: label,
-    loadCount: scopedLoads.length,
-    avgRpm: avgRpm(scopedLoads),
-    medianRpm: medianRpm(scopedLoads),
-    agents,
-    lanes,
-  };
-};
-
-// Drill-down for a clicked origin STATE (the 90d level).
-export const getStateDetail = (
-  loads: Load[],
-  stateName: string,
-  freeHours: number,
-  days: number,
-  now: number = Date.now(),
-): StateDetail => {
-  const recent = getRecentLoads(deliveredOnly(loads), days, now);
-  const stateLoads = recent.filter(
-    (l) => getStateName(l.origin_state) === stateName,
-  );
-  return buildDetail(stateLoads, stateName, freeHours);
-};
-
-// Drill-down for a clicked region / macro blob (the 60d / 30d levels): the same
-// agents-and-lanes read, scoped to every origin state inside that group.
-export const getAreaDetail = (
-  loads: Load[],
-  level: MapLevel,
-  key: string,
-  freeHours: number,
-  days: number,
-  now: number = Date.now(),
-): StateDetail => {
-  if (level === "state") return getStateDetail(loads, key, freeHours, days, now);
-  const recent = getRecentLoads(deliveredOnly(loads), days, now);
-  const areaLoads = recent.filter(
-    (l) => groupKeyForState(l.origin_state, level) === key,
-  );
-  return buildDetail(areaLoads, key, freeHours);
+  return agents;
 };
 
 // ---- TOP-LANE KPIs ----
@@ -483,91 +375,3 @@ export const getLanesSummary = (loads: Load[]): LanesSummary => {
   return { topRpmLane, highestVolumeLane, bestOriginMarket };
 };
 
-// ---- The statusbar answering line: what the window did, in three numbers. ----
-export interface WindowTotals {
-  loads: number;
-  linehaul: number;
-  blendedRpm: number | null; // GROSS ÷ loaded miles — matches every other $/mi on the page
-}
-
-export const getWindowTotals = (loads: Load[]): WindowTotals => {
-  // The dollar total stays linehaul (settlement-relevant, labeled "linehaul" in the
-  // UI), but the blended $/mi is GROSS — "blended" means gross ÷ miles everywhere
-  // else on the Lanes page, and linehaul-only understated oversize windows most.
-  const linehaul = loads.reduce((sum, l) => sum + (Number(l.linehaul) || 0), 0);
-  return { loads: loads.length, linehaul, blendedRpm: avgRpm(loads) };
-};
-
-// ---- Origin states for the markets board. ----
-// Spot oversize rarely repeats a lane, but origins recur — where the freight
-// is born is the ranking that means something. Repeats (≥2 loads) rank by
-// volume then rate; singles ride the map, not the board. Best origin = the
-// strongest blended rate among repeats.
-export interface OriginStateStat {
-  state: string; // 2-letter code
-  name: string; // full name, for the row
-  loadCount: number;
-  blendedRpm: number | null;
-}
-
-export interface OriginStateRollup {
-  rows: OriginStateStat[]; // repeats only, volume desc then rate desc
-  singles: number; // origins with exactly one load
-  best: OriginStateStat | null;
-}
-
-export const getOriginStateRollup = (loads: Load[]): OriginStateRollup => {
-  const acc = new Map<string, { n: number; gross: number; mi: number }>();
-  for (const l of loads) {
-    const st = l.origin_state;
-    if (!st) continue;
-    const a = acc.get(st) ?? { n: 0, gross: 0, mi: 0 };
-    a.n += 1;
-    // GROSS (linehaul + FSC + accessorials), to match every other $/mi on the Lanes
-    // page — linehaul-only understated oversize origins most (their tarp/permit
-    // accessorials are the biggest slice).
-    a.gross +=
-      (Number(l.linehaul) || 0) +
-      (Number(l.fuel_surcharge) || 0) +
-      (Number(l.total_accessorials) || 0);
-    a.mi += Number(l.loaded_miles) || 0;
-    acc.set(st, a);
-  }
-  const all = [...acc.entries()].map(([state, a]) => ({
-    state,
-    name: getStateName(state) ?? state,
-    loadCount: a.n,
-    blendedRpm: a.mi > 0 ? a.gross / a.mi : null,
-  }));
-  const rows = all
-    .filter((r) => r.loadCount >= 2)
-    .sort(
-      (a, b) =>
-        b.loadCount - a.loadCount ||
-        (b.blendedRpm ?? -1) - (a.blendedRpm ?? -1) ||
-        a.state.localeCompare(b.state),
-    );
-  let best: OriginStateStat | null = null;
-  for (const r of rows)
-    if (r.blendedRpm != null && (best?.blendedRpm == null || r.blendedRpm > best.blendedRpm))
-      best = r;
-  return { rows, singles: all.length - rows.length, best };
-};
-
-// ---- #228: WHICH REGION IS LIT ON THE MAP ----
-// One click on a region row does two jobs: it opens/closes that region's
-// markets AND it lights (or clears) that region's states on the map. The two
-// must never drift apart, so the next highlight is a pure function of what the
-// click is about to do:
-//
-//   • opening a region       → light IT, whatever was lit before
-//   • collapsing the LIT row → clear the map
-//   • collapsing another row → leave the lit row alone
-//
-// That last case is the one a naive "willOpen ? region : null" gets wrong:
-// closing Midwest would blank a map that is showing the Gulf.
-export const nextHighlight = (
-  willOpen: boolean,
-  region: string,
-  highlighted: string | null,
-): string | null => (willOpen ? region : highlighted === region ? null : highlighted);
