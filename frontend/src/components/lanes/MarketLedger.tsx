@@ -22,7 +22,7 @@ const GRADE_TONE: Record<MarketGrade, string> = {
 
 export const GradeChip = ({ grade }: { grade: MarketGrade }) => (
   <span
-    className={`inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[10px] tracking-[.08em] uppercase ${GRADE_TONE[grade]}`}
+    className={`inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[9.5px] tracking-[.06em] uppercase ${GRADE_TONE[grade]}`}
   >
     {grade}
   </span>
@@ -65,11 +65,26 @@ export const MarketLedger = ({
       </p>
     );
 
+  // Nine columns that FIT the board: a fixed table layout with percentage
+  // widths, the market names truncated, and no sideways scroll ever — the rows
+  // scroll vertically inside the board instead (the page sizes the board to
+  // the map). The header stays put while the rows move under it.
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full font-condensed text-[13px] border-collapse">
-          <thead>
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <table className="w-full table-fixed font-condensed text-[12.5px] border-collapse">
+          <colgroup>
+            <col style={{ width: "28%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "12%" }} />
+          </colgroup>
+          <thead className="sticky top-0 z-10" style={{ background: "var(--color-panel)" }}>
             <tr>
               <th className="text-left" />
               <th
@@ -87,14 +102,14 @@ export const MarketLedger = ({
             </tr>
             <tr className="text-[10px] font-semibold tracking-[.1em] uppercase text-faint">
               <th className="text-left px-2 py-1.5 border-b border-hairline">Market</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">loads</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">typ $/mi</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">$/day</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">grade</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline border-l">deliv</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">reload mi</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">idle</th>
-              <th className="text-right px-2 py-1.5 border-b border-hairline">grade</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">loads</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">typ $/mi</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">$/day</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">grade</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline border-l">deliv</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">reload</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">idle</th>
+              <th className="text-right px-1.5 py-1.5 border-b border-hairline">grade</th>
             </tr>
           </thead>
           <tbody>
@@ -111,34 +126,38 @@ export const MarketLedger = ({
                   onMouseEnter={() => onHover(row.state)}
                   onMouseLeave={() => onHover(null)}
                 >
-                  <td className="text-left px-2 py-[7px] whitespace-nowrap">
-                    <b className="text-ink font-semibold">{row.state}</b>{" "}
-                    <span className="text-dim">{row.markets.join(" · ")}</span>
+                  <td className="text-left px-2 py-[6px]">
+                    <span className="flex items-baseline gap-1.5 min-w-0">
+                      <b className="text-ink font-semibold shrink-0">{row.state}</b>
+                      <span className="text-dim truncate" title={row.markets.join(" · ")}>
+                        {row.markets.join(" · ")}
+                      </span>
+                    </span>
                   </td>
-                  <td className="text-right px-2 py-[7px] text-dim">{row.out.loads}</td>
-                  <td className="text-right px-2 py-[7px] text-ink font-semibold">
+                  <td className="text-right px-1.5 py-[6px] text-dim">{row.out.loads}</td>
+                  <td className="text-right px-1.5 py-[6px] text-ink font-semibold">
                     {fmtRpm(row.out.typicalRpm)}
                   </td>
                   <td
-                    className={`text-right px-2 py-[7px] ${perDayTextClass(
+                    className={`text-right px-1.5 py-[6px] ${perDayTextClass(
                       perDayTone(row.out.perDay.perDay, daily),
                     )}`}
                   >
                     {fmtPerDay(row.out.perDay.perDay)}
                   </td>
-                  <td className="text-right px-2 py-[7px]">
+                  <td className="text-right px-1.5 py-[6px]">
                     <GradeChip grade={row.out.grade} />
                   </td>
-                  <td className="text-right px-2 py-[7px] text-dim border-l border-hairline">
+                  <td className="text-right px-1.5 py-[6px] text-dim border-l border-hairline">
                     {row.in.deliveries}
                   </td>
-                  <td className="text-right px-2 py-[7px] text-dim">
+                  <td className="text-right px-1.5 py-[6px] text-dim">
                     {num(row.in.reloadMilesMedian)}
                   </td>
-                  <td className="text-right px-2 py-[7px] text-dim">
+                  <td className="text-right px-1.5 py-[6px] text-dim">
                     {num(row.in.idleDaysAvg, 1)}
                   </td>
-                  <td className="text-right px-2 py-[7px]">
+                  <td className="text-right px-1.5 py-[6px]">
                     <GradeChip grade={row.in.grade} />
                   </td>
                 </tr>
@@ -152,7 +171,7 @@ export const MarketLedger = ({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="w-full text-left flex items-center gap-2.5 px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-ink hover:bg-white/[.03]"
+          className="w-full shrink-0 text-left flex items-center gap-2.5 px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-ink hover:bg-white/[.03]"
         >
           <span className="text-dim font-medium">
             {expanded ? "− hide the thin rows" : "+"}{" "}

@@ -176,7 +176,9 @@ const LanesPage = () => {
 
   return (
     <div className="min-h-screen text-ink font-body">
-      <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+      {/* Wider than the rest of dash (1180): a working map and a nine-column
+          ledger side by side need the room, and this page is desktop-first. */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[18px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           <h1 className="font-display text-[26px] tracking-[.06em] leading-none">
@@ -265,8 +267,13 @@ const LanesPage = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-4 mt-4 items-start">
-          <div className="ds2-board p-3.5 lg:sticky lg:top-4 self-start">
+        {/* One row, two boards of ONE height: the map sets it (its SVG keeps
+            its aspect), the ledger is absolutely placed inside its cell so it
+            never stretches the row — it fills the map's height and scrolls
+            vertically inside, never sideways (Jason, 2026-09-16). Below lg
+            the two stack and the ledger flows naturally. */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-4 mt-4 items-stretch">
+          <div className="ds2-board p-3.5 lg:min-h-[440px] flex flex-col">
             <div className="flex items-center gap-2.5 flex-wrap pb-2.5">
               <span className="ds2-label">Where the freight lives</span>
               <span className="ml-auto flex items-center gap-2.5 font-condensed text-[11.5px] text-amber-hi">
@@ -295,22 +302,24 @@ const LanesPage = () => {
             />
           </div>
 
-          <div className="ds2-board overflow-hidden">
-            <div className="flex items-center gap-2.5 px-3.5 pt-2.5 pb-1.5">
-              <span className="ds2-label">The market ledger</span>
-              <span className="ml-auto font-condensed text-[11.5px] text-amber-hi">
-                sorted by OUT $/mi · 2+ loads
-              </span>
+          <div className="relative lg:min-h-0">
+            <div className="ds2-board overflow-hidden flex flex-col lg:absolute lg:inset-0">
+              <div className="flex items-center gap-2.5 px-3.5 pt-2.5 pb-1.5 shrink-0">
+                <span className="ds2-label">The market ledger</span>
+                <span className="ml-auto font-condensed text-[11.5px] text-amber-hi">
+                  sorted by OUT $/mi · 2+ loads
+                </span>
+              </div>
+              <MarketLedger
+                rows={rows}
+                daily={targets.gross}
+                selected={selected}
+                onSelect={setSelected}
+                hovered={hovered}
+                onHover={setHovered}
+                grainWord={areaWord}
+              />
             </div>
-            <MarketLedger
-              rows={rows}
-              daily={targets.gross}
-              selected={selected}
-              onSelect={setSelected}
-              hovered={hovered}
-              onHover={setHovered}
-              grainWord={areaWord}
-            />
           </div>
         </div>
 
