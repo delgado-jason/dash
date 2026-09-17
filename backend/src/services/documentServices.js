@@ -1,5 +1,6 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import { validateLoadNumber } from "../utils/validation/documentValidation.js";
 
 const DOC_COLUMNS =
   "document_id, load_id, doc_type, filename, server_url, sha256, uploaded_at";
@@ -25,14 +26,33 @@ export async function getDocumentsForLoad(user_id, load_id) {
   return result.rows;
 }
 
+// The vault's gate (Vault Door Nod Sheet, decision 10): before the DTS
+// server's ingest agent creates a load folder for a number it has never seen,
+// it asks whether dash knows the load. A number dash doesn't know waits on
+// the server until the load is entered — a typo can no longer make a folder.
+// Exact match on the account's load_number, the same lookup registerDocument
+// makes, so the two can never disagree about which loads exist.
+export async function loadExists(user_id, load_number) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const errors = validateLoadNumber(load_number);
+  if (errors.length > 0) throw new ValidationError(errors[0]);
+  const number = load_number.trim();
+  const result = await db.query(
+    `SELECT load_id FROM loads WHERE user_id = $1 AND load_number = $2;`,
+    [user_id, number],
+  );
+  if (result.rowCount === 0) return { exists: false, load_id: null, load_number: number };
+  return { exists: true, load_id: result.rows[0].load_id, load_number: number };
+}
+
 // Called by the ingest agent (service token). Resolves the human-facing
 // load number to the immutable load_id; identical bytes re-registering
 // against the same load are a no-op (created: false).
 export async function registerDocument(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const { load_number, doc_type, filename, server_url, sha256 } = data ?? {};
-  if (!load_number || typeof load_number !== "string" || load_number.length > 20)
-    throw new ValidationError("Bad load_number");
+  const numberErrors = validateLoadNumber(load_number);
+  if (numberErrors.length > 0) throw new ValidationError("Bad load_number");
   if (!doc_type || !DOC_TYPE_RE.test(doc_type))
     throw new ValidationError("Bad doc_type");
   if (!filename || typeof filename !== "string" || filename.length > 255)
