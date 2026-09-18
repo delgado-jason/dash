@@ -21,6 +21,7 @@ export const ADMIN_ONLY_PREFIXES = [
   "/trophy-studio",
   "/fuel-entries",
   "/settings",
+  "/website",
 ];
 
 export const isAdminOnlyPath = (pathname: string): boolean =>

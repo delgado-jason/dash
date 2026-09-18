@@ -48,6 +48,7 @@ import RecapPage from "@/pages/RecapPage";
 import TrophyHallPage from "@/pages/TrophyHallPage";
 import TrophyStudioPage from "@/pages/TrophyStudioPage";
 import SettingsPage from "@/pages/SettingsPage";
+import WebsitePage from "@/pages/WebsitePage";
 
 // Code-split Lanes — it bundles the US map topology (~600KB), so it should only
 // load when the page is actually visited, not on every app start.
@@ -159,6 +160,7 @@ const App = () => {
             <Route path="/trophy-studio" element={<TrophyStudioPage />} />
             <Route path="/fuel-entries" element={<FuelEntriesPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/website" element={<WebsitePage />} />
           </Route>
         </Route>
       </Route>

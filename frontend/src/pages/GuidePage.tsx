@@ -402,6 +402,10 @@ const NAV: { group: string; items: string[] }[] = [
     ],
   },
   {
+    group: "The website",
+    items: ["The website — who's looking"],
+  },
+  {
     group: "The award system",
     items: [
       "Four ways to win",
@@ -2312,6 +2316,58 @@ const GuidePage = () => {
               each shop charges you — and are never rolled into your P&amp;L.
             </Why>
           </Metric>
+
+          <GroupHeading>The website</GroupHeading>
+
+          <Section
+            title="The website — who's looking"
+            sources={[{ label: "Website", to: "/website" }]}
+          >
+            <p className="text-sm text-muted-text">
+              Every page of delgadotruckingservices.com tells dash when it
+              opens. One of those is a{" "}
+              <span className="text-light">page view</span> — one page, opened
+              once. A <span className="text-light">visitor</span> is a browser
+              seen on a day: the day, the address it came from and the browser
+              it used are scrambled together with a secret only the database
+              holds, and what's kept is the scramble. The same person reading
+              four pages this afternoon is one visitor and four page views;
+              tomorrow that same person is a brand new visitor, because the day
+              was part of what got scrambled. The address itself is never
+              written down — there is nothing on this page, or behind it, that
+              points at a person.
+            </p>
+            <Why>
+              The switch at the top sets the{" "}
+              <span className="text-light">window</span> — 7 days, 30 days, 90
+              days or 12 months — and every figure, bar and list under it counts
+              only that stretch. dash remembers the one you left it on. The bars
+              are one per day, except on 12 months, where they're one per week;
+              the last bar is the day (or week) you're in, so it's still filling
+              up. A day nobody came keeps its slot as a thin line rather than
+              closing the gap.
+            </Why>
+            <Why>
+              <span className="text-light">Came from</span> is the site that
+              linked them to you — google.com, facebook.com — and{" "}
+              <span className="text-light">direct</span> is a browser that named
+              no one: typed in, opened from a bookmark, or tapped inside an app
+              that keeps that to itself. It is the normal answer for someone you
+              handed a card to. <span className="text-light">States</span> come
+              from where the address looks like it sits, which is close but not
+              exact — a phone on a carrier's network can land a state or two
+              off, so read the list as a shape, not as an address book.
+            </Why>
+            <Why>
+              Crawlers that announce themselves — Google's, Bing's, the rest of
+              the well-behaved ones — are dropped before they ever reach dash.
+              One that lies about what it is counts as a visitor once and then
+              rate-limits itself out, so a quiet week with one odd spike is
+              usually a machine, not a customer. Every time on the page is{" "}
+              <span className="text-light">Central</span>, and a day ends at
+              midnight Central — the same clock the rest of dash keeps.
+            </Why>
+          </Section>
 
           <GroupHeading>The award system</GroupHeading>
 
