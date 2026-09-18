@@ -41,6 +41,8 @@ import settlementRouter from "./routes/settlementRoutes.js";
 import cityCoordsRouter from "./routes/cityCoordsRoutes.js";
 import agentTierHistoryRouter from "./routes/agentTierHistoryRoutes.js";
 import relationshipReviewRouter from "./routes/relationshipReviewRoutes.js";
+import siteTrafficRouter from "./routes/siteTrafficRoutes.js";
+import siteHitRouter from "./routes/siteHitRoutes.js";
 
 const app = express();
 
@@ -105,6 +107,8 @@ app.use("/vendors", vendorRouter);
 app.use("/documents", documentRouter);
 app.use("/settlements", settlementRouter);
 app.use("/city-coords", cityCoordsRouter);
+app.use("/site-traffic", siteTrafficRouter);
+app.use("/site-hits", siteHitRouter); // public: the website's beacon
 
 // ---- HEALTH / VERSION ----
 // Deliberately UNAUTHENTICATED and cheap: the question "which commit is

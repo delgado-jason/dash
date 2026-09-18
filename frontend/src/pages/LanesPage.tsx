@@ -24,6 +24,7 @@ import { RepeatLanesBoard } from "@/components/lanes/RepeatLanesBoard";
 import { MarketDetailPanel } from "@/components/lanes/MarketDetailPanel";
 import type { MapMetric } from "@/components/lanes/mapColor";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SegControl as Seg } from "@/components/ui/SegControl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { rpm as fmtRpm } from "@/lib/format";
@@ -45,41 +46,6 @@ const GRAINS: { value: LedgerGrain; label: string }[] = [
   { value: "state", label: "States" },
   { value: "region", label: "Regions" },
 ];
-
-// Night Cab segmented control — the statusbar owns the window, the metric and
-// the grain, per the approved Lanes mockup.
-const Seg = <T extends string | number>({
-  options,
-  value,
-  onChange,
-  ariaLabel,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-  ariaLabel: string;
-}) => (
-  <div
-    className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px]"
-    style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
-    role="tablist"
-    aria-label={ariaLabel}
-  >
-    {options.map((o) => (
-      <button
-        key={String(o.value)}
-        role="tab"
-        aria-selected={value === o.value}
-        onClick={() => onChange(o.value)}
-        className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] tracking-[.05em] transition-colors ${
-          value === o.value ? "bg-amber text-canvas" : "text-dim hover:text-ink"
-        }`}
-      >
-        {o.label}
-      </button>
-    ))}
-  </div>
-);
 
 const readShowLanes = (): boolean => {
   try {
