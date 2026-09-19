@@ -225,6 +225,9 @@ export async function refreshKitStatuses(user_id, apiKey = process.env.KIT_API_K
   let checked = 0;
   let confirmed = 0;
   let unsubscribed = 0;
+  // Kit's own word for each row, verbatim — the sync's answer carries it so a
+  // row that won't move can be read without a Kit login.
+  const states = [];
 
   for (const row of held.rows) {
     let body;
@@ -239,7 +242,9 @@ export async function refreshKitStatuses(user_id, apiKey = process.env.KIT_API_K
     }
 
     checked += 1;
-    const status = kitStateToStatus(body?.subscriber?.state);
+    const rawState = body?.subscriber?.state ?? null;
+    states.push({ subscriber_id: row.subscriber_id, kit_id: row.kit_subscriber_id, state: rawState });
+    const status = kitStateToStatus(rawState);
     if (!status || status === row.kit_status) {
       // Nothing new — but the row was asked about, and the queue order above
       // rides on kit_synced_at, so stamp it.
@@ -260,7 +265,7 @@ export async function refreshKitStatuses(user_id, apiKey = process.env.KIT_API_K
     if (status === "unsubscribed") unsubscribed += 1;
   }
 
-  return { checked, confirmed, unsubscribed };
+  return { checked, confirmed, unsubscribed, states };
 }
 
 // One call to Kit, reduced to "did it work, and if not, what do we write down".
