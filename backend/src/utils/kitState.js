@@ -20,19 +20,13 @@ export function kitStateToStatus(state) {
   return KIT_STATE_TO_STATUS[state.trim().toLowerCase()] ?? null;
 }
 
-// What dash asks Kit to create. By default Kit makes a new subscriber `active`
-// at once — on the list, no confirmation email, no click. With
-// KIT_DOUBLE_OPT_IN=1 (Railway) the subscriber is created `inactive`, so that
-// adding it to the form is a real subscription: Kit sends the form's
-// confirmation email and only the reader's click makes it active. dash then
-// shows the row as `sent` until the next sync sees Kit's `active` and writes
-// `confirmed`. The switch is a Railway variable because whether Kit honours it
-// for API-added subscribers is Jason's inbox to prove, and it must be one
-// step to turn back off.
-export function kitCreatePayload(email, doubleOptIn) {
-  const payload = { email_address: email };
-  if (doubleOptIn) payload.state = "inactive";
-  return payload;
+// What dash asks Kit to create: the address, nothing else. Kit makes the
+// subscriber `active` at once — on the list, no confirmation email, no click.
+// Single opt-in is the only mode that works through Kit's API: a subscriber
+// created `inactive` and added to a double opt-in form gets the confirmation
+// email, but the click never turns it active (proven 2026-09-19, subscriber
+// 4301885269), so it would sit unreachable forever. Unsubscribing is Kit's
+// link in every email either way.
+export function kitCreatePayload(email) {
+  return { email_address: email };
 }
-
-export const isDoubleOptIn = (env = process.env) => env.KIT_DOUBLE_OPT_IN === "1";

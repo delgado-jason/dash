@@ -2,7 +2,7 @@ import { db } from "../../db/pool.js";
 import { ValidationError } from "../utils/error.js";
 import { parseSiteSubscriber } from "../utils/validation/siteSubscriberValidation.js";
 import { parseWindow } from "../utils/validation/siteTrafficValidation.js";
-import { kitStateToStatus, kitCreatePayload, isDoubleOptIn } from "../utils/kitState.js";
+import { kitStateToStatus, kitCreatePayload } from "../utils/kitState.js";
 
 // Kit's v4 API — the two calls a sync makes, in this order. Creating the
 // subscriber and adding it to the form are separate endpoints: the first gives
@@ -141,7 +141,7 @@ export async function syncPendingToKit(user_id) {
       const created = await kitPost(
         apiKey,
         KIT.subscribers(),
-        kitCreatePayload(row.email, isDoubleOptIn()),
+        kitCreatePayload(row.email),
       );
       if (!created.ok) {
         await markFailed(row.subscriber_id, created.error);
@@ -166,11 +166,8 @@ export async function syncPendingToKit(user_id) {
         continue;
       }
 
-      // 'sent', not 'confirmed'. With KIT_DOUBLE_OPT_IN the address waits in
-      // Kit as inactive until the reader clicks the confirmation email, and the
-      // next sync's refresh writes 'confirmed' when Kit reports active. Without
-      // the switch Kit makes it active at once, so the very next refresh
-      // confirms it — the reader was never asked.
+      // 'sent' now, 'confirmed' on the next sync's refresh once Kit reports the
+      // subscriber active — which, for an API-added address, it does at once.
       await db.query(
         `UPDATE site_subscribers
          SET kit_status = 'sent', kit_subscriber_id = $2, kit_synced_at = now(),
