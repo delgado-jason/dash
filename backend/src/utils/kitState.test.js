@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { kitStateToStatus } from "./kitState.js";
+import { kitStateToStatus, kitCreatePayload, isDoubleOptIn } from "./kitState.js";
 
 describe("kitStateToStatus — what Kit's word for a reader means to the list", () => {
   test("active is a confirmed subscriber", () => {
@@ -22,5 +22,25 @@ describe("kitStateToStatus — what Kit's word for a reader means to the list", 
     for (const s of ["paused", "", null, undefined, 7, {}]) {
       assert.equal(kitStateToStatus(s), null, String(s));
     }
+  });
+});
+
+describe("kitCreatePayload — what dash asks Kit to create", () => {
+  test("single opt-in: the address only, Kit's default makes it active", () => {
+    assert.deepEqual(kitCreatePayload("a@example.com", false), { email_address: "a@example.com" });
+  });
+
+  test("double opt-in: created inactive so the form's confirmation email decides", () => {
+    assert.deepEqual(kitCreatePayload("a@example.com", true), {
+      email_address: "a@example.com",
+      state: "inactive",
+    });
+  });
+
+  test("the switch is exactly KIT_DOUBLE_OPT_IN=1", () => {
+    assert.equal(isDoubleOptIn({}), false);
+    assert.equal(isDoubleOptIn({ KIT_DOUBLE_OPT_IN: "" }), false);
+    assert.equal(isDoubleOptIn({ KIT_DOUBLE_OPT_IN: "true" }), false);
+    assert.equal(isDoubleOptIn({ KIT_DOUBLE_OPT_IN: "1" }), true);
   });
 });
