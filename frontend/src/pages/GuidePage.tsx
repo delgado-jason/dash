@@ -2416,6 +2416,15 @@ const GuidePage = () => {
               back as <span className="text-light">unsubscribed</span>. Until
               the key is on Railway the button says so and moves nothing.
             </Why>
+            <Why>
+              Whether a reader is asked to confirm is a Railway variable,{" "}
+              <span className="text-light">KIT_DOUBLE_OPT_IN=1</span>. Without
+              it, Kit puts the address straight on the list — no confirmation
+              email, and the row reads confirmed on the next sync. With it,
+              the address waits in Kit until the reader clicks the confirmation
+              email Kit sends, and the row stays sent until that click. Either
+              way, unsubscribing is Kit's link in every email.
+            </Why>
           </Section>
 
           <GroupHeading>The award system</GroupHeading>
