@@ -43,6 +43,7 @@ import agentTierHistoryRouter from "./routes/agentTierHistoryRoutes.js";
 import relationshipReviewRouter from "./routes/relationshipReviewRoutes.js";
 import siteTrafficRouter from "./routes/siteTrafficRoutes.js";
 import siteHitRouter from "./routes/siteHitRoutes.js";
+import siteSubscriberRouter from "./routes/siteSubscriberRoutes.js";
 
 const app = express();
 
@@ -109,6 +110,7 @@ app.use("/settlements", settlementRouter);
 app.use("/city-coords", cityCoordsRouter);
 app.use("/site-traffic", siteTrafficRouter);
 app.use("/site-hits", siteHitRouter); // public: the website's beacon
+app.use("/site-subscribers", siteSubscriberRouter); // POST / is public: the Logbook's form
 
 // ---- HEALTH / VERSION ----
 // Deliberately UNAUTHENTICATED and cheap: the question "which commit is

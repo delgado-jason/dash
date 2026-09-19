@@ -2367,6 +2367,55 @@ const GuidePage = () => {
               <span className="text-light">Central</span>, and a day ends at
               midnight Central — the same clock the rest of dash keeps.
             </Why>
+            <Why>
+              <span className="text-light">Subscribers</span> are the people who
+              asked for the Logbook. When someone fills in the form on an entry,
+              the address lands <span className="text-light">here first</span> —
+              that row is your copy of the list, and it keeps only the address,
+              when it arrived, which entry they signed up from, and which
+              version of the consent line they were shown. No IP, no browser; a
+              mailing list has no use for either. Only after the row is safe
+              does dash hand the address to{" "}
+              <span className="text-light">Kit</span>, the service that does the
+              sending: Kit mails the confirmation, mails every entry, carries
+              the physical address the law wants in the footer, and owns the
+              unsubscribe link. If Kit ever changes under you, every address you
+              have ever collected is already in dash.{" "}
+              <span className="text-light">Latest signups</span> shows the
+              newest 25, full addresses, newest first; the{" "}
+              <span className="text-light">Subscribers</span> figure counts the
+              window you're on and the line under it counts the whole list.
+              <br />
+              <br />
+              The status on each row is where that address stands with Kit.{" "}
+              <span className="text-light">pending</span> — in dash, not yet
+              handed over. <span className="text-light">sent</span> — Kit has it
+              and has mailed them; it's the normal, quiet state while you wait
+              on the person. <span className="text-light">confirmed</span> —
+              they clicked the link in that email and are really on the list.{" "}
+              <span className="text-light">unsubscribed</span> — they left
+              through Kit's link, which is theirs to use and nothing for you to
+              undo; if they ever sign up again the row wakes back up as pending.{" "}
+              <span className="text-light">failed</span> — Kit refused the
+              address or couldn't be reached. Nothing is lost, the address is
+              still yours here, but that row is a flag to read rather than
+              something that retries itself. Until the Kit key is set on
+              Railway, nothing can be
+              handed over at all, so every signup simply sits as{" "}
+              <span className="text-light">pending</span> — that is the expected
+              state before the account exists, not a fault. The moment the key
+              is in place, the Sync door pushes everything that has been
+              waiting, oldest first.
+            </Why>
+            <Why>
+              <span className="text-light">Sync to Kit</span>, on the Latest
+              signups board, is the one button: it hands every waiting address
+              to Kit and asks Kit how the ones it already holds are doing — a
+              reader who clicked the confirmation link comes back as{" "}
+              <span className="text-light">confirmed</span>, one who left comes
+              back as <span className="text-light">unsubscribed</span>. Until
+              the key is on Railway the button says so and moves nothing.
+            </Why>
           </Section>
 
           <GroupHeading>The award system</GroupHeading>
