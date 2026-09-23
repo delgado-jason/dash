@@ -3477,31 +3477,51 @@ const GuidePage = () => {
             sources={[{ label: "Account Status", to: "/status" }]}
           >
             <p className="text-sm text-muted-text">
-              Your yearly cash plan, tracked one Friday at a time. The ritual is
-              snapshot-<span className="text-light">first</span>: after the
-              settlement and payroll land, punch in the raw balances (Ops,
-              Vault, Maintenance, Tax, Trailer fund) — then the page hands you
-              the orders: sweep everything over the Ops float line to the
-              Vault, and send anything above the protected cushion to the
-              current waterfall stage. Next Friday's snapshot confirms the
-              moves landed.
+              Your yearly cash plan, run on two beats. The rules are ADMIN-03 ·
+              Owner distributions in the operations manual; dash hands out the
+              orders and Excel keeps the log.{" "}
+              <span className="text-light">Every Friday</span>: snapshot
+              first — after the settlement and payroll land, punch in the raw
+              balances — then the accrual: the pay week's miles (Wednesday to
+              Tuesday, pre-filled from the loads' loaded + deadhead, editable)
+              × the plan's $ per mile moves to Maintenance. A closed pay week
+              accrues once, on the first snapshot after it closes; a load with
+              no deadhead logged is flagged, not counted as free miles.{" "}
+              <span className="text-light">The money day</span> opens the day
+              the month's P&amp;L is filed in Expenses and runs any day —
+              never the first Friday, which is the new month's Friday. Tax
+              comes off the top (the plan's % of the month's pre-tax profit; a
+              loss moves $0). Then the interlock: three floors in order — Ops
+              to the float line, Maintenance to its floor, the Vault to the
+              ladder's first rung — take the surplus until every floor holds,
+              and only then the split: the plan's objective % to the current
+              rung, the rest to the household. Under the minimum movement
+              nothing moves and the money rides into next month. Tick the month
+              on the snapshot form and dash renders the SOP's seven-line entry,
+              copy-ready for Excel; that tag is the only thing dash keeps about
+              a money day.
             </p>
             <Formula>
-              sweep = max(0, ops − float line) · overflow = max(0, vault −
-              highest completed vault threshold)
+              accrual = pay-week miles × $/mile · tax = max(0, % × pre-tax
+              profit) · surplus = max(0, ops − accrual − tax − float line) ·
+              under the minimum → nothing moves · fill Maintenance to its
+              floor, then the Vault to rung 1 · remainder × objective % → the
+              objective, the rest → household
             </Formula>
             <Why>
-              The waterfall is a ladder of stages — vault thresholds that
-              ratchet the protected cushion upward, debts that die from the
-              overflow (bound live to your obligations), and overflow funds
-              like the trade-up war chest, measured as vault money above the
-              protected cushion. (The snapshot's trailer figure is the trailer
-              HOLDING account — note and guarantor out, zeroes monthly — it
-              rides the Reserves card, not the waterfall.)
-              The stages <span className="text-light">are</span> the plan:
-              edit them, reorder them, or write next year's plan fresh — the
-              old year keeps its history. Marge reads the same tables
-              (plans, stages, snapshots, obligations) for the Friday report.
+              The floors are the interlock: a healthy Ops balance on a good
+              Tuesday is not surplus until the month is closed, the tax is out
+              and every reserve holds its floor — so the verdict reads BELOW
+              FLOAT, FLOORS FIRST or ON PLAN. The ladder is still the plan —
+              rung 1 is floor 3, the current objective is the first rung after
+              it, debts die from the split (and from vault money above the
+              ratchet, which still goes to the objective whole), the trade-up
+              fund is vault money above the ratchet. Edit the rungs, the
+              settings (per mile, tax %, the maintenance floor, the minimum
+              movement, the split, the first money month) and the account roles
+              — ops, vault, maintenance, tax, watched — in EDIT PLAN; write
+              next year's plan fresh and the old year keeps its history. Marge
+              reads the same tables for the Friday report.
             </Why>
           </Section>
 
