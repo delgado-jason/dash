@@ -19,8 +19,16 @@ export interface PlanRow {
   float_line: string;
   float_line_home_lo: string | null;
   float_line_home_hi: string | null;
+  // Retired by 083 — kept on the row for history, unused.
   maintenance_weekly: string;
   tax_weekly: string;
+  // ADMIN-03 (#500): the rate table, the floors and the split as settings.
+  maintenance_per_mile: string;
+  tax_pct: string;
+  maintenance_floor: string;
+  min_move: string;
+  objective_pct: string;
+  first_money_month: string; // YYYY-MM-DD, the first of the first month under the rules
   active: boolean;
   stages: PlanStageRow[];
 }
@@ -28,7 +36,9 @@ export interface PlanRow {
 export interface AccountRow {
   account_id: string;
   name: string;
-  role: "ops" | "vault" | "reserve";
+  // ops floats, vault runs the cascade, maintenance is the working minimum,
+  // tax takes the tax move; reserve is just watched.
+  role: "ops" | "vault" | "maintenance" | "tax" | "reserve";
   position: number;
   active: boolean;
 }
@@ -37,6 +47,11 @@ export interface SnapshotRow {
   snapshot_id: string;
   as_of: string;
   note: string | null;
+  // The accrual this snapshot made (miles + the latest pay week covered) and
+  // the month its money day settled — null on a plain Friday.
+  miles: string | number | null;
+  pay_week_start: string | null; // YYYY-MM-DD
+  settles_month: string | null; // YYYY-MM-DD, first of the month
   balances: { account_id: string; balance: string | number }[];
 }
 

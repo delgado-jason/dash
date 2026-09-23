@@ -22,7 +22,7 @@ const handle = (fn) => async (req, res) => {
     const out = await fn(req);
     return res.status(out?.status ?? 200).json(out?.body ?? out ?? {});
   } catch (err) {
-    if (err.type === "validation" || err.type === "not_found") {
+    if (err.type === "validation" || err.type === "not_found" || err.type === "conflict") {
       return res.status(err.statusCode).json({ error: err.message });
     }
     return res.status(500).json({ error: "Internal Server Error", message: err.message });

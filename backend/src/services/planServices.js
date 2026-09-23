@@ -1,14 +1,28 @@
 import { db } from "../../db/pool.js";
-import { ValidationError, NotFoundError } from "../utils/error.js";
+import { ValidationError, NotFoundError, ConflictError } from "../utils/error.js";
+import { normalizeSnapshotExtras, monthLabel } from "../utils/validation/planSnapshotValidation.js";
+import { validatePlanFields } from "../utils/validation/planFieldsValidation.js";
 
 // The plan framework: plans carry the year's thresholds, plan_stages carry the
 // waterfall as ordered data. Numeric columns serialize as strings — the
 // frontend coerces before math, per house rule.
 
+// 083 (#500): the rate table, the floors and the split ride the plan row as
+// settings. maintenance_weekly/tax_weekly stay for history, unused.
 const PLAN_FIELDS = [
   "label", "year", "float_line", "float_line_home_lo", "float_line_home_hi",
   "maintenance_weekly", "tax_weekly", "active",
+  "maintenance_per_mile", "tax_pct", "maintenance_floor", "min_move", "objective_pct",
+  "first_money_month",
 ];
+// DATE columns go out as YYYY-MM-DD strings (house rule) — never a timestamp.
+const PLAN_COLS = `plan_id, user_id, label, year, float_line, float_line_home_lo,
+  float_line_home_hi, maintenance_weekly, tax_weekly, active, created_at, updated_at,
+  maintenance_per_mile, tax_pct, maintenance_floor, min_move, objective_pct,
+  to_char(first_money_month, 'YYYY-MM-DD') AS first_money_month`;
+const SNAPSHOT_COLS = `snapshot_id, user_id, to_char(as_of, 'YYYY-MM-DD') AS as_of, note,
+  miles, to_char(pay_week_start, 'YYYY-MM-DD') AS pay_week_start,
+  to_char(settles_month, 'YYYY-MM-DD') AS settles_month, created_at`;
 const STAGE_FIELDS = ["position", "label", "kind", "obligation_id", "target_lo", "target_hi"];
 
 const pick = (data, allowed) => {
@@ -20,7 +34,7 @@ const pick = (data, allowed) => {
 export async function getPlans(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const plans = await db.query(
-    `SELECT * FROM public.plans WHERE user_id = $1 ORDER BY year DESC, created_at DESC`,
+    `SELECT ${PLAN_COLS} FROM public.plans WHERE user_id = $1 ORDER BY year DESC, created_at DESC`,
     [user_id],
   );
   const stages = await db.query(
@@ -35,14 +49,14 @@ export async function getPlans(user_id) {
 
 export async function createPlan(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const fields = pick(data, PLAN_FIELDS);
+  const fields = validatePlanFields(pick(data, PLAN_FIELDS));
   if (!fields.label || !fields.year)
     throw new ValidationError("A plan needs a label and a year");
   const cols = Object.keys(fields);
   const vals = Object.values(fields);
   const result = await db.query(
     `INSERT INTO public.plans (user_id, ${cols.join(", ")})
-     VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(", ")}) RETURNING *`,
+     VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(", ")}) RETURNING ${PLAN_COLS}`,
     [user_id, ...vals],
   );
   // Making a plan active retires the others — one active plan at a time.
@@ -58,13 +72,13 @@ export async function createPlan(user_id, data) {
 export async function patchPlan(user_id, plan_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!plan_id) throw new ValidationError("Missing plan_id");
-  const fields = pick(data, PLAN_FIELDS);
+  const fields = validatePlanFields(pick(data, PLAN_FIELDS));
   if (Object.keys(fields).length === 0)
     throw new ValidationError("Nothing to update");
   const sets = Object.keys(fields).map((k, i) => `${k} = $${i + 3}`);
   const result = await db.query(
     `UPDATE public.plans SET ${sets.join(", ")}, updated_at = now()
-     WHERE user_id = $1 AND plan_id = $2 RETURNING *`,
+     WHERE user_id = $1 AND plan_id = $2 RETURNING ${PLAN_COLS}`,
     [user_id, plan_id, ...Object.values(fields)],
   );
   if (result.rowCount === 0) throw new NotFoundError("Plan not found");
@@ -167,7 +181,7 @@ export async function patchAccount(user_id, account_id, data) {
 export async function getSnapshots(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const snaps = await db.query(
-    `SELECT * FROM public.account_snapshots WHERE user_id = $1 ORDER BY as_of`,
+    `SELECT ${SNAPSHOT_COLS} FROM public.account_snapshots WHERE user_id = $1 ORDER BY as_of`,
     [user_id],
   );
   const balances = await db.query(
@@ -192,14 +206,19 @@ export async function createSnapshot(user_id, data) {
     if (!b.account_id || b.balance == null || isNaN(Number(b.balance)))
       throw new ValidationError("Every balance needs an account and a number");
   }
+  // The two optional beats (#500): the accrual's miles + pay week, and the
+  // money day's settled month.
+  const extras = normalizeSnapshotExtras(data);
   // One snapshot + its balances land together or not at all.
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
     const snap = await client.query(
-      `INSERT INTO public.account_snapshots (user_id, as_of, note)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [user_id, as_of, note ?? null],
+      `INSERT INTO public.account_snapshots
+         (user_id, as_of, note, miles, pay_week_start, settles_month)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING ${SNAPSHOT_COLS}`,
+      [user_id, as_of, note ?? null, extras.miles, extras.pay_week_start, extras.settles_month],
     );
     for (const b of balances) {
       await client.query(
@@ -212,6 +231,9 @@ export async function createSnapshot(user_id, data) {
     return { ...snap.rows[0], balances };
   } catch (err) {
     await client.query("ROLLBACK");
+    // A month settles once — the partial unique index says so.
+    if (err.code === "23505" && String(err.constraint).includes("settles_month"))
+      throw new ConflictError(`${monthLabel(extras.settles_month)} already has a money day`);
     throw err;
   } finally {
     client.release();
