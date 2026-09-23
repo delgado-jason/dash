@@ -3491,11 +3491,12 @@ const GuidePage = () => {
               the month's P&amp;L is filed in Expenses and runs any day —
               never the first Friday, which is the new month's Friday. Tax
               comes off the top (the plan's % of the month's pre-tax profit; a
-              loss moves $0). Then the interlock: three floors in order — Ops
-              to the float line, Maintenance to its floor, the Vault to the
-              ladder's first rung — take the surplus until every floor holds,
-              and only then the split: the plan's objective % to the current
-              rung, the rest to the household. Under the minimum movement
+              loss moves $0). Then the interlock: Ops must hold the float line
+              before there is any surplus at all; the surplus then fills
+              Maintenance to its floor, then the Vault to the ladder's first
+              rung, and only when every floor holds comes the split: the
+              plan's objective % to the current rung, the rest to the
+              household. Under the minimum movement
               nothing moves and the money rides into next month. Tick the month
               on the snapshot form and dash renders the SOP's seven-line entry,
               copy-ready for Excel; that tag is the only thing dash keeps about

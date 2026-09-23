@@ -35,7 +35,9 @@ import type { ExpensePeriod } from "@/types/expense";
 import type { Load } from "@/types/load";
 import {
   getPlanStatus,
+  getTaxMove,
   monthName,
+  money as fmtMoney,
   type PlanStageInput,
   type SnapshotInput,
   type PlanInput,
@@ -283,7 +285,13 @@ const StatusPage = () => {
     () =>
       periods
         .filter((p) => p.income_total != null && p.cogs_total != null && p.expense_total != null)
-        .map((p) => ({ month: day(p.period_month), pretax: p.income_total! - p.cogs_total! - p.expense_total! }))
+        .map((p) => ({
+          month: day(p.period_month),
+          pretax: p.income_total! - p.cogs_total! - p.expense_total!,
+          income: p.income_total!,
+          cogs: p.cogs_total!,
+          expenses: p.expense_total!,
+        }))
         .sort((a, b) => a.month.localeCompare(b.month)),
     [periods],
   );
@@ -292,10 +300,22 @@ const StatusPage = () => {
     [snapshots],
   );
   const firstMoneyMonth = plan ? day(plan.first_money_month) || "2026-08-01" : "2026-08-01";
-  const pending: MoneyDayInput | null = useMemo(() => {
-    const m = filed.find((f) => f.month >= firstMoneyMonth && !settled.has(f.month));
-    return m ? { month: m.month, pretaxProfit: m.pretax } : null;
-  }, [filed, settled, firstMoneyMonth]);
+  // Every filed month nobody has settled, oldest first — the money day runs
+  // them in order; the first is open, the rest wait behind it.
+  const queue: MoneyDayInput[] = useMemo(
+    () =>
+      filed
+        .filter((f) => f.month >= firstMoneyMonth && !settled.has(f.month))
+        .map((f) => ({ month: f.month, pretaxProfit: f.pretax, income: f.income, cogs: f.cogs, expenses: f.expenses })),
+    [filed, settled, firstMoneyMonth],
+  );
+  const pending: MoneyDayInput | null = queue[0] ?? null;
+  // The month before the open one, for the Tax row's context clause.
+  const prevFiled = useMemo(() => {
+    if (!pending) return null;
+    const i = filed.findIndex((f) => f.month === pending.month);
+    return i > 0 ? filed[i - 1] : null;
+  }, [filed, pending]);
   const latestFiled = filed.length ? filed[filed.length - 1].month : null;
   const opensNext = latestFiled ? monthName(nextMonth(latestFiled)) : null;
 
@@ -313,6 +333,10 @@ const StatusPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [planInput, latest, owedToday, pending, opsAcct, vaultAcct, maintAcct, taxAcct],
   );
+
+  // When a money day is open the whole page previews it — the badge, the
+  // cards, the interlock's fills — so the panel and the board never disagree.
+  const view = preview ?? status;
 
   const trend = useMemo(
     () =>
@@ -339,6 +363,8 @@ const StatusPage = () => {
     const today = todayKey();
     const o = owedFor(today);
     setFAsOf(today);
+    setFBalances({});
+    setFNote("");
     setFMiles(o.weeks.length ? String(o.miles) : "");
     setFMoneyDay(moneyDay && !!pending);
     setError(null);
@@ -470,11 +496,20 @@ const StatusPage = () => {
     tax_pct: Number(pTaxPct),
     min_move: Number(pMinMove),
     objective_pct: Number(pObjPct),
-    first_money_month: pFirstMonth ? `${pFirstMonth}-01` : "2026-08-01",
+    first_money_month: `${pFirstMonth}-01`,
   });
 
   const savePlan = async () => {
     if (!plan) return;
+    // A blank would save as 0 and quietly stop the accrual — refuse it.
+    const numeric: [string, string][] = [
+      ["Year", pYear], ["Ops float line", pFloat], ["Maintenance $ per mile", pPerMile],
+      ["Maintenance floor", pMaintFloor], ["Tax %", pTaxPct], ["Minimum movement", pMinMove], ["Split objective %", pObjPct],
+    ];
+    const bad = numeric.find(([, v]) => v.trim() === "" || !Number.isFinite(Number(v)));
+    if (bad) { setError(`${bad[0]} needs a number`); return; }
+    if ([pTaxPct, pObjPct].some((v) => Number(v) < 0 || Number(v) > 100)) { setError("Percentages run 0–100"); return; }
+    if (!/^\d{4}-\d{2}$/.test(pFirstMonth)) { setError("First money month needs a month"); return; }
     setBusy(true);
     setError(null);
     try {
@@ -585,15 +620,16 @@ const StatusPage = () => {
   const objPct = plan ? (num(plan.objective_pct) ?? 70) : 70;
   const floatLine = plan ? num(plan.float_line) : null;
   const objective =
-    status?.objectiveIndex != null && status.waterfall ? status.waterfall.stages[status.objectiveIndex] : null;
+    view?.objectiveIndex != null && view.waterfall ? view.waterfall.stages[view.objectiveIndex] : null;
   const objectiveName = objective?.stage.label ?? "the current objective";
   const pendingLabel = pending ? monthName(pending.month) : null;
   const opsBal = balanceOf(latest, opsAcct?.account_id);
   const vaultBal = balanceOf(latest, vaultAcct?.account_id);
   const maintBal = balanceOf(latest, maintAcct?.account_id);
   const taxBal = balanceOf(latest, taxAcct?.account_id);
-  const floorsBoard: FloorStatus[] = status?.interlock?.floors ?? [];
-  const acc = status?.accrual ?? null;
+  const floorsBoard: FloorStatus[] = view?.interlock?.floors ?? [];
+  const acc = view?.accrual ?? null;
+  const prevTax = prevFiled && taxPct != null ? getTaxMove(prevFiled.pretax, taxPct) : null;
   const owedMiles = owedToday.weeks.length ? owedToday.miles : null;
   const accrualWords =
     owedToday.weeks.length && acc != null && perMile != null
@@ -655,16 +691,16 @@ const StatusPage = () => {
 
         {/* the plan sentence */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          {status?.verdict ? (
+          {view?.verdict ? (
             <span
               className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
               style={
-                status.verdict === "on-plan"
+                view.verdict === "on-plan"
                   ? { color: "#6fd08c", borderColor: "#6fd08c", boxShadow: "inset 0 0 12px rgba(111,208,140,.12)" }
                   : { color: "#f5b03a", borderColor: "#f5b03a", boxShadow: "inset 0 0 12px rgba(232,148,10,.12)" }
               }
             >
-              {status.verdict === "on-plan" ? "ON PLAN" : status.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
+              {view.verdict === "on-plan" ? "ON PLAN" : view.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
             </span>
           ) : (
             <span className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] border-2 border-dashed border-hairline text-faint">
@@ -679,6 +715,8 @@ const StatusPage = () => {
                 {pending.pretaxProfit != null && pending.pretaxProfit < 0
                   ? `a loss of ${money(-pending.pretaxProfit)}`
                   : `profit ${money(pending.pretaxProfit ?? 0)}`}
+                {queue.length === 2 && <> · {monthName(queue[1].month).split(" ")[0]}'s is queued behind it</>}
+                {queue.length > 2 && <> · {queue.length - 1} more months are queued behind it</>}
               </>
             ) : null}
             {opensNext && <> · {opensNext.split(" ")[0]}'s opens when its P&amp;L lands</>}
@@ -710,7 +748,7 @@ const StatusPage = () => {
               {step(1, `Tax — ${md.taxPct} % of ${pendingLabel.split(" ")[0]}'s pre-tax profit (${md.pretaxProfit < 0 ? "−" : ""}${money(Math.abs(md.pretaxProfit))})`, md.pretaxProfit < 0 ? "$0 · a loss" : money(md.tax))}
               {step(
                 2,
-                `The interlock — Ops ${money(md.opsAfter)} after ${md.tax > 0 ? "the accrual and the tax move" : "Friday's accrual"}, floor ${money(floatLine ?? 0)}`,
+                `The interlock — Ops ${fmtMoney(md.opsAfter)} after ${md.tax > 0 ? "the accrual and the tax move" : "Friday's accrual"}, floor ${money(floatLine ?? 0)}`,
                 held ? `HELD — ${held.label}, short ${money(held.short)}` : "all three floors hold",
                 !held,
               )}
@@ -763,15 +801,17 @@ const StatusPage = () => {
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 ops balance
-                {status?.opsAfter != null && acc != null && acc > 0 && <> · {money(status.opsAfter)} after Friday's accrual</>}
+                {view?.opsAfter != null && ((acc != null && acc > 0) || (view.moneyDay?.tax ?? 0) > 0) && (
+                  <> · {fmtMoney(view.opsAfter)} after {view.moneyDay && view.moneyDay.tax > 0 ? "the moves" : "Friday's accrual"}</>
+                )}
                 {floorsBoard[0] && (floorsBoard[0].short > 0 ? <> · short {money(floorsBoard[0].short)}</> : <> · holds the float</>)}
               </p>
               <p className="font-condensed text-[12.5px] text-dim mt-3">
-                {status?.verdict === "below-float"
+                {view?.verdict === "below-float"
                   ? `Below the float. Nothing leaves Ops but the accrual until it holds ${floatLine != null ? money(floatLine) : "the float line"}.`
-                  : status?.verdict === "floors-first"
+                  : view?.verdict === "floors-first"
                     ? `Ops holds the float. On the money day the surplus fills ${maintAcct?.name ?? "Maintenance"} and the ${vaultAcct?.name ?? "Vault"} to their floors before anything is split.`
-                    : status?.verdict === "on-plan"
+                    : view?.verdict === "on-plan"
                       ? `Every floor holds. On the money day the surplus splits ${objPct} % to ${objectiveName} · ${100 - objPct} % household.`
                       : "Take the first Friday snapshot and the orders appear here."}
               </p>
@@ -803,8 +843,8 @@ const StatusPage = () => {
               <p className="font-condensed text-[12.5px] text-dim mt-3">
                 {floorsBoard[2] && !floorsBoard[2].met
                   ? `Third in the fill order — after ${opsAcct?.name ?? "Ops"} and ${maintAcct?.name ?? "Maintenance"} hold their floors, the surplus builds this to ${money(floorsBoard[2].floor)}.`
-                  : status?.cushion
-                    ? `The floor holds · ${money(status.cushion.toGoal)} to the goal. Money above the ratchet goes whole to ${objectiveName}.`
+                  : view?.cushion
+                    ? `The floor holds · ${money(view.cushion.toGoal)} to the goal. Money above the ratchet goes whole to ${objectiveName}.`
                     : "The floor is the ladder's first vault rung — set it in EDIT PLAN."}
               </p>
             </div>
@@ -812,7 +852,7 @@ const StatusPage = () => {
         </div>
 
         {/* the interlock */}
-        {status?.interlock && (
+        {view?.interlock && (
           <div className="ds2-board overflow-hidden mt-4">
             <div className={BOARD_HEAD}>
               <span className={BOARD_TITLE}>The interlock — three floors, filled in this order before anything is distributed</span>
@@ -830,7 +870,7 @@ const StatusPage = () => {
                     <p className="font-condensed text-[12px] text-faint mt-[2px]">
                       {before != null ? money(before) : "—"}
                       {f.key !== "vault" && f.balance != null && before != null && Math.round(f.balance) !== Math.round(before) && (
-                        <> → {money(f.balance)} after the {f.key === "ops" && status.moneyDay ? "moves" : "accrual"}</>
+                        <> → {fmtMoney(f.balance)} after the {f.key === "ops" && view.moneyDay && view.moneyDay.tax > 0 ? "moves" : "accrual"}</>
                       )}
                       {" "}· floor {money(f.floor)}
                       {f.fill > 0 && <> · <span className="text-amber-hi">fills {money(f.fill)} today</span></>}
@@ -866,7 +906,7 @@ const StatusPage = () => {
           <div className="ds2-board overflow-hidden mt-4">
             <div className={BOARD_HEAD}>
               <span className={BOARD_TITLE}>The ladder — one objective at a time</span>
-              <span className={BOARD_SUB}>· rung 1 is floor 3 · ratchet at {money(status.waterfall.protectedLevel)} · edit the rungs in EDIT PLAN</span>
+              <span className={BOARD_SUB}>· rung 1 is floor 3 · edit the rungs in EDIT PLAN</span>
             </div>
             {status.waterfall.stages.map((st, i) => {
               const floorStage = stageInputs.filter((s) => s.kind === "vault").sort((a, b) => a.position - b.position)[0];
@@ -976,6 +1016,9 @@ const StatusPage = () => {
                   {pending && pendingLabel && preview?.moneyDay ? (
                     <>
                       {pendingLabel.split(" ")[0]}'s money day: {taxPct} % of {pending.pretaxProfit != null && pending.pretaxProfit < 0 ? "−" : ""}{money(Math.abs(pending.pretaxProfit ?? 0))} = <b className="text-ink font-semibold">{money(preview.moneyDay.tax)}</b>
+                      {prevFiled && prevTax != null && (
+                        <> · {monthName(prevFiled.month).split(" ")[0]} {settled.has(prevFiled.month) ? "moved" : "would have moved"} {money(prevTax)}</>
+                      )}
                     </>
                   ) : (
                     <>nothing owed — every filed month has had its money day</>
@@ -1136,9 +1179,7 @@ const StatusPage = () => {
                     busy ||
                     !opsAcct ||
                     !vaultAcct ||
-                    !fBalances[opsAcct.account_id] ||
-                    fBalances[vaultAcct.account_id] == null ||
-                    fBalances[vaultAcct.account_id] === ""
+                    activeAccounts.some((a) => (fBalances[a.account_id] ?? "").trim() === "")
                   }
                   onClick={saveSnapshot}
                 >
@@ -1172,7 +1213,7 @@ const StatusPage = () => {
                 <div><label className={LBL}>Maintenance floor · floor 2 <span className="normal-case tracking-normal text-amber-hi">proposed — change it when decided</span></label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pMaintFloor} onChange={(e) => setPMaintFloor(e.target.value)} /></div>
                 <div><label className={LBL}>Tax · % of pre-tax profit</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pTaxPct} onChange={(e) => setPTaxPct(e.target.value)} /></div>
                 <div><label className={LBL}>Minimum movement</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pMinMove} onChange={(e) => setPMinMove(e.target.value)} /></div>
-                <div><label className={LBL}>Split · objective % <span className="normal-case tracking-normal text-faint">household gets the rest</span></label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pObjPct} onChange={(e) => setPObjPct(e.target.value)} /></div>
+                <div><label className={LBL}>Split · objective % <span className="normal-case tracking-normal text-faint">household gets the rest</span></label><div className="flex items-center gap-2"><input inputMode="decimal" className={`${FIELD} border-amber`} value={pObjPct} onChange={(e) => setPObjPct(e.target.value)} /><span className="font-condensed text-[12px] text-faint whitespace-nowrap">· household {pObjPct.trim() !== "" && Number.isFinite(Number(pObjPct)) ? 100 - Number(pObjPct) : "—"}</span></div></div>
                 <div><label className={LBL}>First money month</label><input type="month" className={`${FIELD} border-amber`} value={pFirstMonth} onChange={(e) => setPFirstMonth(e.target.value)} /></div>
                 <p className="col-span-2 font-condensed text-[11.5px] text-faint">
                   Retired: {money(Number(plan.maintenance_weekly))}/wk maintenance · {money(Number(plan.tax_weekly))}/wk tax — kept on the row for history, not used. The Vault floor is not a setting: it is the ladder's first vault rung.

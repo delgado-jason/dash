@@ -1,6 +1,7 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error.js";
 import { normalizeSnapshotExtras, monthLabel } from "../utils/validation/planSnapshotValidation.js";
+import { validatePlanFields } from "../utils/validation/planFieldsValidation.js";
 
 // The plan framework: plans carry the year's thresholds, plan_stages carry the
 // waterfall as ordered data. Numeric columns serialize as strings — the
@@ -48,14 +49,14 @@ export async function getPlans(user_id) {
 
 export async function createPlan(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const fields = pick(data, PLAN_FIELDS);
+  const fields = validatePlanFields(pick(data, PLAN_FIELDS));
   if (!fields.label || !fields.year)
     throw new ValidationError("A plan needs a label and a year");
   const cols = Object.keys(fields);
   const vals = Object.values(fields);
   const result = await db.query(
     `INSERT INTO public.plans (user_id, ${cols.join(", ")})
-     VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(", ")}) RETURNING *`,
+     VALUES ($1, ${cols.map((_, i) => `$${i + 2}`).join(", ")}) RETURNING ${PLAN_COLS}`,
     [user_id, ...vals],
   );
   // Making a plan active retires the others — one active plan at a time.
@@ -71,13 +72,13 @@ export async function createPlan(user_id, data) {
 export async function patchPlan(user_id, plan_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!plan_id) throw new ValidationError("Missing plan_id");
-  const fields = pick(data, PLAN_FIELDS);
+  const fields = validatePlanFields(pick(data, PLAN_FIELDS));
   if (Object.keys(fields).length === 0)
     throw new ValidationError("Nothing to update");
   const sets = Object.keys(fields).map((k, i) => `${k} = $${i + 3}`);
   const result = await db.query(
     `UPDATE public.plans SET ${sets.join(", ")}, updated_at = now()
-     WHERE user_id = $1 AND plan_id = $2 RETURNING *`,
+     WHERE user_id = $1 AND plan_id = $2 RETURNING ${PLAN_COLS}`,
     [user_id, plan_id, ...Object.values(fields)],
   );
   if (result.rowCount === 0) throw new NotFoundError("Plan not found");

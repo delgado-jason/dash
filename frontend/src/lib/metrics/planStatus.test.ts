@@ -39,8 +39,8 @@ const plan = (over: Partial<PlanInput> = {}): PlanInput => ({
 // The Sep 18 snapshot, and this pay week's 1,999 miles.
 const sep18 = () => snap({ ops: "8575", vault: "0", maintenance: "1161", tax: "9590" });
 const thisWeek = { miles: 1999, weekLabel: "Sep 16–22", loads: 2, loadedMiles: 1669, deadheadMiles: 330, noDeadhead: 0 };
-const august = { month: "2026-08-01", pretaxProfit: -1431.06 };
-const july = { month: "2026-07-01", pretaxProfit: 14483.87 };
+const august = { month: "2026-08-01", pretaxProfit: -1431.06, income: 22695.06, cogs: 4901.78, expenses: 19224.34 };
+const july = { month: "2026-07-01", pretaxProfit: 14483.87, income: 33741.35, cogs: 5470.69, expenses: 13786.79 };
 
 describe("money / monthName", () => {
   it("formats whole dollars with a real minus sign", () => {
@@ -130,10 +130,11 @@ describe("getMoneyDay — the SOP's sequence on real numbers", () => {
     expect(md.household).toBe(0);
     expect(md.entry).toEqual([
       "MONTH ........... August 2026",
-      "Pre-tax profit .. −$1,431",
-      "Tax swept ....... $0   (20 % per plan — a loss month)",
-      "Floors .......... HELD — operating, short $2,065   (maintenance short $3,199 · reserve short $15,000)",
-      "Surplus ......... $0   (Ops $7,935 after the accrual − $0 tax − $10,000 floor)",
+      "Pre-tax profit .. −$1,431      income $22,695 − cogs $4,902 − expenses $19,224",
+      "Tax swept ....... $0           20 % per plan — a loss month",
+      "Floors .......... HELD — operating, short $2,065",
+      "                  maintenance short $3,199 · reserve short $15,000",
+      "Surplus ......... $0           Ops $7,935 after the $640 accrual − $10,000 floor",
       "Distribution .... $0 — interlock",
     ]);
   });
@@ -151,22 +152,27 @@ describe("getMoneyDay — the SOP's sequence on real numbers", () => {
     expect(vault.fill).toBeCloseTo(6758.47, 2);
     expect(md.interlock.heldBy).toBe("vault");
     expect(md.objective).toBe(0);
-    expect(md.entry[3]).toBe("Floors .......... HELD — reserve, short $8,242   (operating met · maintenance met)");
-    expect(md.entry[4]).toBe("Surplus ......... $6,758   → directed to the Vault $6,758 (now $6,758 of $15,000)");
-    expect(md.entry[5]).toBe("Objective ....... $0   → Best Egg — kill the 22% note — interlock");
-    expect(md.entry[6]).toBe("Distribution .... $0 — interlock");
+    expect(md.entry.slice(3)).toEqual([
+      "Floors .......... operating met · maintenance met ($5,413 after the accrual)",
+      "                  reserve UNMET ($0 of $15,000)",
+      "Surplus ......... $6,758       Ops $19,655 after the $640 accrual − $2,897 tax − $10,000 floor",
+      "                  → directed to the Vault (now $6,758 of $15,000)",
+      "Objective ....... $0   → Best Egg — kill the 22% note — interlock",
+      "Distribution .... $0 — interlock",
+    ]);
   });
 
   it("once the Vault holds $15,000 the same $6,758 splits $4,731 / $2,027 — the seven-line standard entry", () => {
     const s = snap({ ops: "20294.92", vault: "15000", maintenance: "4773.01" });
     const md = getMoneyDay(s, plan(), july, 639.68, "Best Egg — kill the 22% note")!;
     expect(md.interlock.heldBy).toBeNull();
-    expect(md.objective).toBeCloseTo(4730.93, 1);
-    expect(md.household).toBeCloseTo(2027.54, 1);
+    expect(md.objective).toBe(4731);
+    expect(md.household).toBe(2027); // the halves add back to the $6,758 — never $6,759
     expect(md.entry.length).toBe(7);
-    expect(md.entry[3]).toBe("Floors .......... operating met · maintenance met · reserve met");
+    expect(md.entry[3]).toBe("Floors .......... operating met · maintenance met ($5,413 after the accrual) · reserve met");
+    expect(md.entry[4]).toBe("Surplus ......... $6,758       Ops $19,655 after the $640 accrual − $2,897 tax − $10,000 floor");
     expect(md.entry[5]).toBe("Objective ....... $4,731   → Best Egg — kill the 22% note");
-    expect(md.entry[6]).toBe("Distribution .... $2,028   → household");
+    expect(md.entry[6]).toBe("Distribution .... $2,027   → household");
   });
 
   it("issue 10 · a fill that completes the floors splits the rest the same day, and the entry says so", () => {
@@ -175,9 +181,15 @@ describe("getMoneyDay — the SOP's sequence on real numbers", () => {
     expect(md.surplus).toBe(6758);
     expect(md.interlock.floors[1].fill).toBe(3199);
     expect(md.interlock.remainder).toBe(3559);
-    expect(md.objective).toBeCloseTo(2491.3, 1);
-    expect(md.household).toBeCloseTo(1067.7, 1);
-    expect(md.entry[3]).toBe("Floors .......... maintenance filled $3,199 today · all met");
+    expect(md.objective).toBe(2491);
+    expect(md.household).toBe(1068);
+    expect(md.entry.slice(3)).toEqual([
+      "Floors .......... met (maintenance filled $3,199 today)",
+      "Surplus ......... $6,758       Ops $16,758 after the $640 accrual − $10,000 floor",
+      "                  → directed to Maintenance (now $5,000 of $5,000)",
+      "Objective ....... $2,491   → Best Egg — kill the 22% note",
+      "Distribution .... $1,068   → household",
+    ]);
   });
 
   it("issue 12 · a $499 surplus is under the minimum: nothing moves, next month's balance still has it", () => {
@@ -187,8 +199,12 @@ describe("getMoneyDay — the SOP's sequence on real numbers", () => {
     expect(md.belowMin).toBe(true);
     expect(md.interlock.floors.every((f) => f.fill === 0)).toBe(true);
     expect(md.objective).toBe(0);
-    expect(md.entry[4]).toBe("Surplus ......... $499   — under the $500 minimum, nothing moves");
-    expect(md.entry[6]).toBe("Distribution .... $0 — under the minimum");
+    expect(md.entry.slice(3)).toEqual([
+      "Floors .......... operating met · maintenance met · reserve met",
+      "Surplus ......... $499         under the $500 minimum, nothing moves",
+      "Objective ....... $0   → Best Egg — kill the 22% note — under the minimum",
+      "Distribution .... $0 — under the minimum",
+    ]);
   });
 
   it("exactly the minimum moves", () => {
@@ -299,7 +315,7 @@ describe("getPlanStatus — the whole verdict", () => {
     expect(st.orders).toEqual([
       "Accrue Maintenance $640 (1,999 mi × $0.32)",
       "Tax $2,897 (July 2026: 20 % of $14,484)",
-      "Best Egg — kill the 22% note $4,731 · Household $2,028",
+      "Best Egg — kill the 22% note $4,731 · Household $2,027",
     ]);
   });
 

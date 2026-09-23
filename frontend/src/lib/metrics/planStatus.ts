@@ -69,6 +69,10 @@ export interface AccrualInput {
 export interface MoneyDayInput {
   month: string; // YYYY-MM-01
   pretaxProfit: number | null; // income − cogs − expenses of the filed P&L
+  // The three lines behind it, for the entry's breakdown (optional).
+  income?: number | null;
+  cogs?: number | null;
+  expenses?: number | null;
 }
 
 const num = (v: string | number | null | undefined): number | null => {
@@ -319,6 +323,9 @@ export interface MoneyDay {
   month: string; // YYYY-MM-01
   monthLabel: string; // "August 2026"
   pretaxProfit: number;
+  income: number | null;
+  cogs: number | null;
+  expenses: number | null;
   taxPct: number;
   tax: number;
   accrual: number; // the accrual taken on the same snapshot (0 if none)
@@ -328,57 +335,88 @@ export interface MoneyDay {
   minMove: number;
   belowMin: boolean; // 0 < surplus < minimum → nothing moves
   interlock: Interlock;
-  objective: number;
+  objective: number; // whole dollars — the two halves always add back to the remainder
   household: number;
   objectiveLabel: string | null;
-  entry: string[]; // the seven-line entry for Excel
+  entry: string[]; // the SOP's seven-line entry for Excel (continuation lines indented)
 }
 
-// "MONTH ..........." — the SOP's seven-line layout, dots to column 17.
+// "MONTH ..........." — the SOP's seven-line layout: dots to column 17, the
+// value, then an annotation from a fixed column; detail that won't fit rides
+// a continuation line indented under the value. Plain text, so Excel gets
+// exactly what the page shows.
 const pad = (label: string): string => `${label} `.padEnd(17, ".");
+const CONT = " ".repeat(18);
+const line = (label: string, value: string, note?: string): string =>
+  `${pad(label)} ${note ? `${value.padEnd(12)} ${note}` : value}`;
+const floorName = (f: FloorStatus): string => (f.key === "vault" ? "the Vault" : f.key === "maintenance" ? "Maintenance" : "Ops");
 
 const buildEntry = (md: Omit<MoneyDay, "entry">, floatLine: number): string[] => {
   const { interlock: il } = md;
   const [ops, maint, vault] = il.floors;
-  const lines: string[] = [];
-  lines.push(`${pad("MONTH")} ${md.monthLabel}`);
-  lines.push(`${pad("Pre-tax profit")} ${money(md.pretaxProfit)}`);
-  lines.push(`${pad("Tax swept")} ${money(md.tax)}   (${md.taxPct} % per plan${md.pretaxProfit < 0 ? " — a loss month" : ""})`);
   const obj = md.objectiveLabel ?? "the current objective";
-  const floorWord = (f: FloorStatus) => `${f.label} ${f.met ? "met" : "UNMET"}`;
-  const surplusWhy = `(Ops ${money(md.opsBefore - md.accrual)} after the accrual − ${money(md.tax)} tax − ${money(floatLine)} floor)`;
+  const lines: string[] = [];
+  lines.push(line("MONTH", md.monthLabel));
+  const breakdown =
+    md.income != null && md.cogs != null && md.expenses != null
+      ? `income ${money(md.income)} − cogs ${money(md.cogs)} − expenses ${money(md.expenses)}`
+      : undefined;
+  lines.push(line("Pre-tax profit", money(md.pretaxProfit), breakdown));
+  lines.push(line("Tax swept", money(md.tax), `${md.taxPct} % per plan${md.pretaxProfit < 0 ? " — a loss month" : ""}`));
+  const surplusWhy =
+    `Ops ${money(md.opsBefore - md.accrual)}${md.accrual > 0 ? ` after the ${money(md.accrual)} accrual` : ""}` +
+    `${md.tax > 0 ? ` − ${money(md.tax)} tax` : ""} − ${money(floatLine)} floor`;
+  // "operating met · maintenance met ($5,413 after the accrual)" / "reserve UNMET ($0 of $15,000)"
+  const floorWord = (f: FloorStatus): string =>
+    f.met
+      ? `${f.label} met${f.key === "maintenance" && md.accrual > 0 && f.balance != null ? ` (${money(f.balance)} after the accrual)` : ""}`
+      : `${f.label} UNMET (${money(f.balance ?? 0)} of ${money(f.floor)})`;
+  const floorsList = (): string[] => {
+    const met = il.floors.filter((f) => f.met).map(floorWord);
+    const unmet = il.floors.filter((f) => !f.met).map(floorWord);
+    const out = [line("Floors", met.join(" · ") || unmet.shift()!)];
+    if (unmet.length) out.push(`${CONT}${unmet.join(" · ")}`);
+    return out;
+  };
+  const fills = il.floors.filter((f) => f.fill > 0);
+  const directed = fills
+    .map((f) => `${floorName(f)} (now ${money((f.balance ?? 0) + f.fill)} of ${money(f.floor)})`)
+    .join(" · ");
 
   if (il.heldBy === "ops") {
     // The SOP's interlock template — six lines.
-    lines.push(`${pad("Floors")} HELD — operating, short ${money(ops.short)}   (maintenance short ${money(maint.short)} · reserve short ${money(vault.short)})`);
-    lines.push(`${pad("Surplus")} $0   ${surplusWhy}`);
-    lines.push(`${pad("Distribution")} $0 — interlock`);
+    lines.push(line("Floors", `HELD — operating, short ${money(ops.short)}`));
+    lines.push(`${CONT}${[maint, vault].map((f) => (f.met ? `${f.label} met` : `${f.label} short ${money(f.short)}`)).join(" · ")}`);
+    lines.push(line("Surplus", "$0", surplusWhy));
+    lines.push(line("Distribution", "$0 — interlock"));
     return lines;
   }
   if (md.belowMin) {
-    lines.push(`${pad("Floors")} ${il.floors.map(floorWord).join(" · ")}`);
-    lines.push(`${pad("Surplus")} ${money(md.surplus)}   — under the ${money(md.minMove)} minimum, nothing moves`);
-    lines.push(`${pad("Objective")} $0   → ${obj} — under the minimum`);
-    lines.push(`${pad("Distribution")} $0 — under the minimum`);
+    lines.push(...floorsList());
+    lines.push(line("Surplus", money(md.surplus), `under the ${money(md.minMove)} minimum, nothing moves`));
+    lines.push(line("Objective", `$0   → ${obj} — under the minimum`));
+    lines.push(line("Distribution", "$0 — under the minimum"));
     return lines;
   }
-  const fills = il.floors.filter((f) => f.fill > 0);
   if (il.heldBy !== null) {
-    const held = il.floors.find((f) => f.key === il.heldBy)!;
-    const others = il.floors.filter((f) => f.key !== il.heldBy).map(floorWord).join(" · ");
-    lines.push(`${pad("Floors")} HELD — ${held.label}, short ${money(held.short)}   (${others})`);
-    const directed = fills.map((f) => `${f.key === "vault" ? "the Vault" : f.key === "maintenance" ? "Maintenance" : "Ops"} ${money(f.fill)}${f.balance != null ? ` (now ${money(f.balance + f.fill)} of ${money(f.floor)})` : ""}`).join(" · ");
-    lines.push(`${pad("Surplus")} ${money(md.surplus)}   → directed to ${directed || held.label}`);
-    lines.push(`${pad("Objective")} $0   → ${obj} — interlock`);
-    lines.push(`${pad("Distribution")} $0 — interlock`);
+    // A floor still holds after the fills — the surplus went to the floors.
+    lines.push(...floorsList());
+    lines.push(line("Surplus", money(md.surplus), surplusWhy));
+    if (directed) lines.push(`${CONT}→ directed to ${directed}`);
+    lines.push(line("Objective", `$0   → ${obj} — interlock`));
+    lines.push(line("Distribution", "$0 — interlock"));
     return lines;
   }
   // Every floor holds — the standard template, seven lines.
-  const filledToday = fills.map((f) => `${f.key === "vault" ? "reserve" : f.label} filled ${money(f.fill)} today`).join(" · ");
-  lines.push(`${pad("Floors")} ${filledToday ? `${filledToday} · all met` : il.floors.map(floorWord).join(" · ")}`);
-  lines.push(`${pad("Surplus")} ${money(md.surplus)}   ${surplusWhy}`);
-  lines.push(`${pad("Objective")} ${money(md.objective)}   → ${obj}`);
-  lines.push(`${pad("Distribution")} ${money(md.household)}   → household`);
+  if (fills.length) {
+    lines.push(line("Floors", `met (${fills.map((f) => `${f.label === "reserve" ? "reserve" : f.label} filled ${money(f.fill)} today`).join(" · ")})`));
+  } else {
+    lines.push(...floorsList());
+  }
+  lines.push(line("Surplus", money(md.surplus), surplusWhy));
+  if (directed) lines.push(`${CONT}→ directed to ${directed}`);
+  lines.push(line("Objective", `${money(md.objective)}   → ${obj}`));
+  lines.push(line("Distribution", `${money(md.household)}   → household`));
   return lines;
 };
 
@@ -407,11 +445,14 @@ export const getMoneyDay = (
     { ops: floatLine, maintenance: num(plan.maintenance_floor) ?? 0, vault: vaultFloorOf(plan.stages) ?? 0 },
     belowMin ? 0 : surplus,
   );
+  // Whole dollars, and the two halves always add back to the remainder —
+  // the entry's Surplus, Objective and Distribution lines must reconcile.
   const objPct = num(plan.objective_pct) ?? 70;
-  const objective = interlock.remainder * (objPct / 100);
-  const household = interlock.remainder - objective;
+  const objective = Math.round(interlock.remainder * (objPct / 100));
+  const household = Math.round(interlock.remainder) - objective;
   const base = {
-    month: md.month, monthLabel: monthName(md.month), pretaxProfit: pretax, taxPct, tax,
+    month: md.month, monthLabel: monthName(md.month), pretaxProfit: pretax,
+    income: num(md.income ?? null), cogs: num(md.cogs ?? null), expenses: num(md.expenses ?? null), taxPct, tax,
     accrual: acc, opsBefore: ops, opsAfter, surplus, minMove, belowMin, interlock,
     objective, household, objectiveLabel,
   };

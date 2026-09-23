@@ -58,6 +58,14 @@ describe("milesInWeeks — the week's loads, by pickup date", () => {
     expect(m.miles).toBe(900);
     expect(m.noDeadhead).toBe(1);
   });
+  it("a cancelled load was never driven — its miles don't accrue", () => {
+    const m = milesInWeeks(
+      [...loads, { load_number: "dead", load_status: "cancelled", pickup_date: "2026-09-17", loaded_miles: 2000, deadhead_miles: 400 }],
+      [{ start: "2026-09-16", end: "2026-09-22" }],
+    );
+    expect(m.miles).toBe(1999);
+    expect(m.loads).toBe(2);
+  });
   it("two owed weeks add up", () => {
     const m = milesInWeeks(loads, [
       { start: "2026-09-16", end: "2026-09-22" },

@@ -62,6 +62,7 @@ export interface WeekMiles {
 
 interface LoadLike {
   load_number?: string;
+  load_status?: string;
   pickup_date: string;
   loaded_miles?: number | string | null;
   deadhead_miles?: number | string | null;
@@ -72,6 +73,7 @@ interface LoadLike {
 export const milesInWeeks = (loads: LoadLike[], weeks: PayWeek[]): WeekMiles => {
   const out: WeekMiles = { loads: 0, loadedMiles: 0, deadheadMiles: 0, miles: 0, noDeadhead: 0, loadNumbers: [] };
   for (const l of loads) {
+    if (l.load_status === "cancelled") continue; // never driven — no miles to accrue
     const day = String(l.pickup_date ?? "").slice(0, 10);
     if (!weeks.some((w) => day >= w.start && day <= w.end)) continue;
     const loaded = Number(l.loaded_miles ?? 0) || 0;
