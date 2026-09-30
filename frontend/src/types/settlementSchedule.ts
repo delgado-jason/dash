@@ -9,6 +9,7 @@ export interface SettlementSchedule {
   carrier_name: string | null; // e.g. "Landstar"; null on own authority
   detention_free_hours: number; // free time per stop before detention accrues
   settlement_day: number; // 0 (Sunday) … 6 (Saturday) — day the weekly settlement lands
+  deposit_lag_days: number; // days after the settlement the cash lands; 1 = Thursday
   per_diem_rate: number; // IRS special M&IE daily rate
   per_diem_deduct_pct: number; // deductible share (0.80 for DOT drivers)
   hometime_threshold_days: number; // flag the driver page past this many days out

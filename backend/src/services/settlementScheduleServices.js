@@ -11,6 +11,7 @@ const DEFAULTS = {
   carrier_name: null,
   detention_free_hours: 3,
   settlement_day: 3, // Wednesday — day of week the weekly settlement lands
+  deposit_lag_days: 1, // the cash lands this many days after the settlement (#502)
   per_diem_rate: 69,
   per_diem_deduct_pct: 0.8,
   hometime_threshold_days: 21,
@@ -62,6 +63,7 @@ const COLUMNS = [
   "carrier_name",
   "detention_free_hours",
   "settlement_day",
+  "deposit_lag_days",
   "per_diem_rate",
   "per_diem_deduct_pct",
   "hometime_threshold_days",
@@ -112,6 +114,13 @@ export async function upsertSettlementSchedule(user_id, data) {
         "settlement_day must be a day of week, 0 (Sunday) through 6 (Saturday)",
       );
     provided.settlement_day = n;
+  }
+
+  if (data.deposit_lag_days !== undefined) {
+    const n = Number(data.deposit_lag_days);
+    if (!Number.isInteger(n) || n < 0 || n > 6)
+      throw new ValidationError("deposit_lag_days must be a whole number of days, 0 through 6");
+    provided.deposit_lag_days = n;
   }
 
   if (data.per_diem_rate !== undefined) {

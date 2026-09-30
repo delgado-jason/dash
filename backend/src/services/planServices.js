@@ -2,6 +2,7 @@ import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error.js";
 import { normalizeSnapshotExtras, monthLabel } from "../utils/validation/planSnapshotValidation.js";
 import { validatePlanFields } from "../utils/validation/planFieldsValidation.js";
+import { normalizeOpsCheck } from "../utils/validation/opsCheckValidation.js";
 
 // The plan framework: plans carry the year's thresholds, plan_stages carry the
 // waterfall as ordered data. Numeric columns serialize as strings — the
@@ -238,4 +239,32 @@ export async function createSnapshot(user_id, data) {
   } finally {
     client.release();
   }
+}
+
+// ---- ops checks (OPS NOW, #502) — the bank's Ops balance on a date ----
+
+const OPS_CHECK_COLS = `check_id, user_id, to_char(as_of, 'YYYY-MM-DD') AS as_of, balance, note, created_at`;
+
+export async function getOpsChecks(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT ${OPS_CHECK_COLS} FROM public.ops_checks WHERE user_id = $1 ORDER BY as_of`,
+    [user_id],
+  );
+  return result.rows;
+}
+
+// One check per day: typing a second balance the same day replaces the first.
+export async function createOpsCheck(user_id, data) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const { as_of, balance, note } = normalizeOpsCheck(data);
+  const result = await db.query(
+    `INSERT INTO public.ops_checks (user_id, as_of, balance, note)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, as_of) DO UPDATE
+       SET balance = EXCLUDED.balance, note = EXCLUDED.note, created_at = now()
+     RETURNING ${OPS_CHECK_COLS}`,
+    [user_id, as_of, balance, note],
+  );
+  return result.rows[0];
 }

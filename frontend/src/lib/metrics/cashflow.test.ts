@@ -2,52 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   nextDraftDate,
   expectedPayDate,
-  twoWeekLiquidity,
   buildForecast,
   pretaxMargin,
   qboPretaxMargin,
   type FinancialMonth,
   type CashAssumptions,
 } from "./cashflow";
-import type { Obligation } from "@/types/obligation";
-import type { Load } from "@/types/load";
-
-const bill = (
-  label: string,
-  category: "loan_lease" | "insurance" | "other",
-  amount: number,
-  day: number,
-  extra: Partial<Obligation> = {},
-): Obligation =>
-  ({
-    label, category, amount, day_of_month: day, active: true,
-    draft_amount: null, on_pl: true, is_draw: false,
-    ...extra,
-  }) as unknown as Obligation;
-
-// Jason's real bill list (DTS-FINANCIALS.xlsx, Recurring Bills sheet). The
-// loans carry a break-even (principal) `amount` and a FULL `draft_amount` —
-// liquidity must draft the full payment.
-const BILLS: Obligation[] = [
-  bill("Truck Note", "loan_lease", 1575.0, 26, { draft_amount: 1575.0, on_pl: false }),
-  bill("Trailer Payment", "loan_lease", 230.0, 27, { draft_amount: 475.19, on_pl: false }),
-  bill("Best Egg", "loan_lease", 155.0, 19, { draft_amount: 358.97, on_pl: false }),
-  bill("Health Ins", "insurance", 380.45, 4),
-  bill("Dental Ins", "insurance", 30.44, 20),
-  bill("Guarantee fee", "other", 900.0, 27),
-  bill("Phone", "other", 341.0, 29),
-  bill("Prepass", "other", 200.0, 4),
-  bill("Internet", "other", 130.0, 18),
-  bill("Intuit", "other", 119.23, 6),
-  bill("Claude", "other", 100.0, 7),
-  bill("Accounting", "other", 75.0, 15),
-  bill("Parking", "other", 75.0, 18),
-  bill("Hostinger", "other", 24.99, 17),
-  bill("Analysis Ch", "other", 20.0, 9),
-  bill("Canva", "other", 20.0, 7),
-  bill("Railway", "other", 20.0, 14),
-  bill("Google", "other", 16.8, 2),
-];
 
 describe("nextDraftDate", () => {
   it("this month when the day is still ahead (or today), next month when passed", () => {
@@ -69,143 +29,6 @@ describe("expectedPayDate — strictly after delivery", () => {
   });
   it("delivered ON settlement day pays the NEXT one — paperwork can't clear same-day", () => {
     expect(expectedPayDate("2026-08-26", WED)).toBe("2026-09-02");
-  });
-});
-
-describe("twoWeekLiquidity — Jason's 2-Week Cash sheet, penny-exact", () => {
-  // His worksheet: as-of Mon 2026-08-24, beginning $14,000, manual settlement
-  // overrides ($1,000 / $0). Endings $9,800.81 and $7,176.33.
-  const base = {
-    asOfKey: "2026-08-24",
-    beginning: 14000,
-    obligations: BILLS,
-    weeklyPayroll: 1908,
-    loads: [] as Load[],
-    settlementDay: 3,
-    weeklyRevenueFallback: 4647,
-  };
-
-  it("reproduces his worksheet with the overrides", () => {
-    const r = twoWeekLiquidity({ ...base, overrides: [1000, 0] });
-    const [w1, w2] = r.weeks;
-    expect(w1.loanLease).toBeCloseTo(2050.19, 2); // truck 26th + trailer 27th (FULL drafts)
-    expect(w1.insurance).toBe(0);
-    expect(w1.other).toBeCloseTo(1241.0, 2); // guarantee 27th + phone 29th
-    expect(w1.ending).toBeCloseTo(9800.81, 2);
-    expect(w2.beginning).toBeCloseTo(9800.81, 2);
-    expect(w2.insurance).toBeCloseTo(380.45, 2); // health 9/4
-    expect(w2.other).toBeCloseTo(336.03, 2); // google 2 + prepass 4 + intuit 6
-    expect(w2.ending).toBeCloseTo(7176.33, 2);
-    expect(r.lowestEnding).toBeCloseTo(7176.33, 2);
-    expect(w1.settlementSource).toBe("override");
-  });
-
-  it("falls back to weekly revenue when no loads project into a week", () => {
-    const r = twoWeekLiquidity(base);
-    expect(r.weeks[0].settlements).toBe(4647);
-    expect(r.weeks[0].settlementSource).toBe("fallback");
-  });
-
-  it("prefers REAL projected loads: delivered-unpaid lands on its Wednesday", () => {
-    const loads = [
-      // Delivered Mon 8/24, unpaid → pays Wed 8/26 (week 1). net_revenue is
-      // the server-computed NET — loadRevenue prefers it over gross.
-      { load_status: "delivered", payment_status: "invoiced", delivery_date: "2026-08-24", linehaul: "3000", net_revenue: "2190" },
-      // Booked, delivers Tue 9/1 → pays Wed 9/2 (week 2).
-      { load_status: "booked", payment_status: "unpaid", delivery_date: "2026-09-01", linehaul: "2000", net_revenue: "1460" },
-      // Already PAID — its money is in the bank, not in the pipeline.
-      { load_status: "delivered", payment_status: "paid", delivery_date: "2026-08-24", linehaul: "9999", net_revenue: "7299" },
-    ] as unknown as Load[];
-    const r = twoWeekLiquidity({ ...base, loads });
-    expect(r.weeks[0].settlementSource).toBe("loads");
-    expect(r.weeks[0].settlementLoads).toBe(1);
-    expect(r.weeks[1].settlementLoads).toBe(1);
-    expect(r.weeks[0].settlements).toBeCloseTo(2190, 2); // NET, not gross
-    expect(r.weeks[1].settlements).toBeCloseTo(1460, 2);
-  });
-
-  it("the fallback decision is PER WEEK and by projected count, not by loads existing", () => {
-    // One load pays into week 1 only. Week 2 must fall back to weekly revenue
-    // even though loads exist — a 'loads.length > 0' shortcut would show a
-    // $0 dry week; a 'total > 0' shortcut is pinned by the zero-net case below.
-    const loads = [
-      { load_status: "delivered", payment_status: "invoiced", delivery_date: "2026-08-24", linehaul: "3000", net_revenue: "2190" },
-    ] as unknown as Load[];
-    const r = twoWeekLiquidity({ ...base, loads });
-    expect(r.weeks[0].settlementSource).toBe("loads");
-    expect(r.weeks[1].settlementSource).toBe("fallback");
-    expect(r.weeks[1].settlements).toBe(4647);
-  });
-
-  it("a projected load with $0 net still counts as a projection (count, not total)", () => {
-    const loads = [
-      { load_status: "delivered", payment_status: "invoiced", delivery_date: "2026-08-24", linehaul: "0", net_revenue: "0" },
-    ] as unknown as Load[];
-    const r = twoWeekLiquidity({ ...base, loads });
-    expect(r.weeks[0].settlementSource).toBe("loads");
-    expect(r.weeks[0].settlements).toBe(0); // the honest projection, not the fallback
-  });
-
-  it("holdbacks (fuel advance + avg deductions) come off every PROJECTED week", () => {
-    // $2,000 advance + $250 avg deductions, fallback revenue both weeks:
-    // each week's cash-in is effectively 4,647 − 2,250. Same bill windows as
-    // the worksheet case, beginning $14,000.
-    const r = twoWeekLiquidity({
-      ...base,
-      weeklyFuelAdvance: 2000,
-      weeklySettlementDeductions: 250,
-    });
-    const [w1, w2] = r.weeks;
-    expect(w1.settlements).toBe(4647); // the row still shows projected revenue
-    expect(w1.holdback).toBe(2250); // the withholding is its own visible line
-    // 14000 + 4647 − 2250 − 1908 − 2050.19 − 1241 = 11,197.81
-    expect(w1.ending).toBeCloseTo(11197.81, 2);
-    // 11197.81 + 4647 − 2250 − 1908 − 380.45 − 336.03 = 10,970.33
-    expect(w2.holdback).toBe(2250);
-    expect(w2.ending).toBeCloseTo(10970.33, 2);
-  });
-
-  it("holdback applies UNIFORMLY — an override replaces revenue, never the withholding", () => {
-    // The alternative (override skips holdback) made editing the projection
-    // silently erase $2,250: shaving $47 off a week RAISED its ending.
-    const r = twoWeekLiquidity({
-      ...base,
-      weeklyFuelAdvance: 2000,
-      weeklySettlementDeductions: 250,
-      overrides: [1000, null],
-    });
-    expect(r.weeks[0].holdback).toBe(2250); // held back on the override week too
-    // wk1: 14000 + 1000 − 2250 − 1908 − 2050.19 − 1241 = 7,550.81
-    expect(r.weeks[0].ending).toBeCloseTo(7550.81, 2);
-    expect(r.weeks[1].holdback).toBe(2250);
-  });
-
-  it("holdback comes off a LOADS-projected week the same as a fallback week", () => {
-    const loads = [
-      { load_status: "delivered", payment_status: "invoiced", delivery_date: "2026-08-24", linehaul: "3000", net_revenue: "2190" },
-    ] as unknown as Load[];
-    const r = twoWeekLiquidity({ ...base, loads, weeklyFuelAdvance: 2000, weeklySettlementDeductions: 250 });
-    expect(r.weeks[0].settlementSource).toBe("loads");
-    expect(r.weeks[0].holdback).toBe(2250);
-    // 14000 + 2190 − 2250 − 1908 − 2050.19 − 1241 = 8,740.81
-    expect(r.weeks[0].ending).toBeCloseTo(8740.81, 2);
-  });
-
-  it("no holdback inputs → zero holdback; a negative sign-slip clamps to 0, never adds cash", () => {
-    expect(twoWeekLiquidity(base).weeks[0].holdback).toBe(0);
-    const r = twoWeekLiquidity({ ...base, weeklyFuelAdvance: -2000, weeklySettlementDeductions: 250 });
-    expect(r.weeks[0].holdback).toBe(250); // the -2000 must not become +2000 of phantom cash
-  });
-
-  it("inactive bills and bills without a draft day stay off the calendar", () => {
-    const r = twoWeekLiquidity({
-      ...base,
-      obligations: [
-        bill("Dead", "other", 500, 26, { active: false }),
-        { label: "Draw", category: "other", amount: 1000, day_of_month: null, active: true } as unknown as Obligation,
-      ],
-    });
-    expect(r.weeks[0].loanLease + r.weeks[0].insurance + r.weeks[0].other).toBe(0);
   });
 });
 
@@ -319,39 +142,5 @@ describe("qboPretaxMargin — the margin lever's number", () => {
     expect(
       qboPretaxMargin([{ month: "2026-07-01", total_income: "0", net_income: "0", ending_cash: "0" }], NOW),
     ).toBeNull();
-  });
-});
-
-describe("twoWeekLiquidity — measured per-week deductions (settlement feed)", () => {
-  const base = {
-    asOfKey: "2026-09-06",
-    beginning: 10000,
-    obligations: [],
-    weeklyPayroll: 0,
-    loads: [],
-    settlementDay: null,
-    weeklyRevenueFallback: 0,
-    weeklyFuelAdvance: 1842,
-  };
-
-  it("applies each week's own bucket when provided", () => {
-    const r = twoWeekLiquidity({
-      ...base,
-      weeklySettlementDeductions: 999, // must be ignored
-      weeklyDeductionsPerWeek: [1180, 340],
-    });
-    expect(r.weeks[0].holdback).toBeCloseTo(1842 + 1180, 2);
-    expect(r.weeks[1].holdback).toBeCloseTo(1842 + 340, 2);
-  });
-
-  it("falls back to the flat assumption when buckets are absent (legacy path unchanged)", () => {
-    const r = twoWeekLiquidity({ ...base, weeklySettlementDeductions: 500 });
-    expect(r.weeks[0].holdback).toBeCloseTo(1842 + 500, 2);
-    expect(r.weeks[1].holdback).toBeCloseTo(1842 + 500, 2);
-  });
-
-  it("clamps a negative bucket to 0 — sign slips never add phantom cash", () => {
-    const r = twoWeekLiquidity({ ...base, weeklyDeductionsPerWeek: [-50, 340] });
-    expect(r.weeks[0].holdback).toBeCloseTo(1842, 2);
   });
 });

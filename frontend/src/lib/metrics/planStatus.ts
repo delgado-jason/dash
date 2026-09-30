@@ -64,6 +64,18 @@ export interface AccrualInput {
   loadedMiles: number;
   deadheadMiles: number;
   noDeadhead: number; // loads with 0/unlogged deadhead
+  // ---- where the miles came from (Cash Board Nod Sheet issue 8, nodded
+  // 2026-09-30): the accrual runs on EVERY mile the truck rolls, so the
+  // pre-fill is the odometer chain's delta and the loads' figure rides
+  // along for the transition. All optional — an input without `source` is
+  // the pre-issue-8 loads-only shape and keeps the deadhead flag.
+  source?: "odometer" | "loads";
+  odometerMiles?: number | null; // null = no reading before the week
+  loadsMiles?: number; // loaded + deadhead of the loads picked up in the week
+  readingsWords?: string | null; // "603,232 on Sep 22 → 605,222 on Sep 29"
+  endSlips?: boolean; // the end reading predates the boundary — the miles ride into next week
+  backwards?: number; // readings that go backwards inside the span — a typo to fix
+  implausibleMiles?: number | null; // a week's delta too big to be real — the too-HIGH typo
 }
 
 export interface MoneyDayInput {
@@ -98,6 +110,33 @@ export const monthName = (ymd: string): string => {
     year: "numeric",
     timeZone: "UTC",
   });
+};
+
+// "1 of 2 loads have no deadhead logged — …" — the loads-only miles problem.
+const deadheadFlag = (a: AccrualInput): string | null =>
+  a.noDeadhead > 0
+    ? `${a.noDeadhead} of ${a.loads} load${a.loads === 1 ? " has" : "s have"} no deadhead logged — fix the load or edit the miles`
+    : null;
+
+// The one thing wrong with today's miles, worst first (issue 8): a backwards
+// reading is a typo and stops the money, and so does its mirror — a reading
+// typed too HIGH, which shows up as an impossible week; falling back to the
+// loads is worth saying (and still carries the deadhead problem); on the
+// odometer chain the deadhead flag no longer applies — unlogged deadhead is
+// already in the delta.
+export const accrualFlagOf = (a: AccrualInput | null | undefined): string | null => {
+  if (!a) return null;
+  const back = a.backwards ?? 0;
+  if (back > 0)
+    return `${back} odometer reading${back === 1 ? " goes" : "s go"} backwards — fix the entry before moving money`;
+  if (a.implausibleMiles != null && a.implausibleMiles > 0)
+    return `${miles(a.implausibleMiles)} mi in one pay week is too high to be real — fix the odometer entry before moving money`;
+  if (a.source === "loads") {
+    const dh = deadheadFlag(a);
+    return `no odometer reading before the week — miles from the loads${dh ? `; ${dh}` : ""}`;
+  }
+  if (a.source === "odometer") return null;
+  return deadheadFlag(a);
 };
 
 // The Friday accrual: miles × $/mile. null = no data (never a fake zero).
@@ -463,7 +502,7 @@ export const getMoneyDay = (
 
 export interface PlanStatus {
   accrual: number | null; // this snapshot's maintenance move (null = no miles given)
-  accrualFlag: string | null; // "1 of 2 loads has no deadhead logged — …"
+  accrualFlag: string | null; // "2 odometer readings go backwards — …" / "1 of 2 loads has no deadhead logged — …"
   opsAfter: number | null; // ops − accrual (− tax on a money day)
   verdict: "on-plan" | "floors-first" | "below-float" | null;
   interlock: Interlock | null; // the three floors as the balances stand (fills only on a money day)
@@ -482,10 +521,7 @@ export const getPlanStatus = (
   if (!snapshot || !plan) return null;
   const perMile = num(plan.maintenance_per_mile);
   const acc = ctx.accrual ? getAccrual(ctx.accrual.miles, perMile) : null;
-  const accrualFlag =
-    ctx.accrual && ctx.accrual.noDeadhead > 0
-      ? `${ctx.accrual.noDeadhead} of ${ctx.accrual.loads} load${ctx.accrual.loads === 1 ? " has" : "s have"} no deadhead logged — fix the load or edit the miles`
-      : null;
+  const accrualFlag = accrualFlagOf(ctx.accrual);
 
   const waterfall = getWaterfallStage(snapshot, plan.stages);
   const objectiveIndex = objectiveIndexOf(waterfall, plan.stages);

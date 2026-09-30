@@ -1,11 +1,10 @@
-// Cash-flow planning math (Jason's spec, 2026-08-24). Two layers:
-//  * the 2-WEEK LIQUIDITY view — real drafts on real days vs real settlements;
+// Cash-flow planning math (Jason's spec, 2026-08-24). What's left here after
+// the cash board took the weekly view (#502):
+//  * the draft/pay-date calendar — nextDraftDate and expectedPayDate, which
+//    the cash board and the loads math both read;
 //  * the 6-MONTH FORECAST — QBO actuals (monthly_financials) rolled forward.
 // Everything is pure, date-only, and UTC-anchored ("YYYY-MM-DD" keys). Money
 // arrives as Postgres numeric strings — coerce here, once.
-import type { Load } from "@/types/load";
-import type { Obligation } from "@/types/obligation";
-import { loadNetRevenue } from "./rateTargets";
 import { nextSettlementDate } from "./settlement";
 
 const num = (v: string | number | null | undefined): number => {
@@ -43,150 +42,6 @@ export const expectedPayDate = (
   deliveryKey: string,
   settlementDay: number,
 ): string => keyOf(nextSettlementDate(dateOf(addDays(deliveryKey, 1)), settlementDay));
-
-export interface LiquidityBill {
-  label: string;
-  category: "loan_lease" | "insurance" | "other";
-  amount: number; // the FULL bank draft
-  draftKey: string; // "YYYY-MM-DD"
-}
-
-export interface LiquidityWeek {
-  startKey: string;
-  endKey: string; // inclusive
-  beginning: number;
-  settlements: number; // projected revenue landing (BEFORE holdbacks)
-  // Fuel advance + avg per-settlement deductions withheld from this week's
-  // settlement — EVERY week, overrides included: an override replaces the
-  // projected revenue, never the withholding. (Uniform on purpose — a skip
-  // rule made editing the projection silently erase the holdback, so shaving
-  // $47 off a week RAISED its ending by $2,203.)
-  holdback: number;
-  settlementSource: "loads" | "fallback" | "override";
-  settlementLoads: number; // how many loads back the number (0 on fallback/override)
-  payroll: number;
-  loanLease: number;
-  insurance: number;
-  other: number;
-  bills: LiquidityBill[]; // this week's drafts, for the day strip
-  ending: number;
-}
-
-export interface TwoWeekLiquidity {
-  weeks: [LiquidityWeek, LiquidityWeek];
-  lowestEnding: number;
-}
-
-export interface LiquidityInput {
-  asOfKey: string; // week 1 starts here
-  beginning: number; // week 1 opening cash (latest snapshot ops, or override)
-  obligations: Obligation[]; // full list — filtered to active + day_of_month here
-  weeklyPayroll: number;
-  loads: Load[]; // for real settlement projection
-  settlementDay: number | null; // 0–6, null → fallback-only
-  weeklyRevenueFallback: number;
-  // Withheld from every settlement week (Jason, 2026-08-31): the ~$2,000
-  // weekly fuel advance (drawn on the card mid-trip — it never lands in the
-  // bank, the Wednesday check arrives short by it) plus the average of
-  // Landstar's per-settlement deductions. Negative inputs clamp to 0 — a
-  // sign slip must not ADD phantom cash to every week.
-  weeklyFuelAdvance?: number;
-  weeklySettlementDeductions?: number;
-  // Settlement-feed era (2026-09-06): measured two-bucket deductions, one
-  // per projected week (first-settlement-of-month runs heavy — insurance).
-  // When present, beats the flat weeklySettlementDeductions. Advances are
-  // already excluded upstream; fuel rides weeklyFuelAdvance as its measured
-  // 30-day figure with the hand-set assumption as fallback.
-  weeklyDeductionsPerWeek?: [number, number];
-  overrides?: [number | null, number | null]; // manual per-week settlements
-}
-
-// Week's projected settlements: every not-yet-paid, not-cancelled load whose
-// expected pay date lands inside the week, at its NET revenue. Zero such loads
-// → the planning fallback (weekly_revenue). A manual override beats both.
-const weekSettlements = (
-  loads: Load[],
-  startKey: string,
-  endKey: string,
-  settlementDay: number | null,
-): { total: number; count: number } => {
-  if (settlementDay == null) return { total: 0, count: 0 };
-  let total = 0;
-  let count = 0;
-  for (const l of loads) {
-    if (l.load_status === "cancelled" || l.payment_status === "paid") continue;
-    const delivery = (l.delivery_date ?? l.pickup_date)?.slice(0, 10);
-    if (!delivery) continue;
-    const pay = expectedPayDate(delivery, settlementDay);
-    if (pay >= startKey && pay <= endKey) {
-      total += loadNetRevenue(l);
-      count++;
-    }
-  }
-  return { total, count };
-};
-
-export const twoWeekLiquidity = (input: LiquidityInput): TwoWeekLiquidity => {
-  const {
-    asOfKey, beginning, obligations, weeklyPayroll, loads,
-    settlementDay, weeklyRevenueFallback,
-    weeklyFuelAdvance = 0, weeklySettlementDeductions = 0,
-    weeklyDeductionsPerWeek,
-    overrides = [null, null],
-  } = input;
-
-  const calendarBills = obligations.filter(
-    (o) => o.active && o.day_of_month != null,
-  );
-
-  let carry = beginning;
-  const weeks = [0, 1].map((w) => {
-    const startKey = addDays(asOfKey, w * 7);
-    const endKey = addDays(startKey, 6);
-
-    const bills: LiquidityBill[] = calendarBills
-      .map((o) => ({
-        label: o.label,
-        category: o.category,
-        amount: num(o.draft_amount ?? o.amount),
-        draftKey: nextDraftDate(o.day_of_month!, asOfKey),
-      }))
-      .filter((b) => b.draftKey >= startKey && b.draftKey <= endKey)
-      .sort((a, b) => (a.draftKey < b.draftKey ? -1 : 1));
-
-    const byCat = (c: LiquidityBill["category"]) =>
-      bills.filter((b) => b.category === c).reduce((s, b) => s + b.amount, 0);
-
-    const projected = weekSettlements(loads, startKey, endKey, settlementDay);
-    const override = overrides[w];
-    const settlements =
-      override != null ? override : projected.count > 0 ? projected.total : weeklyRevenueFallback;
-    const settlementSource: LiquidityWeek["settlementSource"] =
-      override != null ? "override" : projected.count > 0 ? "loads" : "fallback";
-
-    const loanLease = byCat("loan_lease");
-    const insurance = byCat("insurance");
-    const other = byCat("other");
-    const weekDeductions = weeklyDeductionsPerWeek
-      ? Math.max(0, weeklyDeductionsPerWeek[w])
-      : Math.max(0, weeklySettlementDeductions);
-    const holdback = Math.max(0, weeklyFuelAdvance) + weekDeductions;
-    const ending =
-      carry + settlements - holdback - weeklyPayroll - loanLease - insurance - other;
-    const week: LiquidityWeek = {
-      startKey, endKey,
-      beginning: carry,
-      settlements, holdback, settlementSource,
-      settlementLoads: settlementSource === "loads" ? projected.count : 0,
-      payroll: weeklyPayroll,
-      loanLease, insurance, other, bills, ending,
-    };
-    carry = ending;
-    return week;
-  }) as [LiquidityWeek, LiquidityWeek];
-
-  return { weeks, lowestEnding: Math.min(weeks[0].ending, weeks[1].ending) };
-};
 
 // ---------------------------------------------------------------------------
 // 6-month rolling forecast, from the QBO monthly archive.

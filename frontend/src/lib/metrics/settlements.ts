@@ -75,47 +75,6 @@ export const weeklyFuelCost30 = (
   return (total / 30) * 7;
 };
 
-// The settlement date inside a projected week (weeks run startKey..+6).
-export const settlementDateInWeek = (
-  startKey: string,
-  settlementDay: number,
-): string => {
-  const d = new Date(`${startKey}T00:00:00Z`);
-  const offset = (settlementDay - d.getUTCDay() + 7) % 7;
-  const s = new Date(d.getTime() + offset * 86400_000);
-  return s.toISOString().slice(0, 10);
-};
-
-// Both projected weeks' settlement dates for the two-week board.
-export const settlementDatesForBoard = (
-  asOfKey: string,
-  settlementDay: number,
-): [string, string] => {
-  const week2Start = new Date(
-    new Date(`${asOfKey}T00:00:00Z`).getTime() + 7 * 86400_000,
-  )
-    .toISOString()
-    .slice(0, 10);
-  return [
-    settlementDateInWeek(asOfKey, settlementDay),
-    settlementDateInWeek(week2Start, settlementDay),
-  ];
-};
-
-// A deposit's statement period_ending: deposits lag period endings by a
-// fixed weekday offset (learned from any real settlement). Buckets are
-// keyed by PERIOD_ENDING — classifying by deposit date lands the heavy
-// insurance week on the wrong projected week at month boundaries.
-export const depositToPeriodEnding = (
-  depositKey: string,
-  samplePeriodEnding: string,
-): string => {
-  const peDow = new Date(`${samplePeriodEnding}T00:00:00Z`).getUTCDay();
-  const dep = new Date(`${depositKey}T00:00:00Z`);
-  const lag = (((dep.getUTCDay() - peDow) % 7) + 7) % 7 || 7;
-  return new Date(dep.getTime() - lag * 86400_000).toISOString().slice(0, 10);
-};
-
 // ---- per-load cumulative rollup ----
 
 export interface LoadSettlementRollup {

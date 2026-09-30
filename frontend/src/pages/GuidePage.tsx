@@ -345,7 +345,7 @@ const NAV: { group: string; items: string[] }[] = [
       "The market ledger — out and in",
       "The reload cost — what a stop leaves you",
       "Outstanding loads — how long money sits",
-      "Two-week cash — will you clear the drafts",
+      "The cash board — three pay weeks",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -1380,34 +1380,56 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="Two-week cash — will you clear the drafts"
-            answers="Fourteen days of real money: every bill on its draft day, settlements on their Wednesdays, and whether the ending stays above your float."
+            title="The cash board — three pay weeks"
+            answers="Three pay weeks of real money — Wednesday to Tuesday: last week closed, this week open, next week projected. Each week's own statement, the Thursday deposit, every draft on its day, and where Tuesday ends."
             sources={[{ label: "Cash Flow", to: "/cashflow" }]}
           >
             <Formula>
-              ending = beginning + settlements − holdbacks − payroll −
-              loan/lease − insurance − other
+              a week’s net pay = its loads at net − its own fuel − the
+              deductions bucket · the deposit landing in a week = LAST week’s
+              net pay, on settlement day + the deposit lag · ending = opening +
+              deposit − payroll − the bills on their days − the Friday accrual
+              − a run money day
             </Formula>
             <Why>
-              Week 1 begins at your latest Friday snapshot’s{" "}
-              <span className="text-light">ops balance</span> (tap to override);
-              week 2 begins where week 1 ends. Bills draft their{" "}
-              <span className="text-light">full payment</span> on their real day
-              of the month. Settlements prefer <span className="text-light">real
-              loads</span>: anything not yet paid lands on the first Wednesday
-              after its delivery day (delivered Tuesday pays tomorrow; delivered
-              Wednesday waits a week). No loads booked into a week yet → the
-              weekly-revenue fallback, and the chip says which one you’re
-              looking at. <span className="text-light">Holdbacks</span> come
-              off every week: your real fuel cost and your real settlement
-              deductions. Since the settlement feed went live these are
-              MEASURED — fuel from your own fuel log on a rolling 30 days,
-              deductions from your actual Landstar statements — with the
-              hand-set ASSUMPTIONS as fallbacks when data is missing. An
-              override replaces the settlements figure only — the holdback
-              still applies, so the rows always add up the same way. The
-              ending turns red under the plan’s float — the same line the
-              sweep math uses on Status.
+              The board is anchored to the <span className="text-light">pay
+              week</span> dash already uses everywhere — Wednesday to Tuesday —
+              and shows three of them: <span className="text-light">last</span>{" "}
+              (closed, with what actually happened) ·{" "}
+              <span className="text-light">this</span> (what’s known so far and
+              what’s projected) · <span className="text-light">next</span>{" "}
+              (projected). Nothing rolls until Tuesday night closes the week, so
+              the frame you hold the bank against doesn’t move under you on
+              Friday. Each column carries its{" "}
+              <span className="text-light">own net pay</span> — its Wednesday
+              statement: the loads it delivered at their net, less{" "}
+              <span className="text-light">its own fuel</span> (the log’s actual
+              once the week closes, the 30-day pace while it’s open, and never
+              under the fills already logged — predict until the week closes,
+              then actual), less the deductions bucket (the first statement of a
+              month carries the insurance). The feed’s{" "}
+              <span className="text-light">actual wins</span> the moment the
+              statement is on file, and a typed figure beats a projection but
+              never the feed. The <span className="text-light">deposit</span>{" "}
+              lands on settlement day + the lag — Wednesday statement, Thursday
+              cash, both set in Settings — and it is{" "}
+              <span className="text-light">last week’s</span> net pay, not this
+              week’s. The Plan’s moves leave Ops here too, on their day: the
+              Friday <span className="text-light">accrual</span> (the pay week’s
+              odometer miles × the plan’s $/mile — and when a snapshot’s
+              Maintenance balance already shows the move, it isn’t taken twice)
+              and a <span className="text-light">money day</span> once it has
+              actually run. <span className="text-light">OPS NOW</span> is the
+              two-field entry — the date and the Ops balance — that re-bases the
+              board from the number in front of you any morning; it’s kept, so
+              Marge can read it. Every balance you enter is a{" "}
+              <span className="text-light">check</span>: the board prints what
+              it said for that morning and the gap, then re-bases from the
+              actual so the projection never drifts. The gap is, by design,{" "}
+              <span className="text-light">what dash doesn’t see</span> — a card
+              charge, a transfer you made by hand, a refund, a bank fee — so
+              name it in the note and the Checked row shows your words beside
+              the number. dash does not read the bank.
             </Why>
           </Metric>
 
@@ -1423,7 +1445,7 @@ const GuidePage = () => {
               archived is never overwritten.
             </p>
             <p className="text-sm text-muted-text mb-2">
-              Three things happen with it: the two-week board's fuel and
+              Three things happen with it: the cash board's fuel and
               deduction lines become <span className="text-light">measured</span>{" "}
               (30-day fuel from your log; two deduction buckets, because the
               first settlement of each month carries the insurance stack —
@@ -3483,10 +3505,19 @@ const GuidePage = () => {
               <span className="text-light">Every Friday</span>: snapshot
               first — after the settlement and payroll land, punch in the raw
               balances — then the accrual: the pay week's miles (Wednesday to
-              Tuesday, pre-filled from the loads' loaded + deadhead, editable)
-              × the plan's $ per mile moves to Maintenance. A closed pay week
-              accrues once, on the first snapshot after it closes; a load with
-              no deadhead logged is flagged, not counted as free miles.{" "}
+              Tuesday) by odometer — the reading at the week's end minus the
+              reading at its start, from every fill, every load's pickup and
+              delivery, and every trip log, so every mile the truck rolls
+              counts — × the plan's $ per mile moves to Maintenance; the figure
+              is pre-filled and editable, with the loads' own number shown
+              beside it. A closed pay week accrues once, on the first snapshot
+              after it closes. On the odometer chain unlogged deadhead is
+              already inside the reading-to-reading delta, so it needs no flag;
+              when no reading predates the week the miles fall back to the
+              loads, and then a load with no deadhead logged is flagged, not
+              counted as free miles. A reading that goes backwards — or one
+              typed too high, an impossible week — is a typo: it's flagged, and
+              the money waits until you fix the entry.{" "}
               <span className="text-light">The money day</span> opens the day
               the month's P&amp;L is filed in Expenses and runs any day —
               never the first Friday, which is the new month's Friday. Tax
