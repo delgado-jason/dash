@@ -12,6 +12,8 @@ import {
   patchAccount,
   getSnapshots,
   createSnapshot,
+  getOpsChecks,
+  createOpsCheck,
 } from "../services/planServices.js";
 
 const router = express.Router();
@@ -42,5 +44,8 @@ router.patch("/accounts/:account_id", handle(async (req) => ({ account: await pa
 
 router.get("/snapshots/all", handle(async (req) => ({ snapshots: await getSnapshots(req.user.user_id) })));
 router.post("/snapshots", handle(async (req) => ({ status: 201, body: { snapshot: await createSnapshot(req.user.user_id, req.body) } })));
+
+router.get("/ops-checks/all", handle(async (req) => ({ checks: await getOpsChecks(req.user.user_id) })));
+router.post("/ops-checks", handle(async (req) => ({ status: 201, body: { check: await createOpsCheck(req.user.user_id, req.body) } })));
 
 export default router;

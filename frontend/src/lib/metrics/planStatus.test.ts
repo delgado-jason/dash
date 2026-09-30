@@ -345,6 +345,70 @@ describe("getPlanStatus — the whole verdict", () => {
     expect(st2.accrualFlag).toBe("1 of 2 loads have no deadhead logged — fix the load or edit the miles");
   });
 
+  // ---- issue 8 · the accrual by odometer (Cash Board Nod Sheet, nodded 2026-09-30) ----
+
+  it("issue 8 · the odometer chain: the order reads the odometer miles, and the deadhead flag is gone", () => {
+    // Sep 23–29 by odometer: 603,232 → 605,222 = 1,990 mi. The loads say 1,999.
+    const st = getPlanStatus(sep18(), plan(), {
+      accrual: {
+        ...thisWeek,
+        miles: 1990,
+        weekLabel: "Sep 23–29",
+        source: "odometer",
+        odometerMiles: 1990,
+        loadsMiles: 1999,
+        readingsWords: "603,232 on Sep 22 → 605,222 on Sep 29",
+        noDeadhead: 1, // unlogged deadhead is already inside the delta
+      },
+    })!;
+    expect(st.accrual).toBeCloseTo(636.8, 2);
+    expect(st.orders[0]).toBe("Accrue Maintenance $637 (1,990 mi × $0.32)");
+    expect(st.accrualFlag).toBeNull();
+  });
+
+  it("issue 8 · no reading before the week → the loads' miles, said out loud, deadhead flag included", () => {
+    const st = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, source: "loads", odometerMiles: null, loadsMiles: 1999, readingsWords: null },
+    })!;
+    expect(st.accrualFlag).toBe("no odometer reading before the week — miles from the loads");
+    expect(st.accrual).toBeCloseTo(639.68, 2);
+    const st2 = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, source: "loads", odometerMiles: null, loadsMiles: 1999, noDeadhead: 1 },
+    })!;
+    expect(st2.accrualFlag).toBe(
+      "no odometer reading before the week — miles from the loads; 1 of 2 loads have no deadhead logged — fix the load or edit the miles",
+    );
+  });
+
+  it("issue 8 · a backwards reading wins over every other flag — fix the entry before the money moves", () => {
+    const one = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, source: "odometer", odometerMiles: 1990, backwards: 1, noDeadhead: 1 },
+    })!;
+    expect(one.accrualFlag).toBe("1 odometer reading goes backwards — fix the entry before moving money");
+    const two = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, source: "loads", odometerMiles: null, backwards: 2, noDeadhead: 1 },
+    })!;
+    expect(two.accrualFlag).toBe("2 odometer readings go backwards — fix the entry before moving money");
+    // Flagged, but the miles still accrue — the form is editable, the money isn't blocked.
+    expect(one.accrual).toBeCloseTo(639.68, 2);
+  });
+
+  // The mirror typo: a reading typed too HIGH never goes backwards, so the
+  // backwards rule can't see it. Same sentence on the Plan page and the board.
+  it("issue 8 · a week too big to be real is a typo too — flagged, not banked", () => {
+    const st = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, source: "odometer", odometerMiles: 5448988, implausibleMiles: 5448988, backwards: 0 },
+    })!;
+    expect(st.accrualFlag).toBe(
+      "5,448,988 mi in one pay week is too high to be real — fix the odometer entry before moving money",
+    );
+    // A backwards reading still wins — it is the worse of the two.
+    const both = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, source: "odometer", implausibleMiles: 5448988, backwards: 1 },
+    })!;
+    expect(both.accrualFlag).toContain("goes backwards");
+  });
+
   it("issue 11 · vault money above the ratchet still goes whole to the objective", () => {
     const st = getPlanStatus(snap({ ops: 12000, vault: 16200, maintenance: 6000 }), plan())!;
     expect(st.verdict).toBe("on-plan");

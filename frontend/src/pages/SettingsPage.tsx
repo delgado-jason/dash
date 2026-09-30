@@ -25,6 +25,8 @@ const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean perc
 const SAMPLE_LINEHAUL = 2000;
 const SAMPLE_FSC = 300;
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 type Pcts = {
   linehaul: number;
   trailer: number;
@@ -66,6 +68,7 @@ const SettingsPage = () => {
   const [carrier, setCarrier] = useState("");
   const [freeHours, setFreeHours] = useState(3);
   const [settlementDay, setSettlementDay] = useState(3); // 0=Sun … 6=Sat; default Wednesday
+  const [depositLag, setDepositLag] = useState(1); // days after the settlement the cash lands
   const [perDiemRate, setPerDiemRate] = useState(69);
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [hometimeThresh, setHometimeThresh] = useState(21);
@@ -97,6 +100,7 @@ const SettingsPage = () => {
         });
         setCarrier(s.carrier_name ?? "");
         setSettlementDay(s.settlement_day);
+        setDepositLag(s.deposit_lag_days);
         setFreeHours(s.detention_free_hours);
         setPerDiemRate(s.per_diem_rate);
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
@@ -152,6 +156,7 @@ const SettingsPage = () => {
         accessorial_pct: pcts.accessorial / 100,
         carrier_name: carrier.trim() || null,
         settlement_day: settlementDay,
+        deposit_lag_days: depositLag,
         detention_free_hours: freeHours,
         per_diem_rate: perDiemRate,
         per_diem_deduct_pct: perDiemPct / 100,
@@ -282,17 +287,38 @@ const SettingsPage = () => {
             }}
             className="w-full max-w-xs mt-1 bg-steel rounded px-2 py-1.5 text-light text-sm block"
           >
-            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
-              (d, i) => (
-                <option key={d} value={i}>
-                  {d}
-                </option>
-              ),
-            )}
+            {WEEKDAYS.map((d, i) => (
+              <option key={d} value={i}>
+                {d}
+              </option>
+            ))}
           </select>
           <span className="text-xs text-muted-text mt-1 block">
             The day your carrier's weekly settlement lands. Drives the "next
             settlement" line on the dashboard.
+          </span>
+        </label>
+
+        <label className="block mt-4">
+          <span className="text-sm text-light">Cash lands</span>
+          <select
+            value={depositLag}
+            onChange={(e) => {
+              setMsg(null);
+              setDepositLag(Number(e.target.value));
+            }}
+            className="w-full max-w-xs mt-1 bg-steel rounded px-2 py-1.5 text-light text-sm block"
+          >
+            {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+              <option key={n} value={n}>
+                {n === 0 ? "The same day" : n === 1 ? "The next day" : `${n} days after`}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-muted-text mt-1 block">
+            How long after the statement the money is actually in the bank —{" "}
+            {WEEKDAYS[settlementDay]} statement, {WEEKDAYS[(settlementDay + depositLag) % 7]}{" "}
+            cash. The cash board dates every deposit by it.
           </span>
         </label>
 

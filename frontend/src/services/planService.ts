@@ -105,3 +105,28 @@ export const createSnapshot = async (data: Record<string, unknown>): Promise<Sna
   const res = await api.post("/plans/snapshots", data);
   return res.data.snapshot;
 };
+
+// OPS NOW (#502): the bank's Ops balance typed on a date, kept. One per day —
+// a second entry the same day replaces the first. The cash board re-bases from
+// the latest of a snapshot or a check, and prints the gap against its own
+// figure for that morning.
+export interface OpsCheckRow {
+  check_id: string;
+  as_of: string; // YYYY-MM-DD
+  balance: string | number; // numeric — coerce at the boundary
+  note: string | null;
+}
+
+export const getOpsChecks = async (): Promise<OpsCheckRow[]> => {
+  const res = await api.get("/plans/ops-checks/all");
+  return res.data.checks;
+};
+
+export const createOpsCheck = async (data: {
+  as_of: string;
+  balance: number;
+  note: string | null;
+}): Promise<OpsCheckRow> => {
+  const res = await api.post("/plans/ops-checks", data);
+  return res.data.check;
+};

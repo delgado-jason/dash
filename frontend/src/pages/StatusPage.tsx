@@ -30,9 +30,15 @@ import {
 import { getObligations } from "@/services/obligationsService";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getLoads } from "@/services/loadsService";
+import { getFuelEntries } from "@/services/fuelService";
+import { getTrips } from "@/services/tripsService";
+import { getMaintenanceServices } from "@/services/maintenanceService";
+import type { MaintenanceService } from "@/types/maintenance";
 import type { Obligation } from "@/types/obligation";
 import type { ExpensePeriod } from "@/types/expense";
 import type { Load } from "@/types/load";
+import type { FuelEntry } from "@/types/fuelEntry";
+import type { Trip } from "@/types/trip";
 import {
   getPlanStatus,
   getTaxMove,
@@ -46,6 +52,7 @@ import {
   type FloorStatus,
 } from "@/lib/metrics/planStatus";
 import { weeksOwed, milesInWeeks, weekLabel, payWeekOf } from "@/lib/metrics/payWeeks";
+import { collectReadings, weekOdometerMiles, readingWords, IMPLAUSIBLE_WEEK_MI } from "@/lib/metrics/odometer";
 import { money, formatDate } from "@/lib/format";
 
 // The Plan page (ADMIN-03, #500). Two beats. THE FRIDAY: snapshot first —
@@ -64,6 +71,9 @@ const num = (v: string | number | null | undefined): number | null => {
 
 const todayKey = () => new Date().toLocaleDateString("en-CA");
 const day = (v: string | null | undefined): string => String(v ?? "").slice(0, 10);
+// "Sep 27" — a reading's day, UTC-safe (dates are the #1 bug).
+const dayWords = (v: string): string =>
+  new Date(`${day(v)}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 // 'YYYY-MM-01' one month on.
 const nextMonth = (ymd: string): string => {
@@ -156,6 +166,8 @@ const StatusPage = () => {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSnap, setShowSnap] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
@@ -163,14 +175,27 @@ const StatusPage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
-    Promise.all([getPlans(), getAccounts(), getSnapshots(), getObligations(), getExpensePeriods(), getLoads()])
-      .then(([p, a, s, o, pe, l]) => {
+    Promise.all([
+      getPlans(),
+      getAccounts(),
+      getSnapshots(),
+      getObligations(),
+      getExpensePeriods(),
+      getLoads(),
+      // The odometer chain is a nice-to-have on this page: if fuel or trips
+      // fail the accrual falls back to the loads, it doesn't blank the Plan.
+      getFuelEntries().catch((): FuelEntry[] => []),
+      getTrips().catch((): Trip[] => []),
+    ])
+      .then(([p, a, s, o, pe, l, f, t]) => {
         setPlans(p);
         setAccounts(a);
         setSnapshots(s);
         setObligations(o);
         setPeriods(pe);
         setLoads(l);
+        setFuelEntries(f);
+        setTrips(t);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -261,6 +286,20 @@ const StatusPage = () => {
     () => (lastAccrued ? snapshots.find((s) => day(s.pay_week_start) === lastAccrued) ?? null : null),
     [snapshots, lastAccrued],
   );
+  // The odometer chain: every reading dash holds — a fill, a load's pickup and
+  // delivery, each end of a trip log (issue 8, nodded 2026-09-30).
+  // Shop visits carry the truck's meter too — a fourth source for the chain.
+  const [services, setServices] = useState<MaintenanceService[]>([]);
+  useEffect(() => {
+    getMaintenanceServices().then(setServices).catch(() => {});
+  }, []);
+  const readings = useMemo(() => collectReadings(fuelEntries, loads, trips, services), [fuelEntries, loads, trips, services]);
+
+  // A pay week's miles are the reading at its end minus the reading at its
+  // start — every mile the truck rolled, loaded or not. The loads' figure
+  // rides along so the two can be watched agreeing, and stands in when no
+  // reading predates the week. An OPEN week (only when the form is back-dated
+  // inside it) takes the larger of the two, since both are still growing.
   const owedFor = (asOf: string) => {
     const { weeks, truncated } = weeksOwed(asOf, lastAccrued);
     const m = milesInWeeks(loads, weeks);
@@ -270,15 +309,79 @@ const StatusPage = () => {
         : weeks.length === 1
           ? weekLabel(weeks[0])
           : weekLabel({ start: weeks[0].start, end: weeks[weeks.length - 1].end });
-    return { weeks, truncated, label, ...m };
+
+    let odoTotal = 0;
+    let prefill = 0;
+    let gap = false; // a week with no reading before it — the whole accrual falls back
+    let endSlips = false;
+    let backwards = 0;
+    // The mirror typo: a reading fat-fingered too HIGH never goes backwards,
+    // so it lands as an impossible week instead of a flagged entry.
+    let implausible: number | null = null;
+    let endDate: string | null = null;
+    const words: string[] = [];
+    for (const w of weeks) {
+      const closed = w.end < day(asOf);
+      const o = closed ? weekOdometerMiles(readings, w) : weekOdometerMiles(readings, w, day(asOf));
+      const loadsMi = milesInWeeks(loads, [w]).miles;
+      backwards += o.backwards.length;
+      if (o.miles == null) {
+        gap = true;
+        prefill += loadsMi;
+        continue;
+      }
+      odoTotal += o.miles;
+      if (o.miles > IMPLAUSIBLE_WEEK_MI && o.miles > (implausible ?? 0)) implausible = o.miles;
+      prefill += closed ? o.miles : Math.max(o.miles, loadsMi);
+      if (o.start && o.end) words.push(`${readingWords(o.start)} → ${readingWords(o.end)}`);
+      if (o.endSlips) {
+        endSlips = true;
+        endDate = o.end?.date ?? null;
+      }
+    }
+    const source: "odometer" | "loads" = gap ? "loads" : "odometer";
+    return {
+      weeks,
+      truncated,
+      label,
+      loads: m.loads,
+      loadedMiles: m.loadedMiles,
+      deadheadMiles: m.deadheadMiles,
+      noDeadhead: m.noDeadhead,
+      loadsMiles: m.miles,
+      // The pre-fill: the odometer's miles, or the loads' when a week has no
+      // reading before it. Never a fake zero — an empty week is 0 miles.
+      miles: gap ? m.miles : prefill,
+      source,
+      odometerMiles: gap ? null : odoTotal,
+      readingsWords: gap || words.length === 0 ? null : words.join(" · "),
+      endSlips: gap ? false : endSlips,
+      endDate: gap ? null : endDate,
+      backwards,
+      implausibleMiles: implausible,
+    };
   };
   type Owed = ReturnType<typeof owedFor>;
   const accrualInput = (o: Owed, miles: string | number | null): AccrualInput | null =>
     o.weeks.length === 0
       ? null
-      : { miles, weekLabel: o.label, loads: o.loads, loadedMiles: o.loadedMiles, deadheadMiles: o.deadheadMiles, noDeadhead: o.noDeadhead };
+      : {
+          miles,
+          weekLabel: o.label,
+          loads: o.loads,
+          loadedMiles: o.loadedMiles,
+          deadheadMiles: o.deadheadMiles,
+          noDeadhead: o.noDeadhead,
+          source: o.source,
+          odometerMiles: o.odometerMiles,
+          loadsMiles: o.loadsMiles,
+          readingsWords: o.readingsWords,
+          endSlips: o.endSlips,
+          backwards: o.backwards,
+          implausibleMiles: o.implausibleMiles,
+        };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const owedToday = useMemo(() => owedFor(todayKey()), [loads, lastAccrued]);
+  const owedToday = useMemo(() => owedFor(todayKey()), [loads, readings, lastAccrued]);
 
   // ---- the money day's clock: the earliest filed month nobody has settled ----
   const filed = useMemo(
@@ -357,7 +460,7 @@ const StatusPage = () => {
   const [copied, setCopied] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const owedForm = useMemo(() => owedFor(fAsOf), [fAsOf, loads, lastAccrued]);
+  const owedForm = useMemo(() => owedFor(fAsOf), [fAsOf, loads, readings, lastAccrued]);
 
   const openSnapshot = (moneyDay: boolean) => {
     const today = todayKey();
@@ -989,7 +1092,16 @@ const StatusPage = () => {
                 <p className="font-condensed text-[13px] text-dim mt-[2px]">
                   {owedToday.weeks.length && acc != null && perMile != null ? (
                     <>
-                      <b className="text-hot font-semibold">Accrue {money(acc)} this Friday</b> — pay week {owedToday.label}, {owedMiles!.toLocaleString("en-US")} mi from {owedToday.loads} load{owedToday.loads === 1 ? "" : "s"} ({owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead) × ${perMile}
+                      <b className="text-hot font-semibold">Accrue {money(acc)} this Friday</b> — pay week {owedToday.label},{" "}
+                      {owedToday.source === "odometer" ? (
+                        <>
+                          {owedMiles!.toLocaleString("en-US")} mi by odometer ({owedToday.readingsWords}) × ${perMile} · loads say {owedToday.loadsMiles.toLocaleString("en-US")} ({owedToday.loads} load{owedToday.loads === 1 ? "" : "s"}: {owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead)
+                        </>
+                      ) : (
+                        <>
+                          {owedMiles!.toLocaleString("en-US")} mi from {owedToday.loads} load{owedToday.loads === 1 ? "" : "s"} ({owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead) × ${perMile} · no odometer reading before the week
+                        </>
+                      )}
                       {owedToday.truncated && <span className="text-amber-hi"> · more than 8 weeks owed — only the last 8 are counted</span>}
                     </>
                   ) : (
@@ -1136,7 +1248,18 @@ const StatusPage = () => {
                   />
                   {owedForm.weeks.length > 0 && (
                     <p className="font-condensed text-[11.5px] text-faint mt-1">
-                      pre-filled from {owedForm.loads} load{owedForm.loads === 1 ? "" : "s"} ({owedForm.loadedMiles.toLocaleString("en-US")} loaded + {owedForm.deadheadMiles.toLocaleString("en-US")} deadhead) · edit if the truck says otherwise
+                      {owedForm.source === "odometer" ? (
+                        <>
+                          pre-filled by odometer: {owedForm.readingsWords} · the loads say {owedForm.loadsMiles.toLocaleString("en-US")} · edit if the truck says otherwise
+                        </>
+                      ) : (
+                        <>
+                          pre-filled from {owedForm.loads} load{owedForm.loads === 1 ? "" : "s"} ({owedForm.loadedMiles.toLocaleString("en-US")} loaded + {owedForm.deadheadMiles.toLocaleString("en-US")} deadhead) — no odometer reading before the week · edit if the truck says otherwise
+                        </>
+                      )}
+                      {owedForm.endSlips && owedForm.endDate && (
+                        <> · last reading {dayWords(owedForm.endDate)} — log the odometer for a tighter week</>
+                      )}
                       {draftStatus?.accrualFlag && <span className="text-amber-hi"> · {draftStatus.accrualFlag}</span>}
                     </p>
                   )}

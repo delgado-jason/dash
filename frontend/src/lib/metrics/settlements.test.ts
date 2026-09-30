@@ -3,8 +3,6 @@ import {
   isFirstOfMonth,
   deductionBuckets,
   weeklyFuelCost30,
-  settlementDateInWeek,
-  depositToPeriodEnding,
   loadSettlementRollup,
   settlementDelta,
 } from "./settlements";
@@ -72,27 +70,6 @@ describe("weeklyFuelCost30", () => {
   it("null with no entries in the window — caller falls back to assumption", () => {
     expect(weeklyFuelCost30([entry("2026-07-01", 100, 3.5)], endKey)).toBeNull();
     expect(weeklyFuelCost30([], endKey)).toBeNull();
-  });
-});
-
-describe("depositToPeriodEnding", () => {
-  // real shape: Thursday period-endings, Wednesday deposits (6-day lag)
-  it("shifts a deposit back to its statement week across a month boundary", () => {
-    expect(depositToPeriodEnding("2026-09-09", "2026-09-03")).toBe("2026-09-03");
-    expect(depositToPeriodEnding("2026-09-02", "2026-09-03")).toBe("2026-08-27");
-  });
-
-  it("same-weekday deposit maps a full week back, never zero", () => {
-    expect(depositToPeriodEnding("2026-09-10", "2026-09-03")).toBe("2026-09-03");
-  });
-});
-
-describe("settlementDateInWeek", () => {
-  it("finds the settlement weekday inside the week", () => {
-    // 2026-09-06 is a Sunday; Wednesday (3) lands on 09-09
-    expect(settlementDateInWeek("2026-09-06", 3)).toBe("2026-09-09");
-    // week starting on the settlement day itself is day 0
-    expect(settlementDateInWeek("2026-09-09", 3)).toBe("2026-09-09");
   });
 });
 

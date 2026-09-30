@@ -8,32 +8,42 @@ import {
 import { useLoads } from "@/hooks/useLoads";
 import { getObligations, createObligation, patchObligation } from "@/services/obligationsService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
-import { getPlans, getAccounts, getSnapshots } from "@/services/planService";
-import type { PlanRow, AccountRow, SnapshotRow } from "@/services/planService";
+import {
+  getPlans, getAccounts, getSnapshots, getOpsChecks, createOpsCheck,
+} from "@/services/planService";
+import type { PlanRow, AccountRow, SnapshotRow, OpsCheckRow } from "@/services/planService";
 import {
   getCashAssumptions, patchCashAssumptions,
   getMonthlyFinancials, upsertMonthlyFinancials,
   getForecastAdjustments, setForecastAdjustment,
 } from "@/services/cashflowService";
 import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
-import {
-  twoWeekLiquidity, buildForecast, pretaxMargin, keyOf,
-} from "@/lib/metrics/cashflow";
-import type { LiquidityWeek } from "@/lib/metrics/cashflow";
+import { buildForecast, pretaxMargin } from "@/lib/metrics/cashflow";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import type { Obligation } from "@/types/obligation";
 import { getSettlements } from "@/services/settlementsService";
 import { getFuelEntries } from "@/services/fuelService";
+import { getTrips } from "@/services/tripsService";
+import { getMaintenanceServices } from "@/services/maintenanceService";
+import type { MaintenanceService } from "@/types/maintenance";
+import { getExpensePeriods } from "@/services/expensesService";
 import type { SettlementSummary } from "@/types/settlement";
 import type { FuelEntry } from "@/types/fuelEntry";
+import type { Trip } from "@/types/trip";
+import type { ExpensePeriod } from "@/types/expense";
 import {
   deductionBuckets,
   weeklyFuelCost30,
-  settlementDatesForBoard,
-  depositToPeriodEnding,
   isFirstOfMonth,
 } from "@/lib/metrics/settlements";
+import {
+  buildCashBoard, fuelForWeek,
+  type BoardDay, type BoardWeek, type CashBoard, type CashCheck, type MoneyDayMove,
+} from "@/lib/metrics/cashBoard";
+import { collectReadings, addDays } from "@/lib/metrics/odometer";
+import { payWeekOf, type PayWeek } from "@/lib/metrics/payWeeks";
+import { getMoneyDay, monthName, type PlanStageInput } from "@/lib/metrics/planStatus";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
 const FIELD =
@@ -51,10 +61,30 @@ const monthLabel = (k: string): string => {
   const d = new Date(`${k.slice(0, 10)}T00:00:00Z`);
   return `${d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })} ’${String(d.getUTCFullYear()).slice(2)}`;
 };
-const dayLabel = (k: string): string => {
-  const d = new Date(`${k}T00:00:00Z`);
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+const utc = (k: string): Date => new Date(`${k.slice(0, 10)}T00:00:00Z`);
+// "Wed Sep 30" — the board's date voice, UTC-anchored (dates are the #1 bug).
+const dayFull = (k: string): string =>
+  `${utc(k).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })} ${utc(k).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}`;
+// "Sep 30"
+const md = (k: string): string =>
+  utc(k).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const weekdayLong = (k: string): string =>
+  utc(k).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAY_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+// A stored settlement day / lag is 0–6, but never index an array on trust.
+const wdLong = (n: number): string => WEEKDAY_LONG[((Math.trunc(n) % 7) + 7) % 7];
+const isDayKey = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v);
+// "+$673" / "−$371" — the printed gap.
+const signedMoney = (n: number): string =>
+  `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
+const numOrNull = (v: string | number | null | undefined): number | null => {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 };
+const fills = (n: number): string => `${n} fill${n === 1 ? "" : "s"}`;
+const weekSpan = (w: PayWeek): string => `${dayFull(w.start)} – ${dayFull(w.end)}`;
 
 const CashFlowPage = () => {
   const { loads } = useLoads(0);
@@ -63,24 +93,29 @@ const CashFlowPage = () => {
   const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
   const [adjustments, setAdjustments] = useState<Map<string, number>>(new Map());
   const [settlementDay, setSettlementDay] = useState<number | null>(null);
+  const [depositLag, setDepositLag] = useState<number | null>(null);
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [opsChecks, setOpsChecks] = useState<OpsCheckRow[]>([]);
   const [settlements, setSettlements] = useState<SettlementSummary[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Planning scratch — page-local, not persisted.
-  const [beginOverride, setBeginOverride] = useState<number | null>(null);
-  const [setlOverride, setSetlOverride] = useState<[number | null, number | null]>([null, null]);
+  // Planning scratch — page-local, not persisted. A typed net pay beats a
+  // projection but never the feed's actual; keyed by the STATEMENT date.
+  const [netPayOverrides, setNetPayOverrides] = useState<Record<string, number>>({});
   const [editing, setEditing] = useState<string | null>(null); // which cell is an input
   const [showPaste, setShowPaste] = useState(false);
   const [showAssume, setShowAssume] = useState(false);
   const [showBills, setShowBills] = useState(false);
+  const [showOpsNow, setShowOpsNow] = useState(false);
 
   const [loadError, setLoadError] = useState(false);
 
-  // allSettled, not all: one flaky call must not throw away the other seven
+  // allSettled, not all: one flaky call must not throw away the other twelve
   // and render a stocked page as brand-new onboarding.
   const load = () =>
     Promise.allSettled([
@@ -88,8 +123,9 @@ const CashFlowPage = () => {
       getForecastAdjustments(), getSettlementSchedule(),
       getPlans(), getAccounts(), getSnapshots(),
       getSettlements(), getFuelEntries(),
+      getOpsChecks(), getTrips(), getExpensePeriods(),
     ])
-      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel]) => {
+      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per]) => {
         if (setl.status === "fulfilled") setSettlements(setl.value);
         if (fuel.status === "fulfilled") setFuelEntries(fuel.value);
         if (o.status === "fulfilled") setObligations(o.value);
@@ -97,14 +133,20 @@ const CashFlowPage = () => {
         if (f.status === "fulfilled") setFinancials(f.value);
         if (adj.status === "fulfilled")
           setAdjustments(new Map(adj.value.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)])));
-        if (sched.status === "fulfilled") setSettlementDay(sched.value?.settlement_day ?? null);
+        if (sched.status === "fulfilled") {
+          setSettlementDay(sched.value?.settlement_day ?? null);
+          setDepositLag(sched.value?.deposit_lag_days ?? null);
+        }
         if (p.status === "fulfilled") setPlans(p.value);
         if (acc.status === "fulfilled") setAccounts(acc.value);
         if (snaps.status === "fulfilled") setSnapshots(snaps.value);
+        if (oc.status === "fulfilled") setOpsChecks(oc.value);
+        if (tr.status === "fulfilled") setTrips(tr.value);
+        if (per.status === "fulfilled") setPeriods(per.value);
         // The schedule 404s harmlessly for a fresh user — every other failure
         // deserves a visible flag, not a silently emptier page.
         setLoadError(
-          [o, a, f, adj, p, acc, snaps, setl, fuel].some((r) => r.status === "rejected"),
+          [o, a, f, adj, p, acc, snaps, setl, fuel, oc, tr, per].some((r) => r.status === "rejected"),
         );
       })
       .finally(() => setLoading(false));
@@ -116,64 +158,163 @@ const CashFlowPage = () => {
   const plan = useMemo(() => plans.find((p) => p.active) ?? plans[0] ?? null, [plans]);
   const floatLine = plan ? Number(plan.float_line) : null;
 
-  // Week 1 beginning = the latest Friday snapshot's OPS balance (bills draft
-  // from ops; the vault is protected by design) — overridable on the board.
-  const latestSnap = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-  const opsAcct = accounts.filter((a) => a.active).find((a) => a.role === "ops") ?? null;
-  const snapOps = useMemo(() => {
-    if (!latestSnap || !opsAcct) return null;
-    const b = latestSnap.balances.find((x) => x.account_id === opsAcct.account_id);
-    return b == null ? null : Number(b.balance);
-  }, [latestSnap, opsAcct]);
-
   // The operator's LOCAL calendar day — a US evening is already tomorrow in
   // UTC, which would start the board a day late and drop tonight's drafts.
   const asOfKey = useMemo(() => localDayKey(new Date()), []);
-  const beginning = beginOverride ?? snapOps;
+  // Settlement day stays Wednesday and the cash lands Thursday — the lag is a
+  // schedule setting, so the board dates deposits settlement + lag.
+  const setlDay = settlementDay ?? 3;
+  const lag = depositLag ?? 1;
+
+  // Role resolution — the board reads ops (bills draft from it; the vault is
+  // protected by design) and maintenance ("already moved"); the money day
+  // needs the vault and tax balances too.
+  const activeAccounts = useMemo(() => accounts.filter((a) => a.active), [accounts]);
+  const opsAcct = activeAccounts.find((a) => a.role === "ops") ?? null;
+  const vaultAcct = activeAccounts.find((a) => a.role === "vault") ?? null;
+  const maintAcct = activeAccounts.find((a) => a.role === "maintenance") ?? null;
+  const taxAcct = activeAccounts.find((a) => a.role === "tax") ?? null;
+  const balanceOf = (sn: SnapshotRow, accountId: string | null | undefined): number | null => {
+    if (!accountId) return null;
+    const b = sn.balances.find((x) => x.account_id === accountId);
+    return b == null ? null : Number(b.balance);
+  };
 
   // Settlement-feed measurements (locked 2026-09-06): fuel = rolling 30d
   // from the fuel log (the cost-per-mile rate runs on 30d as well since
   // 2026-09-16);
-  // deductions = two ex-advance buckets over the last 12 settlements,
-  // applied by each week's settlement-date calendar position. Hand-set
-  // assumptions remain the FALLBACK when a measurement has no data.
+  // deductions = two ex-advance buckets over the last 12 settlements. The
+  // cash board applies the bucket by each STATEMENT's own calendar position.
+  // Hand-set assumptions remain the FALLBACK when a measurement has no data.
   const buckets = useMemo(() => deductionBuckets(settlements), [settlements]);
-  const fuel30 = useMemo(
-    () => weeklyFuelCost30(fuelEntries, localDayKey(new Date())),
-    [fuelEntries],
+  const fuel30 = useMemo(() => weeklyFuelCost30(fuelEntries, asOfKey), [fuelEntries, asOfKey]);
+
+  // Every balance the board can be measured against: a Friday snapshot (with
+  // the accrual it made and the Maintenance balance that proves whether the
+  // move was already taken) and every OPS NOW check.
+  const checks: CashCheck[] = useMemo(() => {
+    const out: CashCheck[] = [];
+    for (const s of snapshots) {
+      const bal = balanceOf(s, opsAcct?.account_id);
+      if (bal == null) continue; // a snapshot with no Ops balance can't base the board
+      out.push({
+        date: s.as_of.slice(0, 10),
+        balance: bal,
+        kind: "snapshot",
+        note: s.note,
+        miles: numOrNull(s.miles),
+        maintenance: balanceOf(s, maintAcct?.account_id),
+        settlesMonth: s.settles_month ? s.settles_month.slice(0, 10) : null,
+      });
+    }
+    for (const c of opsChecks) {
+      out.push({
+        date: c.as_of.slice(0, 10),
+        balance: Number(c.balance),
+        kind: "check",
+        note: c.note,
+      });
+    }
+    return out;
+  }, [snapshots, opsChecks, opsAcct, maintAcct]);
+
+  // Every mile the truck rolls: a reading at every fill, every load's pickup
+  // and delivery, and both ends of every trip log (rev 3, issue 8).
+  // Shop visits carry the truck's meter too — a fourth source for the chain.
+  const [services, setServices] = useState<MaintenanceService[]>([]);
+  useEffect(() => {
+    getMaintenanceServices().then(setServices).catch(() => {});
+  }, []);
+  const readings = useMemo(
+    () => collectReadings(fuelEntries, loads ?? [], trips, services),
+    [fuelEntries, loads, trips, services],
   );
 
-  const liquidity = useMemo(() => {
-    if (beginning == null || !assumptions) return null;
-    const measuredFuel = fuel30 ?? Number(assumptions.weekly_fuel_advance ?? 0);
-    let perWeek: [number, number] | undefined;
-    if (settlementDay != null && (buckets.firstOfMonth != null || buckets.standard != null)) {
-      const dates = settlementDatesForBoard(asOfKey, settlementDay);
-      const samplePe = settlements[0]?.period_ending;
-      perWeek = dates.map((d) => {
-        // deposits lag period endings — the bucket belongs to the STATEMENT
-        // week, or the insurance-heavy holdback lands on the wrong board week
-        const pe = samplePe ? depositToPeriodEnding(d, samplePe) : d;
-        const bucket = isFirstOfMonth(pe)
-          ? (buckets.firstOfMonth ?? buckets.standard)
-          : (buckets.standard ?? buckets.firstOfMonth);
-        return bucket ?? Number(assumptions.weekly_settlement_deductions ?? 0);
-      }) as [number, number];
+  const perMile = plan ? Number(plan.maintenance_per_mile) : 0;
+
+  // A run money day's outflow: tax off the top plus the surplus that actually
+  // moved, on the day of the snapshot that ran it — recomputed by the same
+  // function the Plan page uses, never projected before it runs.
+  const moneyDays: MoneyDayMove[] = useMemo(() => {
+    if (!plan) return [];
+    const stages: PlanStageInput[] = plan.stages.map((s) => ({
+      stage_id: s.stage_id, position: s.position, label: s.label, kind: s.kind,
+      target_lo: s.target_lo, target_hi: s.target_hi, obligation: null,
+    }));
+    const planInput = {
+      float_line: plan.float_line, stages, tax_pct: plan.tax_pct,
+      maintenance_floor: plan.maintenance_floor, min_move: plan.min_move,
+      objective_pct: plan.objective_pct,
+    };
+    const out: MoneyDayMove[] = [];
+    for (const s of snapshots) {
+      const month = s.settles_month ? s.settles_month.slice(0, 10) : null;
+      if (!month) continue;
+      const period = periods.find((p) => p.period_month.slice(0, 10) === month);
+      if (!period || period.income_total == null || period.cogs_total == null || period.expense_total == null) continue;
+      const pretax = period.income_total - period.cogs_total - period.expense_total;
+      const md = getMoneyDay(
+        {
+          as_of: s.as_of.slice(0, 10),
+          ops: balanceOf(s, opsAcct?.account_id),
+          vault: balanceOf(s, vaultAcct?.account_id),
+          maintenance: balanceOf(s, maintAcct?.account_id),
+          tax: balanceOf(s, taxAcct?.account_id),
+        },
+        planInput,
+        { month, pretaxProfit: pretax },
+        (numOrNull(s.miles) ?? 0) * perMile,
+        null,
+      );
+      if (!md) continue;
+      out.push({
+        date: s.as_of.slice(0, 10),
+        amount: md.tax + (md.belowMin ? 0 : md.surplus),
+        label: `Money day · ${monthName(month)}`,
+      });
     }
-    return twoWeekLiquidity({
-      asOfKey,
-      beginning,
-      obligations,
-      weeklyPayroll: Number(assumptions.weekly_payroll),
+    return out;
+  }, [plan, snapshots, periods, opsAcct, vaultAcct, maintAcct, taxAcct, perMile]);
+
+  const board = useMemo(() => {
+    if (!assumptions) return null;
+    return buildCashBoard({
+      today: asOfKey,
+      settlementDay: setlDay,
+      depositLagDays: lag,
+      floatLine,
+      checks,
       loads: loads ?? [],
-      settlementDay,
+      settlements,
+      fuelEntries,
+      obligations,
+      readings,
+      weeklyPayroll: Number(assumptions.weekly_payroll),
+      perMile,
+      fuelPaceWeekly: fuel30,
+      fuelFallback: Number(assumptions.weekly_fuel_advance ?? 0),
+      buckets,
+      deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
-      weeklyFuelAdvance: measuredFuel,
-      weeklySettlementDeductions: Number(assumptions.weekly_settlement_deductions ?? 0),
-      weeklyDeductionsPerWeek: perWeek,
-      overrides: setlOverride,
+      moneyDays,
+      overrides: netPayOverrides,
     });
-  }, [beginning, assumptions, obligations, loads, settlementDay, asOfKey, setlOverride, buckets, fuel30, settlements]);
+  }, [
+    assumptions, asOfKey, setlDay, lag, floatLine, checks, loads, settlements,
+    fuelEntries, obligations, readings, perMile, fuel30, buckets, moneyDays, netPayOverrides,
+  ]);
+
+  // Every simulated day, for OPS NOW's live gap line — the engine's own span
+  // (base.date → the end of next week), which is wider than the three
+  // assembled weeks: a day between the base and last week's Wednesday has a
+  // figure in the simulation and nowhere else.
+  const boardDays = useMemo(() => {
+    const m = new Map<string, BoardDay>();
+    for (const d of board?.days ?? []) m.set(d.date, d);
+    return m;
+  }, [board]);
+
+  const showMoneyRow = (board?.weeks ?? []).some((w) => w.moneyDays.length > 0);
 
   const forecast = useMemo(
     () => (assumptions ? buildForecast(financials, assumptions, adjustments) : null),
@@ -213,7 +354,6 @@ const CashFlowPage = () => {
       : `${name(last6[0].month)}–${name(last6[last6.length - 1].month)}`;
   }, [financials]);
 
-  const clears = liquidity != null && floatLine != null ? liquidity.lowestEnding >= floatLine : null;
   const catchup = assumptions ? Number(assumptions.tax_catchup_owed) : 0;
   const lastForecastEnd = forecast?.months.at(-1)?.ending ?? null;
   // YTD means the LATEST archived year only — the archive is permanent, so an
@@ -230,24 +370,311 @@ const CashFlowPage = () => {
   const endTone = (v: number) =>
     floatLine != null && v < floatLine ? "var(--color-warn)" : "var(--color-ok)";
 
-  // Day strip: 14 days from as-of; a bill's draft day carries its chip, the
-  // settlement day carries the inflow marker.
-  const stripDays = useMemo(() => {
-    if (!liquidity) return [];
-    const days: { key: string; bills: { label: string; amount: number }[]; settle: boolean }[] = [];
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(new Date(`${asOfKey}T00:00:00Z`).getTime() + i * 86_400_000);
-      const key = keyOf(d);
-      const bills = liquidity.weeks[i < 7 ? 0 : 1].bills
-        .filter((b) => b.draftKey === key)
-        .map((b) => ({ label: b.label, amount: b.amount }));
-      days.push({ key, bills, settle: settlementDay != null && d.getUTCDay() === settlementDay });
+  // The fuel tile's four-week range: the last four CLOSED pay weeks' actual
+  // fills, so the volatility Jason named is on the page as numbers.
+  const fuelWeeks = useMemo(() => {
+    const out: { week: PayWeek; amount: number; fills: number }[] = [];
+    let w = payWeekOf(asOfKey);
+    for (let i = 0; i < 5; i++) {
+      w = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
+      const f = fuelForWeek(fuelEntries, w, asOfKey, fuel30, 0, setlDay, lag);
+      out.push({ week: w, amount: f.amount, fills: f.fills });
     }
-    return days;
-  }, [liquidity, asOfKey, settlementDay]);
+    return out;
+  }, [fuelEntries, asOfKey, fuel30, setlDay, lag]);
+  const lastPayWeek = fuelWeeks[0] ?? null;
+  const thisPayWeekFuel = useMemo(
+    () => fuelForWeek(fuelEntries, payWeekOf(asOfKey), asOfKey, fuel30, 0, setlDay, lag),
+    [fuelEntries, asOfKey, fuel30, setlDay, lag],
+  );
+  const fourWeekRange = useMemo(() => {
+    const amounts = fuelWeeks.slice(0, 4).map((x) => x.amount);
+    return amounts.length ? { lo: Math.min(...amounts), hi: Math.max(...amounts) } : null;
+  }, [fuelWeeks]);
 
   if (loading)
     return <div className="text-sm text-muted-text py-12 text-center">Loading the cash picture…</div>;
+
+  // ---- the board's verdict badge ----
+  const badgeWord =
+    board == null
+      ? "NO BALANCE YET"
+      : board.clears == null
+        ? "NO FLOAT LINE"
+        : board.clears
+          ? "CLEARS THE FLOAT"
+          : "UNDER THE FLOAT — HOLD";
+  const badgeTone =
+    board?.clears == null
+      ? "var(--color-faint, #5a6880)"
+      : board.clears
+        ? "var(--color-ok)"
+        : "var(--color-warn)";
+
+  // ---- the rows, in the sheet's order ----
+  const revFallback = assumptions ? Number(assumptions.weekly_revenue) : 0;
+
+  const boardEnd = board?.weeks[2].week.end ?? null;
+  // The next statement that carries the insurance stack (a 60-day walk, no hook —
+  // this sits below the loading return).
+  const nextFirstStatement = ((): string | null => {
+    let d = asOfKey;
+    for (let i = 0; i < 60; i++) {
+      if (utc(d).getUTCDay() === setlDay && isFirstOfMonth(d)) return d;
+      d = addDays(d, 1);
+    }
+    return null;
+  })();
+
+  // "Sep 18 snapshot $8,575 − Best Egg $359 − Dental $30" — how the board
+  // walked from its base to a week's Wednesday.
+  const openingWalk = (b: CashBoard, w: BoardWeek): string => {
+    const base = b.base;
+    const kind = base.kind === "snapshot" ? "snapshot" : "Ops now";
+    if (base.date >= w.week.start) return `from the ${md(base.date)} ${kind} forward`;
+    const parts = [`${md(base.date)} ${kind} ${money(base.balance)}`];
+    for (const d of b.days) {
+      if (d.date <= base.date || d.date >= w.week.start) continue;
+      if (d.deposit != null) parts.push(`+ deposit ${money(d.deposit)}`);
+      if (d.payroll > 0) parts.push(`− payroll ${money(d.payroll)}`);
+      for (const bl of d.bills) parts.push(`− ${bl.label} ${money(bl.amount)}`);
+      if (d.accrual > 0) parts.push(`− accrual ${money(d.accrual)}`);
+    }
+    return parts.length === 1 ? `from the ${md(base.date)} ${kind} forward` : parts.join(" ");
+  };
+
+  const openingCell = (w: BoardWeek): CellSpec => {
+    const chk = w.openingCheck;
+    if (chk) {
+      const gap =
+        chk.projected != null && chk.gap != null
+          ? ` · the board said ${money(chk.projected)} — off by ${signedMoney(chk.gap)}`
+          : "";
+      return {
+        headline: moneyCents(chk.balance),
+        note: `${chk.kind === "check" ? "Ops now" : "snapshot"} · typed ${dayFull(chk.date)}${gap}`,
+      };
+    }
+    const note = w.key === "next" ? "this week’s Tuesday ending" : board ? openingWalk(board, w) : null;
+    return { headline: w.opening == null ? "—" : money(w.opening), note };
+  };
+
+  const netPayCell = (w: BoardWeek): CellSpec => {
+    const n = w.netPay;
+    const stamp = n.source === "actual" ? "ACTUAL" : n.source === "override" ? "YOU SAID" : null;
+    const loadsWord = `${n.loads} load${n.loads === 1 ? "" : "s"}${w.state === "closed" ? "" : " delivered so far"}`;
+    const fuelWord = n.fuelSource === "actual" ? "its fuel" : "its fuel at pace";
+    const bucketWord = n.bucketKind === "first" ? "first-of-month bucket" : "bucket";
+    const projected = n.loadsNet - n.fuel - n.bucket;
+    const lands = `lands ${dayFull(n.depositDate)}${boardEnd && n.depositDate > boardEnd ? ", off this board" : ""}`;
+    const derivation = `${loadsWord} ${money(n.loadsNet)} − ${fuelWord} ${money(n.fuel)} − ${bucketWord} ${money(n.bucket)}`;
+    const note =
+      n.source === "actual"
+        ? `statement ${md(n.statementDate)} · actual, from the feed`
+        : n.source === "fallback"
+          ? `statement ${md(n.statementDate)} · no loads booked yet — the ${money(revFallback)} weekly fallback − fuel at pace − bucket · ${lands}`
+          : n.source === "override"
+            ? `statement ${md(n.statementDate)} · you said ${money(n.amount ?? 0)} · loads say ${money(projected)} (${derivation}) · the statement settles it · ${lands}`
+            : w.state === "closed"
+              ? `statement ${md(n.statementDate)} · loads say ${money(projected)} (${derivation}) · the statement settles it · ${lands}`
+              : `statement ${md(n.statementDate)} · ${derivation} · ${lands}`;
+    // The feed's actual is not overridable — a typed figure only beats a
+    // projection, so only a projection offers the input.
+    const headline =
+      n.amount == null ? (
+        "—"
+      ) : n.source === "actual" ? (
+        moneyCents(n.amount)
+      ) : (
+        <>
+          <EditCell
+            id={`np-${n.statementDate}`}
+            editing={editing}
+            setEditing={setEditing}
+            value={n.amount}
+            prefix="$"
+            onCommit={(v) => setNetPayOverrides((p) => ({ ...p, [n.statementDate]: v }))}
+          />
+          {n.source === "override" && (
+            <button
+              className="ml-1 text-amber-hi hover:text-hot text-[11px]"
+              onClick={() =>
+                setNetPayOverrides((p) => {
+                  const next = { ...p };
+                  delete next[n.statementDate];
+                  return next;
+                })
+              }
+            >
+              ✕
+            </button>
+          )}
+        </>
+      );
+    return { headline, stamp, note, tone: n.source === "fallback" ? "var(--color-faint)" : undefined };
+  };
+
+  // Whose net pay is landing, in the board's own voice — read off the cell's
+  // own fromWeek and named relative to the week Jason is standing in, not to
+  // the column. The sheet's three columns read "the week before's" · "last
+  // week's" · "this week's, projected"; one fixed phrase named the wrong week
+  // in two of the three.
+  const whoseNetPay = (from: PayWeek): string => {
+    const lastStart = board?.weeks[0].week.start;
+    const thisStart = board?.weeks[1].week.start;
+    if (thisStart && from.start === thisStart) return "this week’s net pay";
+    if (lastStart && from.start === lastStart) return "last week’s net pay";
+    if (lastStart && from.start === addDays(lastStart, -7)) return "the week before’s net pay";
+    return `the ${md(from.start)}–${md(from.end)} week’s net pay`;
+  };
+
+  const depositCell = (w: BoardWeek): CellSpec => {
+    const d = w.deposit;
+    if (d.amount == null)
+      return { headline: "—", note: `${dayFull(d.date)} · no statement for the week before` };
+    const stmt = addDays(d.date, -lag);
+    const tail =
+      d.source === "actual"
+        ? ` · statement ${md(stmt)} · actual, from the feed`
+        : d.source === "projected" || d.source === "fallback"
+          ? ", projected"
+          : "";
+    return {
+      // moneyCents already carries the sign. A home week, or a closed week
+      // whose fuel and bucket outrun what it delivered, lands a negative net
+      // pay — and "+−$1,500.94" is not a number.
+      headline: d.source === "actual" ? (d.amount < 0 ? moneyCents(d.amount) : `+${moneyCents(d.amount)}`) : d.amount < 0 ? money(d.amount) : `+${money(d.amount)}`,
+      tone: d.amount < 0 ? "var(--color-warn)" : "var(--color-ok)",
+      note: `${dayFull(d.date)} · ${whoseNetPay(d.fromWeek)}${tail}`,
+    };
+  };
+
+  const payrollCell = (w: BoardWeek): CellSpec => {
+    const fri = w.days.find((d) => d.payroll > 0)?.date ?? addDays(w.week.start, 2);
+    return {
+      headline: w.payroll === 0 ? "—" : `−${money(w.payroll)}`,
+      note: `assumption · ${dayFull(fri)}`,
+    };
+  };
+
+  const accrualCell = (w: BoardWeek): CellSpec => {
+    const a = w.accrual;
+    if (a.source === "none") return { headline: "—", note: "nothing owed this week" };
+    const words = a.words ?? "";
+    // The engine's own snapshot wording already says it — don't say it twice.
+    const moved =
+      a.alreadyMoved && !words.includes("already in Maintenance")
+        ? " · already in Maintenance — not taken twice"
+        : "";
+    return {
+      headline: `−${money(a.amount)}`,
+      note: `${a.weekLabel ? `${a.weekLabel} · ` : ""}${words}${moved}`,
+      // A hand-typed odometer is the one input behind this figure, so the
+      // chain's own flag rides with it — the same sentence the Plan page says.
+      flag: a.flag,
+    };
+  };
+
+  const billsCell = (w: BoardWeek): CellSpec => ({
+    headline: w.billsTotal === 0 ? "—" : `−${money(w.billsTotal)}`,
+    note:
+      w.bills.map((b) => `${b.label} ${money(b.amount)} (${Number(b.date.slice(8, 10))})`).join(" · ") ||
+      "nothing drafts this week",
+  });
+
+  const fuelCell = (w: BoardWeek): CellSpec => {
+    const f = w.fuel;
+    const fillWords = fuelEntries
+      .filter((e) => {
+        const d = String(e.fuel_date).slice(0, 10);
+        return d >= w.week.start && d <= w.week.end;
+      })
+      .sort((a, b) => (String(a.fuel_date) < String(b.fuel_date) ? -1 : 1))
+      .map((e) => `${md(String(e.fuel_date).slice(0, 10))} ${money(Number(e.gallons) * Number(e.price_per_gallon))}`);
+    const parts: string[] = [];
+    if (w.state === "closed") parts.push(fills(f.fills), ...fillWords);
+    else if (w.state === "open") parts.push("30-day pace", f.fills === 0 ? "no fill logged yet this week" : `${fills(f.fills)} so far ${money(f.soFar)}`);
+    parts.push(`on the ${md(f.statementDate)} statement`, `cash ${dayFull(f.depositDate)}`);
+    if (w.state === "open") parts.push("turns actual Tuesday night");
+    if (w.netPay.source === "actual" && w.netPay.advances != null)
+      parts.push(`advanced ${money(w.netPay.advances)} · bought ${money(f.amount)}`);
+    return {
+      headline: money(f.amount),
+      stamp: f.source === "actual" ? "ACTUAL" : "AT PACE",
+      note: parts.join(" · "),
+    };
+  };
+
+  const moneyDayCell = (w: BoardWeek): CellSpec => {
+    if (w.moneyDays.length === 0) return { headline: "—", note: null };
+    return {
+      headline: `−${money(w.moneyDays.reduce((s, m) => s + m.amount, 0))}`,
+      note: w.moneyDays.map((m) => m.label).join(" · "),
+    };
+  };
+
+  const checkedCell = (w: BoardWeek): CellSpec => {
+    if (w.checks.length === 0) return { headline: "—", note: "nothing to check yet" };
+    return {
+      headline: (
+        <span className="inline-block text-right">
+          {w.checks.map((c, i) => (
+            <span key={`${c.date}-${c.kind}-${i}`} className="block mb-0.5">
+              <span className="font-condensed text-[12px] text-dim">
+                {dayFull(c.date)} {c.kind === "snapshot" ? "snapshot" : "Ops now"}{" "}
+              </span>
+              <b className="font-semibold">{moneyCents(c.balance)}</b>
+              <span className="block font-condensed text-[11px] text-faint leading-[1.35] whitespace-normal">
+                {c.projected != null && c.gap != null &&
+                  `board that day ${money(c.projected)} — off by ${signedMoney(c.gap)} · re-based from the ${c.kind === "snapshot" ? "snapshot" : "check"}${c.kind === "check" && !c.note ? " · what dash doesn’t see — name it in the note" : ""}${w.state === "open" && i === w.checks.length - 1 ? " · next check: Friday’s snapshot" : ""}`}
+                {c.note && (
+                  <>
+                    {c.projected != null && c.gap != null ? " · " : ""}
+                    “{c.note}”
+                  </>
+                )}
+              </span>
+            </span>
+          ))}
+        </span>
+      ),
+      note: null,
+    };
+  };
+
+  const endingCell = (w: BoardWeek): CellSpec => {
+    const e = w.ending;
+    const under = e != null && floatLine != null && e < floatLine;
+    let note = dayFull(w.week.end);
+    if (w.state === "closed") {
+      const ref = w.checks[w.checks.length - 1] ?? (board ? { date: board.base.date, kind: board.base.kind } : null);
+      if (ref) note += ` · from the ${md(ref.date)} ${ref.kind === "snapshot" ? "snapshot" : "Ops now"} forward`;
+    } else if (w.state === "open") {
+      note += under ? ` · under the ${money(floatLine!)} float · hold` : floatLine != null ? " · clears the float" : "";
+    } else note += " · projected";
+    return {
+      headline: e == null ? "—" : money(e),
+      tone: e == null ? undefined : endTone(e),
+      display: true,
+      note,
+    };
+  };
+
+  const rowSpecs: { label: string; sub?: string; cell: (w: BoardWeek) => CellSpec }[] = [
+    { label: "Opening · Wed", cell: openingCell },
+    { label: "Net pay · Wed", sub: "the week’s own statement", cell: netPayCell },
+    { label: "Deposit · Thu", sub: "last week’s net pay lands", cell: depositCell },
+    { label: "Payroll · Fri", cell: payrollCell },
+    { label: "Accrual · Fri", cell: accrualCell },
+    { label: "Bills", cell: billsCell },
+    { label: "Fuel bought", sub: "→ its Wednesday statement", cell: fuelCell },
+    ...(showMoneyRow ? [{ label: "Money day", cell: moneyDayCell }] : []),
+    { label: "Checked", cell: checkedCell },
+    { label: "Ending · Tue", cell: endingCell },
+  ];
+  const rows = board
+    ? rowSpecs.map((r) => ({ label: r.label, sub: r.sub, cells: board.weeks.map(r.cell) }))
+    : [];
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -284,189 +711,160 @@ const CashFlowPage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          {clears != null && liquidity ? (
-            <>
-              <span
-                className="font-display text-[21px] tracking-[.04em] rounded-[8px] px-3 pt-[3px] pb-[1px] border-2"
-                style={{
-                  color: clears ? "var(--color-ok)" : "var(--color-warn)",
-                  borderColor: clears ? "rgba(111,208,140,.45)" : "rgba(224,82,82,.5)",
-                  background: clears ? "rgba(111,208,140,.06)" : "rgba(224,82,82,.07)",
-                  transform: "rotate(-1.2deg)",
-                }}
-              >
-                {clears ? "CLEARS THE LINE" : "BELOW THE LINE"}
-              </span>
-              <span className="text-[13.5px] text-faint">
-                · lowest point <b className="font-semibold text-ink tabular-nums">{money(liquidity.lowestEnding)}</b>
-                {floatLine != null && (
-                  <> {clears ? "over" : "under"} the <b className="font-semibold text-ink">{money(floatLine)}</b> float</>
-                )}
-                {ytdMargin != null && (
-                  <> · YTD pretax margin (QBO) <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
-                )}
-              </span>
-            </>
-          ) : (
-            <span className="text-[13.5px] text-faint">
-              forges after a Friday snapshot sets your ops balance — or tap Beginning to set it by hand
-            </span>
-          )}
+          <span className="text-[13.5px] text-faint">
+            three pay weeks, Wednesday to Tuesday — last · this · next; nothing rolls
+            until Tuesday night closes the week
+            {ytdMargin != null && (
+              <> · YTD pretax margin (QBO) <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
+            )}
+          </span>
         </div>
 
-        {/* THE NEXT TWO WEEKS */}
+        {/* THE CASH BOARD */}
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap"
             style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
           >
             <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
-              THE NEXT TWO WEEKS
+              THE CASH BOARD
             </span>
-            <button
-              onClick={() => setShowBills(true)}
-              className="font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-amber-hi hover:text-hot"
+            <span
+              className="font-display text-[15px] tracking-[.04em] rounded-[7px] px-2.5 pt-[3px] pb-[1px] border-2 whitespace-nowrap"
+              style={{
+                color: badgeTone,
+                borderColor: badgeTone,
+                background: "rgba(0,0,0,.18)",
+                transform: "rotate(-1.2deg)",
+              }}
             >
-              Edit bills ▸
-            </button>
-            <span className="ml-auto font-condensed text-[12px] text-faint">
-              beginning ={" "}
-              {snapOps != null && beginOverride == null ? (
-                <>latest snapshot ops <b className="text-dim tabular-nums">{moneyCents(snapOps)}</b>
-                  {latestSnap && <> · {latestSnap.as_of.slice(0, 10)}</>}</>
-              ) : beginOverride != null ? (
-                <>override <b className="text-dim tabular-nums">{moneyCents(beginOverride)}</b>{" "}
-                  <button className="text-amber-hi hover:text-hot" onClick={() => setBeginOverride(null)}>✕</button></>
-              ) : (
-                "no snapshot yet"
-              )}
-              {" · "}tap a value to override
+              {badgeWord}
+            </span>
+            {board && (
+              <span className="font-condensed text-[12.5px] text-faint">
+                · lowest point{" "}
+                <b className="font-semibold text-ink tabular-nums">
+                  {board.lowest ? money(board.lowest.amount) : "—"}
+                </b>
+                {board.lowest && <> {board.lowest.date === asOfKey ? "today" : md(board.lowest.date)}</>}
+                {floatLine != null && (
+                  <> · float <b className="font-semibold text-ink tabular-nums">{money(floatLine)}</b></>
+                )}
+                {" · "}settlement {wdLong(setlDay).slice(0, 3)}, cash{" "}
+                {wdLong(setlDay + lag).slice(0, 3)}
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-3">
+              <button
+                onClick={() => setShowOpsNow(true)}
+                className="font-condensed font-bold text-[11px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-3 py-[6px] hover:bg-amber-hi"
+              >
+                Ops now ▸
+              </button>
+              <button
+                onClick={() => setShowBills(true)}
+                className="font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-amber-hi hover:text-hot"
+              >
+                Edit bills ▸
+              </button>
             </span>
           </div>
 
-          {liquidity ? (
+          {board ? (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
                   <thead>
                     <tr className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint">
-                      <th className="text-left px-4 py-2 border-b border-hairline"></th>
-                      {liquidity.weeks.map((w, i) => (
-                        <th key={i} className="text-right px-4 py-2 border-b border-hairline whitespace-nowrap">
-                          WK {i + 1} · {dayLabel(w.startKey)} – {dayLabel(w.endKey)}
+                      <th className="text-left px-4 py-2 border-b border-hairline align-bottom">pay week</th>
+                      {board.weeks.map((w) => (
+                        <th key={w.key} className="text-right px-4 py-2 border-b border-hairline align-bottom">
+                          <span className="text-ink">{WEEK_TITLE[w.key]}</span>
+                          {w.state !== "future" && (
+                            <BoardStamp tone={w.state === "open" ? "amber" : "dim"}>
+                              {w.state === "open" ? "OPEN" : "CLOSED"}
+                            </BoardStamp>
+                          )}
+                          <span className="block font-condensed text-[11px] text-faint normal-case tracking-normal mt-0.5 whitespace-nowrap">
+                            {weekSpan(w.week)}
+                            {w.key === "this" && <> · today is {weekdayLong(asOfKey)}</>}
+                            {w.key === "next" && <> · projected</>}
+                          </span>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    <Row label="Beginning">
-                      {liquidity.weeks.map((w, i) => (
-                        <td key={i} className="text-right px-4 py-2 border-b border-hairline-lo">
-                          {i === 0 ? (
-                            <EditCell
-                              id="begin"
-                              editing={editing}
-                              setEditing={setEditing}
-                              value={w.beginning}
-                              onCommit={(v) => setBeginOverride(v)}
-                            />
-                          ) : (
-                            moneyCents(w.beginning)
+                    {rows.map((r) => (
+                      <tr key={r.label}>
+                        <td className="text-left px-4 py-2 border-b border-hairline-lo font-condensed text-[13px] text-dim align-top">
+                          {r.label}
+                          {r.sub && (
+                            <span className="block text-[11px] text-faint leading-tight">{r.sub}</span>
                           )}
                         </td>
-                      ))}
-                    </Row>
-                    <Row
-                      label={
-                        <span>
-                          Settlements
-                          <SourceChip week={liquidity.weeks[0]} other={liquidity.weeks[1]} />
-                        </span>
-                      }
-                    >
-                      {liquidity.weeks.map((w, i) => (
-                        <td key={i} className="text-right px-4 py-2 border-b border-hairline-lo font-semibold" style={{ color: "var(--color-ok)" }}>
-                          <EditCell
-                            id={`setl${i}`}
-                            editing={editing}
-                            setEditing={setEditing}
-                            value={w.settlements}
-                            prefix="+"
-                            onCommit={(v) =>
-                              setSetlOverride((prev) => (i === 0 ? [v, prev[1]] : [prev[0], v]))
-                            }
-                          />
-                          {w.settlementSource === "override" && (
-                            <button
-                              className="ml-1 text-amber-hi hover:text-hot text-[11px]"
-                              onClick={() => setSetlOverride((prev) => (i === 0 ? [null, prev[1]] : [prev[0], null]))}
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </td>
-                      ))}
-                    </Row>
-                    <Row
-                      label={
-                        <span>
-                          Holdbacks
-                          <span className="ml-2 font-condensed text-[10px] text-faint normal-case tracking-normal">
-                            fuel advance + avg deductions
-                          </span>
-                        </span>
-                      }
-                    >
-                      {liquidity.weeks.map((w, i) => <Neg key={i} v={w.holdback} />)}
-                    </Row>
-                    <Row label="Payroll">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.payroll} />)}</Row>
-                    <Row label="Loan / lease">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.loanLease} />)}</Row>
-                    <Row label="Insurance">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.insurance} />)}</Row>
-                    <Row label="Other">{liquidity.weeks.map((w, i) => <Neg key={i} v={w.other} />)}</Row>
-                    <tr>
-                      <td className="text-left px-4 pt-2.5 pb-3 font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint border-t border-hairline">
-                        Ending
-                      </td>
-                      {liquidity.weeks.map((w, i) => (
-                        <td key={i} className="text-right px-4 pt-2.5 pb-3 border-t border-hairline">
-                          <span className="font-display text-[22px] tracking-[.03em]" style={{ color: endTone(w.ending) }}>
-                            {moneyCents(w.ending)}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
+                        {r.cells.map((c, i) => (
+                          <BoardCell key={board.weeks[i].key} spec={c} />
+                        ))}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* day strip */}
-              <div className="grid gap-1 px-4 pt-1 pb-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(68px, 1fr))" }}>
-                {stripDays.map((d, i) => (
+              {/* this week, day by day */}
+              <div className="grid gap-1 px-4 pt-2 pb-2" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+                {board.weeks[1].days.map((d, i) => (
                   <div
-                    key={d.key}
-                    className="rounded-[6px] px-1.5 py-1 min-h-[58px] text-[10px]"
+                    key={d.date}
+                    className="rounded-[6px] px-1.5 py-1 min-h-[76px] text-[10px] leading-[1.35]"
                     style={{
-                      background: d.settle ? "rgba(232,148,10,.07)" : "var(--color-well)",
-                      border: d.settle ? "1px solid rgba(232,148,10,.5)" : "1px solid var(--color-hairline-lo)",
-                      outline: i === 0 ? "2px solid var(--color-amber)" : undefined,
+                      background: "var(--color-well)",
+                      border: "1px solid var(--color-hairline-lo)",
+                      outline: d.date === asOfKey ? "2px solid var(--color-amber)" : undefined,
                     }}
                   >
                     <span className="font-condensed font-semibold text-[10px] text-faint uppercase">
-                      {dayLabel(d.key)}
+                      {WEEKDAY_SHORT[utc(d.date).getUTCDay()]} {Number(d.date.slice(8, 10))}
                     </span>
-                    {d.settle && <div style={{ color: "var(--color-ok)" }}>▲ settlement</div>}
-                    {d.bills.map((b) => (
-                      <div key={b.label} style={{ color: "#f08a8a" }} className="leading-[1.3]">
-                        ▼ {b.label} {Math.round(b.amount)}
+                    {d.checks.map((c, ci) => (
+                      <div key={`${c.date}-${c.kind}-${ci}`} style={{ color: "var(--color-amber-hi)" }}>
+                        {c.kind === "check" ? "Ops now" : "snapshot"} {money(c.balance)}
                       </div>
                     ))}
+                    {d.deposit != null && (
+                      <div style={{ color: d.deposit < 0 ? "var(--color-warn)" : "var(--color-ok)" }}>
+                        {signedMoney(d.deposit)} last week’s net pay
+                      </div>
+                    )}
+                    {d.payroll > 0 && <div style={{ color: "#f08a8a" }}>−{money(d.payroll)} payroll</div>}
+                    {d.accrual > 0 && <div style={{ color: "#f08a8a" }}>−{money(d.accrual)} accrual</div>}
+                    {d.bills.map((b) => (
+                      <div key={`${b.label}-${b.date}`} style={{ color: "#f08a8a" }}>
+                        −{money(b.amount)} {b.label}
+                      </div>
+                    ))}
+                    {d.moneyDay && (
+                      <div style={{ color: "#f08a8a" }}>−{money(d.moneyDay.amount)} money day</div>
+                    )}
+                    {i === board.weeks[1].days.length - 1 && d.end != null && (
+                      <div className="mt-0.5 font-semibold" style={{ color: "var(--color-amber)" }}>
+                        ends {money(d.end)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+
               <div className="px-4 pb-3 font-condensed text-[11px] text-faint">
-                ▲ Wednesday settlement lands · ▼ bill drafts · amber ring = today · ENDING turns{" "}
+                Each column is a pay week’s own statement — net pay Wednesday, its cash
+                Thursday as <b className="text-dim">last</b> week’s net pay · every balance you
+                type is a check, and the printed gap is what dash doesn’t see · ENDING turns{" "}
                 <span style={{ color: "var(--color-warn)" }}>red</span> under the float
-                {floatLine != null && <> ({money(floatLine)} — the plan’s line, edited on <Link to="/status" className="text-amber-hi hover:text-hot">Status</Link>)</>}
+                {floatLine != null && (
+                  <> ({money(floatLine)} — the plan’s line, edited on{" "}
+                  <Link to="/status" className="text-amber-hi hover:text-hot">Status</Link>)</>
+                )}
               </div>
             </>
           ) : (
@@ -477,21 +875,14 @@ const CashFlowPage = () => {
                   <button className="text-amber-hi hover:text-hot" onClick={() => setShowAssume(true)}>
                     set them up
                   </button>
-                  {beginning == null && " — and a beginning balance"}.
+                  .
                 </>
               ) : (
                 <>
-                  Needs a beginning balance — take a{" "}
-                  <Link to="/status" className="text-amber-hi hover:text-hot">Friday snapshot</Link> or{" "}
-                  <button
-                    className="text-amber-hi hover:text-hot"
-                    onClick={() => {
-                      const v = window.prompt("Beginning cash (ops) for week 1:");
-                      const n = v == null ? NaN : Number(v.replace(/[$,]/g, ""));
-                      if (Number.isFinite(n)) setBeginOverride(n);
-                    }}
-                  >
-                    set it by hand
+                  Needs a balance — take a{" "}
+                  <Link to="/status" className="text-amber-hi hover:text-hot">Friday snapshot</Link> or type{" "}
+                  <button className="text-amber-hi hover:text-hot" onClick={() => setShowOpsNow(true)}>
+                    OPS NOW
                   </button>
                   .
                 </>
@@ -593,27 +984,32 @@ const CashFlowPage = () => {
               )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 pb-4 pt-1">
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel cost · measured · 30d</p>
+                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel · 30-day pace</p>
                   <p className="font-display text-[24px] text-amber-hi mt-1">
                     {fuel30 != null ? `${money(fuel30)}/wk` : "no fuel log data"}
                   </p>
                   <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
-                    {fuel30 != null
-                      ? "replaces the flat advance line on the board — advances aren't burn"
-                      : `falling back to the $${Number(assumptions?.weekly_fuel_advance ?? 0)} assumption`}
+                    {lastPayWeek && (
+                      <>last week <b className="text-dim tabular-nums">{money(lastPayWeek.amount)}</b> actual ({fills(lastPayWeek.fills)}) · </>
+                    )}
+                    this week <b className="text-dim tabular-nums">{money(thisPayWeekFuel.soFar)}</b> so far
+                    {fourWeekRange && (
+                      <> · four weeks <b className="text-dim tabular-nums">{money(fourWeekRange.lo)}–{money(fourWeekRange.hi)}</b></>
+                    )}
+                    {" · "}on the pay week’s own {wdLong(setlDay)} statement, cash{" "}
+                    {wdLong(setlDay + lag)}
                   </p>
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
                   <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Deductions · two buckets · ex-advances</p>
                   <p className="font-display text-[24px] text-amber-hi mt-1">
-                    {buckets.firstOfMonth != null ? money(buckets.firstOfMonth) : "—"}
-                    <span className="text-[13px] text-faint"> 1st of mo</span>
-                    <span className="text-[15px] text-faint"> · </span>
                     {buckets.standard != null ? money(buckets.standard) : "—"}
-                    <span className="text-[13px] text-faint"> other wks</span>
+                    <span className="text-[15px] text-faint"> · </span>
+                    {buckets.firstOfMonth != null ? money(buckets.firstOfMonth) : "—"}
                   </p>
                   <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
-                    avg of last {buckets.samples} settlements — insurance makes the first week heavy
+                    standard · first statement of the month (insurance)
+                    {nextFirstStatement && <> · next first-of-month: <b className="text-dim">{md(nextFirstStatement)}</b></>}
                   </p>
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
@@ -797,6 +1193,19 @@ const CashFlowPage = () => {
           )}
         </div>
 
+        {showOpsNow && (
+          <OpsNowPopup
+            today={asOfKey}
+            boardDays={boardDays}
+            baseDate={board?.base.date ?? null}
+            windowEnd={board?.weeks[2].week.end ?? null}
+            onClose={() => setShowOpsNow(false)}
+            onSaved={() => {
+              setShowOpsNow(false);
+              load();
+            }}
+          />
+        )}
         {showBills && (
           <BillsPopup
             obligations={obligations}
@@ -829,29 +1238,60 @@ const CashFlowPage = () => {
   );
 };
 
-const Row = ({ label, children }: { label: React.ReactNode; children: React.ReactNode }) => (
-  <tr>
-    <td className="text-left px-4 py-2 border-b border-hairline-lo font-condensed text-[13px] text-dim">{label}</td>
+// ---- the cash board's cells ----
+
+const WEEK_TITLE: Record<BoardWeek["key"], string> = {
+  last: "Last week",
+  this: "This week",
+  next: "Next week",
+};
+
+interface CellSpec {
+  headline: React.ReactNode;
+  stamp?: string | null;
+  note?: string | null;
+  tone?: string;
+  display?: boolean; // the Ending row's display-size figure
+  flag?: string | null; // the one thing wrong with the figure — amber, under the note
+}
+
+// The little rotated stamps: CLOSED · OPEN · ACTUAL · YOU SAID · AT PACE.
+const BoardStamp = ({ children, tone = "amber" }: { children: string; tone?: "amber" | "dim" }) => (
+  <span
+    className="ml-1.5 font-forge text-[9.5px] tracking-[.12em] rounded-[4px] px-[5px] py-[1px] inline-block rotate-[-2deg] align-middle"
+    style={
+      tone === "amber"
+        ? { color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }
+        : { color: "var(--color-faint, #5a6880)", border: "1.5px solid var(--color-hairline)" }
+    }
+  >
     {children}
-  </tr>
+  </span>
 );
 
-const Neg = ({ v }: { v: number }) => (
-  <td className="text-right px-4 py-2 border-b border-hairline-lo text-dim">
-    {v === 0 ? "0.00" : `−${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+const BoardCell = ({ spec }: { spec: CellSpec }) => (
+  <td className="text-right px-4 py-2 border-b border-hairline-lo align-top">
+    <div className="whitespace-nowrap">
+      <span
+        className={spec.display ? "font-display text-[22px] tracking-[.03em]" : "font-semibold"}
+        style={spec.tone ? { color: spec.tone } : undefined}
+      >
+        {spec.headline}
+      </span>
+      {spec.stamp && <BoardStamp>{spec.stamp}</BoardStamp>}
+    </div>
+    {spec.note && (
+      <div className="font-condensed text-[11px] text-faint leading-[1.35] whitespace-normal mt-0.5 max-w-[290px] ml-auto">
+        {spec.note}
+      </div>
+    )}
+    {spec.flag && (
+      <div className="font-condensed text-[11px] text-amber-hi leading-[1.35] whitespace-normal mt-0.5 max-w-[290px] ml-auto">
+        {spec.flag}
+      </div>
+    )}
   </td>
 );
-
-const SourceChip = ({ week, other }: { week: LiquidityWeek; other: LiquidityWeek }) => {
-  const anyOverride = week.settlementSource === "override" || other.settlementSource === "override";
-  const anyLoads = week.settlementSource === "loads" || other.settlementSource === "loads";
-  const label = anyOverride ? "manual override" : anyLoads ? `${week.settlementLoads + other.settlementLoads} loads projected` : "fallback — no loads booked";
-  return (
-    <span className="ml-2 font-condensed text-[10.5px] font-semibold tracking-[.08em] uppercase px-2 rounded-full border" style={{ color: "var(--color-amber-hi)", borderColor: "rgba(232,148,10,.4)", background: "rgba(232,148,10,.08)" }}>
-      {label}
-    </span>
-  );
-};
 
 const EditCell = ({
   id, editing, setEditing, value, onCommit, prefix = "",
@@ -1288,6 +1728,159 @@ const AssumptionsPopup = ({
             obligations on <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>: category, draft
             day, and full draft amount; loan rows keep a separate break-even (principal) amount so nothing double-counts.
           </p>
+          <div className="flex items-center gap-2 mt-4">
+            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// OPS NOW (rev 3, issue 2): the bank's Ops balance typed any morning, kept as
+// a check. The board re-bases from it and prints the gap — which is, by
+// design, what dash doesn't see (issue 9): the note is where you name it.
+const OpsNowPopup = ({
+  today, boardDays, baseDate, windowEnd, onClose, onSaved,
+}: {
+  today: string;
+  boardDays: Map<string, BoardDay>;
+  baseDate: string | null; // the board's base — a check at or before it re-bases everything
+  windowEnd: string | null; // next week's Tuesday — past it the board never looks
+  onClose: () => void;
+  onSaved: () => void;
+}) => {
+  const [asOf, setAsOf] = useState(today);
+  const [balance, setBalance] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const typed = Number(balance);
+  const dayKey = isDayKey(asOf.slice(0, 10)) ? asOf.slice(0, 10) : null;
+  const day = dayKey ? boardDays.get(dayKey) ?? null : null;
+  // The engine's OWN figure for the day — the morning plus the bank's own
+  // events, before Jason's moves. The Checked row measures a check against
+  // this same number, so the gap printed here and the gap printed on the
+  // board can no longer differ by a Thursday deposit.
+  const projected = day ? day.afterBank : null;
+  // A balance can only be from a day that has already happened: the typed
+  // figure re-bases the board from that day forward, so a mis-picked month in
+  // the native picker would hand the board a balance the day never had.
+  const future = dayKey != null && dayKey > today;
+  const gap =
+    !future && projected != null && Number.isFinite(typed) && balance.trim() !== ""
+      ? typed - projected
+      : null;
+  // On a day with no deposit, payroll or draft the figure IS the morning's.
+  const asMorning =
+    day != null && day.morning != null && day.afterBank != null && Math.abs(day.afterBank - day.morning) < 0.005;
+  const whenWord = asMorning ? "this morning" : "that day, after the bank’s own events";
+
+  const save = async () => {
+    if (!dayKey) {
+      setErr("Pick the day the balance is from.");
+      return;
+    }
+    if (dayKey > today) {
+      setErr(`A balance can only be from today or earlier — ${md(today)} or before.`);
+      return;
+    }
+    if (!Number.isFinite(typed) || balance.trim() === "") {
+      setErr("Type the Ops balance the bank shows.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      await createOpsCheck({ as_of: dayKey, balance: typed, note: note.trim() || null });
+      onSaved();
+    } catch {
+      setErr("Save failed — nothing was recorded. Try again.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>OPS NOW</span>
+          <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
+            the bank’s ops balance this morning
+          </span>
+          <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-5">
+          <div className="mb-3">
+            <label className={LBL} htmlFor="opsnow-asof">As of</label>
+            <input
+              id="opsnow-asof"
+              type="date"
+              max={today}
+              className={FIELD}
+              value={asOf}
+              onChange={(e) => setAsOf(e.target.value)}
+            />
+          </div>
+          <div className="mb-3">
+            <label className={LBL} htmlFor="opsnow-balance">Ops balance</label>
+            <input
+              id="opsnow-balance"
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              className={FIELD}
+              value={balance}
+              onChange={(e) => setBalance(e.target.value)}
+            />
+          </div>
+          <div className="mb-3">
+            <label className={LBL} htmlFor="opsnow-note">Note · what the board can’t see</label>
+            <input
+              id="opsnow-note"
+              type="text"
+              className={FIELD}
+              placeholder="what the board can’t see — card charges, transfers, refunds"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+          <p className="font-condensed text-[12px] text-faint leading-[1.5]">
+            {dayKey == null ? (
+              <>pick the day the balance is from</>
+            ) : future ? (
+              <>a balance can only be from today or earlier — {md(today)} or before</>
+            ) : windowEnd != null && dayKey > windowEnd ? (
+              <>
+                {md(dayKey)} is outside the board’s three weeks — this will be stored, but it
+                won’t move the board
+              </>
+            ) : baseDate != null && dayKey < baseDate ? (
+              <>
+                earlier than the board’s {md(baseDate)} base — this will be stored, but it won’t
+                move the board
+              </>
+            ) : projected == null ? (
+              <>no board figure for {md(dayKey)} — this check becomes the board’s base</>
+            ) : gap == null ? (
+              <>the board said <b className="text-dim tabular-nums">{money(projected)}</b> for {whenWord}</>
+            ) : (
+              <>
+                the board said <b className="text-dim tabular-nums">{money(projected)}</b> for{" "}
+                {whenWord} — off by{" "}
+                <b className="text-ink tabular-nums">{signedMoney(gap)}</b> · re-basing from{" "}
+                <b className="text-ink tabular-nums">{moneyCents(typed)}</b>
+              </>
+            )}
+          </p>
+          {err && <p className="text-[12px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
           <div className="flex items-center gap-2 mt-4">
             <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
               {busy ? "Saving…" : "Save"}
