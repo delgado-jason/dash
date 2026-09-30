@@ -414,7 +414,6 @@ const CashFlowPage = () => {
   // ---- the rows, in the sheet's order ----
   const revFallback = assumptions ? Number(assumptions.weekly_revenue) : 0;
 
-  const boardEnd = board?.weeks[2].week.end ?? null;
   // The next statement that carries the insurance stack (a 60-day walk, no hook —
   // this sits below the loading return).
   const nextFirstStatement = ((): string | null => {
@@ -431,10 +430,10 @@ const CashFlowPage = () => {
   const openingWalk = (b: CashBoard, w: BoardWeek): string => {
     const base = b.base;
     const kind = base.kind === "snapshot" ? "snapshot" : "Ops now";
-    if (base.date >= w.week.start) return `from the ${md(base.date)} ${kind} forward`;
+    if (base.date >= w.cycle.start) return `from the ${md(base.date)} ${kind} forward`;
     const parts = [`${md(base.date)} ${kind} ${money(base.balance)}`];
     for (const d of b.days) {
-      if (d.date <= base.date || d.date >= w.week.start) continue;
+      if (d.date <= base.date || d.date >= w.cycle.start) continue;
       if (d.deposit != null) parts.push(`+ deposit ${money(d.deposit)}`);
       if (d.payroll > 0) parts.push(`− payroll ${money(d.payroll)}`);
       for (const bl of d.bills) parts.push(`− ${bl.label} ${money(bl.amount)}`);
@@ -455,27 +454,40 @@ const CashFlowPage = () => {
         note: `${chk.kind === "check" ? "Ops now" : "snapshot"} · typed ${dayFull(chk.date)}${gap}`,
       };
     }
-    const note = w.key === "next" ? "this week’s Tuesday ending" : board ? openingWalk(board, w) : null;
+    const idx = board ? board.weeks.findIndex((x) => x.key === w.key) : -1;
+    const note =
+      !board ? null : idx > 0 ? `${WEEK_TITLE[board.weeks[idx - 1].key].toLowerCase()}’s Wednesday ending` : openingWalk(board, w);
     return { headline: w.opening == null ? "—" : money(w.opening), note };
   };
 
   const netPayCell = (w: BoardWeek): CellSpec => {
     const n = w.netPay;
-    const stamp = n.source === "actual" ? "ACTUAL" : n.source === "override" ? "YOU SAID" : null;
-    const loadsWord = `${n.loads} load${n.loads === 1 ? "" : "s"}${w.state === "closed" ? "" : " delivered so far"}`;
+    const landed = n.depositDate < asOfKey;
+    const stamp =
+      n.source === "actual" ? "ACTUAL" : n.source === "override" ? "YOU SAID" : n.source === "projected" && (w.state === "open" || w.state === "future") ? "EXPECTED" : null;
     const fuelWord = n.fuelSource === "actual" ? "its fuel" : "its fuel at pace";
     const bucketWord = n.bucketKind === "first" ? "first-of-month bucket" : "bucket";
-    const projected = n.loadsNet - n.fuel - n.bucket;
-    const lands = `lands ${dayFull(n.depositDate)}${boardEnd && n.depositDate > boardEnd ? ", off this board" : ""}`;
-    const derivation = `${loadsWord} ${money(n.loadsNet)} − ${fuelWord} ${money(n.fuel)} − ${bucketWord} ${money(n.bucket)}`;
+    const projected = n.loadsNet + n.expectedNet - n.fuel - n.bucket;
+    const lands = `${landed ? "landed" : "lands"} ${dayFull(n.depositDate)}`;
+    const deliveredWord = `${n.loads} load${n.loads === 1 ? "" : "s"}`;
+    const expectedBits = [
+      n.inTransit > 0 ? `${n.inTransit} in transit` : null,
+      n.booked > 0 ? `${n.booked} booked` : null,
+    ].filter(Boolean);
+    // Closed: what it delivered. Open: what has delivered so far, and what is
+    // still on the road — expected, never called delivered.
+    const derivation =
+      w.state === "closed" || w.state === "done"
+        ? `${deliveredWord} ${money(n.loadsNet)} − ${fuelWord} ${money(n.fuel)} − ${bucketWord} ${money(n.bucket)}`
+        : `${n.loads === 0 ? "0 delivered so far" : `${deliveredWord} delivered so far ${money(n.loadsNet)}`}${expectedBits.length ? ` · ${expectedBits.join(" + ")} expected ${money(n.expectedNet)}` : ""} − ${fuelWord} ${money(n.fuel)} − ${bucketWord} ${money(n.bucket)}`;
     const note =
       n.source === "actual"
-        ? `statement ${md(n.statementDate)} · actual, from the feed`
+        ? `statement ${md(n.statementDate)} · actual, from the feed · ${lands}`
         : n.source === "fallback"
-          ? `statement ${md(n.statementDate)} · no loads booked yet — the ${money(revFallback)} weekly fallback − fuel at pace − bucket · ${lands}`
+          ? `statement ${md(n.statementDate)} · nothing booked yet — the ${money(revFallback)} weekly fallback − fuel at pace − bucket · ${lands}`
           : n.source === "override"
             ? `statement ${md(n.statementDate)} · you said ${money(n.amount ?? 0)} · loads say ${money(projected)} (${derivation}) · the statement settles it · ${lands}`
-            : w.state === "closed"
+            : w.state === "closed" || w.state === "done"
               ? `statement ${md(n.statementDate)} · loads say ${money(projected)} (${derivation}) · the statement settles it · ${lands}`
               : `statement ${md(n.statementDate)} · ${derivation} · ${lands}`;
     // The feed's actual is not overridable — a typed figure only beats a
@@ -514,43 +526,8 @@ const CashFlowPage = () => {
     return { headline, stamp, note, tone: n.source === "fallback" ? "var(--color-faint)" : undefined };
   };
 
-  // Whose net pay is landing, in the board's own voice — read off the cell's
-  // own fromWeek and named relative to the week Jason is standing in, not to
-  // the column. The sheet's three columns read "the week before's" · "last
-  // week's" · "this week's, projected"; one fixed phrase named the wrong week
-  // in two of the three.
-  const whoseNetPay = (from: PayWeek): string => {
-    const lastStart = board?.weeks[0].week.start;
-    const thisStart = board?.weeks[1].week.start;
-    if (thisStart && from.start === thisStart) return "this week’s net pay";
-    if (lastStart && from.start === lastStart) return "last week’s net pay";
-    if (lastStart && from.start === addDays(lastStart, -7)) return "the week before’s net pay";
-    return `the ${md(from.start)}–${md(from.end)} week’s net pay`;
-  };
-
-  const depositCell = (w: BoardWeek): CellSpec => {
-    const d = w.deposit;
-    if (d.amount == null)
-      return { headline: "—", note: `${dayFull(d.date)} · no statement for the week before` };
-    const stmt = addDays(d.date, -lag);
-    const tail =
-      d.source === "actual"
-        ? ` · statement ${md(stmt)} · actual, from the feed`
-        : d.source === "projected" || d.source === "fallback"
-          ? ", projected"
-          : "";
-    return {
-      // moneyCents already carries the sign. A home week, or a closed week
-      // whose fuel and bucket outrun what it delivered, lands a negative net
-      // pay — and "+−$1,500.94" is not a number.
-      headline: d.source === "actual" ? (d.amount < 0 ? moneyCents(d.amount) : `+${moneyCents(d.amount)}`) : d.amount < 0 ? money(d.amount) : `+${money(d.amount)}`,
-      tone: d.amount < 0 ? "var(--color-warn)" : "var(--color-ok)",
-      note: `${dayFull(d.date)} · ${whoseNetPay(d.fromWeek)}${tail}`,
-    };
-  };
-
   const payrollCell = (w: BoardWeek): CellSpec => {
-    const fri = w.days.find((d) => d.payroll > 0)?.date ?? addDays(w.week.start, 2);
+    const fri = w.days.find((d) => d.payroll > 0)?.date ?? addDays(w.cycle.start, 1);
     return {
       headline: w.payroll === 0 ? "—" : `−${money(w.payroll)}`,
       note: `assumption · ${dayFull(fri)}`,
@@ -645,13 +622,14 @@ const CashFlowPage = () => {
   const endingCell = (w: BoardWeek): CellSpec => {
     const e = w.ending;
     const under = e != null && floatLine != null && e < floatLine;
-    let note = dayFull(w.week.end);
-    if (w.state === "closed") {
-      const ref = w.checks[w.checks.length - 1] ?? (board ? { date: board.base.date, kind: board.base.kind } : null);
+    let note = dayFull(w.cycle.end);
+    if (w.state === "done") {
+      const ref = w.checks[w.checks.length - 1] ?? w.openingCheck ?? (board ? { date: board.base.date, kind: board.base.kind } : null);
       if (ref) note += ` · from the ${md(ref.date)} ${ref.kind === "snapshot" ? "snapshot" : "Ops now"} forward`;
-    } else if (w.state === "open") {
+    } else {
       note += under ? ` · under the ${money(floatLine!)} float · hold` : floatLine != null ? " · clears the float" : "";
-    } else note += " · projected";
+      if (w.state === "future") note += " · projected";
+    }
     return {
       headline: e == null ? "—" : money(e),
       tone: e == null ? undefined : endTone(e),
@@ -661,16 +639,15 @@ const CashFlowPage = () => {
   };
 
   const rowSpecs: { label: string; sub?: string; cell: (w: BoardWeek) => CellSpec }[] = [
-    { label: "Opening · Wed", cell: openingCell },
-    { label: "Net pay · Wed", sub: "the week’s own statement", cell: netPayCell },
-    { label: "Deposit · Thu", sub: "last week’s net pay lands", cell: depositCell },
+    { label: "Opening · Thu", cell: openingCell },
+    { label: "Deposit · Thu", sub: "the week’s own net pay, on its statement", cell: netPayCell },
     { label: "Payroll · Fri", cell: payrollCell },
     { label: "Accrual · Fri", cell: accrualCell },
     { label: "Bills", cell: billsCell },
     { label: "Fuel bought", sub: "→ its Wednesday statement", cell: fuelCell },
     ...(showMoneyRow ? [{ label: "Money day", cell: moneyDayCell }] : []),
     { label: "Checked", cell: checkedCell },
-    { label: "Ending · Tue", cell: endingCell },
+    { label: "Ending · Wed", cell: endingCell },
   ];
   const rows = board
     ? rowSpecs.map((r) => ({ label: r.label, sub: r.sub, cells: board.weeks.map(r.cell) }))
@@ -712,8 +689,7 @@ const CashFlowPage = () => {
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           <span className="text-[13.5px] text-faint">
-            three pay weeks, Wednesday to Tuesday — last · this · next; nothing rolls
-            until Tuesday night closes the week
+            four pay weeks, Wednesday to Tuesday — the week before · last · this · next — each with its own deposit on its own Thursday; nothing rolls until Tuesday night closes the week
             {ytdMargin != null && (
               <> · YTD pretax margin (QBO) <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
             )}
@@ -782,13 +758,15 @@ const CashFlowPage = () => {
                           <span className="text-ink">{WEEK_TITLE[w.key]}</span>
                           {w.state !== "future" && (
                             <BoardStamp tone={w.state === "open" ? "amber" : "dim"}>
-                              {w.state === "open" ? "OPEN" : "CLOSED"}
+                              {w.state === "open" ? "OPEN" : w.state === "done" ? "DONE" : "CLOSED"}
                             </BoardStamp>
                           )}
                           <span className="block font-condensed text-[11px] text-faint normal-case tracking-normal mt-0.5 whitespace-nowrap">
                             {weekSpan(w.week)}
                             {w.key === "this" && <> · today is {weekdayLong(asOfKey)}</>}
-                            {w.key === "next" && <> · projected</>}
+                          </span>
+                          <span className="block font-condensed text-[11px] text-faint normal-case tracking-normal whitespace-nowrap">
+                            statement {md(w.netPay.statementDate)} · cash {md(w.cycle.start)} – {md(w.cycle.end)}
                           </span>
                         </th>
                       ))}
@@ -812,7 +790,7 @@ const CashFlowPage = () => {
                 </table>
               </div>
 
-              {/* this week, day by day */}
+              {/* the cash days ahead — last week's money, day by day */}
               <div className="grid gap-1 px-4 pt-2 pb-2" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
                 {board.weeks[1].days.map((d, i) => (
                   <div
@@ -834,7 +812,7 @@ const CashFlowPage = () => {
                     ))}
                     {d.deposit != null && (
                       <div style={{ color: d.deposit < 0 ? "var(--color-warn)" : "var(--color-ok)" }}>
-                        {signedMoney(d.deposit)} last week’s net pay
+                        {signedMoney(d.deposit)} deposit
                       </div>
                     )}
                     {d.payroll > 0 && <div style={{ color: "#f08a8a" }}>−{money(d.payroll)} payroll</div>}
@@ -857,8 +835,7 @@ const CashFlowPage = () => {
               </div>
 
               <div className="px-4 pb-3 font-condensed text-[11px] text-faint">
-                Each column is a pay week’s own statement — net pay Wednesday, its cash
-                Thursday as <b className="text-dim">last</b> week’s net pay · every balance you
+                Each column is one pay week: its statement Wednesday, its <b className="text-dim">own</b> deposit Thursday, its cash Thursday to Wednesday · every balance you
                 type is a check, and the printed gap is what dash doesn’t see · ENDING turns{" "}
                 <span style={{ color: "var(--color-warn)" }}>red</span> under the float
                 {floatLine != null && (
@@ -1241,6 +1218,7 @@ const CashFlowPage = () => {
 // ---- the cash board's cells ----
 
 const WEEK_TITLE: Record<BoardWeek["key"], string> = {
+  before: "The week before",
   last: "Last week",
   this: "This week",
   next: "Next week",

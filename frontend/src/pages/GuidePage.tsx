@@ -345,7 +345,7 @@ const NAV: { group: string; items: string[] }[] = [
       "The market ledger — out and in",
       "The reload cost — what a stop leaves you",
       "Outstanding loads — how long money sits",
-      "The cash board — three pay weeks",
+      "The cash board — pay week by pay week",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -1380,56 +1380,41 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="The cash board — three pay weeks"
-            answers="Three pay weeks of real money — Wednesday to Tuesday: last week closed, this week open, next week projected. Each week's own statement, the Thursday deposit, every draft on its day, and where Tuesday ends."
+            title="The cash board — pay week by pay week"
+            answers="Four pay weeks of real money — the week before, last, this, next — each with its own deposit on its own Thursday, its accrual, its drafts, and whether the ending stays above your float."
             sources={[{ label: "Cash Flow", to: "/cashflow" }]}
           >
             <Formula>
-              a week’s net pay = its loads at net − its own fuel − the
-              deductions bucket · the deposit landing in a week = LAST week’s
-              net pay, on settlement day + the deposit lag · ending = opening +
-              deposit − payroll − the bills on their days − the Friday accrual
-              − a run money day
+              deposit = the pay week’s delivered loads at net (+ what’s still on
+              the road, expected, while the week is open) − the same week’s fuel
+              − the deductions bucket · lands settlement day + the lag · the
+              column’s cash runs Thursday → Wednesday: opening + deposit −
+              payroll − accrual − drafts = ending
             </Formula>
             <Why>
-              The board is anchored to the <span className="text-light">pay
-              week</span> dash already uses everywhere — Wednesday to Tuesday —
-              and shows three of them: <span className="text-light">last</span>{" "}
-              (closed, with what actually happened) ·{" "}
-              <span className="text-light">this</span> (what’s known so far and
-              what’s projected) · <span className="text-light">next</span>{" "}
-              (projected). Nothing rolls until Tuesday night closes the week, so
-              the frame you hold the bank against doesn’t move under you on
-              Friday. Each column carries its{" "}
-              <span className="text-light">own net pay</span> — its Wednesday
-              statement: the loads it delivered at their net, less{" "}
-              <span className="text-light">its own fuel</span> (the log’s actual
-              once the week closes, the 30-day pace while it’s open, and never
-              under the fills already logged — predict until the week closes,
-              then actual), less the deductions bucket (the first statement of a
-              month carries the insurance). The feed’s{" "}
-              <span className="text-light">actual wins</span> the moment the
-              statement is on file, and a typed figure beats a projection but
-              never the feed. The <span className="text-light">deposit</span>{" "}
-              lands on settlement day + the lag — Wednesday statement, Thursday
-              cash, both set in Settings — and it is{" "}
-              <span className="text-light">last week’s</span> net pay, not this
-              week’s. The Plan’s moves leave Ops here too, on their day: the
-              Friday <span className="text-light">accrual</span> (the pay week’s
-              odometer miles × the plan’s $/mile — and when a snapshot’s
-              Maintenance balance already shows the move, it isn’t taken twice)
-              and a <span className="text-light">money day</span> once it has
-              actually run. <span className="text-light">OPS NOW</span> is the
-              two-field entry — the date and the Ops balance — that re-bases the
-              board from the number in front of you any morning; it’s kept, so
-              Marge can read it. Every balance you enter is a{" "}
-              <span className="text-light">check</span>: the board prints what
-              it said for that morning and the gap, then re-bases from the
-              actual so the projection never drifts. The gap is, by design,{" "}
-              <span className="text-light">what dash doesn’t see</span> — a card
-              charge, a transfer you made by hand, a refund, a bank fee — so
-              name it in the note and the Checked row shows your words beside
-              the number. dash does not read the bank.
+              A pay week runs Wednesday to Tuesday; its statement is cut the
+              next Wednesday and the cash lands Thursday — and that Thursday
+              belongs to the pay week that earned it. So every column is one
+              pay week: what it delivered (a load counts as delivered only when
+              its status says so; a load still on the road with a planned
+              delivery is <span className="text-light">expected</span>, named as
+              such), what it bought in fuel (the log’s actual once the week
+              closes, the 30-day pace while it’s open, never under the fills so
+              far), the deductions bucket (the first statement of a month
+              carries the insurance), and its deposit. The feed’s actual net
+              wins the moment the statement is in the vault; tapping the figure
+              types the number you know before the statement lands. The
+              column’s cash then runs from that Thursday to the next
+              Wednesday: its accrual on that Friday, payroll, the drafts on
+              their days, the ending. The board simulates day by day from the
+              latest balance it was handed — a Friday snapshot or an{" "}
+              <span className="text-light">OPS NOW</span> check — and every
+              later balance you type is a check: the printed gap is what dash
+              doesn’t see (card charges, transfers), so name it in the note;
+              the board re-bases from every check. When a snapshot’s
+              Maintenance balance already shows the accrual, it isn’t taken
+              twice. The week before stays on the board with its checks so
+              last week’s money can be held against the bank.
             </Why>
           </Metric>
 
