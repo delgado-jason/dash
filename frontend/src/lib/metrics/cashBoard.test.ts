@@ -101,10 +101,17 @@ describe("netPayForWeek — the week's own Wednesday statement", () => {
     const n = netPayForWeek(input(), { start: "2026-09-16", end: "2026-09-22" });
     expect(n).toMatchObject({ statementDate: "2026-09-23", amount: 4660.61, source: "actual", advances: 3000 });
   });
-  it("this week: 2 loads delivered so far $3,890 − fuel at pace $1,959 − first-of-month bucket $685 = $1,246", () => {
+  it("this week: nothing delivered yet — 1 in transit + 1 booked EXPECTED $3,890 − fuel at pace $1,959 − first-of-month bucket $685 = $1,246", () => {
     const n = netPayForWeek(input(), { start: "2026-09-30", end: "2026-10-06" });
-    expect(n).toMatchObject({ statementDate: "2026-10-07", loads: 2, bucketKind: "first", bucket: 685, fuelSource: "pace" });
+    expect(n).toMatchObject({ statementDate: "2026-10-07", loads: 0, inTransit: 1, booked: 1, bucketKind: "first", bucket: 685, fuelSource: "pace" });
+    expect(n.expectedNet).toBeCloseTo(3889.76, 2);
     expect(n.amount).toBeCloseTo(1245.76, 2);
+  });
+  it("a closed week gets nothing from a load that didn't deliver into it", () => {
+    const stuck = loads.map((l) => (l.load_number === "5165757" ? ({ ...l, load_status: "in_transit", payment_status: "unpaid" } as Load) : l));
+    const n = netPayForWeek(input({ loads: stuck }), { start: "2026-09-23", end: "2026-09-29" });
+    expect(n).toMatchObject({ loads: 2, inTransit: 0, booked: 0 });
+    expect(n.loadsNet).toBeCloseTo(2149 + 1312.62, 2);
   });
   it("next week: nothing booked yet → the weekly fallback less fuel and the bucket", () => {
     const n = netPayForWeek(input(), { start: "2026-10-07", end: "2026-10-13" });
@@ -127,78 +134,61 @@ describe("netPayForWeek — the week's own Wednesday statement", () => {
   });
 });
 
-describe("buildCashBoard — Wed Sep 30, the sheet's board", () => {
+describe("buildCashBoard — Wed Sep 30, the board in Jason's frame", () => {
   const board = buildCashBoard(input({ overrides: { "2026-09-30": 4715 } }))!;
-  const [last, thisWk, next] = board.weeks;
+  const [before, last, thisWk, next] = board.weeks;
 
-  it("frames three pay weeks and bases on the Sep 18 snapshot", () => {
+  it("frames four pay weeks, each with its own Thursday-to-Wednesday cash days, based on the Sep 18 snapshot", () => {
+    expect(before.week).toEqual({ start: "2026-09-16", end: "2026-09-22" });
+    expect(before.cycle).toEqual({ start: "2026-09-24", end: "2026-09-30" });
     expect(last.week).toEqual({ start: "2026-09-23", end: "2026-09-29" });
-    expect(thisWk.week).toEqual({ start: "2026-09-30", end: "2026-10-06" });
-    expect(next.week).toEqual({ start: "2026-10-07", end: "2026-10-13" });
-    expect([last.state, thisWk.state, next.state]).toEqual(["closed", "open", "future"]);
+    expect(last.cycle).toEqual({ start: "2026-10-01", end: "2026-10-07" });
+    expect(thisWk.cycle).toEqual({ start: "2026-10-08", end: "2026-10-14" });
+    expect(next.cycle).toEqual({ start: "2026-10-15", end: "2026-10-21" });
+    expect([before.state, last.state, thisWk.state, next.state]).toEqual(["done", "closed", "open", "future"]);
     expect(board.base.date).toBe("2026-09-18");
   });
 
-  it("last week opens at $8,186 — the Sep 18 snapshot less Best Egg and Dental", () => {
-    expect(last.opening).toBeCloseTo(8575 - 358.97 - 30.44, 2);
-    expect(last.openingCheck).toBeNull();
+  it("the week before: opened Thu Sep 24 at $8,186, its own deposit $4,660.61 actual, both checks with their gaps, ends on the Sep 30 check", () => {
+    expect(before.opening).toBeCloseTo(8575 - 358.97 - 30.44, 2);
+    expect(before.netPay).toMatchObject({ statementDate: "2026-09-23", depositDate: "2026-09-24", amount: 4660.61, source: "actual" });
+    expect(before.accrual).toMatchObject({ source: "snapshot", miles: 1999, alreadyMoved: true });
+    expect(before.billsTotal).toBeCloseTo(1575 + 900 + 475.19 + 341, 2);
+    const snap = before.checks.find((c) => c.date === "2026-09-25")!;
+    expect(snap.projected).toBeCloseTo(8185.59 + 4660.61 - 1908 - 639.68, 2);
+    expect(snap.gap).toBeCloseTo(-370.98, 2);
+    const chk = before.checks.find((c) => c.date === "2026-09-30")!;
+    expect(chk.projected).toBeCloseTo(6636.35, 2);
+    expect(chk.gap).toBeCloseTo(672.73, 2);
+    expect(before.ending).toBe(7309.08);
   });
 
-  it("last week's deposit is the week before's net pay — the Sep 23 statement, actual", () => {
-    expect(last.deposit).toMatchObject({ date: "2026-09-24", amount: 4660.61, source: "actual" });
-    expect(last.deposit.fromWeek).toEqual({ start: "2026-09-16", end: "2026-09-22" });
+  it("last week: opens Thu Oct 1 on the Sep 30 Ops check, its own deposit is the $4,715 you said, its accrual $637 by odometer on Fri Oct 2, ends Wed Oct 7 at $8,643", () => {
+    expect(last.openingCheck).toMatchObject({ kind: "check", balance: 7309.08, date: "2026-09-30" });
+    expect(last.opening).toBe(7309.08);
+    expect(last.netPay).toMatchObject({ statementDate: "2026-09-30", depositDate: "2026-10-01", amount: 4715, source: "override", loads: 3 });
+    expect(last.netPay.loadsNet).toBeCloseTo(6902.22, 2);
+    expect(last.accrual).toMatchObject({ source: "odometer", miles: 1990, date: "2026-10-02", weekLabel: "Sep 23–29" });
+    expect(last.accrual.amount).toBeCloseTo(636.8, 2);
+    expect(last.accrual.words).toBe("1,990 mi by odometer (603,232 on Sep 22 → 605,222 on Sep 29) × $0.32 · loads said 1,999");
+    expect(last.billsTotal).toBeCloseTo(16.8 + 200 + 380.45 + 119.23 + 100 + 20, 2);
+    expect(last.ending).toBeCloseTo(7309.08 + 4715 - 1908 - 636.8 - 836.48, 2);
   });
 
-  it("the Sep 25 snapshot: the accrual was already in Maintenance, so the check gap is −$371 and the move isn't taken twice", () => {
-    expect(last.accrual).toMatchObject({ source: "snapshot", miles: 1999, alreadyMoved: true });
-    expect(last.accrual.amount).toBeCloseTo(639.68, 2);
-    const chk = last.checks.find((c) => c.date === "2026-09-25")!;
-    expect(chk.projected).toBeCloseTo(8185.59 + 4660.61 - 1908 - 639.68, 2);
-    expect(chk.gap).toBeCloseTo(-370.98, 2);
-    expect(last.days.find((d) => d.date === "2026-09-25")!.accrual).toBe(0);
-  });
-
-  it("last week ends Tuesday at $6,636 — from the snapshot forward, the four drafts out", () => {
-    expect(last.billsTotal).toBeCloseTo(1575 + 900 + 475.19 + 341, 2);
-    expect(last.ending).toBeCloseTo(9927.54 - 1575 - 900 - 475.19 - 341, 2);
-  });
-
-  it("this week opens on the Ops check, off by +$673 against the board", () => {
-    expect(thisWk.openingCheck).toMatchObject({ kind: "check", balance: 7309.08 });
-    expect(thisWk.openingCheck!.projected).toBeCloseTo(6636.35, 2);
-    expect(thisWk.openingCheck!.gap).toBeCloseTo(672.73, 2);
-    expect(thisWk.opening).toBeCloseTo(6636.35, 2);
-  });
-
-  it("this week's deposit is last week's net pay — the $4,715 you said — landing Thursday", () => {
-    expect(thisWk.deposit).toMatchObject({ date: "2026-10-01", amount: 4715, source: "override" });
-    // The cell names the week itself, so the note can stop saying "last
-    // week's" in every column.
-    expect(thisWk.deposit.fromWeek).toEqual({ start: "2026-09-23", end: "2026-09-29" });
-    expect(thisWk.netPay).toMatchObject({ statementDate: "2026-10-07", depositDate: "2026-10-08" });
+  it("this week: nothing delivered yet, two loads expected; its deposit lands Thu Oct 8; ends Wed Oct 14", () => {
+    expect(thisWk.opening).toBeCloseTo(last.ending!, 2);
+    expect(thisWk.netPay).toMatchObject({ statementDate: "2026-10-07", depositDate: "2026-10-08", source: "projected", loads: 0, inTransit: 1, booked: 1 });
     expect(thisWk.netPay.amount).toBeCloseTo(1245.76, 2);
+    expect(thisWk.accrual).toMatchObject({ miles: 181, date: "2026-10-09", weekLabel: "Sep 30–Oct 6" });
+    expect(thisWk.accrual.amount).toBeCloseTo(57.92, 2);
+    expect(thisWk.billsTotal).toBeCloseTo(20 + 20, 2);
+    expect(thisWk.ending).toBeCloseTo(last.ending! + 1245.76 - 1908 - 57.92 - 40, 2);
   });
 
-  it("this Friday accrues Sep 23–29 by odometer: 1,990 mi = $637", () => {
-    expect(thisWk.accrual).toMatchObject({ source: "odometer", miles: 1990, date: "2026-10-02", weekLabel: "Sep 23–29" });
-    expect(thisWk.accrual.amount).toBeCloseTo(636.8, 2);
-    expect(thisWk.accrual.words).toBe("1,990 mi by odometer (603,232 on Sep 22 → 605,222 on Sep 29) × $0.32 · loads said 1,999");
-  });
-
-  it("this week ends Tuesday at $8,763", () => {
-    expect(thisWk.billsTotal).toBeCloseTo(16.8 + 200 + 380.45 + 119.23, 2);
-    expect(thisWk.ending).toBeCloseTo(7309.08 + 4715 - 1908 - 636.8 - 716.48, 2);
-  });
-
-  it("next week: this week's net pay lands Thursday; the accrual is the larger of odometer-so-far and the loads; ends $7,903", () => {
-    expect(next.opening).toBeCloseTo(thisWk.ending!, 2);
-    expect(next.deposit).toMatchObject({ date: "2026-10-08", source: "projected" });
-    expect(next.deposit.fromWeek).toEqual(thisWk.week); // "this week's net pay, projected"
-    expect(next.deposit.amount).toBeCloseTo(1245.76, 2);
-    expect(next.accrual).toMatchObject({ miles: 181, date: "2026-10-09", weekLabel: "Sep 30–Oct 6" });
-    expect(next.accrual.amount).toBeCloseTo(57.92, 2);
-    expect(next.accrual.words).toContain("odometer 0 mi so far");
-    expect(next.ending).toBeCloseTo(thisWk.ending! + 1245.76 - 1908 - 57.92 - 140, 2);
+  it("next week: the weekly fallback lands Thu Oct 15; ends Wed Oct 21", () => {
+    expect(next.netPay).toMatchObject({ statementDate: "2026-10-14", depositDate: "2026-10-15", source: "fallback" });
+    expect(next.billsTotal).toBeCloseTo(75 + 24.99 + 130 + 75 + 358.97 + 30.44, 2);
+    expect(next.ending).toBeCloseTo(thisWk.ending! + (4647 - 1959 - 172) - 1908 - 694.4, 2);
   });
 
   it("the lowest point from today is today, under the float — hold", () => {
@@ -206,7 +196,7 @@ describe("buildCashBoard — Wed Sep 30, the sheet's board", () => {
     expect(board.clears).toBe(false);
   });
 
-  it("the fuel row is the week's own: last actual $1,329 on the Sep 30 statement, this and next at pace", () => {
+  it("the fuel row is the pay week's own: last actual $1,329 on the Sep 30 statement, this and next at pace", () => {
     expect(last.fuel).toMatchObject({ amount: 1328.94, source: "actual", statementDate: "2026-09-30", depositDate: "2026-10-01" });
     expect(thisWk.fuel).toMatchObject({ amount: 1959, source: "pace", depositDate: "2026-10-08" });
     expect(next.fuel).toMatchObject({ amount: 1959, source: "pace", depositDate: "2026-10-15" });
@@ -214,10 +204,10 @@ describe("buildCashBoard — Wed Sep 30, the sheet's board", () => {
 });
 
 describe("buildCashBoard — edges", () => {
-  it("without the override this week ends $686 higher — the projection's $5,401 lands instead", () => {
+  it("without the override last week's cash days end $686 higher — the projection's $5,401 lands instead", () => {
     const b = buildCashBoard(input())!;
-    expect(b.weeks[1].deposit).toMatchObject({ source: "projected" });
-    expect(b.weeks[1].ending).toBeCloseTo(7309.08 + 5401.28 - 1908 - 636.8 - 716.48, 2);
+    expect(b.weeks[1].netPay).toMatchObject({ source: "projected" });
+    expect(b.weeks[1].ending).toBeCloseTo(7309.08 + 5401.28 - 1908 - 636.8 - 836.48, 2);
   });
 
   it("a snapshot whose Maintenance did NOT rise takes the accrual after the check", () => {
@@ -226,7 +216,8 @@ describe("buildCashBoard — edges", () => {
     expect(b.weeks[0].accrual.alreadyMoved).toBe(false);
     const chk = b.weeks[0].checks.find((x) => x.date === "2026-09-25")!;
     expect(chk.gap).toBeCloseTo(9927.54 - (8185.59 + 4660.61 - 1908), 2);
-    expect(b.weeks[0].ending).toBeCloseTo(9927.54 - 639.68 - 1575 - 900 - 475.19 - 341, 2);
+    // Tue Sep 29's end, before the Sep 30 check re-bases the cycle's last day.
+    expect(b.weeks[0].days.find((d) => d.date === "2026-09-29")!.end).toBeCloseTo(9927.54 - 639.68 - 1575 - 900 - 475.19 - 341, 2);
   });
 
   it("a run money day's outflow leaves Ops on its snapshot's day", () => {
@@ -300,7 +291,8 @@ describe("buildCashBoard — edges", () => {
   // Friday that passed with no snapshot still owes its week.
   it("a Friday that passed with no snapshot still accrues — the week is not skipped", () => {
     const b = buildCashBoard(input({ today: "2026-10-05", overrides: { "2026-09-30": 4715 } }))!;
-    expect(b.weeks[1].week).toEqual({ start: "2026-09-30", end: "2026-10-06" });
+    // Mon Oct 5: last week (Sep 23–29) owns Fri Oct 2, which passed with no snapshot.
+    expect(b.weeks[1].week).toEqual({ start: "2026-09-23", end: "2026-09-29" });
     expect(b.weeks[1].accrual).toMatchObject({ source: "odometer", miles: 1990, weekLabel: "Sep 23–29" });
     expect(b.weeks[1].accrual.amount).toBeCloseTo(636.8, 2);
     expect(b.weeks[1].days.find((d) => d.date === "2026-10-02")!.accrual).toBeCloseTo(636.8, 2);
@@ -323,7 +315,7 @@ describe("buildCashBoard — edges", () => {
   it("the days map spans the base forward, wider than the three weeks", () => {
     const b = buildCashBoard(input())!;
     expect(b.days[0].date).toBe("2026-09-18");
-    expect(b.days.at(-1)!.date).toBe("2026-10-13");
+    expect(b.days.at(-1)!.date).toBe("2026-10-21");
     const sep20 = b.days.find((d) => d.date === "2026-09-20")!;
     expect(sep20.afterBank).not.toBeNull();
   });
