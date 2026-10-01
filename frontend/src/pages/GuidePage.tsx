@@ -1387,9 +1387,10 @@ const GuidePage = () => {
             <Formula>
               deposit = delivered loads at net (+ loads still on the road,
               expected) − the fuel advance drawn against them − the fixed
-              deductions · ending = your Ops number + last period’s deposit (if
-              it lands after your number) + this period’s deposit − payroll −
-              accrual − bills + the card leftover − a run money day
+              deductions · ending = your Ops number − what the previous period
+              still owes after it + last period’s deposit (if it lands after
+              your number) + this period’s deposit − payroll − accrual − bills
+              + the card leftover − a run money day
             </Formula>
             <Why>
               A pay period runs Wednesday to Tuesday. Whatever it delivers goes
@@ -1397,10 +1398,11 @@ const GuidePage = () => {
               money belongs to the period that earned it. So each column is
               one period: its deposit (delivered loads minus Landstar’s cut
               plus accessorials, minus the advance borrowed against those loads
-              — $2,000 a week unless the fills pass it, the statement’s actual
-              once it’s in the vault — minus the small fixed deductions; a load
-              still on the road is <span className="text-light">expected</span>,
-              never delivered), the fixed payroll on Friday, the accrual on the
+              — the weekly fuel advance from your Assumptions, $2,000, unless
+              the fills pass it; the statement’s actual once it’s in the vault;
+              nothing when a closed period ran no loads — minus the small fixed
+              deductions; a load still on the road is{" "}
+              <span className="text-light">expected</span>, never delivered), the fixed payroll on Friday, the accrual on the
               period’s own miles by odometer paid the Friday after it closes,
               the bills on their draft days, and the fuel: fills are paid from
               the card the advance lands on, so they never come out of Ops, and
@@ -1408,9 +1410,17 @@ const GuidePage = () => {
               on Monday. The current column opens on your latest number — an{" "}
               <span className="text-light">OPS NOW</span> balance or the Friday
               snapshot — and only what’s dated on or after it comes off;
-              anything earlier is shown but already inside the number. The
+              anything earlier is shown but already inside the number. On the
+              number’s own day an OPS NOW check still has that day’s payroll
+              and drafts ahead of it, while a Friday snapshot already holds
+              them; money that lands by morning — a deposit, Monday’s card
+              leftover — counts only when it lands after the number. When the
+              number is older than this Wednesday, whatever the previous period
+              still owes after it — its accrual, its card leftover, its bills,
+              a money day — comes off the current column as{" "}
+              <span className="text-light">since your number</span>. The
               bottom line is Ops after the period settles, and it opens the next
-              column. Tap a deposit to type the figure you know before the
+              column. Tap either deposit to type the figure you know before the
               statement lands.
             </Why>
           </Metric>
