@@ -39,10 +39,10 @@ import {
 } from "@/lib/metrics/settlements";
 import {
   buildCashBoard, fuelForWeek,
-  type BoardDay, type BoardWeek, type CashBoard, type CashCheck, type MoneyDayMove,
+  type PeriodColumn, type CashCheck, type MoneyDayMove, type DepositLine,
 } from "@/lib/metrics/cashBoard";
 import { collectReadings, addDays } from "@/lib/metrics/odometer";
-import { payWeekOf, type PayWeek } from "@/lib/metrics/payWeeks";
+import { payWeekOf, weekLabel, type PayWeek } from "@/lib/metrics/payWeeks";
 import { getMoneyDay, monthName, type PlanStageInput } from "@/lib/metrics/planStatus";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
@@ -71,13 +71,9 @@ const md = (k: string): string =>
 const weekdayLong = (k: string): string =>
   utc(k).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const WEEKDAY_SHORT = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 // A stored settlement day / lag is 0–6, but never index an array on trust.
 const wdLong = (n: number): string => WEEKDAY_LONG[((Math.trunc(n) % 7) + 7) % 7];
 const isDayKey = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v);
-// "+$673" / "−$371" — the printed gap.
-const signedMoney = (n: number): string =>
-  `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
 const numOrNull = (v: string | number | null | undefined): number | null => {
   if (v == null || v === "") return null;
   const n = Number(v);
@@ -202,9 +198,6 @@ const CashFlowPage = () => {
         balance: bal,
         kind: "snapshot",
         note: s.note,
-        miles: numOrNull(s.miles),
-        maintenance: balanceOf(s, maintAcct?.account_id),
-        settlesMonth: s.settles_month ? s.settles_month.slice(0, 10) : null,
       });
     }
     for (const c of opsChecks) {
@@ -216,7 +209,7 @@ const CashFlowPage = () => {
       });
     }
     return out;
-  }, [snapshots, opsChecks, opsAcct, maintAcct]);
+  }, [snapshots, opsChecks, opsAcct]);
 
   // Every mile the truck rolls: a reading at every fill, every load's pickup
   // and delivery, and both ends of every trip log (rev 3, issue 8).
@@ -293,6 +286,7 @@ const CashFlowPage = () => {
       perMile,
       fuelPaceWeekly: fuel30,
       fuelFallback: Number(assumptions.weekly_fuel_advance ?? 0),
+      advanceDefault: Number(assumptions.weekly_fuel_advance) || 2000,
       buckets,
       deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
@@ -304,17 +298,7 @@ const CashFlowPage = () => {
     fuelEntries, obligations, readings, perMile, fuel30, buckets, moneyDays, netPayOverrides,
   ]);
 
-  // Every simulated day, for OPS NOW's live gap line — the engine's own span
-  // (base.date → the end of next week), which is wider than the three
-  // assembled weeks: a day between the base and last week's Wednesday has a
-  // figure in the simulation and nowhere else.
-  const boardDays = useMemo(() => {
-    const m = new Map<string, BoardDay>();
-    for (const d of board?.days ?? []) m.set(d.date, d);
-    return m;
-  }, [board]);
-
-  const showMoneyRow = (board?.weeks ?? []).some((w) => w.moneyDays.length > 0);
+  const showMoneyRow = (board?.columns ?? []).some((c) => c.moneyDays.length > 0);
 
   const forecast = useMemo(
     () => (assumptions ? buildForecast(financials, assumptions, adjustments) : null),
@@ -372,21 +356,22 @@ const CashFlowPage = () => {
 
   // The fuel tile's four-week range: the last four CLOSED pay weeks' actual
   // fills, so the volatility Jason named is on the page as numbers.
+  const fuelCtx = useMemo(
+    () => ({ fuelEntries, today: asOfKey, fuelPaceWeekly: fuel30, fuelFallback: 0, advanceDefault: Number(assumptions?.weekly_fuel_advance) || 2000, settlements, settlementDay: setlDay }),
+    [fuelEntries, asOfKey, fuel30, assumptions, settlements, setlDay],
+  );
   const fuelWeeks = useMemo(() => {
     const out: { week: PayWeek; amount: number; fills: number }[] = [];
     let w = payWeekOf(asOfKey);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       w = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
-      const f = fuelForWeek(fuelEntries, w, asOfKey, fuel30, 0, setlDay, lag);
-      out.push({ week: w, amount: f.amount, fills: f.fills });
+      const f = fuelForWeek(fuelCtx, w);
+      out.push({ week: w, amount: f.spent, fills: f.fills });
     }
     return out;
-  }, [fuelEntries, asOfKey, fuel30, setlDay, lag]);
+  }, [fuelCtx, asOfKey]);
   const lastPayWeek = fuelWeeks[0] ?? null;
-  const thisPayWeekFuel = useMemo(
-    () => fuelForWeek(fuelEntries, payWeekOf(asOfKey), asOfKey, fuel30, 0, setlDay, lag),
-    [fuelEntries, asOfKey, fuel30, setlDay, lag],
-  );
+  const thisPayWeekFuel = useMemo(() => fuelForWeek(fuelCtx, payWeekOf(asOfKey)), [fuelCtx, asOfKey]);
   const fourWeekRange = useMemo(() => {
     const amounts = fuelWeeks.slice(0, 4).map((x) => x.amount);
     return amounts.length ? { lo: Math.min(...amounts), hi: Math.max(...amounts) } : null;
@@ -411,11 +396,8 @@ const CashFlowPage = () => {
         ? "var(--color-ok)"
         : "var(--color-warn)";
 
-  // ---- the rows, in the sheet's order ----
-  const revFallback = assumptions ? Number(assumptions.weekly_revenue) : 0;
-
-  // The next statement that carries the insurance stack (a 60-day walk, no hook —
-  // this sits below the loading return).
+  // The next statement that carries the insurance stack (a 60-day walk, no
+  // hook — this sits below the loading return).
   const nextFirstStatement = ((): string | null => {
     let d = asOfKey;
     for (let i = 0; i < 60; i++) {
@@ -425,232 +407,200 @@ const CashFlowPage = () => {
     return null;
   })();
 
-  // "Sep 18 snapshot $8,575 − Best Egg $359 − Dental $30" — how the board
-  // walked from its base to a week's Wednesday.
-  const openingWalk = (b: CashBoard, w: BoardWeek): string => {
-    const base = b.base;
-    const kind = base.kind === "snapshot" ? "snapshot" : "Ops now";
-    if (base.date >= w.cycle.start) return `from the ${md(base.date)} ${kind} forward`;
-    const parts = [`${md(base.date)} ${kind} ${money(base.balance)}`];
-    for (const d of b.days) {
-      if (d.date <= base.date || d.date >= w.cycle.start) continue;
-      if (d.deposit != null) parts.push(`+ deposit ${money(d.deposit)}`);
-      if (d.payroll > 0) parts.push(`− payroll ${money(d.payroll)}`);
-      for (const bl of d.bills) parts.push(`− ${bl.label} ${money(bl.amount)}`);
-      if (d.accrual > 0) parts.push(`− accrual ${money(d.accrual)}`);
-    }
-    return parts.length === 1 ? `from the ${md(base.date)} ${kind} forward` : parts.join(" ");
-  };
+  // ---- the rows, in Jason's order (2026-10-01) ----
+  const revFallback = assumptions ? Number(assumptions.weekly_revenue) : 0;
+  const advanceDefault = Number(assumptions?.weekly_fuel_advance) || 2000;
+  const wd3 = (n: number): string => wdLong(n).slice(0, 3);
+  const inOps = " · already in your Ops number";
+  const advanceWords = (d: { advances: number; advancesSource: DepositLine["advancesSource"] }): string =>
+    d.advancesSource === "actual"
+      ? `advances ${money(d.advances)} (the statement)`
+      : d.advancesSource === "fills"
+        ? `advance ${money(d.advances)} (the fills passed ${money(advanceDefault)})`
+        : d.advancesSource === "none"
+          ? "no loads, no advance"
+          : `advance ${money(d.advances)} (assumed)`;
+  // A deposit that isn't the statement's actual is a figure you can type over.
+  const depositFigure = (d: DepositLine, sign = "") =>
+    d.source === "actual" ? (
+      `${sign}${moneyCents(d.amount)}`
+    ) : (
+      <>
+        {sign}
+        <EditCell
+          id={`dep-${d.statementDate}`}
+          editing={editing}
+          setEditing={setEditing}
+          value={d.amount}
+          prefix="$"
+          onCommit={(v) => setNetPayOverrides((p) => ({ ...p, [d.statementDate]: v }))}
+        />
+        {d.source === "override" && (
+          <button
+            className="ml-1 text-amber-hi hover:text-hot text-[11px]"
+            onClick={() =>
+              setNetPayOverrides((p) => {
+                const next = { ...p };
+                delete next[d.statementDate];
+                return next;
+              })
+            }
+          >
+            ✕
+          </button>
+        )}
+      </>
+    );
 
-  const openingCell = (w: BoardWeek): CellSpec => {
-    const chk = w.openingCheck;
-    if (chk) {
-      const gap =
-        chk.projected != null && chk.gap != null
-          ? ` · the board said ${money(chk.projected)} — off by ${signedMoney(chk.gap)}`
-          : "";
+  const openingCell = (c: PeriodColumn): CellSpec => {
+    if (c.key === "current") {
+      const b = board!.base;
+      const who = b.kind === "check" ? "Ops now" : utc(b.date).getUTCDay() === 5 ? "Friday snapshot" : "snapshot";
+      const rule = b.kind === "check" ? "everything dated on or after it comes off" : "what’s dated after it comes off — the snapshot already holds its own day";
       return {
-        headline: moneyCents(chk.balance),
-        note: `${chk.kind === "check" ? "Ops now" : "snapshot"} · typed ${dayFull(chk.date)}${gap}`,
+        headline: moneyCents(b.balance),
+        note: `${who} · typed ${dayFull(b.date)} · ${rule}${b.note ? ` · “${b.note}”` : ""}`,
       };
     }
-    const idx = board ? board.weeks.findIndex((x) => x.key === w.key) : -1;
-    const note =
-      !board ? null : idx > 0 ? `${WEEK_TITLE[board.weeks[idx - 1].key].toLowerCase()}’s Wednesday ending` : openingWalk(board, w);
-    return { headline: w.opening == null ? "—" : money(w.opening), note };
+    return { headline: c.opening == null ? "—" : money(c.opening), note: "the current period’s ending, carried over" };
   };
 
-  const netPayCell = (w: BoardWeek): CellSpec => {
-    const n = w.netPay;
-    const landed = n.depositDate < asOfKey;
-    const stamp =
-      n.source === "actual" ? "ACTUAL" : n.source === "override" ? "YOU SAID" : n.source === "projected" && (w.state === "open" || w.state === "future") ? "EXPECTED" : null;
-    const fuelWord = n.fuelSource === "actual" ? "its fuel" : "its fuel at pace";
-    const bucketWord = n.bucketKind === "first" ? "first-of-month bucket" : "bucket";
-    const projected = n.loadsNet + n.expectedNet - n.fuel - n.bucket;
-    const lands = `${landed ? "landed" : "lands"} ${dayFull(n.depositDate)}`;
-    const deliveredWord = `${n.loads} load${n.loads === 1 ? "" : "s"}`;
-    const expectedBits = [
-      n.inTransit > 0 ? `${n.inTransit} in transit` : null,
-      n.booked > 0 ? `${n.booked} booked` : null,
-    ].filter(Boolean);
-    // Closed: what it delivered. Open: what has delivered so far, and what is
-    // still on the road — expected, never called delivered.
-    const derivation =
-      w.state === "closed" || w.state === "done"
-        ? `${deliveredWord} ${money(n.loadsNet)} − ${fuelWord} ${money(n.fuel)} − ${bucketWord} ${money(n.bucket)}`
-        : `${n.loads === 0 ? "0 delivered so far" : `${deliveredWord} delivered so far ${money(n.loadsNet)}`}${expectedBits.length ? ` · ${expectedBits.join(" + ")} expected ${money(n.expectedNet)}` : ""} − ${fuelWord} ${money(n.fuel)} − ${bucketWord} ${money(n.bucket)}`;
-    const note =
-      n.source === "actual"
-        ? `statement ${md(n.statementDate)} · actual, from the feed · ${lands}`
-        : n.source === "fallback"
-          ? `statement ${md(n.statementDate)} · nothing booked yet — the ${money(revFallback)} weekly fallback − fuel at pace − bucket · ${lands}`
-          : n.source === "override"
-            ? `statement ${md(n.statementDate)} · you said ${money(n.amount ?? 0)} · loads say ${money(projected)} (${derivation}) · the statement settles it · ${lands}`
-            : w.state === "closed" || w.state === "done"
-              ? `statement ${md(n.statementDate)} · loads say ${money(projected)} (${derivation}) · the statement settles it · ${lands}`
-              : `statement ${md(n.statementDate)} · ${derivation} · ${lands}`;
-    // The feed's actual is not overridable — a typed figure only beats a
-    // projection, so only a projection offers the input.
-    const headline =
-      n.amount == null ? (
-        "—"
-      ) : n.source === "actual" ? (
-        moneyCents(n.amount)
-      ) : (
-        <>
-          <EditCell
-            id={`np-${n.statementDate}`}
-            editing={editing}
-            setEditing={setEditing}
-            value={n.amount}
-            prefix="$"
-            onCommit={(v) => setNetPayOverrides((p) => ({ ...p, [n.statementDate]: v }))}
-          />
-          {n.source === "override" && (
-            <button
-              className="ml-1 text-amber-hi hover:text-hot text-[11px]"
-              onClick={() =>
-                setNetPayOverrides((p) => {
-                  const next = { ...p };
-                  delete next[n.statementDate];
-                  return next;
-                })
-              }
-            >
-              ✕
-            </button>
-          )}
-        </>
-      );
-    return { headline, stamp, note, tone: n.source === "fallback" ? "var(--color-faint)" : undefined };
-  };
-
-  const payrollCell = (w: BoardWeek): CellSpec => {
-    const fri = w.days.find((d) => d.payroll > 0)?.date ?? addDays(w.cycle.start, 1);
+  const prevDepositCell = (c: PeriodColumn): CellSpec => {
+    const d = c.prevDeposit;
+    if (!d) return { headline: "—", note: c.key === "next" ? "the current period’s deposit lands here — it’s counted in that column" : "nothing lands this period" };
+    const stamp = d.source === "actual" ? "ACTUAL" : d.source === "override" ? "YOU SAID" : d.source === "projected" ? "EXPECTED" : null;
+    const says = d.source === "actual" ? "actual, from the feed" : d.source === "override" ? `you said ${money(d.amount)}` : `${d.loads} delivered ${money(d.loadsNet)} − ${advanceWords(d)} − bucket ${money(d.bucket)}`;
     return {
-      headline: w.payroll === 0 ? "—" : `−${money(w.payroll)}`,
-      note: `assumption · ${dayFull(fri)}`,
+      headline: depositFigure(d, "+"),
+      stamp,
+      tone: d.counted ? "var(--color-ok)" : "var(--color-faint)",
+      note: `last period’s (${weekLabel(d.week)}) · statement ${md(d.statementDate)} · ${says} · ${d.date < asOfKey ? "landed" : "lands"} ${dayFull(d.date)}${d.counted ? "" : inOps}`,
     };
   };
 
-  const accrualCell = (w: BoardWeek): CellSpec => {
-    const a = w.accrual;
-    if (a.source === "none") return { headline: "—", note: "nothing owed this week" };
-    const words = a.words ?? "";
-    // The engine's own snapshot wording already says it — don't say it twice.
-    const moved =
-      a.alreadyMoved && !words.includes("already in Maintenance")
-        ? " · already in Maintenance — not taken twice"
-        : "";
+  const depositCell = (c: PeriodColumn): CellSpec => {
+    const d = c.deposit;
+    const stamp = d.source === "actual" ? "ACTUAL" : d.source === "override" ? "YOU SAID" : d.source === "projected" ? "EXPECTED" : null;
+    const bucketWord = d.bucketKind === "first" ? "first-of-month bucket" : "bucket";
+    const expectedBits = [d.inTransit > 0 ? `${d.inTransit} in transit` : null, d.booked > 0 ? `${d.booked} booked` : null].filter(Boolean);
+    const delivered = `${d.loads} delivered${d.loads > 0 ? ` ${money(d.loadsNet)}` : ""}`;
+    const expected = expectedBits.length ? ` + ${expectedBits.join(" + ")} expected ${money(d.expectedNet)}` : "";
+    const note =
+      d.source === "actual"
+        ? `statement ${md(d.statementDate)} · actual, from the feed · ${d.date < asOfKey ? "landed" : "lands"} ${dayFull(d.date)}`
+        : d.source === "fallback"
+          ? `statement ${md(d.statementDate)} · nothing booked yet — the ${money(revFallback)} weekly fallback − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)} · lands ${dayFull(d.date)}`
+          : d.source === "override"
+            ? `statement ${md(d.statementDate)} · you said ${money(d.amount)} · the loads say ${money(d.loadsNet + d.expectedNet - d.advances - d.bucket)} (${delivered}${expected} − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}) · lands ${dayFull(d.date)}`
+            : `statement ${md(d.statementDate)} · ${delivered}${expected} − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)} · lands ${dayFull(d.date)}`;
+    const headline = depositFigure(d);
+    return { headline, stamp, note, tone: d.source === "fallback" ? "var(--color-faint)" : undefined };
+  };
+
+  const payrollCell = (c: PeriodColumn): CellSpec => ({
+    headline: `−${money(c.payroll.amount)}`,
+    tone: c.payroll.counted ? undefined : "var(--color-faint)",
+    note: `assumption · ${dayFull(c.payroll.date)}${c.payroll.counted ? "" : inOps}`,
+  });
+
+  const accrualCell = (c: PeriodColumn): CellSpec => {
+    const a = c.accrual;
+    if (a.source === "none" && a.amount === 0)
+      return { headline: "—", note: `${weekLabel(c.week)} · ${a.words ?? "nothing yet"} · paid ${dayFull(a.date)}` };
     return {
       headline: `−${money(a.amount)}`,
-      note: `${a.weekLabel ? `${a.weekLabel} · ` : ""}${words}${moved}`,
-      // A hand-typed odometer is the one input behind this figure, so the
-      // chain's own flag rides with it — the same sentence the Plan page says.
+      tone: a.counted ? undefined : "var(--color-faint)",
+      note: `${weekLabel(c.week)} · ${a.words} · paid ${dayFull(a.date)}${a.counted ? "" : inOps}`,
       flag: a.flag,
     };
   };
 
-  const billsCell = (w: BoardWeek): CellSpec => ({
-    headline: w.billsTotal === 0 ? "—" : `−${money(w.billsTotal)}`,
-    note:
-      w.bills.map((b) => `${b.label} ${money(b.amount)} (${Number(b.date.slice(8, 10))})`).join(" · ") ||
-      "nothing drafts this week",
-  });
-
-  const fuelCell = (w: BoardWeek): CellSpec => {
-    const f = w.fuel;
-    const fillWords = fuelEntries
-      .filter((e) => {
-        const d = String(e.fuel_date).slice(0, 10);
-        return d >= w.week.start && d <= w.week.end;
-      })
-      .sort((a, b) => (String(a.fuel_date) < String(b.fuel_date) ? -1 : 1))
-      .map((e) => `${md(String(e.fuel_date).slice(0, 10))} ${money(Number(e.gallons) * Number(e.price_per_gallon))}`);
+  const fuelCell = (c: PeriodColumn): CellSpec => {
+    const f = c.fuel;
     const parts: string[] = [];
-    if (w.state === "closed") parts.push(fills(f.fills), ...fillWords);
-    else if (w.state === "open") parts.push("30-day pace", f.fills === 0 ? "no fill logged yet this week" : `${fills(f.fills)} so far ${money(f.soFar)}`);
-    parts.push(`on the ${md(f.statementDate)} statement`, `cash ${dayFull(f.depositDate)}`);
-    if (w.state === "open") parts.push("turns actual Tuesday night");
-    if (w.netPay.source === "actual" && w.netPay.advances != null)
-      parts.push(`advanced ${money(w.netPay.advances)} · bought ${money(f.amount)}`);
+    if (c.state === "open") parts.push(f.fills === 0 ? "no fill logged yet" : `${fills(f.fills)} so far ${money(f.soFar)}`, f.spentSource === "pace" ? "running at the 30-day pace" : "actual");
+    else parts.push("at the 30-day pace");
+    parts.push(advanceWords(f));
+    return { headline: money(f.spent), stamp: f.spentSource === "actual" ? "ACTUAL" : "AT PACE", note: parts.join(" · ") };
+  };
+
+  const leftoverCell = (c: PeriodColumn): CellSpec => {
+    const l = c.fuel.leftover;
+    if (c.fuel.advancesSource === "none") return { headline: "—", note: "no loads, no advance — nothing on the card to send back" };
     return {
-      headline: money(f.amount),
-      stamp: f.source === "actual" ? "ACTUAL" : "AT PACE",
-      note: parts.join(" · "),
+      headline: `+${money(l.amount)}`,
+      tone: l.counted ? "var(--color-ok)" : "var(--color-faint)",
+      note: `${money(c.fuel.advances)} advanced − ${money(c.fuel.spent)} spent → business checking ${dayFull(l.date)}${l.counted ? "" : inOps}`,
     };
   };
 
-  const moneyDayCell = (w: BoardWeek): CellSpec => {
-    if (w.moneyDays.length === 0) return { headline: "—", note: null };
+  // An Ops number older than this Wednesday: what the previous period(s)
+  // still owe after it — their accrual, card leftover, bills, a money day —
+  // comes off the current column too. Nothing is left in no column.
+  const sinceCell = (c: PeriodColumn): CellSpec => {
+    if (c.key !== "current" || c.since.length === 0) return { headline: "—", note: null };
+    const total = c.since.reduce((sum, p) => sum + p.total, 0);
+    const bits = c.since.map((p) => {
+      const lines: string[] = [];
+      if (p.deposit) lines.push(`deposit +${money(p.deposit.amount)} (${md(p.deposit.date)})`);
+      if (p.leftover) lines.push(`card leftover +${money(p.leftover.amount)} (${md(p.leftover.date)})`);
+      if (p.payroll) lines.push(`payroll −${money(p.payroll.amount)} (${md(p.payroll.date)})`);
+      if (p.accrual) lines.push(`accrual −${money(p.accrual.amount)} (${md(p.accrual.date)})`);
+      for (const b of p.bills) lines.push(`${b.label} −${money(b.amount)} (${md(b.date)})`);
+      for (const m of p.moneyDays) lines.push(`${m.label} −${money(m.amount)} (${md(m.date)})`);
+      return `${weekLabel(p.week)}: ${lines.join(" · ")}`;
+    });
     return {
-      headline: `−${money(w.moneyDays.reduce((s, m) => s + m.amount, 0))}`,
-      note: w.moneyDays.map((m) => m.label).join(" · "),
+      headline: total === 0 ? "—" : `${total > 0 ? "+" : "−"}${money(Math.abs(total))}`,
+      tone: total > 0 ? "var(--color-ok)" : undefined,
+      note: bits.join(" · "),
     };
   };
 
-  const checkedCell = (w: BoardWeek): CellSpec => {
-    if (w.checks.length === 0) return { headline: "—", note: "nothing to check yet" };
+  const billsCell = (c: PeriodColumn): CellSpec => {
+    const counted = c.bills.filter((b) => b.counted);
+    const already = c.bills.filter((b) => !b.counted);
+    const list = (xs: typeof c.bills) => xs.map((b) => `${b.label} ${money(b.amount)} (${Number(b.date.slice(8, 10))})`).join(" · ");
     return {
-      headline: (
-        <span className="inline-block text-right">
-          {w.checks.map((c, i) => (
-            <span key={`${c.date}-${c.kind}-${i}`} className="block mb-0.5">
-              <span className="font-condensed text-[12px] text-dim">
-                {dayFull(c.date)} {c.kind === "snapshot" ? "snapshot" : "Ops now"}{" "}
-              </span>
-              <b className="font-semibold">{moneyCents(c.balance)}</b>
-              <span className="block font-condensed text-[11px] text-faint leading-[1.35] whitespace-normal">
-                {c.projected != null && c.gap != null &&
-                  `board that day ${money(c.projected)} — off by ${signedMoney(c.gap)} · re-based from the ${c.kind === "snapshot" ? "snapshot" : "check"}${c.kind === "check" && !c.note ? " · what dash doesn’t see — name it in the note" : ""}${w.state === "open" && i === w.checks.length - 1 ? " · next check: Friday’s snapshot" : ""}`}
-                {c.note && (
-                  <>
-                    {c.projected != null && c.gap != null ? " · " : ""}
-                    “{c.note}”
-                  </>
-                )}
-              </span>
-            </span>
-          ))}
-        </span>
-      ),
-      note: null,
+      headline: c.billsTotal === 0 ? "—" : `−${money(c.billsTotal)}`,
+      note: (counted.length ? list(counted) : "nothing drafts this period") + (already.length ? ` · already in your Ops number: ${list(already)}` : ""),
     };
   };
 
-  const endingCell = (w: BoardWeek): CellSpec => {
-    const e = w.ending;
+  const moneyDayCell = (c: PeriodColumn): CellSpec => {
+    const counted = c.moneyDays.filter((m) => m.counted);
+    if (c.moneyDays.length === 0) return { headline: "—", note: null };
+    return {
+      headline: counted.length ? `−${money(counted.reduce((s, m) => s + m.amount, 0))}` : "—",
+      note: c.moneyDays.map((m) => `${m.label} · ${dayFull(m.date)}${m.counted ? "" : inOps}`).join(" · "),
+    };
+  };
+
+  const endingCell = (c: PeriodColumn): CellSpec => {
+    const e = c.ending;
     const under = e != null && floatLine != null && e < floatLine;
-    let note = dayFull(w.cycle.end);
-    if (w.state === "done") {
-      const ref = w.checks[w.checks.length - 1] ?? w.openingCheck ?? (board ? { date: board.base.date, kind: board.base.kind } : null);
-      if (ref) note += ` · from the ${md(ref.date)} ${ref.kind === "snapshot" ? "snapshot" : "Ops now"} forward`;
-    } else {
-      note += under ? ` · under the ${money(floatLine!)} float · hold` : floatLine != null ? " · clears the float" : "";
-      if (w.state === "future") note += " · projected";
-    }
-    return {
-      headline: e == null ? "—" : money(e),
-      tone: e == null ? undefined : endTone(e),
-      display: true,
-      note,
-    };
+    let note = "after this period settles";
+    if (floatLine != null && e != null) note += under ? ` · under the ${money(floatLine)} float · hold` : " · clears the float";
+    if (c.key === "current") note += " · carries to the next period";
+    return { headline: e == null ? "—" : money(e), tone: e == null ? undefined : endTone(e), display: true, note };
   };
 
-  const rowSpecs: { label: string; sub?: string; cell: (w: BoardWeek) => CellSpec }[] = [
-    { label: "Opening · Thu", cell: openingCell },
-    { label: "Deposit · Thu", sub: "the week’s own net pay, on its statement", cell: netPayCell },
+  const showSinceRow = (board?.columns[0].since.length ?? 0) > 0;
+  const rowSpecs: { label: string; sub?: string; cell: (c: PeriodColumn) => CellSpec }[] = [
+    { label: "Ops", sub: "your latest number", cell: openingCell },
+    ...(showSinceRow ? [{ label: "Since your number", sub: "what the previous period still owes after it", cell: sinceCell }] : []),
+    { label: "Last period’s deposit", sub: `lands the ${wdLong(setlDay + lag)} inside this period`, cell: prevDepositCell },
+    { label: "Deposit", sub: `this period’s own · statement ${wd3(setlDay)}, lands ${wd3(setlDay + lag)}`, cell: depositCell },
     { label: "Payroll · Fri", cell: payrollCell },
-    { label: "Accrual · Fri", cell: accrualCell },
+    { label: "Accrual", sub: "this period’s miles · the Friday after it closes", cell: accrualCell },
+    { label: "Fuel · the card", sub: "spent, and the advance borrowed against the loads", cell: fuelCell },
+    { label: "Card leftover → Ops", sub: "Monday", cell: leftoverCell },
     { label: "Bills", cell: billsCell },
-    { label: "Fuel bought", sub: "→ its Wednesday statement", cell: fuelCell },
     ...(showMoneyRow ? [{ label: "Money day", cell: moneyDayCell }] : []),
-    { label: "Checked", cell: checkedCell },
-    { label: "Ending · Wed", cell: endingCell },
+    { label: "Ending", sub: "Ops after this period settles", cell: endingCell },
   ];
   const rows = board
-    ? rowSpecs.map((r) => ({ label: r.label, sub: r.sub, cells: board.weeks.map(r.cell) }))
+    ? rowSpecs.map((r) => ({ label: r.label, sub: r.sub, cells: board.columns.map(r.cell) }))
     : [];
 
   return (
@@ -689,7 +639,7 @@ const CashFlowPage = () => {
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           <span className="text-[13.5px] text-faint">
-            four pay weeks, Wednesday to Tuesday — the week before · last · this · next — each with its own deposit on its own Thursday; nothing rolls until Tuesday night closes the week
+            two pay periods, Wednesday to Tuesday — the one you’re running and the next — each the money it earns against what it carries; Ops carries from your latest number
             {ytdMargin != null && (
               <> · YTD pretax margin (QBO) <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
             )}
@@ -718,11 +668,10 @@ const CashFlowPage = () => {
             </span>
             {board && (
               <span className="font-condensed text-[12.5px] text-faint">
-                · lowest point{" "}
+                · the lower ending{" "}
                 <b className="font-semibold text-ink tabular-nums">
-                  {board.lowest ? money(board.lowest.amount) : "—"}
+                  {board.lowest != null ? money(board.lowest) : "—"}
                 </b>
-                {board.lowest && <> {board.lowest.date === asOfKey ? "today" : md(board.lowest.date)}</>}
                 {floatLine != null && (
                   <> · float <b className="font-semibold text-ink tabular-nums">{money(floatLine)}</b></>
                 )}
@@ -752,21 +701,17 @@ const CashFlowPage = () => {
                 <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
                   <thead>
                     <tr className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint">
-                      <th className="text-left px-4 py-2 border-b border-hairline align-bottom">pay week</th>
-                      {board.weeks.map((w) => (
-                        <th key={w.key} className="text-right px-4 py-2 border-b border-hairline align-bottom">
-                          <span className="text-ink">{WEEK_TITLE[w.key]}</span>
-                          {w.state !== "future" && (
-                            <BoardStamp tone={w.state === "open" ? "amber" : "dim"}>
-                              {w.state === "open" ? "OPEN" : w.state === "done" ? "DONE" : "CLOSED"}
-                            </BoardStamp>
-                          )}
+                      <th className="text-left px-4 py-2 border-b border-hairline align-bottom">pay period</th>
+                      {board.columns.map((c) => (
+                        <th key={c.key} className="text-right px-4 py-2 border-b border-hairline align-bottom">
+                          <span className="text-ink">{WEEK_TITLE[c.key]}</span>
+                          {c.state === "open" && <BoardStamp>OPEN</BoardStamp>}
                           <span className="block font-condensed text-[11px] text-faint normal-case tracking-normal mt-0.5 whitespace-nowrap">
-                            {weekSpan(w.week)}
-                            {w.key === "this" && <> · today is {weekdayLong(asOfKey)}</>}
+                            {weekSpan(c.week)}
+                            {c.key === "current" && <> · today is {weekdayLong(asOfKey)}</>}
                           </span>
                           <span className="block font-condensed text-[11px] text-faint normal-case tracking-normal whitespace-nowrap">
-                            statement {md(w.netPay.statementDate)} · cash {md(w.cycle.start)} – {md(w.cycle.end)}
+                            statement {md(c.deposit.statementDate)} · lands {dayFull(c.deposit.date)}
                           </span>
                         </th>
                       ))}
@@ -782,7 +727,7 @@ const CashFlowPage = () => {
                           )}
                         </td>
                         {r.cells.map((c, i) => (
-                          <BoardCell key={board.weeks[i].key} spec={c} />
+                          <BoardCell key={board.columns[i].key} spec={c} />
                         ))}
                       </tr>
                     ))}
@@ -790,53 +735,8 @@ const CashFlowPage = () => {
                 </table>
               </div>
 
-              {/* the cash days ahead — last week's money, day by day */}
-              <div className="grid gap-1 px-4 pt-2 pb-2" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
-                {board.weeks[1].days.map((d, i) => (
-                  <div
-                    key={d.date}
-                    className="rounded-[6px] px-1.5 py-1 min-h-[76px] text-[10px] leading-[1.35]"
-                    style={{
-                      background: "var(--color-well)",
-                      border: "1px solid var(--color-hairline-lo)",
-                      outline: d.date === asOfKey ? "2px solid var(--color-amber)" : undefined,
-                    }}
-                  >
-                    <span className="font-condensed font-semibold text-[10px] text-faint uppercase">
-                      {WEEKDAY_SHORT[utc(d.date).getUTCDay()]} {Number(d.date.slice(8, 10))}
-                    </span>
-                    {d.checks.map((c, ci) => (
-                      <div key={`${c.date}-${c.kind}-${ci}`} style={{ color: "var(--color-amber-hi)" }}>
-                        {c.kind === "check" ? "Ops now" : "snapshot"} {money(c.balance)}
-                      </div>
-                    ))}
-                    {d.deposit != null && (
-                      <div style={{ color: d.deposit < 0 ? "var(--color-warn)" : "var(--color-ok)" }}>
-                        {signedMoney(d.deposit)} deposit
-                      </div>
-                    )}
-                    {d.payroll > 0 && <div style={{ color: "#f08a8a" }}>−{money(d.payroll)} payroll</div>}
-                    {d.accrual > 0 && <div style={{ color: "#f08a8a" }}>−{money(d.accrual)} accrual</div>}
-                    {d.bills.map((b) => (
-                      <div key={`${b.label}-${b.date}`} style={{ color: "#f08a8a" }}>
-                        −{money(b.amount)} {b.label}
-                      </div>
-                    ))}
-                    {d.moneyDay && (
-                      <div style={{ color: "#f08a8a" }}>−{money(d.moneyDay.amount)} money day</div>
-                    )}
-                    {i === board.weeks[1].days.length - 1 && d.end != null && (
-                      <div className="mt-0.5 font-semibold" style={{ color: "var(--color-amber)" }}>
-                        ends {money(d.end)}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
               <div className="px-4 pb-3 font-condensed text-[11px] text-faint">
-                Each column is one pay week: its statement Wednesday, its <b className="text-dim">own</b> deposit Thursday, its cash Thursday to Wednesday · every balance you
-                type is a check, and the printed gap is what dash doesn’t see · ENDING turns{" "}
+                Each column is one pay period, Wednesday to Tuesday: what it delivers goes on the next Wednesday’s statement and lands Thursday · Ops carries from your latest number, and only what’s dated on or after it comes off — what the previous period still owes after it rides in as SINCE YOUR NUMBER · ENDING turns{" "}
                 <span style={{ color: "var(--color-warn)" }}>red</span> under the float
                 {floatLine != null && (
                   <> ({money(floatLine)} — the plan’s line, edited on{" "}
@@ -1173,9 +1073,7 @@ const CashFlowPage = () => {
         {showOpsNow && (
           <OpsNowPopup
             today={asOfKey}
-            boardDays={boardDays}
-            baseDate={board?.base.date ?? null}
-            windowEnd={board?.weeks[2].week.end ?? null}
+            base={board?.base ?? null}
             onClose={() => setShowOpsNow(false)}
             onSaved={() => {
               setShowOpsNow(false);
@@ -1217,11 +1115,9 @@ const CashFlowPage = () => {
 
 // ---- the cash board's cells ----
 
-const WEEK_TITLE: Record<BoardWeek["key"], string> = {
-  before: "The week before",
-  last: "Last week",
-  this: "This week",
-  next: "Next week",
+const WEEK_TITLE: Record<PeriodColumn["key"], string> = {
+  current: "Current period",
+  next: "Next period",
 };
 
 interface CellSpec {
@@ -1233,15 +1129,11 @@ interface CellSpec {
   flag?: string | null; // the one thing wrong with the figure — amber, under the note
 }
 
-// The little rotated stamps: CLOSED · OPEN · ACTUAL · YOU SAID · AT PACE.
-const BoardStamp = ({ children, tone = "amber" }: { children: string; tone?: "amber" | "dim" }) => (
+// The little rotated stamps: OPEN · ACTUAL · YOU SAID · EXPECTED · AT PACE.
+const BoardStamp = ({ children }: { children: string }) => (
   <span
     className="ml-1.5 font-forge text-[9.5px] tracking-[.12em] rounded-[4px] px-[5px] py-[1px] inline-block rotate-[-2deg] align-middle"
-    style={
-      tone === "amber"
-        ? { color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }
-        : { color: "var(--color-faint, #5a6880)", border: "1.5px solid var(--color-hairline)" }
-    }
+    style={{ color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }}
   >
     {children}
   </span>
@@ -1720,16 +1612,15 @@ const AssumptionsPopup = ({
   );
 };
 
-// OPS NOW (rev 3, issue 2): the bank's Ops balance typed any morning, kept as
-// a check. The board re-bases from it and prints the gap — which is, by
-// design, what dash doesn't see (issue 9): the note is where you name it.
+// OPS NOW: the bank's Ops balance typed any morning, kept as a check. The
+// board opens its current column on the latest one; everything dated on or
+// after it comes off. The note is where you name what the bank knows and dash
+// doesn't (a card charge, a transfer) — it prints on the Ops cell.
 const OpsNowPopup = ({
-  today, boardDays, baseDate, windowEnd, onClose, onSaved,
+  today, base, onClose, onSaved,
 }: {
   today: string;
-  boardDays: Map<string, BoardDay>;
-  baseDate: string | null; // the board's base — a check at or before it re-bases everything
-  windowEnd: string | null; // next week's Tuesday — past it the board never looks
+  base: CashCheck | null; // the number the board opens on today
   onClose: () => void;
   onSaved: () => void;
 }) => {
@@ -1738,28 +1629,12 @@ const OpsNowPopup = ({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
   const typed = Number(balance);
   const dayKey = isDayKey(asOf.slice(0, 10)) ? asOf.slice(0, 10) : null;
-  const day = dayKey ? boardDays.get(dayKey) ?? null : null;
-  // The engine's OWN figure for the day — the morning plus the bank's own
-  // events, before Jason's moves. The Checked row measures a check against
-  // this same number, so the gap printed here and the gap printed on the
-  // board can no longer differ by a Thursday deposit.
-  const projected = day ? day.afterBank : null;
-  // A balance can only be from a day that has already happened: the typed
-  // figure re-bases the board from that day forward, so a mis-picked month in
-  // the native picker would hand the board a balance the day never had.
+  // A balance can only be from a day that has already happened: the board
+  // opens on it and takes off everything dated on or after it.
   const future = dayKey != null && dayKey > today;
-  const gap =
-    !future && projected != null && Number.isFinite(typed) && balance.trim() !== ""
-      ? typed - projected
-      : null;
-  // On a day with no deposit, payroll or draft the figure IS the morning's.
-  const asMorning =
-    day != null && day.morning != null && day.afterBank != null && Math.abs(day.afterBank - day.morning) < 0.005;
-  const whenWord = asMorning ? "this morning" : "that day, after the bank’s own events";
-
+  const older = dayKey != null && base != null && dayKey < base.date;
   const save = async () => {
     if (!dayKey) {
       setErr("Pick the day the balance is from.");
@@ -1783,7 +1658,6 @@ const OpsNowPopup = ({
       setBusy(false);
     }
   };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
@@ -1798,75 +1672,42 @@ const OpsNowPopup = ({
         <div className="p-5">
           <div className="mb-3">
             <label className={LBL} htmlFor="opsnow-asof">As of</label>
-            <input
-              id="opsnow-asof"
-              type="date"
-              max={today}
-              className={FIELD}
-              value={asOf}
-              onChange={(e) => setAsOf(e.target.value)}
-            />
+            <input id="opsnow-asof" type="date" className={FIELD} value={asOf} max={today} onChange={(e) => { setAsOf(e.target.value); setErr(null); }} />
           </div>
           <div className="mb-3">
             <label className={LBL} htmlFor="opsnow-balance">Ops balance</label>
-            <input
-              id="opsnow-balance"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              className={FIELD}
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-            />
+            <input id="opsnow-balance" inputMode="decimal" placeholder="0.00" className={FIELD} value={balance} onChange={(e) => { setBalance(e.target.value); setErr(null); }} />
           </div>
           <div className="mb-3">
-            <label className={LBL} htmlFor="opsnow-note">Note · what the board can’t see</label>
-            <input
-              id="opsnow-note"
-              type="text"
-              className={FIELD}
-              placeholder="what the board can’t see — card charges, transfers, refunds"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
+            <label className={LBL} htmlFor="opsnow-note">Note · optional</label>
+            <input id="opsnow-note" className={FIELD} value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="before Friday’s payroll and the sweep" />
           </div>
-          <p className="font-condensed text-[12px] text-faint leading-[1.5]">
+          <p className="font-condensed text-[12px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
             {dayKey == null ? (
               <>pick the day the balance is from</>
             ) : future ? (
-              <>a balance can only be from today or earlier — {md(today)} or before</>
-            ) : windowEnd != null && dayKey > windowEnd ? (
-              <>
-                {md(dayKey)} is outside the board’s three weeks — this will be stored, but it
-                won’t move the board
-              </>
-            ) : baseDate != null && dayKey < baseDate ? (
-              <>
-                earlier than the board’s {md(baseDate)} base — this will be stored, but it won’t
-                move the board
-              </>
-            ) : projected == null ? (
-              <>no board figure for {md(dayKey)} — this check becomes the board’s base</>
-            ) : gap == null ? (
-              <>the board said <b className="text-dim tabular-nums">{money(projected)}</b> for {whenWord}</>
+              <>{md(dayKey)} hasn’t happened yet — pick today or earlier</>
+            ) : older ? (
+              <>earlier than the board’s current number ({md(base!.date)}) — this will be stored, but the board keeps the newer one</>
             ) : (
               <>
-                the board said <b className="text-dim tabular-nums">{money(projected)}</b> for{" "}
-                {whenWord} — off by{" "}
-                <b className="text-ink tabular-nums">{signedMoney(gap)}</b> · re-basing from{" "}
-                <b className="text-ink tabular-nums">{moneyCents(typed)}</b>
+                this becomes the board’s Ops number from {md(dayKey)} — everything dated on or after it comes off
+                {base && <>; it replaces the {md(base.date)} {base.kind === "check" ? "check" : "snapshot"} ({money(base.balance)})</>}
               </>
             )}
           </p>
-          {err && <p className="text-[12px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
-          <div className="flex items-center gap-2 mt-4">
-            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
-              {busy ? "Saving…" : "Save"}
-            </button>
-            <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
-              Cancel
-            </button>
-          </div>
+          {err && <p className="mt-2 text-destructive text-sm">{err}</p>}
+        </div>
+        <div className="flex gap-2 justify-end px-5 pb-5">
+          <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={onClose}>CANCEL</button>
+          <button
+            className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
+            style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
+            disabled={busy || future}
+            onClick={save}
+          >
+            {busy ? "SAVING…" : "SAVE"}
+          </button>
         </div>
       </div>
     </div>

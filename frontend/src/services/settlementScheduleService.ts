@@ -1,6 +1,11 @@
 import api from "./api";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 
+const dayInWeek = (v: unknown, fallback: number): number => {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 6 ? n : fallback;
+};
+
 const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   linehaul_pct: Number(s.linehaul_pct),
   trailer_pct: Number(s.trailer_pct),
@@ -30,8 +35,10 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   rate_tier_spec_strong:
     s.rate_tier_spec_strong != null ? Number(s.rate_tier_spec_strong) : 0.6,
   margin_goal: s.margin_goal != null ? Number(s.margin_goal) : 0.26,
-  settlement_day: s.settlement_day != null ? Number(s.settlement_day) : 3,
-  deposit_lag_days: s.deposit_lag_days != null ? Number(s.deposit_lag_days) : 1,
+  // A weekday is 0–6 and a lag is 0–6 days; anything else (a bad column, NaN)
+  // would spin the cash board's statement walk — the house defaults instead.
+  settlement_day: dayInWeek(s.settlement_day, 3),
+  deposit_lag_days: dayInWeek(s.deposit_lag_days, 1),
 });
 
 export const getSettlementSchedule = async (): Promise<SettlementSchedule> => {
