@@ -92,10 +92,12 @@ export async function getTrip(user_id, trip_id) {
 }
 
 // ---- GET LATEST ODOMETER SERVICE ----
-// Highest odometer_end across BOTH loads and trips = the truck's furthest
-// recorded point. Used to prefill a new trip's odometer_start so segments tile
-// (each trip starts where the last load/trip ended). GREATEST ignores NULLs
-// unless every source is NULL (brand-new account) → returns null.
+// The truck's furthest recorded point — the highest reading anywhere in the
+// app: a load's end, a trip's end, a fuel fill-up, a tractor-side shop visit.
+// The same four sources the trucks API rolls up, so a trip started after a
+// fill-up prefills from the fill, never from an older load (Jason, 2026-10-01:
+// a fuel reading entered late must never show the truck "in the past").
+// GREATEST ignores NULLs unless every source is NULL (brand-new account) → null.
 // NOTE: global across all trucks — correct while the operation runs ONE truck;
 // scope these subqueries by truck_id if a second truck is ever added.
 export async function getLatestOdometer(user_id) {
@@ -104,7 +106,10 @@ export async function getLatestOdometer(user_id) {
   const query = `
         SELECT GREATEST(
             (SELECT MAX(odometer_end) FROM loads WHERE user_id = $1),
-            (SELECT MAX(odometer_end) FROM trips WHERE user_id = $1)
+            (SELECT MAX(odometer_end) FROM trips WHERE user_id = $1),
+            (SELECT MAX(odometer_reading) FROM fuel_entries WHERE user_id = $1),
+            (SELECT MAX(odometer) FROM maintenance_services
+              WHERE user_id = $1 AND unit IN ('tractor', 'both'))
         ) AS latest_odometer;
     `;
 
