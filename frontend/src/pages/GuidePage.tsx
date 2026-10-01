@@ -345,7 +345,7 @@ const NAV: { group: string; items: string[] }[] = [
       "The market ledger — out and in",
       "The reload cost — what a stop leaves you",
       "Outstanding loads — how long money sits",
-      "The cash board — pay week by pay week",
+      "The cash board — this period and the next",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -1380,41 +1380,38 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="The cash board — pay week by pay week"
-            answers="Four pay weeks of real money — the week before, last, this, next — each with its own deposit on its own Thursday, its accrual, its drafts, and whether the ending stays above your float."
+            title="The cash board — this period and the next"
+            answers="Two pay periods, the one you’re running and the next: what each one earns against what it carries, and the Ops you’ll have after it settles."
             sources={[{ label: "Cash Flow", to: "/cashflow" }]}
           >
             <Formula>
-              deposit = the pay week’s delivered loads at net (+ what’s still on
-              the road, expected, while the week is open) − the same week’s fuel
-              − the deductions bucket · lands settlement day + the lag · the
-              column’s cash runs Thursday → Wednesday: opening + deposit −
-              payroll − accrual − drafts = ending
+              deposit = delivered loads at net (+ loads still on the road,
+              expected) − the fuel advance drawn against them − the fixed
+              deductions · ending = your Ops number + last period’s deposit (if
+              it lands after your number) + this period’s deposit − payroll −
+              accrual − bills + the card leftover − a run money day
             </Formula>
             <Why>
-              A pay week runs Wednesday to Tuesday; its statement is cut the
-              next Wednesday and the cash lands Thursday — and that Thursday
-              belongs to the pay week that earned it. So every column is one
-              pay week: what it delivered (a load counts as delivered only when
-              its status says so; a load still on the road with a planned
-              delivery is <span className="text-light">expected</span>, named as
-              such), what it bought in fuel (the log’s actual once the week
-              closes, the 30-day pace while it’s open, never under the fills so
-              far), the deductions bucket (the first statement of a month
-              carries the insurance), and its deposit. The feed’s actual net
-              wins the moment the statement is in the vault; tapping the figure
-              types the number you know before the statement lands. The
-              column’s cash then runs from that Thursday to the next
-              Wednesday: its accrual on that Friday, payroll, the drafts on
-              their days, the ending. The board simulates day by day from the
-              latest balance it was handed — a Friday snapshot or an{" "}
-              <span className="text-light">OPS NOW</span> check — and every
-              later balance you type is a check: the printed gap is what dash
-              doesn’t see (card charges, transfers), so name it in the note;
-              the board re-bases from every check. When a snapshot’s
-              Maintenance balance already shows the accrual, it isn’t taken
-              twice. The week before stays on the board with its checks so
-              last week’s money can be held against the bank.
+              A pay period runs Wednesday to Tuesday. Whatever it delivers goes
+              on the next Wednesday’s statement and lands Thursday — and that
+              money belongs to the period that earned it. So each column is
+              one period: its deposit (delivered loads minus Landstar’s cut
+              plus accessorials, minus the advance borrowed against those loads
+              — $2,000 a week unless the fills pass it, the statement’s actual
+              once it’s in the vault — minus the small fixed deductions; a load
+              still on the road is <span className="text-light">expected</span>,
+              never delivered), the fixed payroll on Friday, the accrual on the
+              period’s own miles by odometer paid the Friday after it closes,
+              the bills on their draft days, and the fuel: fills are paid from
+              the card the advance lands on, so they never come out of Ops, and
+              what’s left on the card after the fills goes to business checking
+              on Monday. The current column opens on your latest number — an{" "}
+              <span className="text-light">OPS NOW</span> balance or the Friday
+              snapshot — and only what’s dated on or after it comes off;
+              anything earlier is shown but already inside the number. The
+              bottom line is Ops after the period settles, and it opens the next
+              column. Tap a deposit to type the figure you know before the
+              statement lands.
             </Why>
           </Metric>
 

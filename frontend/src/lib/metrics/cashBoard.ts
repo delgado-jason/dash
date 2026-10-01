@@ -1,38 +1,36 @@
-// THE CASH BOARD, anchored (Nod Sheet rev 3, nodded 2026-09-30, all nine
-// leans; #502). Pure, plan-as-input. Three PAY WEEKS (Wednesday → Tuesday):
-// last (closed) · this (open) · next — rolling only on Tuesday night.
+// THE CASH BOARD — two pay periods, each the money it earns against what it
+// carries (Jason, 2026-10-01, answered question by question):
 //
-//   Each pay week carries its own DEPOSIT: its Wednesday statement = the loads
-//   it delivered at their net (a load counts as delivered only when its
-//   status says so; an in-transit or booked load with a planned delivery in
-//   an open week is EXPECTED, named as such, never "delivered") − the fuel
-//   it advanced and bought (the log's actual once the week closes, the
-//   30-day pace while open, never under the fills so far) − the deductions
-//   bucket. The feed's actual net wins when the statement is on file; a typed
-//   override beats a projection. The cash lands settlement day + the deposit
-//   lag (Wednesday statement, Thursday cash) — and that Thursday belongs to
-//   the pay week that earned it (Jason, 2026-09-30: "the last week deposit
-//   would be this week's net deposit reflected on my statement"). So each
-//   column's CASH runs from its own deposit day to the day before the next
-//   one: Thursday → Wednesday. The pay week's own accrual is paid on that
-//   Friday, its payroll too, the drafts on their days.
-//   The board simulates day by day from the latest balance it was handed —
-//   a Friday snapshot or an OPS NOW check — and every later check prints
-//   its GAP against the board's figure for that day (after the bank's own
-//   events, before Jason's moves), then re-bases. The gap is, by design,
-//   what dash doesn't see.
-//   The Plan's moves leave Ops here too: the Friday ACCRUAL (miles × $/mile
-//   — a snapshot's own miles when it carries them, else the pay week's
-//   odometer miles, else the loads'), and a run MONEY DAY's outflow on the
-//   day of its snapshot. When a snapshot's Maintenance balance already shows
-//   the accrual, the move was made before the snapshot: it isn't taken twice.
+//   "All I need is the current week I'm running and the next week after
+//   that." A pay period runs Wednesday → Tuesday. Whatever it delivers goes on
+//   the NEXT Wednesday's statement and lands in the bank Thursday — and that
+//   money belongs to the period that earned it, so each column shows its own
+//   deposit: delivered loads minus Landstar's cut plus accessorials, minus
+//   the fuel advances drawn in the period (borrowed against those loads —
+//   $2,000 a week unless the fills pass it; the statement's actual once it's
+//   in the vault), minus the small fixed deductions. A load still on the road
+//   is EXPECTED, never delivered.
+//   Fuel is paid from the card the advance lands on, so the fills never come
+//   out of Ops; what's left on the card after the fills goes to business
+//   checking every MONDAY. Payroll is the fixed weekly figure, Friday. The
+//   accrual is the period's own miles, Wednesday → Tuesday, by odometer, paid
+//   the Friday after the period closes. Bills draft on their days. A run money
+//   day leaves Ops on its day.
+//   "Whenever I update my ops number, any expenses that come out on a date
+//   that's on that date or after that date should get subtracted" — the
+//   current column opens on the latest balance typed (OPS NOW or the Friday
+//   snapshot); everything dated before it is already inside the number and is
+//   shown but not counted. The previous period's deposit, landing on the
+//   Thursday inside the current period, is added when it lands after that
+//   number. The bottom carries to the next column as its opening.
+//   No gap line. Dates are the #1 bug: every date is a sliced calendar day.
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
 import type { SettlementSummary } from "@/types/settlement";
 import { expectedPayDate, nextDraftDate } from "./cashflow";
 import { isFirstOfMonth, type DeductionBuckets } from "./settlements";
 import { loadNetRevenue } from "./rateTargets";
-import { payWeekOf, weeksOwed, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
+import { payWeekOf, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
 import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type OdometerReading } from "./odometer";
 import { accrualFlagOf } from "./planStatus";
 
@@ -41,10 +39,7 @@ export interface CashCheck {
   balance: number; // the bank's Ops balance
   kind: "snapshot" | "check";
   note: string | null;
-  // snapshot-only
-  miles?: number | null; // the accrual it made
-  maintenance?: number | null; // its Maintenance balance — "already moved" reads from this
-  settlesMonth?: string | null;
+  settlesMonth?: string | null; // a snapshot that ran a money day
 }
 
 export interface FuelLike {
@@ -74,124 +69,83 @@ export interface CashBoardInput {
   perMile: number; // the plan's maintenance $/mile
   fuelPaceWeekly: number | null; // the 30-day pace; null → fuelFallback
   fuelFallback: number;
+  advanceDefault: number; // the weekly fuel advance borrowed against the loads — $2,000
   buckets: DeductionBuckets;
   deductionsFallback: number;
-  weeklyRevenueFallback: number; // when no loads are booked into a week yet
+  weeklyRevenueFallback: number; // when nothing is booked into a period yet
   moneyDays: MoneyDayMove[];
-  overrides: Record<string, number>; // statement date → net pay
+  overrides: Record<string, number>; // statement date → deposit
 }
 
-export interface NetPayCell {
+// A dated line. `counted` = it comes off (or goes into) the column's Ops:
+// dated on or after the Ops number in the current column, always in the next.
+export interface Line {
+  amount: number;
+  date: string;
+  counted: boolean;
+}
+
+export interface DepositLine extends Line {
+  week: PayWeek; // the period that earned it
   statementDate: string;
-  depositDate: string;
-  amount: number | null;
   source: "actual" | "override" | "projected" | "fallback";
   loads: number; // delivered — status says so
   loadsNet: number;
-  // Open/future weeks only: loads with a planned delivery inside the week
-  // that haven't delivered yet. Counted in the projection, never as delivered.
   inTransit: number;
   booked: number;
   expectedNet: number;
-  fuel: number;
-  fuelSource: "actual" | "pace";
+  advances: number; // drawn in the period — the statement's actual, else assumed
+  // actual = the statement · assumed = the $2,000 you borrow · fills = the
+  // logged fills passed it · pace = the projected fuel at the 30-day pace passes it
+  advancesSource: "actual" | "assumed" | "fills" | "pace";
   bucket: number;
   bucketKind: "first" | "standard" | "fallback";
-  advances: number | null; // the statement's advances, when actual
-  net: number | null; // the statement's net, when actual
 }
 
-export interface FuelCell {
-  amount: number;
-  source: "actual" | "pace";
+export interface FuelLine {
+  spent: number; // the period's fills — actual once closed, projected while open
+  spentSource: "actual" | "pace";
   fills: number;
   soFar: number;
-  statementDate: string;
-  depositDate: string;
+  advances: number;
+  advancesSource: DepositLine["advancesSource"];
+  leftover: Line; // advances − spent → Ops, the Monday inside the period
 }
 
-export interface AccrualCell {
-  amount: number;
-  source: "snapshot" | "odometer" | "loads" | "none";
-  weekLabel: string | null;
+export interface AccrualLine extends Line {
   miles: number | null;
-  words: string | null; // "1,990 mi by odometer (603,232 on Sep 22 → 605,222 on Sep 29)"
-  alreadyMoved: boolean;
-  date: string | null;
-  // The chain's health, carried so the board can print it. Odometers are
-  // hand-typed at every fill: a reading that goes backwards is a typo, and so
-  // is one typed too HIGH (an impossible week). The flag is accrualFlagOf's
-  // own sentence, so the board and the Plan page say the same thing.
-  backwards: number; // readings that go backwards inside the accrued span
-  implausibleMiles: number | null; // the largest week delta too big to be real
+  source: "odometer" | "loads" | "none";
+  words: string | null;
   flag: string | null;
 }
 
-export interface CheckCell {
-  date: string;
-  kind: CashCheck["kind"];
-  balance: number;
-  projected: number | null; // what the board said for that day
-  gap: number | null; // balance − projected; null for the base check
-  note: string | null;
-}
-
-export interface BillCell {
+export interface BillLine {
   label: string;
   amount: number;
   date: string;
+  counted: boolean;
 }
 
-export interface BoardDay {
-  date: string;
-  morning: number | null;
-  deposit: number | null;
-  payroll: number;
-  bills: BillCell[];
-  accrual: number;
-  moneyDay: MoneyDayMove | null;
-  // Every balance typed for the day, in order — a Friday can carry both the
-  // snapshot and an OPS NOW check, and the board must print both.
-  checks: CheckCell[];
-  // The board's own figure for the day: the morning plus the bank's own
-  // events, before Jason's moves. This is what a check's gap is measured
-  // against, so OPS NOW and the Checked row read the same number.
-  afterBank: number | null;
-  end: number | null;
-}
-
-export interface BoardWeek {
-  key: "before" | "last" | "this" | "next";
-  week: PayWeek; // the pay week — the identity of the column
-  // The column's CASH days: its own deposit day (Thursday) through the day
-  // before the next one (Wednesday).
-  cycle: PayWeek;
-  // done = its cash days are behind us · closed = the pay week closed, its
-  // cash landing Thursday · open = the pay week is running · future
-  state: "done" | "closed" | "open" | "future";
-  opening: number | null; // the board's figure for the cycle's first morning
-  openingCheck: CheckCell | null; // the balance typed on the eve or the morning of the cycle, if any
-  netPay: NetPayCell; // the week's own statement — and its deposit
-  payroll: number;
-  accrual: AccrualCell;
-  bills: BillCell[];
-  billsTotal: number;
-  fuel: FuelCell;
-  moneyDays: MoneyDayMove[];
-  checks: CheckCell[];
+export interface PeriodColumn {
+  key: "current" | "next";
+  week: PayWeek;
+  state: "open" | "future";
+  opening: number | null;
+  prevDeposit: DepositLine | null; // last period's money landing inside this period — current column only
+  deposit: DepositLine; // this period's own, landing after it closes
+  payroll: Line;
+  accrual: AccrualLine;
+  fuel: FuelLine;
+  bills: BillLine[];
+  billsTotal: number; // counted only
+  moneyDays: (MoneyDayMove & { counted: boolean })[];
   ending: number | null;
-  days: BoardDay[];
 }
 
 export interface CashBoard {
-  weeks: [BoardWeek, BoardWeek, BoardWeek, BoardWeek]; // before · last · this · next
-  base: CashCheck;
-  // Every day the board actually simulated — base.date through the end of
-  // next week. Wider than the three assembled weeks, which start at last
-  // week's Wednesday: a check dated between the base and the window has a
-  // figure here and nowhere else.
-  days: BoardDay[];
-  lowest: { amount: number; date: string } | null; // from today through next week
+  columns: [PeriodColumn, PeriodColumn];
+  base: CashCheck; // the Ops number the current column opens on
+  lowest: number | null; // the lower of the two endings
   clears: boolean | null;
 }
 
@@ -205,22 +159,25 @@ const num = (v: number | string | null | undefined): number => {
 const day = (v: string | null | undefined): string => String(v ?? "").slice(0, 10);
 const dow = (k: string): number => new Date(`${k}T00:00:00Z`).getUTCDay();
 const round2 = (n: number): number => Math.round(n * 100) / 100;
-
 const fmtMiles = (n: number): string => Math.round(n).toLocaleString("en-US");
 const mdWords = (k: string): string =>
   new Date(`${k}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const fmtMoney2 = (n: number): string => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// The first settlement day strictly after a pay week closes — its statement.
-const statementDateOf = (week: PayWeek, settlementDay: number): string => {
-  // A schedule outside 0–6 would spin forever — Wednesday is the house default.
+// The first settlement day strictly after a pay period closes — its statement.
+export const statementDateOf = (week: PayWeek, settlementDay: number): string => {
   const sd = Number.isInteger(settlementDay) && settlementDay >= 0 && settlementDay <= 6 ? settlementDay : 3;
   let d = addDays(week.end, 1);
   while (dow(d) !== sd) d = addDays(d, 1);
   return d;
 };
+// The first given weekday on or after a day.
+const nextDow = (from: string, target: number): string => {
+  let d = from;
+  while (dow(d) !== target) d = addDays(d, 1);
+  return d;
+};
 
-// ---- fuel by pay week ----
+// ---- fuel ----
 
 const fillsIn = (fuel: FuelLike[], week: PayWeek, upTo?: string): { total: number; count: number } => {
   let total = 0;
@@ -236,37 +193,51 @@ const fillsIn = (fuel: FuelLike[], week: PayWeek, upTo?: string): { total: numbe
   return { total: round2(total), count };
 };
 
+// The period's fuel: the log's fills once the period closes; while it's open,
+// the fills so far or the 30-day pace, whichever is larger; a future period
+// at the pace. The advance drawn against the period's loads: the statement's
+// actual once it's in the vault, else $2,000 unless the fills pass it. What's
+// left on the card after the fills goes to Ops on the Monday inside the period.
 export const fuelForWeek = (
-  fuel: FuelLike[],
+  input: Pick<CashBoardInput, "fuelEntries" | "today" | "fuelPaceWeekly" | "fuelFallback" | "advanceDefault" | "settlements" | "settlementDay">,
   week: PayWeek,
-  today: string,
-  pace: number | null,
-  fallback: number,
-  settlementDay: number,
-  lag: number,
-): FuelCell => {
-  const statementDate = statementDateOf(week, settlementDay);
-  const depositDate = addDays(statementDate, lag);
-  const paceWeekly = pace ?? fallback;
-  if (week.end < today) {
-    const { total, count } = fillsIn(fuel, week);
-    return { amount: total, source: "actual", fills: count, soFar: total, statementDate, depositDate };
-  }
-  const { total, count } = fillsIn(fuel, week, today);
-  return { amount: Math.max(paceWeekly, total), source: "pace", fills: count, soFar: total, statementDate, depositDate };
+  base?: string,
+): FuelLine => {
+  const paceWeekly = input.fuelPaceWeekly ?? input.fuelFallback;
+  const closed = week.end < input.today;
+  const { total, count } = closed ? fillsIn(input.fuelEntries, week) : fillsIn(input.fuelEntries, week, input.today);
+  const spent = closed ? total : Math.max(paceWeekly, total);
+  const statementDate = statementDateOf(week, input.settlementDay);
+  const actual = input.settlements.find((s) => day(s.period_ending) === statementDate);
+  const advancesActual = actual ? num(actual.advances) : null;
+  const advances = advancesActual ?? Math.max(input.advanceDefault, spent);
+  const advancesSource: FuelLine["advancesSource"] =
+    advancesActual != null ? "actual" : spent <= input.advanceDefault ? "assumed" : total > input.advanceDefault ? "fills" : "pace";
+  const monday = nextDow(week.start, 1);
+  return {
+    spent, spentSource: closed ? "actual" : "pace", fills: count, soFar: total,
+    advances, advancesSource,
+    leftover: { amount: round2(Math.max(0, advances - spent)), date: monday, counted: base == null || monday >= base },
+  };
 };
 
-// ---- a week's own net pay ----
+// ---- a period's own deposit ----
 
-export const netPayForWeek = (input: CashBoardInput, week: PayWeek): NetPayCell => {
+export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: string): DepositLine => {
   const { settlements, loads, overrides, buckets, deductionsFallback, weeklyRevenueFallback, today } = input;
   const statementDate = statementDateOf(week, input.settlementDay);
-  const depositDate = addDays(statementDate, input.depositLagDays);
-  const fuel = fuelForWeek(input.fuelEntries, week, today, input.fuelPaceWeekly, input.fuelFallback, input.settlementDay, input.depositLagDays);
+  const date = addDays(statementDate, input.depositLagDays);
+  // A deposit is there by morning. A balance typed the day it lands already
+  // holds it (Jason: "if you type after it landed, it's already in your
+  // number"), so a deposit counts only when it lands strictly AFTER the Ops
+  // number; an expense dated the same day still comes off ("on that date or
+  // after that date").
+  const counted = base == null || date > base;
+  const fuel = fuelForWeek(input, week, base);
   const first = isFirstOfMonth(statementDate);
   const bucketVal = first ? (buckets.firstOfMonth ?? buckets.standard) : (buckets.standard ?? buckets.firstOfMonth);
   const bucket = bucketVal ?? deductionsFallback;
-  const bucketKind: NetPayCell["bucketKind"] = bucketVal == null ? "fallback" : first ? "first" : "standard";
+  const bucketKind: DepositLine["bucketKind"] = bucketVal == null ? "fallback" : first ? "first" : "standard";
 
   let loadsNet = 0;
   let count = 0;
@@ -274,15 +245,11 @@ export const netPayForWeek = (input: CashBoardInput, week: PayWeek): NetPayCell 
   let booked = 0;
   let expectedNet = 0;
   const closed = week.end < today;
-  // Every non-cancelled load whose statement is this week's belongs to it —
-  // dash's payment flag is NOT consulted. Jason marks loads paid by hand the
-  // morning the cash lands, often before the statement PDF reaches the vault;
-  // skipping them collapsed a closed week's own net pay (and the deposit it
-  // lands) toward zero. There is no double-count: the `actual` settlement
-  // below wins the moment the statement is on file.
-  // DELIVERED means the status says so. A load still on the road with a
-  // planned delivery date is expected, and only into a week that hasn't
-  // closed — a closed week it didn't deliver into gets nothing from it.
+  // Delivered means the status says so. A load still on the road with a
+  // planned delivery date is expected, and only into a period that hasn't
+  // closed. dash's payment flag is NOT consulted — Jason marks loads paid by
+  // hand the morning the cash lands, often before the statement reaches the
+  // vault; the statement's actual below wins the moment it's on file.
   for (const l of loads) {
     if (l.load_status === "cancelled") continue;
     const isDelivered = DELIVERED.has(String(l.load_status));
@@ -300,314 +267,126 @@ export const netPayForWeek = (input: CashBoardInput, week: PayWeek): NetPayCell 
   }
   loadsNet = round2(loadsNet);
   expectedNet = round2(expectedNet);
-  const base = { statementDate, depositDate, loads: count, loadsNet, inTransit, booked, expectedNet, fuel: fuel.amount, fuelSource: fuel.source, bucket, bucketKind };
-
+  const baseLine = {
+    week, statementDate, date, counted, loads: count, loadsNet, inTransit, booked, expectedNet,
+    advances: fuel.advances, advancesSource: fuel.advancesSource, bucket, bucketKind,
+  };
   const actual = settlements.find((s) => day(s.period_ending) === statementDate);
-  if (actual) {
-    return { ...base, amount: round2(num(actual.net)), source: "actual", advances: num(actual.advances), net: round2(num(actual.net)) };
-  }
-  if (overrides[statementDate] != null) {
-    return { ...base, amount: overrides[statementDate], source: "override", advances: null, net: null };
-  }
-  // Nothing delivered or expected into a week that hasn't closed → the
-  // planning fallback. A closed week with nothing delivered really did earn
-  // nothing.
+  if (actual) return { ...baseLine, amount: round2(num(actual.net)), source: "actual" };
+  if (overrides[statementDate] != null) return { ...baseLine, amount: overrides[statementDate], source: "override" };
   if (count + inTransit + booked === 0 && !closed) {
-    return { ...base, amount: round2(weeklyRevenueFallback - fuel.amount - bucket), source: "fallback", advances: null, net: null };
+    return { ...baseLine, amount: round2(weeklyRevenueFallback - fuel.advances - bucket), source: "fallback" };
   }
-  return { ...base, amount: round2(loadsNet + expectedNet - fuel.amount - bucket), source: "projected", advances: null, net: null };
+  return { ...baseLine, amount: round2(loadsNet + expectedNet - fuel.advances - bucket), source: "projected" };
 };
 
-// ---- the Friday accrual ----
+// ---- the period's accrual: its own miles, paid the Friday after it closes ----
 
-const noAccrual = (onDay: string | null): AccrualCell => ({
-  amount: 0, source: "none", weekLabel: null, miles: null, words: null,
-  alreadyMoved: false, date: onDay, backwards: 0, implausibleMiles: null, flag: null,
-});
-
-const projectedAccrual = (
-  input: CashBoardInput,
-  onDay: string,
-  lastAccrued: string | null,
-): { cell: AccrualCell; lastAccrued: string | null } => {
-  const { weeks } = weeksOwed(onDay, lastAccrued);
-  if (weeks.length === 0) {
-    return { cell: noAccrual(onDay), lastAccrued };
+export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: string): AccrualLine => {
+  const closed = week.end < input.today;
+  const future = week.start > input.today;
+  const odo = weekOdometerMiles(input.readings, week, closed ? undefined : input.today);
+  const byLoads = milesInWeeks(input.loads, [week]);
+  const date = nextDow(addDays(week.end, 1), 5); // the Friday after the period closes
+  const counted = base == null || date >= base;
+  let miles: number;
+  let source: AccrualLine["source"];
+  let words: string;
+  if (future) {
+    // Nothing has rolled yet — only the loads booked into the period say anything.
+    miles = byLoads.miles;
+    source = byLoads.loads > 0 ? "loads" : "none";
+    words = byLoads.loads > 0 ? `${fmtMiles(byLoads.miles)} mi by the loads booked so far · grows as loads land` : "nothing yet · grows as loads land";
+  } else if (odo.miles == null) {
+    miles = byLoads.miles;
+    source = byLoads.loads > 0 ? "loads" : "none";
+    words = `${fmtMiles(byLoads.miles)} mi by loads — no odometer reading before ${weekLabel(week)}`;
+  } else if (closed) {
+    miles = odo.miles;
+    source = "odometer";
+    words = `${fmtMiles(odo.miles)} mi by odometer (${readingWords(odo.start!)} → ${readingWords(odo.end!)}) × $${input.perMile} · loads said ${fmtMiles(byLoads.miles)}`;
+  } else {
+    miles = Math.max(odo.miles, byLoads.miles);
+    source = odo.miles >= byLoads.miles ? "odometer" : "loads";
+    words = `odometer ${fmtMiles(odo.miles)} mi so far${odo.end ? ` (last reading ${mdWords(odo.end.date)})` : ""} · loads picked up say ${fmtMiles(byLoads.miles)} · the larger, grows as readings land`;
   }
-  let miles = 0;
-  let source: AccrualCell["source"] = "odometer";
-  let backwards = 0;
-  let implausible: number | null = null;
-  let noDeadhead = 0;
-  let loadCount = 0;
-  const words: string[] = [];
-  for (const w of weeks) {
-    const closed = w.end < input.today;
-    const odo = weekOdometerMiles(input.readings, w, closed ? undefined : input.today);
-    const byWeek = milesInWeeks(input.loads, [w]);
-    const byLoads = byWeek.miles;
-    noDeadhead += byWeek.noDeadhead;
-    loadCount += byWeek.loads;
-    // A reading that goes backwards is a typo; so is one typed too HIGH,
-    // which `backwardsReadings` can't see because it never goes down.
-    backwards += odo.backwards.length;
-    if (odo.miles != null && odo.miles > IMPLAUSIBLE_WEEK_MI && odo.miles > (implausible ?? 0))
-      implausible = odo.miles;
-    if (odo.miles == null) {
-      miles += byLoads;
-      source = "loads";
-      words.push(`${fmtMiles(byLoads)} mi by loads (no reading before ${weekLabel(w)})`);
-    } else if (closed) {
-      miles += odo.miles;
-      words.push(`${fmtMiles(odo.miles)} mi by odometer (${readingWords(odo.start!)} → ${readingWords(odo.end!)}) × $${input.perMile} · loads said ${fmtMiles(byLoads)}`);
-    } else {
-      const m = Math.max(odo.miles, byLoads);
-      miles += m;
-      words.push(`odometer ${fmtMiles(odo.miles)} mi so far${odo.end ? ` (no reading since ${mdWords(odo.end.date)})` : ""} · loads picked up say ${fmtMiles(byLoads)} · the larger, grows as readings land`);
-    }
-  }
-  const label = weeks.length === 1 ? weekLabel(weeks[0]) : weekLabel({ start: weeks[0].start, end: weeks[weeks.length - 1].end });
+  const implausible = odo.miles != null && odo.miles > IMPLAUSIBLE_WEEK_MI ? odo.miles : null;
   const flag = accrualFlagOf({
-    miles, weekLabel: label, loads: loadCount, loadedMiles: 0, deadheadMiles: 0, noDeadhead,
-    source: source === "odometer" ? "odometer" : "loads", backwards, implausibleMiles: implausible,
+    miles, weekLabel: weekLabel(week), loads: byLoads.loads, loadedMiles: byLoads.loadedMiles, deadheadMiles: byLoads.deadheadMiles,
+    noDeadhead: byLoads.noDeadhead, source: odo.miles == null ? "loads" : "odometer", odometerMiles: odo.miles,
+    loadsMiles: byLoads.miles, readingsWords: odo.start && odo.end ? `${readingWords(odo.start)} → ${readingWords(odo.end)}` : null,
+    endSlips: odo.endSlips, backwards: odo.backwards.length, implausibleMiles: implausible,
   });
-  return {
-    cell: {
-      amount: round2(miles * input.perMile), source, weekLabel: label, miles,
-      words: words.join(" · "), alreadyMoved: false, date: onDay,
-      backwards, implausibleMiles: implausible, flag,
-    },
-    lastAccrued: weeks[weeks.length - 1].start,
-  };
+  return { amount: round2(miles * input.perMile), date, counted, miles, source, words, flag };
 };
 
 // ---- bills ----
 
-const billsOn = (obligations: Obligation[], dayKey: string): BillCell[] =>
-  obligations
-    .filter((o) => o.active && o.day_of_month != null && nextDraftDate(o.day_of_month!, dayKey) === dayKey)
-    .map((o) => ({ label: o.label, amount: num(o.draft_amount ?? o.amount), date: dayKey }));
+const billsIn = (obligations: Obligation[], week: PayWeek, base?: string): BillLine[] => {
+  const out: BillLine[] = [];
+  for (let d = week.start; d <= week.end; d = addDays(d, 1)) {
+    for (const o of obligations) {
+      if (!o.active || o.day_of_month == null) continue;
+      if (nextDraftDate(o.day_of_month, d) !== d) continue;
+      out.push({ label: o.label, amount: num(o.draft_amount ?? o.amount), date: d, counted: base == null || d >= base });
+    }
+  }
+  return out;
+};
 
 // ---- the board ----
 
 export const buildCashBoard = (input: CashBoardInput): CashBoard | null => {
-  const checks = [...input.checks].map((c) => ({ ...c, date: day(c.date) })).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.kind === "snapshot" ? -1 : 1));
+  const checks = [...input.checks].map((c) => ({ ...c, date: day(c.date) })).filter((c) => c.date <= input.today);
   if (checks.length === 0) return null;
+  // The Ops number: the latest balance typed; on a day with both, the check
+  // (typed later in the day than the Friday snapshot's raw balances).
+  checks.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.kind === "snapshot" ? -1 : 1));
+  const base = checks[checks.length - 1];
+  const B = base.date;
 
-  const thisWeek = payWeekOf(input.today);
-  const shift = (w: PayWeek, n: number): PayWeek => ({ start: addDays(w.start, n), end: addDays(w.end, n) });
-  const lastWeek = shift(thisWeek, -7);
-  const beforeWeek = shift(thisWeek, -14);
-  const nextWeek = shift(thisWeek, 7);
-  const cycleOf = (w: PayWeek): PayWeek => ({
-    start: addDays(statementDateOf(w, input.settlementDay), input.depositLagDays),
-    end: addDays(addDays(statementDateOf(shift(w, 7), input.settlementDay), input.depositLagDays), -1),
-  });
-  // Simulate from the week before's cash days through next week's.
-  const windowStart = cycleOf(beforeWeek).start;
-  const windowEnd = cycleOf(nextWeek).end;
+  const current = payWeekOf(input.today);
+  const next: PayWeek = { start: addDays(current.start, 7), end: addDays(current.end, 7) };
+  const prev: PayWeek = { start: addDays(current.start, -7), end: addDays(current.end, -7) };
 
-  // The base: the latest balance at or before the window, else the first one inside it.
-  const before = checks.filter((c) => c.date <= windowStart);
-  const base = before.length ? before[before.length - 1] : checks.find((c) => c.date <= windowEnd) ?? null;
-  if (!base) return null;
+  const build = (key: PeriodColumn["key"], week: PayWeek, opening: number | null, base?: string): PeriodColumn => {
+    const deposit = depositForWeek(input, week, base);
+    const fuel = fuelForWeek(input, week, base);
+    const accrual = accrualForWeek(input, week, base);
+    const payrollDate = nextDow(week.start, 5);
+    const payroll: Line = { amount: input.weeklyPayroll, date: payrollDate, counted: base == null || payrollDate >= base };
+    const bills = billsIn(input.obligations, week, base);
+    const moneyDays = input.moneyDays
+      .map((m) => ({ ...m, date: day(m.date) }))
+      .filter((m) => m.date >= week.start && m.date <= week.end)
+      .map((m) => ({ ...m, counted: base == null || m.date >= base }));
+    // Last period's deposit lands on the Thursday inside the current period.
+    const prevDeposit = key === "current" ? depositForWeek(input, prev, base) : null;
+    const prevIn = prevDeposit && prevDeposit.date >= week.start && prevDeposit.date <= week.end ? prevDeposit : null;
 
-  // The net pay of every pay week whose deposit can land in the window.
-  const netPayByStatement = new Map<string, NetPayCell & { week: PayWeek }>();
-  let w: PayWeek = shift(beforeWeek, -7);
-  while (w.start <= windowEnd) {
-    const cell = netPayForWeek(input, w);
-    netPayByStatement.set(cell.statementDate, { ...cell, week: w });
-    w = { start: addDays(w.start, 7), end: addDays(w.end, 7) };
-  }
-  const depositByDate = new Map<string, NetPayCell & { week: PayWeek }>();
-  for (const cell of netPayByStatement.values()) depositByDate.set(cell.depositDate, cell);
-
-  // "Already moved": a snapshot whose Maintenance rose by (about) its accrual
-  // since the previous snapshot took the accrual before the balances were typed.
-  const snapshots = checks.filter((c) => c.kind === "snapshot");
-  // By identity, not by date: two snapshots can share a day (a money-day
-  // snapshot and the Friday one), and matching on the date would measure both
-  // against the same previous balance.
-  const snapAt = new Map<CashCheck, number>(snapshots.map((s, i) => [s, i]));
-  // The Maintenance delta when the move was made before the balances were
-  // typed — null when it wasn't (or can't be read).
-  const movedDelta = (c: CashCheck): number | null => {
-    if (c.kind !== "snapshot" || !c.miles || c.maintenance == null) return null;
-    const i = snapAt.get(c) ?? -1;
-    const prev = i > 0 ? snapshots[i - 1] : null;
-    if (!prev || prev.maintenance == null) return null;
-    const acc = c.miles * input.perMile;
-    const delta = c.maintenance - prev.maintenance;
-    return acc > 0 && delta >= 0.9 * acc ? round2(delta) : null;
-  };
-
-  // Day by day from the base to the end of next week.
-  const days = new Map<string, BoardDay>();
-  const accrualByDay = new Map<string, AccrualCell>();
-  const baseIndex = checks.indexOf(base);
-  const checkByDay = new Map<string, { c: CashCheck; i: number }[]>();
-  checks.forEach((c, i) => {
-    const list = checkByDay.get(c.date) ?? [];
-    list.push({ c, i });
-    checkByDay.set(c.date, list);
-  });
-  const moneyDayByDate = new Map(input.moneyDays.map((m) => [day(m.date), m]));
-
-  let balance: number | null = null;
-  let lastAccrued: string | null = null;
-  // Accruals recorded on snapshots before the base still advance the clock.
-  for (const s of snapshots) {
-    if (s.date <= base.date && s.miles) {
-      const wk = payWeekOf(addDays(s.date, -1));
-      const start = addDays(wk.start, -7);
-      if (!lastAccrued || start > lastAccrued) lastAccrued = start;
+    let ending: number | null = opening;
+    if (ending != null) {
+      if (prevIn?.counted && prevIn.amount != null) ending += prevIn.amount;
+      if (deposit.counted) ending += deposit.amount;
+      if (payroll.counted) ending -= payroll.amount;
+      if (accrual.counted) ending -= accrual.amount;
+      if (fuel.leftover.counted) ending += fuel.leftover.amount;
+      for (const b of bills) if (b.counted) ending -= b.amount;
+      for (const m of moneyDays) if (m.counted) ending -= m.amount;
+      ending = round2(ending);
     }
-  }
-
-  for (let d = base.date; d <= windowEnd; d = addDays(d, 1)) {
-    const morning: number | null = balance;
-    const dep = depositByDate.get(d);
-    const deposit = dep && d > base.date ? dep.amount : null;
-    const payroll = d > base.date && dow(d) === 5 ? input.weeklyPayroll : 0;
-    const bills = d > base.date ? billsOn(input.obligations, d) : [];
-    const billsTotal = bills.reduce((s, b) => s + b.amount, 0);
-    const bank = (deposit ?? 0) - payroll - billsTotal;
-    let after: number | null = morning == null ? null : morning + bank;
-
-    let accrual: AccrualCell = noAccrual(d);
-    const todays = checkByDay.get(d) ?? [];
-    // The accrual reads the snapshot that carries miles (a money-day snapshot
-    // beside the Friday one must not hide it); the money day, the one that
-    // ticks a month.
-    const snaps = todays.filter((x) => x.c.kind === "snapshot").map((x) => x.c);
-    const snap = snaps.find((c) => c.miles) ?? snaps[0] ?? null;
-    const settling = snaps.find((c) => c.settlesMonth) ?? null;
-
-    if (snap && snap.miles) {
-      const movedBy = movedDelta(snap);
-      const moved = movedBy != null;
-      const wk = payWeekOf(addDays(snap.date, -1));
-      const owed = weeksOwed(snap.date, lastAccrued).weeks;
-      const label = owed.length ? (owed.length === 1 ? weekLabel(owed[0]) : weekLabel({ start: owed[0].start, end: owed[owed.length - 1].end })) : weekLabel({ start: addDays(wk.start, -7), end: addDays(wk.end, -7) });
-      accrual = {
-        amount: round2(snap.miles * input.perMile), source: "snapshot", weekLabel: label, miles: snap.miles,
-        words: `${fmtMiles(snap.miles)} mi as recorded on the ${mdWords(snap.date)} snapshot${moved ? ` · already in Maintenance (+${fmtMoney2(movedBy)}) — read from the balances, not taken twice` : ""}`,
-        alreadyMoved: moved, date: d,
-        // A snapshot's miles are a recorded fact, not a delta the board
-        // computed — the Plan page's form is where they get flagged.
-        backwards: 0, implausibleMiles: null, flag: null,
-      };
-      lastAccrued = owed.length ? owed[owed.length - 1].start : addDays(wk.start, -7);
-    } else if (dow(d) === 5 && !snap) {
-      // Every Friday inside the span, not just the ones still to come: a
-      // Friday that passed with no snapshot still owes its week, and dropping
-      // it made the open week's ENDING rise by the accrual mid-week while the
-      // Plan page went on ordering it. `lastAccrued` is what stops a week
-      // accruing twice, so a past Friday with a later snapshot still resolves
-      // to the snapshot's own figure.
-      const p = projectedAccrual(input, d, lastAccrued);
-      accrual = p.cell;
-      lastAccrued = p.lastAccrued;
-    }
-
-    // The board's own figure for the day — the morning plus the bank's own
-    // events, before Jason's moves. Every check that day is measured against
-    // it, and OPS NOW prints the same number.
-    const afterBank: number | null = after == null ? null : round2(after - (accrual.alreadyMoved ? accrual.amount : 0));
-
-    // Each balance typed for the day gets its own row, measured against the
-    // running figure and re-basing from the last one: a Friday can carry both
-    // the snapshot and an OPS NOW check, and the gap between them is the whole
-    // point of the Checked row.
-    const checkCells: CheckCell[] = [];
-    // The first balance of the day is measured against the board's figure; a
-    // second one against the first, AS TYPED — a real balance already has the
-    // accrual out of it, so it must not come out twice.
-    let measureAgainst: number | null = afterBank;
-    for (const { c, i } of todays) {
-      if (i === baseIndex) {
-        checkCells.push({ date: d, kind: c.kind, balance: c.balance, projected: null, gap: null, note: c.note });
-      } else {
-        const projected = measureAgainst;
-        checkCells.push({ date: d, kind: c.kind, balance: c.balance, projected, gap: projected == null ? null : round2(c.balance - projected), note: c.note });
-      }
-      after = c.balance;
-      measureAgainst = c.balance;
-    }
-
-    const moneyDay = settling ? (moneyDayByDate.get(d) ?? null) : null;
-    let end: number | null = after;
-    if (end != null) {
-      if (accrual.amount > 0 && !accrual.alreadyMoved) end -= accrual.amount;
-      if (moneyDay) end -= moneyDay.amount;
-      end = round2(end);
-    }
-    balance = end;
-    accrualByDay.set(d, accrual);
-    days.set(d, { date: d, morning, deposit, payroll, bills, accrual: accrual.alreadyMoved ? 0 : accrual.amount, moneyDay, checks: checkCells, afterBank, end });
-  }
-
-  const assemble = (key: BoardWeek["key"], week: PayWeek): BoardWeek => {
-    const cycle = cycleOf(week);
-    const list: BoardDay[] = [];
-    for (let d = cycle.start; d <= cycle.end; d = addDays(d, 1)) {
-      const row = days.get(d);
-      list.push(row ?? { date: d, morning: null, deposit: null, payroll: 0, bills: [], accrual: 0, moneyDay: null, checks: [], afterBank: null, end: null });
-    }
-    const state: BoardWeek["state"] =
-      cycle.end <= input.today ? "done" : week.end < input.today ? "closed" : week.start > input.today ? "future" : "open";
-    const netPay = netPayByStatement.get(statementDateOf(week, input.settlementDay))!;
-    const accrualCells = list.map((x) => accrualByDay.get(x.date)).filter((a): a is AccrualCell => !!a && a.source !== "none");
-    const accrual: AccrualCell = accrualCells.length
-      ? accrualCells.reduce((a, b) => ({
-          ...b,
-          amount: round2(a.amount + b.amount),
-          words: [a.words, b.words].filter(Boolean).join(" · "),
-          miles: (a.miles ?? 0) + (b.miles ?? 0),
-          // The chain's health carries across every accrual in the week; the
-          // first flag is the worst one, so it holds.
-          backwards: a.backwards + b.backwards,
-          implausibleMiles: Math.max(a.implausibleMiles ?? 0, b.implausibleMiles ?? 0) || null,
-          flag: a.flag ?? b.flag,
-        }))
-      : noAccrual(null);
-    const bills = list.flatMap((x) => x.bills);
-    const first = days.get(cycle.start);
-    // The balance the cycle opens on: one typed on its eve (an Ops check the
-    // Wednesday before the deposit) or on its first morning — the LAST one
-    // that day is the one it actually opens on (it re-based).
-    const eve = days.get(addDays(cycle.start, -1));
-    const openingCheck = first?.checks.at(-1) ?? eve?.checks.at(-1) ?? null;
-    const last = days.get(cycle.end);
     return {
-      key, week, cycle, state,
-      opening: first?.morning ?? (openingCheck ? openingCheck.balance : null),
-      openingCheck,
-      netPay,
-      payroll: list.reduce((s, x) => s + x.payroll, 0),
-      accrual,
-      bills,
-      billsTotal: round2(bills.reduce((s, b) => s + b.amount, 0)),
-      fuel: fuelForWeek(input.fuelEntries, week, input.today, input.fuelPaceWeekly, input.fuelFallback, input.settlementDay, input.depositLagDays),
-      moneyDays: list.map((x) => x.moneyDay).filter((m): m is MoneyDayMove => !!m),
-      // Checks inside the cycle, less the one the cycle opened on from its eve.
-      checks: list.flatMap((x) => x.checks),
-      ending: last?.end ?? null,
-      days: list,
+      key, week, state: week.start > input.today ? "future" : "open", opening,
+      prevDeposit: prevIn, deposit, payroll, accrual, fuel, bills,
+      billsTotal: round2(bills.filter((b) => b.counted).reduce((s, b) => s + b.amount, 0)),
+      moneyDays, ending,
     };
   };
 
-  const weeks: [BoardWeek, BoardWeek, BoardWeek, BoardWeek] = [
-    assemble("before", beforeWeek), assemble("last", lastWeek), assemble("this", thisWeek), assemble("next", nextWeek),
-  ];
-
-  let lowest: CashBoard["lowest"] = null;
-  for (let d = input.today; d <= windowEnd; d = addDays(d, 1)) {
-    const row = days.get(d);
-    if (row?.end == null) continue;
-    if (lowest == null || row.end < lowest.amount) lowest = { amount: row.end, date: d };
-  }
-  const clears = lowest != null && input.floatLine != null ? lowest.amount >= input.floatLine : null;
-  return { weeks, base, days: [...days.values()], lowest, clears };
+  const col0 = build("current", current, base.balance, B);
+  const col1 = build("next", next, col0.ending);
+  const endings = [col0.ending, col1.ending].filter((e): e is number => e != null);
+  const lowest = endings.length ? Math.min(...endings) : null;
+  const clears = lowest != null && input.floatLine != null ? lowest >= input.floatLine : null;
+  return { columns: [col0, col1], base, lowest, clears };
 };
