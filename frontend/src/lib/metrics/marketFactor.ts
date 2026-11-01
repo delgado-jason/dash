@@ -20,14 +20,27 @@ const loadedRpm = (l: Load): number | null => {
   return miles > 0 ? loadRevenue(l) / miles : null;
 };
 
-// Below this many loads OUT of a market, we can't judge it — "thin," not graded.
-// Set to 2 so a single load is thin but a 2-load market still surfaces its signal
-// (the UI always shows the load count, so the thinness stays visible/honest). It
-// firms up as more loads log. STRONG still needs real volume (STRONG_MIN_LOADS).
-export const THIN_OUT = 2;
+// Below this many loads OUT of a market the grade is "thin" — and STRONG needs
+// the same count. One minimum for both directions (the 2026-11-01 audit: "soft"
+// fired on two loads while "strong" needed four, so the weaker call stood on
+// the weaker evidence; a two-load market still prints its figure and its count).
+export const OUT_MIN_LOADS = 4;
+export const THIN_OUT = OUT_MIN_LOADS; // the older name, same number
 const STRONG_MULT = 1.05; // pays ≥5% over your overall norm → strong
 const SOFT_MULT = 0.85; // pays ≤15% under → soft
-const STRONG_MIN_LOADS = 4; // …and enough volume to be reliable
+
+// YOUR typical outbound rate — the yardstick every market's OUT grade is read
+// against. Computed over the WHOLE book, never over the window being shown:
+// switching 12 months → this year → all time must not move the bar under a
+// market whose own numbers didn't change (the IN half has always worked this
+// way; the OUT half now does too).
+export const outYardstick = (loads: Load[]): number | null =>
+  median(
+    loads
+      .filter((l) => l.load_status === "delivered")
+      .map(loadedRpm)
+      .filter((r): r is number => r != null),
+  );
 
 export type MarketGrade = "strong" | "fair" | "soft" | "thin";
 
@@ -50,11 +63,12 @@ export interface OutboundMarket {
 export const outboundStrength = (
   loads: Load[],
   keyFor: (l: Load) => string = (l) => up(l.origin_state),
+  // The whole-book yardstick (outYardstick). Absent → these loads' own median,
+  // which is right only when `loads` IS the whole book.
+  yardstick?: number | null,
 ): Map<string, OutboundMarket> => {
   const delivered = loads.filter((l) => l.load_status === "delivered");
-  const overall = median(
-    delivered.map(loadedRpm).filter((r): r is number => r != null),
-  );
+  const overall = yardstick !== undefined ? yardstick : outYardstick(delivered);
 
   const byState = new Map<string, Load[]>();
   for (const l of delivered) {
@@ -71,9 +85,9 @@ export const outboundStrength = (
     const loadsOut = ls.length;
 
     let grade: MarketGrade;
-    if (loadsOut < THIN_OUT || medianRpm == null || overall == null) {
+    if (loadsOut < OUT_MIN_LOADS || medianRpm == null || overall == null) {
       grade = "thin";
-    } else if (medianRpm >= overall * STRONG_MULT && loadsOut >= STRONG_MIN_LOADS) {
+    } else if (medianRpm >= overall * STRONG_MULT) {
       grade = "strong";
     } else if (medianRpm <= overall * SOFT_MULT) {
       grade = "soft";
@@ -98,8 +112,10 @@ export const outboundStrength = (
 // a spread a dispatcher can act on.
 export const IN_STRONG_MULT = 0.85; // reload ≤ 85% of your median → cheap to leave
 export const IN_SOFT_MULT = 1.25; // ≥ 125% of it → expensive
-export const IN_STRONG_MIN = 3; // …and enough deliveries to mean it
-export const IN_IDLE_STRONG = 2; // days waiting for the next pickup
+// One minimum for soft and strong, like the OUT half: under it the market is thin.
+export const IN_MIN_LOADS = 4;
+export const IN_STRONG_MIN = IN_MIN_LOADS; // the older name, same number
+export const IN_IDLE_STRONG = 2; // weekdays waiting for the next pickup
 export const IN_IDLE_SOFT = 3;
 
 export interface InboundMarket {
@@ -121,10 +137,15 @@ const mean = (xs: number[]): number | null =>
 // computed over the WHOLE sequence (every delivered load, all time), never over
 // the window being displayed: a market's grade answers "how does this stop
 // compare to my book", so flipping 12 months → this year → all time must not
-// move the yardstick under a market whose own numbers didn't change.
+// move the yardstick under a market whose own numbers didn't change. A home
+// stint's reload is the run back out from Leighton, not the market's doing —
+// out of the yardstick as it is out of every grade.
 export const reloadYardstick = (seq: SequencedLoad[]): number | null =>
   median(
-    seq.map((s) => s.next?.deadheadMiles).filter((m): m is number => m != null),
+    seq
+      .filter((s) => !s.home)
+      .map((s) => s.next?.deadheadMiles)
+      .filter((m): m is number => m != null),
   );
 
 // A 0 deadhead is "not logged", never free — `sequenceLoads` already nulls it,
@@ -149,12 +170,13 @@ export const inboundStrength = (
 
   const out = new Map<string, InboundMarket>();
   for (const [state, group] of byState) {
-    const reloads = group
+    // Home time doesn't grade a market: a home stint's reload is measured from
+    // home, and its idle days were on purpose — both leave the medians.
+    const away = group.filter((s) => !s.home);
+    const reloads = away
       .map((s) => s.next?.deadheadMiles)
       .filter((m): m is number => m != null);
-    // A week off doesn't grade a market: home entries leave the idle average.
-    const idles = group
-      .filter((s) => !s.home)
+    const idles = away
       .map((s) => s.next?.idleDays)
       .filter((d): d is number => d != null);
     const rpms = group
@@ -165,14 +187,13 @@ export const inboundStrength = (
     const idleDaysAvg = mean(idles);
 
     let grade: MarketGrade;
-    if (group.length < 2 || reloadMilesMedian == null) {
+    if (group.length < IN_MIN_LOADS || reloadMilesMedian == null) {
       grade = "thin";
     } else if (
       yourMedian != null &&
       reloadMilesMedian <= yourMedian * IN_STRONG_MULT &&
       idleDaysAvg != null &&
-      idleDaysAvg <= IN_IDLE_STRONG &&
-      group.length >= IN_STRONG_MIN
+      idleDaysAvg <= IN_IDLE_STRONG
     ) {
       grade = "strong";
     } else if (
@@ -219,8 +240,12 @@ export const destinationFactor = (
   loads: Load[],
   delivery: { city: string; state: string },
   coords: CoordMap,
+  // The whole book, for the yardstick, when `loads` is a window of it (the
+  // Scorer grades on the Lanes ledger's 12-month window so the two pages can
+  // never disagree, against the same whole-book bar the ledger uses).
+  allLoads: Load[] = loads,
 ): DestinationFactor => {
-  const strengths = outboundStrength(loads);
+  const strengths = outboundStrength(loads, undefined, outYardstick(allLoads));
   const state = up(delivery.state);
   const market = strengths.get(state) ?? null;
   const strongMarkets = [...strengths.values()]

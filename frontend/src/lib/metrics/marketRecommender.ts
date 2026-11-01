@@ -1,7 +1,7 @@
 import type { Load } from "@/types/load";
 import type { Market } from "@/types/market";
 import { cityKey, haversineMiles, type CoordMap } from "./foreman";
-import { nearestHub, regionalMarketName } from "./freightHubs";
+import { nearestHub, regionalMarketName, hubsNamed, hubMarketName, FREIGHT_HUBS, primaryHub } from "./freightHubs";
 
 // A stop's market is defined by its LOCATION: all freight within this radius of a
 // freight hub belongs to that hub's market (docs/business-rules/001).
@@ -183,11 +183,28 @@ export const recommendMarket = (params: {
   // Load history lives in the SUBURBS, but a market is named for its hub. When
   // someone types the hub itself ("Atlanta"), there's no load AT Atlanta — match
   // it straight to the existing "Atlanta Market".
+  // …but with the STATE: "Charleston" is a market in SC and a city in WV, and
+  // Portland is a hub twice. When the typed state is known and a seeded hub
+  // carries this name, the hub must sit in that state; a name no hub knows
+  // can't be checked and matches as before.
   const cityN = norm(city);
   if (cityN) {
-    const hub = markets.find(
-      (m) => norm(stripMarketSuffix(m.market_name)) === cityN,
-    );
+    const named = hubsNamed(cityN);
+    const seenInState = (market_id: string): boolean | null => {
+      const seen = stops.filter((s) => s.market_id === market_id);
+      return seen.length === 0 ? null : seen.some((s) => norm(s.state) === stateKey);
+    };
+    const hub = markets.find((m) => {
+      const stripped = norm(stripMarketSuffix(m.market_name));
+      if (stateKey && stripped === `${cityN}, ${stateKey}`) return true; // "Portland, ME Market"
+      if (stripped !== cityN) return false;
+      if (!stateKey) return true; // nothing typed yet to disagree with
+      const history = seenInState(m.market_id);
+      if (history != null) return history; // your own loads say which state this market is
+      if (named.length === 1) return norm(named[0].state) === stateKey; // one hub of that name: it sits in one state
+      if (named.length > 1) return false; // two hubs share the name and nothing says which — don't guess
+      return true; // a name no hub knows can't be checked
+    });
     if (hub) {
       return {
         tier: 3,
@@ -251,12 +268,34 @@ export const recommendMarket = (params: {
   }
 
   // --- Tier 5: nearest seeded freight hub within 75 mi ----------------------
-  // A brand-new city with no history: suggest the market of the nearest major
-  // freight hub. The hub's market may already exist (use it) or not (create it).
+  // A brand-new city with no history. First the nearest hub whose market you
+  // ALREADY HAVE within the radius (Naperville, with a Chicago Market on file,
+  // is Chicago's — never a fresh "Joliet Market" beside it); only when no
+  // existing market's hub is near does it suggest minting the nearest hub's.
   if (here) {
+    let existing: { city: string; name: string; id: string; distanceMi: number } | null = null;
+    for (const hub of FREIGHT_HUBS) {
+      const primary = primaryHub(hub);
+      const name = hubMarketName(primary);
+      const id = idByName.get(norm(name));
+      if (!id) continue;
+      const d = haversineMiles(here, { lat: hub.lat, lng: hub.lng });
+      if (d > MARKET_RADIUS_MI) continue;
+      if (!existing || d < existing.distanceMi) existing = { city: primary.city, name, id, distanceMi: d };
+    }
+    if (existing) {
+      return {
+        tier: 5,
+        market_id: existing.id,
+        market_name: existing.name,
+        isNew: false,
+        reason: `Nearest hub · ${existing.city} (~${Math.round(existing.distanceMi)} mi) · your market`,
+        distanceMi: existing.distanceMi,
+      };
+    }
     const near = nearestHub(here);
     if (near) {
-      const name = `${near.hub.city} Market`;
+      const name = hubMarketName(near.hub);
       const id = idByName.get(norm(name)) ?? null;
       return {
         tier: 5,

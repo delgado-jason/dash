@@ -75,13 +75,13 @@ const LanesPage = () => {
   const targets = useRateTargets(loads);
   const coords = useCityCoords(loads);
 
-  const seq = useMemo(() => sequenceLoads(loads), [loads]);
+  const seq = useMemo(() => sequenceLoads(loads, trips), [loads, trips]);
   // The window's own loads — the ledger rolls the rows up from exactly these,
   // and the answering line counts exactly these.
   const scoped = useMemo(() => windowLoads(loads, win, now), [loads, win, now]);
   const rows = useMemo(
-    () => buildLedger(loads, win, now, grain),
-    [loads, win, now, grain],
+    () => buildLedger(loads, win, now, grain, trips),
+    [loads, win, now, grain, trips],
   );
   const head = useMemo(
     () => ledgerHeadline(rows, scoped, grain),

@@ -31,8 +31,7 @@ import {
   outboundStrength,
   inboundStrength,
   reloadYardstick,
-  type MarketGrade,
-} from "./marketFactor";
+  type MarketGrade, outYardstick, } from "./marketFactor";
 
 // ------------------------------------------------------------- the windows
 
@@ -82,7 +81,9 @@ export const windowLoads = (
 // zeroes: a 0 deadhead is a deadhead nobody logged.
 export interface NextLeg {
   deadheadMiles: number | null; // empty miles to the next pickup
-  idleDays: number | null; // days from this delivery to that pickup
+  deadheadSource: "odometer" | "planned" | null; // the odometer gap when both readings exist, else the planned field
+  idleDays: number | null; // WEEKDAYS from this delivery to that pickup (a weekend reload is not idle)
+  calendarDays: number | null; // the raw gap, for the home-time fallback
   originState: string | null; // where you reloaded
   originMarket: string | null; // …and the market, when the book names one
   rpm: number | null; // what the next load paid, GROSS ÷ loaded miles
@@ -91,14 +92,52 @@ export interface NextLeg {
 
 export interface SequencedLoad {
   load: Load;
-  // Idle over a week is HOME TIME, not a market's fault. Flagged here, kept
-  // out of every idle average and grade, still shown in the detail as "17 d
-  // (home)" — the truck was parked on purpose.
+  // HOME TIME is not a market's fault. A logged home trip between this
+  // delivery and the next pickup marks it (Jason's stints run Thursday to
+  // Monday — four days, which no gap rule would catch), and a gap over a week
+  // still does. Flagged here, kept out of every idle and reload average and
+  // every grade, still shown in the detail as "(home)" — the truck was parked
+  // on purpose.
   home: boolean;
   next: NextLeg | null; // null on the last load you've run
 }
 
 export const HOME_IDLE_DAYS = 7;
+
+// The slice of a trip the sequence reads — a home run between two loads.
+export interface HomeTripLike {
+  trip_date: string;
+  trip_purpose: string;
+  status?: string;
+}
+
+// Weekdays strictly after `fromKey` up to and including `toKey` — the days a
+// reload could have happened. Fri → Mon is one day, not three; Mon → Wed two.
+const weekdaysBetween = (fromKey: string, toKey: string): number => {
+  const n = daysBetweenKeys(fromKey, toKey);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  const start = new Date(`${fromKey}T00:00:00Z`).getTime();
+  let count = 0;
+  for (let i = 1; i <= n; i++) {
+    const dow = new Date(start + i * DAY_MS).getUTCDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return count;
+};
+
+// The empty miles to the next load: the odometer gap between this delivery's
+// end reading and the next pickup's start reading when both exist (the truth,
+// home runs included — which is why home stints leave the medians), else the
+// next load's planned deadhead, which the book itself warns understates.
+const emptyMilesTo = (load: Load, nextLoad: Load): { miles: number | null; source: NextLeg["deadheadSource"] } => {
+  const end = Number(load.odometer_end);
+  const start = Number(nextLoad.odometer_start);
+  if (load.odometer_end != null && nextLoad.odometer_start != null && end > 0 && start > 0 && start >= end && start - end <= 3000) {
+    return { miles: start - end, source: "odometer" };
+  }
+  const dh = deadheadOf(nextLoad);
+  return { miles: dh, source: dh == null ? null : "planned" };
+};
 
 const rpmOf = (l: Load): number | null => {
   const miles = Number(l.loaded_miles);
@@ -114,7 +153,11 @@ const deadheadOf = (l: Load): number | null => {
 // EVERY delivered load with a pickup date — not just the window's. The "next"
 // of the last load inside a window is a real load outside it, and pretending
 // otherwise would invent a stranding that never happened.
-export const sequenceLoads = (loads: Load[]): SequencedLoad[] => {
+export const sequenceLoads = (loads: Load[], trips: HomeTripLike[] = []): SequencedLoad[] => {
+  const homeDays = trips
+    .filter((t) => t.trip_purpose === "home" && t.status !== "cancelled" && t.trip_date)
+    .map((t) => keyOf(t.trip_date))
+    .sort();
   const runs = loads
     .filter((l) => isDelivered(l) && !!l.pickup_date)
     .sort(
@@ -130,22 +173,27 @@ export const sequenceLoads = (loads: Load[]): SequencedLoad[] => {
     if (!nextLoad) return { load, home: false, next: null };
 
     const pickupDay = keyOf(nextLoad.pickup_date);
-    const gap = load.delivery_date
-      ? daysBetweenKeys(keyOf(load.delivery_date), pickupDay)
-      : null;
+    const deliveryDay = load.delivery_date ? keyOf(load.delivery_date) : null;
+    const gap = deliveryDay ? daysBetweenKeys(deliveryDay, pickupDay) : null;
     // Clamped at 0: loads overlap in the real book (the next one picks up
     // before this one delivers — a relay, a two-truck week, a corrected date).
     // The truck sat no days, so the pair reads "0 d". A NEGATIVE idle would
     // pull a market's average below zero and flatter it for a clash.
-    const idleDays =
+    const calendarDays =
       gap != null && Number.isFinite(gap) ? Math.max(0, gap) : null;
+    const idleDays = deliveryDay ? weekdaysBetween(deliveryDay, pickupDay) : null;
+    const wentHome =
+      deliveryDay != null && homeDays.some((d) => d >= deliveryDay && d <= pickupDay);
+    const empty = emptyMilesTo(load, nextLoad);
 
     return {
       load,
-      home: idleDays != null && idleDays > HOME_IDLE_DAYS,
+      home: wentHome || (calendarDays != null && calendarDays > HOME_IDLE_DAYS),
       next: {
-        deadheadMiles: deadheadOf(nextLoad),
+        deadheadMiles: empty.miles,
+        deadheadSource: empty.source,
         idleDays,
+        calendarDays,
         originState: nextLoad.origin_state || null,
         originMarket: stripMarket(nextLoad.origin_market) || null,
         rpm: rpmOf(nextLoad),
@@ -250,9 +298,10 @@ export const buildLedger = (
   win: LedgerWindow,
   now: Date,
   grain: LedgerGrain = "state",
+  trips: HomeTripLike[] = [],
 ): LedgerRow[] => {
   const scoped = windowLoads(loads, win, now);
-  const fullSeq = sequenceLoads(loads);
+  const fullSeq = sequenceLoads(loads, trips);
   const seqById = new Map(fullSeq.map((s) => [s.load.load_id, s]));
   // The window's own sequence entries — the grades are computed on exactly the
   // loads the numbers beside them come from. A delivered load with no pickup
@@ -263,9 +312,9 @@ export const buildLedger = (
     .map((l) => seqById.get(l.load_id))
     .filter((s): s is SequencedLoad => !!s);
 
-  const outGrades = outboundStrength(scoped, (l) => grainKey(l.origin_state, grain));
-  // The yardstick is the WHOLE sequence, not this window's slice: switching
+  // Both yardsticks are the WHOLE book, not this window's slice: switching
   // 12m → ytd → all must not re-grade a market whose own numbers didn't move.
+  const outGrades = outboundStrength(scoped, (l) => grainKey(l.origin_state, grain), outYardstick(loads));
   const inGrades = inboundStrength(winSeq, reloadYardstick(fullSeq), (s) =>
     grainKey(s.load.destination_state, grain),
   );
@@ -289,11 +338,13 @@ export const buildLedger = (
     const outLoads = outBy.get(key) ?? [];
     const legs = inBy.get(key) ?? [];
 
-    const reloads = legs
+    // Home stints leave the reload and idle medians alike — the same rule the
+    // grade uses, so the figure beside the grade is the figure it was read off.
+    const away = legs.filter((s) => !s.home);
+    const reloads = away
       .map((s) => s.next?.deadheadMiles)
       .filter((m): m is number => m != null);
-    const idles = legs
-      .filter((s) => !s.home)
+    const idles = away
       .map((s) => s.next?.idleDays)
       .filter((d): d is number => d != null);
     const nextRpms = legs
