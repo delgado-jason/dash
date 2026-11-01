@@ -900,7 +900,9 @@ const GuidePage = () => {
               of P&L plus loan principal (no depreciation), stepping forward on
               the 1st of each month. Every surface that shows it names the
               window (“cash · Jun–Aug”), so where the number came from is never
-              a mystery.
+              a mystery — and when a month inside the window has no P&L yet,
+              the Market page says which one, because a missing month silently
+              shrinks the basis.
             </Why>
           </Metric>
 

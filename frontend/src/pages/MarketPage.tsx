@@ -467,8 +467,22 @@ const MarketPage = () => {
                 </span>
                 <span className="font-condensed text-[12px] text-faint">
                   · gross $/driven mile · the floor in red
+                  {targets.bookingLadder.walkAway != null && (
+                    <>
+                      {" "}· break-even{" "}
+                      <b className="font-semibold text-ink tabular-nums">{rpm(targets.bookingLadder.walkAway)}</b>
+                      {" "}· {targets.basis.windowLabel ?? "no P&L filed"} · {targets.basis.months} of{" "}
+                      {targets.basis.monthsWanted} months filed
+                    </>
+                  )}
                 </span>
               </div>
+              {targets.basis.missingLabel && (
+                <div className="px-4 py-[6px] border-b ds2-cell-rule font-condensed text-[12.5px] text-amber-hi">
+                  ⚠ no P&L filed for {targets.basis.missingLabel} — the break-even stops short of it. File the month on{" "}
+                  <Link to="/expenses" className="underline hover:text-hot">Expenses</Link> and every number on this page moves.
+                </div>
+              )}
               <div className="px-3 pt-3">
                 {targets.ready ? (
                   <RateScatter
