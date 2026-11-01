@@ -27,11 +27,7 @@ import { median } from "./stats";
 import { loadRevenue } from "./loads";
 import { perDayOver, type PerDayTotals } from "./perDay";
 import { agentRows, type AgentStat } from "./lanes";
-import {
-  outboundStrength,
-  inboundStrength,
-  reloadYardstick,
-  type MarketGrade, outYardstick, } from "./marketFactor";
+import { outboundStrength, inboundStrength, type MarketGrade, type GradeCosts, NO_COSTS } from "./marketFactor";
 
 // ------------------------------------------------------------- the windows
 
@@ -87,6 +83,7 @@ export interface NextLeg {
   originState: string | null; // where you reloaded
   originMarket: string | null; // …and the market, when the book names one
   rpm: number | null; // what the next load paid, GROSS ÷ loaded miles
+  gross: number | null; // what the next load paid, in dollars — the reload's cost is read as a share of it
   pickupDay: string; // its pickup day key
 }
 
@@ -210,6 +207,7 @@ export const sequenceLoads = (loads: Load[], trips: HomeTripLike[] = []): Sequen
         originState: nextLoad.origin_state || null,
         originMarket: stripMarket(nextLoad.origin_market) || null,
         rpm: rpmOf(nextLoad),
+        gross: loadRevenue(nextLoad) > 0 ? loadRevenue(nextLoad) : null,
         pickupDay,
       },
     };
@@ -227,6 +225,7 @@ export interface HalfOut {
   perDay: PerDayTotals;
   agents: number;
   gross: number;
+  perDayExFuel: number | null; // the median ex-fuel $/day the grade is read off
   grade: MarketGrade;
 }
 
@@ -235,6 +234,8 @@ export interface HalfIn {
   reloadMilesMedian: number | null;
   reloadMilesAvg: number | null;
   idleDaysAvg: number | null;
+  reloadCostMedian: number | null; // the reload in dollars
+  shareMedian: number | null; // as a share of the load it led to — the grade's basis
   nextRpmMedian: number | null;
   reloadedInState: number; // times the next load loaded in this same market
   grade: MarketGrade;
@@ -312,6 +313,9 @@ export const buildLedger = (
   now: Date,
   grain: LedgerGrain = "state",
   trips: HomeTripLike[] = [],
+  // The ladder's bars and costs (gradeCostsOf(targets)); without them every
+  // grade is thin — the figures still print.
+  costs: GradeCosts = NO_COSTS,
 ): LedgerRow[] => {
   const scoped = windowLoads(loads, win, now);
   const fullSeq = sequenceLoads(loads, trips);
@@ -325,12 +329,11 @@ export const buildLedger = (
     .map((l) => seqById.get(l.load_id))
     .filter((s): s is SequencedLoad => !!s);
 
-  // Both yardsticks are the WHOLE book, not this window's slice: switching
-  // 12m → ytd → all must not re-grade a market whose own numbers didn't move.
-  const outGrades = outboundStrength(scoped, (l) => grainKey(l.origin_state, grain), outYardstick(loads));
-  const inGrades = inboundStrength(winSeq, reloadYardstick(fullSeq), (s) =>
-    grainKey(s.load.destination_state, grain),
-  );
+  // Both grades are read against your COST, never against this window's own
+  // numbers: switching 12m → ytd → all can't re-grade a market whose own
+  // figures didn't move.
+  const outGrades = outboundStrength(scoped, (l) => grainKey(l.origin_state, grain), costs);
+  const inGrades = inboundStrength(winSeq, costs, (s) => grainKey(s.load.destination_state, grain));
 
   const outBy = new Map<string, Load[]>();
   for (const l of scoped) {
@@ -375,6 +378,7 @@ export const buildLedger = (
         perDay: perDayOver(outLoads),
         agents: new Set(outLoads.map((l) => l.agent_id).filter(Boolean)).size,
         gross: grossOf(outLoads),
+        perDayExFuel: outGrades.get(key)?.perDayExFuel ?? null,
         grade: outGrades.get(key)?.grade ?? "thin",
       },
       in: {
@@ -382,6 +386,8 @@ export const buildLedger = (
         reloadMilesMedian: median(reloads),
         reloadMilesAvg: mean(reloads),
         idleDaysAvg: mean(idles),
+        reloadCostMedian: inGrades.get(key)?.reloadCostMedian ?? null,
+        shareMedian: inGrades.get(key)?.shareMedian ?? null,
         nextRpmMedian: median(nextRpms),
         reloadedInState: legs.filter(
           (s) => s.next && grainKey(s.next.originState, grain) === key,
@@ -614,8 +620,11 @@ export const ledgerHeadline = (
       (r.out.grade === "strong" || r.out.grade === "fair"),
   );
   const inRows = rows.filter(
-    (r) => r.in.deliveries >= MIN_IN_CALLOUT && r.in.reloadMilesMedian != null,
+    (r) => r.in.deliveries >= MIN_IN_CALLOUT && (r.in.shareMedian != null || r.in.reloadMilesMedian != null),
   );
+  // In dollars (the share of the load it led to) when the costs are known;
+  // in miles until a P&L gives the page a cost.
+  const inKey = (r: LedgerRow): number => (r.in.shareMedian ?? r.in.reloadMilesMedian) as number;
 
   const pick = <T>(xs: T[], better: (a: T, b: T) => boolean): T | null =>
     xs.length ? xs.reduce((best, x) => (better(x, best) ? x : best)) : null;
@@ -630,13 +639,7 @@ export const ledgerHeadline = (
       outRows,
       (a, b) => (a.out.typicalRpm as number) > (b.out.typicalRpm as number),
     ),
-    easiestIn: pick(
-      inRows,
-      (a, b) => (a.in.reloadMilesMedian as number) < (b.in.reloadMilesMedian as number),
-    ),
-    costliestIn: pick(
-      inRows,
-      (a, b) => (a.in.reloadMilesMedian as number) > (b.in.reloadMilesMedian as number),
-    ),
+    easiestIn: pick(inRows, (a, b) => inKey(a) < inKey(b)),
+    costliestIn: pick(inRows, (a, b) => inKey(a) > inKey(b)),
   };
 };

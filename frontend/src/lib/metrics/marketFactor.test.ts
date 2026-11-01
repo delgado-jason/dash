@@ -2,7 +2,13 @@ import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { AgentScorecard } from "./agentScorecard";
 import { cityKey, type CoordMap } from "./foreman";
-import { outboundStrength, destinationFactor, theCall, outYardstick } from "./marketFactor";
+import { outboundStrength, destinationFactor, theCall, type GradeCosts } from "./marketFactor";
+
+// The ladder's bars and costs, as the pages hand them over (gradeCostsOf).
+// Loads here own 5 calendar days (Jul 1 → Jul 5) and carry no fuel surcharge,
+// so a $8/mi × 1,000-mile load is $1,600 a day: PA clears the $1,186 target,
+// AL sits between the bars, TX ($840) misses the $1,008 break-even day.
+const COSTS: GradeCosts = { perMile: 3.02, perDay: 773, dayBreakEven: 1008, dayTarget: 1186, marginGoal: 0.15 };
 
 let seq = 0;
 const mk = (originCity: string, originState: string, rpm: number, agent: string): Load =>
@@ -66,9 +72,9 @@ const COORDS: CoordMap = new Map([
 ]);
 
 describe("outboundStrength", () => {
-  it("grades each origin market by your own outbound rate + volume", () => {
-    const s = outboundStrength(world());
-    expect(s.get("PA")).toMatchObject({ grade: "strong", loadsOut: 4, medianRpm: 8.0, agents: 2 });
+  it("grades each origin market by what a day of its freight earns against the ladder's bars", () => {
+    const s = outboundStrength(world(), undefined, COSTS);
+    expect(s.get("PA")).toMatchObject({ grade: "strong", loadsOut: 4, medianRpm: 8.0, perDayExFuel: 1600, agents: 2 });
     expect(s.get("AL")).toMatchObject({ grade: "fair", loadsOut: 4, medianRpm: 5.8 });
     expect(s.get("TX")).toMatchObject({ grade: "soft", loadsOut: 4, medianRpm: 4.2 });
     expect(s.get("MS")).toMatchObject({ grade: "thin", loadsOut: 1 }); // a single load → thin
@@ -76,27 +82,27 @@ describe("outboundStrength", () => {
 
   it("thin under four loads — soft needs the same evidence strong does", () => {
     const three = world().filter((l) => !(l.origin_city === "Dallas" && l.agent_id === "a6"));
-    const s = outboundStrength(three, undefined, outYardstick(world()));
+    const s = outboundStrength(three, undefined, COSTS);
     expect(s.get("TX")).toMatchObject({ grade: "thin", loadsOut: 2 });
   });
 
-  it("the yardstick is the whole book: a window of it is graded against the same bar", () => {
-    const all = world();
-    const yardstick = outYardstick(all);
-    expect(yardstick).toBe(5.8);
-    // A window holding only the TX loads would, on its own, call them the norm.
-    const txOnly = all.filter((l) => l.origin_state === "TX");
-    expect(outboundStrength(txOnly).get("TX")?.grade).toBe("fair");
-    expect(outboundStrength(txOnly, undefined, yardstick).get("TX")?.grade).toBe("soft");
-    // destinationFactor takes the window and the whole book apart
-    const d = destinationFactor(txOnly, { city: "Houston", state: "TX" }, COORDS, all);
+  it("the bars decide, not the window: a window holding only the TX loads still grades them soft; without bars everything is thin", () => {
+    const txOnly = world().filter((l) => l.origin_state === "TX");
+    expect(outboundStrength(txOnly, undefined, COSTS).get("TX")?.grade).toBe("soft");
+    expect(outboundStrength(txOnly).get("TX")?.grade).toBe("thin");
+    const d = destinationFactor(txOnly, { city: "Houston", state: "TX" }, COORDS, COSTS);
     expect(d.market?.grade).toBe("soft");
+  });
+
+  it("the fuel surcharge is a pass-through: it never lifts a market's day", () => {
+    const fuel = world().map((l) => (l.origin_state === "TX" ? ({ ...l, fuel_surcharge: "3000" } as Load) : l));
+    expect(outboundStrength(fuel, undefined, COSTS).get("TX")).toMatchObject({ grade: "soft", perDayExFuel: 840 });
   });
 });
 
 describe("destinationFactor", () => {
   it("flags a soft delivery market + names your strong markets + nearest strong freight", () => {
-    const d = destinationFactor(world(), { city: "Houston", state: "TX" }, COORDS);
+    const d = destinationFactor(world(), { city: "Houston", state: "TX" }, COORDS, COSTS);
     expect(d.market?.grade).toBe("soft");
     expect(d.strongMarkets.map((m) => m.state)).toEqual(["PA"]);
     // Houston → Reading, PA (~1300 mi) is the nearest strong origin with a coord
@@ -105,13 +111,13 @@ describe("destinationFactor", () => {
   });
 
   it("returns a null market for a state you've never loaded out of", () => {
-    const d = destinationFactor(world(), { city: "Miami", state: "FL" }, COORDS);
+    const d = destinationFactor(world(), { city: "Miami", state: "FL" }, COORDS, COSTS);
     expect(d.market).toBeNull();
     expect(d.strongMarkets.length).toBe(1);
   });
 
   it("omits nearest-strong when the delivery city has no trusted coordinate", () => {
-    const d = destinationFactor(world(), { city: "Nowhere", state: "TX" }, new Map());
+    const d = destinationFactor(world(), { city: "Nowhere", state: "TX" }, new Map(), COSTS);
     expect(d.market?.grade).toBe("soft");
     expect(d.nearestStrong).toBeNull();
   });
@@ -135,8 +141,8 @@ describe("theCall", () => {
     tier: "solid",
     ratingFlag: null,
   };
-  const softDest = destinationFactor(world(), { city: "Houston", state: "TX" }, COORDS);
-  const strongDest = destinationFactor(world(), { city: "Reading", state: "PA" }, COORDS);
+  const softDest = destinationFactor(world(), { city: "Houston", state: "TX" }, COORDS, COSTS);
+  const strongDest = destinationFactor(world(), { city: "Reading", state: "PA" }, COORDS, COSTS);
 
   it("null when there's no verdict", () => {
     expect(theCall(null, softDest, keeper, false)).toBeNull();
@@ -152,7 +158,7 @@ describe("theCall", () => {
   it("a good load into a strong market says take it", () => {
     const c = theCall("take", strongDest, null, false)!;
     expect(c.tone).toBe("good");
-    expect(c.text).toMatch(/strong outbound market/i);
+    expect(c.text).toMatch(/a day of freight clears your target/i);
     expect(c.text).toMatch(/take it/i);
   });
 

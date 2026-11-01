@@ -996,13 +996,14 @@ const GuidePage = () => {
             </Why>
             <Why>
               It also scores the <span className="text-light">destination</span> — where
-              the load leaves you — off your own outbound history: how well freight OUT
-              of that market has paid you, how much of it there's been, and how many
-              agents source it, graded{" "}
+              the load leaves you — off your own outbound history: what a day of the
+              freight OUT of that market earns you, how much of it there's been, and
+              how many agents source it, graded{" "}
               <span style={{ color: "#5dcaa5" }}>STRONG</span> /{" "}
               <span className="text-light">FAIR</span> /{" "}
-              <span style={{ color: "#e8940a" }}>SOFT</span> / thin against your overall
-              norm. So a fair-paying load that drops you somewhere you can't reload reads
+              <span style={{ color: "#e8940a" }}>SOFT</span> / thin against your own
+              daily bars — strong clears your margin goal's day, soft doesn't cover
+              the day's break-even, thin under four loads. So a fair-paying load that drops you somewhere you can't reload reads
               as a <span className="text-light">reposition cost</span>, with your strong
               markets named for contrast and — when the city's geocoded — the distance to
               your nearest strong freight. A line up top, <span className="text-light">the
@@ -1311,15 +1312,20 @@ const GuidePage = () => {
               <span className="text-light">OUT</span> — the freight born there:
               how many loads, the typical $/mi, the $/day, and how many agents
               source it. Its grade is not a second opinion: it is the{" "}
-              <span className="text-light">Load Scorer's own market rule</span>{" "}
-              (strong ≥ 105% of your typical rate, soft ≤ 85% of it — each over
-              at least <span className="text-light">four loads</span>, one
-              minimum for both; thin under four), read against your{" "}
-              <span className="text-light">whole book's</span> typical rate so
-              switching the window never moves the bar, on the window's own
-              loads. Score a Load grades a delivery market on this page's
-              12-month window against the same bar, so the two can never
-              disagree about whether a market is worth loading in.
+              <span className="text-light">Load Scorer's own market rule</span>:
+              the market's typical <span className="text-light">ex-fuel $/day</span>{" "}
+              — a load's gross minus its fuel surcharge, per calendar day the
+              load owned — against the ladder's own daily bars, the same two
+              numbers that colour the $/day column beside it. Strong when a day
+              of that freight earns what your margin goal needs, soft when it
+              doesn't cover the day's break-even, fair between, thin under four
+              loads. Per day, not per mile, because your book pays $9.57 a loaded
+              mile under 400 miles and $5.21 over 1,200 while the same loads earn
+              the truck the same per day, and the fuel surcharge is a pass-through
+              that rose 46¢ a mile this year. The bars are your cost, so switching
+              the window never moves them. Score a Load grades a delivery market
+              on this page's 12-month window against the same bars, so the two
+              can never disagree about whether a market is worth loading in.
             </Why>
             <Why>
               <span className="text-light">IN</span> — what a delivery there
@@ -1336,7 +1342,13 @@ const GuidePage = () => {
               from the <span className="text-light">odometer</span> — your
               chain copies the previous end reading as the next start, so the
               next load's window minus its loaded miles is the empty run — and
-              from the planned deadhead only when the readings can't say.
+              from the planned deadhead only when the readings can't say. The
+              grade is the reload <span className="text-light">in dollars</span>{" "}
+              — those miles at your cost per driven mile plus the idle weekdays
+              at the truck's fixed cost per calendar day — as a share of the load
+              it led to: strong at or under your margin goal, soft at or past
+              twice it, fair between. See <span className="text-light">The reload
+              cost</span>, below.
             </Why>
             <Why>
               <span className="text-light">Regions</span> flips the same ledger to
@@ -1367,12 +1379,13 @@ const GuidePage = () => {
 
           <Metric
             title="The reload cost — what a stop leaves you"
-            answers="The price of getting empty in a market: the empty miles to your next pickup and the days you waited for it, graded against your own median."
+            answers="The price of getting empty in a market, in dollars: the empty miles to your next pickup at your cost per mile and the weekdays you waited at the truck's day rate, as a share of the load it led to."
             sources={[{ label: "Lanes", to: "/lanes" }]}
           >
             <Formula>
-              reload miles = the NEXT load's deadhead · idle days = its pickup −
-              this delivery
+              reload $ = empty miles × cost per driven mile + idle weekdays ×
+              fixed cost per calendar day · graded as reload $ ÷ the next load's
+              gross
             </Formula>
             <Why>
               Nothing new to enter: this is read straight off your own{" "}
@@ -1391,22 +1404,27 @@ const GuidePage = () => {
               you've been sloppy in.
             </Why>
             <Why>
-              Idle over <span className="text-light">seven days</span> is home
-              time, not a market's fault. Those legs are marked{" "}
-              <span className="text-light">home</span>, shown in the detail as "17
-              d (home)", and kept out of every idle average and every grade — a
-              week off shouldn't grade a market soft.
+              Home time is not a market's fault. A logged{" "}
+              <span className="text-light">home trip</span> between a delivery and
+              the next pickup marks the leg home — your Thursday-to-Monday stints,
+              which no gap rule catches — and a gap over seven days still does.
+              Those legs are shown in the detail as "(home)" and kept out of every
+              median and every grade. Idle counts{" "}
+              <span className="text-light">weekdays</span>: a Friday delivery
+              reloading Monday waited one day, not three.
             </Why>
             <Why>
-              The <span className="text-light">grade</span> is relative to your own
-              book, like every other verdict in dash.{" "}
-              <span className="text-light">Strong</span> = a median reload at or
-              under 85% of your own median reload AND two idle days or fewer, over
-              at least three deliveries. <span className="text-light">Soft</span> =
-              a median reload at or over 125% of yours, OR three idle days or more.{" "}
-              <span className="text-light">Thin</span> = fewer than two deliveries,
-              or no reload ever logged there — shown, never graded. Everything else
-              is <span className="text-light">fair</span>.
+              The <span className="text-light">grade</span> is in dollars, against
+              your own cost. A reload costs its empty miles at your cost per driven
+              mile plus each idle weekday at the truck's fixed cost per calendar day
+              — a day waiting is usually the bigger half. That cost as a share of
+              the load it led to is the grade:{" "}
+              <span className="text-light">Strong</span> at or under your margin
+              goal, <span className="text-light">Soft</span> at or past twice it,{" "}
+              <span className="text-light">Fair</span> between, over at least four
+              deliveries. <span className="text-light">Thin</span> = fewer than
+              four deliveries, or no reload ever logged there — shown, never graded.
+              The detail prints every leg's dollars and share.
             </Why>
           </Metric>
 

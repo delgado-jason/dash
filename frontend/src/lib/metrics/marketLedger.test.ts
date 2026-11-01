@@ -3,9 +3,14 @@ import type { Load } from "@/types/load";
 import {
   inboundStrength,
   reloadYardstick,
-  IN_IDLE_SOFT,
-  IN_STRONG_MIN,
+  IN_MIN_LOADS,
+  type GradeCosts,
 } from "./marketFactor";
+
+// The ladder's costs: empty miles at $3 a mile, an idle weekday at $773, and
+// the margin goal 15% — strong when the reload eats 15% or less of the load it
+// led to, soft at 30% or more.
+const COSTS: GradeCosts = { perMile: 3, perDay: 773, dayBreakEven: 1008, dayTarget: 1186, marginGoal: 0.15 };
 import {
   buildLedger,
   ledgerFolded,
@@ -235,10 +240,10 @@ describe("sequenceLoads", () => {
 
 // ------------------------------------------------------------- the IN rule
 
-// A book whose median logged reload (home stints out) is 182 mi:
-//   90, 95, 100, 100, 110, 121, 137, 170, 175, 180, 184, 186, 188, 190, 260, 270, 280, 300
-// → at 85 % / 125 %, strong needs ≤ 154.7 mi and soft starts at 227.5 mi.
-// Four deliveries make a market gradable — one minimum for soft and strong.
+// Every leg leads to a $4,000 load, so a reload's share is its dollars ÷ 4,000:
+// 100 mi with no wait is $300 (7.5%, strong); 270 mi and a day is $1,583 (40%,
+// soft); 250 mi and no wait is $750 (19%, fair). Four deliveries make a market
+// gradable — one minimum for soft and strong.
 const leg = (
   state: string,
   deadheadMiles: number | null,
@@ -255,22 +260,23 @@ const leg = (
     originState: state,
     originMarket: null,
     rpm: 6,
+    gross: 4000,
     pickupDay: "2026-06-10",
   },
 });
 
 const BOOK: SequencedLoad[] = [
-  leg("OH", 100, 1),
-  leg("OH", 110, 2),
-  leg("OH", 121, 1),
-  leg("OH", 100, 1),
+  leg("OH", 100, 0),
+  leg("OH", 110, 0),
+  leg("OH", 121, 0),
+  leg("OH", 100, 0),
   leg("TX", 260, 1),
   leg("TX", 280, 2),
   leg("TX", 300, 2),
   leg("TX", 270, 1),
-  leg("VA", 170, 1),
-  leg("VA", 175, 2),
-  leg("VA", 180, 3),
+  leg("VA", 240, 0),
+  leg("VA", 260, 0),
+  leg("VA", 250, 1),
   leg("VA", null, 17, true), // a week off doesn't grade a market
   leg("TN", 186, 4),
   leg("TN", 190, 4),
@@ -283,41 +289,41 @@ const BOOK: SequencedLoad[] = [
   leg("NM", null, 1),
 ];
 
-describe("inboundStrength", () => {
-  const map = inboundStrength(BOOK, reloadYardstick(BOOK));
+describe("inboundStrength — the reload in dollars, as a share of the load it led to", () => {
+  const map = inboundStrength(BOOK, COSTS);
 
-  it("STRONG — cheap reload, short idle, enough deliveries", () => {
-    expect(map.get("OH")).toMatchObject({
-      deliveries: 4,
-      reloadMilesMedian: 105,
-      grade: "strong",
-    });
-    expect(map.get("OH")?.idleDaysAvg).toBeCloseTo(1.25, 5);
+  it("STRONG — a cheap reload with no wait eats under your margin goal", () => {
+    expect(map.get("OH")).toMatchObject({ deliveries: 4, reloadMilesMedian: 105, grade: "strong" });
+    expect(map.get("OH")?.reloadCostMedian).toBeCloseTo(315, 5); // 105 mi × $3
+    expect(map.get("OH")?.shareMedian).toBeCloseTo(315 / 4000, 5);
+    expect(map.get("OH")?.idleDaysAvg).toBe(0);
   });
 
-  it("SOFT on reload alone — expensive to leave, idle fine", () => {
+  it("SOFT on the reload's dollars — a long reload and a day's wait eat 40%", () => {
     expect(map.get("TX")).toMatchObject({ reloadMilesMedian: 275, grade: "soft" });
-    expect(map.get("TX")?.idleDaysAvg).toBeLessThan(IN_IDLE_SOFT);
+    expect(map.get("TX")?.shareMedian).toBeGreaterThanOrEqual(0.3);
   });
 
-  it("SOFT on idle alone — you sit there", () => {
+  it("SOFT on idle alone — four days waiting is $3,092 before a mile is driven", () => {
     expect(map.get("TN")).toMatchObject({ idleDaysAvg: 4, grade: "soft" });
+    expect(map.get("TN")?.reloadCostMedian).toBeGreaterThan(3092);
   });
 
-  it("FAIR — in the middle on both", () => {
-    expect(map.get("VA")).toMatchObject({
-      deliveries: 4,
-      reloadMilesMedian: 175,
-      grade: "fair",
-    });
-    // the 17-day home week is out of the average, not averaged in
-    expect(map.get("VA")?.idleDaysAvg).toBeCloseTo(2, 5);
+  it("FAIR — between the goal and twice it", () => {
+    expect(map.get("VA")).toMatchObject({ deliveries: 4, reloadMilesMedian: 250, grade: "fair" });
+    expect(map.get("VA")?.shareMedian).toBeCloseTo(780 / 4000, 5); // the middle leg: 260 mi, no wait — 19.5%
+    // the 17-day home week is out of every median, not averaged in
+    expect(map.get("VA")?.idleDaysAvg).toBeCloseTo(1 / 3, 5);
   });
 
   it("THIN under four deliveries, however cheap the reload — the same minimum as strong", () => {
-    // 92.5 mi would be strong on four deliveries; on two it is not graded at all.
     expect(map.get("GA")).toMatchObject({ reloadMilesMedian: 92.5, grade: "thin" });
-    expect(map.get("GA")?.deliveries).toBeLessThan(IN_STRONG_MIN);
+    expect(map.get("GA")?.deliveries).toBeLessThan(IN_MIN_LOADS);
+  });
+
+  it("without the ladder's costs every market is thin — the figures still print", () => {
+    const bare = inboundStrength(BOOK);
+    expect(bare.get("OH")).toMatchObject({ reloadMilesMedian: 105, shareMedian: null, grade: "thin" });
   });
 
   it("THIN on one delivery, and THIN when no reload was ever logged", () => {
@@ -429,6 +435,15 @@ describe("buildLedger", () => {
   it("grades OUT with the Load Scorer's own rule — thin under four loads, the same minimum as strong", () => {
     expect(row("AZ").out.grade).toBe("thin");
     expect(row("SC").out.grade).toBe("thin"); // two loads print their figure, carry no grade
+    // four SC loads at $1,000–$1,500 a day ex-fuel: the median $1,250 clears the $1,186 target → strong
+    const more = [
+      ...BOOK_LOADS,
+      out({ load_id: "s3", origin_state: "SC", loaded_miles: 500, linehaul: "3000", pickup_date: "2026-06-08", delivery_date: "2026-06-09" }),
+      out({ load_id: "s4", origin_state: "SC", loaded_miles: 500, linehaul: "3000", pickup_date: "2026-06-10", delivery_date: "2026-06-11" }),
+    ];
+    const sc = buildLedger(more, "12m", NOW, "state", [], COSTS).find((r) => r.state === "SC")!;
+    expect(sc.out.perDayExFuel).toBeCloseTo(1250, 5);
+    expect(sc.out.grade).toBe("strong");
   });
 
   it("leaves an UNDATED delivery out of the IN half — same deliveries, same grade", () => {
@@ -465,11 +480,11 @@ describe("buildLedger", () => {
   });
 });
 
-// The yardstick a market's reload is graded against is YOUR median reload over
-// the WHOLE sequence — every delivered load, all time — never the window's own
-// slice. Two windows, one median: OH's numbers don't move between them, so
-// OH's grade must not either.
-describe("the IN grade's yardstick is the whole sequence, not the window", () => {
+// A market's IN grade is read against your COST, never against the window's
+// own slice — so flipping 12 months → this year → all time cannot re-grade a
+// market whose own numbers didn't move. (The median reload is still printed
+// as context, over the whole sequence, home stints out.)
+describe("the IN grade is the same in every window", () => {
   // Old era, all delivering to FL, with long reloads (400–460) that only the
   // "all" window can see. Recent era, all in the last 12 months, delivering to
   // OH with cheap reloads (60–90).
@@ -503,29 +518,27 @@ describe("the IN grade's yardstick is the whole sequence, not the window", () =>
   ];
 
   const ohio = (win: LedgerWindow) =>
-    buildLedger(ERAS, win, NOW, "state").find((r) => r.state === "OH")!;
+    buildLedger(ERAS, win, NOW, "state", [], COSTS).find((r) => r.state === "OH")!;
 
-  it("takes the median off every logged reload, all time — home legs out", () => {
+  it("takes the median reload off every logged leg, all time — home legs out", () => {
     // 60, 70, 80, 90, 400, 420, 440 → 90 mi. (The 460-mile run into r1 came after a
-    // two-year gap — home time, out of the yardstick.) The recent window alone
-    // would say 75, which would re-grade OH against itself.
+    // two-year gap — home time, out of the yardstick.)
     expect(reloadYardstick(sequenceLoads(ERAS))).toBeCloseTo(90, 5);
   });
 
-  it("keeps OH's own numbers identical across 12m, ytd and all", () => {
+  it("keeps OH's own numbers and grade identical across 12m, ytd and all", () => {
+    const grades = new Set<string>();
     for (const win of ["12m", "ytd", "all"] as const) {
       expect(ohio(win).in.deliveries).toBe(4);
       expect(ohio(win).in.reloadMilesMedian).toBeCloseTo(75, 5);
       expect(ohio(win).in.idleDaysAvg).toBeCloseTo(1.75, 5); // weekdays: 2, 2, 1 (a Saturday pickup), 2
+      grades.add(ohio(win).in.grade);
     }
-  });
-
-  it("so OH keeps ONE grade across the three windows", () => {
-    // 75 mi is 83 % of your 90-mi median — cheap to leave, on four
-    // deliveries, under two idle weekdays. Strong, and strong in every window.
-    expect(ohio("12m").in.grade).toBe("strong");
-    expect(ohio("ytd").in.grade).toBe("strong");
-    expect(ohio("all").in.grade).toBe("strong");
+    expect(grades.size).toBe(1);
+    // 70-ish miles is cheap, but the days between these loads are not: ~1.75
+    // weekdays at $773 on a $3,000 load — the reload eats over half of it.
+    expect(ohio("12m").in.shareMedian).toBeGreaterThan(0.5);
+    expect(ohio("12m").in.grade).toBe("soft");
   });
 });
 
@@ -669,14 +682,14 @@ describe("ledgerHeadline", () => {
   });
 
   it("crowns the best market to load, and the easiest / costliest to leave — once a market has four loads to grade on", () => {
-    // SC on two loads is thin, so the book as it stands crowns nothing out.
+    // SC on two loads is thin (and without the ladder's costs every grade is), so the book as it stands crowns nothing out.
     expect(head.bestOut).toBeNull();
     const more = [
       ...BOOK_LOADS,
       out({ load_id: "s3", origin_state: "SC", loaded_miles: 500, linehaul: "3000", pickup_date: "2026-06-08", delivery_date: "2026-06-09" }),
       out({ load_id: "s4", origin_state: "SC", loaded_miles: 500, linehaul: "3000", pickup_date: "2026-06-10", delivery_date: "2026-06-11" }),
     ];
-    const four = ledgerHeadline(buildLedger(more, "12m", NOW), windowLoads(more, "12m", NOW));
+    const four = ledgerHeadline(buildLedger(more, "12m", NOW, "state", [], COSTS), windowLoads(more, "12m", NOW));
     expect(four.bestOut?.state).toBe("SC");
     expect(four.easiestIn?.state).toBe("VA");
     expect(four.costliestIn?.state).toBe("VA");
