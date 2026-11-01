@@ -62,6 +62,11 @@ const COORDS: CoordMap = new Map([
   [cityKey("Chattanooga", "TN"), { lat: 35.0456, lng: -85.3097 }],
   [cityKey("Bartlett", "TN"), { lat: 35.2045, lng: -89.8739 }],
   [cityKey("Ely", "NV"), { lat: 39.2472, lng: -114.8886 }],
+  [cityKey("Naperville", "IL"), { lat: 41.7508, lng: -88.1535 }], // 16 mi from Joliet, 28 from Chicago
+  [cityKey("Gary", "IN"), { lat: 41.5934, lng: -87.3464 }],
+  [cityKey("Charleston", "WV"), { lat: 38.3498, lng: -81.6326 }],
+  [cityKey("Portland", "OR"), { lat: 45.5152, lng: -122.6784 }],
+  [cityKey("Portland", "ME"), { lat: 43.6591, lng: -70.2568 }],
 ]);
 
 const base = { loads: [] as Load[], markets: MARKETS, coords: COORDS };
@@ -166,6 +171,30 @@ describe("recommendMarket — tier 3 (typed city is an existing market/hub)", ()
     expect(rec?.market_id).toBe("m-dal");
   });
 
+  it("matches the market with the STATE: Charleston, WV is not the Charleston (SC) market", () => {
+    const markets = [...MARKETS, mkMarket("m-chs", "Charleston Market")];
+    expect(recommendMarket({ ...base, markets, role: "origin", city: "Charleston", state: "SC" })?.market_id).toBe("m-chs");
+    const wv = recommendMarket({ ...base, markets, role: "origin", city: "Charleston", state: "WV" });
+    expect(wv?.tier).not.toBe(3); // falls through — no hub within 75 mi of Charleston WV → the regional name
+    expect(wv?.market_name).toMatch(/West Virginia Market$/);
+  });
+
+  it("a name two hubs share (Portland OR / ME): your own history decides, a bare name never does, and a new market carries its state", () => {
+    const plain = [...MARKETS, mkMarket("m-pdx", "Portland Market")];
+    // No history: "Portland Market" could be either — not matched for OR or ME.
+    expect(recommendMarket({ ...base, markets: plain, role: "origin", city: "Portland", state: "OR" })?.tier).not.toBe(3);
+    const me = recommendMarket({ ...base, markets: plain, role: "origin", city: "Portland", state: "ME" });
+    expect(me?.tier).toBe(5);
+    expect(me).toMatchObject({ market_name: "Portland, ME Market", isNew: true });
+    // With Oregon loads on that market, Portland, OR is it — and Maine still isn't.
+    const loads = [mkLoad({ origin_city: "Troutdale", origin_state: "OR", origin_market_id: "m-pdx" })];
+    expect(recommendMarket({ ...base, markets: plain, loads, role: "origin", city: "Portland", state: "OR" })).toMatchObject({ tier: 3, market_id: "m-pdx" });
+    expect(recommendMarket({ ...base, markets: plain, loads, role: "origin", city: "Portland", state: "ME" })?.market_id).not.toBe("m-pdx");
+    // A market already named with its state matches outright.
+    const named = [...MARKETS, mkMarket("m-pme", "Portland, ME Market")];
+    expect(recommendMarket({ ...base, markets: named, role: "origin", city: "Portland", state: "ME" })).toMatchObject({ tier: 3, market_id: "m-pme" });
+  });
+
   it("same-city history (tier 2) still wins over the hub match", () => {
     const loads = [mkLoad({ origin_city: "Atlanta", origin_state: "GA", origin_market_id: "m-chi" })];
     const rec = recommendMarket({ ...base, loads, role: "origin", city: "Atlanta", state: "GA" });
@@ -210,6 +239,21 @@ describe("recommendMarket — tier 5 (nearest seeded freight hub ≤75 mi)", () 
     expect(rec?.isNew).toBe(false);
     expect(rec?.market_name).toBe("Atlanta Market");
     expect(rec?.reason).toMatch(/Nearest hub · Atlanta/);
+  });
+
+  it("reuses a market you already have whose hub is within 75 mi before minting a twin: Naperville is Chicago's, never a new Joliet Market", () => {
+    const rec = recommendMarket({ ...base, loads: [], role: "origin", city: "Naperville", state: "IL" });
+    expect(rec?.tier).toBe(5);
+    expect(rec?.market_id).toBe("m-chi");
+    expect(rec?.isNew).toBe(false);
+    expect(rec?.reason).toMatch(/Nearest hub · Chicago .* your market/);
+  });
+
+  it("a twin hub mints its primary's market: Gary, IN with no Chicago Market yet → Chicago Market", () => {
+    const rec = recommendMarket({ ...base, markets: [mkMarket("m-atl", "Atlanta Market")], loads: [], role: "origin", city: "Gary", state: "IN" });
+    expect(rec?.tier).toBe(5);
+    expect(rec?.market_name).toBe("Chicago Market");
+    expect(rec?.isNew).toBe(true);
   });
 
   it("flags isNew when the nearest hub's market doesn't exist yet (create)", () => {

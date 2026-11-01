@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { AgentScorecard } from "./agentScorecard";
 import { cityKey, type CoordMap } from "./foreman";
-import { outboundStrength, destinationFactor, theCall } from "./marketFactor";
+import { outboundStrength, destinationFactor, theCall, outYardstick } from "./marketFactor";
 
 let seq = 0;
 const mk = (originCity: string, originState: string, rpm: number, agent: string): Load =>
@@ -38,7 +38,7 @@ const mk = (originCity: string, originState: string, rpm: number, agent: string)
     updated_at: "",
   }) as Load;
 
-// PA strong (4 loads @ $8, 2 agents), AL fair (4 @ $5.8), TX soft (3 @ $4.2),
+// PA strong (4 loads @ $8, 2 agents), AL fair (4 @ $5.8), TX soft (4 @ $4.2),
 // MS thin (1 load). Overall outbound median works out to 5.8.
 const world = (): Load[] => {
   seq = 0;
@@ -53,6 +53,7 @@ const world = (): Load[] => {
     mk("Mobile", "AL", 5.8, "a4"),
     mk("Laredo", "TX", 4.2, "a5"),
     mk("Laredo", "TX", 4.2, "a5"),
+    mk("Dallas", "TX", 4.2, "a6"),
     mk("Dallas", "TX", 4.2, "a6"),
     mk("Iuka", "MS", 7.0, "a7"),
   ];
@@ -69,8 +70,27 @@ describe("outboundStrength", () => {
     const s = outboundStrength(world());
     expect(s.get("PA")).toMatchObject({ grade: "strong", loadsOut: 4, medianRpm: 8.0, agents: 2 });
     expect(s.get("AL")).toMatchObject({ grade: "fair", loadsOut: 4, medianRpm: 5.8 });
-    expect(s.get("TX")).toMatchObject({ grade: "soft", loadsOut: 3, medianRpm: 4.2 });
+    expect(s.get("TX")).toMatchObject({ grade: "soft", loadsOut: 4, medianRpm: 4.2 });
     expect(s.get("MS")).toMatchObject({ grade: "thin", loadsOut: 1 }); // a single load → thin
+  });
+
+  it("thin under four loads — soft needs the same evidence strong does", () => {
+    const three = world().filter((l) => !(l.origin_city === "Dallas" && l.agent_id === "a6"));
+    const s = outboundStrength(three, undefined, outYardstick(world()));
+    expect(s.get("TX")).toMatchObject({ grade: "thin", loadsOut: 2 });
+  });
+
+  it("the yardstick is the whole book: a window of it is graded against the same bar", () => {
+    const all = world();
+    const yardstick = outYardstick(all);
+    expect(yardstick).toBe(5.8);
+    // A window holding only the TX loads would, on its own, call them the norm.
+    const txOnly = all.filter((l) => l.origin_state === "TX");
+    expect(outboundStrength(txOnly).get("TX")?.grade).toBe("fair");
+    expect(outboundStrength(txOnly, undefined, yardstick).get("TX")?.grade).toBe("soft");
+    // destinationFactor takes the window and the whole book apart
+    const d = destinationFactor(txOnly, { city: "Houston", state: "TX" }, COORDS, all);
+    expect(d.market?.grade).toBe("soft");
   });
 });
 

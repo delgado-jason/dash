@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
+import { windowLoads, DEFAULT_WINDOW } from "@/lib/metrics/marketLedger";
 import { useAgents } from "@/hooks/useAgents";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
@@ -387,9 +388,12 @@ const ScoreLoadPage = () => {
   // The delivery's place alone — the factor re-reads only when the city or
   // state changes, not on every keystroke in the other delivery fields.
   const deliveryPlace = useMemo(() => ({ city: delivery.city, state: delivery.state }), [delivery.city, delivery.state]);
+  // The delivery market graded on the Lanes ledger's own window (12 months)
+  // against the whole book's yardstick — so this page and Lanes can never
+  // disagree about a market.
   const destFactor = useMemo(
-    () => destinationFactor(loads ?? [], deliveryPlace, coords),
-    [loads, deliveryPlace, coords],
+    () => destinationFactor(windowLoads(loads ?? [], DEFAULT_WINDOW, now), deliveryPlace, coords, loads ?? []),
+    [loads, deliveryPlace, coords, now],
   );
   const call = theCall(score.verdict, destFactor, agentCard, isNewAgent);
 

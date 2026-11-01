@@ -142,7 +142,9 @@ describe("sequenceLoads", () => {
   it("carries the next load's reload, idle days, market and rate", () => {
     expect(seq[1].next).toMatchObject({
       deadheadMiles: 300,
-      idleDays: 14,
+      deadheadSource: "planned",
+      idleDays: 10, // Sat Jun 6 → Sat Jun 20: ten weekdays, not fourteen days
+      calendarDays: 14,
       originState: "OH",
       originMarket: "Columbus",
       pickupDay: "2026-06-20",
@@ -164,9 +166,46 @@ describe("sequenceLoads", () => {
           delivery_date: "2026-06-25",
         }),
       ])[0];
-    expect(at(7).next?.idleDays).toBe(7);
+    expect(at(7).next?.calendarDays).toBe(7);
+    expect(at(7).next?.idleDays).toBe(5); // Wed Jun 3 → Wed Jun 10: five weekdays
     expect(at(7).home).toBe(false);
     expect(at(8).home).toBe(true);
+  });
+
+  it("a logged home trip marks home time whatever the gap — Thursday to Monday is home, not idle", () => {
+    const pair = [
+      makeLoad({ load_id: "a", pickup_date: "2026-06-02", delivery_date: "2026-06-04" }), // Thu
+      makeLoad({ load_id: "b", pickup_date: "2026-06-08", delivery_date: "2026-06-10", deadhead_miles: 400 }), // Mon
+    ];
+    const away = sequenceLoads(pair)[0];
+    expect(away.home).toBe(false);
+    expect(away.next?.idleDays).toBe(2); // Fri, Mon
+    const home = sequenceLoads(pair, [{ trip_date: "2026-06-05", trip_purpose: "home", status: "completed" }])[0];
+    expect(home.home).toBe(true);
+    // a shop trip, or a cancelled home trip, marks nothing
+    expect(sequenceLoads(pair, [{ trip_date: "2026-06-05", trip_purpose: "shop" }])[0].home).toBe(false);
+    expect(sequenceLoads(pair, [{ trip_date: "2026-06-05", trip_purpose: "home", status: "cancelled" }])[0].home).toBe(false);
+  });
+
+  it("a weekend reload is not idle: Friday to Monday is one weekday", () => {
+    const [first] = sequenceLoads([
+      makeLoad({ load_id: "f", pickup_date: "2026-06-03", delivery_date: "2026-06-05" }), // Fri
+      makeLoad({ load_id: "m", pickup_date: "2026-06-08", delivery_date: "2026-06-10" }), // Mon
+    ]);
+    expect(first.next).toMatchObject({ idleDays: 1, calendarDays: 3 });
+  });
+
+  it("empty miles come from the odometer when both readings exist, else the planned deadhead", () => {
+    const odo = sequenceLoads([
+      makeLoad({ load_id: "x", pickup_date: "2026-06-01", delivery_date: "2026-06-03", odometer_start: 1000, odometer_end: 1500 }),
+      makeLoad({ load_id: "y", pickup_date: "2026-06-04", delivery_date: "2026-06-06", odometer_start: 1650, deadhead_miles: 300 }),
+    ])[0];
+    expect(odo.next).toMatchObject({ deadheadMiles: 150, deadheadSource: "odometer" });
+    const planned = sequenceLoads([
+      makeLoad({ load_id: "x", pickup_date: "2026-06-01", delivery_date: "2026-06-03", odometer_end: 1500 }),
+      makeLoad({ load_id: "y", pickup_date: "2026-06-04", delivery_date: "2026-06-06", odometer_start: null, deadhead_miles: 300 }),
+    ])[0];
+    expect(planned.next).toMatchObject({ deadheadMiles: 300, deadheadSource: "planned" });
   });
 
   it("never reads a NEGATIVE idle — an overlapping pair sits 0 days, not −5", () => {
@@ -183,9 +222,10 @@ describe("sequenceLoads", () => {
 
 // ------------------------------------------------------------- the IN rule
 
-// A book whose median logged reload is 172.5 mi:
-//   90, 95, 100, 110, 121, 137, 170, 175, 180, 186, 190, 260, 280, 300
-// → at 85 % / 125 %, strong needs ≤ 146.6 mi and soft starts at 215.6 mi.
+// A book whose median logged reload (home stints out) is 182 mi:
+//   90, 95, 100, 100, 110, 121, 137, 170, 175, 180, 184, 186, 188, 190, 260, 270, 280, 300
+// → at 85 % / 125 %, strong needs ≤ 154.7 mi and soft starts at 227.5 mi.
+// Four deliveries make a market gradable — one minimum for soft and strong.
 const leg = (
   state: string,
   deadheadMiles: number | null,
@@ -196,7 +236,9 @@ const leg = (
   home,
   next: {
     deadheadMiles,
+    deadheadSource: deadheadMiles == null ? null : "planned",
     idleDays,
+    calendarDays: idleDays,
     originState: state,
     originMarket: null,
     rpm: 6,
@@ -208,15 +250,19 @@ const BOOK: SequencedLoad[] = [
   leg("OH", 100, 1),
   leg("OH", 110, 2),
   leg("OH", 121, 1),
+  leg("OH", 100, 1),
   leg("TX", 260, 1),
   leg("TX", 280, 2),
   leg("TX", 300, 2),
+  leg("TX", 270, 1),
   leg("VA", 170, 1),
   leg("VA", 175, 2),
   leg("VA", 180, 3),
   leg("VA", null, 17, true), // a week off doesn't grade a market
   leg("TN", 186, 4),
   leg("TN", 190, 4),
+  leg("TN", 184, 4),
+  leg("TN", 188, 4),
   leg("GA", 90, 1),
   leg("GA", 95, 1),
   leg("SC", 137, 1),
@@ -229,15 +275,15 @@ describe("inboundStrength", () => {
 
   it("STRONG — cheap reload, short idle, enough deliveries", () => {
     expect(map.get("OH")).toMatchObject({
-      deliveries: 3,
-      reloadMilesMedian: 110,
+      deliveries: 4,
+      reloadMilesMedian: 105,
       grade: "strong",
     });
-    expect(map.get("OH")?.idleDaysAvg).toBeCloseTo(4 / 3, 5);
+    expect(map.get("OH")?.idleDaysAvg).toBeCloseTo(1.25, 5);
   });
 
   it("SOFT on reload alone — expensive to leave, idle fine", () => {
-    expect(map.get("TX")).toMatchObject({ reloadMilesMedian: 280, grade: "soft" });
+    expect(map.get("TX")).toMatchObject({ reloadMilesMedian: 275, grade: "soft" });
     expect(map.get("TX")?.idleDaysAvg).toBeLessThan(IN_IDLE_SOFT);
   });
 
@@ -255,9 +301,9 @@ describe("inboundStrength", () => {
     expect(map.get("VA")?.idleDaysAvg).toBeCloseTo(2, 5);
   });
 
-  it("FAIR when the reload is cheap but the evidence is thin", () => {
-    // 92.5 mi would be strong on 3+ deliveries; on two it is only fair.
-    expect(map.get("GA")).toMatchObject({ reloadMilesMedian: 92.5, grade: "fair" });
+  it("THIN under four deliveries, however cheap the reload — the same minimum as strong", () => {
+    // 92.5 mi would be strong on four deliveries; on two it is not graded at all.
+    expect(map.get("GA")).toMatchObject({ reloadMilesMedian: 92.5, grade: "thin" });
     expect(map.get("GA")?.deliveries).toBeLessThan(IN_STRONG_MIN);
   });
 
@@ -358,17 +404,18 @@ describe("buildLedger", () => {
     // (150, 250) — the rest are zeroes, which are not reloads of 0 miles.
     expect(row("VA").in.reloadMilesMedian).toBeCloseTo(200, 5);
     expect(row("VA").in.reloadMilesAvg).toBeCloseTo(200, 5);
-    // idle: 1, 2, 2, 2 — the last load you've run has no next and no idle
-    expect(row("VA").in.idleDaysAvg).toBeCloseTo(1.75, 5);
+    // idle, in weekdays: 1 (Mon → Tue), 1 (Thu → Sat: Friday only), 2 (Mon → Wed),
+    // 0 (Fri → Sun: no weekday) — the last load you've run has no next and no idle
+    expect(row("VA").in.idleDaysAvg).toBeCloseTo(1, 5);
   });
 
   it("sorts by OUT $/mi among 2+ load markets, then the rest by deliveries", () => {
     expect(rows.map((r) => r.state)).toEqual(["SC", "OH", "VA", "AZ"]);
   });
 
-  it("grades OUT with the Load Scorer's own rule (thin under two loads)", () => {
+  it("grades OUT with the Load Scorer's own rule — thin under four loads, the same minimum as strong", () => {
     expect(row("AZ").out.grade).toBe("thin");
-    expect(row("SC").out.grade).not.toBe("thin");
+    expect(row("SC").out.grade).toBe("thin"); // two loads print their figure, carry no grade
   });
 
   it("leaves an UNDATED delivery out of the IN half — same deliveries, same grade", () => {
@@ -445,23 +492,24 @@ describe("the IN grade's yardstick is the whole sequence, not the window", () =>
   const ohio = (win: LedgerWindow) =>
     buildLedger(ERAS, win, NOW, "state").find((r) => r.state === "OH")!;
 
-  it("takes the median off every logged reload, all time", () => {
-    // 60, 70, 80, 90, 400, 420, 440, 460 → 245 mi. The recent window alone
+  it("takes the median off every logged reload, all time — home legs out", () => {
+    // 60, 70, 80, 90, 400, 420, 440 → 90 mi. (The 460-mile run into r1 came after a
+    // two-year gap — home time, out of the yardstick.) The recent window alone
     // would say 75, which would re-grade OH against itself.
-    expect(reloadYardstick(sequenceLoads(ERAS))).toBeCloseTo(245, 5);
+    expect(reloadYardstick(sequenceLoads(ERAS))).toBeCloseTo(90, 5);
   });
 
   it("keeps OH's own numbers identical across 12m, ytd and all", () => {
     for (const win of ["12m", "ytd", "all"] as const) {
       expect(ohio(win).in.deliveries).toBe(4);
       expect(ohio(win).in.reloadMilesMedian).toBeCloseTo(75, 5);
-      expect(ohio(win).in.idleDaysAvg).toBeCloseTo(2, 5);
+      expect(ohio(win).in.idleDaysAvg).toBeCloseTo(1.75, 5); // weekdays: 2, 2, 1 (a Saturday pickup), 2
     }
   });
 
   it("so OH keeps ONE grade across the three windows", () => {
-    // 75 mi is 31 % of your 245-mi median — cheap to leave, on four
-    // deliveries, two idle days. Strong, and strong in every window.
+    // 75 mi is 83 % of your 90-mi median — cheap to leave, on four
+    // deliveries, under two idle weekdays. Strong, and strong in every window.
     expect(ohio("12m").in.grade).toBe("strong");
     expect(ohio("ytd").in.grade).toBe("strong");
     expect(ohio("all").in.grade).toBe("strong");
@@ -607,10 +655,18 @@ describe("ledgerHeadline", () => {
     expect(head.emptyShare).toBeCloseTo(400 / 4400, 5);
   });
 
-  it("crowns the best market to load, and the easiest / costliest to leave", () => {
-    expect(head.bestOut?.state).toBe("SC");
-    expect(head.easiestIn?.state).toBe("VA");
-    expect(head.costliestIn?.state).toBe("VA");
+  it("crowns the best market to load, and the easiest / costliest to leave — once a market has four loads to grade on", () => {
+    // SC on two loads is thin, so the book as it stands crowns nothing out.
+    expect(head.bestOut).toBeNull();
+    const more = [
+      ...BOOK_LOADS,
+      out({ load_id: "s3", origin_state: "SC", loaded_miles: 500, linehaul: "3000", pickup_date: "2026-06-08", delivery_date: "2026-06-09" }),
+      out({ load_id: "s4", origin_state: "SC", loaded_miles: 500, linehaul: "3000", pickup_date: "2026-06-10", delivery_date: "2026-06-11" }),
+    ];
+    const four = ledgerHeadline(buildLedger(more, "12m", NOW), windowLoads(more, "12m", NOW));
+    expect(four.bestOut?.state).toBe("SC");
+    expect(four.easiestIn?.state).toBe("VA");
+    expect(four.costliestIn?.state).toBe("VA");
   });
 
   it("is null, never zero, when the book is too thin to say", () => {

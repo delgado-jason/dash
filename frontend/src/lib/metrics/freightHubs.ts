@@ -17,6 +17,10 @@ export interface FreightHub {
     | "manufacturing"
     | "border"
     | "metro";
+  // A hub under 50 miles from a bigger one is the same market (the 2026-11-01
+  // audit found eleven such pairs splitting lanes): it keeps its coordinate for
+  // distance, but resolves to its primary's name.
+  twinOf?: string;
 }
 
 export const FREIGHT_HUBS: FreightHub[] = [
@@ -28,16 +32,16 @@ export const FREIGHT_HUBS: FreightHub[] = [
   { city: "Memphis", state: "TN", lat: 35.1495, lng: -90.049, kind: "rail-intermodal" },
   { city: "Kansas City", state: "MO", lat: 39.0997, lng: -94.5786, kind: "rail-intermodal" },
   { city: "Laredo", state: "TX", lat: 27.5306, lng: -99.4803, kind: "border" },
-  { city: "Joliet", state: "IL", lat: 41.525, lng: -88.0817, kind: "rail-intermodal" },
-  { city: "Fort Worth", state: "TX", lat: 32.7555, lng: -97.3308, kind: "rail-intermodal" },
-  { city: "Ontario", state: "CA", lat: 34.0633, lng: -117.6509, kind: "distribution" },
-  { city: "Elizabeth", state: "NJ", lat: 40.664, lng: -74.2107, kind: "port" },
+  { city: "Joliet", state: "IL", lat: 41.525, lng: -88.0817, kind: "rail-intermodal", twinOf: "Chicago" },
+  { city: "Fort Worth", state: "TX", lat: 32.7555, lng: -97.3308, kind: "rail-intermodal", twinOf: "Dallas" },
+  { city: "Ontario", state: "CA", lat: 34.0633, lng: -117.6509, kind: "distribution", twinOf: "Los Angeles" },
+  { city: "Elizabeth", state: "NJ", lat: 40.664, lng: -74.2107, kind: "port", twinOf: "New York" },
   { city: "Savannah", state: "GA", lat: 32.0809, lng: -81.0912, kind: "port" },
   { city: "Columbus", state: "OH", lat: 39.9612, lng: -82.9988, kind: "distribution" },
   { city: "Charlotte", state: "NC", lat: 35.2271, lng: -80.8431, kind: "rail-intermodal" },
   { city: "Indianapolis", state: "IN", lat: 39.7684, lng: -86.1581, kind: "distribution" },
   { city: "Harrisburg", state: "PA", lat: 40.2732, lng: -76.8867, kind: "distribution" },
-  { city: "Allentown", state: "PA", lat: 40.6084, lng: -75.4902, kind: "distribution" },
+  { city: "Allentown", state: "PA", lat: 40.6084, lng: -75.4902, kind: "distribution", twinOf: "Philadelphia" },
   { city: "Louisville", state: "KY", lat: 38.2527, lng: -85.7585, kind: "distribution" },
   { city: "Nashville", state: "TN", lat: 36.1627, lng: -86.7816, kind: "distribution" },
   { city: "Phoenix", state: "AZ", lat: 33.4484, lng: -112.074, kind: "distribution" },
@@ -76,15 +80,15 @@ export const FREIGHT_HUBS: FreightHub[] = [
   { city: "Tampa", state: "FL", lat: 27.9506, lng: -82.4572, kind: "port" },
   { city: "Orlando", state: "FL", lat: 28.5383, lng: -81.3792, kind: "distribution" },
   { city: "Richmond", state: "VA", lat: 37.5407, lng: -77.436, kind: "distribution" },
-  { city: "Gary", state: "IN", lat: 41.5934, lng: -87.3464, kind: "manufacturing" },
+  { city: "Gary", state: "IN", lat: 41.5934, lng: -87.3464, kind: "manufacturing", twinOf: "Chicago" },
   { city: "Toledo", state: "OH", lat: 41.6528, lng: -83.5379, kind: "manufacturing" },
   { city: "Boston", state: "MA", lat: 42.3601, lng: -71.0589, kind: "metro" },
-  { city: "Stockton", state: "CA", lat: 37.9577, lng: -121.2908, kind: "rail-intermodal" },
+  { city: "Stockton", state: "CA", lat: 37.9577, lng: -121.2908, kind: "rail-intermodal", twinOf: "Sacramento" },
   { city: "Fresno", state: "CA", lat: 36.7378, lng: -119.7871, kind: "distribution" },
   { city: "Las Vegas", state: "NV", lat: 36.1699, lng: -115.1398, kind: "distribution" },
   { city: "Reno", state: "NV", lat: 39.5296, lng: -119.8138, kind: "distribution" },
   { city: "Portland", state: "OR", lat: 45.5152, lng: -122.6784, kind: "port" },
-  { city: "Tacoma", state: "WA", lat: 47.2529, lng: -122.4443, kind: "port" },
+  { city: "Tacoma", state: "WA", lat: 47.2529, lng: -122.4443, kind: "port", twinOf: "Seattle" },
   { city: "Omaha", state: "NE", lat: 41.2565, lng: -95.9345, kind: "rail-intermodal" },
   { city: "Des Moines", state: "IA", lat: 41.5868, lng: -93.625, kind: "distribution" },
   { city: "Corpus Christi", state: "TX", lat: 27.8006, lng: -97.3964, kind: "port" },
@@ -99,10 +103,10 @@ export const FREIGHT_HUBS: FreightHub[] = [
   { city: "Syracuse", state: "NY", lat: 43.0481, lng: -76.1474, kind: "rail-intermodal" },
   { city: "Albany", state: "NY", lat: 42.6526, lng: -73.7562, kind: "port" },
   { city: "Scranton", state: "PA", lat: 41.409, lng: -75.6624, kind: "distribution" },
-  { city: "Carlisle", state: "PA", lat: 40.2015, lng: -77.1889, kind: "distribution" },
+  { city: "Carlisle", state: "PA", lat: 40.2015, lng: -77.1889, kind: "distribution", twinOf: "Harrisburg" },
   { city: "Hartford", state: "CT", lat: 41.7658, lng: -72.6734, kind: "distribution" },
   { city: "New York", state: "NY", lat: 40.7128, lng: -74.006, kind: "metro" },
-  { city: "Washington", state: "DC", lat: 38.9072, lng: -77.0369, kind: "metro" },
+  { city: "Washington", state: "DC", lat: 38.9072, lng: -77.0369, kind: "metro", twinOf: "Baltimore" },
   { city: "Portland", state: "ME", lat: 43.6591, lng: -70.2568, kind: "port" },
   { city: "Jackson", state: "MS", lat: 32.2988, lng: -90.1848, kind: "metro" },
   { city: "Sacramento", state: "CA", lat: 38.5816, lng: -121.4944, kind: "metro" },
@@ -166,7 +170,23 @@ export const STATE_CENTERS: Record<string, CityCoord> = {
 
 export const MARKET_RADIUS_MI = 75;
 
-// Nearest seeded hub to a coordinate, within the market radius. Null if none.
+// A twin resolves to its primary (Joliet → Chicago); a primary is itself.
+export const primaryHub = (hub: FreightHub): FreightHub =>
+  hub.twinOf ? (FREIGHT_HUBS.find((h) => h.city === hub.twinOf && !h.twinOf) ?? hub) : hub;
+
+// The market a hub names. A city name two hubs share ("Portland" is OR and
+// ME) carries its state, so the two can never be one market by accident.
+export const hubMarketName = (hub: FreightHub): string =>
+  hubsNamed(hub.city).some((h) => h.state !== hub.state) ? `${hub.city}, ${hub.state} Market` : `${hub.city} Market`;
+
+// The seeded hub(s) with this city name — "Portland" is two of them.
+export const hubsNamed = (city: string): FreightHub[] => {
+  const key = String(city ?? "").trim().toUpperCase();
+  return FREIGHT_HUBS.filter((h) => h.city.toUpperCase() === key);
+};
+
+// Nearest seeded hub to a coordinate, within the market radius — measured to
+// the nearest hub point, twins included, but NAMED by the primary. Null if none.
 export const nearestHub = (
   here: CityCoord,
 ): { hub: FreightHub; distanceMi: number } | null => {
@@ -176,7 +196,7 @@ export const nearestHub = (
     if (d > MARKET_RADIUS_MI) continue;
     if (!best || d < best.distanceMi) best = { hub, distanceMi: d };
   }
-  return best;
+  return best ? { hub: primaryHub(best.hub), distanceMi: best.distanceMi } : null;
 };
 
 export type Direction =

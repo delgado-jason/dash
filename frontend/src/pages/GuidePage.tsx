@@ -1200,11 +1200,17 @@ const GuidePage = () => {
               <span className="text-light">same city</span>, then{" "}
               <span className="text-light">a market named for that city</span>{" "}
               (type "Atlanta" and it offers your Atlanta Market, even though your
-              loads run from the towns around it), then the{" "}
+              loads run from the towns around it — matched with the state, so
+              Charleston, WV never lands in the Charleston (SC) market), then the{" "}
               <span className="text-light">nearest city you've already mapped</span>{" "}
               within 75 miles, then the{" "}
-              <span className="text-light">nearest major freight hub</span> within
-              75 miles, and — for a genuinely remote spot — a{" "}
+              <span className="text-light">nearest hub within 75 miles whose
+              market you already have</span>, and only then a new hub market;
+              twin hubs under 50 miles apart share one market (Joliet and Gary
+              are Chicago's, Fort Worth is Dallas's, Ontario is Los Angeles's,
+              Elizabeth is New York's, Carlisle is Harrisburg's, Tacoma is
+              Seattle's, Washington is Baltimore's, Stockton is Sacramento's,
+              Allentown is Philadelphia's). For a genuinely remote spot it's a{" "}
               <span className="text-light">regional name</span> like "Western Texas
               Market." Tap <span className="text-light">Use</span> to accept a
               market you already have; when the pick is a hub or region you haven't
@@ -1306,17 +1312,29 @@ const GuidePage = () => {
               how many loads, the typical $/mi, the $/day, and how many agents
               source it. Its grade is not a second opinion: it is the{" "}
               <span className="text-light">Load Scorer's own market rule</span>{" "}
-              (strong ≥ 105% of your overall typical rate over at least four
-              loads, soft ≤ 85% of it, thin under two loads), computed on the
-              window's loads, so this page and Score a Load can never disagree
-              about whether a market is worth loading in.
+              (strong ≥ 105% of your typical rate, soft ≤ 85% of it — each over
+              at least <span className="text-light">four loads</span>, one
+              minimum for both; thin under four), read against your{" "}
+              <span className="text-light">whole book's</span> typical rate so
+              switching the window never moves the bar, on the window's own
+              loads. Score a Load grades a delivery market on this page's
+              12-month window against the same bar, so the two can never
+              disagree about whether a market is worth loading in.
             </Why>
             <Why>
               <span className="text-light">IN</span> — what a delivery there
               leaves you: how many deliveries, the typical empty miles to your
               next pickup, the days you waited, and what that next load paid. That
               is the number the page was missing, and it has its own section
-              below.
+              below. Home time is read from your{" "}
+              <span className="text-light">logged home trips</span> — a
+              Thursday-to-Monday stint counts as home, not idle — or from a gap
+              over a week, and a home stint's reload miles stay out of the
+              market's median along with its days. Idle counts{" "}
+              <span className="text-light">weekdays</span>, so a Friday
+              delivery reloading Monday is one day, not three. Empty miles come
+              from the <span className="text-light">odometer</span> when both
+              readings exist, the planned deadhead otherwise.
             </Why>
             <Why>
               <span className="text-light">Regions</span> flips the same ledger to
