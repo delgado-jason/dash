@@ -101,6 +101,11 @@ export interface CostBasis {
   // years on both ends when they differ) — so every surface can SAY which
   // window its break-even covers instead of leaving it a mystery.
   windowLabel: string | null;
+  // The complete months inside the window with NO P&L filed, named the same
+  // way ("Oct ’26") — said out loud, because a missing month silently shrinks
+  // the basis (2026-11-01: October unfiled left break-even standing on two).
+  missingLabel: string | null;
+  monthsWanted: number; // the window the code asked for (3)
 }
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -143,9 +148,13 @@ export const getCostBasis = (
   let grossRev = 0;
   let n = 0;
   const included: { year: number; month: number }[] = [];
+  const missing: { year: number; month: number }[] = [];
   for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
     const p = byKey.get(`${year}-${month}`);
-    if (!p) continue; // no P&L for this month → skip cost AND miles (stay aligned)
+    if (!p) {
+      missing.push({ year, month });
+      continue; // no P&L for this month → skip cost AND miles (stay aligned)
+    }
     n++;
     included.push({ year, month });
     cost += (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsMonthly;
@@ -167,6 +176,8 @@ export const getCostBasis = (
     payTake: grossRev > 0 ? revenue / grossRev : null,
     months: n,
     windowLabel: windowLabelOf(included),
+    missingLabel: windowLabelOf(missing),
+    monthsWanted: monthsBack,
   };
 };
 
