@@ -15,7 +15,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { Link } from "react-router";
 import { markupToMargin, dialAdvice } from "@/lib/metrics/rateDial";
-import { getFreightIndex, type FreightIndexPoint } from "@/services/marketService";
+import { getFreightSignals, type FreightIndexPoint } from "@/services/marketService";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import {
@@ -25,10 +25,10 @@ import {
   windowPoints,
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
-import { marketTrend, youVsMarket } from "@/lib/metrics/marketSignal";
-import { buildMarketPlaybook } from "@/lib/metrics/marketPlaybook";
+import { marketSignal, youVsMarket, indexSentence } from "@/lib/metrics/marketSignal";
+import { buildMarketCall } from "@/lib/metrics/marketCall";
 import { buildCutPlan, toCutCategories } from "@/lib/metrics/cutPlanner";
-import { MarketPlaybookCard } from "@/components/market/MarketPlaybookCard";
+import { MarketCallCard } from "@/components/market/MarketCallCard";
 import { CutPanel } from "@/components/market/CutPanel";
 import { getCutTierData, type CutTierRow } from "@/services/expensesService";
 import { rpm } from "@/lib/format";
@@ -231,15 +231,24 @@ const MarketPage = () => {
   const targets = useRateTargets(loads);
   const now = useMemo(() => new Date(), []);
   const [freightIndex, setFreightIndex] = useState<FreightIndexPoint[]>([]);
+  const [diesel, setDiesel] = useState<FreightIndexPoint[]>([]);
 
   useEffect(() => {
-    getFreightIndex().then(setFreightIndex).catch(() => {});
+    getFreightSignals()
+      .then(({ index, diesel: d }) => {
+        setFreightIndex(index);
+        setDiesel(d);
+      })
+      .catch(() => {});
   }, []);
 
   const points = useMemo(() => ratePoints(loads), [loads]);
   const monthly = useMemo(() => monthlyMedianRate(points), [points]);
-  const trend = useMemo(() => marketTrend(freightIndex), [freightIndex]);
-  const yvm = useMemo(() => youVsMarket(monthly, freightIndex), [monthly, freightIndex]);
+  // The signal: the index's three-month read, held two prints, diesel netted out.
+  const signal = useMemo(() => marketSignal(freightIndex, diesel), [freightIndex, diesel]);
+  // You vs the market: your standard loads over the index's last three months
+  // against the three before — the same months on both sides, counts printed.
+  const yvm = useMemo(() => youVsMarket(points, freightIndex), [points, freightIndex]);
 
   // Merge the owner's monthly median with the FRED macro index on a shared month
   // axis (union of months). Either line can gap where the other has no value.
@@ -254,9 +263,11 @@ const MarketPage = () => {
     return [...map.values()].sort((a, b) => (a.month < b.month ? -1 : 1));
   }, [monthly, freightIndex]);
   const hasPpi = freightIndex.length > 0;
+  // Where your rungs sit among your own accepted loads, per type — evidence
+  // beside the call, never a call of its own.
   const gauge = useMemo(
-    () => tierGauge(points, targets.bookingLadder, targets.specLadder, now, 90, trend?.direction),
-    [points, targets.bookingLadder, targets.specLadder, now, trend],
+    () => tierGauge(points, targets.bookingLadder, targets.specLadder, now, 90),
+    [points, targets.bookingLadder, targets.specLadder, now],
   );
 
   // Is the WHOLE operation under break-even? Blended gross/driven mile < the
@@ -267,32 +278,24 @@ const MarketPage = () => {
     targets.basis.grossPerTotalMile != null &&
     targets.bookingLadder.walkAway != null &&
     targets.basis.grossPerTotalMile < targets.bookingLadder.walkAway;
-  const playbook = useMemo(
-    () =>
-      buildMarketPlaybook(
-        points,
-        targets.bookingLadder,
-        targets.specLadder,
-        trend,
-        now,
-        businessUnderwater,
-      ),
-    [points, targets.bookingLadder, targets.specLadder, trend, now, businessUnderwater],
+  // The call — one engine, one move per tier, each on its own freight type.
+  const call = useMemo(
+    () => buildMarketCall(points, targets.bookingLadder, targets.specLadder, signal, now, businessUnderwater),
+    [points, targets.bookingLadder, targets.specLadder, signal, now, businessUnderwater],
   );
 
-  // Market-aware dial advice (Jason, 2026-09-02): the FRED trend → a
-  // recommended slider position for each rate dial, anchored to the margin
-  // goal. Current positions read back from the ladders themselves, so the
-  // advice always compares against what's actually saved.
+  // The index's nudge for the rate dials (Jason, 2026-11-01): one step — two
+  // points — from where the dial sits, only when the signal holds and isn't a
+  // fuel move; otherwise hold, and say why. Current positions read back from
+  // the ladders themselves, so the advice always compares against what's saved.
   const dialAdv = useMemo(() => {
-    if (!trend) return null;
     const bl = targets.bookingLadder;
     const sl = targets.specLadder;
     if (!bl.walkAway || !bl.target || !sl.walkAway || !sl.target) return null; // 0 → NaN ratios
     const stdM = markupToMargin(bl.target / bl.walkAway - 1);
     const specM = markupToMargin(sl.target / sl.walkAway - 1);
-    return dialAdvice(trend.direction, targets.marginGoal, stdM, specM);
-  }, [trend, targets]);
+    return dialAdvice(signal, targets.marginGoal, stdM, specM);
+  }, [signal, targets]);
 
   // Monthly dollars to cut to get the whole operation back to break-even:
   // cost minus what your booked gross actually leaves you — your blended keep,
@@ -328,26 +331,20 @@ const MarketPage = () => {
     return buildCutPlan(toCutCategories(cutRows), monthlyGap);
   }, [businessUnderwater, monthlyGap, cutRows]);
 
-  const toneColor =
-    gauge.tone === "hot" ? "#4ade80" : gauge.tone === "soft" ? "#f87171" : "#e0a020";
-
-  // #2 You-vs-market readout helpers.
+  // You-vs-market readout helpers — only on a comparison that has enough loads.
+  const ok = yvm?.ok ? yvm : null;
   const pctLabel = (x: number) => `${x >= 0 ? "+" : ""}${Math.round(x * 100)}%`;
-  const yvmScale = yvm
-    ? Math.max(Math.abs(yvm.yourPct), Math.abs(yvm.marketPct), 0.02)
-    : 1;
+  const yvmScale = ok ? Math.max(Math.abs(ok.yourPct), Math.abs(ok.marketPct), 0.02) : 1;
   const yvmBar = (x: number) => Math.min(100, (Math.abs(x) / yvmScale) * 100);
-  const gapPts = yvm ? Math.round(Math.abs(yvm.gap) * 100) : 0;
-  const yvmText =
-    yvm?.verdict === "beating"
-      ? `You're beating the market by ${gapPts} pts — your rates are outrunning the freight index.`
-      : yvm?.verdict === "lagging"
-        ? `You're lagging the market by ${gapPts} pts — it's rising faster than your rates. Room to push on rate or lanes.`
-        : yvm
-          ? "You're moving with the market — this looks like the cycle, not your booking."
-          : null;
-  const yvmColor =
-    yvm?.verdict === "beating" ? "#4ade80" : yvm?.verdict === "lagging" ? "#f0b86a" : "#c9d3e0";
+  const gapPts = ok ? Math.round(Math.abs(ok.gap) * 100) : 0;
+  const yvmText = ok
+    ? ok.verdict === "beating"
+      ? `Your standard median rose ${pctLabel(ok.yourPct)} from ${ok.prior.label} to ${ok.recent.label} while the index moved ${pctLabel(ok.marketPct)} — ahead of the cycle by ${gapPts} pts, on ${ok.recent.n} and ${ok.prior.n} loads.`
+      : ok.verdict === "lagging"
+        ? `Your standard median moved ${pctLabel(ok.yourPct)} from ${ok.prior.label} to ${ok.recent.label} while the index moved ${pctLabel(ok.marketPct)} — ${gapPts} pts behind, on ${ok.recent.n} and ${ok.prior.n} loads. Money on the table: lanes, agents, negotiation.`
+        : `Your standard median moved ${pctLabel(ok.yourPct)} and the index ${pctLabel(ok.marketPct)} from ${ok.prior.label} to ${ok.recent.label} — moving with the cycle, on ${ok.recent.n} and ${ok.prior.n} loads.`
+    : null;
+  const yvmColor = ok?.verdict === "beating" ? "#4ade80" : ok?.verdict === "lagging" ? "#f0b86a" : "#c9d3e0";
 
   // The ladder as a distribution — where your RECENT loads landed, in the banded
   // ladder's zones. Windowed to the same trailing 90 days as the rate and gauge,
@@ -401,21 +398,21 @@ const MarketPage = () => {
           </span>
         </div>
 
-        {/* the playbook — the one clear move per tier, given the trend */}
+        {/* the call — one move per tier, each on its own freight */}
         <div className="mt-4">
-          <MarketPlaybookCard playbook={playbook} />
+          <MarketCallCard call={call} />
           {cutPlan && <CutPanel plan={cutPlan} />}
         </div>
 
-        {/* the dial advice — what the trend means for the rate dials */}
+        {/* the index's nudge — what the held signal means for the rate dials */}
         {dialAdv && (
           <div className="ds2-board p-4 mt-4">
             <div className="flex items-baseline gap-2.5 flex-wrap">
               <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
-                The dial advice
+                The index’s nudge
               </span>
               <span className="font-condensed text-[11px] text-faint">
-                trend → where to park the rate dials · index {trend ? `${trend.pctChange >= 0 ? "+" : ""}${(trend.pctChange * 100).toFixed(1)}% / 3 mo` : ""}
+                from the index alone · one step when it holds · {indexSentence(signal)}
               </span>
             </div>
             <p
@@ -441,14 +438,14 @@ const MarketPage = () => {
 
         {/* the verdict */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          {yvm ? (
+          {ok ? (
             <span
               className="font-display text-[20px] tracking-[.06em] rounded-[8px] px-3 py-[3px] rotate-[-1deg] border-2"
               style={{ color: yvmColor, borderColor: yvmColor }}
             >
-              {yvm.verdict === "beating"
+              {ok.verdict === "beating"
                 ? "▲ BEATING THE MARKET"
-                : yvm.verdict === "lagging"
+                : ok.verdict === "lagging"
                   ? "▼ LAGGING THE MARKET"
                   : "▪ MOVING WITH THE MARKET"}
             </span>
@@ -458,20 +455,29 @@ const MarketPage = () => {
             </span>
           )}
           <span className="text-[13.5px] text-faint">
-            {yvm && (
+            {ok && (
               <>
                 · <b className="font-semibold text-ink">{gapPts} pts</b> vs PPI specialized
-                freight (FRED)
+                freight (FRED) · {ok.recent.label} vs {ok.prior.label} ·{" "}
+                <b className="font-semibold text-ink">{ok.recent.n}</b> and{" "}
+                <b className="font-semibold text-ink">{ok.prior.n}</b> standard loads
+              </>
+            )}
+            {yvm && !yvm.ok && (
+              <>
+                · not enough standard loads to compare —{" "}
+                <b className="font-semibold text-ink">{yvm.recent.n}</b> in {yvm.recent.label},{" "}
+                <b className="font-semibold text-ink">{yvm.prior.n}</b> in {yvm.prior.label}; {yvm.need} on each side needed
               </>
             )}
             {lastMedian != null && (
               <>
                 {" "}
                 · your median <b className="font-semibold text-ink tabular-nums">{rpm(lastMedian)}</b>
-                /mi driven
+                /mi driven this month
               </>
             )}
-            {" "}· <b className="font-semibold text-ink">{points.length}</b> loads sampled
+            {" "}· <b className="font-semibold text-ink">{points.length}</b> loads on the chart
           </span>
         </div>
 
@@ -573,10 +579,15 @@ const MarketPage = () => {
                           </span>
                         )}
                       </div>
-                      {yvm && (
+                      {yvm && !yvm.ok && (
+                        <p className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3 font-condensed text-[11.5px] text-faint">
+                          You vs the market · not enough standard loads to compare — {yvm.recent.n} in {yvm.recent.label}, {yvm.prior.n} in {yvm.prior.label}; {yvm.need} on each side needed.
+                        </p>
+                      )}
+                      {ok && (
                         <div className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3">
                           <p className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint mb-2">
-                            You vs the market · last 6 months
+                            You vs the market · {ok.recent.label} vs {ok.prior.label} · standard loads, {ok.recent.n} and {ok.prior.n}
                           </p>
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className="font-condensed text-[11px] text-faint w-14">you</span>
@@ -587,16 +598,16 @@ const MarketPage = () => {
                               <div
                                 className="h-2"
                                 style={{
-                                  width: `${yvmBar(yvm.yourPct)}%`,
+                                  width: `${yvmBar(ok.yourPct)}%`,
                                   background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
                                 }}
                               />
                             </div>
                             <span
                               className="font-condensed text-xs w-14 text-right tabular-nums"
-                              style={{ color: yvm.yourPct >= 0 ? "#6fd08c" : "#e05252" }}
+                              style={{ color: ok.yourPct >= 0 ? "#6fd08c" : "#e05252" }}
                             >
-                              {pctLabel(yvm.yourPct)}
+                              {pctLabel(ok.yourPct)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -605,10 +616,10 @@ const MarketPage = () => {
                               className="flex-1 h-2 rounded-[3px] overflow-hidden"
                               style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
                             >
-                              <div className="h-2" style={{ width: `${yvmBar(yvm.marketPct)}%`, background: MACRO }} />
+                              <div className="h-2" style={{ width: `${yvmBar(ok.marketPct)}%`, background: MACRO }} />
                             </div>
                             <span className="font-condensed text-xs w-14 text-right tabular-nums" style={{ color: MACRO }}>
-                              {pctLabel(yvm.marketPct)}
+                              {pctLabel(ok.marketPct)}
                             </span>
                           </div>
                           {yvmText && (
@@ -632,10 +643,10 @@ const MarketPage = () => {
               <div className="ds2-board overflow-hidden">
                 <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
                   <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
-                    Tier gauge
+                    Your accepted loads · where your rungs sit
                   </span>
                   <span className="font-condensed text-[12px] text-faint">
-                    · last 90 days{gauge.windowN > 0 ? ` · ${gauge.windowN} loads` : ""}
+                    · last 90 days · {gauge.windowN} loads · a rung ranks among eight or more of its type · evidence for the call, not the market
                   </span>
                 </div>
                 <div className="px-4 py-3">
@@ -648,9 +659,15 @@ const MarketPage = () => {
                               <span className="text-ink">
                                 {r.label} <span className="text-faint">{rpm(r.value)}</span>
                               </span>
-                              <span className="tabular-nums" style={{ color: toneColor }}>
-                                {Math.round(r.pctile * 100)}
-                                <span className="text-faint text-[10px]">th pctile</span>
+                              <span className="tabular-nums text-dim">
+                                {r.pctile == null ? (
+                                  <span className="text-faint">{r.n} loads · fewer than 8 to rank</span>
+                                ) : (
+                                  <>
+                                    {Math.round(r.pctile * 100)}
+                                    <span className="text-faint text-[10px]">th pctile · {r.n} loads</span>
+                                  </>
+                                )}
                               </span>
                             </div>
                             <div
@@ -659,20 +676,12 @@ const MarketPage = () => {
                             >
                               <div
                                 className="h-full"
-                                style={{ width: `${Math.round(r.pctile * 100)}%`, background: toneColor }}
+                                style={{ width: `${Math.round((r.pctile ?? 0) * 100)}%`, background: "var(--color-amber-hi)" }}
                               />
                             </div>
                           </div>
                         ))}
                       </div>
-                      {gauge.suggestion && (
-                        <p
-                          className="mt-4 rounded-[8px] px-3 py-2.5 font-condensed text-[11.5px] leading-relaxed text-dim"
-                          style={{ background: "var(--color-well)" }}
-                        >
-                          {gauge.suggestion}
-                        </p>
-                      )}
                     </>
                   ) : (
                     <p className="font-condensed text-[12.5px] text-faint py-6 text-center">

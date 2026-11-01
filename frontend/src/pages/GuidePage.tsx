@@ -1080,51 +1080,68 @@ const GuidePage = () => {
               rate per driven mile by month — your personal read on where the
               market is — with the national{" "}
               <span className="text-light">PPI for specialized freight trucking</span>{" "}
-              (from the Fed's FRED data) overlaid on a second axis. Your own rate
-              lags; when that macro line turns down first, it's an early nudge the
-              market's softening before your own loads show it. The{" "}
-              <span className="text-light">tier gauge</span> then
-              asks the useful question: where do your tiers land in the last 90
-              days? A target sitting at the 40th percentile means the market
-              clears it easily (hot — room to raise); one at the 90th means it's
-              barely gettable (soft — trim). That turns "when do I adjust my
-              tiers" into a number you read instead of a gut call — and it now
-              factors the macro trend, so it won't tell you to raise into a market
-              that's already turning down.
+              (from the Fed's FRED data) overlaid on a second axis, both from zero so
+              a 3% index move reads as 3%. Beside the call,{" "}
+              <span className="text-light">your accepted loads</span> shows
+              where your rungs sit among your own recent loads of the same type
+              — a Standard rung among standard loads, a Specialized rung among
+              oversize and hazmat — and only once eight or more of that type are
+              in the window. It is evidence, never "the market": only loads you
+              took are in it, so it reads your discipline as much as the market.
+              The call reads that percentile; nothing here suggests a move on its
+              own.
             </Why>
             <Why>
               <span className="text-light">You vs. the market</span> (under the
-              barometer) compares your rate's move to the freight index's over the
-              last six months. If the market's up and you're flat, that's money on
-              the table you can chase — lanes, agents, negotiation. If you're both
-              down, it's the cycle, not you. And a small{" "}
-              <span className="text-light">freight-market chip</span> rides on the
-              dashboard header so you catch the trend at a glance. All of it is a
-              national read — your own lane heat still comes from your own loads.
+              barometer) compares your standard freight's median over the index's
+              last three months against the three before — the same calendar
+              months on both sides, at least eight loads a side, the counts
+              printed; with fewer it says not enough to compare. If the market's
+              up and you're flat, that's money on the table you can chase —
+              lanes, agents, negotiation. If you're both down, it's the cycle, not
+              you. The small <span className="text-light">freight-market chip</span>{" "}
+              on the dashboard header reads the same signal as the call: firming
+              or softening only once the index has held two prints and the move
+              isn't diesel's. All of it is a national read — your own lane heat
+              still comes from your own loads.
             </Why>
           </Metric>
 
           <Metric
-            title="Market playbook — the move to make"
-            answers="Reads which way the freight index is turning and where your recent rate sits against your own rungs, then gives one clear call per tier — raise, hold, protect, or cut costs."
+            title="The call — one move per tier"
+            answers="One engine judges each tier on its own freight — the median of at least five loads of that type in 90 days against its own rungs — and lets the index nudge it one step only once the signal has held two prints and isn't a fuel move."
             sources={[{ label: "Market", to: "/market" }]}
           >
             <Why>
               There's no national oversize spot price to book against, so the
-              playbook doesn't invent one. It reads two things you already trust:
-              which way the{" "}
-              <span className="text-light">FRED freight index</span> is pointing
-              (firming, steady, or softening) and where your own{" "}
-              <span className="text-light">recent median rate</span> sits against
-              your rungs — break-even, floor, target, strong. From those it gives
-              one move per tier instead of a wall of numbers.
+              call doesn't invent one. It reads two things: where your own recent
+              median for that freight type sits against that tier's rungs —
+              break-even, floor, target, strong — and what the{" "}
+              <span className="text-light">FRED freight index</span> is allowed
+              to say. The index's three-month move must pass 2.5% (the series'
+              own noise is 1.2%), hold the same read on{" "}
+              <span className="text-light">two consecutive prints</span>, and
+              not be a fuel move — diesel moving more than 10% the same way in
+              the same window explains it, because the index carries fuel
+              surcharges and your surcharge passes fuel through at 100%. The
+              call prints how many prints agree, so you can wait for three.
             </Why>
             <Why>
-              Firming and you're under your strong rung →{" "}
-              <span className="text-light">Raise</span>, with the percent to get
-              there. Steady and under target → room to push. Softening →{" "}
-              <span className="text-light">Hold and protect your floor</span>,
-              showing how much cushion you've got before the edge.
+              Below break-even beats every direction. Between break-even and
+              your floor: hold the line at the floor. Between floor and target: a
+              held firming signal says <span className="text-light">raise one
+              step</span>, to your target; a held softening signal says hold with
+              your cushion to the floor shown; anything else holds. At or above
+              target, a held firming signal pushes one step to your strong rung.
+              Fewer than five loads of a type in 90 days: not enough to call,
+              with the count. And when the index and your own loads disagree —
+              firming while your target already sits at the 70th percentile or
+              higher of your accepted loads of that type, or softening while it
+              sits under the 45th — the call says{" "}
+              <span className="text-light">evidence disagrees</span>, and holds.
+              The index's nudge for the rate dials follows the same rule: one
+              step of two points from where the dial sits, never under goal + 5,
+              and only on a held signal.
             </Why>
             <Why>
               A tier can sit <span className="text-light">below your cost floor</span>{" "}
@@ -1140,7 +1157,7 @@ const GuidePage = () => {
             </Why>
             <Why>
               When the whole operation is under, a <span className="text-light">cut
-              plan</span> appears under the playbook — built from{" "}
+              plan</span> appears under the call — built from{" "}
               <span className="text-light">your own books</span>, not a canned list.
               It closes the monthly gap least-painful first: overspend trimmed back to
               normal, then discretionary overhead, a deferred slice of non-safety

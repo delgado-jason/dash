@@ -21,3 +21,24 @@ export const getFreightIndex = async (): Promise<FreightIndexPoint[]> => {
     return [];
   }
 };
+
+export interface FreightSignals {
+  index: FreightIndexPoint[];
+  diesel: FreightIndexPoint[]; // U.S. diesel, monthly averages ($/gal) — may be empty
+}
+
+// The index AND diesel, so the market signal can tell a fuel move from a rate
+// move. Degrades to empty series like getFreightIndex.
+export const getFreightSignals = async (): Promise<FreightSignals> => {
+  try {
+    const res = await api.get("/freight-index");
+    const pts = (xs: unknown): FreightIndexPoint[] =>
+      (Array.isArray(xs) ? xs : []).map((s) => {
+        const p = s as { month: string; value: number };
+        return { month: p.month, value: Number(p.value) };
+      });
+    return { index: pts(res.data.series), diesel: pts(res.data.diesel) };
+  } catch {
+    return { index: [], diesel: [] };
+  }
+};
