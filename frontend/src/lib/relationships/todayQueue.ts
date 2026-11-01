@@ -25,7 +25,7 @@ import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import type { AgentContact, ContactMethod } from "@/services/agentContactsService";
 import type { AgentCoverage } from "@/services/agentCoverageService";
-import type { CoordMap } from "@/lib/metrics/foreman";
+import type { CoordMap, TripEndLike } from "@/lib/metrics/foreman";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { loadGross } from "@/lib/metrics/rateTargets";
 import { closeOutPending } from "@/lib/metrics/relationships";
@@ -153,6 +153,9 @@ export interface TodayInput {
   coords: CoordMap;
   ladder: RateLadder | null;
   now: Date;
+  // The trips (home, shop, repositioning): a trip that rolled after the last
+  // delivery is where the truck sits now. Absent → loads alone, as before.
+  trips?: TripEndLike[];
 }
 
 // The channel a heads-up goes out on: the agent's preferred, else email.
@@ -216,7 +219,7 @@ export const promisedWord = (dayKey: string, todayKey: string): string => {
 };
 
 export const buildToday = (input: TodayInput): TodayModel => {
-  const { agents, loads, contacts, coverage, notes, coords, ladder, now } = input;
+  const { agents, loads, contacts, coverage, notes, coords, ladder, now, trips = [] } = input;
   const plan = dayPlan(now);
   const todayKey = localDayKey(now);
   const byId = new Map(agents.map((a) => [a.agent_id, a]));
@@ -264,7 +267,7 @@ export const buildToday = (input: TodayInput): TodayModel => {
     });
 
   // ---- the capacity pass (Monday's plate; the weekend's preview) ----
-  const anchor = emptyNextWhen(loads);
+  const anchor = emptyNextWhen(loads, trips);
   const capacity = capacityList(agents, loads, coverage, coords, anchor, { contacts, now, loadsReady: true });
   const capacityRow = (r: CapacityRow<Agent>): QueueRow => {
     const n = deliveredCount(loads, r.agent.agent_id);

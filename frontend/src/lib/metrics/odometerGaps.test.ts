@@ -62,6 +62,19 @@ describe("odometerGaps", () => {
     expect(odometerGaps([load(100, 200), load(900, 1200)], [])).toEqual([]);
   });
 
+  it("names the half-logged record sitting inside a gap — the usual explanation (load 1572011, Oct 1)", () => {
+    const half = { ...load(606217, null, "2026-10-01", "2026-10-01"), load_number: "1572011" } as Load;
+    const gaps = odometerGaps(
+      [load(605222, 606217, "2026-09-29", "2026-10-01"), half, load(606428, 607330, "2026-10-02", "2026-10-05")],
+      [trip(605000, 605222, "2026-09-28")],
+    );
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toMatchObject({ miles: 211, fromOdo: 606217, toOdo: 606428 });
+    expect(gaps[0].hints).toEqual([{ kind: "load", ref: "1572011", at: 606217, missing: "end" }]);
+    // A fully logged ledger carries no hints.
+    expect(odometerGaps([load(1440, 1500)], [trip(100, 200)])[0].hints).toEqual([]);
+  });
+
   it("handles empty inputs", () => {
     expect(odometerGaps([], [])).toEqual([]);
   });

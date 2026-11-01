@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { useAgents } from "@/hooks/useAgents";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
@@ -236,6 +237,7 @@ const AgentField = ({
 
 const ScoreLoadPage = () => {
   const { loads } = useLoads(0);
+  const { trips } = useTrips(0);
   const { agents } = useAgents();
   const targets = useRateTargets(loads);
   const now = useMemo(() => new Date(), []);
@@ -274,9 +276,9 @@ const ScoreLoadPage = () => {
   // active/booked load, else your last delivery (the same anchor The Foreman uses).
   useEffect(() => {
     if (truckTouched.current) return;
-    const anchor = emptyNextAnchor(loads ?? []);
+    const anchor = emptyNextAnchor(loads ?? [], trips);
     if (anchor) setTruckNow({ city: anchor.city, state: anchor.state });
-  }, [loads]);
+  }, [loads, trips]);
   // Fallback only when there's no committed/delivered load to anchor on (fuel/trips).
   useEffect(() => {
     let active = true;
@@ -382,9 +384,12 @@ const ScoreLoadPage = () => {
     !agent && agentQuery.trim().length >= 2 && matchAgents(agents ?? [], agentQuery).length === 0;
   const agentCard = agent ? scorecards.get(agent.agent_id) : undefined;
 
+  // The delivery's place alone — the factor re-reads only when the city or
+  // state changes, not on every keystroke in the other delivery fields.
+  const deliveryPlace = useMemo(() => ({ city: delivery.city, state: delivery.state }), [delivery.city, delivery.state]);
   const destFactor = useMemo(
-    () => destinationFactor(loads ?? [], delivery, coords),
-    [loads, delivery.city, delivery.state, coords],
+    () => destinationFactor(loads ?? [], deliveryPlace, coords),
+    [loads, deliveryPlace, coords],
   );
   const call = theCall(score.verdict, destFactor, agentCard, isNewAgent);
 

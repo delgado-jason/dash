@@ -6,6 +6,7 @@
 // with no name on file the SOP's own [Name] bracket stays, to be filled in.
 import type { Load } from "@/types/load";
 import { emptyNextWhen, emptyTense, emptyWhenLabel, placeLabel, roundMiles, type EmptyNext } from "./relationships/capacityList";
+import type { TripEndLike } from "@/lib/metrics/foreman";
 import { ordinal, type MilestoneKind } from "./relationships/milestones";
 import { HOLIDAY_LABEL, type HolidayKind } from "./relationships/holidays";
 
@@ -117,8 +118,8 @@ export const holidayLabel = (kind: HolidayKind): string => HOLIDAY_LABEL[kind];
 // ---- the delivery close-out (operational — never capped) ----
 // The thank-you that turns into inbound freight; the empty line comes from
 // the same anchor the Foreman and the capacity pass use.
-export const closeOutDraft = (load: Load, allLoads: Load[], signer: Signer): Draft => {
-  const e = emptyNextWhen(allLoads);
+export const closeOutDraft = (load: Load, allLoads: Load[], signer: Signer, trips: TripEndLike[] = []): Draft => {
+  const e = emptyNextWhen(allLoads, trips);
   const nextLine = e ? ` ${emptyLine(e)} if anything's moving.` : "";
   return {
     subject: `Delivered — ${load.load_number}, ${load.origin_city} → ${load.destination_city}`,

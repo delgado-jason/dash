@@ -7,6 +7,7 @@ import {
   haversineMiles,
   cityKey,
   type CoordMap,
+  type TripEndLike,
 } from "./foreman";
 import { codeOf } from "@/lib/agencies/codeOf";
 
@@ -880,3 +881,51 @@ describe("AgentRanking.perDay", () => {
     expect(os.perDay).toBeCloseTo(3000, 5);
   });
 });
+
+describe("emptyNextAnchor — the trips (Jason, 2026-11-01: 'not looking at trips for the last known location')", () => {
+  const trip = (o: Partial<TripEndLike> = {}): TripEndLike => ({
+    trip_date: "2026-10-13", status: "completed", end_city: "Leighton", end_state: "AL", odometer_end: 610185, ...o,
+  });
+  const delivered = mkLoad({ load_status: "delivered", destination_city: "Southlake", destination_state: "TX", delivery_date: "2026-10-13", odometer_end: 609537 });
+
+  it("a trip that rolled after the last delivery is where the truck sits", () => {
+    expect(emptyNextAnchor([delivered], [trip({ trip_date: "2026-10-30", end_city: "Leighton", odometer_end: 610284 })])).toEqual({ city: "Leighton", state: "AL", source: "last-trip" });
+  });
+
+  it("the same day as the delivery: the end reading decides; with no readings the trip wins — it started at the drop", () => {
+    expect(emptyNextAnchor([delivered], [trip()])).toMatchObject({ source: "last-trip", city: "Leighton" });
+    expect(emptyNextAnchor([delivered], [trip({ odometer_end: 609000 })])).toMatchObject({ source: "last-delivered", city: "Southlake" });
+    expect(emptyNextAnchor([mkLoad({ ...delivered, odometer_end: null })], [trip({ odometer_end: null })])).toMatchObject({ source: "last-trip" });
+  });
+
+  it("a trip before the last delivery changes nothing", () => {
+    expect(emptyNextAnchor([delivered], [trip({ trip_date: "2026-10-01", end_city: "Madison" })])).toEqual({ city: "Southlake", state: "TX", source: "last-delivered" });
+  });
+
+  it("a committed load still wins — you're covered until it drops", () => {
+    const booked = mkLoad({ load_status: "booked", destination_city: "Walker", destination_state: "MI", pickup_date: "2026-11-03", delivery_date: "2026-11-05" });
+    expect(emptyNextAnchor([delivered, booked], [trip({ trip_date: "2026-10-30" })])).toEqual({ city: "Walker", state: "MI", source: "committed" });
+  });
+
+  it("planned or cancelled trips, and trips without an end city, say nothing about the truck", () => {
+    expect(emptyNextAnchor([delivered], [trip({ trip_date: "2026-10-30", status: "planned" })])).toMatchObject({ source: "last-delivered" });
+    expect(emptyNextAnchor([delivered], [trip({ trip_date: "2026-10-30", status: "cancelled" })])).toMatchObject({ source: "last-delivered" });
+    expect(emptyNextAnchor([delivered], [trip({ trip_date: "2026-10-30", end_city: null })])).toMatchObject({ source: "last-delivered" });
+  });
+
+  it("the latest of several trips, by date then by reading — the real October: Southlake → Leighton → Madison → Leighton", () => {
+    const trips = [
+      trip({ trip_date: "2026-10-13", end_city: "Leighton", odometer_end: 610185 }),
+      trip({ trip_date: "2026-10-19", end_city: "Madison", odometer_end: 610231 }),
+      trip({ trip_date: "2026-10-30", end_city: "Leighton", odometer_end: 610284 }),
+    ];
+    expect(emptyNextAnchor([delivered], trips)).toEqual({ city: "Leighton", state: "AL", source: "last-trip" });
+    expect(emptyNextAnchor([delivered], [trips[1], trip({ trip_date: "2026-10-19", end_city: "Hanceville", odometer_end: 610260 })])).toMatchObject({ city: "Hanceville" });
+  });
+
+  it("trips alone, with no load at all", () => {
+    expect(emptyNextAnchor([], [trip()])).toEqual({ city: "Leighton", state: "AL", source: "last-trip" });
+    expect(emptyNextAnchor([], [])).toBeNull();
+  });
+});
+

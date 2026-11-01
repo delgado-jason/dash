@@ -16,7 +16,7 @@
 //   The cap    an agent who already had a proactive touch this week is folded
 //              out into "already touched this week" — one message a week.
 import type { Load } from "@/types/load";
-import { cityKey, haversineMiles, type CityCoord, type CoordMap } from "@/lib/metrics/foreman";
+import { cityKey, haversineMiles, emptyNextAnchor, latestTripEnd, type CityCoord, type CoordMap, type TripEndLike } from "@/lib/metrics/foreman";
 import { footprintPoint, type CustomerEndLoadLike } from "@/lib/loads/customerEnd";
 import { bucketOf, type Bucket, type BookAgentLike } from "./buckets";
 import { capStatus, type CapContactLike } from "./contactCap";
@@ -159,12 +159,12 @@ export const roundMiles = (miles: number): number => Math.max(10, Math.round(mil
 
 // ---- when the truck goes empty ----
 // The Foreman's anchor carries only the place; the DAY and TIME come from the
-// same load it picked: the furthest-out committed load's delivery (its
+// same record it picked: the furthest-out committed load's delivery (its
 // appointment when one is on file), or — nothing committed — the last
-// delivery, which means the truck is empty now. Mirrors emptyNextAnchor's
-// selection exactly so the two never disagree.
+// delivery or the trip that rolled after it, which means the truck is empty
+// now. Mirrors emptyNextAnchor's selection exactly so the two never disagree.
 export interface EmptyNext extends Place {
-  source: "committed" | "last-delivered";
+  source: "committed" | "last-delivered" | "last-trip";
   dayKey: string | null; // 'YYYY-MM-DD'
   time: string | null; // 'HH:MM:SS' — the delivery appointment (window end when it is a window)
 }
@@ -172,7 +172,7 @@ export interface EmptyNext extends Place {
 const COMMITTED = new Set(["booked", "in_transit"]);
 const refDay = (l: Load): string => l.delivery_date ?? l.pickup_date ?? "";
 
-export const emptyNextWhen = (loads: Load[]): EmptyNext | null => {
+export const emptyNextWhen = (loads: Load[], trips: TripEndLike[] = []): EmptyNext | null => {
   const committed = loads.filter((l) => COMMITTED.has(l.load_status) && l.destination_city && l.destination_state);
   if (committed.length) {
     const f = committed.reduce((best, l) => (refDay(l) > refDay(best) ? l : best));
@@ -184,12 +184,19 @@ export const emptyNextWhen = (loads: Load[]): EmptyNext | null => {
       time: f.delivery_appt_end ?? f.delivery_appt_start ?? null,
     };
   }
-  const delivered = loads.filter((l) => l.load_status === "delivered" && l.destination_city && l.destination_state && l.delivery_date);
-  if (delivered.length) {
-    const latest = delivered.reduce((best, l) => ((l.delivery_date as string) > (best.delivery_date as string) ? l : best));
-    return { city: latest.destination_city, state: latest.destination_state, source: "last-delivered", dayKey: keyOf(latest.delivery_date as string), time: null };
+  // Nothing committed: the place and day come from emptyNextAnchor's own pick,
+  // so a trip that rolled after the last delivery wins here exactly as it does
+  // on the Foreman board.
+  const anchor = emptyNextAnchor(loads, trips);
+  if (!anchor) return null;
+  if (anchor.source === "last-trip") {
+    const trip = latestTripEnd(trips) as TripEndLike;
+    return { city: anchor.city, state: anchor.state, source: "last-trip", dayKey: keyOf(trip.trip_date), time: null };
   }
-  return null;
+  const latest = loads
+    .filter((l) => l.load_status === "delivered" && l.destination_city && l.destination_state && l.delivery_date)
+    .reduce((best, l) => ((l.delivery_date as string) > (best.delivery_date as string) ? l : best));
+  return { city: latest.destination_city, state: latest.destination_state, source: "last-delivered", dayKey: keyOf(latest.delivery_date as string), time: null };
 };
 
 // "2pm" · "2:30pm" from a Postgres time.
@@ -214,7 +221,7 @@ const weekdayOfKey = (k: string, style: "short" | "long"): string =>
 export type EmptyTense = "now" | "unscheduled" | "later";
 
 export const emptyTense = (e: EmptyNext | null): EmptyTense => {
-  if (!e || e.source === "last-delivered") return "now";
+  if (!e || e.source !== "committed") return "now";
   return e.dayKey ? "later" : "unscheduled";
 };
 

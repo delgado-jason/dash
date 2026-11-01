@@ -712,7 +712,10 @@ const GuidePage = () => {
             <p className="text-sm text-muted-text mb-3">
               The anchor is the destination of the furthest-out load you're already
               committed to (booked or in-transit) — you're covered until it drops.
-              With nothing committed, you're already empty at your last delivery.
+              With nothing committed, you're already empty wherever the truck last
+              stopped: your last delivery, or the end of a trip that rolled after
+              it — home, the shop, a repositioning run. The Scorer's truck
+              location and the Lanes map's pin read the same anchor.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
@@ -1580,7 +1583,8 @@ const GuidePage = () => {
               empty mile is cost with no revenue against it. Logging a trip's{" "}
               <span className="text-light">start and end city</span> keeps the
               truck's last-known location current, so the next trip prefills
-              where the truck actually sits — loads and fuel already stamp it,
+              where the truck actually sits, and the Scorer, the Lanes map and
+              the Foreman start from it — loads and fuel already stamp it,
               trips were the blind spot.
             </Why>
           </Metric>
