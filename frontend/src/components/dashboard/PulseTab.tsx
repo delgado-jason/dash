@@ -417,8 +417,8 @@ export const PulseTab = ({
           value={targets.rollingRpm != null ? fmtRpm(targets.rollingRpm) : "—"}
           sub={
             targets.basis?.breakEvenRpm != null
-              ? `break-even ${fmtRpm(targets.basis.breakEvenRpm)} · cash · ${targets.basis.windowLabel ?? "3-mo"}`
-              : "3-mo blended"
+              ? `net break-even ${fmtRpm(targets.basis.breakEvenRpm)}/loaded mi · cash · ${targets.basis.windowLabel ?? "no P&L"}`
+              : "needs a P&L month"
           }
           to="/settings"
           go="cost basis"

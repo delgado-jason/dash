@@ -174,7 +174,7 @@ const Barometer = ({
         <YAxis
           yAxisId="ppi"
           orientation="right"
-          domain={["auto", "auto"]}
+          domain={[0, "auto"]} // from zero like the rate axis — an index that moved 3% reads as 3%, not as a cliff
           tickFormatter={(v) => `${Math.round(Number(v))}`}
           stroke={MACRO}
           fontSize={11}
@@ -295,14 +295,25 @@ const MarketPage = () => {
   }, [trend, targets]);
 
   // Monthly dollars to cut to get the whole operation back to break-even:
-  // cost minus what your booked gross actually covers after the Landstar take.
-  // > 0 exactly when businessUnderwater — the same reconciled basis.
+  // cost minus what your booked gross actually leaves you — your blended keep,
+  // not the linehaul take alone. > 0 exactly when businessUnderwater — the
+  // same reconciled basis.
   const monthlyGap = useMemo(() => {
     const b = targets.basis;
     if (b.grossPerTotalMile == null || b.trueMonthlyCost == null || b.months <= 0) return null;
     const monthlyGross = (b.grossPerTotalMile * b.totalMiles) / b.months;
-    return b.trueMonthlyCost - monthlyGross * targets.linehaulTake;
-  }, [targets.basis, targets.linehaulTake]);
+    return b.trueMonthlyCost - monthlyGross * targets.keep;
+  }, [targets.basis, targets.keep]);
+
+  // The spread the blend hides: each basis month's own rate to book (its cost
+  // per driven mile ÷ the same keep), lowest to highest.
+  const monthSpread = useMemo(() => {
+    const rates = targets.basis.monthsDetail
+      .filter((m) => m.costPerTotalMile != null)
+      .map((m) => (m.costPerTotalMile as number) / targets.keep);
+    if (rates.length < 2) return null;
+    return { lo: Math.min(...rates), hi: Math.max(...rates) };
+  }, [targets.basis.monthsDetail, targets.keep]);
 
   // Only fetch the cut-tier data when the plan will actually show.
   const [cutRows, setCutRows] = useState<CutTierRow[]>([]);
@@ -362,7 +373,19 @@ const MarketPage = () => {
     ).length;
     const specTotal = wp.filter((pt) => pt.bucket !== "standard").length;
     const max = Math.max(1, buckets.below, buckets.floor, buckets.mid, buckets.past);
-    return { ...buckets, max, stdBelow, stdTotal, specBelow, specTotal, total: wp.length };
+    // Which freight carries the rate — said only when the counts say it, never
+    // as a fixed sentence (the audit found it printed regardless).
+    const stdShare = stdTotal > 0 ? stdBelow / stdTotal : null;
+    const specShare = specTotal > 0 ? specBelow / specTotal : null;
+    const carrier =
+      stdShare == null || specShare == null
+        ? null
+        : specShare < stdShare
+          ? "The specialized freight carries the rate."
+          : stdShare < specShare
+            ? "The standard freight carries the rate."
+            : null;
+    return { ...buckets, max, stdBelow, stdTotal, specBelow, specTotal, total: wp.length, carrier };
   })();
 
   const lastMedian = monthly.length > 0 ? monthly[monthly.length - 1].median : null;
@@ -466,13 +489,21 @@ const MarketPage = () => {
                   Every load · rate vs the year
                 </span>
                 <span className="font-condensed text-[12px] text-faint">
-                  · gross $/driven mile · the floor in red
+                  · gross $/driven mile · break-even in red · today’s rungs drawn across every year
                   {targets.bookingLadder.walkAway != null && (
                     <>
                       {" "}· break-even{" "}
                       <b className="font-semibold text-ink tabular-nums">{rpm(targets.bookingLadder.walkAway)}</b>
+                      {" "}· cost ÷ your {targets.keepSource === "blended" ? "blended keep" : "linehaul take"}{" "}
+                      <b className="font-semibold text-ink tabular-nums">{Math.round(targets.keep * 100)}%</b>
                       {" "}· {targets.basis.windowLabel ?? "no P&L filed"} · {targets.basis.months} of{" "}
                       {targets.basis.monthsWanted} months filed
+                      {monthSpread && (
+                        <>
+                          {" "}· months ran{" "}
+                          <b className="font-semibold text-ink tabular-nums">{rpm(monthSpread.lo)}–{rpm(monthSpread.hi)}</b>
+                        </>
+                      )}
                     </>
                   )}
                 </span>
@@ -664,9 +695,9 @@ const MarketPage = () => {
                   </span>
                 </div>
                 {[
-                  { n: "Below the floor", c: "#e05252", bg: "rgba(224,82,82,.45)", v: zones.below },
-                  { n: "Floor → minimum", c: "var(--color-amber-hi)", bg: "rgba(232,148,10,.5)", v: zones.floor },
-                  { n: "Minimum → target", c: "#6fd08c", bg: "rgba(111,208,140,.45)", v: zones.mid },
+                  { n: "Below break-even", c: "#e05252", bg: "rgba(224,82,82,.45)", v: zones.below },
+                  { n: "Break-even → floor", c: "var(--color-amber-hi)", bg: "rgba(232,148,10,.5)", v: zones.floor },
+                  { n: "Floor → target", c: "#6fd08c", bg: "rgba(111,208,140,.45)", v: zones.mid },
                   {
                     n: "Target and past",
                     c: "var(--color-hot)",
@@ -695,9 +726,9 @@ const MarketPage = () => {
                 {zones.stdTotal > 0 && (
                   <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
                     <b className="text-dim">the straight read:</b> {zones.stdBelow} of your{" "}
-                    {zones.stdTotal} standard-flatbed loads ran below the floor —{" "}
-                    {zones.specBelow} of {zones.specTotal} specialized did. The specialized
-                    freight carries the rate. Same zones, same colors as RATE TO BOOK.
+                    {zones.stdTotal} standard-flatbed loads ran below break-even —{" "}
+                    {zones.specBelow} of {zones.specTotal} specialized did.
+                    {zones.carrier && <> {zones.carrier}</>} Same zones, same colors as RATE TO BOOK.
                   </div>
                 )}
               </div>
