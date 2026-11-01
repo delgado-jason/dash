@@ -3,6 +3,7 @@
 // (where your current tiers land as percentiles of the recent market). Clock is
 // injected as `now` so everything is testable without touching the real date.
 import type { Load } from "@/types/load";
+import { dayKey } from "@/lib/perDiem";
 import type { RateLadder } from "./rateTargets";
 import { loadGross } from "./rateTargets";
 import { isSpecializedLoadType } from "@/lib/dimensions";
@@ -88,10 +89,10 @@ export const windowPoints = (
   now: Date,
   days = 90,
 ): RatePoint[] => {
-  const today = now.toISOString().slice(0, 10);
-  const cut = new Date(now.getTime() - days * 86400000)
-    .toISOString()
-    .slice(0, 10);
+  // The operator's own calendar day, like the Lanes ledger — a load delivered
+  // "today" is in the window all day, not until 6 pm Central.
+  const today = dayKey(now);
+  const cut = dayKey(new Date(now.getTime() - days * 86400000));
   return points.filter((p) => p.date > cut && p.date <= today);
 };
 

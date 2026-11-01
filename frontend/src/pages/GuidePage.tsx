@@ -861,10 +861,15 @@ const GuidePage = () => {
             <Eg>$23,600/mo ÷ ~7,450 miles ≈ $3.17 per mile.</Eg>
             <Why>
               Blended over your last{" "}
-              <span className="text-light">3 complete months</span> (rolling ~90
-              days) so one lumpy month — a big repair, say — doesn't swing it.
-              It's over <span className="text-light">total</span> miles (loaded
-              and empty), because every mile you drive costs you.
+              <span className="text-light">six complete months</span> with a
+              P&L filed. With one truck, a month’s cost per mile mostly measures
+              how many miles the month had — August ’26 ran $4.52 a mile on a
+              home-and-shop month, September $2.54 — so three months swung the
+              rate to book by a dollar a mile. Six smooths that and still turns
+              within two quarters when a real cost changes. The Market page
+              names the months, the ones still unfiled, and the spread between
+              them. It's over <span className="text-light">total</span> miles
+              (loaded and empty), because every mile you drive costs you.
             </Why>
           </Metric>
 
@@ -882,27 +887,31 @@ const GuidePage = () => {
             <div className="flex items-center gap-2 flex-wrap my-3">
               <ChainBox top="$3.17" bottom="cost / mile" />
               <ArrowRight size={16} className="text-muted-text" />
-              <ChainBox top="÷ 73%" bottom="your keep" />
+              <ChainBox top="÷ 78%" bottom="your blended keep" />
               <ArrowRight size={16} className="text-muted-text" />
-              <ChainBox top="$4.34" bottom="gross to book" />
+              <ChainBox top="$4.06" bottom="gross to book" />
             </div>
             <Why>
               Two haircuts, and they're different: you fold your{" "}
               <span className="text-light">deadhead</span> into the miles
-              yourself (cost is spread over every mile you drive), and you only{" "}
-              <span className="text-light">keep 73%</span> of what you book — so
-              the rate to book is your cost-per-mile ÷ 0.73. Anything above{" "}
-              <span className="text-light">$4.34</span> (with your empty miles
-              counted) makes money. It's conservative: you keep 100% of fuel
-              surcharge on top, so your real cushion is a bit bigger. This is a{" "}
+              yourself (cost is spread over every mile you drive), and you keep
+              only part of what you book — 65% + 8% of the linehaul, but{" "}
+              <span className="text-light">100% of the fuel surcharge</span> and
+              of tarp, detention, tolls and loading pay. So the keep is{" "}
+              <span className="text-light">measured</span> from the window’s own
+              loads (net ÷ gross, about 78%), not assumed at 73%: you judge a
+              load all-in, so the rate to book divides by what you actually keep
+              of an all-in dollar — the way Score a Load always has. Anything
+              above <span className="text-light">$4.06</span> (with your empty
+              miles counted) makes money. This is a{" "}
               <span className="text-light">cash</span> break-even — costs from
-              your last <span className="text-light">3 complete months</span>{" "}
+              your last <span className="text-light">six complete months</span>{" "}
               of P&L plus loan principal (no depreciation), stepping forward on
-              the 1st of each month. Every surface that shows it names the
-              window (“cash · Jun–Aug”), so where the number came from is never
-              a mystery — and when a month inside the window has no P&L yet,
-              the Market page says which one, because a missing month silently
-              shrinks the basis.
+              the 1st of each month; your payroll is inside that cost, so
+              break-even already pays you and the margin goal sits on top. Every
+              surface that shows it names the window (“cash · Apr–Sep”), the
+              months still unfiled, and the spread between the months — because
+              a missing month silently shrinks the basis.
             </Why>
           </Metric>
 
@@ -960,9 +969,11 @@ const GuidePage = () => {
             <Why>
               The break-even here is per{" "}
               <span className="text-light">driven</span> mile (your cost/mile ÷
-              your Landstar take), so it's apples-to-apples with the all-in rate
-              — a lower number than the dashboard's per-loaded-mile ladder, by
-              design. The verdict maps to whichever tier set fits the load:{" "}
+              your blended keep), so it's apples-to-apples with the all-in rate
+              — the same break-even the Market page books against. The
+              Dashboard's <span className="text-light">net break-even</span> is
+              a different number on purpose: cost per loaded mile, in net
+              dollars, beside your net $/mi. The verdict maps to whichever tier set fits the load:{" "}
               <span style={{ color: "#e24b4a" }}>SCRAP</span> below break-even,{" "}
               <span style={{ color: "#f5b03a" }}>THIN</span> under target,{" "}
               <span style={{ color: "#5dcaa5" }}>SOLID</span> at target,{" "}

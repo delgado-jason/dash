@@ -1,8 +1,16 @@
 // Operational targets / thresholds for dashboard profitability lenses.
-// BREAK_EVEN_RPM is now derived live (true cost ÷ loaded miles over the last 3
-// complete months — see lib/metrics/rateTargets). This constant is only a
-// fallback for when there's not enough P&L history to compute it yet.
+// BREAK_EVEN_RPM is now derived live (true cost ÷ loaded miles over the last
+// BASIS_MONTHS complete months — see lib/metrics/rateTargets). This constant is
+// only a fallback for when there's not enough P&L history to compute it yet.
 export const BREAK_EVEN_RPM = 2.96;
+
+// The break-even basis: the last BASIS_MONTHS complete calendar months that have
+// a P&L filed. Six, not three (Jason's call on the 2026-11-01 numbers audit): a
+// one-truck operation's cost per mile mostly measures miles per month — August
+// ’26 ran $4.52 a mile on a home-and-shop month, September $2.54 — so three
+// months swung the rate to book by a dollar a mile. Six smooths that and still
+// turns within two quarters when a real cost changes.
+export const BASIS_MONTHS = 6;
 
 // Deadhead target: fraction of miles that are empty. Lower is better.
 export const DEADHEAD_TARGET = 0.2; // 20%

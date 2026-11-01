@@ -105,7 +105,20 @@ export interface CostBasis {
   // way ("Oct ’26") — said out loud, because a missing month silently shrinks
   // the basis (2026-11-01: October unfiled left break-even standing on two).
   missingLabel: string | null;
-  monthsWanted: number; // the window the code asked for (3)
+  monthsWanted: number; // the window the code asked for (BASIS_MONTHS)
+  // Each included month on its own — its true cost, its driven miles and its
+  // cost per driven mile — so a surface can show the spread the blend hides
+  // ("months ran $2.68–$4.52") instead of one number pretending to be steady.
+  monthsDetail: MonthDetail[];
+}
+
+export interface MonthDetail {
+  year: number;
+  month: number; // 0–11, UTC
+  label: string; // "Aug ’26"
+  cost: number; // the month's true cost (P&L operating cost + obligations)
+  totalMiles: number; // the month's driven miles (odometer windows)
+  costPerTotalMile: number | null; // null when the month drove no miles
 }
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -149,6 +162,7 @@ export const getCostBasis = (
   let n = 0;
   const included: { year: number; month: number }[] = [];
   const missing: { year: number; month: number }[] = [];
+  const monthsDetail: MonthDetail[] = [];
   for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
     const p = byKey.get(`${year}-${month}`);
     if (!p) {
@@ -157,12 +171,21 @@ export const getCostBasis = (
     }
     n++;
     included.push({ year, month });
-    cost += (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsMonthly;
+    const monthCost = (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsMonthly;
+    cost += monthCost;
     const m = monthMiles(loads, year, month);
     loaded += m.loaded;
     total += m.total;
     revenue += m.revenue;
     grossRev += m.gross;
+    monthsDetail.push({
+      year,
+      month,
+      label: `${MONTH_ABBR[month]} ’${String(year).slice(2)}`,
+      cost: monthCost,
+      totalMiles: m.total,
+      costPerTotalMile: m.total > 0 ? monthCost / m.total : null,
+    });
   }
 
   return {
@@ -178,6 +201,7 @@ export const getCostBasis = (
     windowLabel: windowLabelOf(included),
     missingLabel: windowLabelOf(missing),
     monthsWanted: monthsBack,
+    monthsDetail,
   };
 };
 

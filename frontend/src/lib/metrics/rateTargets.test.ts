@@ -118,6 +118,18 @@ describe("getCostBasis", () => {
     expect(b.windowLabel).toBe("Apr–Jun ’26");
     expect(b.missingLabel).toBeNull();
     expect(b.monthsWanted).toBe(3);
+    // each month on its own: 12k of true cost over 2,500 driven miles = $4.80
+    expect(b.monthsDetail.map((m) => m.label)).toEqual(["Apr ’26", "May ’26", "Jun ’26"]);
+    expect(b.monthsDetail.map((m) => m.costPerTotalMile)).toEqual([4.8, 4.8, 4.8]);
+    expect(b.monthsDetail[0]).toMatchObject({ year: 2026, month: 3, cost: 12000, totalMiles: 2500 });
+  });
+
+  it("a six-month basis (BASIS_MONTHS) names six wanted months, filed or not, and a mile-less month carries no $/mi", () => {
+    const b = getCostBasis([period("2026-05-01", 5000, 5000)], 0, [], now, 6);
+    expect(b.monthsWanted).toBe(6);
+    expect(b.windowLabel).toBe("May ’26");
+    expect(b.missingLabel).toBe("Jan, Feb, Mar, Apr, Jun ’26");
+    expect(b.monthsDetail).toEqual([{ year: 2026, month: 4, label: "May ’26", cost: 10000, totalMiles: 0, costPerTotalMile: null }]);
   });
 
   it("windowLabel: gaps list months, year boundaries carry both years, empty is null", () => {

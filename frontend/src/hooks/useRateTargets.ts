@@ -22,11 +22,12 @@ import {
   marginGoalFrom,
   WORKING_DAYS_PER_MONTH,
   PAY_WEEK_START_DOW,
+  BASIS_MONTHS,
 } from "@/lib/constants/targets";
 
 // Assembles the rate ladder + weekly/daily pace targets from the P&L,
-// obligations, and loads. Break-even is blended over the last 3 complete
-// months (see getCostBasis); everything hangs off that true cost.
+// obligations, and loads. Break-even is blended over the last BASIS_MONTHS
+// complete months (see getCostBasis); everything hangs off that true cost.
 export const useRateTargets = (loads: Load[]) => {
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
@@ -56,11 +57,22 @@ export const useRateTargets = (loads: Load[]) => {
 
   return useMemo(() => {
     const now = new Date();
-    const basis = getCostBasis(periods, obligationsMonthly, loads, now);
+    const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS);
     // Your linehaul take (linehaul % + trailer %). 1 = own authority / unconfigured.
     const linehaulTake = schedule
       ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
       : 1;
+    // Your KEEP — the share of an all-in booked dollar that reaches you. The
+    // blended keep measured from the window's own loads (net ÷ gross: 65 + 8%
+    // of linehaul, 100% of fuel surcharge, each accessorial at its rate) once
+    // the window has gross; the schedule's linehaul take only until it does.
+    // Jason judges a load all-in (2026-11-01), so the rate to book divides by
+    // what he actually keeps of an all-in dollar — the construction Score a
+    // Load has always used. Dividing all gross by the linehaul take took
+    // Landstar's cut out of money he keeps in full, ~23¢ a driven mile.
+    const blended = basis.payTake != null && basis.payTake > 0 ? basis.payTake : null;
+    const keep = blended ?? linehaulTake;
+    const keepSource: "blended" | "linehaul" = blended != null ? "blended" : "linehaul";
     const { start, end } = payWeekRange(now, PAY_WEEK_START_DOW);
 
     // ---- The whole rate & pace card is in GROSS (booking) dollars — that's the
@@ -74,9 +86,7 @@ export const useRateTargets = (loads: Load[]) => {
     const specTiers = specTiersFrom(schedule);
     const marginGoal = marginGoalFrom(schedule);
     const bookingBase =
-      basis.costPerTotalMile != null && linehaulTake > 0
-        ? basis.costPerTotalMile / linehaulTake
-        : null;
+      basis.costPerTotalMile != null && keep > 0 ? basis.costPerTotalMile / keep : null;
     const bookingLadder = getRateLadder(bookingBase, tiers);
     const specLadder = getRateLadder(bookingBase, specTiers);
 
@@ -84,9 +94,7 @@ export const useRateTargets = (loads: Load[]) => {
     // spread over the pay-week / working day, lifted to your MARGIN goal. The
     // margin goal is a total-revenue KPI, independent of the per-mile rate tiers.
     const bookingCost =
-      basis.trueMonthlyCost != null && linehaulTake > 0
-        ? basis.trueMonthlyCost / linehaulTake
-        : null;
+      basis.trueMonthlyCost != null && keep > 0 ? basis.trueMonthlyCost / keep : null;
     const gross = getGrossTargets(
       bookingCost,
       marginGoal,
@@ -107,6 +115,8 @@ export const useRateTargets = (loads: Load[]) => {
       weekEarned, // this week's gross earned (delivered only)
       rollingRpm,
       linehaulTake,
+      keep, // the share of an all-in dollar you keep — the ladder's divisor
+      keepSource, // "blended" (measured from the window's loads) | "linehaul" (the schedule, until loads land)
       bookingLadder, // STANDARD gross rate to book per mile driven (walk/target/strong)
       specLadder, // SPECIALIZED ladder — oversize/hazmat/heavy
       grossRate: basis.grossPerTotalMile, // your gross rate/mile — the ladder marker
