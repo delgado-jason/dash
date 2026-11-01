@@ -165,9 +165,12 @@ export const getCostBasis = (
   const monthsDetail: MonthDetail[] = [];
   for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
     const p = byKey.get(`${year}-${month}`);
-    if (!p) {
+    // A month with no P&L, or one saved without its totals (a broken upload),
+    // is unfiled: skip its cost AND its miles. Counting it at $0 would read
+    // as a free month and drop every rung (October ’26 did exactly that).
+    if (!p || (p.cogs_total == null && p.expense_total == null)) {
       missing.push({ year, month });
-      continue; // no P&L for this month → skip cost AND miles (stay aligned)
+      continue;
     }
     n++;
     included.push({ year, month });

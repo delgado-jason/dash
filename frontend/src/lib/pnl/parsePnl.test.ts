@@ -192,3 +192,81 @@ describe("parsePnlRows — single-period export (month in the title, no comparis
     expect(expenses.every((l) => l.prior === null)).toBe(true);
   });
 });
+
+// QuickBooks' newer layout (October 2026): "Total Income" / "Total Cost of
+// Goods Sold" / "Total Expenses" without the "for", and the computed rows
+// (Gross Profit, Net Operating Income, Net Income) carrying amounts. The old
+// parser saved four of those rows as expense lines and the month with no
+// totals, which read as a free month and dropped every rung.
+const NEW_LAYOUT: string[][] = [
+  ["Delgado Trucking Services", ""],
+  ["Profit and Loss", ""],
+  ["October 2026", ""],
+  [""],
+  ["", "Total"],
+  ["Income", ""],
+  ["Landstar Commissions", "-4,000.00"],
+  ["Truck Revenue", "20,565.90"],
+  ["Total Income", "$16,565.90"],
+  ["Cost of Goods Sold", ""],
+  ["Fuel", "3,283.52"],
+  ["Total Cost of Goods Sold", "$3,283.52"],
+  ["Gross Profit", "$13,282.38"],
+  ["Expenses", ""],
+  ["Payroll expenses", ""],
+  ["Wages", "9,000.00"],
+  ["Payroll taxes", "419.37"],
+  ["Total Payroll expenses", "$9,419.37"],
+  ["Repairs & maintenance", "1,424.71"],
+  ["Insurance", "795.34"],
+  ["Interest Expense - Trailer Loan", "224.62"],
+  ["Total Expenses", "$11,864.04"],
+  ["Net Operating Income", "-$2,339.26"],
+  ["Net Income", "-$2,339.26"],
+  [""],
+  ["Accrual Basis Sunday, November 01, 2026 12:49 PM GMT-06:00", ""],
+];
+
+describe("parsePnlRows — QuickBooks' newer layout (Total X, Gross Profit, Net Operating Income)", () => {
+  const parsed = parsePnlRows(NEW_LAYOUT);
+
+  it("reads the three section totals, with or without 'for'", () => {
+    expect(parsed.currentLabel).toBe("October 2026");
+    expect(parsed.incomeTotal).toBe(16565.9);
+    expect(parsed.cogsTotal).toBe(3283.52);
+    expect(parsed.expenseTotal).toBe(11864.04);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.warnings).toEqual([]);
+  });
+
+  it("never emits a total or a computed row as a line, and collapses a 'Total X' group", () => {
+    expect(parsed.lines.map((l) => l.name)).toEqual(["Fuel", "Payroll expenses", "Repairs & maintenance", "Insurance", "Interest Expense - Trailer Loan"]);
+    const names = parsed.lines.map((l) => l.name.toLowerCase());
+    for (const bad of ["gross profit", "net operating income", "net income", "total expenses", "total cost of goods sold"]) expect(names).not.toContain(bad);
+    expect(parsed.lines.find((l) => l.name === "Payroll expenses")?.current).toBe(9419.37);
+  });
+
+  it("reconciles: the expense lines sum to the file's Expenses total", () => {
+    const sum = parsed.lines.filter((l) => l.section === "expenses").reduce((s, l) => s + l.current, 0);
+    expect(sum).toBeCloseTo(parsed.expenseTotal!, 2);
+  });
+
+  it("a total the file didn't carry is summed from the lines and said so — never left null", () => {
+    const noTotal = NEW_LAYOUT.filter((r) => r[0] !== "Total Expenses");
+    const p = parsePnlRows(noTotal);
+    expect(p.expenseTotal).toBeCloseTo(11864.04, 2);
+    expect(p.warnings.join(" ")).toMatch(/no Expenses total — summed from its 4 lines/);
+    expect(p.errors).toEqual([]);
+  });
+
+  it("lines that disagree with the file's own total are an error — the month must not be saved", () => {
+    const wrong = NEW_LAYOUT.map((r) => (r[0] === "Total Expenses" ? ["Total Expenses", "$99,999.00"] : r));
+    const p = parsePnlRows(wrong);
+    expect(p.errors.join(" ")).toMatch(/doesn't reconcile with itself/);
+  });
+
+  it("a file with no cost lines at all is an error", () => {
+    expect(parsePnlRows([["Something", "1"]]).errors.join(" ")).toMatch(/No cost lines found/);
+  });
+});
+

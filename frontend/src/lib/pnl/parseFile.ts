@@ -16,6 +16,8 @@ export interface ProposedPeriod {
   cogs_total: number | null;
   expense_total: number | null;
   lines: ProposedLine[];
+  warnings: string[]; // survivable: a total summed from the lines
+  errors: string[]; // the file doesn't reconcile with itself — never saved
 }
 
 const MONTHS = [
@@ -79,6 +81,8 @@ export const parsePnlFile = (
             cogs_total: parsed.cogsTotal,
             expense_total: parsed.expenseTotal,
             lines,
+            warnings: parsed.warnings,
+            errors: parsed.errors,
           });
         } catch (err) {
           reject(err);
