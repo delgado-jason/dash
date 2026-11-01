@@ -1333,8 +1333,10 @@ const GuidePage = () => {
               market's median along with its days. Idle counts{" "}
               <span className="text-light">weekdays</span>, so a Friday
               delivery reloading Monday is one day, not three. Empty miles come
-              from the <span className="text-light">odometer</span> when both
-              readings exist, the planned deadhead otherwise.
+              from the <span className="text-light">odometer</span> — your
+              chain copies the previous end reading as the next start, so the
+              next load's window minus its loaded miles is the empty run — and
+              from the planned deadhead only when the readings can't say.
             </Why>
             <Why>
               <span className="text-light">Regions</span> flips the same ledger to
