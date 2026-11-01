@@ -12,7 +12,7 @@ import { haversineMiles, cityKey, type CoordMap } from "./foreman";
 import type { AgentScorecard } from "./agentScorecard";
 // Type-only (erased at build, so no import cycle): the load sequence the IN
 // half grades lives with the ledger that builds it.
-import type { SequencedLoad } from "./marketLedger";
+import type { SequencedLoad, NextLeg } from "./marketLedger";
 
 const up = (s?: string | null): string => String(s ?? "").trim().toUpperCase();
 const loadedRpm = (l: Load): number | null => {
@@ -26,50 +26,82 @@ const loadedRpm = (l: Load): number | null => {
 // the weaker evidence; a two-load market still prints its figure and its count).
 export const OUT_MIN_LOADS = 4;
 export const THIN_OUT = OUT_MIN_LOADS; // the older name, same number
-const STRONG_MULT = 1.05; // pays ≥5% over your overall norm → strong
-const SOFT_MULT = 0.85; // pays ≤15% under → soft
 
-// YOUR typical outbound rate — the yardstick every market's OUT grade is read
-// against. Computed over the WHOLE book, never over the window being shown:
-// switching 12 months → this year → all time must not move the bar under a
-// market whose own numbers didn't change (the IN half has always worked this
-// way; the OUT half now does too).
-export const outYardstick = (loads: Load[]): number | null =>
-  median(
-    loads
-      .filter((l) => l.load_status === "delivered")
-      .map(loadedRpm)
-      .filter((r): r is number => r != null),
-  );
+// THE COST THE GRADES ARE READ AGAINST (the Grading Rework, nodded 2026-11-01):
+// the rate ladder's own figures, handed in by the page from useRateTargets so
+// this module never guesses them. OUT grades a market's freight by what a day
+// of it earns against the ladder's calendar-day bars — the same two numbers
+// that already colour the Lanes page's $/day column. IN prices a reload in
+// dollars: empty miles at the cost per driven mile, idle weekdays at the
+// truck's fixed cost per calendar day, as a share of the load it led to,
+// against the margin goal. No multipliers tuned to the output.
+export interface GradeCosts {
+  perMile: number | null; // true cost per driven mile (basis.costPerTotalMile)
+  perDay: number | null; // fixed cost per calendar day (true monthly cost ÷ 30.4)
+  dayBreakEven: number | null; // the gross a calendar day must earn to break even
+  dayTarget: number | null; // the gross a calendar day must earn at the margin goal
+  marginGoal: number; // IN: strong under it, soft past twice it
+}
+export const NO_COSTS: GradeCosts = { perMile: null, perDay: null, dayBreakEven: null, dayTarget: null, marginGoal: 0.15 };
+const CALENDAR_DAYS_PER_MONTH = 365 / 12;
+
+// From the page's targets (useRateTargets) — structural, so a test can hand
+// over the four numbers.
+export const gradeCostsOf = (targets: {
+  basis: { costPerTotalMile: number | null; trueMonthlyCost: number | null };
+  gross: { dailyBreakEvenCalendar: number | null; dailyTargetCalendar: number | null };
+  marginGoal: number;
+}): GradeCosts => ({
+  perMile: targets.basis.costPerTotalMile,
+  perDay: targets.basis.trueMonthlyCost != null ? targets.basis.trueMonthlyCost / CALENDAR_DAYS_PER_MONTH : null,
+  dayBreakEven: targets.gross.dailyBreakEvenCalendar,
+  dayTarget: targets.gross.dailyTargetCalendar,
+  marginGoal: targets.marginGoal,
+});
 
 export type MarketGrade = "strong" | "fair" | "soft" | "thin";
 
 export interface OutboundMarket {
   state: string;
   loadsOut: number; // delivered loads that ORIGINATED here
-  medianRpm: number | null; // gross ÷ loaded mile, out of here
+  medianRpm: number | null; // gross ÷ loaded mile, out of here (the rate you negotiate)
+  perDayExFuel: number | null; // the median of (gross − fuel surcharge) ÷ calendar days the load owned — the grade's basis
   agents: number; // distinct agents sourcing here
   grade: MarketGrade;
 }
 
-// Your outbound strength per origin state, from delivered loads. Grade is relative
-// to your OWN overall outbound rate, so it means "good/soft FOR ME," not a market
-// absolute.
+// Calendar days a load owned, pickup to delivery inclusive, never under one.
+const calendarDaysOf = (l: Load): number | null => {
+  if (!l.pickup_date || !l.delivery_date) return null;
+  const a = new Date(`${String(l.pickup_date).slice(0, 10)}T00:00:00Z`).getTime();
+  const b = new Date(`${String(l.delivery_date).slice(0, 10)}T00:00:00Z`).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+};
+// A load's ex-fuel $/day: the fuel surcharge is a pass-through, not freight.
+export const perDayExFuel = (l: Load): number | null => {
+  const d = calendarDaysOf(l);
+  if (d == null) return null;
+  return (loadRevenue(l) - (Number(l.fuel_surcharge) || 0)) / d;
+};
+
+// Your outbound strength per origin state, from delivered loads. The grade is
+// the market's typical ex-fuel $/day against the ladder's calendar-day bars:
+// strong when a day of that freight earns what your margin goal needs, soft
+// when it doesn't cover the day's break-even, fair between, thin under four
+// loads. Per DAY, not per mile: Jason's book pays $9.57 a loaded mile under 400
+// miles and $5.21 over 1,200, and the same per day — a per-mile grade crowned
+// the short hauls. Without the bars (no P&L yet) every market is thin.
 //
-// `keyFor` is how a load is bucketed — the origin STATE by default, which is what
-// the Load Scorer asks for. The Lanes ledger passes a freight-region key at region
-// grain so the region rows are graded by this same arithmetic on the region's own
-// loads, rather than by averaging state grades (which would be a second rule).
+// `keyFor` is how a load is bucketed — the origin STATE by default, which is
+// what the Load Scorer asks for. The Lanes ledger passes a freight-region key
+// at region grain so the region rows are graded by this same arithmetic.
 export const outboundStrength = (
   loads: Load[],
   keyFor: (l: Load) => string = (l) => up(l.origin_state),
-  // The whole-book yardstick (outYardstick). Absent → these loads' own median,
-  // which is right only when `loads` IS the whole book.
-  yardstick?: number | null,
+  costs: GradeCosts = NO_COSTS,
 ): Map<string, OutboundMarket> => {
   const delivered = loads.filter((l) => l.load_status === "delivered");
-  const overall = yardstick !== undefined ? yardstick : outYardstick(delivered);
-
   const byState = new Map<string, Load[]>();
   for (const l of delivered) {
     const s = keyFor(l);
@@ -80,21 +112,23 @@ export const outboundStrength = (
   const out = new Map<string, OutboundMarket>();
   for (const [state, ls] of byState) {
     const rpms = ls.map(loadedRpm).filter((r): r is number => r != null);
+    const days = ls.map(perDayExFuel).filter((r): r is number => r != null);
     const medianRpm = rpms.length ? median(rpms) : null;
+    const perDay = days.length ? median(days) : null;
     const agents = new Set(ls.map((l) => l.agent_id).filter(Boolean)).size;
     const loadsOut = ls.length;
 
     let grade: MarketGrade;
-    if (loadsOut < OUT_MIN_LOADS || medianRpm == null || overall == null) {
+    if (days.length < OUT_MIN_LOADS || perDay == null || costs.dayBreakEven == null || costs.dayTarget == null) {
       grade = "thin";
-    } else if (medianRpm >= overall * STRONG_MULT) {
+    } else if (perDay >= costs.dayTarget) {
       grade = "strong";
-    } else if (medianRpm <= overall * SOFT_MULT) {
+    } else if (perDay < costs.dayBreakEven) {
       grade = "soft";
     } else {
       grade = "fair";
     }
-    out.set(state, { state, loadsOut, medianRpm, agents, grade });
+    out.set(state, { state, loadsOut, medianRpm, perDayExFuel: perDay, agents, grade });
   }
   return out;
 };
@@ -110,13 +144,9 @@ export const outboundStrength = (
 // reloads): the sheet's 70 % / 150 % turned nearly every market "fair". At
 // 85 % / 125 % PA and OH read strong, TX/VA/KY/MI soft, NC and IN fair —
 // a spread a dispatcher can act on.
-export const IN_STRONG_MULT = 0.85; // reload ≤ 85% of your median → cheap to leave
-export const IN_SOFT_MULT = 1.25; // ≥ 125% of it → expensive
 // One minimum for soft and strong, like the OUT half: under it the market is thin.
 export const IN_MIN_LOADS = 4;
 export const IN_STRONG_MIN = IN_MIN_LOADS; // the older name, same number
-export const IN_IDLE_STRONG = 2; // weekdays waiting for the next pickup
-export const IN_IDLE_SOFT = 3;
 
 export interface InboundMarket {
   state: string;
@@ -125,7 +155,9 @@ export interface InboundMarket {
   // for the ledger row beside it — an undated load is counted in neither.
   deliveries: number;
   reloadMilesMedian: number | null; // typical empty run to the next pickup
-  idleDaysAvg: number | null; // days between delivery and the next pickup
+  idleDaysAvg: number | null; // weekdays between delivery and the next pickup
+  reloadCostMedian: number | null; // the reload in dollars — miles at cost, idle weekdays at the day's fixed cost
+  shareMedian: number | null; // that cost as a share of the load it led to — the grade's basis
   nextRpmMedian: number | null; // what the load you found here paid
   grade: MarketGrade;
 }
@@ -133,13 +165,11 @@ export interface InboundMarket {
 const mean = (xs: number[]): number | null =>
   xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null;
 
-// YOUR median reload — the yardstick every market is judged against. It is
-// computed over the WHOLE sequence (every delivered load, all time), never over
-// the window being displayed: a market's grade answers "how does this stop
-// compare to my book", so flipping 12 months → this year → all time must not
-// move the yardstick under a market whose own numbers didn't change. A home
-// stint's reload is the run back out from Leighton, not the market's doing —
-// out of the yardstick as it is out of every grade.
+// YOUR median reload — context the page prints beside a market's reload. It
+// is computed over the WHOLE sequence (every delivered load, all time), never
+// over the window being displayed. A home stint's reload is the run back out
+// from Leighton, not the market's doing — out of it as it is out of every
+// grade.
 export const reloadYardstick = (seq: SequencedLoad[]): number | null =>
   median(
     seq
@@ -148,19 +178,30 @@ export const reloadYardstick = (seq: SequencedLoad[]): number | null =>
       .filter((m): m is number => m != null),
   );
 
+// One leg's reload in dollars, and as a share of the load it led to. null when
+// the leg has no logged miles, no idle read, or no next gross — never a zero.
+export const legCost = (
+  next: Pick<NextLeg, "deadheadMiles" | "idleDays" | "gross"> | null | undefined,
+  costs: GradeCosts,
+): { cost: number; share: number } | null => {
+  if (!next || next.deadheadMiles == null || next.idleDays == null) return null;
+  if (costs.perMile == null || costs.perDay == null) return null;
+  const cost = next.deadheadMiles * costs.perMile + next.idleDays * costs.perDay;
+  if (next.gross == null || !(next.gross > 0)) return null;
+  return { cost, share: cost / next.gross };
+};
+
 // A 0 deadhead is "not logged", never free — `sequenceLoads` already nulls it,
-// so every figure here is over the legs that actually carry a number.
-//
-// `yardstick` is required and passed in on purpose (`reloadYardstick` builds
-// it): when it was derived from `seq` inside, a caller handing in one window's
-// legs silently graded that window against itself.
+// so every figure here is over the legs that actually carry a number. Home
+// stints leave every median: their reload is from home and their idle days
+// were on purpose. The grade: the market's median reload as a share of the
+// load it led to — strong at or under your margin goal, soft at or past twice
+// it, fair between, thin under four deliveries or with no reload logged.
 export const inboundStrength = (
   seq: SequencedLoad[],
-  yardstick: number | null,
+  costs: GradeCosts = NO_COSTS,
   keyFor: (s: SequencedLoad) => string = (s) => up(s.load.destination_state),
 ): Map<string, InboundMarket> => {
-  const yourMedian = yardstick;
-
   const byState = new Map<string, SequencedLoad[]>();
   for (const s of seq) {
     const k = keyFor(s);
@@ -170,8 +211,6 @@ export const inboundStrength = (
 
   const out = new Map<string, InboundMarket>();
   for (const [state, group] of byState) {
-    // Home time doesn't grade a market: a home stint's reload is measured from
-    // home, and its idle days were on purpose — both leave the medians.
     const away = group.filter((s) => !s.home);
     const reloads = away
       .map((s) => s.next?.deadheadMiles)
@@ -182,24 +221,19 @@ export const inboundStrength = (
     const rpms = group
       .map((s) => s.next?.rpm)
       .filter((r): r is number => r != null);
+    const legs = away.map((s) => legCost(s.next, costs)).filter((c): c is { cost: number; share: number } => c != null);
 
     const reloadMilesMedian = median(reloads);
     const idleDaysAvg = mean(idles);
+    const reloadCostMedian = median(legs.map((c) => c.cost));
+    const shareMedian = median(legs.map((c) => c.share));
 
     let grade: MarketGrade;
-    if (group.length < IN_MIN_LOADS || reloadMilesMedian == null) {
+    if (group.length < IN_MIN_LOADS || shareMedian == null) {
       grade = "thin";
-    } else if (
-      yourMedian != null &&
-      reloadMilesMedian <= yourMedian * IN_STRONG_MULT &&
-      idleDaysAvg != null &&
-      idleDaysAvg <= IN_IDLE_STRONG
-    ) {
+    } else if (shareMedian <= costs.marginGoal) {
       grade = "strong";
-    } else if (
-      (yourMedian != null && reloadMilesMedian >= yourMedian * IN_SOFT_MULT) ||
-      (idleDaysAvg != null && idleDaysAvg >= IN_IDLE_SOFT)
-    ) {
+    } else if (shareMedian >= costs.marginGoal * 2) {
       grade = "soft";
     } else {
       grade = "fair";
@@ -210,6 +244,8 @@ export const inboundStrength = (
       deliveries: group.length,
       reloadMilesMedian,
       idleDaysAvg,
+      reloadCostMedian,
+      shareMedian,
       nextRpmMedian: median(rpms),
       grade,
     });
@@ -240,12 +276,12 @@ export const destinationFactor = (
   loads: Load[],
   delivery: { city: string; state: string },
   coords: CoordMap,
-  // The whole book, for the yardstick, when `loads` is a window of it (the
-  // Scorer grades on the Lanes ledger's 12-month window so the two pages can
-  // never disagree, against the same whole-book bar the ledger uses).
-  allLoads: Load[] = loads,
+  // The ladder's bars (gradeCostsOf(targets)). The Scorer grades on the Lanes
+  // ledger's 12-month window against the same bars, so the two pages can
+  // never disagree about a market.
+  costs: GradeCosts = NO_COSTS,
 ): DestinationFactor => {
-  const strengths = outboundStrength(loads, undefined, outYardstick(allLoads));
+  const strengths = outboundStrength(loads, undefined, costs);
   const state = up(delivery.state);
   const market = strengths.get(state) ?? null;
   const strongMarkets = [...strengths.values()]
@@ -316,12 +352,12 @@ export const theCall = (
     if (grade === "soft")
       return {
         tone: "caution",
-        text: `${clears}, but it strands you in a soft outbound market${dist}. Take it and plan your reposition${keeper ? ", or lean on the agent for the backhaul" : ""}.`,
+        text: `${clears}, but it strands you where the freight out doesn't cover your day${dist}. Take it and plan your reposition${keeper ? ", or lean on the agent for the backhaul" : ""}.`,
       };
     if (grade === "strong")
       return {
         tone: "good",
-        text: `Good load — ${clears.toLowerCase()} and drops you into a strong outbound market${keeper ? ", from a keeper agent" : ""}. Take it.`,
+        text: `Good load — ${clears.toLowerCase()} and drops you where a day of freight clears your target${keeper ? ", from a keeper agent" : ""}. Take it.`,
       };
     return { tone: "good", text: `${clears}. Take it.` };
   }
@@ -330,7 +366,7 @@ export const theCall = (
   if (grade === "strong")
     return {
       tone: "caution",
-      text: "Only fair on rate — the deadhead's the drag — but it sets you up in a strong market. Worth it; counter toward SOLID.",
+      text: "Only fair on rate — the deadhead's the drag — but it sets you up where a day of freight clears your target. Worth it; counter toward SOLID.",
     };
   if (keeper)
     return {
@@ -340,7 +376,7 @@ export const theCall = (
   if (grade === "soft")
     return {
       tone: "caution",
-      text: `Only fair on rate, and it strands you in a soft market${dist}. Counter up hard, or let it go.`,
+      text: `Only fair on rate, and it strands you where the freight out doesn't cover your day${dist}. Counter up hard, or let it go.`,
     };
   return { tone: "caution", text: "Only fair on rate. Counter up, or let it go." };
 };

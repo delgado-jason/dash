@@ -28,6 +28,8 @@ export const GradeChip = ({ grade }: { grade: MarketGrade }) => (
   </span>
 );
 
+const money0 = (n: number): string => `$${Math.round(n).toLocaleString("en-US")}`;
+
 const num = (n: number | null, digits = 0): string =>
   n == null ? "—" : n.toFixed(digits);
 
@@ -147,6 +149,11 @@ export const MarketLedger = ({
                   </td>
                   <td className="text-right px-1.5 py-[6px]">
                     <GradeChip grade={row.out.grade} />
+                    {row.out.perDayExFuel != null && (
+                      <span className="block font-condensed text-[10.5px] text-faint tabular-nums leading-tight">
+                        {fmtPerDay(row.out.perDayExFuel)} ex-fuel
+                      </span>
+                    )}
                   </td>
                   <td className="text-right px-1.5 py-[6px] text-dim border-l border-hairline">
                     {row.in.deliveries}
@@ -159,6 +166,11 @@ export const MarketLedger = ({
                   </td>
                   <td className="text-right px-1.5 py-[6px]">
                     <GradeChip grade={row.in.grade} />
+                    {row.in.shareMedian != null && row.in.reloadCostMedian != null && (
+                      <span className="block font-condensed text-[10.5px] text-faint tabular-nums leading-tight">
+                        {money0(row.in.reloadCostMedian)} · {Math.round(row.in.shareMedian * 100)}% of the next load
+                      </span>
+                    )}
                   </td>
                 </tr>
               );

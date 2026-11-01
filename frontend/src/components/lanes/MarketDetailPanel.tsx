@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { DeliveryStory, MarketDetail, NextLeg } from "@/lib/metrics/marketLedger";
 import type { MarketGrade } from "@/lib/metrics/marketFactor";
 import { money, rpm } from "@/lib/format";
+import { legCost, type GradeCosts } from "@/lib/metrics/marketFactor";
 import { shortDate } from "@/lib/relationships/dayKeys";
 import { GradeChip } from "./MarketLedger";
 
@@ -31,11 +32,14 @@ const idleCell = (story: DeliveryStory): string => {
 
 export const MarketDetailPanel = ({
   detail,
+  costs,
   market,
   outGrade,
   onClear,
 }: {
   detail: MarketDetail;
+  // The ladder's costs — a leg's reload is priced with them (legCost).
+  costs: GradeCosts;
   market: string;
   // The market's OUT grade, worn on the agents line in the same chip the ledger
   // uses — one vocabulary for one fact, so "1 load · thin" reads the same here
@@ -137,6 +141,11 @@ export const MarketDetailPanel = ({
                   ) : (
                     <b className="text-ink font-semibold">{emptyCell(s.next)}</b>
                   )}
+                  {!s.home && legCost(s.next, costs) && (
+                    <span className="block text-[11.5px] text-faint">
+                      {money(legCost(s.next, costs)!.cost)} · {Math.round(legCost(s.next, costs)!.share * 100)}% of the next load
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 text-right tabular-nums">{idleCell(s)}</td>
               </tr>
@@ -148,7 +157,10 @@ export const MarketDetailPanel = ({
 
     <p className="text-[13px] text-faint mt-2">
       "not logged" is a deadhead of 0 on the next load — the page never reads 0 as
-      free. Idle days over 7 are marked home so a week off doesn't grade a market.
+      free. Home comes from your logged home trips or a gap over a week; idle counts
+      weekdays. A reload's dollars are its empty miles at your cost per mile plus
+      its idle weekdays at the truck's fixed cost per day, shown as a share of the
+      load it led to — the grade is strong under your margin goal, soft past twice it.
     </p>
   </div>
 );

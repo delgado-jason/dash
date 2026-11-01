@@ -12,8 +12,7 @@ import { useCityCoords } from "@/hooks/useCityCoords";
 import {
   destinationFactor,
   theCall,
-  type MarketGrade,
-} from "@/lib/metrics/marketFactor";
+  type MarketGrade, gradeCostsOf } from "@/lib/metrics/marketFactor";
 import { playSfx } from "@/lib/sfx";
 import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
@@ -392,8 +391,8 @@ const ScoreLoadPage = () => {
   // against the whole book's yardstick — so this page and Lanes can never
   // disagree about a market.
   const destFactor = useMemo(
-    () => destinationFactor(windowLoads(loads ?? [], DEFAULT_WINDOW, now), deliveryPlace, coords, loads ?? []),
-    [loads, deliveryPlace, coords, now],
+    () => destinationFactor(windowLoads(loads ?? [], DEFAULT_WINDOW, now), deliveryPlace, coords, gradeCostsOf(targets)),
+    [loads, deliveryPlace, coords, now, targets],
   );
   const call = theCall(score.verdict, destFactor, agentCard, isNewAgent);
 

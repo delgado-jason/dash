@@ -6,6 +6,7 @@ import { useCityCoords } from "@/hooks/useCityCoords";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { cityKey, emptyNextAnchor } from "@/lib/metrics/foreman";
+import { gradeCostsOf } from "@/lib/metrics/marketFactor";
 import { getRegion } from "@/lib/constants/states";
 import {
   LEDGER_WINDOWS,
@@ -75,13 +76,15 @@ const LanesPage = () => {
   const targets = useRateTargets(loads);
   const coords = useCityCoords(loads);
 
+  // The ladder's bars and costs — what both grades are read against.
+  const costs = useMemo(() => gradeCostsOf(targets), [targets]);
   const seq = useMemo(() => sequenceLoads(loads, trips), [loads, trips]);
   // The window's own loads — the ledger rolls the rows up from exactly these,
   // and the answering line counts exactly these.
   const scoped = useMemo(() => windowLoads(loads, win, now), [loads, win, now]);
   const rows = useMemo(
-    () => buildLedger(loads, win, now, grain, trips),
-    [loads, win, now, grain, trips],
+    () => buildLedger(loads, win, now, grain, trips, costs),
+    [loads, win, now, grain, trips, costs],
   );
   const head = useMemo(
     () => ledgerHeadline(rows, scoped, grain),
@@ -214,8 +217,9 @@ const LanesPage = () => {
                 <b className="font-semibold text-status-positive-text">
                   {head.easiestIn.state}
                 </b>{" "}
-                ({miles0(head.easiestIn.in.reloadMilesMedian)} mi,{" "}
-                {days1(head.easiestIn.in.idleDaysAvg)} days)
+                ({head.easiestIn.in.shareMedian != null
+                  ? `${Math.round(head.easiestIn.in.shareMedian * 100)}% of the next load`
+                  : `${miles0(head.easiestIn.in.reloadMilesMedian)} mi, ${days1(head.easiestIn.in.idleDaysAvg)} days`})
               </>
             )}
             {head.costliestIn && (
@@ -225,8 +229,9 @@ const LanesPage = () => {
                 <b className="font-semibold text-status-negative-text">
                   {head.costliestIn.state}
                 </b>{" "}
-                ({miles0(head.costliestIn.in.reloadMilesMedian)} mi,{" "}
-                {days1(head.costliestIn.in.idleDaysAvg)} days)
+                ({head.costliestIn.in.shareMedian != null
+                  ? `${Math.round(head.costliestIn.in.shareMedian * 100)}% of the next load`
+                  : `${miles0(head.costliestIn.in.reloadMilesMedian)} mi, ${days1(head.costliestIn.in.idleDaysAvg)} days`})
               </>
             )}
             {/* said once, here: a delivered load with no pickup date can't be
@@ -305,6 +310,7 @@ const LanesPage = () => {
         {detail && selected && (
           <MarketDetailPanel
             detail={detail}
+            costs={costs}
             market={selected}
             outGrade={
               rows.find((r) => r.state === selected)?.out.grade ?? "thin"

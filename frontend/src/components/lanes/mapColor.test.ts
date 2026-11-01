@@ -24,6 +24,7 @@ const row = (
     perDay: { perDay: null, days: 0, gross: 0, loads: 0 },
     agents: 0,
     gross: 0,
+    perDayExFuel: null,
     grade: "thin",
   },
   in: {
@@ -31,6 +32,8 @@ const row = (
     reloadMilesMedian: over.reload ?? null,
     reloadMilesAvg: null,
     idleDaysAvg: null,
+    reloadCostMedian: null,
+    shareMedian: null,
     nextRpmMedian: null,
     reloadedInState: 0,
     grade: "thin",
