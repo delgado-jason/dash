@@ -8,17 +8,9 @@ import {
   getExpensePeriod,
 } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
-import {
-  getExpenseMetrics,
-  getCashMetrics,
-  getTrueMonthly,
-} from "@/lib/metrics/expenses";
-import {
-  getCostBasis,
-  getRateLadder,
-  monthlyObligationCost,
-} from "@/lib/metrics/rateTargets";
-import { tiersFrom, specTiersFrom } from "@/lib/constants/targets";
+import { getExpenseMetrics, getTrueMonthly } from "@/lib/metrics/expenses";
+import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
+import { computeRateTargets } from "@/hooks/useRateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
@@ -136,45 +128,6 @@ const ExpensesPage = () => {
     ? getExpenseMetrics(selected, miles.totalMiles, miles.loadedMiles)
     : null;
 
-  // Blended trailing window: average cost + miles over the selected month and
-  // up to 2 prior, so the per-mile figures aren't whipped around by one noisy
-  // month. Exposes per-month averages that the cash view divides.
-  const trailing = useMemo(() => {
-    const idx = periods.findIndex((p) => p.period_id === selectedId);
-    const windowPeriods = idx >= 0 ? periods.slice(idx, idx + 3) : [];
-    const n = windowPeriods.length;
-    let cost = 0;
-    let total = 0;
-    let loaded = 0;
-    for (const p of windowPeriods) {
-      cost += (p.cogs_total ?? 0) + (p.expense_total ?? 0);
-      const m = monthMiles(loads, p.period_month);
-      total += m.totalMiles;
-      loaded += m.loadedMiles;
-    }
-    // Name the window's months so the label says WHICH three, not just "3mo".
-    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const dates = windowPeriods
-      .map((p) => new Date(p.period_month))
-      .sort((a, b) => a.getTime() - b.getTime());
-    const named = dates.map((d) => MONTHS[d.getUTCMonth()]);
-    // A gap must LIST months, not fake a range — "May, Jul, Aug", never
-    // "May–Aug" when June's P&L is missing.
-    const mIdx = (d: Date) => d.getUTCFullYear() * 12 + d.getUTCMonth();
-    const contiguous = dates.every((d, i) => i === 0 || mIdx(d) === mIdx(dates[i - 1]) + 1);
-    const label =
-      named.length === 0 ? null
-      : named.length === 1 ? named[0]
-      : contiguous ? `${named[0]}–${named[named.length - 1]}`
-      : named.join(", ");
-    return {
-      months: n || 1,
-      label,
-      avgCost: n > 0 ? cost / n : 0,
-      avgTotalMiles: n > 0 ? total / n : 0,
-      avgLoadedMiles: n > 0 ? loaded / n : 0,
-    };
-  }, [periods, selectedId, loads]);
 
   // Obligations folded into every headline number. Dollar figures use this
   // month (reconcile with the month's P&L); per-mile figures use the trailing
@@ -190,12 +143,26 @@ const ExpensesPage = () => {
     () => monthlyObligationCost(obligations),
     [obligations],
   );
-  // Full periods (with lines) for the trailing window, so the sit/run burn can
-  // blend the fixed/variable split the same way the per-mile figures blend cost.
+  // THE basis — the same function the Market page, the Dashboard and Score a
+  // Load stand on: the last six complete months with a P&L, cost over driven
+  // miles, divided by the blended keep. Every blended figure on this page
+  // (the per-mile tiles, the burn, the rate to book) reads it, so the books
+  // and the market can never quote two break-evens (2026-11-01: this page
+  // blended three months and divided by the 73% linehaul take while the
+  // Market page blended six and divided by the measured keep).
+  const targets = useMemo(
+    () => computeRateTargets(loads, periods, obligationsCost, schedule),
+    [loads, periods, obligationsCost, schedule],
+  );
+  const basisWord = targets.basis.windowLabel ?? "no P&L filed";
+  // Full periods (with lines) for the basis months, so the sit/run burn blends
+  // the fixed/variable split over the same window the per-mile figures blend.
   const windowIds = useMemo(() => {
-    const idx = periods.findIndex((p) => p.period_id === selectedId);
-    return (idx >= 0 ? periods.slice(idx, idx + 3) : []).map((p) => p.period_id);
-  }, [periods, selectedId]);
+    const keys = new Set(
+      targets.basis.monthsDetail.map((m) => `${m.year}-${String(m.month + 1).padStart(2, "0")}`),
+    );
+    return periods.filter((p) => keys.has(String(p.period_month).slice(0, 7))).map((p) => p.period_id);
+  }, [periods, targets.basis.monthsDetail]);
   const [windowFetched, setWindowFetched] = useState<ExpensePeriod[]>([]);
   // Derived, not set in the effect: no window → no months, whatever landed last.
   const windowFull = windowIds.length === 0 ? NO_PERIODS : windowFetched;
@@ -229,30 +196,6 @@ const ExpensesPage = () => {
     metrics && selected
       ? getTrueMonthly(metrics.monthlyCost, obligationsTotal, selected.income_total)
       : null;
-  const cash = getCashMetrics(
-    trailing.avgCost,
-    obligationsTotal,
-    trailing.avgTotalMiles,
-    trailing.avgLoadedMiles,
-  );
-
-  // Rate targets anchored to today (last 3 complete months, NOT the selected
-  // month) — forward pricing guidance, same basis as the dashboard card.
-  const rateBasis = useMemo(
-    () => getCostBasis(periods, obligationsCost, loads, new Date()),
-    [periods, obligationsCost, loads],
-  );
-  const linehaulTake = schedule
-    ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
-    : 1;
-  // Booking ladder in Jason's terms: gross rate to book per mile driven =
-  // cost-per-total-mile ÷ keep, scaled by tiers. Marker = actual gross rate/mile.
-  const bookingBase =
-    rateBasis.costPerTotalMile != null && linehaulTake > 0
-      ? rateBasis.costPerTotalMile / linehaulTake
-      : null;
-  const rateLadder = getRateLadder(bookingBase, tiersFrom(schedule));
-  const specRateLadder = getRateLadder(bookingBase, specTiersFrom(schedule));
 
   const selIncome = selected?.income_total ?? 0;
   const selCost = (selected?.cogs_total ?? 0) + (selected?.expense_total ?? 0);
@@ -362,15 +305,15 @@ const ExpensesPage = () => {
                   { v: money(trueMonthly.trueMonthlyCost), l: "True monthly cost" },
                   { v: money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
                   {
-                    v: cash.trueCpm == null ? "—" : `$${cash.trueCpm.toFixed(2)}`,
-                    l: `Cost / total mi · cash · ${trailing.label ?? `${trailing.months}mo`}`,
+                    v: targets.basis.costPerTotalMile == null ? "—" : `$${targets.basis.costPerTotalMile.toFixed(2)}`,
+                    l: `Cost / total mi · ${basisWord}`,
                   },
                   {
                     v:
-                      cash.trueBreakEvenRpm == null
+                      targets.basis.breakEvenRpm == null
                         ? "—"
-                        : `$${cash.trueBreakEvenRpm.toFixed(2)}`,
-                    l: `Break-even / loaded mi · cash · ${trailing.label ?? `${trailing.months}mo`}`,
+                        : `$${targets.basis.breakEvenRpm.toFixed(2)}`,
+                    l: `Break-even / loaded mi · ${basisWord}`,
                   },
                   {
                     v:
@@ -400,11 +343,18 @@ const ExpensesPage = () => {
               <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
                 <b className="text-dim">Cost / total mile</b> is over every mile you drive;{" "}
                 <b className="text-dim">break-even / loaded mile</b> spreads that same cost over
-                only the paid miles — the gap is your deadhead. Per-mile figures blend the last{" "}
-                {trailing.months} month{trailing.months > 1 ? "s" : ""}.
-                {obligationsTotal > 0 &&
-                  ` Cost includes ${money(obligationsTotal)}/mo of obligations.`}
+                only the paid miles — the gap is your deadhead. Per-mile figures blend{" "}
+                <b className="text-dim">{basisWord}</b> — {targets.basis.months} of{" "}
+                {targets.basis.monthsWanted} months filed, the same basis as the Market page and the
+                Dashboard.
+                {obligationsCost > 0 && ` Cost includes ${money(obligationsCost)}/mo of notes.`}
               </div>
+              {targets.basis.missingLabel && (
+                <div className="px-4 py-[6px] border-t ds2-cell-rule font-condensed text-[12.5px] text-amber-hi">
+                  ⚠ no P&L filed for {targets.basis.missingLabel} — the blend stops short of it. Upload
+                  the month above and every blended number here and on the Market page moves.
+                </div>
+              )}
             </div>
 
             {/* the burn — sit vs run */}
@@ -415,7 +365,7 @@ const ExpensesPage = () => {
                     The burn — sit vs run
                   </span>
                   <span className="font-condensed text-[12px] text-faint">
-                    · daily and weekly · {windowFull.length}-month blend + your notes
+                    · daily and weekly · {basisWord} · {windowFull.length}-month blend + your notes
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2">
@@ -461,7 +411,7 @@ const ExpensesPage = () => {
             )}
 
             {/* rate to book — the crown jewel */}
-            {rateLadder.walkAway != null && (
+            {targets.bookingLadder.walkAway != null && (
               <div
                 className="relative overflow-hidden rounded-[14px] border mt-4"
                 style={{
@@ -479,8 +429,8 @@ const ExpensesPage = () => {
                       RATE TO BOOK
                     </div>
                     <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
-                      gross $/mile driven · last {rateBasis.months} complete month
-                      {rateBasis.months > 1 ? "s" : ""} · the number that pays for everything
+                      gross $/mile driven · {basisWord} · {targets.basis.months} of{" "}
+                      {targets.basis.monthsWanted} months filed · the number that pays for everything
                     </div>
                   </div>
                 </div>
@@ -489,7 +439,7 @@ const ExpensesPage = () => {
                     className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
                     style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
                   >
-                    <b className="text-ink tabular-nums">${rateBasis.costPerTotalMile?.toFixed(2)}</b> / total
+                    <b className="text-ink tabular-nums">${targets.basis.costPerTotalMile?.toFixed(2)}</b> / total
                     mi — your all-in cost
                   </span>
                   <span className="font-condensed text-faint">→</span>
@@ -497,7 +447,8 @@ const ExpensesPage = () => {
                     className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
                     style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
                   >
-                    ÷ <b className="text-ink">{Math.round(linehaulTake * 100)}%</b> keep
+                    ÷ <b className="text-ink">{Math.round(targets.keep * 100)}%</b>{" "}
+                    {targets.keepSource === "blended" ? "blended keep" : "linehaul take"}
                   </span>
                   <span className="font-condensed text-faint">→</span>
                   <span
@@ -505,22 +456,20 @@ const ExpensesPage = () => {
                     style={{ background: "var(--color-well)", border: "1px solid rgba(245,176,58,.55)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
                   >
                     <b className="font-display text-[22px] tracking-[.04em] text-amber-hi tabular-nums">
-                      ${rateLadder.walkAway?.toFixed(2)}
+                      ${targets.bookingLadder.walkAway?.toFixed(2)}
                     </b>{" "}
                     walk-away
                   </span>
                 </div>
                 <div className="px-[18px] pb-[14px]">
-                  <BandedLadder
-                    ladder={rateLadder}
-                    rpm={rateBasis.grossPerTotalMile}
-                    label="Standard flatbed"
-                  />
-                  <BandedLadder ladder={specRateLadder} rpm={rateBasis.grossPerTotalMile} label="Oversize / specialized" />
+                  <BandedLadder ladder={targets.bookingLadder} rpm={targets.grossRate} label="Standard flatbed" />
+                  <BandedLadder ladder={targets.specLadder} rpm={targets.grossRate} label="Oversize / specialized" />
                 </div>
                 <div className="px-[18px] py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
-                  walk-away = your cost/mile ÷ your {Math.round(linehaulTake * 100)}% keep. Book
-                  above it with your deadhead folded into the miles and you clear cost.
+                  walk-away = your cost/mile ÷ your {Math.round(targets.keep * 100)}% keep — the share
+                  of an all-in dollar that reaches you (linehaul at your split, fuel surcharge and
+                  accessorials in full). The same basis, keep and rungs as the Market page and the
+                  Dashboard. Book above it with your deadhead folded into the miles and you clear cost.
                 </div>
               </div>
             )}

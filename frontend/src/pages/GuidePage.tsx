@@ -868,7 +868,9 @@ const GuidePage = () => {
               rate to book by a dollar a mile. Six smooths that and still turns
               within two quarters when a real cost changes. The Market page
               names the months, the ones still unfiled, and the spread between
-              them. It's over <span className="text-light">total</span> miles
+              them; the Expenses page runs its per-mile tiles, its burn and its
+              rate to book on the same window. It's over{" "}
+              <span className="text-light">total</span> miles
               (loaded and empty), because every mile you drive costs you.
             </Why>
           </Metric>
@@ -879,6 +881,7 @@ const GuidePage = () => {
             sources={[
               { label: "Dashboard", to: "/dashboard" },
               { label: "Score a Load", to: "/score" },
+              { label: "Expenses", to: "/expenses" },
             ]}
           >
             <Formula>
