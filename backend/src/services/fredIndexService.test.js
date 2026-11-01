@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { parseFredSeries } from "./fredIndexService.js";
+import { parseFredSeries, fredParams } from "./fredIndexService.js";
 
 describe("parseFredSeries", () => {
   test("maps FRED observations to {month, value}, ascending", () => {
@@ -33,5 +33,17 @@ describe("parseFredSeries", () => {
     assert.deepEqual(parseFredSeries({}), []);
     assert.deepEqual(parseFredSeries(null), []);
     assert.deepEqual(parseFredSeries({ observations: [] }), []);
+  });
+});
+
+describe("fredParams", () => {
+  test("the PPI is asked for as published; diesel as monthly averages", () => {
+    const ppi = fredParams("PCU484230484230", "k");
+    assert.equal(ppi.get("series_id"), "PCU484230484230");
+    assert.equal(ppi.get("frequency"), null);
+    const diesel = fredParams("GASDESW", "k", true);
+    assert.equal(diesel.get("frequency"), "m");
+    assert.equal(diesel.get("aggregation_method"), "avg");
+    assert.equal(diesel.get("observation_start"), "2024-01-01");
   });
 });

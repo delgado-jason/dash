@@ -100,49 +100,34 @@ describe("windowRates", () => {
   });
 });
 
-describe("tierGauge", () => {
-  const ladder = (target: number, strong: number): RateLadder => ({
-    walkAway: 3,
-    minimum: target,
-    target,
-    strong,
-  });
-  // five recent loads at $3–7/mi
-  const recent = ratePoints(
-    [3, 4, 5, 6, 7].map((r, i) =>
-      load({ delivery_date: `2026-06-0${i + 1}`, gross_revenue: String(r * 500), odometer_end: 500 }),
+describe("tierGauge — your rungs among your own accepted loads, per type", () => {
+  const ladder = (target: number, strong: number): RateLadder => ({ walkAway: 3, minimum: target - 0.5, target, strong });
+  const now = new Date("2026-06-15T12:00:00Z");
+  // ten standard loads $3–7.5 and two oversize at $9 and $10
+  const recent = ratePoints([
+    ...[3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5].map((r, i) =>
+      load({ delivery_date: `2026-06-${String(i + 1).padStart(2, "0")}`, gross_revenue: String(r * 500), odometer_end: 500 }),
     ),
-  );
-  const now = new Date("2026-06-15T00:00:00Z");
+    load({ delivery_date: "2026-06-11", gross_revenue: "4500", odometer_end: 500, load_type: "oversize" }),
+    load({ delivery_date: "2026-06-12", gross_revenue: "5000", odometer_end: 500, load_type: "oversize" }),
+  ]);
 
-  it("places tiers as percentiles and reads a HOT market when target is low", () => {
-    const g = tierGauge(recent, ladder(4, 6), ladder(9, 10), now);
+  it("ranks a Standard rung among standard loads only, and prints the count", () => {
+    const g = tierGauge(recent, ladder(4.5, 6), ladder(9, 10), now);
     const std = g.rows.find((r) => r.label === "Standard target")!;
-    expect(std.pctile).toBeCloseTo(0.4); // 3,4 ≤ 4 → 2/5
-    expect(g.tone).toBe("hot");
-    expect(g.windowN).toBe(5);
+    expect(std.n).toBe(10);
+    expect(std.pctile).toBeCloseTo(0.4); // 3, 3.5, 4, 4.5 ≤ 4.5 → 4/10 — the two $9–10 oversize loads don't lift it
+    expect(g.windowN).toBe(12);
   });
 
-  it("reads a SOFT market when the target sits high in the window", () => {
-    const g = tierGauge(recent, ladder(7, 8), ladder(9, 10), now);
-    const std = g.rows.find((r) => r.label === "Standard target")!;
-    expect(std.pctile).toBe(1); // all ≤ 7
-    expect(g.tone).toBe("soft");
+  it("leaves a rung unranked under eight loads of its type — the number would say nothing", () => {
+    const g = tierGauge(recent, ladder(4.5, 6), ladder(9, 10), now);
+    const spec = g.rows.find((r) => r.label === "Specialized target")!;
+    expect(spec).toMatchObject({ n: 2, pctile: null });
   });
 
-  it("no tone without a break-even/ladder", () => {
+  it("no rows without a ladder", () => {
     const empty: RateLadder = { walkAway: null, minimum: null, target: null, strong: null };
-    const g = tierGauge(recent, empty, empty, now);
-    expect(g.rows).toHaveLength(0);
-    expect(g.tone).toBeNull();
-  });
-
-  it("macro trend tempers the suggestion (hot loads, market turning down → hold)", () => {
-    const hot = tierGauge(recent, ladder(4, 6), ladder(9, 10), now, 90, "softening");
-    expect(hot.tone).toBe("hot");
-    expect(hot.suggestion).toMatch(/hold, don't chase the peak/i);
-
-    const confident = tierGauge(recent, ladder(4, 6), ladder(9, 10), now, 90, "firming");
-    expect(confident.suggestion).toMatch(/confident raise/i);
+    expect(tierGauge(recent, empty, empty, now).rows).toHaveLength(0);
   });
 });

@@ -7,7 +7,6 @@ import { dayKey } from "@/lib/perDiem";
 import type { RateLadder } from "./rateTargets";
 import { loadGross } from "./rateTargets";
 import { isSpecializedLoadType } from "@/lib/dimensions";
-import type { MarketDirection } from "./marketSignal";
 
 export type RateBucket = "standard" | "hazmat" | "specialized";
 
@@ -100,80 +99,45 @@ export const windowPoints = (
 export const windowRates = (points: RatePoint[], now: Date, days = 90): number[] =>
   windowPoints(points, now, days).map((p) => p.rate);
 
+// Loads of one type needed before a rung is ranked among them — with fewer,
+// each load moves the percentile 20 points and the number says nothing.
+export const MIN_LOADS_FOR_PCTILE = 8;
+
 export interface TierGaugeRow {
   label: string;
-  value: number; // the tier's gross $/driven-mile
-  pctile: number; // 0..1 within the trailing window
+  value: number; // the rung's gross $/driven mile
+  n: number; // this type's loads in the window
+  pctile: number | null; // the rung among this type's accepted loads — null under MIN_LOADS_FOR_PCTILE
 }
 
 export interface TierGauge {
   rows: TierGaugeRow[];
-  windowN: number; // loads in the window (sample size)
-  tone: "hot" | "balanced" | "soft" | null;
-  suggestion: string | null;
+  windowN: number; // loads in the window, all types
 }
 
-// Where your current tiers land as percentiles of the recent market, plus a
-// plain-language read. A LOW percentile for your target = the market clears it
-// easily (hot → room to raise); a HIGH percentile = it's hard to hit (soft →
-// trim). Ideal target sits around the middle of what's out there.
+// Where your rungs sit among YOUR OWN ACCEPTED LOADS of the same type —
+// evidence for the call, never "the market" (only loads you accepted are in
+// it, so it reads your discipline as much as the market). Standard rungs rank
+// among standard loads; specialized rungs among specialized + hazmat. The
+// engine (marketCall) reads the percentile; this never suggests a move itself.
 export const tierGauge = (
   points: RatePoint[],
   ladder: RateLadder,
   specLadder: RateLadder,
   now: Date,
   days = 90,
-  direction?: MarketDirection,
 ): TierGauge => {
-  const w = windowRates(points, now, days);
-  const row = (label: string, value: number | null): TierGaugeRow | null =>
-    value != null && w.length > 0
-      ? { label, value, pctile: percentileOf(w, value)! }
+  const std = windowRates(points.filter((p) => p.bucket === "standard"), now, days);
+  const spec = windowRates(points.filter((p) => p.bucket !== "standard"), now, days);
+  const row = (label: string, value: number | null, w: number[]): TierGaugeRow | null =>
+    value != null
+      ? { label, value, n: w.length, pctile: w.length >= MIN_LOADS_FOR_PCTILE ? percentileOf(w, value) : null }
       : null;
   const rows = [
-    row("Standard target", ladder.target),
-    row("Standard strong", ladder.strong),
-    row("Specialized strong", specLadder.strong),
+    row("Standard target", ladder.target, std),
+    row("Standard strong", ladder.strong, std),
+    row("Specialized target", specLadder.target, spec),
+    row("Specialized strong", specLadder.strong, spec),
   ].filter((r): r is TierGaugeRow => r !== null);
-
-  const std = rows.find((r) => r.label === "Standard target");
-  let tone: TierGauge["tone"] = null;
-  let suggestion: string | null = null;
-  if (std && w.length >= 5) {
-    if (std.pctile < 0.45) {
-      tone = "hot";
-      suggestion =
-        "Market's running hot — your Standard target sits below the median of recent loads. Room to raise your tiers.";
-    } else if (std.pctile > 0.7) {
-      tone = "soft";
-      suggestion =
-        "Market's softening — your Standard target is hard to hit right now. Consider trimming your tiers.";
-    } else {
-      tone = "balanced";
-      suggestion = "Your tiers are well-placed against the current market.";
-    }
-  } else if (std) {
-    suggestion = "Not enough recent loads to read the market confidently yet.";
-  }
-
-  // Temper with the macro trend: your own loads lag, so let the FRED direction
-  // confirm or caution a raise/trim before you act on it.
-  if (direction && tone) {
-    if (tone === "hot") {
-      if (direction === "softening")
-        suggestion =
-          "Your loads say hot, but the freight market's turning down — hold, don't chase the peak.";
-      else if (direction === "firming")
-        suggestion =
-          "Market's running hot and the macro's firming too — a confident raise.";
-    } else if (tone === "soft") {
-      if (direction === "firming")
-        suggestion =
-          "Your loads are soft, but the macro's firming — hold before you trim; it may be recovering.";
-      else if (direction === "softening")
-        suggestion =
-          "Market's soft and the macro's falling too — the softness looks real. Consider trimming.";
-    }
-  }
-  return { rows, windowN: w.length, tone, suggestion };
+  return { rows, windowN: std.length + spec.length };
 };

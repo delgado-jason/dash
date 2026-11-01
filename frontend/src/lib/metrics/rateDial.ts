@@ -7,7 +7,7 @@
 //   markup  = margin ÷ (1 − margin)   (what you add over break-even)
 //   margin  = markup ÷ (1 + markup)   (what the rate yields on revenue)
 // A +15% markup is only a 13% margin — the confusion this file retires.
-import type { MarketDirection } from "./marketSignal";
+import type { MarketDirection, MarketSignal } from "./marketSignal";
 
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
 
@@ -44,59 +44,82 @@ export const dialRungs = (targetMargin: number): DialRungs => {
 };
 
 export interface DialAdvice {
-  direction: MarketDirection;
+  direction: MarketDirection; // the signal's usable direction (flat when it doesn't hold)
   std: number; // recommended STANDARD dial position (target margin, 0–1)
   spec: number; // recommended SPECIALIZED position — std + your risk premium
   stdDelta: number; // rec − current (signed); |delta| < 0.01 reads as "hold"
   specDelta: number;
   hold: boolean; // both dials already within a point of the recommendation
+  prints: number; // consecutive prints agreeing with the raw read
+  fuelDriven: boolean; // the index's move is diesel's
   headline: string;
   why: string;
 }
 
-// Market-aware dial advice (Jason, 2026-09-02): a documented heuristic, not a
-// feed — there is no external per-mile market rate, only the FRED index's
-// direction. The recommendation anchors to the MARGIN GOAL, never to where
-// the dial happens to sit:
-//   softening → goal + 2 pts  (thin the padding, stay competitive — but the
-//                              dial is never advised below the goal itself)
-//   flat      → goal + 5 pts  (the house posture: price for strong,
-//                              slippage lands on target)
-//   firming   → goal + 8 pts  (the market is paying — take the extra)
-// Specialized = standard + your existing risk premium (current spec − std
-// target margins, floored at 5 pts), so advice preserves the spread you set.
-// The dial's physical range — advice must never point past where the slider
-// can actually go.
+// The dial's nudge from the index alone (Jason, 2026-11-01: "I will move the
+// dial only after two to three agreeing months"). A documented rule, not a
+// feed: when the signal HOLDS (two prints running, not a fuel move) it nudges
+// the Standard dial ONE STEP — two points — from where it sits; otherwise it
+// says hold and why. It never points under goal + 5, so the floor rung (target
+// − 5) never lands under the goal the copy promises to protect, and never past
+// the slider's range. Specialized keeps your risk premium (current spec − std,
+// floored at 5 pts) on top.
 export const DIAL_MAX_MARGIN = 0.45;
+export const DIAL_STEP = 0.02;
+
+const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 
 export const dialAdvice = (
-  direction: MarketDirection,
+  signal: MarketSignal | null,
   marginGoal: number,
   currentStdMargin: number,
   currentSpecMargin: number,
 ): DialAdvice => {
-  const bump = direction === "softening" ? 0.02 : direction === "firming" ? 0.08 : 0.05;
-  const std = Math.min(DIAL_MAX_MARGIN, r4(marginGoal + bump)); // always clears the goal
+  const floor = r4(marginGoal + 0.05);
   const premium = Math.max(0.05, r4(currentSpecMargin - currentStdMargin));
-  const spec = Math.min(DIAL_MAX_MARGIN, r4(std + premium));
+  const direction: MarketDirection = signal?.direction ?? "flat";
+  const prints = signal?.prints ?? 0;
+  const fuelDriven = signal?.fuelDriven ?? false;
+
+  // The dial parked under goal + 5 is a correction, not a nudge: its floor
+  // rung sits under the goal. That reads first, whatever the index says.
+  const underFloor = currentStdMargin < floor - 0.0001;
+  let std = underFloor ? floor : currentStdMargin;
+  if (direction === "firming") std = Math.max(floor, currentStdMargin + DIAL_STEP);
+  if (direction === "softening") std = Math.max(floor, currentStdMargin - DIAL_STEP);
+  std = r4(Math.min(DIAL_MAX_MARGIN, std));
+  const spec = r4(Math.min(DIAL_MAX_MARGIN, std + premium));
   const stdDelta = r4(std - currentStdMargin);
   const specDelta = r4(spec - currentSpecMargin);
   const hold = Math.abs(stdDelta) < 0.01 && Math.abs(specDelta) < 0.01;
 
-  const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
-  const headline = hold
-    ? `Hold your dials — you're already priced for this market`
-    : direction === "softening"
-      ? `Market softening — consider Standard at ${pct(std)}`
-      : direction === "firming"
-        ? `Market firming — push Standard to ${pct(std)}`
-        : `Flat market — the house posture is ${pct(std)}`;
-  const why =
-    direction === "softening"
-      ? `Thin the padding to stay competitive, but never price under your ${pct(marginGoal)} goal — win the slow market on volume, not on losses.`
-      : direction === "firming"
-        ? `The board is paying — widen the padding while it lasts. Specialized keeps your ${pct(premium)} risk premium on top.`
-        : `Price ${pct(0.05)} above your ${pct(marginGoal)} goal so normal slippage lands on it, not under it.`;
-
-  return { direction, std, spec, stdDelta, specDelta, hold, headline, why };
+  const printsWord = `${prints} print${prints === 1 ? "" : "s"}`;
+  let headline: string;
+  let why: string;
+  if (underFloor && direction !== "firming") {
+    headline = `Under goal + 5 — lift Standard to ${pct(std)}`;
+    why = `Your Standard dial sits at ${pct(currentStdMargin)}, under goal + 5 (${pct(floor)}), so its floor rung lands under your ${pct(marginGoal)} goal. Lift it to ${pct(floor)} first; the index's nudges start from there.`;
+  } else if (!signal) {
+    headline = "Hold your dials — no index read";
+    why = "No freight-index read to lean on. Your dials stay where you set them.";
+  } else if (fuelDriven) {
+    headline = "Hold your dials — a fuel move, not a rate move";
+    why = `The index moved ${signal.pctChange >= 0 ? "+" : ""}${pct(signal.pctChange)} over three months while diesel moved ${signal.dieselPct != null && signal.dieselPct >= 0 ? "+" : ""}${pct(signal.dieselPct ?? 0)} the same way. Your surcharge passes fuel through at 100% — there's no margin in it to chase.`;
+  } else if (signal.raw !== "flat" && !signal.holds) {
+    headline = `Hold your dials — ${signal.raw} for ${printsWord}, not yet a call`;
+    why = `One print says ${signal.raw}; the rule waits for two in a row before it nudges a dial, and you move only after two or three. Check back next print.`;
+  } else if (direction === "flat") {
+    headline = "Hold your dials — the index is steady";
+    why = `The index moved less than ${pct(0.025)} over three months. Nothing to react to.`;
+  } else if (hold) {
+    headline = `Hold your dials — already a step past where the index points`;
+    why = `The index has been ${direction} for ${printsWord}, but your dials already sit where one step would put them.`;
+  } else if (direction === "firming") {
+    headline = `Firming for ${printsWord} — one step up: Standard to ${pct(std)}`;
+    why = `Two points, not a leap: the rule moves one step per held signal. Specialized keeps your ${pct(premium)} premium on top.`;
+  } else {
+    headline = `Softening for ${printsWord} — one step down: Standard to ${pct(std)}`;
+    why = `Thin the padding by one step, never under goal + 5 (${pct(floor)}) so your floor rung stays at your ${pct(marginGoal)} goal. Win a slow market on volume, not on losses.`;
+  }
+  return { direction, std, spec, stdDelta, specDelta, hold, prints, fuelDriven, headline, why };
 };
