@@ -195,12 +195,25 @@ describe("sequenceLoads", () => {
     expect(first.next).toMatchObject({ idleDays: 1, calendarDays: 3 });
   });
 
-  it("empty miles come from the odometer when both readings exist, else the planned deadhead", () => {
+  it("empty miles come from the odometer: the next load's window minus its loaded miles when its start copies the previous end (Jason's chain), the gap between the loads when a fresh reading was taken, else the planned deadhead", () => {
+    // the chain: y starts where x ended; y's window (1500 → 2100) holds 450 loaded miles → 150 empty
+    const chain = sequenceLoads([
+      makeLoad({ load_id: "x", pickup_date: "2026-06-01", delivery_date: "2026-06-03", odometer_start: 1000, odometer_end: 1500 }),
+      makeLoad({ load_id: "y", pickup_date: "2026-06-04", delivery_date: "2026-06-06", odometer_start: 1500, odometer_end: 2100, loaded_miles: 450, deadhead_miles: 300 }),
+    ])[0];
+    expect(chain.next).toMatchObject({ deadheadMiles: 150, deadheadSource: "odometer" });
+    // a fresh reading at the pickup: the gap between the loads is the empty run
     const odo = sequenceLoads([
       makeLoad({ load_id: "x", pickup_date: "2026-06-01", delivery_date: "2026-06-03", odometer_start: 1000, odometer_end: 1500 }),
       makeLoad({ load_id: "y", pickup_date: "2026-06-04", delivery_date: "2026-06-06", odometer_start: 1650, deadhead_miles: 300 }),
     ])[0];
     expect(odo.next).toMatchObject({ deadheadMiles: 150, deadheadSource: "odometer" });
+    // the chain with a window that holds exactly the loaded miles: nothing to read → the planned field
+    const flat = sequenceLoads([
+      makeLoad({ load_id: "x", pickup_date: "2026-06-01", delivery_date: "2026-06-03", odometer_end: 1500 }),
+      makeLoad({ load_id: "y", pickup_date: "2026-06-04", delivery_date: "2026-06-06", odometer_start: 1500, odometer_end: 1950, loaded_miles: 450, deadhead_miles: 300 }),
+    ])[0];
+    expect(flat.next).toMatchObject({ deadheadMiles: 300, deadheadSource: "planned" });
     const planned = sequenceLoads([
       makeLoad({ load_id: "x", pickup_date: "2026-06-01", delivery_date: "2026-06-03", odometer_end: 1500 }),
       makeLoad({ load_id: "y", pickup_date: "2026-06-04", delivery_date: "2026-06-06", odometer_start: null, deadhead_miles: 300 }),

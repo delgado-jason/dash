@@ -125,15 +125,28 @@ const weekdaysBetween = (fromKey: string, toKey: string): number => {
   return count;
 };
 
-// The empty miles to the next load: the odometer gap between this delivery's
-// end reading and the next pickup's start reading when both exist (the truth,
-// home runs included — which is why home stints leave the medians), else the
-// next load's planned deadhead, which the book itself warns understates.
+// The empty miles to the next load, from the odometer where it can be read.
+// Jason's book copies the previous load's END reading as the next load's START
+// (the chain is continuous), so the empty run to the pickup sits INSIDE the
+// next load's own window: its window minus its loaded miles is the deadhead
+// (v1.236.0 read the gap between the two loads instead — zero by that
+// convention — and graded every reload as free). A book that takes a fresh
+// reading at the pickup shows the opposite: a gap between the loads and no
+// excess in the window — so the gap is read when the window has none. The
+// planned field is the fallback, which the book itself warns understates.
 const emptyMilesTo = (load: Load, nextLoad: Load): { miles: number | null; source: NextLeg["deadheadSource"] } => {
+  const ns = Number(nextLoad.odometer_start);
+  const ne = Number(nextLoad.odometer_end);
+  const loaded = Number(nextLoad.loaded_miles);
+  const plausible = (m: number) => Number.isFinite(m) && m >= 0 && m <= 3000;
+  if (nextLoad.odometer_start != null && nextLoad.odometer_end != null && ns > 0 && ne > ns && loaded > 0) {
+    const excess = ne - ns - loaded;
+    if (plausible(excess) && excess > 0) return { miles: excess, source: "odometer" };
+  }
   const end = Number(load.odometer_end);
-  const start = Number(nextLoad.odometer_start);
-  if (load.odometer_end != null && nextLoad.odometer_start != null && end > 0 && start > 0 && start >= end && start - end <= 3000) {
-    return { miles: start - end, source: "odometer" };
+  if (load.odometer_end != null && nextLoad.odometer_start != null && end > 0 && ns > 0) {
+    const gap = ns - end;
+    if (plausible(gap) && gap > 0) return { miles: gap, source: "odometer" };
   }
   const dh = deadheadOf(nextLoad);
   return { miles: dh, source: dh == null ? null : "planned" };
