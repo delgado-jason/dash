@@ -22,9 +22,20 @@ export interface ParsedPnl {
   cogsTotal: number | null;
   expenseTotal: number | null;
   lines: ParsedLine[];
+  // What the file didn't say and what it said twice (2026-11-01: an October
+  // export in QuickBooks' newer layout — "Total Expenses", "Gross Profit",
+  // "Net Operating Income" without the "for" — saved those rows as expense
+  // lines and the month with no totals, which read as a free month and dropped
+  // every rung). A warning is survivable (a total summed from the lines); an
+  // error means the file doesn't reconcile with itself and must not be saved.
+  warnings: string[];
+  errors: string[];
 }
 
-const SECTIONS = ["Income", "Cost of Goods Sold", "Expenses", "Other Income"];
+const SECTIONS = ["Income", "Cost of Goods Sold", "Expenses", "Other Income", "Other Expenses"];
+// Rows QuickBooks computes from the sections above them — never a category.
+const COMPUTED = ["gross profit", "net operating income", "net other income", "net income", "net earnings", "net revenue"];
+const norm = (s: string): string => s.trim().toLowerCase();
 
 // Month name (abbrev or full) + 4-digit year, e.g. "Jul 2026" / "July 2026".
 // Used to recover the period from the title block of single-period exports —
@@ -34,7 +45,7 @@ const SECTIONS = ["Income", "Cost of Goods Sold", "Expenses", "Other Income"];
 const MONTH_YEAR_RE =
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}\b/i;
 
-// "$2,547.70" → 2547.7 · "-10,936.24" → -10936.24 · "" → null
+// "$2,547.70" → 2547.7 · "-10,936.24" → -10936.24 · "-$2,339.26" → -2339.26 · "" → null
 export const cleanNum = (raw: string | undefined): number | null => {
   if (raw == null) return null;
   const s = raw.replace(/[$,"\s]/g, "");
@@ -43,15 +54,23 @@ export const cleanNum = (raw: string | undefined): number | null => {
   return Number.isNaN(n) ? null : n;
 };
 
-const totalForName = (name: string): string | null =>
-  name.startsWith("Total for ") ? name.slice("Total for ".length) : null;
+// "Total for X" (the classic export) and "Total X" (the newer one) → X.
+const totalForName = (name: string): string | null => {
+  const m = name.match(/^total\s+(?:for\s+)?(.+)$/i);
+  return m ? m[1].trim() : null;
+};
+// Exact match on purpose: QuickBooks' default account "Cost of goods sold"
+// sits INSIDE the section "Cost of Goods Sold" and differs only by case.
+const sectionOf = (x: string): string | null => SECTIONS.find((s) => s === x.trim()) ?? null;
+
+const money = (n: number): string => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const parsePnlRows = (rows: string[][]): ParsedPnl => {
-  // Pre-scan: names that have a "Total for X" row are parent groups.
+  // Pre-scan: names that have a "Total (for) X" row are parent groups.
   const parents = new Set<string>();
   for (const row of rows) {
     const x = totalForName((row[0] ?? "").trim());
-    if (x) parents.add(x);
+    if (x && !sectionOf(x)) parents.add(x);
   }
 
   let section: "income" | "cogs" | "expenses" | "other" | null = null;
@@ -62,6 +81,8 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
   let incomeTotal: number | null = null;
   let cogsTotal: number | null = null;
   let expenseTotal: number | null = null;
+  let incomeSum = 0; // the income section's own top-level rows, for the fallback
+  let incomeRows = 0;
 
   for (const row of rows) {
     const name = (row[0] ?? "").trim();
@@ -76,26 +97,36 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
     }
     if (!name) continue;
 
-    const totalOf = totalForName(name);
+    // A computed row (Gross Profit, Net Operating Income, Net Income…) closes
+    // whatever section was open and is never a line.
+    if (COMPUTED.includes(norm(name))) {
+      section = null;
+      depth = 0;
+      continue;
+    }
 
-    // Section total ("Total for Expenses" etc.): capture, close the section.
-    if (totalOf && SECTIONS.includes(totalOf)) {
-      if (totalOf === "Income") incomeTotal = cur;
-      else if (totalOf === "Cost of Goods Sold") cogsTotal = cur;
-      else if (totalOf === "Expenses") expenseTotal = cur;
+    const totalOf = totalForName(name);
+    const totalSection = totalOf ? sectionOf(totalOf) : null;
+
+    // Section total ("Total for Expenses" / "Total Expenses"): capture, close the section.
+    if (totalSection) {
+      if (totalSection === "Income") incomeTotal = cur;
+      else if (totalSection === "Cost of Goods Sold") cogsTotal = cur;
+      else if (totalSection === "Expenses") expenseTotal = cur;
       section = null;
       depth = 0;
       continue;
     }
 
     // Section header.
-    if (SECTIONS.includes(name)) {
+    const header = sectionOf(name);
+    if (header && cur == null) {
       section =
-        name === "Cost of Goods Sold"
+        header === "Cost of Goods Sold"
           ? "cogs"
-          : name === "Expenses"
+          : header === "Expenses"
             ? "expenses"
-            : name === "Income"
+            : header === "Income"
               ? "income"
               : "other";
       depth = 0;
@@ -108,8 +139,9 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
     if (totalOf) {
       // A category subtotal closing a group. Emit only at the top level.
       depth = Math.max(0, depth - 1);
-      if (inCost && depth === 0) {
-        lines.push({ name: totalOf, current: cur ?? 0, prior: pri, section: sectionKey });
+      if (depth === 0) {
+        if (inCost) lines.push({ name: totalOf, current: cur ?? 0, prior: pri, section: sectionKey });
+        else if (section === "income" && cur != null) { incomeSum += cur; incomeRows++; }
       }
       continue;
     }
@@ -121,8 +153,9 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
     }
 
     // Standalone leaf: only a top-level (depth 0) row with an amount counts.
-    if (inCost && depth === 0 && cur != null) {
-      lines.push({ name, current: cur, prior: pri, section: sectionKey });
+    if (depth === 0 && cur != null) {
+      if (inCost) lines.push({ name, current: cur, prior: pri, section: sectionKey });
+      else if (section === "income") { incomeSum += cur; incomeRows++; }
     }
   }
 
@@ -132,9 +165,7 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
   // above the first section — scoped there so the export-timestamp footer can
   // never win.
   if (!currentLabel) {
-    const firstSection = rows.findIndex((r) =>
-      SECTIONS.includes((r[0] ?? "").trim()),
-    );
+    const firstSection = rows.findIndex((r) => sectionOf((r[0] ?? "").trim()) != null);
     const end = firstSection < 0 ? rows.length : firstSection;
     for (let i = 0; i < end && !currentLabel; i++) {
       for (const cell of rows[i]) {
@@ -146,7 +177,30 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
     }
   }
 
-  return { currentLabel, priorLabel, incomeTotal, cogsTotal, expenseTotal, lines };
+  // The file against itself. A section's lines must sum to its total; a total
+  // the file didn't carry is summed from the lines and said so; lines that
+  // disagree with the file's own total are an error — the month is not saved.
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  const sum = (key: "cogs" | "expenses") => lines.filter((l) => l.section === key).reduce((s, l) => s + l.current, 0);
+  const check = (label: string, total: number | null, lineSum: number, n: number, set: (v: number) => void) => {
+    if (n === 0) return;
+    if (total == null) {
+      set(Math.round(lineSum * 100) / 100);
+      warnings.push(`The file carried no ${label} total — summed from its ${n} line${n === 1 ? "" : "s"} (${money(lineSum)}).`);
+    } else if (Math.abs(total - lineSum) > 0.011) {
+      errors.push(`${label}: the lines sum to ${money(lineSum)} but the file's total is ${money(total)} — this export doesn't reconcile with itself. Re-export the P&L (one month, with its section totals) and try again.`);
+    }
+  };
+  check("Cost of Goods Sold", cogsTotal, sum("cogs"), lines.filter((l) => l.section === "cogs").length, (v) => { cogsTotal = v; });
+  check("Expenses", expenseTotal, sum("expenses"), lines.filter((l) => l.section === "expenses").length, (v) => { expenseTotal = v; });
+  if (incomeTotal == null && incomeRows > 0) {
+    incomeTotal = Math.round(incomeSum * 100) / 100;
+    warnings.push(`The file carried no Income total — summed from its ${incomeRows} line${incomeRows === 1 ? "" : "s"} (${money(incomeSum)}).`);
+  }
+  if (lines.length === 0) errors.push("No cost lines found — is this a QuickBooks Profit and Loss export?");
+
+  return { currentLabel, priorLabel, incomeTotal, cogsTotal, expenseTotal, lines, warnings, errors };
 };
 
 // ---- fixed / variable classification ----

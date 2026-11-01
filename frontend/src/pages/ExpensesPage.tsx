@@ -56,14 +56,22 @@ const monthMiles = (loads: Load[], periodMonth: string) => {
   return { totalMiles, loadedMiles };
 };
 
+const NO_PERIODS: ExpensePeriod[] = [];
+
 const ExpensesPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const { loads } = useLoads(0);
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selected, setSelected] = useState<ExpensePeriod | null>(null);
+  // The selected period's full record is fetched into `fetched`; `selected` is
+  // derived (null the moment nothing is selected) rather than set inside the
+  // effect — eslint react-hooks/set-state-in-effect.
+  const [fetched, setFetched] = useState<ExpensePeriod | null>(null);
+  const selected = selectedId ? fetched : null;
   const [showUpload, setShowUpload] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // Loading until the list fetch for the current refreshKey has landed — derived, not set in the effect.
+  const [loadedKey, setLoadedKey] = useState<number | null>(null);
+  const loading = loadedKey !== refreshKey;
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
 
@@ -82,7 +90,6 @@ const ExpensesPage = () => {
   // Load the period list; keep the current selection if it still exists.
   useEffect(() => {
     let active = true;
-    setLoading(true);
     getExpensePeriods()
       .then((ps) => {
         if (!active) return;
@@ -95,7 +102,7 @@ const ExpensesPage = () => {
       })
       .catch(() => {})
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setLoadedKey(refreshKey);
       });
     return () => {
       active = false;
@@ -105,13 +112,10 @@ const ExpensesPage = () => {
   // Load the selected period's lines.
   useEffect(() => {
     let active = true;
-    if (!selectedId) {
-      setSelected(null);
-      return;
-    }
+    if (!selectedId) return;
     getExpensePeriod(selectedId)
       .then((p) => {
-        if (active) setSelected(p);
+        if (active) setFetched(p);
       })
       .catch(() => {});
     return () => {
@@ -188,24 +192,25 @@ const ExpensesPage = () => {
   );
   // Full periods (with lines) for the trailing window, so the sit/run burn can
   // blend the fixed/variable split the same way the per-mile figures blend cost.
-  const [windowFull, setWindowFull] = useState<ExpensePeriod[]>([]);
+  const windowIds = useMemo(() => {
+    const idx = periods.findIndex((p) => p.period_id === selectedId);
+    return (idx >= 0 ? periods.slice(idx, idx + 3) : []).map((p) => p.period_id);
+  }, [periods, selectedId]);
+  const [windowFetched, setWindowFetched] = useState<ExpensePeriod[]>([]);
+  // Derived, not set in the effect: no window → no months, whatever landed last.
+  const windowFull = windowIds.length === 0 ? NO_PERIODS : windowFetched;
   useEffect(() => {
     let active = true;
-    const idx = periods.findIndex((p) => p.period_id === selectedId);
-    const ids = (idx >= 0 ? periods.slice(idx, idx + 3) : []).map((p) => p.period_id);
-    if (ids.length === 0) {
-      setWindowFull([]);
-      return;
-    }
-    Promise.all(ids.map((pid) => getExpensePeriod(pid)))
+    if (windowIds.length === 0) return;
+    Promise.all(windowIds.map((pid) => getExpensePeriod(pid)))
       .then((ps) => {
-        if (active) setWindowFull(ps);
+        if (active) setWindowFetched(ps);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [periods, selectedId, refreshKey]);
+  }, [windowIds, refreshKey]);
 
   const burn = useMemo(() => {
     if (windowFull.length === 0) return null;
@@ -329,6 +334,11 @@ const ExpensesPage = () => {
                 {selected.period_label}
               </span>
               <span className="text-[13.5px] text-faint">
+                {selected && selected.income_total == null && selected.cogs_total == null && selected.expense_total == null && (
+                  <span className="font-semibold" style={{ color: "var(--color-warn)" }}>
+                    this month was saved without its totals — re-upload its P&L ·{" "}
+                  </span>
+                )}
                 · <b className="font-semibold text-ink tabular-nums">{money(selIncome)}</b> in ·{" "}
                 <b className="font-semibold text-ink tabular-nums">{money(selCost)}</b> out ·{" "}
                 <b className="font-semibold text-ink tabular-nums">{money(selProfit)}</b> kept

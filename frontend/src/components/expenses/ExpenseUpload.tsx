@@ -29,6 +29,12 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
     try {
       const defaults = await getCategoryDefaults();
       const parsed = await parsePnlFile(file, defaults);
+      // A file that disagrees with itself is refused here, before the confirm
+      // step — never saved as a month with pseudo-lines and no totals.
+      if (parsed.errors.length) {
+        setError(parsed.errors.join(" "));
+        return;
+      }
       if (!parsed.period_month) {
         setError("Couldn't read the month from this file.");
         return;
@@ -47,6 +53,10 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
 
   const save = async () => {
     if (!proposed?.period_month) return;
+    if (proposed.income_total == null || proposed.cogs_total == null || proposed.expense_total == null) {
+      setError("This file didn't carry its income, cost of goods sold and expense totals — dash won't save a month without them. Re-export the P&L with its section totals.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -94,6 +104,9 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
               {money((proposed.cogs_total ?? 0) + (proposed.expense_total ?? 0))}
             </span>
           </div>
+          {proposed.warnings.length > 0 && (
+            <p className="text-xs text-amber-hi mb-2">{proposed.warnings.join(" ")}</p>
+          )}
           <table className="w-full text-sm">
             <thead>
               <tr className="text-faint text-xs text-left">

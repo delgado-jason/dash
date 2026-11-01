@@ -50,6 +50,17 @@ export async function saveExpensePeriod(user_id, data) {
   } = data;
 
   if (!period_month) throw new ValidationError("Missing period_month");
+  // A month without its totals reads as a free month everywhere the cost
+  // basis is built (2026-11-01: October saved with nulls dropped every rung).
+  // The totals must be numbers — zero is a number; missing is refused.
+  const finite = (v) =>
+    (typeof v === "number" && Number.isFinite(v)) ||
+    (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)));
+  if (!finite(income_total) || !finite(cogs_total) || !finite(expense_total)) {
+    throw new ValidationError(
+      "a month needs its income, cost of goods sold and expense totals — this file didn't carry them; re-export the P&L with its section totals",
+    );
+  }
   if (!Array.isArray(lines)) throw new ValidationError("lines must be an array");
   for (const line of lines) {
     if (!line.category || line.amount == null || !isValidType(line.type)) {
