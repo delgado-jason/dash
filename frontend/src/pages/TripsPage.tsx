@@ -273,7 +273,7 @@ const TripsPage = () => {
                             <span className="text-[9.5px] font-semibold tracking-[.13em] uppercase text-amber-hi shrink-0">
                               ⚠ Unaccounted
                             </span>
-                            <span className="text-[12.5px] text-dim min-w-0 truncate">
+                            <span className="text-[12.5px] text-dim min-w-0">
                               <b className="text-ink font-condensed tabular-nums">
                                 {num(item.gap.miles)} mi
                               </b>{" "}
@@ -282,6 +282,12 @@ const TripsPage = () => {
                                 ? ` · ${formatDate(item.gap.fromDate)} → ${item.gap.toDate ? formatDate(item.gap.toDate) : "?"}`
                                 : ""}{" "}
                               · odometer {num(item.gap.fromOdo)} → {num(item.gap.toOdo)}
+                              {item.gap.hints.map((h) => (
+                                <span key={`${h.kind}-${h.ref}`} className="block text-amber-hi">
+                                  {h.kind} {h.ref} {h.missing === "end" ? "started" : "ended"} inside this span at{" "}
+                                  {num(h.at)} with no {h.missing} reading — log it and the gap closes
+                                </span>
+                              ))}
                             </span>
                             <button
                               onClick={() => openCreate(item.gap.fromOdo)}

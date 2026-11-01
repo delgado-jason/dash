@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useCityCoords } from "@/hooks/useCityCoords";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -69,6 +70,7 @@ const LanesPage = () => {
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
 
   const { loads, isLoading, error } = useLoads(refreshKey);
+  const { trips } = useTrips(refreshKey);
   // Hooks never sit under an early return.
   const targets = useRateTargets(loads);
   const coords = useCityCoords(loads);
@@ -99,13 +101,13 @@ const LanesPage = () => {
   // Where you'll be empty next, straight from the Foreman, projected with the
   // map's own projection. Nothing drawn when the city has no coordinate yet.
   const pin = useMemo<MapPin | null>(() => {
-    const anchor = emptyNextAnchor(loads);
+    const anchor = emptyNextAnchor(loads, trips);
     if (!anchor) return null;
     const c = coords.get(cityKey(anchor.city, anchor.state));
     return c
       ? { city: anchor.city, state: anchor.state, lat: c.lat, lng: c.lng }
       : null;
-  }, [loads, coords]);
+  }, [loads, trips, coords]);
 
   useEffect(() => {
     getSettlementSchedule().then(setSchedule).catch(() => {});

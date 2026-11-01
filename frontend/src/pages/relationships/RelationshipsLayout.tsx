@@ -142,9 +142,10 @@ const RelationshipsLayout = () => {
             coords: data.coords,
             ladder: data.ladder,
             now: data.now,
+            trips: data.trips,
           })
         : null,
-    [data.loadsReady, data.loading, data.agents, data.loads, data.contacts, data.coverage, data.notes, data.coords, data.ladder, data.now],
+    [data.loadsReady, data.loading, data.agents, data.loads, data.contacts, data.coverage, data.notes, data.coords, data.ladder, data.now, data.trips],
   );
 
   // The Call list's numbers for its tab and sub-line; withheld while the

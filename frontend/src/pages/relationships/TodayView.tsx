@@ -48,6 +48,7 @@ import { AgentRow, type RowChip } from "@/components/relationships/AgentRow";
 import { AgentCodeChip, ErrorLine, GhostButton, PrimaryButton, PrimaryLink, SectionHead } from "@/components/relationships/primitives";
 import type { TouchPrefill } from "@/components/relationships/LogTouchForm";
 import { useRelationships } from "./context";
+import type { TripEndLike } from "@/lib/metrics/foreman";
 
 // TODAY — the plate is the day's job, the queue beneath it does the thinking
 // (ADMIN-02 v1.1's week; REL-01 v2.0's cap). Everything here is manual: Copy
@@ -577,19 +578,21 @@ const PlateBody = (props: PlateProps) => {
 const QueueRows = ({
   rows,
   loads,
+  trips,
   signer,
   onOpen,
   onCopied,
 }: {
   rows: QueueRow[];
   loads: Load[];
+  trips: TripEndLike[];
   signer: Signer;
   onOpen: (agent: Agent, prefill: TouchPrefill) => void;
   onCopied: (what: string) => void;
 }) => (
   <>
     {rows.map((r) => {
-      const draft = r.section === "NOW" && r.load ? closeOutDraft(r.load, loads, signer) : null;
+      const draft = r.section === "NOW" && r.load ? closeOutDraft(r.load, loads, signer, trips) : null;
       return (
         <div key={r.key}>
           <AgentRow
@@ -638,7 +641,7 @@ const CoolingRows = ({ rows, isAdmin, onOpen }: { rows: CoolingRow<Agent>[]; isA
 );
 
 const TodayView = () => {
-  const { today, loads, signer, isAdmin, loadsReady, openAgent, notify, reload } = useRelationships();
+  const { today, loads, trips, signer, isAdmin, loadsReady, openAgent, notify, reload } = useRelationships();
   const mobile = useIsMobile();
   const [doneOpen, setDoneOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -732,16 +735,16 @@ const TodayView = () => {
           </p>
         ) : (
           <>
-            <QueueRows rows={today.closeOuts} loads={loads} signer={signer} onOpen={open} onCopied={copied} />
-            <QueueRows rows={today.plateRows} loads={loads} signer={signer} onOpen={open} onCopied={copied} />
+            <QueueRows rows={today.closeOuts} loads={loads} trips={trips} signer={signer} onOpen={open} onCopied={copied} />
+            <QueueRows rows={today.plateRows} loads={loads} trips={trips} signer={signer} onOpen={open} onCopied={copied} />
             {today.plate.kind === "capacity" && today.plate.list.touched.length > 0 && (
               <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-ink">
                 already touched this week · {today.plate.list.touched.length}{" "}
                 <span className="text-dim font-medium">— {today.plate.list.touched.map((t) => nameOf(t.agent)).join(", ")} · one proactive touch each</span>
               </p>
             )}
-            <QueueRows rows={today.callbacks} loads={loads} signer={signer} onOpen={open} onCopied={copied} />
-            <QueueRows rows={today.listRows} loads={loads} signer={signer} onOpen={open} onCopied={copied} />
+            <QueueRows rows={today.callbacks} loads={loads} trips={trips} signer={signer} onOpen={open} onCopied={copied} />
+            <QueueRows rows={today.listRows} loads={loads} trips={trips} signer={signer} onOpen={open} onCopied={copied} />
           </>
         )}
         {today.listMore > 0 && (

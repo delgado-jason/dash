@@ -88,17 +88,65 @@ export const haversineMiles = (a: CityCoord, b: CityCoord): number => {
 export interface Anchor {
   city: string;
   state: string;
-  source: "committed" | "last-delivered";
+  source: "committed" | "last-delivered" | "last-trip";
+}
+
+// The slice of a trip the anchor reads — structural, so callers and tests can
+// hand over whatever carries a trip's end.
+export interface TripEndLike {
+  trip_date: string;
+  status: string;
+  end_city: string | null;
+  end_state: string | null;
+  odometer_end?: number | string | null;
 }
 
 const COMMITTED = new Set(["booked", "in_transit"]);
 const refDay = (l: Load): string => l.delivery_date ?? l.pickup_date ?? "";
+const day = (v: string | null | undefined): string => String(v ?? "").slice(0, 10);
+const odo = (v: number | string | null | undefined): number | null => {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+// A trip that has rolled (or is rolling): its end is where the truck sits — or
+// will sit — after it. Planned and cancelled trips say nothing about the truck.
+const ROLLED = new Set(["completed", "active"]);
+export const latestTripEnd = <T extends TripEndLike>(trips: T[]): T | null => {
+  let best: T | null = null;
+  for (const t of trips) {
+    if (!ROLLED.has(t.status) || !t.end_city || !t.end_state || !t.trip_date) continue;
+    if (!best || day(t.trip_date) > day(best.trip_date)) best = t;
+    else if (day(t.trip_date) === day(best.trip_date)) {
+      const a = odo(t.odometer_end);
+      const b = odo(best.odometer_end);
+      if (a != null && b != null ? a > b : a != null) best = t;
+    }
+  }
+  return best;
+};
+
+// The trip came AFTER the delivery when it's dated later — or dated the same
+// day and its end reading is past the load's (a run home that starts at the
+// drop, the same afternoon). Same day with no readings: the trip wins, since a
+// trip logged on a delivery day starts where the drop ended.
+const tripAfterDelivery = (t: TripEndLike, l: Load): boolean => {
+  const td = day(t.trip_date);
+  const ld = day(l.delivery_date);
+  if (td !== ld) return td > ld;
+  const a = odo(t.odometer_end);
+  const b = odo(l.odometer_end);
+  return a != null && b != null ? a > b : true;
+};
 
 // Your empty-next point = the destination of the furthest-out load you're already
 // committed to (booked or in-transit) — you're covered until it drops. With
-// nothing committed, you're already empty at your last delivery. null when there's
-// no usable load at all.
-export const emptyNextAnchor = (loads: Load[]): Anchor | null => {
+// nothing committed, you're already empty wherever the truck last stopped: the
+// last delivery, or the end of a trip that rolled after it (home, the shop,
+// repositioning — Jason, 2026-11-01: "it's not looking at trips for the last
+// known location"). null when there's no usable load or trip at all.
+export const emptyNextAnchor = (loads: Load[], trips: TripEndLike[] = []): Anchor | null => {
   const committed = loads.filter(
     (l) => COMMITTED.has(l.load_status) && l.destination_city && l.destination_state,
   );
@@ -113,10 +161,14 @@ export const emptyNextAnchor = (loads: Load[]): Anchor | null => {
       l.destination_state &&
       l.delivery_date,
   );
-  if (delivered.length) {
-    const latest = delivered.reduce((best, l) =>
-      (l.delivery_date as string) > (best.delivery_date as string) ? l : best,
-    );
+  const latest = delivered.length
+    ? delivered.reduce((best, l) => ((l.delivery_date as string) > (best.delivery_date as string) ? l : best))
+    : null;
+  const trip = latestTripEnd(trips);
+  if (trip && (!latest || tripAfterDelivery(trip, latest))) {
+    return { city: trip.end_city as string, state: trip.end_state as string, source: "last-trip" };
+  }
+  if (latest) {
     return {
       city: latest.destination_city,
       state: latest.destination_state,
@@ -400,6 +452,9 @@ export const buildForemanBoard = (
     // and captioned "claimed"; one a load already confirmed reads as proved.
     // Absent → loads only, as before.
     coverage?: CoveragePointLike[];
+    // The trips (home, shop, repositioning): a trip that rolled after the
+    // last delivery is where the truck sits. Absent → loads alone.
+    trips?: TripEndLike[];
   } = {},
 ): ForemanBoard => {
   const focus = opts.focus ?? "any";
@@ -412,7 +467,7 @@ export const buildForemanBoard = (
   const isParked = (a: Agent): boolean =>
     a.work_status === "parked" || (opts.contacts != null && bucketOf(a, { loads, contacts: opts.contacts, now }) === "parked");
 
-  const anchor = emptyNextAnchor(loads);
+  const anchor = emptyNextAnchor(loads, opts.trips ?? []);
   const anchorCoord = anchor ? coords.get(cityKey(anchor.city, anchor.state)) ?? null : null;
 
   const scorecards = buildAgentScorecards(agents, loads, now);

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { useAgents } from "@/hooks/useAgents";
 import { useCityCoords } from "@/hooks/useCityCoords";
 import { useRateTargets } from "@/hooks/useRateTargets";
@@ -426,6 +427,7 @@ const useForemanBook = (refreshKey: number) => {
 export const WhoToCallTab = () => {
   const [bookKey, setBookKey] = useState(0);
   const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(0);
+  const { trips } = useTrips(0);
   const { agents, isLoading: agentsLoading } = useAgents(bookKey);
   const { contacts, coverage, now, loading: bookLoading, ready: contactsReady, error: contactsError } = useForemanBook(bookKey);
   // The claimed markets warm the coordinate cache alongside the loads —
@@ -467,8 +469,9 @@ export const WhoToCallTab = () => {
         contacts: contactsReady ? contacts : undefined,
         coverage,
         now,
+        trips,
       }),
-    [loads, agents, coords, focus, mode, contactsReady, contacts, coverage, now],
+    [loads, agents, coords, focus, mode, contactsReady, contacts, coverage, now, trips],
   );
   const parked = useMemo(
     () =>

@@ -3,6 +3,7 @@ import type { Agent } from "@/types/agent";
 import type { Agency } from "@/types/agency";
 import type { AgentNote } from "@/types/agentNote";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useCityCoords } from "@/hooks/useCityCoords";
 import { getAgents } from "@/services/agentsService";
@@ -77,6 +78,9 @@ export const useRelationshipsData = () => {
   // isFetching, not isLoading: a retry after a failure must read as loading
   // again, or the book would show the stale empty list as fact meanwhile.
   const { loads, isFetching: loadsLoading, error: loadsError } = useLoads(loadsKey);
+  // The trips ride with the loads: the empty-next anchor reads both (a run
+  // home after the last delivery is where the truck sits).
+  const { trips } = useTrips(loadsKey);
   const coords = useCityCoords(loads);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
@@ -153,6 +157,7 @@ export const useRelationshipsData = () => {
     coords,
     signer,
     loads,
+    trips,
     loadsLoading,
     loadsError,
     // The loads slice landed and is current — the views may compute RPM, load

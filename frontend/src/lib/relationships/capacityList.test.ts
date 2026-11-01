@@ -286,3 +286,19 @@ describe("footprintPoints — the customer-end mark decides the point", () => {
     expect(out).toEqual({ anchorResolved: true, rows: [], touched: [], parkedNearby: 0 });
   });
 });
+
+describe("emptyNextWhen — a trip after the last delivery (2026-11-01)", () => {
+  it("the trip's end and its day, and the truck is empty now", () => {
+    const delivered = load({ agent_id: "a", destination_city: "Southlake", destination_state: "TX", delivery_date: "2026-10-13" });
+    const e = emptyNextWhen([delivered], [{ trip_date: "2026-10-30", status: "completed", end_city: "Leighton", end_state: "AL", odometer_end: 610284 }]);
+    expect(e).toEqual({ city: "Leighton", state: "AL", source: "last-trip", dayKey: "2026-10-30", time: null });
+    expect(emptyTense(e)).toBe("now");
+    expect(emptyWhenLabel(e)).toBe("now");
+  });
+  it("a planned trip, or one before the delivery, leaves the last delivery in place", () => {
+    const delivered = load({ agent_id: "a", destination_city: "Southlake", destination_state: "TX", delivery_date: "2026-10-13" });
+    expect(emptyNextWhen([delivered], [{ trip_date: "2026-10-30", status: "planned", end_city: "Leighton", end_state: "AL" }])).toMatchObject({ source: "last-delivered", dayKey: "2026-10-13" });
+    expect(emptyNextWhen([delivered], [{ trip_date: "2026-10-01", status: "completed", end_city: "Leighton", end_state: "AL" }])).toMatchObject({ source: "last-delivered" });
+  });
+});
+
