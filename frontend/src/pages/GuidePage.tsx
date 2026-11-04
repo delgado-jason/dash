@@ -3589,16 +3589,24 @@ const GuidePage = () => {
               counts — × the plan's $ per mile moves to Maintenance; the figure
               is pre-filled and editable, with the loads' own number shown
               beside it. A closed pay week accrues once, on the first snapshot
-              after it closes. On the odometer chain unlogged deadhead is
+              after it closes — and closed weeks re-true: every week that has
+              already accrued is re-read from the chain as it stands today, and
+              the miles the chain found after the fact (a home trip logged a
+              week late, a fill typed on Sunday) ride into the next accrual as
+              a catch-up, once; the snapshot's stored miles stay the record of
+              what moved, and the cash board books the same catch-up the same
+              Friday. On the odometer chain unlogged deadhead is
               already inside the reading-to-reading delta, so it needs no flag;
               when no reading predates the week the miles fall back to the
               loads, and then a load with no deadhead logged is flagged, not
               counted as free miles. A reading that goes backwards — or one
               typed too high, an impossible week — is a typo: it's flagged, and
               the money waits until you fix the entry.{" "}
-              <span className="text-light">The money day</span> opens the day
-              the month's P&amp;L is filed in Expenses and runs any day —
-              never the first Friday, which is the new month's Friday. Tax
+              <span className="text-light">The money day</span> opens once the
+              month has closed and its P&amp;L is filed in Expenses — a P&amp;L
+              posted mid-month waits for the calendar — and runs any day but
+              the month's first Friday, which is the new month's Friday; dash
+              refuses both, on the form and at the server. Tax
               comes off the top (the plan's % of the month's pre-tax profit; a
               loss moves $0). Then the interlock: Ops must hold the float line
               before there is any surplus at all; the surplus then fills
@@ -3608,11 +3616,19 @@ const GuidePage = () => {
               household. Under the minimum movement
               nothing moves and the money rides into next month. Tick the month
               on the snapshot form and dash renders the SOP's seven-line entry,
-              copy-ready for Excel; that tag is the only thing dash keeps about
-              a money day.
+              copy-ready for Excel, and keeps with the snapshot what the day
+              moved — the tax, the surplus, the split — so a re-uploaded
+              P&amp;L or a changed rate never rewrites a settled month (a money
+              day run before Nov 4, 2026 kept only its month tag, and the page
+              says so). The log is still Excel's. A snapshot is dated today or
+              earlier; of two typed the same day, the later one is the latest.
+              The verdict stamp names its basis — the Ops number it read and
+              the moves it took off — so it never reads two ways.
             </p>
             <Formula>
-              accrual = pay-week miles × $/mile · tax = max(0, % × pre-tax
+              accrual = pay-week miles × $/mile · catch-up = chain miles over
+              every accrued week − the miles the snapshots stored · tax =
+              max(0, % × pre-tax
               profit) · surplus = max(0, ops − accrual − tax − float line) ·
               under the minimum → nothing moves · fill Maintenance to its
               floor, then the Vault to rung 1 · remainder × objective % → the

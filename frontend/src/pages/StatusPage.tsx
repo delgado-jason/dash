@@ -44,6 +44,8 @@ import type { Trip } from "@/types/trip";
 import {
   getPlanStatus,
   getTaxMove,
+  moneyDayQueue,
+  verdictBasis,
   monthName,
   money as fmtMoney,
   type PlanStageInput,
@@ -53,8 +55,9 @@ import {
   type MoneyDayInput,
   type FloorStatus,
 } from "@/lib/metrics/planStatus";
-import { weeksOwed, milesInWeeks, weekLabel, payWeekOf } from "@/lib/metrics/payWeeks";
+import { weeksOwed, milesInWeeks, weekLabel, payWeekOf, isFirstFriday } from "@/lib/metrics/payWeeks";
 import { collectReadings, weekOdometerMiles, readingWords, IMPLAUSIBLE_WEEK_MI } from "@/lib/metrics/odometer";
+import { retrueAccrued, retrueWords } from "@/lib/metrics/accrualTruth";
 import { money, formatDate } from "@/lib/format";
 
 // The Plan page (ADMIN-03, #500). Two beats. THE FRIDAY: snapshot first —
@@ -73,6 +76,17 @@ const num = (v: string | number | null | undefined): number | null => {
 
 const todayKey = () => new Date().toLocaleDateString("en-CA");
 const day = (v: string | null | undefined): string => String(v ?? "").slice(0, 10);
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+// Snapshots in the order they were typed: by day, then by the clock — two on
+// one day used to make "latest" arbitrary (2026-11-04).
+const byTyped = (x: SnapshotRow, y: SnapshotRow): number => {
+  const a = day(x.as_of);
+  const b = day(y.as_of);
+  if (a !== b) return a < b ? -1 : 1;
+  const ca = String(x.created_at ?? "");
+  const cb = String(y.created_at ?? "");
+  return ca < cb ? -1 : ca > cb ? 1 : 0;
+};
 // "Sep 27" — a reading's day, UTC-safe (dates are the #1 bug).
 const dayWords = (v: string): string =>
   new Date(`${day(v)}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -195,7 +209,7 @@ const StatusPage = () => {
       .then(([p, a, s, o, pe, l, f, t, oc]) => {
         setPlans(p);
         setAccounts(a);
-        setSnapshots(s);
+        setSnapshots([...s].sort(byTyped));
         setOpsChecks(oc);
         setObligations(o);
         setPeriods(pe);
@@ -312,6 +326,13 @@ const StatusPage = () => {
     getMaintenanceServices().then(setServices).catch(() => {});
   }, []);
   const readings = useMemo(() => collectReadings(fuelEntries, loads, trips, services), [fuelEntries, loads, trips, services]);
+  // Closed weeks re-true (call 8, 2026-11-04): every week that already
+  // accrued, re-read from the chain today, net of the miles the snapshots
+  // moved. The difference is a catch-up that rides into the next accrual,
+  // once — the pre-fill carries it, the stored miles then close the gap, and
+  // the cash board books the same figure the same Friday.
+  const retrue = useMemo(() => retrueAccrued(snapshots, readings, loads, todayKey()), [snapshots, readings, loads]);
+  const catchUpMiles = retrue?.deltaMiles ?? 0;
 
   // A pay week's miles are the reading at its end minus the reading at its
   // start — every mile the truck rolled, loaded or not. The loads' figure
@@ -397,9 +418,14 @@ const StatusPage = () => {
           endSlips: o.endSlips,
           backwards: o.backwards,
           implausibleMiles: o.implausibleMiles,
+          catchUpMiles: catchUpMiles || null,
+          catchUpLabel: retrue?.label ?? null,
         };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const owedToday = useMemo(() => owedFor(todayKey()), [loads, readings, lastAccrued]);
+  // What this Friday's accrual runs on: the owed week(s) plus the catch-up
+  // (never below zero — an over-accrual nets off and the rest waits).
+  const owedTodayMiles = owedToday.weeks.length ? Math.max(0, owedToday.miles + catchUpMiles) : null;
 
   // ---- the money day's clock: the earliest filed month nobody has settled ----
   const filed = useMemo(
@@ -417,17 +443,15 @@ const StatusPage = () => {
     [periods],
   );
   const settled = useMemo(
-    () => new Set(snapshots.map((s) => (s.settles_month ? day(s.settles_month) : null)).filter(Boolean)),
+    () => new Set<string>(snapshots.flatMap((s) => (s.settles_month ? [day(s.settles_month)] : []))),
     [snapshots],
   );
   const firstMoneyMonth = plan ? day(plan.first_money_month) || "2026-08-01" : "2026-08-01";
-  // Every filed month nobody has settled, oldest first — the money day runs
-  // them in order; the first is open, the rest wait behind it.
+  // Every CLOSED filed month nobody has settled, oldest first — the money day
+  // runs them in order; the first is open, the rest wait behind it. A P&L
+  // posted mid-month waits for the calendar (2026-11-04).
   const queue: MoneyDayInput[] = useMemo(
-    () =>
-      filed
-        .filter((f) => f.month >= firstMoneyMonth && !settled.has(f.month))
-        .map((f) => ({ month: f.month, pretaxProfit: f.pretax, income: f.income, cogs: f.cogs, expenses: f.expenses })),
+    () => moneyDayQueue(filed, settled, firstMoneyMonth, todayKey()),
     [filed, settled, firstMoneyMonth],
   );
   const pending: MoneyDayInput | null = queue[0] ?? null;
@@ -445,15 +469,15 @@ const StatusPage = () => {
   // due, the move is inside the balances and must not come off Ops again.
   const accrualMoved = useMemo(() => {
     if (!latest || !previous || !plan) return false;
-    const due = (owedToday.miles ?? 0) * Number(plan.maintenance_per_mile);
+    const due = (owedTodayMiles ?? 0) * Number(plan.maintenance_per_mile);
     if (!(due > 0)) return false;
     const now = balanceOf(latest, maintAcct?.account_id);
     const before = balanceOf(previous, maintAcct?.account_id);
     if (now == null || before == null) return false;
     return now - before >= 0.9 * due;
-  }, [latest, previous, plan, owedToday, maintAcct]);
+  }, [latest, previous, plan, owedTodayMiles, maintAcct]);
   const status = useMemo(
-    () => (planInput ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedToday.miles), accrualMoved }) : null),
+    () => (planInput ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedTodayMiles), accrualMoved }) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [planInput, latest, opsFromCheck, owedToday, accrualMoved, opsAcct, vaultAcct, maintAcct, taxAcct],
   );
@@ -461,7 +485,7 @@ const StatusPage = () => {
   const preview = useMemo(
     () =>
       planInput && pending
-        ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedToday.miles), moneyDay: pending, accrualMoved })
+        ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedTodayMiles), moneyDay: pending, accrualMoved })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [planInput, latest, opsFromCheck, owedToday, accrualMoved, pending, opsAcct, vaultAcct, maintAcct, taxAcct],
@@ -488,6 +512,12 @@ const StatusPage = () => {
   const [fMiles, setFMiles] = useState("");
   const [fMoneyDay, setFMoneyDay] = useState(false);
   const [copied, setCopied] = useState(false);
+  // The guards that were words (2026-11-04): a snapshot is dated today or
+  // earlier, and the money day never runs on the month's first Friday. The
+  // server holds the same two lines.
+  const asOfFuture = fAsOf > todayKey();
+  const firstFriday = isFirstFriday(fAsOf);
+  const formMoneyDay = fMoneyDay && !firstFriday && !!pending;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const owedForm = useMemo(() => owedFor(fAsOf), [fAsOf, loads, readings, lastAccrued]);
@@ -498,7 +528,7 @@ const StatusPage = () => {
     setFAsOf(today);
     setFBalances({});
     setFNote("");
-    setFMiles(o.weeks.length ? String(o.miles) : "");
+    setFMiles(o.weeks.length ? String(Math.max(0, o.miles + catchUpMiles)) : "");
     setFMoneyDay(moneyDay && !!pending);
     setError(null);
     setCopied(false);
@@ -508,7 +538,7 @@ const StatusPage = () => {
     setFAsOf(v);
     if (v) {
       const o = owedFor(v);
-      setFMiles(o.weeks.length ? String(o.miles) : "");
+      setFMiles(o.weeks.length ? String(Math.max(0, o.miles + catchUpMiles)) : "");
     }
   };
 
@@ -522,7 +552,7 @@ const StatusPage = () => {
     };
     return getPlanStatus(draft, planInput, {
       accrual: accrualInput(owedForm, fMiles),
-      moneyDay: fMoneyDay && pending ? pending : null,
+      moneyDay: formMoneyDay && pending ? pending : null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planInput, fBalances, fMiles, fMoneyDay, pending, owedForm, opsAcct, vaultAcct, maintAcct, taxAcct]);
@@ -532,6 +562,9 @@ const StatusPage = () => {
     setError(null);
     try {
       const accrues = owedForm.weeks.length > 0 && fMiles.trim() !== "";
+      // What the money day moved rides with the snapshot (085) — the record
+      // the pages read back, never a P&L that may be edited later.
+      const md = formMoneyDay ? draftStatus?.moneyDay ?? null : null;
       await createSnapshot({
         as_of: fAsOf,
         note: fNote.trim() || null,
@@ -541,7 +574,11 @@ const StatusPage = () => {
         })),
         miles: accrues ? Number(fMiles) : null,
         pay_week_start: accrues ? owedForm.weeks[owedForm.weeks.length - 1].start : null,
-        settles_month: fMoneyDay && pending ? pending.month : null,
+        settles_month: formMoneyDay && pending ? pending.month : null,
+        tax_moved: md ? round2(md.tax) : null,
+        surplus_moved: md ? round2(md.belowMin ? 0 : md.surplus) : null,
+        objective_moved: md ? md.objective : null,
+        household_moved: md ? md.household : null,
       });
       setShowSnap(false);
       setFBalances({});
@@ -768,7 +805,7 @@ const StatusPage = () => {
   const owedMiles = owedToday.weeks.length ? owedToday.miles : null;
   const accrualWords =
     owedToday.weeks.length && acc != null && perMile != null
-      ? `accrue Maintenance ${money(acc)} (${owedMiles!.toLocaleString("en-US")} mi × $${perMile})`
+      ? `accrue Maintenance ${money(acc)} (${owedTodayMiles!.toLocaleString("en-US")} mi × $${perMile}${catchUpMiles !== 0 ? ` · incl. ${catchUpMiles > 0 ? "+" : "−"}${Math.abs(catchUpMiles).toLocaleString("en-US")} mi re-trued` : ""})`
       : lastAccrual
         ? `nothing to accrue — week ${weekLabel(payWeekOf(day(lastAccrual.pay_week_start)))} accrued ${formatDate(lastAccrual.as_of)}`
         : "nothing to accrue yet";
@@ -827,16 +864,29 @@ const StatusPage = () => {
         {/* the plan sentence */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           {view?.verdict ? (
-            <span
-              className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
-              style={
-                view.verdict === "on-plan"
-                  ? { color: "#6fd08c", borderColor: "#6fd08c", boxShadow: "inset 0 0 12px rgba(111,208,140,.12)" }
-                  : { color: "#f5b03a", borderColor: "#f5b03a", boxShadow: "inset 0 0 12px rgba(232,148,10,.12)" }
-              }
-            >
-              {view.verdict === "on-plan" ? "ON PLAN" : view.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
-            </span>
+            <>
+              <span
+                className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
+                style={
+                  view.verdict === "on-plan"
+                    ? { color: "#6fd08c", borderColor: "#6fd08c", boxShadow: "inset 0 0 12px rgba(111,208,140,.12)" }
+                    : { color: "#f5b03a", borderColor: "#f5b03a", boxShadow: "inset 0 0 12px rgba(232,148,10,.12)" }
+                }
+              >
+                {view.verdict === "on-plan" ? "ON PLAN" : view.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
+              </span>
+              {/* the stamp names its basis (PL-04): the Ops number it read and the moves it took off */}
+              <span className="font-condensed text-[12px] text-faint">
+                {verdictBasis(view, {
+                  opsWords: opsFromCheck
+                    ? `OPS NOW ${formatDate(opsFromCheck.as_of) ?? opsFromCheck.as_of}`
+                    : latest
+                      ? `the ${formatDate(latest.as_of) ?? latest.as_of} snapshot`
+                      : "no snapshot",
+                  accrualMoved,
+                })}
+              </span>
+            </>
           ) : (
             <span className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] border-2 border-dashed border-hairline text-faint">
               NO SNAPSHOT YET
@@ -879,12 +929,12 @@ const StatusPage = () => {
             <div className="ds2-board overflow-hidden mt-4" style={{ borderLeft: "3px solid var(--color-amber)" }}>
               <div className={BOARD_HEAD}>
                 <span className={BOARD_TITLE}>Money day · {pendingLabel} — the P&amp;L is filed</span>
-                <span className={BOARD_SUB}>· run it any day · previewed on the {formatDate(latest?.as_of)} balances</span>
+                <span className={BOARD_SUB}>· run it any day but the month's first Friday · previewed on the {formatDate(latest?.as_of)} balances</span>
               </div>
               {step(1, `Tax — ${md.taxPct} % of ${pendingLabel.split(" ")[0]}'s pre-tax profit (${md.pretaxProfit < 0 ? "−" : ""}${money(Math.abs(md.pretaxProfit))})`, md.pretaxProfit < 0 ? "$0 · a loss" : money(md.tax))}
               {step(
                 2,
-                `The interlock — Ops ${fmtMoney(md.opsAfter)} after ${md.tax > 0 ? "the accrual and the tax move" : "Friday's accrual"}, floor ${money(floatLine ?? 0)}`,
+                `The interlock — Ops ${fmtMoney(md.opsAfter)} after ${md.tax > 0 ? "the accrual and the tax move" : "this week's accrual"}, floor ${money(floatLine ?? 0)}`,
                 held ? `HELD — ${held.label}, short ${money(held.short)}` : "all three floors hold",
                 !held,
               )}
@@ -1129,17 +1179,31 @@ const StatusPage = () => {
                       <b className="text-hot font-semibold">Accrue {money(acc)} this Friday</b> — pay week {owedToday.label},{" "}
                       {owedToday.source === "odometer" ? (
                         <>
-                          {owedMiles!.toLocaleString("en-US")} mi by odometer ({owedToday.readingsWords}) × ${perMile} · loads say {owedToday.loadsMiles.toLocaleString("en-US")} ({owedToday.loads} load{owedToday.loads === 1 ? "" : "s"}: {owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead)
+                          {owedMiles!.toLocaleString("en-US")} mi by odometer ({owedToday.readingsWords})
+                          {catchUpMiles !== 0 && <> {catchUpMiles > 0 ? "+" : "−"} {Math.abs(catchUpMiles).toLocaleString("en-US")} mi re-trued</>} × ${perMile} · loads say {owedToday.loadsMiles.toLocaleString("en-US")} ({owedToday.loads} load{owedToday.loads === 1 ? "" : "s"}: {owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead)
                         </>
                       ) : (
                         <>
-                          {owedMiles!.toLocaleString("en-US")} mi from {owedToday.loads} load{owedToday.loads === 1 ? "" : "s"} ({owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead) × ${perMile} · no odometer reading before the week
+                          {owedMiles!.toLocaleString("en-US")} mi from {owedToday.loads} load{owedToday.loads === 1 ? "" : "s"} ({owedToday.loadedMiles.toLocaleString("en-US")} loaded + {owedToday.deadheadMiles.toLocaleString("en-US")} deadhead)
+                          {catchUpMiles !== 0 && <> {catchUpMiles > 0 ? "+" : "−"} {Math.abs(catchUpMiles).toLocaleString("en-US")} mi re-trued</>} × ${perMile} · no odometer reading before the week
                         </>
                       )}
                       {owedToday.truncated && <span className="text-amber-hi"> · more than 8 weeks owed — only the last 8 are counted</span>}
+                      {catchUpMiles !== 0 && retrue && (
+                        <>
+                          {" "}· <b className="text-amber-hi font-semibold">{catchUpMiles > 0 ? "catch-up" : "hold-back"} {money(Math.abs(catchUpMiles) * perMile)}</b> — {retrueWords(retrue)}
+                        </>
+                      )}
                     </>
                   ) : (
-                    <>{accrualWords}</>
+                    <>
+                      {accrualWords}
+                      {catchUpMiles !== 0 && retrue && perMile != null && (
+                        <>
+                          {" "}· <b className="text-amber-hi font-semibold">{catchUpMiles > 0 ? "catch-up" : "hold-back"} {money(Math.abs(catchUpMiles) * perMile)}</b> waits for the next accrual: {retrueWords(retrue)}
+                        </>
+                      )}
+                    </>
                   )}
                   {floorsBoard[1] && (floorsBoard[1].short > 0 ? <> · floor {money(floorsBoard[1].floor)}, {money(floorsBoard[1].short)} short after</> : <> · floor {money(floorsBoard[1].floor)} holds</>)}
                 </p>
@@ -1162,9 +1226,20 @@ const StatusPage = () => {
                   {pending && pendingLabel && preview?.moneyDay ? (
                     <>
                       {pendingLabel.split(" ")[0]}'s money day: {taxPct} % of {pending.pretaxProfit != null && pending.pretaxProfit < 0 ? "−" : ""}{money(Math.abs(pending.pretaxProfit ?? 0))} = <b className="text-ink font-semibold">{money(preview.moneyDay.tax)}</b>
-                      {prevFiled && prevTax != null && (
-                        <> · {monthName(prevFiled.month).split(" ")[0]} {settled.has(prevFiled.month) ? "moved" : "would have moved"} {money(prevTax)}</>
-                      )}
+                      {prevFiled && prevTax != null && (() => {
+                        // A settled month reads what its money day MOVED (085),
+                        // never today's P&L — unless it settled before the amount
+                        // was kept, and then the words say so.
+                        const by = snapshots.find((s) => day(s.settles_month) === prevFiled.month) ?? null;
+                        const stored = by && by.tax_moved != null ? Number(by.tax_moved) : null;
+                        const name = monthName(prevFiled.month).split(" ")[0];
+                        if (!by) return <> · {name} would have moved {money(prevTax)}</>;
+                        return stored != null ? (
+                          <> · {name} moved {money(stored)} on {formatDate(by.as_of)}</>
+                        ) : (
+                          <> · {name} moved {money(prevTax)} by today's P&amp;L — the amount wasn't kept before Nov 4, 2026</>
+                        );
+                      })()}
                     </>
                   ) : (
                     <>nothing owed — every filed month has had its money day</>
@@ -1233,15 +1308,21 @@ const StatusPage = () => {
               <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
                 style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
                 <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
-                  {fMoneyDay && pendingLabel ? `MONEY DAY · ${pendingLabel.toUpperCase()}` : "FRIDAY SNAPSHOT"}
+                  {formMoneyDay && pendingLabel ? `MONEY DAY · ${pendingLabel.toUpperCase()}` : "FRIDAY SNAPSHOT"}
                 </span>
                 <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
-                  {fMoneyDay ? "balances today, then the orders — snapshot first" : "raw balances — before you move anything"}
+                  {formMoneyDay ? "balances today, then the orders — snapshot first" : "raw balances — before you move anything"}
                 </span>
                 <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={() => setShowSnap(false)}>✕</button>
               </div>
               <div className="p-5 grid grid-cols-2 gap-3">
-                <div><label className={LBL}>As of</label><input type="date" className={FIELD} value={fAsOf} onChange={(e) => changeAsOf(e.target.value)} /></div>
+                <div>
+                  <label className={LBL}>As of</label>
+                  <input type="date" className={FIELD} value={fAsOf} max={todayKey()} onChange={(e) => changeAsOf(e.target.value)} />
+                  {asOfFuture && (
+                    <p className="font-condensed text-[11.5px] text-destructive mt-1">{dayWords(fAsOf)} hasn't happened — a snapshot is dated today or earlier</p>
+                  )}
+                </div>
                 {activeAccounts.map((a) => (
                   <div key={a.account_id}>
                     <label className={LBL}>
@@ -1294,6 +1375,11 @@ const StatusPage = () => {
                       {owedForm.endSlips && owedForm.endDate && (
                         <> · last reading {dayWords(owedForm.endDate)} — log the odometer for a tighter week</>
                       )}
+                      {catchUpMiles !== 0 && retrue && (
+                        <>
+                          {" "}· <span className="text-amber-hi">{catchUpMiles > 0 ? "+" : "−"}{Math.abs(catchUpMiles).toLocaleString("en-US")} mi re-trued</span> — {retrueWords(retrue)} · in the pre-fill, accrues here once
+                        </>
+                      )}
                       {draftStatus?.accrualFlag && <span className="text-amber-hi"> · {draftStatus.accrualFlag}</span>}
                     </p>
                   )}
@@ -1301,13 +1387,17 @@ const StatusPage = () => {
                 {pending && pendingLabel && (
                   <div className="col-span-2 rounded-[9px] px-3 py-[10px]" style={{ border: "1px solid rgba(232,148,10,.35)", background: "rgba(232,148,10,.05)" }}>
                     <label className="flex items-center gap-[10px] font-condensed text-[14px] cursor-pointer">
-                      <input type="checkbox" className="accent-amber w-4 h-4" checked={fMoneyDay} onChange={(e) => setFMoneyDay(e.target.checked)} />
-                      <span>Money day · <b className="font-semibold">{pendingLabel}</b> — tax, the interlock and the split on this snapshot</span>
+                      <input type="checkbox" className="accent-amber w-4 h-4" checked={formMoneyDay} disabled={firstFriday} onChange={(e) => setFMoneyDay(e.target.checked)} />
+                      <span className={firstFriday ? "text-faint" : undefined}>Money day · <b className="font-semibold">{pendingLabel}</b> — tax, the interlock and the split on this snapshot</span>
                     </label>
-                    <p className="font-condensed text-[11.5px] text-faint mt-1 pl-[26px]">P&amp;L filed · untick if you're only taking Friday's balances today</p>
+                    <p className={`font-condensed text-[11.5px] mt-1 pl-[26px] ${firstFriday ? "text-amber-hi" : "text-faint"}`}>
+                      {firstFriday
+                        ? `${dayWords(fAsOf)} is the month's first Friday — the money day runs any other day`
+                        : "P&L filed · untick if you're only taking Friday's balances today"}
+                    </p>
                   </div>
                 )}
-                {fMoneyDay && draftStatus?.moneyDay ? (
+                {formMoneyDay && draftStatus?.moneyDay ? (
                   <div className="col-span-2">
                     <label className={LBL}>The entry as you type · for Excel</label>
                     <pre className="font-mono text-[12px] leading-[1.6] text-ink bg-well border border-hairline rounded-[9px] px-3 py-2 overflow-x-auto whitespace-pre m-0">
@@ -1324,7 +1414,7 @@ const StatusPage = () => {
               </div>
               <div className="flex gap-2 justify-end px-5 pb-5">
                 <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={() => setShowSnap(false)}>CANCEL</button>
-                {fMoneyDay && draftStatus?.moneyDay && (
+                {formMoneyDay && draftStatus?.moneyDay && (
                   <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-amber-hi bg-well border" style={{ borderColor: "rgba(232,148,10,.35)" }} onClick={copyEntry}>
                     {copied ? "COPIED" : "COPY THE ENTRY"}
                   </button>
@@ -1334,6 +1424,7 @@ const StatusPage = () => {
                   style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
                   disabled={
                     busy ||
+                    asOfFuture ||
                     !opsAcct ||
                     !vaultAcct ||
                     activeAccounts.some((a) => (fBalances[a.account_id] ?? "").trim() === "")

@@ -88,6 +88,17 @@ export const milesInWeeks = (loads: LoadLike[], weeks: PayWeek[]): WeekMiles => 
   return out;
 };
 
+// The month's first Friday is the new month's Friday: the snapshot runs, the
+// accrual runs, the money day never does (ADMIN-03; enforced 2026-11-04 — it
+// had been words only). UTC on the day key, like every date here.
+export const isFirstFriday = (ymd: string): boolean => {
+  const d = utc(ymd);
+  return d.getUTCDay() === 5 && d.getUTCDate() <= 7;
+};
+
+// 'YYYY-MM-01' of the month a day falls in.
+export const monthStartOf = (ymd: string): string => `${String(ymd).slice(0, 7)}-01`;
+
 // "Sep 16–22" / "Sep 30–Oct 6" for labels.
 export const weekLabel = (w: PayWeek): string => {
   const f = (s: string, withMonth: boolean) =>

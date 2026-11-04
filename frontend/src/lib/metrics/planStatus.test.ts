@@ -9,6 +9,8 @@ import {
   getMoneyDay,
   getPlanStatus,
   objectiveIndexOf,
+  moneyDayQueue,
+  verdictBasis,
   money,
   monthName,
   type PlanStageInput,
@@ -433,3 +435,66 @@ describe("getPlanStatus — an accrual already in the balances is shown, not sub
   });
 });
 
+
+describe("the catch-up in the order (call 8, 2026-11-04)", () => {
+  it("names the re-trued miles inside the accrual order", () => {
+    const st = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, miles: 823 + 1920, weekLabel: "Oct 28–Nov 3", catchUpMiles: 1920, catchUpLabel: "Sep 16–Oct 27" },
+    })!;
+    expect(st.accrual).toBeCloseTo(877.76, 2);
+    expect(st.orders[0]).toBe("Accrue Maintenance $878 (2,743 mi × $0.32 · incl. +1,920 mi re-trued, Sep 16–Oct 27)");
+  });
+  it("a hold-back reads as a minus; nothing to re-true says nothing", () => {
+    const over = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, miles: 823 - 200, catchUpMiles: -200, catchUpLabel: "Sep 16–Oct 27" },
+    })!;
+    expect(over.orders[0]).toContain("incl. −200 mi re-trued, Sep 16–Oct 27");
+    const plain = getPlanStatus(sep18(), plan(), { accrual: { ...thisWeek, catchUpMiles: 0 } })!;
+    expect(plain.orders[0]).toBe("Accrue Maintenance $640 (1,999 mi × $0.32)");
+  });
+  it("already moved: the words still carry the re-true", () => {
+    const st = getPlanStatus(sep18(), plan(), {
+      accrual: { ...thisWeek, miles: 2743, catchUpMiles: 1920, catchUpLabel: "Sep 16–Oct 27" }, accrualMoved: true,
+    })!;
+    expect(st.orders[0]).toBe("Maintenance accrual $878 (2,743 mi × $0.32 · incl. +1,920 mi re-trued, Sep 16–Oct 27) — already moved, the balances show it");
+  });
+});
+
+describe("moneyDayQueue — a month settles once it has closed, oldest first, never the month still running", () => {
+  const filed = [
+    { month: "2026-10-01", pretax: -2339.26, income: 16565.9, cogs: 3283.52, expenses: 15621.64 },
+    { month: "2026-11-01", pretax: 5000, income: 20000, cogs: 5000, expenses: 10000 }, // posted mid-month: a partial month
+    { month: "2026-09-01", pretax: 11988.01, income: 35089.25, cogs: 8607.19, expenses: 14494.05 },
+    { month: "2026-08-01", pretax: -1431.06, income: 22695.06, cogs: 4901.78, expenses: 19224.34 },
+  ];
+  it("on Nov 4 with September settled: October alone is open; November waits for December", () => {
+    const q = moneyDayQueue(filed, new Set(["2026-09-01"]), "2026-09-01", "2026-11-04");
+    expect(q.map((m) => m.month)).toEqual(["2026-10-01"]);
+    expect(q[0]).toMatchObject({ pretaxProfit: -2339.26, income: 16565.9 });
+  });
+  it("months before the first money month never queue; unsettled months queue oldest first", () => {
+    const q = moneyDayQueue(filed, new Set(), "2026-09-01", "2026-12-01");
+    expect(q.map((m) => m.month)).toEqual(["2026-09-01", "2026-10-01", "2026-11-01"]);
+  });
+  it("the running month opens the day the calendar turns", () => {
+    expect(moneyDayQueue(filed, new Set(["2026-09-01", "2026-10-01"]), "2026-09-01", "2026-11-30")).toEqual([]);
+    expect(moneyDayQueue(filed, new Set(["2026-09-01", "2026-10-01"]), "2026-09-01", "2026-12-01").map((m) => m.month)).toEqual(["2026-11-01"]);
+  });
+});
+
+describe("verdictBasis — the stamp names what it read (PL-04)", () => {
+  it("a plain Friday: the snapshot and the accrual", () => {
+    const st = getPlanStatus(sep18(), plan(), { accrual: thisWeek })!;
+    expect(verdictBasis(st, { opsWords: "the Sep 18 snapshot" })).toBe("on the Sep 18 snapshot · after the $640 accrual");
+  });
+  it("a money day pending: the month's tax is named, even at $0", () => {
+    const st = getPlanStatus(sep18(), plan(), { accrual: thisWeek, moneyDay: august })!;
+    expect(verdictBasis(st, { opsWords: "OPS NOW Nov 4" })).toBe("on OPS NOW Nov 4 · after the $640 accrual · August's tax $0");
+  });
+  it("an accrual already in the balances says so; no accrual due says only the number", () => {
+    const moved = getPlanStatus(sep18(), plan(), { accrual: thisWeek, accrualMoved: true })!;
+    expect(verdictBasis(moved, { opsWords: "the Sep 18 snapshot", accrualMoved: true })).toBe("on the Sep 18 snapshot · the $640 accrual already in it");
+    const none = getPlanStatus(sep18(), plan())!;
+    expect(verdictBasis(none, { opsWords: "the Sep 18 snapshot" })).toBe("on the Sep 18 snapshot");
+  });
+});
