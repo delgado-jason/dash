@@ -8,6 +8,7 @@ import {
   loadGross,
   completeMonthsBefore,
   getCostBasis,
+  monthMiles,
   getRateLadder,
   bookedRate,
   getGrossTargets,
@@ -94,14 +95,15 @@ describe("getCostBasis", () => {
       period("2026-06-01", 5000, 5000),
     ];
     const loads = [
-      load({ delivery_date: "2026-04-15", loaded_miles: 2000, odometer_start: 0, odometer_end: 2500, linehaul: "8000" }),
-      load({ delivery_date: "2026-05-15", loaded_miles: 2000, odometer_start: 0, odometer_end: 2500, linehaul: "8000" }),
-      load({ delivery_date: "2026-06-15", loaded_miles: 2000, odometer_start: 0, odometer_end: 2500, linehaul: "8000" }),
+      // Real readings: a zero start is a missing reading, not mile 0 (2026-11-04).
+      load({ delivery_date: "2026-04-15", loaded_miles: 2000, odometer_start: 100000, odometer_end: 102500, linehaul: "8000" }),
+      load({ delivery_date: "2026-05-15", loaded_miles: 2000, odometer_start: 102500, odometer_end: 105000, linehaul: "8000" }),
+      load({ delivery_date: "2026-06-15", loaded_miles: 2000, odometer_start: 105000, odometer_end: 107500, linehaul: "8000" }),
       // current + future month loads must be ignored
       load({ delivery_date: "2026-07-15", loaded_miles: 9999, linehaul: "99999" }),
     ];
     // obligations 2000/mo → true monthly = 10k + 2k = 12k
-    const b = getCostBasis(periods, 2000, loads, now);
+    const b = getCostBasis(periods, 2000, loads, now, 3);
     expect(b.months).toBe(3);
     expect(b.trueMonthlyCost).toBeCloseTo(12000, 5);
     expect(b.loadedMiles).toBe(6000); // 3 × 2000
@@ -126,14 +128,14 @@ describe("getCostBasis", () => {
 
   it("a month missing ONE section total is unfiled too — a missing section is not a $0 section", () => {
     const half = { ...period("2026-05-01", 5000, 5000), cogs_total: null } as ExpensePeriod;
-    const b = getCostBasis([period("2026-04-01", 5000, 5000), half, period("2026-06-01", 5000, 5000)], 0, [], now);
+    const b = getCostBasis([period("2026-04-01", 5000, 5000), half, period("2026-06-01", 5000, 5000)], 0, [], now, 3);
     expect(b.months).toBe(2);
     expect(b.missingLabel).toBe("May ’26");
   });
 
   it("a month saved without its totals is unfiled, never a free month", () => {
     const broken = { ...period("2026-05-01", 5000, 5000), cogs_total: null, expense_total: null } as ExpensePeriod;
-    const b = getCostBasis([period("2026-04-01", 5000, 5000), broken, period("2026-06-01", 5000, 5000)], 0, [], now);
+    const b = getCostBasis([period("2026-04-01", 5000, 5000), broken, period("2026-06-01", 5000, 5000)], 0, [], now, 3);
     expect(b.months).toBe(2);
     expect(b.windowLabel).toBe("Apr, Jun ’26");
     expect(b.missingLabel).toBe("May ’26");
@@ -149,13 +151,13 @@ describe("getCostBasis", () => {
 
   it("windowLabel: gaps list months, year boundaries carry both years, empty is null", () => {
     // Only May has a P&L → single month label.
-    const may = getCostBasis([period("2026-05-01", 5000, 5000)], 0, [], now);
+    const may = getCostBasis([period("2026-05-01", 5000, 5000)], 0, [], now, 3);
     expect(may.windowLabel).toBe("May ’26");
     expect(may.missingLabel).toBe("Apr, Jun ’26"); // the months the window wanted and didn't get
     // Apr + Jun with May missing → a list, not a fake range.
     const gap = getCostBasis(
       [period("2026-04-01", 5000, 5000), period("2026-06-01", 5000, 5000)],
-      0, [], now,
+      0, [], now, 3,
     );
     expect(gap.windowLabel).toBe("Apr, Jun ’26");
     expect(gap.missingLabel).toBe("May ’26");
@@ -166,8 +168,8 @@ describe("getCostBasis", () => {
     );
     expect(wrap.windowLabel).toBe("Nov ’26–Jan ’27");
     // No P&L at all → null (surfaces fall back to the plain "3mo" wording).
-    expect(getCostBasis([], 0, [], now).windowLabel).toBeNull();
-    expect(getCostBasis([], 0, [], now).missingLabel).toBe("Apr–Jun ’26");
+    expect(getCostBasis([], 0, [], now, 3).windowLabel).toBeNull();
+    expect(getCostBasis([], 0, [], now, 3).missingLabel).toBe("Apr–Jun ’26");
   });
 
   it("guards a reversed/equal odometer reading — contributes 0 driven miles, not negative", () => {
@@ -176,7 +178,7 @@ describe("getCostBasis", () => {
       load({ delivery_date: "2026-06-10", loaded_miles: 1000, odometer_start: 1000, odometer_end: 3500, linehaul: "5000" }), // 2500 driven
       load({ delivery_date: "2026-06-20", loaded_miles: 800, odometer_start: 5000, odometer_end: 4000, linehaul: "4000" }), // reversed → 0, not −1000
     ];
-    const b = getCostBasis(periods, 0, loads, now);
+    const b = getCostBasis(periods, 0, loads, now, 3);
     expect(b.totalMiles).toBe(2500); // without the guard it would read 1500
   });
 
@@ -186,14 +188,36 @@ describe("getCostBasis", () => {
       load({ delivery_date: "2026-04-15", loaded_miles: 5000 }), // Apr miles ignored (no P&L)
       load({ delivery_date: "2026-05-15", loaded_miles: 2000, linehaul: "8000" }),
     ];
-    const b = getCostBasis(periods, 0, loads, now);
+    const b = getCostBasis(periods, 0, loads, now, 3);
     expect(b.months).toBe(1);
     expect(b.loadedMiles).toBe(2000); // only May
     expect(b.breakEvenRpm).toBeCloseTo(10000 / 2000, 5); // 5.00
   });
 
-  it("null break-even when there's no P&L history", () => {
+  it("the default window is BASIS_MONTHS — six — not the three it was (call 12, 2026-11-04)", () => {
     const b = getCostBasis([], 0, [], now);
+    expect(b.monthsWanted).toBe(6);
+    expect(b.missingLabel).toBe("Jan–Jun ’26");
+    // Six P&L months, one cost each → the mean reads all six, not the last three.
+    const six = ["01", "02", "03", "04", "05", "06"].map((m, i) => period(`2026-${m}-01`, 1000 * (i + 1), 0));
+    expect(getCostBasis(six, 0, [], now).trueMonthlyCost).toBeCloseTo(3500, 5); // (1+2+3+4+5+6)k / 6
+    expect(getCostBasis(six, 0, [], now, 3).trueMonthlyCost).toBeCloseTo(5000, 5); // the three-month blend
+  });
+
+  it("odometer spans are a UNION — two loads sharing a start count the shared miles once (DB-04, load 8126107)", () => {
+    const periods = [period("2026-06-01", 5000, 5000)];
+    const loads = [
+      load({ delivery_date: "2026-06-15", loaded_miles: 500, odometer_start: 576184, odometer_end: 576836, linehaul: "3000" }), // 652 driven
+      load({ delivery_date: "2026-06-17", loaded_miles: 1200, odometer_start: 576184, odometer_end: 577593, linehaul: "6000" }), // a copied start: 1,409 on its own, 757 beyond the first
+      load({ delivery_date: "2026-06-25", loaded_miles: 100, odometer_start: 0, odometer_end: 577900, linehaul: "500" }), // a zero start is no reading at all
+    ];
+    const b = getCostBasis(periods, 0, loads, now);
+    expect(b.totalMiles).toBe(577593 - 576184); // 1,409 — not 2,061
+    expect(monthMiles(loads, 2026, 5).total).toBe(1409);
+  });
+
+  it("null break-even when there's no P&L history", () => {
+    const b = getCostBasis([], 0, [], now, 3);
     expect(b.months).toBe(0);
     expect(b.trueMonthlyCost).toBeNull();
     expect(b.breakEvenRpm).toBeNull();
@@ -375,14 +399,17 @@ describe("getWeekRpm", () => {
 describe("getWindowRpm", () => {
   const now = new Date("2026-07-09T00:00:00Z");
 
-  it("blends revenue over loaded miles for the last 3 complete months, loads only", () => {
+  it("blends revenue over loaded miles for the basis window (six complete months), loads only", () => {
     const loads = [
       load({ delivery_date: "2026-04-15", linehaul: "8000", loaded_miles: 2000 }),
       load({ delivery_date: "2026-05-15", linehaul: "8000", loaded_miles: 2000 }),
       load({ delivery_date: "2026-06-15", linehaul: "8000", loaded_miles: 2000 }),
+      load({ delivery_date: "2026-01-15", linehaul: "4000", loaded_miles: 2000 }), // six months back — inside the window since 2026-11-04
+      load({ delivery_date: "2025-12-15", linehaul: "99999", loaded_miles: 2000 }), // seven months back — outside
       load({ delivery_date: "2026-07-15", linehaul: "9999", loaded_miles: 2000 }), // current month excluded
     ];
-    expect(getWindowRpm(loads, now)).toBeCloseTo(4.0, 5); // 24000 / 6000
+    expect(getWindowRpm(loads, now)).toBeCloseTo(3.5, 5); // 28000 / 8000
+    expect(getWindowRpm(loads, now, 3)).toBeCloseTo(4.0, 5); // the old three-month window, asked for by name
   });
 
   it("null when there are no loaded miles in the window", () => {

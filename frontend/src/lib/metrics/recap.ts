@@ -6,20 +6,12 @@ import type { ExpensePeriod } from "@/types/expense";
 // GROSS revenue — the recap's hauled/lane/agent/monthly/RPM figures are market value
 // (freight moved), per Jason's ruling; the net figures come from the P&L (`periods`).
 import { loadRevenue } from "./loads";
-import {
-  getWeekGrossEarned,
-  getWeekEarnedGross,
-  getGrossTargets,
-  getCostBasis,
-  payWeekRange,
-} from "./rateTargets";
+import { getWeekGrossEarned, computeRateTargets, payWeekRange } from "./rateTargets";
+import { bestPayWeek } from "./payWeeks";
 import { mpgWindows } from "./fuelEconomy";
 import { classify, bestStreakOf, type WeekStatus } from "./grind";
-import {
-  MARGIN_GOAL,
-  PAY_WEEK_START_DOW,
-  WORKING_DAYS_PER_MONTH,
-} from "@/lib/constants/targets";
+import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 
 const WEEK_MS = 7 * 86400000;
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -134,7 +126,10 @@ export const computeRecap = (
   range: RecapRange,
   scope: RecapScope,
   now: Date,
-  marginGoal: number = MARGIN_GOAL,
+  // The settlement schedule carries the margin goal and the keep the weekly
+  // target stands on; null = the seeds (2026-11-04 — it was a bare margin goal
+  // on a three-month net target of the recap's own).
+  schedule: SettlementSchedule | null = null,
 ): RecapStats => {
   const mine = loads.filter((l) => l.load_status === "delivered" && inRange(l.delivery_date, range));
 
@@ -199,26 +194,23 @@ export const computeRecap = (
     hardestMonth = monthly.reduce((a, b) => (b.profit < a.profit ? b : a));
   }
 
-  // weekly gross → best week + best target-beating streak in the range
-  const targets = getGrossTargets(
-    getCostBasis(periods, obligationsMonthly, loads, now).trueMonthlyCost,
-    marginGoal,
-    WORKING_DAYS_PER_MONTH,
-  );
-  let bestWeek: number | null = null;
+  // weekly gross → best week + best target-beating streak in the range. ONE
+  // basis (2026-11-04, §5): the target is the hero's own — gross, six months,
+  // divided by the keep — and the weeks are graded in gross; the best week is
+  // the same completed-pay-week record the Pulse and the player card show.
+  const targets = computeRateTargets(loads, periods, obligationsMonthly, schedule, now).gross;
+  const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
+  const bestWeek =
+    bestPayWeek(loads, dayKey(now), { from: dayKey(range.start), before: dayKey(range.end) })?.gross ?? null;
   const statuses: WeekStatus[] = [];
   const firstWeek = payWeekRange(range.start, PAY_WEEK_START_DOW).start.getTime();
   for (let t = firstWeek; t < range.end.getTime(); t += WEEK_MS) {
     if (t < range.start.getTime()) continue; // skip the partial leading week
     const ws = new Date(t);
     const we = new Date(t + WEEK_MS);
-    // Best week = most GROSS freight hauled, DELIVERED-only (Jason's ruling) — the
-    // same getWeekGrossEarned the dashboard uses, so the record is one number.
-    const grossWeek = getWeekGrossEarned(loads, ws, we);
-    if (bestWeek == null || grossWeek > bestWeek) bestWeek = grossWeek;
-    // Streak = weeks that beat the (net-basis) target, delivered-only — not committed
+    // Streak = weeks that beat the target, delivered-only — not committed
     // (a booked-then-cancelled load must not extend a record).
-    statuses.push(classify(getWeekEarnedGross(loads, ws, we), targets));
+    statuses.push(classify(getWeekGrossEarned(loads, ws, we), targets));
   }
 
   // Gross per month across the range (1 for a month, 3 for a quarter, 12 for a

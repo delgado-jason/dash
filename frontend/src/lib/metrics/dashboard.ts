@@ -4,6 +4,11 @@ import { loadNetRevenue, loadGross } from "./rateTargets";
 import { detentionOwed, detentionMinutes } from "@/lib/detention";
 import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
 import { median } from "./stats";
+import { localToday, anchorDay } from "./today";
+
+// Every clock here is the operator's LOCAL day, anchored (today.ts), handed in
+// as `now` — callers on a page pass useLocalToday() so the figures roll at
+// midnight; the default serves anything that still calls without one.
 
 // Revenue = the owner-op's NET take (their company gross), via loadRevenue —
 // so every dashboard tile reflects money kept, not the full pre-cut rate.
@@ -13,10 +18,9 @@ const getLoadRevenue = (loads: Load[] | null): number | null => {
 };
 
 // ---- GET REVENUE MTD ----
-export const getRevenueMTD = (loads: Load[]): number | null => {
-  const currentDate = Date.now();
-  const currentYear = new Date(currentDate).getUTCFullYear();
-  const currentMonth = new Date(currentDate).getUTCMonth();
+export const getRevenueMTD = (loads: Load[], now: Date = localToday()): number | null => {
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth();
 
   // Filter loads
   const filteredLoads = loads.filter(
@@ -33,8 +37,7 @@ export const getRevenueMTD = (loads: Load[]): number | null => {
 };
 
 // ---- GET LAST MONTHS REVENUE ----
-export const getRevenueLastMonth = (loads: Load[]): number | null => {
-  const now = new Date(Date.now());
+export const getRevenueLastMonth = (loads: Load[], now: Date = localToday()): number | null => {
   // First of last month in UTC. Deriving the (year, month) pair this way handles
   // the January → December rollover — `now.getUTCMonth() - 1` alone is -1 every
   // January, which no month matches, so last-month revenue read empty and the
@@ -57,9 +60,7 @@ export const getRevenueLastMonth = (loads: Load[]): number | null => {
 };
 
 // ---- GET REVENUE YTD ----
-export const getRevenueYTD = (loads: Load[]): number | null => {
-  const now = new Date();
-
+export const getRevenueYTD = (loads: Load[], now: Date = localToday()): number | null => {
   const filteredLoads = loads.filter(
     (load) =>
       load.delivery_date &&
@@ -135,8 +136,8 @@ const deadheadForWindow = (
 export const getMonthlyDeadhead = (
   loads: Load[],
   trips: Trip[],
+  now: Date = localToday(),
 ): MonthlyDeadhead => {
-  const now = new Date(Date.now());
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
 
@@ -225,8 +226,7 @@ const getMonthKey = (isoDate: string): string => {
 };
 
 // ---- BUILD CONTINUOUS MONTH RANGE ---- (ending at current month, going back N months)
-const buildMonthRange = (monthsBack: number): string[] => {
-  const now = new Date();
+const buildMonthRange = (monthsBack: number, now: Date = localToday()): string[] => {
   const keys: string[] = [];
   for (let i = monthsBack - 1; i >= 0; i--) {
     // step back i months from the current UTC month
@@ -244,6 +244,7 @@ const buildMonthRange = (monthsBack: number): string[] => {
 export const getMonthlyRevenue = (
   loads: Load[],
   monthsBack: number = 12,
+  now: Date = localToday(),
 ): { month: string; revenue: number }[] => {
   const delivered = loads.filter(
     (load) => load.load_status === "delivered" && load.delivery_date,
@@ -257,7 +258,7 @@ export const getMonthlyRevenue = (
   }
 
   // Walk the continuous range; months with no loads → 0
-  return buildMonthRange(monthsBack).map((month) => ({
+  return buildMonthRange(monthsBack, now).map((month) => ({
     month,
     revenue: buckets[month] ? (getLoadRevenue(buckets[month]) ?? 0) : 0,
   }));
@@ -267,6 +268,7 @@ export const getMonthlyRevenue = (
 export const getMonthlyRPM = (
   loads: Load[],
   monthsBack: number = 12,
+  now: Date = localToday(),
 ): { month: string; rpm: number | null }[] => {
   const delivered = loads.filter(
     (load) => load.load_status === "delivered" && load.delivery_date,
@@ -278,7 +280,7 @@ export const getMonthlyRPM = (
     (buckets[key] ??= []).push(load);
   }
 
-  return buildMonthRange(monthsBack).map((month) => {
+  return buildMonthRange(monthsBack, now).map((month) => {
     const monthLoads = buckets[month];
     if (!monthLoads) return { month, rpm: null }; // no data → null (gap in line)
 
@@ -328,9 +330,11 @@ export const getOutstandingSummary = (
 };
 
 // ---- GET OUTSTANDING LOADS ---- (delivered + unpaid/invoiced, aged from delivery, oldest first)
-export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
+// Aged in whole calendar days, day key to day key — a delivery stamped with a
+// clock time can't shave a day off against the anchored local day.
+export const getOutstandingLoads = (loads: Load[], today: Date = localToday()): OutstandingLoad[] => {
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
-  const now = Date.now();
+  const now = anchorDay(today.toISOString()).getTime();
 
   const outstanding = loads.filter(
     (load) =>
@@ -342,7 +346,7 @@ export const getOutstandingLoads = (loads: Load[]): OutstandingLoad[] => {
 
   return outstanding
     .map((load) => {
-      const deliveredTime = new Date(load.delivery_date as string).getTime();
+      const deliveredTime = anchorDay(String(load.delivery_date)).getTime();
       const daysOutstanding = Math.floor((now - deliveredTime) / MS_PER_DAY);
       return {
         load_id: load.load_id,
@@ -361,8 +365,7 @@ export interface MonthlyLoadCount {
   lastMonth: number;
 }
 
-export const getLoadsMonthly = (loads: Load[]): MonthlyLoadCount => {
-  const now = new Date(Date.now());
+export const getLoadsMonthly = (loads: Load[], now: Date = localToday()): MonthlyLoadCount => {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
   const prev = new Date(Date.UTC(year, month - 1, 1)); // handles Jan → Dec

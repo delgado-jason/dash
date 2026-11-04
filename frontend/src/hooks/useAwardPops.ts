@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { FuelEntry } from "@/types/fuelEntry";
@@ -16,6 +16,8 @@ import { getDrivers } from "@/services/driversService";
 import { getTrophies } from "@/services/trophyService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import { getMonthlyFinancials, type MonthlyFinancialRow } from "@/services/cashflowService";
+import { localToday } from "@/lib/metrics/today";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { computeGrind } from "@/lib/metrics/grind";
 import { marginGoalFrom } from "@/lib/constants/targets";
@@ -82,8 +84,11 @@ export const useAwardPops = (
     trophies: Trophy[];
     drivers: Driver[];
     schedule: SettlementSchedule | null;
+    financials: MonthlyFinancialRow[]; // the QBO archive — the Strong Season medal reads the graded margin
   } | null>(null);
-  const [done, setDone] = useState(false);
+  // Runs once per mount, once the data is in — a ref, not state, so the effect
+  // never sets state synchronously (the React Compiler lint, 2026-11-04).
+  const doneRef = useRef(false);
 
   useEffect(() => {
     Promise.all([
@@ -95,18 +100,19 @@ export const useAwardPops = (
       getTrophies(),
       getDrivers(),
       getSettlementSchedule().catch(() => null),
+      getMonthlyFinancials().catch(() => [] as MonthlyFinancialRow[]),
     ])
-      .then(([periods, fuel, trucks, trips, obligations, trophies, drivers, schedule]) =>
-        setData({ periods, fuel, trucks, trips, obligations, trophies, drivers, schedule }),
+      .then(([periods, fuel, trucks, trips, obligations, trophies, drivers, schedule, financials]) =>
+        setData({ periods, fuel, trucks, trips, obligations, trophies, drivers, schedule, financials }),
       )
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!data || loads.length === 0 || done) return;
-    setDone(true);
+    if (!data || loads.length === 0 || doneRef.current) return;
+    doneRef.current = true;
 
-    const now = new Date();
+    const now = localToday(); // the local day, anchored — the same clock every page reads
     const lifetimeMiles = Math.max(
       0,
       ...data.trucks.map((t) => Number(t.current_odometer) || 0),
@@ -116,7 +122,7 @@ export const useAwardPops = (
     // Break-even excludes owner draws AND on-P&L bills (those already sit in
     // operating cost) — same rule as monthlyObligationCost, kept in one place.
     const obligationsDebtMonthly = monthlyObligationCost(data.obligations);
-    const grind = computeGrind(loads, data.periods, obligationsDebtMonthly, now, marginGoalFrom(data.schedule));
+    const grind = computeGrind(loads, data.periods, obligationsDebtMonthly, data.schedule, now);
     const truckLoan = assetLoanStatus(data.obligations, "truck", now);
     const trailerLoan = assetLoanStatus(data.obligations, "trailer", now);
     const paidPcts = [truckLoan?.ownedPct, trailerLoan?.ownedPct].filter(
@@ -134,6 +140,7 @@ export const useAwardPops = (
       marginGoal: marginGoalFrom(data.schedule),
       streak: grind.currentStreak,
       loanPaidPct,
+      financials: data.financials,
       now,
     });
 
@@ -169,9 +176,11 @@ export const useAwardPops = (
     const fresh = newAwards(earned, new Set(store.seen));
     if (fresh.length > 0) {
       write(userId, { baselined: true, seen: [...new Set([...store.seen, ...currentIds])] });
-      setPops(fresh);
+      // The celebration fires a tick after the commit, never synchronously
+      // inside the effect (the React Compiler lint, 2026-11-04).
+      queueMicrotask(() => setPops(fresh));
     }
-  }, [data, loads, done]);
+  }, [data, loads]);
 
   const truckAvatarUrl = data?.trucks.find((t) => t.avatar_url)?.avatar_url ?? null;
   return { pops, truckAvatarUrl };

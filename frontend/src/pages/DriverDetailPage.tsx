@@ -13,9 +13,11 @@ import { getTrucks } from "@/services/trucksService";
 import { getPerDiemDays } from "@/services/perDiemService";
 import type { PerDiemDay } from "@/types/perDiem";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { getMonthlyFinancials } from "@/services/cashflowService";
 import type { MonthlyFinancialRow } from "@/services/cashflowService";
-import { qboPretaxMargin } from "@/lib/metrics/cashflow";
+import { useLocalToday } from "@/hooks/useLocalToday";
+import { localToday } from "@/lib/metrics/today";
 import { hometimeStatus } from "@/lib/metrics/hometime";
 import { lastHomeDay } from "@/lib/metrics/fleet";
 import { useLoads } from "@/hooks/useLoads";
@@ -29,23 +31,16 @@ import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate, money } from "@/lib/format";
 import {
-  getCostBasis,
-  getRateLadder,
+  computeRateTargets,
   loadNetRevenue,
   monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
-import {
-  RATE_TIERS,
-  MARGIN_GOAL,
-  tiersFrom,
-  marginGoalFrom,
-  type RateTiers,
-} from "@/lib/constants/targets";
+import { MARGIN_GOAL, marginGoalFrom } from "@/lib/constants/targets";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import {
   careerRank,
   getSeasonStats,
-  marginGrade,
+  gradedMargin,
   rpmGrade,
   utilizationGrade,
   personalBests,
@@ -89,8 +84,12 @@ const DriverDetailPage = () => {
   const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
   const [hometimeThreshold, setHometimeThreshold] = useState(21);
   const [operation, setOperation] = useState("flatbed");
-  const [tiers, setTiers] = useState<RateTiers>(RATE_TIERS);
+  // The schedule itself rides along: the one basis (computeRateTargets) reads
+  // the tiers, the keep and the margin goal off it (2026-11-04).
+  const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
   const [marginGoal, setMarginGoal] = useState(MARGIN_GOAL);
+  // The operator's local day, anchored, rolling at midnight (call 13).
+  const now = useLocalToday();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +111,7 @@ const DriverDetailPage = () => {
     getMonthlyFinancials().then(setFinancials).catch(() => {});
     // This + last year of marks — same window the Fleet tab reads, so both
     // hometime chips run the identical (post-flip) lastHomeDay math.
-    const yr = new Date().getUTCFullYear();
+    const yr = localToday().getUTCFullYear();
     Promise.all([getPerDiemDays(yr), getPerDiemDays(yr - 1).catch(() => [])])
       .then(([a, b]) => setPerDiemDays([...a, ...b]))
       .catch(() => {});
@@ -120,7 +119,7 @@ const DriverDetailPage = () => {
       .then((s) => {
         setHometimeThreshold(s.hometime_threshold_days);
         setOperation(s.operation);
-        setTiers(tiersFrom(s));
+        setSchedule(s);
         setMarginGoal(marginGoalFrom(s));
       })
       .catch(() => {});
@@ -150,7 +149,6 @@ const DriverDetailPage = () => {
   // dispatch-only driver (e.g. Brandie) keeps the plain page.
   const card = useMemo(() => {
     if (driverLoads.length === 0) return null;
-    const now = new Date();
     // Active DEBT obligations (owner draws and on-P&L bills excluded) drive
     // break-even/rate and subtract from True Net — one rule, one helper.
     const obligationsDebt = monthlyObligationCost(obligations);
@@ -160,21 +158,22 @@ const DriverDetailPage = () => {
       maxFuelOdometer(fuel) ?? 0,
       ...driverLoads.map((l) => Number(l.odometer_end) || 0),
     );
-    const basis = getCostBasis(periods, obligationsDebt, driverLoads, now);
-    const ladder = getRateLadder(basis.breakEvenRpm, tiers);
+    // ONE basis (2026-11-04, §5 / call 12): the same computeRateTargets the
+    // Dashboard, the Market and Score a Load stand on — six months, the keep
+    // measured from the window's own loads. The card used to blend three
+    // months of its own.
+    const t = computeRateTargets(driverLoads, periods, obligationsDebt, schedule, now);
+    const basis = t.basis;
     const season = getSeasonStats(periods, driverLoads, driverTrips, now, obligationsDebt);
-    const rpmG = rpmGrade(basis.windowRpm, ladder);
-    // The margin LEVER grades the QBO pretax margin (last ≤3 closed months —
-    // accountant-grade books, depreciation included) when the archive has
-    // data; the app's season estimate is only a labeled fallback. Award
-    // criteria (seasonStrong below) stay on the app's own season math — every
-    // other award grades app data, and a QBO import must not re-fire medals.
-    const appMarginG = marginGrade(season.netMargin, marginGoal);
-    const qbo = qboPretaxMargin(financials, now);
-    const leverMarginValue = qbo?.margin ?? season.netMargin;
-    const marginG = qbo ? marginGrade(qbo.margin, marginGoal) : appMarginG;
-    const marginLabel = qbo ? "Pretax margin" : "Op margin";
-    const marginBasis = qbo ? `QBO · ${qbo.label}` : "app est. · this season";
+    // The RATE lever grades what you BOOK — gross $/driven mile against the
+    // booking ladder — the same number and ladder as the Dashboard's "Rate vs
+    // your floor" (gross $/driven mile for pricing; net $/loaded only where
+    // labelled). It used to grade net $/loaded against a net ladder.
+    const rpmG = rpmGrade(t.grossRate, t.bookingLadder);
+    // ONE margin on this page: the lever and the Strong Season medal read the
+    // same graded margin (QBO pretax when the archive has closed months, else
+    // the app's season estimate, labelled).
+    const margin = gradedMargin(financials, season, now, marginGoal);
     // Driver utilization (days-based) — under-load days ÷ days since first load.
     const nowKey = now.toISOString().slice(0, 10);
     const winStart = firstDeliveredPickup(driverLoads);
@@ -192,7 +191,7 @@ const DriverDetailPage = () => {
       winDays > 0
         ? Math.min(1, underLoadDaySet(driverLoads, winStart, nowKey).size / winDays)
         : null;
-    const grind = computeGrind(driverLoads, periods, obligationsDebt, now, marginGoal);
+    const grind = computeGrind(driverLoads, periods, obligationsDebt, schedule, now);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => l.load_status === "delivered");
     const paidPcts = [
@@ -207,21 +206,21 @@ const DriverDetailPage = () => {
       cumulativeNet: del.reduce((s, l) => s + loadNetRevenue(l), 0),
       streak: grind.currentStreak,
       loanPaidPct: paidPcts.length ? Math.max(...paidPcts) : null,
-      seasonStrong: appMarginG === "strong", // award criterion — app math, always
+      seasonStrong: margin.grade === "strong", // the lever's own margin — one definition
     });
     return {
       rank: careerRank(lifetimeMiles),
       season,
       pace: getQuarterPace(driverLoads, now),
       rpmGrade: rpmG,
-      marginGrade: marginG,
-      marginValue: leverMarginValue,
-      marginLabel,
-      marginBasis,
-      rateBasis: basis.windowLabel ? `cash · ${basis.windowLabel}` : null,
+      marginGrade: margin.grade,
+      marginValue: margin.value,
+      marginLabel: margin.label,
+      marginBasis: margin.basis,
+      rateBasis: basis.windowLabel ? `gross $/driven mi · ${basis.windowLabel}` : null,
       utilization,
       utilGrade: utilizationGrade(utilization),
-      windowRpm: basis.windowRpm,
+      windowRpm: t.grossRate,
       medals: earnedMedals(medals),
       allMedals: medals,
       coverage: monthCoverage(periods, obligationsDebt, driverLoads, now),
@@ -250,7 +249,7 @@ const DriverDetailPage = () => {
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, tiers, marginGoal, financials]);
+  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, schedule, marginGoal, financials, now]);
 
   // Hometime status for the (owner-op) driver — computed CLIENT-side with the
   // same flipped lastHomeDay the Fleet tab uses (post-2026-08-18 an unmarked
@@ -261,9 +260,9 @@ const DriverDetailPage = () => {
     const travelDays = perDiemDays
       .filter((d) => d.status === "full" || d.status === "half")
       .map((d) => d.day);
-    const lastHome = lastHomeDay(loads ?? [], homeDays, travelDays, new Date());
-    return hometimeStatus(lastHome, hometimeThreshold, new Date());
-  }, [perDiemDays, loads, hometimeThreshold]);
+    const lastHome = lastHomeDay(loads ?? [], homeDays, travelDays, now);
+    return hometimeStatus(lastHome, hometimeThreshold, now);
+  }, [perDiemDays, loads, hometimeThreshold, now]);
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!driver) return;
@@ -312,7 +311,7 @@ const DriverDetailPage = () => {
   );
 
   // CDL clock — local calendar days until expiration; hot inside 60.
-  const todayKey = new Date().toLocaleDateString("en-CA");
+  const todayKey = now.toISOString().slice(0, 10); // anchored → the local day
   const cdlDays = driver.cdl_expiration
     ? Math.round(
         (Date.parse(`${driver.cdl_expiration}T00:00:00Z`) -

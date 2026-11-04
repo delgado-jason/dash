@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { careerRank } from "@/lib/metrics/playerCard";
 import { useGrind } from "@/hooks/useGrind";
+import { useLocalTodayKey } from "@/hooks/useLocalToday";
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 
@@ -37,7 +38,11 @@ export const OpsStatusbar = ({
   trips: Trip[];
   targets: Targets;
 }) => {
-  const now = useMemo(() => new Date(), []);
+  // The local day as a LOCAL-noon Date — formatted local below (never an
+  // anchored UTC midnight through local getters) — re-made when the day turns
+  // so a tab left open says the new day at midnight (call 13).
+  const todayKey = useLocalTodayKey();
+  const now = useMemo(() => new Date(`${todayKey}T12:00:00`), [todayKey]);
   const grind = useGrind(loads);
   const streak = grind?.currentStreak ?? 0;
 

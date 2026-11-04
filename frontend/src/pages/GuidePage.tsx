@@ -594,13 +594,22 @@ const GuidePage = () => {
             <p className="text-sm text-muted-text mb-3">
               The dashboard is split into tabs, each answering one question at a
               glance. Pick a tab and it stays put — dash remembers where you left
-              off next time you open it.
+              off next time you open it. Every day boundary here and on the
+              driver card is <span className="text-light">your local day</span>,
+              and it rolls at midnight — a tab left open overnight shows the new
+              day without a reload (it used to flip to tomorrow at 6 pm
+              Central).
             </p>
             <div className="flex flex-col gap-2.5">
               <TabLine name="Pulse" q="How's my day going?">
                 This pay week's earnings vs your target — with overdrive room past
-                the target and your best week marked on the chart — your booking
-                rate against your floor, and the Next rail: your next delivery,
+                the target and your best week marked on the chart. Your best week
+                is the best completed pay week you have ever hauled, at gross —
+                the one number the driver card's TOP WEEK and the recap show
+                too — and HEAT below grades every pay week, in gross, against
+                this same target and floor (six months of P&amp;L, divided by
+                your keep). Then your booking rate against your floor, and the
+                Next rail: your next delivery,
                 pickup, settlement day, and maintenance/compliance clocks in one
                 list. The two most urgent alerts show, the rest fold behind a tap.
               </TabLine>
@@ -608,7 +617,10 @@ const GuidePage = () => {
                 Year-to-date income and two margins — operating, and your
                 after-notes (owner's take) margin, which is the one graded
                 against your goal since it's what's actually left after the truck,
-                trailer, and loan notes. Plus the monthly P&amp;L, the margin
+                trailer, and loan notes; the monthly bars and the best month read
+                that same after-notes margin. Covering the month measures income
+                against the mean of the same six P&amp;L months the Market and
+                Expenses price on. Plus the monthly P&amp;L, the margin
                 trend, where the money goes by category, your realized profit per
                 mile, and the notes tracker — how much of this month's notes are
                 covered and the day you're on pace to clear them. (Delivered-but-
@@ -2024,8 +2036,10 @@ const GuidePage = () => {
               <span className="text-light">
                 Below → Minimum → Target → Strong
               </span>
-              : <span className="text-light">Rate</span> against your break-even
-              ladder, <span className="text-light">Utilization</span> against
+              : <span className="text-light">Rate</span> — your gross rate per
+              driven mile — against the booking ladder, the same number and the
+              same ladder as the Dashboard's "Rate vs your floor" (six months of
+              P&amp;L, divided by your keep), <span className="text-light">Utilization</span> against
               the 70/80/85% benchmark, and{" "}
               <span className="text-light">Pretax margin</span> against bands
               that ride your <span className="text-light">margin goal</span>{" "}
@@ -2037,7 +2051,9 @@ const GuidePage = () => {
               closed months on the Cash Flow archive, depreciation included),
               because the accountant-grade number is the one to trust. The tile
               names its basis; until the archive has months it falls back to
-              the app's season estimate, labeled. They mask each other — a
+              the app's season estimate, labeled. The Strong Season medal and
+              the Trophy Hall read this same graded margin, so a medal can never
+              say strong while the lever says below. They mask each other — a
               great rate with the truck sitting still nets mediocre — so the
               card names whichever is lagging and what to do about it. When all
               three reach Target, it reads{" "}

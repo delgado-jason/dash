@@ -37,6 +37,10 @@ const HISTORY = [
 describe("monthCoverage", () => {
   it("builds the threshold from the mean of complete months, notes as the last slice", () => {
     const c = monthCoverage(HISTORY, NOTES, [], NOW);
+    // The same six-month window the Market and Expenses price on (call 12) — three of the six are filed here.
+    expect(c.monthsWanted).toBe(6);
+    expect(c.monthsInMean).toBe(3);
+    expect(c.windowLabel).toBe("May–Jul ’26");
     expect(c.threshold).toBe(16000);
     expect(c.opEx).toBe(12000);
     expect(c.notes).toBe(NOTES);

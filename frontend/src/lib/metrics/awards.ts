@@ -11,9 +11,10 @@ import type { FuelEntry } from "@/types/fuelEntry";
 import {
   careerRank,
   getSeasonStats,
-  marginGrade,
+  gradedMargin,
   personalBests,
 } from "./playerCard";
+import type { FinancialMonth } from "./cashflow";
 import { resolvePeriod, loadsInRange, type RecapScope } from "./recap";
 import { loadNetRevenue, loadGross } from "./rateTargets";
 import { computePatches } from "@/lib/awards/patches";
@@ -51,6 +52,10 @@ export interface AwardInputs {
   // MARGIN_GOAL seed (26%), NOT the user's setting: always pass it when loadable.
   streak?: number; // grind streak (weeks beating target)
   loanPaidPct?: number | null; // best % paid across tracked loans — Debt Crusher medal
+  // The QBO monthly archive — the Strong Season medal reads THE graded margin
+  // (gradedMargin: QBO pretax when the archive has closed months, else the app
+  // estimate), the same number the player card's lever shows (2026-11-04).
+  financials?: FinancialMonth[];
   now: Date;
 }
 
@@ -94,7 +99,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
     cumulativeNet: del.reduce((s, l) => s + loadNetRevenue(l), 0),
     streak: i.streak ?? 0,
     loanPaidPct: i.loanPaidPct ?? null,
-    seasonStrong: marginGrade(season.netMargin, i.marginGoal) === "strong",
+    seasonStrong: gradedMargin(i.financials ?? [], season, i.now, i.marginGoal).grade === "strong",
   });
   for (const m of medals)
     if (m.tier > 0)

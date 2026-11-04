@@ -3,6 +3,7 @@ import type { ExpensePeriod } from "@/types/expense";
 // NET loadRevenue (post-carrier-cut) — the MTD estimate must be the money-kept
 // basis the P&L income line uses and the true-cost threshold is measured on.
 import { getCostBasis, loadNetRevenue } from "./rateTargets";
+import { BASIS_MONTHS } from "@/lib/constants/targets";
 
 // THE month metric (Jason, 2026-08-10): "one load will cover my notes — what I
 // really need to track is covering my monthly expense threshold, and whether I
@@ -27,6 +28,8 @@ export interface MonthCoverage {
   short: number | null; // threshold − income, until then
   coverDay: number | null; // straight-line day-of-month income reaches the threshold
   monthsInMean: number; // complete P&L months feeding the estimate
+  monthsWanted: number; // the window asked for (BASIS_MONTHS) — the same six the Market and Expenses stand on
+  windowLabel: string | null; // "May–Oct ’26" — the months the mean actually covers
 }
 
 export const monthCoverage = (
@@ -41,8 +44,10 @@ export const monthCoverage = (
   });
   const nowKey = now.toISOString().slice(0, 7);
 
-  // The threshold — mean monthly true cost, notes included, from the cost basis.
-  const basis = getCostBasis(periods, obligationsMonthly, loads, now);
+  // The threshold — mean monthly true cost, notes included, from the cost
+  // basis on the SAME six-month window every other surface prices on (call 12,
+  // 2026-11-04; the three-month default had this $923/mo above the Market's).
+  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS);
   const threshold = basis.trueMonthlyCost;
   const opEx = threshold != null ? threshold - obligationsMonthly : null;
 
@@ -91,5 +96,7 @@ export const monthCoverage = (
     short,
     coverDay,
     monthsInMean: basis.months,
+    monthsWanted: BASIS_MONTHS,
+    windowLabel: basis.windowLabel,
   };
 };

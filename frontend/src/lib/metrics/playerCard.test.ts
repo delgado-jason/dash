@@ -12,6 +12,8 @@ import {
   allLeversOnTarget,
   getSeasonStats,
   personalBests,
+  gradedMargin,
+  type SeasonStats,
   earnedTrophies,
 } from "./playerCard";
 
@@ -216,8 +218,10 @@ describe("personalBests", () => {
       mkLoad({ load_id: "b", delivery_date: "2026-06-15", linehaul: "2600", loaded_miles: 800, odometer_start: 572000, odometer_end: 573100 }),
     ];
     const pb = personalBests(loads, fuel, NOW);
-    expect(pb.bestWeekRevenue).toBeCloseTo(4200, 2);
-    expect(pb.mostLoadsInWeek).toBe(2);
+    // PAY weeks (Wed→Tue) since 2026-11-04: Tue May 12 closes the week May 6–12 on its own (3,200);
+    // Wed May 13 opens the next. Monday weeks used to put a and c together at 4,200 / 2 loads.
+    expect(pb.bestWeekRevenue).toBeCloseTo(3200, 2);
+    expect(pb.mostLoadsInWeek).toBe(1);
     expect(pb.biggestLoad).toBeCloseTo(3200, 2);
     expect(pb.bestMpg).toBeCloseTo(6.483, 2);
   });
@@ -236,5 +240,29 @@ describe("earnedTrophies", () => {
     expect(keys).toContain("strong-season");
     expect(keys).toContain("feather-foot");
     expect(t.find((x) => x.key === "mileclub")?.name).toBe("500K Club");
+  });
+});
+
+describe("gradedMargin — one margin per page (2026-11-04, §5)", () => {
+  const season = { netMargin: 0.31, label: "Apr–Jun 2026" } as unknown as SeasonStats;
+  const fin = (month: string, income: number, ni: number) => ({ month, total_income: income, net_income: ni, ending_cash: 0 });
+
+  it("reads the QBO pretax margin over the closed months when the archive has them, and names it", () => {
+    const g = gradedMargin([fin("2026-04-01", 20000, 1000), fin("2026-05-01", 20000, 1000), fin("2026-06-01", 20000, 1000), fin("2026-07-01", 999999, 999999)], season, NOW, 0.26);
+    expect(g.source).toBe("qbo");
+    expect(g.value).toBeCloseTo(0.05, 6); // 3,000 / 60,000 — July is the running month and never counts
+    expect(g.grade).toBe("below");
+    expect(g.label).toBe("Pretax margin");
+    expect(g.basis).toBe("QBO · Apr–Jun ’26");
+  });
+
+  it("falls back to the app's season estimate, labelled as the estimate it is", () => {
+    const g = gradedMargin([], season, NOW, 0.26);
+    expect(g).toMatchObject({ source: "app", value: 0.31, grade: "strong", label: "Op margin", basis: "app est. · Apr–Jun 2026" });
+  });
+
+  it("the medal and the lever cannot disagree: both read the same grade", () => {
+    expect(gradedMargin([], season, NOW, 0.26).grade).toBe("strong");
+    expect(gradedMargin([], { ...season, netMargin: 0.2 } as unknown as SeasonStats, NOW, 0.26).grade).toBe("below");
   });
 });

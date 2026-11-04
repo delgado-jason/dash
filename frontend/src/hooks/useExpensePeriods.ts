@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { localToday } from "@/lib/metrics/today";
 import type { ExpensePeriod, CategorySpend } from "@/types/expense";
 import {
   getExpensePeriods,
@@ -16,7 +17,7 @@ export const useExpensePeriods = () => {
 
   useEffect(() => {
     let alive = true;
-    const year = new Date().getUTCFullYear();
+    const year = localToday().getUTCFullYear(); // the operator's local year, not UTC's
     (async () => {
       try {
         const [list, cats] = await Promise.all([

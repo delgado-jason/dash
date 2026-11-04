@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import { useExpensePeriods } from "@/hooks/useExpensePeriods";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { topCategoriesWithOther } from "@/lib/metrics/expenses";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { ForgedPlate } from "@/components/ui/ForgedPlate";
@@ -54,7 +55,8 @@ export const MoneyTab = ({
   obligationsMonthly: number; // active, non-draw monthly notes (principal) — interest is already in the P&L
 }) => {
   const { periods, categoriesYTD, loading } = useExpensePeriods();
-  const now = useMemo(() => new Date(), []);
+  // The operator's local day, anchored, rolling at midnight (call 13).
+  const now = useLocalToday();
   const year = now.getUTCFullYear();
 
   // Two margins per month: OPERATING (income − COGS − expenses; interest lives in
@@ -91,8 +93,11 @@ export const MoneyTab = ({
   // After-notes: subtract the monthly note once per P&L month in the window.
   const ytdCashMargin =
     ytdIncome > 0 ? (ytdProfit - obligationsMonthly * ytd.length) / ytdIncome : null;
+  // ONE margin on this tab (2026-11-04, §5): after notes — the one the goal
+  // grades. The best month, the bars and the tile all read it; the operating
+  // margin stays beside it as a named figure, never graded.
   const best = ytd.reduce<(typeof ytd)[number] | null>(
-    (b, r) => (!b || r.margin > b.margin ? r : b),
+    (b, r) => (!b || r.cashMargin > b.cashMargin ? r : b),
     null,
   );
 
@@ -291,7 +296,7 @@ export const MoneyTab = ({
                 ) : (
                   <>
                     <b className="text-ink">{money(cov.short ?? 0)}</b> short of the{" "}
-                    {money(cov.threshold ?? 0)} month
+                    {money(cov.threshold ?? 0)} month{cov.windowLabel ? ` (the ${cov.windowLabel} mean)` : ""}
                     {cov.notes > 0 ? (
                       <>
                         {" "}
@@ -324,7 +329,7 @@ export const MoneyTab = ({
                   </span>
                   <span className="font-condensed font-semibold text-[12.5px] text-ink tabular-nums">
                     {monthShort(best.month).toUpperCase()} ·{" "}
-                    {Math.round(best.margin * 100)}% · {money(best.profit)}
+                    {Math.round(best.cashMargin * 100)}% after notes · {money(best.profit)}
                   </span>
                 </span>
               )}
@@ -395,7 +400,7 @@ export const MoneyTab = ({
             Monthly P&amp;L
             <span className="normal-case tracking-normal font-normal text-faint">
               <span style={{ color: "var(--color-plate-a)" }}>■</span> income{" "}
-              <span className="text-chart-amber">■</span> profit kept · margin % below
+              <span className="text-chart-amber">■</span> profit kept · margin after notes % below
             </span>
           </h3>
           <svg viewBox="0 0 620 168" className="w-full">
@@ -435,16 +440,18 @@ export const MoneyTab = ({
                     y={163}
                     // Same bands as every margin grader: red under the goal,
                     // green at goal +5pts (strong) — never a hardcoded 20/30.
+                    // The margin AFTER NOTES, the one the tile grades — the bars
+                    // used to grade the operating margin against the same goal.
                     fill={
-                      r.margin < (marginGoal ?? MARGIN_GOAL)
+                      r.cashMargin < (marginGoal ?? MARGIN_GOAL)
                         ? "var(--color-status-negative-text)"
-                        : r.margin >= (marginGoal ?? MARGIN_GOAL) + 0.05
+                        : r.cashMargin >= (marginGoal ?? MARGIN_GOAL) + 0.05
                           ? "var(--color-status-positive-text)"
                           : "var(--color-dim)"
                     }
                     fontWeight={isNow ? 700 : 400}
                   >
-                    {Math.round(r.margin * 100)}%
+                    {Math.round(r.cashMargin * 100)}%
                   </text>
                 </g>
               );

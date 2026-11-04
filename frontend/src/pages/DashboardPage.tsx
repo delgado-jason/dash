@@ -9,7 +9,7 @@ import { depositForWeek, runningWeekPace, type CashBoardInput, type DepositLine 
 import { deductionBuckets } from "@/lib/metrics/settlements";
 import { payWeekOf } from "@/lib/metrics/payWeeks";
 import { addDays } from "@/lib/metrics/odometer";
-import { dayKey as localDayKey } from "@/lib/perDiem";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import type { SettlementSummary } from "@/types/settlement";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { Link } from "react-router-dom";
@@ -53,6 +53,8 @@ const OwnerDashboard = () => {
     error: tripsError,
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
+  // The operator's local day, anchored, rolling at midnight (call 13).
+  const now = useLocalToday();
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
   // Settlement day drives the "next settlement lands Wed…" beat on Pulse.
   const [settlementDay, setSettlementDay] = useState<number | null>(null);
@@ -78,7 +80,7 @@ const OwnerDashboard = () => {
   // statement day — about $2,688 high and a day early on Nov 4.
   const nextDeposit = useMemo<DepositLine | null>(() => {
     if (settlementDay == null || !assumptions) return null;
-    const today = localDayKey(new Date());
+    const today = now.toISOString().slice(0, 10);
     const cur = payWeekOf(today);
     const prev = { start: addDays(cur.start, -7), end: addDays(cur.end, -7) };
     const raw = assumptions.weekly_fuel_advance;
@@ -92,10 +94,10 @@ const OwnerDashboard = () => {
     };
     const last = depositForWeek(input, prev);
     return last.date >= today ? last : depositForWeek(input, cur);
-  }, [settlementDay, depositLag, assumptions, loads, settlements, fuelEntries]);
+  }, [settlementDay, depositLag, assumptions, loads, settlements, fuelEntries, now]);
   const { pops, truckAvatarUrl } = useAwardPops(loads);
   // The latest FINISHED recap that actually has data — never the in-progress one.
-  const latestRecap = latestRecapWithData(loads, new Date());
+  const latestRecap = latestRecapWithData(loads, now);
   // `?awarddemo` on the dashboard previews the celebration UI on demand.
   const awardDemo = window.location.search.includes("awarddemo");
 
