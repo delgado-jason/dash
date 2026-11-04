@@ -59,6 +59,7 @@ import { loadNetRevenue } from "./rateTargets";
 import { payWeekOf, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
 import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type OdometerReading } from "./odometer";
 import { accrualFlagOf } from "./planStatus";
+import { accrualsByWeek, retrueAccrued, retrueWords, type AccrualRecord } from "./accrualTruth";
 
 export interface CashCheck {
   date: string; // YYYY-MM-DD
@@ -102,6 +103,10 @@ export interface CashBoardInput {
   weeklyRevenueFallback: number; // when nothing is booked into a period yet
   moneyDays: MoneyDayMove[];
   overrides: Record<string, number>; // statement date → deposit
+  // The accruals the snapshots recorded (miles + the week they covered), so a
+  // week that already accrued reads the miles that MOVED and the chain's
+  // afterthoughts ride in one catch-up line (call 8, 2026-11-04).
+  accruals?: AccrualRecord[];
 }
 
 // A dated line. `counted` = it goes into the column's Ops arithmetic.
@@ -150,7 +155,9 @@ export interface DepositLine extends Line {
 
 export interface AccrualLine extends Line {
   miles: number | null;
-  source: "odometer" | "loads" | "projected" | "none";
+  // snapshot = a week that already accrued: the miles a snapshot recorded,
+  // dated the day they moved.
+  source: "odometer" | "loads" | "projected" | "none" | "snapshot";
   words: string | null;
   flag: string | null;
 }
@@ -187,6 +194,10 @@ export interface PeriodColumn {
   deposit: DepositLine; // this period's own, landing after it closes
   payroll: Line;
   accrual: AccrualLine;
+  // Closed weeks re-trued: the miles the chain found after the fact across
+  // every week that already accrued, × $/mile, on the next Friday — in the
+  // column that Friday falls in. Negative when weeks were over-accrued.
+  catchUp?: AccrualLine | null;
   fuel: FuelLine;
   bills: BillLine[];
   billsTotal: number; // counted only
@@ -449,13 +460,24 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   const future = week.start > input.today;
   const odo = weekOdometerMiles(input.readings, week, closed ? undefined : input.today);
   const byLoads = milesInWeeks(input.loads, [week]);
-  const date = nextDow(addDays(week.end, 1), 5); // the Friday after the period closes
+  // A week a snapshot already accrued reads the miles that MOVED, dated the
+  // day they moved — the stored miles win (call 8); whatever the chain says
+  // beyond them rides in the board's catch-up line.
+  const rec = closed && input.accruals ? accrualsByWeek(input.accruals).get(week.start) : undefined;
+  const date = rec ? rec.movedOn : nextDow(addDays(week.end, 1), 5); // else the Friday after the period closes
   const counted = countsMove(date, base);
   let miles: number;
   let source: AccrualLine["source"];
   let words: string;
   const pace = input.milesPaceWeekly ?? null;
-  if (future) {
+  if (rec) {
+    miles = rec.stored;
+    source = "snapshot";
+    const chainNow = odo.miles == null ? `${fmtMiles(byLoads.miles)} by loads` : fmtMiles(odo.miles);
+    words = rec.own
+      ? `${fmtMiles(rec.stored)} mi moved with the ${mdWords(rec.movedOn)} snapshot × $${input.perMile} · the chain now says ${chainNow} — any difference rides in the catch-up`
+      : `accrued with the ${mdWords(rec.movedOn)} snapshot — its miles are booked on that snapshot's own week`;
+  } else if (future) {
     // Nothing has rolled yet: a normal week's miles (the last four that ran),
     // or the loads booked into it if they say more.
     if (pace != null && pace > byLoads.miles) {
@@ -536,6 +558,24 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
   const next = shift(current, 7);
   const prev = shift(current, -7);
 
+  // Closed weeks re-true (call 8): what the chain says today about every week
+  // that already accrued, net of the miles that moved — one catch-up line on
+  // the next Friday, so the Plan's order and this ledger are the same figure.
+  const retrue = input.accruals ? retrueAccrued(input.accruals, input.readings, input.loads, input.today) : null;
+  const catchUpDate = nextDow(input.today, 5);
+  const catchUp: AccrualLine | null =
+    retrue && retrue.deltaMiles !== 0
+      ? {
+          amount: round2(retrue.deltaMiles * input.perMile),
+          date: catchUpDate,
+          counted: true,
+          miles: retrue.deltaMiles,
+          source: "odometer",
+          words: `${retrueWords(retrue)} × $${input.perMile} · rides with the ${mdWords(catchUpDate)} accrual`,
+          flag: null,
+        }
+      : null;
+
   // Everything the previous period(s) still owe after the Ops number — a
   // number older than this Wednesday leaves their later-dated lines in no
   // column otherwise. A period owns lines dated AFTER its last day: its
@@ -585,6 +625,8 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
     const payroll: Line = { amount: input.weeklyPayroll, date: payrollDate, counted: countsOut(payrollDate, base) };
     const bills = billsIn(input.obligations, week, base);
     const moneyDays = moneyDaysIn(input.moneyDays, week, base);
+    // The catch-up lands in the column its Friday falls in.
+    const cu = catchUp && catchUp.date >= week.start && catchUp.date <= week.end ? { ...catchUp, counted: countsMove(catchUp.date, base) } : null;
     // Last period's deposit lands on the Thursday inside the current period.
     const prevDeposit = key === "current" ? depositForWeek(input, prev, base) : null;
     const prevIn = prevDeposit && prevDeposit.date >= week.start && prevDeposit.date <= week.end ? prevDeposit : null;
@@ -597,6 +639,7 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
       if (deposit.counted) ending += deposit.amount;
       if (payroll.counted) ending -= payroll.amount;
       if (accrual.counted) ending -= accrual.amount;
+      if (cu?.counted) ending -= cu.amount;
       if (fuel.leftover.counted) ending += fuel.leftover.amount;
       for (const b of bills) if (b.counted) ending -= b.amount;
       for (const m of moneyDays) if (m.counted) ending -= m.amount;
@@ -605,7 +648,7 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
     return {
       key, week, state: week.start > input.today ? "future" : "open", opening,
       since: key === "current" ? since : [],
-      prevDeposit: prevIn, deposit, payroll, accrual, fuel, bills,
+      prevDeposit: prevIn, deposit, payroll, accrual, catchUp: cu, fuel, bills,
       billsTotal: round2(bills.filter((b) => b.counted).reduce((s, b) => s + b.amount, 0)),
       moneyDays, ending,
     };
@@ -639,6 +682,7 @@ export const lowestDay = (base: CashCheck, columns: PeriodColumn[], today: strin
     push(c.deposit, 1);
     push(c.payroll, -1);
     push(c.accrual, -1);
+    push(c.catchUp ?? null, -1);
     push(c.fuel.leftover, 1);
     for (const b of c.bills) push(b, -1);
     for (const m of c.moneyDays) push({ amount: m.amount, date: m.date, counted: m.counted }, -1);

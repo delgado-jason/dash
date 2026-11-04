@@ -76,6 +76,12 @@ export interface AccrualInput {
   endSlips?: boolean; // the end reading predates the boundary — the miles ride into next week
   backwards?: number; // readings that go backwards inside the span — a typo to fix
   implausibleMiles?: number | null; // a week's delta too big to be real — the too-HIGH typo
+  // ---- closed weeks re-true (Nod Sheet 2026-11-04, call 8): the miles the
+  // odometer chain found after the fact across every week that already
+  // accrued (accrualTruth.ts). They ride into this accrual, once, and `miles`
+  // above already includes them — these two are for the words.
+  catchUpMiles?: number | null; // > 0 never accrued · < 0 over-accrued · null/0 = nothing to re-true
+  catchUpLabel?: string | null; // "Sep 16–Oct 27"
 }
 
 export interface MoneyDayInput {
@@ -573,10 +579,12 @@ export const getPlanStatus = (
   const orders: string[] = [];
   if (accDue != null && ctx.accrual && perMile != null) {
     const m = num(ctx.accrual.miles) ?? 0;
+    const cu = ctx.accrual.catchUpMiles ?? 0;
+    const reTrued = cu !== 0 ? ` · incl. ${cu > 0 ? "+" : "−"}${miles(Math.abs(cu))} mi re-trued, ${ctx.accrual.catchUpLabel ?? "closed weeks"}` : "";
     orders.push(
       ctx.accrualMoved
-        ? `Maintenance accrual ${money(accDue)} (${miles(m)} mi × $${perMile}) — already moved, the balances show it`
-        : `Accrue Maintenance ${money(accDue)} (${miles(m)} mi × $${perMile})`,
+        ? `Maintenance accrual ${money(accDue)} (${miles(m)} mi × $${perMile}${reTrued}) — already moved, the balances show it`
+        : `Accrue Maintenance ${money(accDue)} (${miles(m)} mi × $${perMile}${reTrued})`,
     );
   }
   if (moneyDay) {
@@ -610,4 +618,46 @@ export const getPlanStatus = (
   }
 
   return { accrual: accDue, accrualFlag, opsAfter, verdict, interlock, cushion, waterfall, objectiveIndex, moneyDay, orders };
+};
+
+// ---- the guards that were words (Nod Sheet 2026-11-04, §4 · 5) ----
+
+// A filed month as the page reads it off the Expenses P&L.
+export interface FiledMonth {
+  month: string; // YYYY-MM-01
+  pretax: number;
+  income: number;
+  cogs: number;
+  expenses: number;
+}
+
+// The money day's queue: every filed month under the rules that nobody has
+// settled, oldest first — and never the month still running. A P&L posted
+// mid-month (a partial month) used to open a money day on it; a month can
+// only settle once it has closed.
+export const moneyDayQueue = (
+  filed: FiledMonth[],
+  settled: Set<string>,
+  firstMoneyMonth: string,
+  today: string, // the operator's local day key
+): MoneyDayInput[] => {
+  const running = `${String(today).slice(0, 7)}-01`;
+  return [...filed]
+    .filter((f) => f.month >= firstMoneyMonth && f.month < running && !settled.has(f.month))
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map((f) => ({ month: f.month, pretaxProfit: f.pretax, income: f.income, cogs: f.cogs, expenses: f.expenses }));
+};
+
+// The verdict names its basis (PL-04): the same stamp used to read one way
+// with a money day pending and another without, and said neither. "on the
+// Nov 1 snapshot · after the $878 accrual · October's tax $0".
+export const verdictBasis = (
+  st: PlanStatus,
+  opts: { opsWords: string; accrualMoved?: boolean },
+): string => {
+  const parts = [`on ${opts.opsWords}`];
+  if (st.accrual != null && st.accrual > 0)
+    parts.push(opts.accrualMoved ? `the ${money(st.accrual)} accrual already in it` : `after the ${money(st.accrual)} accrual`);
+  if (st.moneyDay) parts.push(`${st.moneyDay.monthLabel.split(" ")[0]}'s tax ${money(st.moneyDay.tax)}`);
+  return parts.join(" · ");
 };

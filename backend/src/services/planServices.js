@@ -23,7 +23,8 @@ const PLAN_COLS = `plan_id, user_id, label, year, float_line, float_line_home_lo
   to_char(first_money_month, 'YYYY-MM-DD') AS first_money_month`;
 const SNAPSHOT_COLS = `snapshot_id, user_id, to_char(as_of, 'YYYY-MM-DD') AS as_of, note,
   miles, to_char(pay_week_start, 'YYYY-MM-DD') AS pay_week_start,
-  to_char(settles_month, 'YYYY-MM-DD') AS settles_month, created_at`;
+  to_char(settles_month, 'YYYY-MM-DD') AS settles_month,
+  tax_moved, surplus_moved, objective_moved, household_moved, created_at`;
 const STAGE_FIELDS = ["position", "label", "kind", "obligation_id", "target_lo", "target_hi"];
 
 const pick = (data, allowed) => {
@@ -181,8 +182,10 @@ export async function patchAccount(user_id, account_id, data) {
 
 export async function getSnapshots(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
+  // Two snapshots on one day: the one typed later is the latest (2026-11-04 —
+  // ORDER BY as_of alone made "latest" arbitrary).
   const snaps = await db.query(
-    `SELECT ${SNAPSHOT_COLS} FROM public.account_snapshots WHERE user_id = $1 ORDER BY as_of`,
+    `SELECT ${SNAPSHOT_COLS} FROM public.account_snapshots WHERE user_id = $1 ORDER BY as_of, created_at`,
     [user_id],
   );
   const balances = await db.query(
@@ -207,8 +210,9 @@ export async function createSnapshot(user_id, data) {
     if (!b.account_id || b.balance == null || isNaN(Number(b.balance)))
       throw new ValidationError("Every balance needs an account and a number");
   }
-  // The two optional beats (#500): the accrual's miles + pay week, and the
-  // money day's settled month.
+  // The optional beats (#500) and the guards (2026-11-04): the clock on as_of,
+  // the accrual's miles + pay week, the money day's settled month (closed,
+  // never the first Friday) and what it moved (085).
   const extras = normalizeSnapshotExtras(data);
   // One snapshot + its balances land together or not at all.
   const client = await db.pool.connect();
@@ -216,10 +220,14 @@ export async function createSnapshot(user_id, data) {
     await client.query("BEGIN");
     const snap = await client.query(
       `INSERT INTO public.account_snapshots
-         (user_id, as_of, note, miles, pay_week_start, settles_month)
-       VALUES ($1, $2, $3, $4, $5, $6)
+         (user_id, as_of, note, miles, pay_week_start, settles_month,
+          tax_moved, surplus_moved, objective_moved, household_moved)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING ${SNAPSHOT_COLS}`,
-      [user_id, as_of, note ?? null, extras.miles, extras.pay_week_start, extras.settles_month],
+      [
+        user_id, extras.as_of, note ?? null, extras.miles, extras.pay_week_start, extras.settles_month,
+        extras.tax_moved, extras.surplus_moved, extras.objective_moved, extras.household_moved,
+      ],
     );
     for (const b of balances) {
       await client.query(

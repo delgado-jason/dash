@@ -53,6 +53,13 @@ export interface SnapshotRow {
   miles: string | number | null;
   pay_week_start: string | null; // YYYY-MM-DD
   settles_month: string | null; // YYYY-MM-DD, first of the month
+  // What the money day MOVED, kept with the snapshot that ran it (migration
+  // 085, 2026-11-04) so an edited P&L or a changed rate never rewrites a
+  // settled month. null on a plain Friday — and on money days before 085.
+  tax_moved?: string | number | null;
+  surplus_moved?: string | number | null; // the fills + the split, everything that left Ops beyond the tax
+  objective_moved?: string | number | null;
+  household_moved?: string | number | null;
   balances: { account_id: string; balance: string | number }[];
 }
 

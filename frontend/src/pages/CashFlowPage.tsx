@@ -286,14 +286,23 @@ const CashFlowPage = () => {
         null,
       );
       if (!md) continue;
+      // What the day actually moved, when the snapshot kept it (085) — never
+      // re-read off a P&L that may have been edited since. Older money days
+      // (before Nov 4, 2026) kept only the month tag and are recomputed.
+      const stored = s.tax_moved != null ? Number(s.tax_moved) + (numOrNull(s.surplus_moved) ?? 0) : null;
       out.push({
         date: s.as_of.slice(0, 10),
-        amount: md.tax + (md.belowMin ? 0 : md.surplus),
+        amount: stored ?? md.tax + (md.belowMin ? 0 : md.surplus),
         label: `Money day · ${monthName(month)}`,
       });
     }
     return out;
   }, [plan, snapshots, periods, opsAcct, vaultAcct, maintAcct, taxAcct, perMile]);
+  // What each snapshot accrued, for the board's stored-miles rule and the catch-up (call 8).
+  const accruals = useMemo(
+    () => snapshots.map((s) => ({ as_of: s.as_of.slice(0, 10), miles: s.miles, pay_week_start: s.pay_week_start })),
+    [snapshots],
+  );
 
   const board = useMemo(() => {
     if (!assumptions) return null;
@@ -319,10 +328,11 @@ const CashFlowPage = () => {
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
       moneyDays,
       overrides: netPayOverrides,
+      accruals,
     });
   }, [
     assumptions, asOfKey, setlDay, lag, floatLine, checks, loads, settlements,
-    fuelEntries, obligations, readings, perMile, fuelPace, milesPace, buckets, moneyDays, netPayOverrides,
+    fuelEntries, obligations, readings, perMile, fuelPace, milesPace, buckets, moneyDays, netPayOverrides, accruals,
   ]);
 
   const forecast = useMemo(
@@ -525,6 +535,8 @@ const CashFlowPage = () => {
     out.push({ key: "pay", date: c.payroll.date, label: "Payroll", note: `assumption${c.payroll.counted ? "" : inOps}`, amount: -c.payroll.amount, stamp: null, counted: c.payroll.counted, kind: "payroll" });
     if (c.accrual.amount !== 0)
       out.push({ key: "acc", date: c.accrual.date, label: `Accrual · ${weekLabel(c.week)}`, note: `${c.accrual.words ?? ""}${c.accrual.counted ? "" : inOps}`, amount: -c.accrual.amount, stamp: c.accrual.source === "projected" ? "PROJECTED" : null, counted: c.accrual.counted, flag: c.accrual.flag, kind: "accrual" });
+    if (c.catchUp && c.catchUp.amount !== 0)
+      out.push({ key: "catchup", date: c.catchUp.date, label: c.catchUp.amount > 0 ? "Accrual catch-up · closed weeks re-trued" : "Accrual hold-back · closed weeks re-trued", note: `${c.catchUp.words ?? ""}${c.catchUp.counted ? "" : inOps}`, amount: -c.catchUp.amount, stamp: "RE-TRUED", counted: c.catchUp.counted, kind: "accrual" });
     if (c.fuel.advancesSource !== "none") {
       const f = c.fuel;
       const fuelWords =

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { payWeekOf, weeksOwed, milesInWeeks, weekLabel } from "./payWeeks";
+import { payWeekOf, weeksOwed, milesInWeeks, weekLabel, isFirstFriday, monthStartOf } from "./payWeeks";
 
 describe("payWeekOf — Wednesday to Tuesday", () => {
   it("Tue Sep 22 sits in the week of Wed Sep 16", () => {
@@ -94,3 +94,19 @@ describe("milesInWeeks — a TONU's planned miles are not driven miles (2026-11-
   });
 });
 
+
+describe("isFirstFriday / monthStartOf — the month's first Friday is the new month's Friday (2026-11-04)", () => {
+  it("Nov 6, 2026 is the first Friday; Nov 13 is not; Nov 4 (a Wednesday) is not", () => {
+    expect(isFirstFriday("2026-11-06")).toBe(true);
+    expect(isFirstFriday("2026-11-13")).toBe(false);
+    expect(isFirstFriday("2026-11-04")).toBe(false);
+  });
+  it("a Friday on the 7th still counts; the 8th never does", () => {
+    expect(isFirstFriday("2026-08-07")).toBe(true);
+    expect(isFirstFriday("2027-01-08")).toBe(false);
+  });
+  it("slices a timestamp to its day", () => {
+    expect(isFirstFriday("2026-10-02T00:00:00.000Z")).toBe(true);
+    expect(monthStartOf("2026-11-04T12:00:00Z")).toBe("2026-11-01");
+  });
+});
