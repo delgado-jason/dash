@@ -3,6 +3,7 @@ import {
   nextDraftDate,
   expectedPayDate,
   buildForecast,
+  archiveGaps,
   pretaxMargin,
   qboPretaxMargin,
   type FinancialMonth,
@@ -48,14 +49,22 @@ const ASSUMPTIONS: CashAssumptions = {
   financing_floor: "-2318", tax_catchup_owed: "10000",
 };
 
-describe("buildForecast — Jason's Cash Flow sheet, penny-exact", () => {
+// 2026-11-04: the forecast runs on net per RUNNING week (the audit found home
+// time counted twice and a tax refund booked on loss months). With no home
+// weeks in the baseline the figures match Jason's original sheet exactly.
+const W = 52 / 12;
+describe("buildForecast — net per running week, home weeks taken out once", () => {
   const fc = buildForecast(ACTUALS, ASSUMPTIONS, new Map([["2026-11-01", 1]]))!;
+  const weekly = (3877.8 + 4028.87 + 1660.09 + 8218.66 + 2896.27 + 9337.69) / (6 * W);
 
-  it("baseline = average net income of the last 6 actuals", () => {
+  it("baseline = a full running month: Σ net ÷ running weeks × weeks per month — his $5,003.23 when no month held home time", () => {
+    expect(fc.weeklyNet).toBeCloseTo(weekly, 2);
+    expect(fc.runningWeeks).toBeCloseTo(6 * W, 4);
     expect(fc.baseline).toBeCloseTo(5003.23, 2);
+    expect(fc.baselineMonths).toEqual(["2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01"]);
   });
 
-  it("a normal month: his Aug column", () => {
+  it("a normal month: his Aug column, unchanged", () => {
     const aug = fc.months[0];
     expect(aug.month).toBe("2026-08-01");
     expect(aug.beginning).toBeCloseTo(24355.32, 2);
@@ -65,24 +74,51 @@ describe("buildForecast — Jason's Cash Flow sheet, penny-exact", () => {
     expect(aug.ending).toBeCloseTo(27844.51, 2);
   });
 
-  it("the home-time month: November loses a week of revenue", () => {
+  it("the home-time month earns its running weeks, not the month minus a week of gross revenue", () => {
     const nov = fc.months[3];
-    expect(nov.month).toBe("2026-11-01");
     expect(nov.weeksOff).toBe(1);
-    expect(nov.netIncome).toBeCloseTo(356.23, 2);
-    expect(nov.incomeTax).toBeCloseTo(-71.25, 2);
-    expect(nov.netChange).toBeCloseTo(-228.41, 2);
-    expect(nov.ending).toBeCloseTo(34594.5, 2);
+    expect(nov.netIncome).toBeCloseTo(weekly * (W - 1), 2);
+    expect(nov.incomeTax).toBeCloseTo(-(weekly * (W - 1)) * 0.2, 2);
+    expect(nov.ending).toBeCloseTo(fc.months[2].ending + weekly * (W - 1) + 1804.61 - 2318 - weekly * (W - 1) * 0.2, 2);
   });
 
-  it("the chain runs to his Jan 2027 ending", () => {
-    expect(fc.months[5].ending).toBeCloseTo(41572.88, 2);
+  it("a baseline month that held home time is normalized before it sets the pace", () => {
+    const withHome = buildForecast(ACTUALS, ASSUMPTIONS, new Map([["2026-07-01", 2]]))!;
+    expect(withHome.runningWeeks).toBeCloseTo(6 * W - 2, 4);
+    expect(withHome.weeklyNet).toBeGreaterThan(fc.weeklyNet);
+  });
+
+  it("a loss month pays no tax and gets no refund", () => {
+    const losing = ACTUALS.map((m) => ({ ...m, net_income: "-1000" }));
+    const f = buildForecast(losing, ASSUMPTIONS, new Map())!;
+    expect(f.months[0].netIncome).toBeLessThan(0);
+    expect(f.months[0].incomeTax).toBe(-0);
+  });
+
+  it("the current calendar month is never an actual — a mid-month paste can't anchor the chain", () => {
+    const withPartial = [...ACTUALS, { month: "2026-08-01", total_income: "5000", net_income: "900", ending_cash: "25000" }];
+    const f = buildForecast(withPartial, ASSUMPTIONS, new Map(), 6, new Date("2026-08-12T12:00:00Z"))!;
+    expect(f.baselineMonths.at(-1)).toBe("2026-07-01");
+    expect(f.months[0].month).toBe("2026-08-01");
+    expect(f.months[0].beginning).toBeCloseTo(24355.32, 2);
   });
 
   it("returns null with no actuals; averages what exists under 6", () => {
     expect(buildForecast([], ASSUMPTIONS, new Map())).toBeNull();
     const two = buildForecast(ACTUALS.slice(0, 2), ASSUMPTIONS, new Map())!;
     expect(two.baseline).toBeCloseTo((3877.8 + 4028.87) / 2, 2);
+  });
+});
+
+describe("archiveGaps — the chain between months", () => {
+  it("names a month that opens away from the previous ending; a clean chain is empty", () => {
+    const rows = [
+      { month: "2026-08-01", total_income: "1", net_income: "1", beginning_cash: "24355.32", ending_cash: "17206.46" },
+      { month: "2026-09-01", total_income: "1", net_income: "1", beginning_cash: "17774.21", ending_cash: "23482.61" },
+      { month: "2026-10-01", total_income: "1", net_income: "1", beginning_cash: "23482.61", ending_cash: "19056.21" },
+    ];
+    expect(archiveGaps(rows)).toEqual([{ month: "2026-09-01", prevMonth: "2026-08-01", beginning: 17774.21, prevEnding: 17206.46, diff: 567.75 }]);
+    expect(archiveGaps(rows.slice(1))).toEqual([]);
   });
 });
 

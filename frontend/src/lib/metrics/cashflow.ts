@@ -51,6 +51,7 @@ export interface FinancialMonth {
   total_income: string | number;
   net_income: string | number;
   ending_cash: string | number;
+  beginning_cash?: string | number | null; // for the archive's chain check
 }
 
 export interface CashAssumptions {
@@ -79,9 +80,41 @@ export interface ForecastMonth {
 }
 
 export interface Forecast {
-  baseline: number; // avg net income of the last (up to) 6 actuals
+  baseline: number; // a FULL running month's net income (weeklyNet × WEEKS_PER_MONTH)
+  weeklyNet: number; // net income per RUNNING week over the baseline months
+  runningWeeks: number; // the weeks those months actually ran (home weeks taken out)
+  baselineMonths: string[]; // "YYYY-MM-01" of the months in the baseline
   months: ForecastMonth[];
 }
+
+export const WEEKS_PER_MONTH = 52 / 12;
+
+// Where the QBO archive doesn't chain: a month whose beginning cash is not the
+// previous month's ending cash. Each row passes its own ending = beginning +
+// change check on paste; the chain between months was never checked, and the
+// Nov 4 dump had two breaks (Sep opened $567.75 above Aug's ending).
+export interface ArchiveBreak {
+  month: string;
+  prevMonth: string;
+  beginning: number;
+  prevEnding: number;
+  diff: number;
+}
+export const archiveGaps = (actuals: FinancialMonth[]): ArchiveBreak[] => {
+  const sorted = [...actuals].sort((a, b) => (a.month < b.month ? -1 : 1));
+  const out: ArchiveBreak[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const cur = sorted[i];
+    if (cur.beginning_cash == null || cur.beginning_cash === "") continue;
+    if (nextMonthKey(prev.month.slice(0, 10)) !== cur.month.slice(0, 10)) continue; // a gap in months is a different problem
+    const beginning = num(cur.beginning_cash);
+    const prevEnding = num(prev.ending_cash);
+    const diff = Math.round((beginning - prevEnding) * 100) / 100;
+    if (Math.abs(diff) > 0.005) out.push({ month: cur.month.slice(0, 10), prevMonth: prev.month.slice(0, 10), beginning, prevEnding, diff });
+  }
+  return out;
+};
 
 const nextMonthKey = (monthKey: string): string => {
   const d = dateOf(monthKey);
@@ -141,45 +174,56 @@ export const qboPretaxMargin = (
   return { margin: ni / income, label };
 };
 
-// Forecast per the spec: baseline = AVG(net income, last 6 actuals);
-// weeks off (planned home time) shave weekly revenue off a month's net;
-// depreciation adds back (non-cash — it's inside net income, so the pair nets
-// to zero cash, never double-counted); the financing floor takes principal;
-// taxes take (fed + state) × net income. Ending chains from the last actual.
+// The forecast (reworked 2026-11-04, the audit's call 10): the baseline is
+// net income per RUNNING week — Σ net income over the last six CLOSED months ÷
+// the weeks they actually ran, with each month's planned home weeks taken out —
+// so a month that already held home time doesn't drag the pace down and then
+// get charged for home time again. A forecast month earns weeklyNet × its own
+// running weeks. Depreciation adds back (non-cash, inside net income); the
+// financing floor takes principal; taxes take (fed + state) × net income and
+// never credit a refund on a loss month (the Plan's tax move is max(0, …) too).
+// Ending chains from the last actual. The current calendar month is never an
+// actual (a mid-month paste would anchor the chain on a partial month).
 export const buildForecast = (
   actuals: FinancialMonth[],
   assumptions: CashAssumptions,
   weeksOffByMonth: Map<string, number>,
   count = 6,
+  now?: Date,
 ): Forecast | null => {
   if (actuals.length === 0) return null;
   const sorted = [...actuals].sort((a, b) => (a.month < b.month ? -1 : 1));
-  const last6 = sorted.slice(-6);
-  const baseline =
-    last6.reduce((s, m) => s + num(m.net_income), 0) / last6.length;
+  const curMonth = now ? `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01` : null;
+  const closed = curMonth ? sorted.filter((m) => m.month.slice(0, 10) < curMonth) : sorted;
+  if (closed.length === 0) return null;
+  const last6 = closed.slice(-6);
+  let netSum = 0;
+  let runningWeeks = 0;
+  for (const m of last6) {
+    const off = weeksOffByMonth.get(m.month.slice(0, 10)) ?? 0;
+    netSum += num(m.net_income);
+    runningWeeks += Math.max(0.5, WEEKS_PER_MONTH - off); // a month fully home still ran a little
+  }
+  const weeklyNet = netSum / runningWeeks;
+  const baseline = weeklyNet * WEEKS_PER_MONTH;
 
-  const weeklyRevenue = num(assumptions.weekly_revenue);
   const depreciation = num(assumptions.monthly_depreciation);
   const financing = num(assumptions.financing_floor);
   const taxRate = num(assumptions.fed_tax_rate) + num(assumptions.state_tax_rate);
 
   const months: ForecastMonth[] = [];
-  let beginning = num(sorted[sorted.length - 1].ending_cash);
-  let month = nextMonthKey(sorted[sorted.length - 1].month);
+  let beginning = num(closed[closed.length - 1].ending_cash);
+  let month = nextMonthKey(closed[closed.length - 1].month.slice(0, 10));
   for (let i = 0; i < count; i++) {
     const weeksOff = weeksOffByMonth.get(month) ?? 0;
-    const netIncome = baseline - weeksOff * weeklyRevenue;
-    const incomeTax = -(netIncome * taxRate);
+    const netIncome = weeklyNet * Math.max(0, WEEKS_PER_MONTH - weeksOff);
+    const incomeTax = -(Math.max(0, netIncome) * taxRate);
     const cashFromOps = netIncome + depreciation;
     const netChange = cashFromOps + financing + incomeTax;
     const ending = beginning + netChange;
-    months.push({
-      month, weeksOff, netIncome,
-      opAdjustments: depreciation,
-      financing, incomeTax, cashFromOps, netChange, beginning, ending,
-    });
+    months.push({ month, weeksOff, netIncome, opAdjustments: depreciation, financing, incomeTax, cashFromOps, netChange, beginning, ending });
     beginning = ending;
     month = nextMonthKey(month);
   }
-  return { baseline, months };
+  return { baseline, weeklyNet, runningWeeks, baselineMonths: last6.map((m) => m.month.slice(0, 10)), months };
 };

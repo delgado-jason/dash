@@ -18,7 +18,7 @@ import {
   getForecastAdjustments, setForecastAdjustment,
 } from "@/services/cashflowService";
 import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
-import { buildForecast, pretaxMargin } from "@/lib/metrics/cashflow";
+import { buildForecast, pretaxMargin, archiveGaps } from "@/lib/metrics/cashflow";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import { money as fmtMoney, moneyCents as fmtMoneyCents } from "@/lib/format";
@@ -313,7 +313,7 @@ const CashFlowPage = () => {
       fuelPaceWeekly: fuelPace,
       milesPaceWeekly: milesPace,
       fuelFallback: Number(assumptions.weekly_fuel_advance ?? 0),
-      advanceDefault: Number(assumptions.weekly_fuel_advance) || 2000,
+      advanceDefault: advanceOf(assumptions),
       buckets,
       deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),
       weeklyRevenueFallback: Number(assumptions.weekly_revenue),
@@ -326,9 +326,11 @@ const CashFlowPage = () => {
   ]);
 
   const forecast = useMemo(
-    () => (assumptions ? buildForecast(financials, assumptions, adjustments) : null),
-    [financials, assumptions, adjustments],
+    () => (assumptions ? buildForecast(financials, assumptions, adjustments, 6, utc(asOfKey)) : null),
+    [financials, assumptions, adjustments, asOfKey],
   );
+  // Where the archive doesn't chain (a month opening away from the previous ending).
+  const archiveBreaks = useMemo(() => archiveGaps(financials), [financials]);
   const actualsShown = financials.slice(-6);
 
   const chartData = useMemo(() => {
@@ -382,7 +384,7 @@ const CashFlowPage = () => {
   // The fuel tile's four-week range: the last four CLOSED pay weeks' actual
   // fills, so the volatility Jason named is on the page as numbers.
   const fuelCtx = useMemo(
-    () => ({ fuelEntries, today: asOfKey, fuelPaceWeekly: fuelPace, fuelFallback: 0, advanceDefault: Number(assumptions?.weekly_fuel_advance) || 2000, settlements, settlementDay: setlDay }),
+    () => ({ fuelEntries, today: asOfKey, fuelPaceWeekly: fuelPace, fuelFallback: 0, advanceDefault: advanceOf(assumptions), settlements, settlementDay: setlDay }),
     [fuelEntries, asOfKey, fuelPace, assumptions, settlements, setlDay],
   );
   const fuelWeeks = useMemo(() => {
@@ -434,7 +436,7 @@ const CashFlowPage = () => {
 
   // ---- the lines, by the day the money moves (2026-11-04, call 1 nodded) ----
   const revFallback = assumptions ? Number(assumptions.weekly_revenue) : 0;
-  const advanceDefault = Number(assumptions?.weekly_fuel_advance) || 2000;
+  const advanceDefault = advanceOf(assumptions);
   const inOps = " · in your number";
   const advanceWords = (d: { advances: number; advancesSource: DepositLine["advancesSource"] }): string =>
     d.advancesSource === "actual"
@@ -714,9 +716,10 @@ const CashFlowPage = () => {
                 <table className="w-full text-[13px] font-condensed" style={{ fontVariantNumeric: "tabular-nums" }}>
                   <thead>
                     <tr className="text-faint text-[10.5px] uppercase tracking-[.1em]">
-                      <th className="text-left px-4 py-2">Week ending</th>
+                      <th className="text-left px-4 py-2">Statement · cash</th>
                       <th className="text-right px-3 py-2">Loads</th>
                       <th className="text-right px-3 py-2">Revenue</th>
+                      <th className="text-right px-3 py-2">Refunds</th>
                       <th className="text-right px-3 py-2">Advances</th>
                       <th className="text-right px-3 py-2">Other deductions</th>
                       <th className="text-right px-3 py-2">Net deposit</th>
@@ -731,17 +734,27 @@ const CashFlowPage = () => {
                         <tr key={s.settlement_id} className="border-t ds2-cell-rule">
                           <td className="px-4 py-2 text-ink font-semibold">
                             <a href={s.server_url} target="_blank" rel="noreferrer" className="hover:text-amber-hi" title="Open the filed statement (tailnet)">
-                              {s.period_ending.slice(5)}
+                              {md(s.period_ending)}
                             </a>
+                            <span className="ml-1 text-faint font-normal"> · cash {md(addDays(s.period_ending.slice(0, 10), lag))}</span>
                             {isFirstOfMonth(s.period_ending) && (
                               <span className="ml-2 text-[10px] text-faint uppercase">1st of mo</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">{s.loads}</td>
                           <td className="px-3 py-2 text-right">{moneyCents(Number(s.revenue))}</td>
+                          <td className="px-3 py-2 text-right text-dim">{Number(s.refunds) ? `+${moneyCents(Number(s.refunds))}` : "—"}</td>
                           <td className="px-3 py-2 text-right text-dim">−{moneyCents(adv)}</td>
                           <td className="px-3 py-2 text-right text-dim">−{moneyCents(other)}</td>
-                          <td className="px-3 py-2 text-right text-ink font-semibold">{moneyCents(Number(s.net))}</td>
+                          <td className="px-3 py-2 text-right text-ink font-semibold">
+                            {Number(s.net) < 0 ? (
+                              <span className="text-amber-hi" title="Landstar carries a negative statement into the next one — nothing lands">
+                                {moneyCents(Number(s.net))} · carried
+                              </span>
+                            ) : (
+                              moneyCents(Number(s.net))
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-right">
                             {s.unmatched_loads.length > 0 ? (
                               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-negative-bg)", color: "var(--color-status-negative-text)" }} title={`Loads on the statement but not in dash: ${s.unmatched_loads.join(", ")}`}>
@@ -839,9 +852,18 @@ const CashFlowPage = () => {
             <span className="ml-auto font-condensed text-[12px] text-faint">
               {financials.length > 0 ? (
                 <>
-                  last {actualsShown.length} actual months + 6 forecast · baseline{" "}
-                  <b className="text-dim tabular-nums">{forecast ? moneyCents(forecast.baseline) : "—"}</b>/mo
-                  {baselineMonths && <> · avg of {baselineMonths} net</>}
+                  last {actualsShown.length} actual months + 6 forecast · a full running month{" "}
+                  <b className="text-dim tabular-nums">{forecast ? moneyCents(forecast.baseline) : "—"}</b>
+                  {forecast && <> · <b className="text-dim tabular-nums">{moneyCents(forecast.weeklyNet)}</b> net per running week</>}
+                  {baselineMonths && forecast && <> · from {baselineMonths} ({forecast.runningWeeks.toFixed(1)} running weeks — planned home weeks taken out once)</>}
+                  {archiveBreaks.length > 0 && (
+                    <>
+                      {" "}·{" "}
+                      <span style={{ color: "var(--color-warn)" }}>
+                        ⚠ the archive doesn’t chain: {archiveBreaks.map((g) => `${monthLabel(g.month)} opens ${moneyCents(g.beginning)} but ${monthLabel(g.prevMonth)} ended ${moneyCents(g.prevEnding)} (off ${moneyCents(g.diff)})`).join(" · ")} — re-paste one of them
+                      </span>
+                    </>
+                  )}
                   {lastImport && (
                     <>
                       {" "}·{" "}
@@ -1037,6 +1059,12 @@ const CashFlowPage = () => {
 
 // ---- the cash board's lines ----
 const OVERRIDES_KEY = "dash.cashboard.deposit-overrides";
+// The weekly fuel advance borrowed against the loads. A typed $0 means "no
+// advance" and stays $0; only a missing value falls back to the $2,000 habit.
+const advanceOf = (a: { weekly_fuel_advance?: string | number | null } | null | undefined): number => {
+  const v = a?.weekly_fuel_advance;
+  return v == null || v === "" || !Number.isFinite(Number(v)) ? 2000 : Number(v);
+};
 
 const WEEK_TITLE: Record<PeriodColumn["key"], string> = {
   current: "Current period",
@@ -1382,6 +1410,14 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
 
   const commit = async () => {
     if (good.length === 0 || bad.length > 0) return;
+    // The current calendar month isn't closed — a partial month would enter
+    // the forecast's baseline and anchor the chain on it (2026-11-04).
+    const curMonth = `${localDayKey(new Date()).slice(0, 7)}-01`;
+    const open = good.filter((g) => String(g.row!.month).slice(0, 10) >= curMonth);
+    if (open.length > 0) {
+      setErr(`${open.map((g) => monthLabel(String(g.row!.month))).join(", ")} ${open.length === 1 ? "isn’t" : "aren’t"} closed yet — paste a month after its books close.`);
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {

@@ -1,7 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getSettlements } from "@/services/settlementsService";
+import { getFuelEntries } from "@/services/fuelService";
+import { getCashAssumptions, type CashAssumptionsRow } from "@/services/cashflowService";
+import { depositForWeek, runningWeekPace, type CashBoardInput, type DepositLine } from "@/lib/metrics/cashBoard";
+import { deductionBuckets } from "@/lib/metrics/settlements";
+import { payWeekOf } from "@/lib/metrics/payWeeks";
+import { addDays } from "@/lib/metrics/odometer";
+import { dayKey as localDayKey } from "@/lib/perDiem";
+import type { SettlementSummary } from "@/types/settlement";
+import type { FuelEntry } from "@/types/fuelEntry";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRateTargets } from "@/hooks/useRateTargets";
@@ -46,11 +56,43 @@ const OwnerDashboard = () => {
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
   // Settlement day drives the "next settlement lands Wed…" beat on Pulse.
   const [settlementDay, setSettlementDay] = useState<number | null>(null);
+  const [depositLag, setDepositLag] = useState<number>(1);
+  const [settlements, setSettlements] = useState<SettlementSummary[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [assumptions, setAssumptions] = useState<CashAssumptionsRow | null>(null);
   useEffect(() => {
     getSettlementSchedule()
-      .then((s) => setSettlementDay(s.settlement_day))
+      .then((s) => {
+        setSettlementDay(s.settlement_day);
+        setDepositLag(s.deposit_lag_days ?? 1);
+      })
       .catch(() => {});
+    getSettlements().then(setSettlements).catch(() => {});
+    getFuelEntries().then(setFuelEntries).catch(() => {});
+    getCashAssumptions().then(setAssumptions).catch(() => {});
   }, []);
+  // The next deposit, by the cash board's own rule (2026-11-04, call 11): the
+  // statement's actual when the vault has it, else delivered loads at net −
+  // the advance − the bucket − what earlier statements carried, dated
+  // settlement + lag. The old tile summed unpaid loads at net and named the
+  // statement day — about $2,688 high and a day early on Nov 4.
+  const nextDeposit = useMemo<DepositLine | null>(() => {
+    if (settlementDay == null || !assumptions) return null;
+    const today = localDayKey(new Date());
+    const cur = payWeekOf(today);
+    const prev = { start: addDays(cur.start, -7), end: addDays(cur.end, -7) };
+    const raw = assumptions.weekly_fuel_advance;
+    const adv = raw == null || raw === "" || !Number.isFinite(Number(raw)) ? 2000 : Number(raw);
+    const input: CashBoardInput = {
+      today, settlementDay, depositLagDays: depositLag, floatLine: null, checks: [], loads, settlements, fuelEntries,
+      obligations: [], readings: [], weeklyPayroll: 0, perMile: 0,
+      fuelPaceWeekly: runningWeekPace(fuelEntries, today), fuelFallback: adv, advanceDefault: adv,
+      buckets: deductionBuckets(settlements), deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),
+      weeklyRevenueFallback: Number(assumptions.weekly_revenue), moneyDays: [], overrides: {},
+    };
+    const last = depositForWeek(input, prev);
+    return last.date >= today ? last : depositForWeek(input, cur);
+  }, [settlementDay, depositLag, assumptions, loads, settlements, fuelEntries]);
   const { pops, truckAvatarUrl } = useAwardPops(loads);
   // The latest FINISHED recap that actually has data — never the in-progress one.
   const latestRecap = latestRecapWithData(loads, new Date());
@@ -108,7 +150,7 @@ const OwnerDashboard = () => {
       >
         {(active) =>
           active === "pulse" ? (
-            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} settlementDay={settlementDay} />
+            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} settlementDay={settlementDay} nextDeposit={nextDeposit} />
           ) : active === "money" ? (
             <MoneyTab loads={loads} trips={trips} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
           ) : active === "lanes" ? (
