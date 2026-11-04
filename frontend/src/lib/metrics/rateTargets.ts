@@ -1,9 +1,22 @@
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
+import {
+  tiersFrom,
+  specTiersFrom,
+  marginGoalFrom,
+  WORKING_DAYS_PER_MONTH,
+  PAY_WEEK_START_DOW,
+  BASIS_MONTHS,
+} from "@/lib/constants/targets";
+import { localToday } from "./today";
 
 // Rate & pace targets, all derived live from the P&L + loads. Pure functions
 // take `now` explicitly so they're testable without touching the clock.
+// ONE basis (Nod Sheet 2026-11-04, call 12): every window here defaults to
+// BASIS_MONTHS, and computeRateTargets at the bottom is the one function
+// every surface that prices a mile or grades a week stands on.
 
 // Monthly obligation cash that belongs in break-even / pace targets: active
 // obligations only, EXCLUDING owner draws. A draw (is_draw) is a distribution of
@@ -63,9 +76,13 @@ export const completeMonthsBefore = (
   return out;
 };
 
-// Delivered-load miles for one UTC month: total = odometer window, loaded =
-// loaded_miles. Mirrors the Expenses page's month-miles logic.
-const monthMiles = (loads: Load[], year: number, month: number) => {
+// Delivered-load miles for one UTC month: total = the odometer windows as a
+// UNION of spans, loaded = loaded_miles. Two loads sharing a span — a start
+// copied from the previous load's start, as load 8126107 was in June ’26 —
+// used to count the shared miles twice and put the walk-away rate 6¢ low
+// (DB-04, 2026-11-04). A reversed, equal or zero reading is no span at all.
+// The Expenses page reads this same function for its month tiles.
+export const monthMiles = (loads: Load[], year: number, month: number) => {
   const inMonth = loads.filter(
     (l) =>
       l.load_status === "delivered" &&
@@ -73,14 +90,16 @@ const monthMiles = (loads: Load[], year: number, month: number) => {
       new Date(l.delivery_date).getUTCFullYear() === year &&
       new Date(l.delivery_date).getUTCMonth() === month,
   );
-  const total = inMonth.reduce(
-    (s, l) =>
-      s +
-      (l.odometer_end != null && l.odometer_start != null
-        ? Math.max(0, Number(l.odometer_end) - Number(l.odometer_start)) // guard a reversed/equal reading
-        : 0),
-    0,
-  );
+  const spans = inMonth
+    .map((l) => ({ start: Number(l.odometer_start), end: Number(l.odometer_end) }))
+    .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start > 0 && s.end > s.start)
+    .sort((a, b) => a.start - b.start);
+  let total = 0;
+  let high = -Infinity;
+  for (const s of spans) {
+    total += Math.max(0, s.end - Math.max(s.start, high));
+    high = Math.max(high, s.end);
+  }
   const loaded = inMonth.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
   const revenue = inMonth.reduce((s, l) => s + loadNetRevenue(l), 0); // net
   const gross = inMonth.reduce((s, l) => s + loadGross(l), 0); // full customer rate
@@ -140,13 +159,16 @@ const windowLabelOf = (included: { year: number; month: number }[]): string | nu
 
 // Blend true cost + miles over the last `monthsBack` COMPLETE months. Only
 // months that have a P&L are counted, and their miles are summed over the SAME
-// months, so numerator and denominator always cover the same window.
+// months, so numerator and denominator always cover the same window. The
+// default is BASIS_MONTHS — it was 3, and four surfaces (month coverage, HEAT,
+// the recap, the player card) silently stood on it while the Market, Expenses
+// and Score a Load stood on six (call 12, 2026-11-04).
 export const getCostBasis = (
   periods: ExpensePeriod[],
   obligationsMonthly: number,
   loads: Load[],
   now: Date,
-  monthsBack = 3,
+  monthsBack: number = BASIS_MONTHS,
 ): CostBasis => {
   const byKey = new Map<string, ExpensePeriod>();
   for (const p of periods) {
@@ -407,12 +429,13 @@ export const getWeekRpm = (
   return loaded > 0 ? revenue / loaded : null;
 };
 
-// Rolling blended RPM over the last `monthsBack` complete months — loads only,
-// so it stands on its own (doesn't need a P&L like the break-even does).
+// Rolling blended NET $/loaded mile over the last `monthsBack` complete months
+// — loads only, so it stands on its own (doesn't need a P&L like the
+// break-even does). Same window as the basis (call 12).
 export const getWindowRpm = (
   loads: Load[],
   now: Date,
-  monthsBack = 3,
+  monthsBack: number = BASIS_MONTHS,
 ): number | null => {
   let revenue = 0;
   let loaded = 0;
@@ -423,3 +446,88 @@ export const getWindowRpm = (
   }
   return loaded > 0 ? revenue / loaded : null;
 };
+
+// ---- THE one basis ----
+// The rate ladder + weekly/daily pace targets from the P&L, obligations and
+// loads — ONE function, so every surface that prices a mile or grades a week
+// (Dashboard hero and HEAT, Market, Score a Load, Lanes, Expenses, the
+// recap, the player card, month coverage) stands on the same basis:
+// break-even blended over the last BASIS_MONTHS complete months
+// (getCostBasis), divided by the blended keep. Lived in hooks/useRateTargets
+// until 2026-11-04; moved here so the metric modules can call it without
+// reaching into React.
+export const computeRateTargets = (
+  loads: Load[],
+  periods: ExpensePeriod[],
+  obligationsMonthly: number,
+  schedule: SettlementSchedule | null,
+  now: Date = localToday(),
+) => {
+  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS);
+  // Your linehaul take (linehaul % + trailer %). 1 = own authority / unconfigured.
+  const linehaulTake = schedule
+    ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
+    : 1;
+  // Your KEEP — the share of an all-in booked dollar that reaches you. The
+  // blended keep measured from the window's own loads (net ÷ gross: 65 + 8%
+  // of linehaul, 100% of fuel surcharge, each accessorial at its rate) once
+  // the window has gross; the schedule's linehaul take only until it does.
+  // Jason judges a load all-in (2026-11-01), so the rate to book divides by
+  // what he actually keeps of an all-in dollar — the construction Score a
+  // Load has always used. Dividing all gross by the linehaul take took
+  // Landstar's cut out of money he keeps in full, ~23¢ a driven mile.
+  const blended = basis.payTake != null && basis.payTake > 0 ? basis.payTake : null;
+  const keep = blended ?? linehaulTake;
+  const keepSource: "blended" | "linehaul" = blended != null ? "blended" : "linehaul";
+  const { start, end } = payWeekRange(now, PAY_WEEK_START_DOW);
+
+  // ---- The whole rate & pace card is in GROSS (booking) dollars — that's the
+  // number loads are booked at. Everything below grosses cost up by your keep. ----
+
+  // Ladder: gross rate to book per mile DRIVEN (deadhead folded into total miles)
+  // = cost-per-total-mile ÷ keep, scaled by tiers; marker = your gross rate/mile.
+  // TWO ladders — standard is the app-wide baseline; specialized is what the
+  // Scorer holds oversize/hazmat/heavy freight to.
+  const tiers = tiersFrom(schedule);
+  const specTiers = specTiersFrom(schedule);
+  const marginGoal = marginGoalFrom(schedule);
+  const bookingBase =
+    basis.costPerTotalMile != null && keep > 0 ? basis.costPerTotalMile / keep : null;
+  const bookingLadder = getRateLadder(bookingBase, tiers);
+  const specLadder = getRateLadder(bookingBase, specTiers);
+
+  // Weekly/daily GROSS revenue targets = monthly cost grossed up by your keep,
+  // spread over the pay-week / working day, lifted to your MARGIN goal. The
+  // margin goal is a total-revenue KPI, independent of the per-mile rate tiers.
+  const bookingCost =
+    basis.trueMonthlyCost != null && keep > 0 ? basis.trueMonthlyCost / keep : null;
+  const gross = getGrossTargets(bookingCost, marginGoal, WORKING_DAYS_PER_MONTH);
+
+  // This week's gross booked (committed) + gross delivered (earned).
+  const weekBooked = getWeekGrossCommitted(loads, start, end);
+  const weekEarned = getWeekGrossEarned(loads, start, end);
+
+  const rollingRpm = getWindowRpm(loads, now); // net $/loaded mile over the basis window
+  return {
+    basis,
+    gross, // weekly/daily GROSS revenue targets (break-even + margin goal)
+    marginGoal, // target profit margin driving those revenue targets
+    obligationsMonthly, // active, non-draw monthly notes (principal) — for cash margin
+    weekBooked, // this week's gross committed (booked + in-transit + delivered)
+    weekEarned, // this week's gross earned (delivered only)
+    rollingRpm,
+    linehaulTake,
+    keep, // the share of an all-in dollar you keep — the ladder's divisor
+    keepSource, // "blended" (measured from the window's loads) | "linehaul" (the schedule, until loads land)
+    bookingLadder, // STANDARD gross rate to book per mile driven (walk/target/strong)
+    specLadder, // SPECIALIZED ladder — oversize/hazmat/heavy
+    grossRate: basis.grossPerTotalMile, // your gross rate/mile — the ladder marker
+    weekStart: start,
+    weekEnd: end,
+    tiers, // standard markup tiers (Scorer default + downstream)
+    specTiers, // specialized markup tiers (Scorer, for specialized loads)
+    ready: basis.breakEvenRpm != null,
+  };
+};
+
+export type RateTargets = ReturnType<typeof computeRateTargets>;

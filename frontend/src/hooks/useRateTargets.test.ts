@@ -16,8 +16,8 @@ const load = (over: Partial<Load>): Load =>
     load_status: "delivered",
     delivery_date: "2026-10-15",
     loaded_miles: 1000,
-    odometer_start: 0,
-    odometer_end: 1200,
+    odometer_start: 100000, // a real reading — a zero start is a missing reading, not mile 0 (2026-11-04)
+    odometer_end: 101200,
     linehaul: "2000",
     fuel_surcharge: "500",
     total_accessorials: "0",

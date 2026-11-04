@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { localToday } from "@/lib/metrics/today";
 import type { Truck } from "@/types/truck";
 import type { Trailer } from "@/types/trailer";
 import type { FuelEntry } from "@/types/fuelEntry";
@@ -44,7 +45,7 @@ export const useFleetData = (): FleetData => {
 
   useEffect(() => {
     let alive = true;
-    const year = new Date().getUTCFullYear();
+    const year = localToday().getUTCFullYear(); // the operator's local year, not UTC's
     (async () => {
       try {
         const [trucks, trailers, fuel, items, services, pdThis, pdPrev, compliance, drivers, nat, sched, obligations] =

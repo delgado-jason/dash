@@ -25,11 +25,14 @@ import { computeTrailerPatches, computeTrailerMedals, trailerRecords } from "@/l
 import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { CoinRack, TagRack, PlateRack, RackHeader } from "@/components/forge/Racks";
 import { computePatches } from "@/lib/awards/patches";
-import { personalBests, marginGrade, careerRank } from "@/lib/metrics/playerCard";
+import { personalBests, gradedMargin, getSeasonStats, careerRank } from "@/lib/metrics/playerCard";
+import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { marginGoalFrom, MARGIN_GOAL } from "@/lib/constants/targets";
 import { useGrind } from "@/hooks/useGrind";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { useExpensePeriods } from "@/hooks/useExpensePeriods";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getMonthlyFinancials, type MonthlyFinancialRow } from "@/services/cashflowService";
 
 const fmtDate = (d: string) =>
   new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -212,9 +215,12 @@ const TrophyHallPage = () => {
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
   const [operation, setOperation] = useState("flatbed");
   const [marginGoal, setMarginGoal] = useState(MARGIN_GOAL);
   const [loading, setLoading] = useState(true);
+  // The operator's local day, anchored, rolling at midnight (call 13).
+  const now = useLocalToday();
 
   useEffect(() => {
     Promise.all([
@@ -224,8 +230,9 @@ const TrophyHallPage = () => {
       getFuelEntries(),
       getObligations(),
       getSettlementSchedule().catch(() => null),
+      getMonthlyFinancials().catch(() => [] as MonthlyFinancialRow[]),
     ])
-      .then(([tr, dr, tk, fu, ob, sched]) => {
+      .then(([tr, dr, tk, fu, ob, sched, fin]) => {
         if (sched) setOperation(sched.operation);
         setMarginGoal(marginGoalFrom(sched));
         setRecords(tr);
@@ -233,6 +240,7 @@ const TrophyHallPage = () => {
         setTrucks(tk);
         setFuel(fu);
         setObligations(ob);
+        setFinancials(fin);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -254,7 +262,6 @@ const TrophyHallPage = () => {
     const cumulativeGross = loads
       .filter((l) => l.load_status === "delivered")
       .reduce((s, l) => s + loadNetRevenue(l), 0);
-    const now = new Date();
     return computeAllStatuses(TROPHY_CATALOG, byKey, {
       lifetimeMiles,
       driverCount: drivers.filter((d) => d.active).length,
@@ -263,7 +270,7 @@ const TrophyHallPage = () => {
       truckLoan: assetLoanStatus(obligations, "truck", now),
       trailerLoan: assetLoanStatus(obligations, "trailer", now),
     });
-  }, [byKey, drivers, trucks, fuel, loads, obligations]);
+  }, [byKey, drivers, trucks, fuel, loads, obligations, now]);
 
   // ---- the racks: coins / tags / plates — driver hardware, ghost-ruled.
   // Engines already return tier 0 / count 0 / progress + hint, so unearned
@@ -271,7 +278,6 @@ const TrophyHallPage = () => {
   const grind = useGrind(loads);
   const { periods } = useExpensePeriods();
   const forged = useMemo(() => {
-    const now = new Date();
     const lifetimeMiles = Math.max(
       0,
       ...trucks.map((t) => Number(t.current_odometer) || 0),
@@ -285,19 +291,12 @@ const TrophyHallPage = () => {
     ]
       .map((st) => st?.ownedPct)
       .filter((x): x is number => x != null);
-    // Season margin, graded like the Money tab grades it — the current year's
-    // completed P&L months.
-    const yr = String(now.getUTCFullYear());
-    const ytd = periods.filter(
-      (pp) => pp.income_total != null && pp.period_month.startsWith(yr),
-    );
-    const inc = ytd.reduce((sum, pp) => sum + (pp.income_total ?? 0), 0);
-    const cost = ytd.reduce(
-      (sum, pp) => sum + (pp.cogs_total ?? 0) + (pp.expense_total ?? 0),
-      0,
-    );
-    const seasonStrong =
-      marginGrade(inc > 0 ? (inc - cost) / inc : null, marginGoal) === "strong";
+    // The Strong Season medal reads THE graded margin — the same number the
+    // player card's lever shows (QBO pretax when the archive has closed months,
+    // else the app's season estimate). It used to grade a third definition
+    // here, the year-to-date operating margin (2026-11-04, §5).
+    const season = getSeasonStats(periods, loads, [], now, monthlyObligationCost(obligations));
+    const seasonStrong = gradedMargin(financials, season, now, marginGoal).grade === "strong";
     return {
       rank: careerRank(lifetimeMiles),
       medals: computeMedals({
@@ -311,7 +310,7 @@ const TrophyHallPage = () => {
       patches: computePatches(loads, fuel, operation),
       bests: personalBests(loads, fuel, now),
     };
-  }, [loads, trucks, fuel, obligations, grind, periods, operation, marginGoal]);
+  }, [loads, trucks, fuel, obligations, grind, periods, operation, marginGoal, financials, now]);
 
   // Truck & trailer racks — the iron earns its own hardware.
   const rig = useMemo(() => {

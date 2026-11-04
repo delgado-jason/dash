@@ -20,8 +20,8 @@ import {
   type RecapScope,
   type RecapRange,
 } from "@/lib/metrics/recap";
-import { marginGoalFrom } from "@/lib/constants/targets";
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { careerRank } from "@/lib/metrics/playerCard";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
@@ -64,21 +64,22 @@ const RecapPage = () => {
     getSettlementSchedule().then(setSchedule).catch(() => {});
   }, []);
 
+  // The operator's local day, anchored, rolling at midnight (call 13).
+  const now = useLocalToday();
   useEffect(() => {
     if (autoScoped || loads.length === 0) return;
-    const latest = latestRecapWithData(loads, new Date());
+    const latest = latestRecapWithData(loads, now);
     if (latest) setScope(latest.scope);
     setAutoScoped(true);
-  }, [loads, autoScoped]);
+  }, [loads, autoScoped, now]);
 
-  const now = new Date();
   const range = resolvePeriod(scope, ago, now);
   const obligationsMonthly = monthlyObligationCost(obligations);
 
   const stats = useMemo(
-    () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now, marginGoalFrom(schedule)),
+    () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now, schedule),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loads, fuel, periods, obligationsMonthly, range.label, scope, schedule],
+    [loads, fuel, periods, obligationsMonthly, range.label, scope, schedule, now],
   );
 
   const truckAvatarUrl = trucks.find((t) => t.avatar_url)?.avatar_url ?? null;

@@ -11,6 +11,7 @@ import { getObligations } from "@/services/obligationsService";
 import { getExpenseMetrics, getTrueMonthly } from "@/lib/metrics/expenses";
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { computeRateTargets } from "@/hooks/useRateTargets";
+import { monthMiles } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
@@ -24,28 +25,13 @@ import { BandedLadder } from "@/components/ui/BandedLadder";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money } from "@/lib/format";
 
-// That month's miles from loads (drives cost-per-mile + break-even).
-const monthMiles = (loads: Load[], periodMonth: string) => {
+// That month's miles from loads (drives cost-per-mile + break-even) — the
+// basis's own monthMiles (a union of odometer spans), so the month tile and
+// the rate to book can never count a mile differently (2026-11-04, DB-04).
+const monthMilesOf = (loads: Load[], periodMonth: string) => {
   const d = new Date(periodMonth);
-  const year = d.getUTCFullYear();
-  const month = d.getUTCMonth();
-  const inMonth = loads.filter(
-    (l) =>
-      l.load_status === "delivered" &&
-      l.delivery_date &&
-      new Date(l.delivery_date).getUTCFullYear() === year &&
-      new Date(l.delivery_date).getUTCMonth() === month,
-  );
-  const totalMiles = inMonth.reduce(
-    (s, l) =>
-      s +
-      (l.odometer_end != null && l.odometer_start != null
-        ? Math.max(0, Number(l.odometer_end) - Number(l.odometer_start)) // guard a reversed/equal reading
-        : 0),
-    0,
-  );
-  const loadedMiles = inMonth.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
-  return { totalMiles, loadedMiles };
+  const m = monthMiles(loads, d.getUTCFullYear(), d.getUTCMonth());
+  return { totalMiles: m.total, loadedMiles: m.loaded };
 };
 
 const NO_PERIODS: ExpensePeriod[] = [];
@@ -120,7 +106,7 @@ const ExpensesPage = () => {
   const miles = useMemo(
     () =>
       selected
-        ? monthMiles(loads, selected.period_month)
+        ? monthMilesOf(loads, selected.period_month)
         : { totalMiles: 0, loadedMiles: 0 },
     [selected, loads],
   );

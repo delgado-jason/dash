@@ -8,14 +8,17 @@ import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { computeGrind, computePersonalGrind, type Grind } from "@/lib/metrics/grind";
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
-import { marginGoalFrom } from "@/lib/constants/targets";
+import { useLocalToday } from "./useLocalToday";
 
-// Fetches the P&L + obligations the rate ladder needs, then grades every pay-week
-// into the grind streak. Null until there's data.
+// Fetches the P&L + obligations + schedule the one basis needs, then grades
+// every pay-week into the grind streak against the hero's own gross target
+// (computeRateTargets, 2026-11-04). Null until there's data. `now` is the
+// operator's local day and rolls at midnight (call 13).
 export const useGrind = (loads: Load[]): Grind | null => {
   const [periods, setPeriods] = useState<ExpensePeriod[] | null>(null);
   const [obligations, setObligations] = useState<Obligation[] | null>(null);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+  const now = useLocalToday();
 
   useEffect(() => {
     getExpensePeriods().then(setPeriods).catch(() => {});
@@ -26,14 +29,13 @@ export const useGrind = (loads: Load[]): Grind | null => {
   return useMemo(() => {
     if (!periods || !obligations || loads.length === 0) return null;
     const obligationsMonthly = monthlyObligationCost(obligations);
-    return computeGrind(loads, periods, obligationsMonthly, new Date(), marginGoalFrom(schedule));
-  }, [periods, obligations, loads, schedule]);
+    return computeGrind(loads, periods, obligationsMonthly, schedule, now);
+  }, [periods, obligations, loads, schedule, now]);
 };
 
 // A dispatcher's personal-pace grind — graded against her own typical week, so no
 // P&L is needed. Null until she has enough booking history for a bar.
-export const usePersonalGrind = (mine: Load[]): Grind | null =>
-  useMemo(
-    () => (mine.length > 0 ? computePersonalGrind(mine, new Date()) : null),
-    [mine],
-  );
+export const usePersonalGrind = (mine: Load[]): Grind | null => {
+  const now = useLocalToday();
+  return useMemo(() => (mine.length > 0 ? computePersonalGrind(mine, now) : null), [mine, now]);
+};

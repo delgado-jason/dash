@@ -3,13 +3,15 @@ import {
   classify,
   currentStreakOf,
   bestStreakOf,
+  computeGrind,
   computePersonalGrind,
   type WeekStatus,
 } from "./grind";
 import type { Load } from "@/types/load";
+import type { ExpensePeriod } from "@/types/expense";
 
 // A delivered load worth `gross`, keyed to a delivery week.
-const deliv = (date: string, gross: number) =>
+const deliv = (date: string, gross: number, extra: Record<string, unknown> = {}) =>
   ({
     load_status: "delivered",
     delivery_date: date,
@@ -17,6 +19,7 @@ const deliv = (date: string, gross: number) =>
     fuel_surcharge: 0,
     total_accessorials: 0,
     booked_by: "u1",
+    ...extra,
   } as unknown as Load);
 
 const targets = {
@@ -121,5 +124,38 @@ describe("personal grind baseline progress (the ghost meter's fuel)", () => {
     expect(grind.hasLadder).toBe(false);
     expect(grind.activeWeeks).toBe(0);
     expect(grind.weeksNeeded).toBeGreaterThan(0);
+  });
+});
+
+describe("computeGrind — HEAT grades the hero's own number: GROSS weeks against the gross target (2026-11-04)", () => {
+  // Thu Jul 9, 2026: the running pay week is Jul 8–14; June is the one filed month.
+  const now = new Date("2026-07-09T00:00:00Z");
+  const june = { period_month: "2026-06-01", income_total: 10000, cogs_total: 5000, expense_total: 5000 } as unknown as ExpensePeriod;
+  // Every load keeps 80% of its gross (net_revenue), so the keep is 0.8 and the
+  // weekly target = 10,000 / 0.8 / (52/12) / (1 − 0.26) ≈ $3,898; the floor ≈ $2,885.
+  const paid = (date: string, gross: number) => deliv(date, gross, { net_revenue: gross * 0.8 });
+  const loads = [
+    paid("2026-06-10", 10000), // builds the basis
+    paid("2026-06-24", 4000), // Wed Jun 24 → the week Jun 24–30: gross 4,000 beats the target; its net 3,200 would not
+    paid("2026-06-17", 3000), // Wed Jun 17 → the week Jun 17–23: gross 3,000 clears the floor only
+  ];
+
+  it("grades weeks in gross against the gross target, and says what the bar was", () => {
+    const g = computeGrind(loads, [june], 0, null, now);
+    expect(g.hasLadder).toBe(true);
+    expect(g.weeklyTarget).toBeCloseTo(10000 / 0.8 / (52 / 12) / 0.74, 0);
+    expect(g.weeklyFloor).toBeCloseTo(10000 / 0.8 / (52 / 12), 0);
+    expect(g.basisLabel).toBe("Jun ’26");
+    const byStart = Object.fromEntries(g.weeks.map((w) => [w.start, w.status]));
+    expect(byStart["2026-06-24"]).toBe("target"); // graded in NET it would have read "breakeven"
+    expect(byStart["2026-06-17"]).toBe("breakeven");
+    expect(g.weeks.find((w) => w.start === "2026-06-24")!.gross).toBe(4000);
+  });
+
+  it("no P&L → no ladder, every week neutral", () => {
+    const g = computeGrind(loads, [], 0, null, now);
+    expect(g.hasLadder).toBe(false);
+    expect(g.weeks).toEqual([]);
+    expect(g.weeklyTarget).toBeNull();
   });
 });

@@ -17,6 +17,9 @@ import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
 import { projectWeek } from "@/lib/metrics/weekProjection";
 import { nextSettlementDate } from "@/lib/metrics/settlement";
+import { bestPayWeek } from "@/lib/metrics/payWeeks";
+import { anchorDay } from "@/lib/metrics/today";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import type { DepositLine } from "@/lib/metrics/cashBoard";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import type { Alert } from "@/types/alert";
@@ -111,7 +114,9 @@ export const PulseTab = ({
   // A sliced calendar day, printed as its own day — never shifted by the browser's zone.
   const dayWords = (k: string): string =>
     new Date(`${k.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-  const now = useMemo(() => new Date(), []);
+  // The operator's local day, anchored, rolling at midnight (call 13) — every
+  // month and week below reads it, so the plate can't flip to tomorrow at 6 pm.
+  const now = useLocalToday();
 
   const earned = targets.weekEarned ?? 0;
   const committed = targets.weekBooked ?? 0;
@@ -130,9 +135,9 @@ export const PulseTab = ({
   const incoming = week ? week.incoming : committed;
   const projected = earned + incoming;
 
-  const mtd = getRevenueMTD(loads);
-  const deadhead = getMonthlyDeadhead(loads, trips).thisMonth;
-  const loadsM = getLoadsMonthly(loads);
+  const mtd = getRevenueMTD(loads, now);
+  const deadhead = getMonthlyDeadhead(loads, trips, now).thisMonth;
+  const loadsM = getLoadsMonthly(loads, now);
   const upcoming = getUpcomingLoads(loads);
   const pace = useMemo(() => getQuarterPace(loads, now), [loads, now]);
 
@@ -183,13 +188,14 @@ export const PulseTab = ({
   }, [loads, targets.weekStart, now]);
   const weekMax = Math.max(weeklyTarget ?? 0, ...weeks.map((w) => w.earned), 1);
 
-  // The best COMPLETED week in the window — the one to beat.
+  // The best COMPLETED pay week ever, gross — the one to beat. One function
+  // with the player card's TOP WEEK and the recap (2026-11-04, §5); it used to
+  // be the best of the last seven only, so "NEW BEST WEEK" could be a record
+  // the card had already beaten.
   const bestWeek = useMemo(() => {
-    const done = weeks.filter((w) => !w.now);
-    if (done.length === 0) return null;
-    const top = done.reduce((b, w) => (w.earned > b.earned ? w : b), done[0]);
-    return top.earned > 0 ? top : null;
-  }, [weeks]);
+    const b = bestPayWeek(loads, now.toISOString().slice(0, 10));
+    return b ? { earned: b.gross, start: anchorDay(b.week.start) } : null;
+  }, [loads, now]);
 
   const ladder = targets.bookingLadder ?? {};
   const cur: number | null = targets.grossRate ?? null;
@@ -435,7 +441,7 @@ export const PulseTab = ({
         />
         <BoardCell
           className="border-b md:border-b-0 md:border-r ds2-cell-rule"
-          label="Avg net $/mi"
+          label="Net $/loaded mi"
           value={targets.rollingRpm != null ? fmtRpm(targets.rollingRpm) : "—"}
           sub={
             targets.basis?.breakEvenRpm != null

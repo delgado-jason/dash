@@ -80,6 +80,9 @@ describe("computeRecap", () => {
     expect(r.avgRpm).toBeCloseTo(6100 / 1800, 3);
     expect(r.topLane).toBe("Dallas → Atlanta");
     expect(r.topAgent).toBe("Redwood");
+    // Best week = the best completed PAY week (Wed→Tue) at gross — load a's week (May 6–12) at 3,500,
+    // the same number the Pulse and the player card show (2026-11-04).
+    expect(r.bestWeek).toBe(3500);
     // 12 months for a year, with only May + Jun carrying gross
     expect(r.monthlyGross).toHaveLength(12);
     expect(r.monthlyGross[4]).toEqual({ label: "May", gross: 3500 });

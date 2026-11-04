@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { payWeekOf, weeksOwed, milesInWeeks, weekLabel, isFirstFriday, monthStartOf } from "./payWeeks";
+import { payWeekOf, weeksOwed, milesInWeeks, weekLabel, isFirstFriday, monthStartOf, completedPayWeekTotals, bestPayWeek } from "./payWeeks";
+import type { Load } from "@/types/load";
 
 describe("payWeekOf — Wednesday to Tuesday", () => {
   it("Tue Sep 22 sits in the week of Wed Sep 16", () => {
@@ -108,5 +109,45 @@ describe("isFirstFriday / monthStartOf — the month's first Friday is the new m
   it("slices a timestamp to its day", () => {
     expect(isFirstFriday("2026-10-02T00:00:00.000Z")).toBe(true);
     expect(monthStartOf("2026-11-04T12:00:00Z")).toBe("2026-11-01");
+  });
+});
+
+describe("completedPayWeekTotals / bestPayWeek — one best week, pay weeks, gross (2026-11-04, §5)", () => {
+  const L = (delivery_date: string, linehaul: number, extra: Record<string, unknown> = {}) =>
+    ({ load_status: "delivered", delivery_date, linehaul, fuel_surcharge: 0, total_accessorials: 0, ...extra }) as unknown as Load;
+  const loads = [
+    L("2026-05-12", 3200), // Tue → week May 6–12
+    L("2026-05-13", 1000, { fuel_surcharge: 300 }), // Wed → week May 13–19 (gross 1,300)
+    L("2026-05-15", 2600), // same week May 13–19
+    L("2026-05-21", 9000), // the running week on May 20 — never counts yet
+    L("2026-05-14", 5000, { load_status: "booked" }), // not delivered — not freight hauled
+  ];
+
+  it("groups delivered loads by the Wednesday→Tuesday week they delivered in, at gross", () => {
+    const t = completedPayWeekTotals(loads, "2026-05-20");
+    expect(t.map((w) => [w.week.start, w.gross, w.loads])).toEqual([
+      ["2026-05-06", 3200, 1],
+      ["2026-05-13", 3900, 2],
+    ]);
+  });
+
+  it("the best week is the highest gross; the Monday-week grouping would have put May 12 and 13 together", () => {
+    expect(bestPayWeek(loads, "2026-05-20")).toMatchObject({ week: { start: "2026-05-13", end: "2026-05-19" }, gross: 3900, loads: 2 });
+  });
+
+  it("the running week joins once it completes", () => {
+    expect(bestPayWeek(loads, "2026-05-27")!.gross).toBe(9000);
+  });
+
+  it("bounds select weeks by their start — the recap's range", () => {
+    expect(bestPayWeek(loads, "2026-06-30", { from: "2026-05-13", before: "2026-05-20" })!.gross).toBe(3900);
+    expect(bestPayWeek(loads, "2026-06-30", { before: "2026-05-13" })!.gross).toBe(3200);
+    expect(bestPayWeek(loads, "2026-06-30", { from: "2026-06-01" })).toBeNull();
+  });
+
+  it("a tie goes to the later week; nothing delivered → null", () => {
+    const tie = [L("2026-05-12", 1000), L("2026-05-19", 1000)];
+    expect(bestPayWeek(tie, "2026-05-27")!.week.start).toBe("2026-05-13");
+    expect(bestPayWeek([], "2026-05-27")).toBeNull();
   });
 });

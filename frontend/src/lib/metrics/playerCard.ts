@@ -15,6 +15,8 @@ import { type RateLadder } from "./rateTargets";
 import { resolvePeriod } from "./recap";
 import { mileMilestone } from "./mileClub";
 import { fuelStats } from "./fuelEconomy";
+import { completedPayWeekTotals } from "./payWeeks";
+import { qboPretaxMargin, type FinancialMonth } from "./cashflow";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
 import { MARGIN_GOAL } from "@/lib/constants/targets";
 
@@ -97,6 +99,38 @@ export const rpmGrade = (rpm: number | null, ladder: RateLadder): Grade | null =
   if (ladder.strong != null && rpm >= ladder.strong) return "strong";
   if (ladder.target != null && rpm >= ladder.target) return "target";
   return rpm >= ladder.walkAway ? "minimum" : "below";
+};
+
+// THE graded margin — one definition per page (Nod Sheet 2026-11-04, §5):
+// the QBO pretax margin over the last three CLOSED months when the archive
+// has them (accountant-grade, depreciation included), else the app's season
+// operating margin, labelled as the estimate it is. The lever, the medal and
+// the Trophy Hall all read this one, so a medal can't say "strong" while the
+// lever two inches above it says BELOW.
+export interface GradedMargin {
+  value: number | null;
+  grade: Grade | null;
+  label: string; // "Pretax margin" (QBO) | "Op margin" (app estimate)
+  basis: string; // "QBO · May–Jul ’26" | "app est. · Apr–Jun 2026"
+  source: "qbo" | "app";
+}
+
+export const gradedMargin = (
+  financials: FinancialMonth[],
+  season: SeasonStats,
+  now: Date,
+  goal: number = MARGIN_GOAL,
+): GradedMargin => {
+  const qbo = qboPretaxMargin(financials, now);
+  if (qbo)
+    return { value: qbo.margin, grade: marginGrade(qbo.margin, goal), label: "Pretax margin", basis: `QBO · ${qbo.label}`, source: "qbo" };
+  return {
+    value: season.netMargin,
+    grade: marginGrade(season.netMargin, goal),
+    label: "Op margin",
+    basis: `app est. · ${season.label}`,
+    source: "app",
+  };
 };
 
 // Utilization graded on the industry benchmark (70 / 80 / 85%).
@@ -269,13 +303,10 @@ export interface PersonalBests {
   mostLoadsInWeek: number | null;
 }
 
-const weekKey = (iso: string): string => {
-  const d = new Date(iso.slice(0, 10) + "T00:00:00Z");
-  const monday = new Date(d);
-  monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return monday.toISOString().slice(0, 10);
-};
-
+// The week records read PAY weeks (Wednesday → Tuesday), the same grouping
+// as the Pulse record line and the recap — one best week (2026-11-04, §5).
+// They used to read Monday weeks, so the card's TOP WEEK and the Dashboard's
+// best week were two different numbers for the same truck.
 export const personalBests = (
   loads: Load[],
   fuel: FuelEntry[],
@@ -285,20 +316,14 @@ export const personalBests = (
     (l) => l.load_status === "delivered" && l.delivery_date,
   );
 
-  const weeks = new Map<string, { rev: number; count: number }>();
-  for (const l of delivered) {
-    const k = weekKey(l.delivery_date!);
-    const w = weeks.get(k) ?? { rev: 0, count: 0 };
-    w.rev += loadRevenue(l);
-    w.count += 1;
-    weeks.set(k, w);
-  }
-
+  // `now` arrives anchored (a UTC-midnight local day), so its ISO day is the
+  // operator's day.
+  const weeks = completedPayWeekTotals(loads, now.toISOString().slice(0, 10));
   let bestWeekRevenue: number | null = null;
   let mostLoadsInWeek: number | null = null;
-  for (const w of weeks.values()) {
-    if (bestWeekRevenue == null || w.rev > bestWeekRevenue) bestWeekRevenue = w.rev;
-    if (mostLoadsInWeek == null || w.count > mostLoadsInWeek) mostLoadsInWeek = w.count;
+  for (const w of weeks) {
+    if (bestWeekRevenue == null || w.gross > bestWeekRevenue) bestWeekRevenue = w.gross;
+    if (mostLoadsInWeek == null || w.loads > mostLoadsInWeek) mostLoadsInWeek = w.loads;
   }
 
   const biggestLoad = delivered.reduce<number | null>((m, l) => {

@@ -4,7 +4,8 @@
 // Wednesday. Each snapshot stores the latest pay week it accrued; every
 // earlier closed week counts as accrued with it, so a skipped Friday can
 // never accrue the same week twice.
-import { payWeekRange } from "@/lib/metrics/rateTargets";
+import type { Load } from "@/types/load";
+import { payWeekRange, loadGross } from "@/lib/metrics/rateTargets";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
 
 export interface PayWeek {
@@ -86,6 +87,57 @@ export const milesInWeeks = (loads: LoadLike[], weeks: PayWeek[]): WeekMiles => 
   }
   out.miles = out.loadedMiles + out.deadheadMiles;
   return out;
+};
+
+// ---- best week: one number (Nod Sheet 2026-11-04, §5) ----
+// The Pulse said $13,295 (the best of seven pay weeks), the player card's TOP
+// WEEK $14,773 (Monday weeks), the recap a third. Now one grouping: every
+// COMPLETED pay week — Wednesday → Tuesday, a load counted by its delivery day
+// — totalled at GROSS, the full customer rate the week was booked at.
+export interface PayWeekTotal {
+  week: PayWeek;
+  gross: number;
+  loads: number;
+}
+
+// Every completed pay week that delivered freight, oldest first. `today` is
+// the operator's local day key; the week containing it is still running and
+// never counts. `from` / `before` (day keys) bound the weeks by their start —
+// the recap's range, [from, before).
+export const completedPayWeekTotals = (
+  loads: Load[],
+  today: string,
+  bounds: { from?: string; before?: string } = {},
+): PayWeekTotal[] => {
+  const running = payWeekOf(today).start;
+  const totals = new Map<string, PayWeekTotal>();
+  for (const l of loads) {
+    if (l.load_status !== "delivered" || !l.delivery_date) continue;
+    const week = payWeekOf(String(l.delivery_date).slice(0, 10));
+    if (week.start >= running) continue;
+    if (bounds.from && week.start < bounds.from) continue;
+    if (bounds.before && week.start >= bounds.before) continue;
+    const t = totals.get(week.start) ?? { week, gross: 0, loads: 0 };
+    t.gross += loadGross(l);
+    t.loads += 1;
+    totals.set(week.start, t);
+  }
+  return [...totals.values()].sort((a, b) => (a.week.start < b.week.start ? -1 : 1));
+};
+
+// The best completed pay week by gross — the one to beat. A tie goes to the
+// later week. null until a week has completed with freight.
+export const bestPayWeek = (
+  loads: Load[],
+  today: string,
+  bounds: { from?: string; before?: string } = {},
+): PayWeekTotal | null => {
+  let best: PayWeekTotal | null = null;
+  for (const t of completedPayWeekTotals(loads, today, bounds)) {
+    if (t.gross <= 0) continue;
+    if (best == null || t.gross >= best.gross) best = t;
+  }
+  return best;
 };
 
 // The month's first Friday is the new month's Friday: the snapshot runs, the

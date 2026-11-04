@@ -5,20 +5,23 @@
 // doesn't count, but it doesn't break your streak either. The streak is
 // consecutive target-beating weeks. Booked-but-unhauled freight is committed
 // pipeline (shown on the rate-targets card), not a win here until it's delivered.
+//
+// ONE target (Nod Sheet 2026-11-04, §5): HEAT grades the SAME number the hero
+// plate shows — gross weeks against the gross weekly target and floor from
+// computeRateTargets (six months, divided by the keep). It used to grade NET
+// weeks against a three-month net target of its own, $250 above the hero's
+// net-equivalent, on the same tab.
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
+import type { SettlementSchedule } from "@/types/settlementSchedule";
 import {
   payWeekRange,
   getWeekEarnedGross,
-  getGrossTargets,
-  getCostBasis,
+  getWeekGrossEarned,
+  computeRateTargets,
   type GrossTargets,
 } from "./rateTargets";
-import {
-  MARGIN_GOAL,
-  PAY_WEEK_START_DOW,
-  WORKING_DAYS_PER_MONTH,
-} from "@/lib/constants/targets";
+import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
 
 const WEEK_MS = 7 * 86400000;
 
@@ -37,6 +40,12 @@ export interface Grind {
   thisWeek: WeekStatus; // the in-progress week
   thisWeekGross: number;
   hasLadder: boolean; // false when there's no P&L to build gross targets from
+  // The bar the weeks were graded against — the hero's own target and floor
+  // (gross, per pay week) and the basis window they stand on — so the meter
+  // can SAY what a target week is.
+  weeklyTarget?: number | null;
+  weeklyFloor?: number | null;
+  basisLabel?: string | null; // "May–Oct ’26"
   // Personal mode only: how far the baseline has forged. The view renders a
   // ghost meter from these instead of vanishing (the ghost rule — hardware you
   // haven't earned shows dashed with its criterion, it doesn't disappear).
@@ -88,15 +97,19 @@ const medianOf = (xs: number[]): number | null => {
 // The shared core: grade every pay-week from the earliest delivery to now against
 // a target set, and roll up the streaks. Both grinds — the owner's cost target and
 // a dispatcher's personal pace — flow through here so they render identically.
+// `weekGross` reads a week in the same dollars its targets are in: the owner's
+// in GROSS (the hero's number), the dispatcher's in the net her typical week
+// was measured in.
 const grindFrom = (
   loads: Load[],
   targets: GrossTargets,
   now: Date,
   weeksToShow: number,
   hasLadder: boolean,
+  weekGross: (loads: Load[], start: Date, end: Date) => number,
 ): Grind => {
   const current = payWeekRange(now, PAY_WEEK_START_DOW);
-  const thisWeekGross = getWeekEarnedGross(loads, current.start, current.end);
+  const thisWeekGross = weekGross(loads, current.start, current.end);
   const thisWeek: WeekStatus = hasLadder ? classify(thisWeekGross, targets) : "home";
 
   const delivered = loads.filter(
@@ -116,7 +129,7 @@ const grindFrom = (
   const weeks: GrindWeek[] = [];
   for (let t = firstStart.getTime(); t < current.start.getTime(); t += WEEK_MS) {
     const ws = new Date(t);
-    const gross = getWeekEarnedGross(loads, ws, new Date(t + WEEK_MS));
+    const gross = weekGross(loads, ws, new Date(t + WEEK_MS));
     weeks.push({ start: ws.toISOString().slice(0, 10), status: classify(gross, targets), gross });
     if (weeks.length > 200) break; // safety cap
   }
@@ -134,21 +147,24 @@ const grindFrom = (
   };
 };
 
+// The owner's grind: GROSS weeks against the hero's own gross target and
+// floor — one function, one basis (computeRateTargets: six months, divided by
+// the keep; the margin goal comes off the schedule inside it).
 export const computeGrind = (
   loads: Load[],
   periods: ExpensePeriod[],
   obligationsMonthly: number,
+  schedule: SettlementSchedule | null,
   now: Date,
-  marginGoal: number = MARGIN_GOAL,
   weeksToShow = 14,
 ): Grind => {
-  const basis = getCostBasis(periods, obligationsMonthly, loads, now);
-  const targets = getGrossTargets(
-    basis.trueMonthlyCost,
-    marginGoal,
-    WORKING_DAYS_PER_MONTH,
-  );
-  return grindFrom(loads, targets, now, weeksToShow, targets.weeklyTarget != null);
+  const t = computeRateTargets(loads, periods, obligationsMonthly, schedule, now);
+  return {
+    ...grindFrom(loads, t.gross, now, weeksToShow, t.gross.weeklyTarget != null, getWeekGrossEarned),
+    weeklyTarget: t.gross.weeklyTarget,
+    weeklyFloor: t.gross.weeklyBreakEven,
+    basisLabel: t.basis.windowLabel,
+  };
 };
 
 // A dispatcher's grind, graded against HER OWN typical week instead of the shop's
@@ -204,7 +220,7 @@ export const computePersonalGrind = (
     dailyTargetCalendar: null,
   };
   return {
-    ...grindFrom(mine, targets, now, weeksToShow, hasLadder),
+    ...grindFrom(mine, targets, now, weeksToShow, hasLadder, getWeekEarnedGross),
     activeWeeks: active.length,
     weeksNeeded: MIN_ACTIVE_WEEKS,
   };
