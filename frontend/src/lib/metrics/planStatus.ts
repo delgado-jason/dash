@@ -516,11 +516,15 @@ export interface PlanStatus {
 export const getPlanStatus = (
   snapshot: SnapshotInput | null,
   plan: PlanInput | null,
-  ctx: { accrual?: AccrualInput | null; moneyDay?: MoneyDayInput | null } = {},
+  // accrualMoved: the balances typed already hold the accrual — Jason moves it
+  // BEFORE he types the snapshot (2026-11-04) — so it is shown, not subtracted.
+  ctx: { accrual?: AccrualInput | null; moneyDay?: MoneyDayInput | null; accrualMoved?: boolean } = {},
 ): PlanStatus | null => {
   if (!snapshot || !plan) return null;
   const perMile = num(plan.maintenance_per_mile);
-  const acc = ctx.accrual ? getAccrual(ctx.accrual.miles, perMile) : null;
+  const accDue = ctx.accrual ? getAccrual(ctx.accrual.miles, perMile) : null;
+  // What still has to leave Ops: nothing when the move is already in the balances.
+  const acc = ctx.accrualMoved ? 0 : accDue;
   const accrualFlag = accrualFlagOf(ctx.accrual);
 
   const waterfall = getWaterfallStage(snapshot, plan.stages);
@@ -567,9 +571,13 @@ export const getPlanStatus = (
   }
 
   const orders: string[] = [];
-  if (acc != null && ctx.accrual && perMile != null) {
+  if (accDue != null && ctx.accrual && perMile != null) {
     const m = num(ctx.accrual.miles) ?? 0;
-    orders.push(`Accrue Maintenance ${money(acc)} (${miles(m)} mi × $${perMile})`);
+    orders.push(
+      ctx.accrualMoved
+        ? `Maintenance accrual ${money(accDue)} (${miles(m)} mi × $${perMile}) — already moved, the balances show it`
+        : `Accrue Maintenance ${money(accDue)} (${miles(m)} mi × $${perMile})`,
+    );
   }
   if (moneyDay) {
     const il = moneyDay.interlock;
@@ -601,5 +609,5 @@ export const getPlanStatus = (
     orders.push(`${money(act.overflow)} above the ratchet — send it to ${act.stage.label}`);
   }
 
-  return { accrual: acc, accrualFlag, opsAfter, verdict, interlock, cushion, waterfall, objectiveIndex, moneyDay, orders };
+  return { accrual: accDue, accrualFlag, opsAfter, verdict, interlock, cushion, waterfall, objectiveIndex, moneyDay, orders };
 };

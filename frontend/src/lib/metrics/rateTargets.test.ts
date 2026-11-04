@@ -124,6 +124,13 @@ describe("getCostBasis", () => {
     expect(b.monthsDetail[0]).toMatchObject({ year: 2026, month: 3, cost: 12000, totalMiles: 2500 });
   });
 
+  it("a month missing ONE section total is unfiled too — a missing section is not a $0 section", () => {
+    const half = { ...period("2026-05-01", 5000, 5000), cogs_total: null } as ExpensePeriod;
+    const b = getCostBasis([period("2026-04-01", 5000, 5000), half, period("2026-06-01", 5000, 5000)], 0, [], now);
+    expect(b.months).toBe(2);
+    expect(b.missingLabel).toBe("May ’26");
+  });
+
   it("a month saved without its totals is unfiled, never a free month", () => {
     const broken = { ...period("2026-05-01", 5000, 5000), cogs_total: null, expense_total: null } as ExpensePeriod;
     const b = getCostBasis([period("2026-04-01", 5000, 5000), broken, period("2026-06-01", 5000, 5000)], 0, [], now);

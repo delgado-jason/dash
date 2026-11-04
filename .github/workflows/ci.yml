@@ -1,0 +1,36 @@
+# The gate: a pull request cannot merge while a business rule's test is red.
+# Frontend: types, lint, vitest. Backend: node:test. (2026-11-04, call 15.)
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npx tsc -b --noEmit
+      # Lint the files this change touched, at zero warnings — the house rule.
+      # (36 older errors sit in files nobody has touched since; clearing them
+      # is its own task, so they don't make every PR red meanwhile.)
+      - name: eslint on the changed files
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'frontend/src/**/*.ts' 'frontend/src/**/*.tsx' | sed 's#^frontend/##')
+          if [ -n "$FILES" ]; then echo "$FILES" | xargs npx eslint --max-warnings=0; else echo "no frontend source changed"; fi
+      - run: npx vitest run
+  backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+      - run: npm ci
+      - run: npm test

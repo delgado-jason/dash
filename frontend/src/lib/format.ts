@@ -26,15 +26,19 @@ export const daysBetween = (
 // ---- Money ----
 // The app's default: whole-dollar money for aggregates, totals, and per-load
 // amounts shown in lists. null/undefined → "—".
-export const money = (n: number | null | undefined): string =>
-  n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
+export const money = (n: number | null | undefined): string => {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const r = Math.round(n);
+  return `${r < 0 ? "−" : ""}$${Math.abs(r).toLocaleString("en-US")}`;
+};
 
 // Full currency WITH cents — reserved for an individual load's detail line items
 // and receipt-level amounts (fuel). null/undefined → "—".
-export const moneyCents = (n: number | null | undefined): string =>
-  n == null
-    ? "—"
-    : n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+export const moneyCents = (n: number | null | undefined): string => {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const s = Math.abs(n).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  return n < 0 ? `−${s}` : s;
+};
 
 // A per-mile rate ($/mi) — always two decimals. null/undefined → "—".
 export const rpm = (n: number | null | undefined): string =>

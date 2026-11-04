@@ -421,3 +421,15 @@ describe("getPlanStatus — the whole verdict", () => {
     expect(st.orders).toEqual(["Below the float — hold"]);
   });
 });
+
+describe("getPlanStatus — an accrual already in the balances is shown, not subtracted (2026-11-04)", () => {
+  it("accrualMoved: opsAfter equals Ops, the order says it already moved, the accrual figure is still reported", () => {
+    const st = getPlanStatus(sep18(), plan(), { accrual: thisWeek })!;
+    const moved = getPlanStatus(sep18(), plan(), { accrual: thisWeek, accrualMoved: true })!;
+    expect(st.accrual).toBeGreaterThan(0);
+    expect(moved.accrual).toBe(st.accrual);
+    expect(st.opsAfter).toBeCloseTo((moved.opsAfter ?? 0) - (st.accrual ?? 0), 2);
+    expect(moved.orders[0]).toMatch(/already moved/);
+  });
+});
+

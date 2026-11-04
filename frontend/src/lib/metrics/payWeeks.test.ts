@@ -82,3 +82,15 @@ describe("weekLabel", () => {
     expect(weekLabel({ start: "2026-09-30", end: "2026-10-06" })).toBe("Sep 30–Oct 6");
   });
 });
+
+describe("milesInWeeks — a TONU's planned miles are not driven miles (2026-11-04)", () => {
+  it("skips tonu like cancelled", () => {
+    const w = [{ start: "2026-11-04", end: "2026-11-10" }];
+    const loads = [
+      { load_number: "a", load_status: "tonu", pickup_date: "2026-11-05", loaded_miles: 301, deadhead_miles: 124 },
+      { load_number: "b", load_status: "booked", pickup_date: "2026-11-05", loaded_miles: 500, deadhead_miles: 50 },
+    ];
+    expect(milesInWeeks(loads, w)).toMatchObject({ loads: 1, miles: 550 });
+  });
+});
+

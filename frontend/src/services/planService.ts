@@ -46,6 +46,7 @@ export interface AccountRow {
 export interface SnapshotRow {
   snapshot_id: string;
   as_of: string;
+  created_at?: string | null; // when it was typed — breaks a same-day tie with an OPS NOW check
   note: string | null;
   // The accrual this snapshot made (miles + the latest pay week covered) and
   // the month its money day settled — null on a plain Friday.
@@ -113,6 +114,7 @@ export const createSnapshot = async (data: Record<string, unknown>): Promise<Sna
 export interface OpsCheckRow {
   check_id: string;
   as_of: string; // YYYY-MM-DD
+  created_at?: string | null; // when it was typed
   balance: string | number; // numeric — coerce at the boundary
   note: string | null;
 }

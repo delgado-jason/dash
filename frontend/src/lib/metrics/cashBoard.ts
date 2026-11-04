@@ -32,6 +32,24 @@
 //   card leftover, a money day — rides into the current column as "since
 //   your number". The bottom carries to the next column as its opening.
 //   No gap line. Dates are the #1 bug: every date is a sliced calendar day.
+//
+// Revised 2026-11-04 (the site-wide audit, Jason's answers):
+//   · Your own moves (the accrual, a money day) follow the OUTFLOW rule — a
+//     snapshot already holds a move made on its own day ("I move the Friday
+//     accrual before I type the snapshot"); a morning check still has it ahead.
+//   · A previous period's lines are counted by their OWN dates — its accrual
+//     lands the Friday after it closes, its deposit the Thursday — so the
+//     walk back stops only when a period's last line is before the number.
+//   · A TONU is never booked as revenue until the statement pays it ("I am
+//     subject to whatever the shipper agrees to pay").
+//   · A statement whose net is negative lands nothing: Landstar carries the
+//     deficit into the next statement, which pays that much less.
+//   · The fuel pace and the mile pace are the average of the last four pay
+//     weeks that actually ran (idle weeks skipped), so a home stint doesn't
+//     dilute them; an open period's accrual is projected like its deposit.
+//   · A single booking never replaces the planning fallback: an open period
+//     projects the larger of its loads and the fallback.
+//   · The verdict reads the lowest day of the two periods, not two endings.
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
 import type { SettlementSummary } from "@/types/settlement";
@@ -47,6 +65,7 @@ export interface CashCheck {
   balance: number; // the bank's Ops balance
   kind: "snapshot" | "check";
   note: string | null;
+  createdAt?: string | null; // when it was typed — breaks a same-day tie (the later one is the number)
 }
 
 export interface FuelLike {
@@ -74,8 +93,9 @@ export interface CashBoardInput {
   readings: OdometerReading[];
   weeklyPayroll: number;
   perMile: number; // the plan's maintenance $/mile
-  fuelPaceWeekly: number | null; // the 30-day pace; null → fuelFallback
+  fuelPaceWeekly: number | null; // $/week over the last four running pay weeks (runningWeekPace); null → fuelFallback
   fuelFallback: number;
+  milesPaceWeekly?: number | null; // odometer miles/week over the last four running pay weeks (runningMilesPace)
   advanceDefault: number; // the weekly fuel advance borrowed against the loads — $2,000
   buckets: DeductionBuckets;
   deductionsFallback: number;
@@ -107,6 +127,15 @@ export interface DepositLine extends Line {
   week: PayWeek; // the period that earned it
   statementDate: string;
   source: "actual" | "override" | "projected" | "fallback";
+  // An open period projects the larger of its loads and the planning fallback —
+  // one small booking must not replace a whole week's expected revenue.
+  revenueSource: "loads" | "fallback" | "none";
+  revenue: number; // delivered + expected (or the fallback) before the advance and the bucket
+  // Landstar carries a negative statement into the next one. carriedIn is what
+  // earlier statements left owing (≤ 0, already applied to amount); carriedOut
+  // is what this statement itself carries forward (≤ 0) — nothing lands.
+  carriedIn: number;
+  carriedOut: number;
   loads: number; // delivered — status says so
   loadsNet: number;
   inTransit: number;
@@ -121,7 +150,7 @@ export interface DepositLine extends Line {
 
 export interface AccrualLine extends Line {
   miles: number | null;
-  source: "odometer" | "loads" | "none";
+  source: "odometer" | "loads" | "projected" | "none";
   words: string | null;
   flag: string | null;
 }
@@ -165,15 +194,23 @@ export interface PeriodColumn {
   ending: number | null;
 }
 
+export interface LowestDay {
+  amount: number;
+  date: string; // the day the running balance bottoms out
+}
+
 export interface CashBoard {
   columns: [PeriodColumn, PeriodColumn];
   base: CashCheck; // the Ops number the current column opens on
-  lowest: number | null; // the lower of the two endings
-  clears: boolean | null;
+  lowest: LowestDay | null; // the lowest day across both periods, by every counted line's own date
+  clears: boolean | null; // lowest.amount ≥ the float line
 }
 
 // A load has DELIVERED when its status says so — never on a planned date.
 const DELIVERED = new Set(["delivered", "invoiced", "paid"]);
+// Never revenue in a projection: a cancelled load, and a TONU — the shipper
+// decides what a TONU pays, and that shows up on the statement, not before.
+const NEVER_REVENUE = new Set(["cancelled", "tonu"]);
 
 const num = (v: number | string | null | undefined): number => {
   const n = Number(v);
@@ -215,8 +252,10 @@ const countsOut = (date: string, base?: CashCheck): boolean =>
   base == null || date > day(base.date) || (date === day(base.date) && base.kind === "check");
 // Money that is there by morning — a deposit, the Monday card leftover.
 const countsIn = (date: string, base?: CashCheck): boolean => base == null || date > day(base.date);
-// Jason's own moves after any balance — the accrual, a money day.
-const countsMove = (date: string, base?: CashCheck): boolean => base == null || date >= day(base.date);
+// Jason's own moves — the accrual, a money day — follow the outflow rule: he
+// moves the money BEFORE he types the snapshot, so a snapshot dated the move's
+// day already holds it; a morning check still has it ahead (2026-11-04).
+const countsMove = countsOut;
 
 // ---- fuel ----
 
@@ -233,6 +272,35 @@ const fillsIn = (fuel: FuelLike[], week: PayWeek, upTo?: string): { total: numbe
   }
   return { total: round2(total), count };
 };
+
+// The pace of a thing per pay week, from the last `weeks` CLOSED pay weeks
+// that actually ran (value > 0), walking back at most `lookback` weeks so a
+// home stint — or a month at home — never dilutes it with zero weeks. null when
+// no week ran.
+const runningPace = (
+  today: string,
+  valueOf: (week: PayWeek) => number,
+  weeks = 4,
+  lookback = 12,
+): number | null => {
+  let w = payWeekOf(today);
+  const vals: number[] = [];
+  for (let i = 0; i < lookback && vals.length < weeks; i++) {
+    w = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
+    const v = valueOf(w);
+    if (v > 0) vals.push(v);
+  }
+  if (vals.length === 0) return null;
+  return round2(vals.reduce((a, b) => a + b, 0) / vals.length);
+};
+
+// Fuel $/week over the last four pay weeks with a fill.
+export const runningWeekPace = (fuel: FuelLike[], today: string, weeks = 4): number | null =>
+  runningPace(today, (w) => fillsIn(fuel, w).total, weeks);
+
+// Odometer miles/week over the last four pay weeks that rolled.
+export const runningMilesPace = (readings: OdometerReading[], today: string, weeks = 4): number | null =>
+  runningPace(today, (w) => weekOdometerMiles(readings, w).miles ?? 0, weeks);
 
 // The period's fuel: the log's fills once the period closes; while it's open,
 // the fills so far or the 30-day pace, whichever is larger; a future period
@@ -268,6 +336,25 @@ export const fuelForWeek = (
 
 // ---- a period's own deposit ----
 
+// What earlier statements left owing. Landstar carries a negative statement
+// into the next one — a deficit never leaves Ops on a Thursday, the next
+// deposit is just that much smaller. Walk back one statement at a time while
+// the previous statement is on file and negative; stop at the first positive
+// one (which absorbed anything older) or at a gap in the feed.
+const carriedInto = (settlements: SettlementSummary[], statementDate: string): number => {
+  let carried = 0;
+  let d = addDays(statementDate, -7);
+  for (let i = 0; i < 12; i++) {
+    const s = settlements.find((x) => day(x.period_ending) === d);
+    if (!s) break;
+    const net = num(s.net);
+    if (net >= 0) break;
+    carried += net;
+    d = addDays(d, -7);
+  }
+  return round2(carried);
+};
+
 export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: CashCheck): DepositLine => {
   const { settlements, loads, overrides, buckets, deductionsFallback, weeklyRevenueFallback, today } = input;
   const sd = normalizeSettlementDay(input.settlementDay);
@@ -289,9 +376,11 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   // planned delivery date is expected, and only into a period that hasn't
   // closed. dash's payment flag is NOT consulted — Jason marks loads paid by
   // hand the morning the cash lands, often before the statement reaches the
-  // vault; the statement's actual below wins the moment it's on file.
+  // vault; the statement's actual below wins the moment it's on file. A TONU
+  // is never projected: whatever the shipper agrees to pay arrives on the
+  // statement.
   for (const l of loads) {
-    if (l.load_status === "cancelled") continue;
+    if (NEVER_REVENUE.has(String(l.load_status))) continue;
     const isDelivered = DELIVERED.has(String(l.load_status));
     const dateKey = isDelivered ? day(l.delivery_date ?? l.pickup_date) : day(l.delivery_date);
     if (!dateKey) continue;
@@ -309,20 +398,43 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   expectedNet = round2(expectedNet);
   const noLoads = count + inTransit + booked === 0;
   const fuel = fuelForWeek({ ...input, settlementDay: sd }, week, base, closed && noLoads);
+  const carriedIn = carriedInto(settlements, statementDate);
   const baseLine = {
     week, statementDate, date, counted, loads: count, loadsNet, inTransit, booked, expectedNet,
-    advances: fuel.advances, advancesSource: fuel.advancesSource, bucket, bucketKind, fuel,
+    advances: fuel.advances, advancesSource: fuel.advancesSource, bucket, bucketKind, fuel, carriedIn,
   };
+  // The statement itself: its net lands if positive; a negative net lands
+  // nothing and is carried into the next statement.
   const actual = settlements.find((s) => day(s.period_ending) === statementDate);
-  if (actual) return { ...baseLine, amount: round2(num(actual.net)), source: "actual" };
-  if (overrides[statementDate] != null) return { ...baseLine, amount: overrides[statementDate], source: "override" };
-  if (noLoads) {
-    // Nothing delivered or expected: an open or future period runs on the
-    // planning fallback; a closed one earned nothing — and drew nothing.
-    if (!closed) return { ...baseLine, amount: round2(weeklyRevenueFallback - fuel.advances - bucket), source: "fallback" };
-    return { ...baseLine, amount: 0, source: "projected" };
+  if (actual) {
+    const net = round2(num(actual.net));
+    return { ...baseLine, amount: Math.max(0, net), source: "actual", revenueSource: "loads", revenue: round2(num(actual.revenue)), carriedOut: Math.min(0, net) };
   }
-  return { ...baseLine, amount: round2(loadsNet + expectedNet - fuel.advances - bucket), source: "projected" };
+  if (overrides[statementDate] != null) {
+    const v = overrides[statementDate];
+    return { ...baseLine, amount: Math.max(0, v), source: "override", revenueSource: "loads", revenue: v, carriedOut: Math.min(0, v) };
+  }
+  // The period's revenue: what it delivered and still expects, or — while it
+  // is open or future and the loads say less than a normal week — the
+  // planning fallback. A closed period stands on its loads alone.
+  const fromLoads = round2(loadsNet + expectedNet);
+  let revenue: number;
+  let revenueSource: DepositLine["revenueSource"];
+  if (closed) {
+    revenue = fromLoads;
+    revenueSource = noLoads ? "none" : "loads";
+  } else if (fromLoads >= weeklyRevenueFallback) {
+    revenue = fromLoads;
+    revenueSource = "loads";
+  } else {
+    revenue = round2(weeklyRevenueFallback);
+    revenueSource = "fallback";
+  }
+  // A closed period that ran nothing drew nothing — but Landstar's recurring
+  // deductions still post, so the statement carries a deficit forward.
+  const gross = round2(revenue - fuel.advances - bucket + carriedIn);
+  const source: DepositLine["source"] = revenueSource === "fallback" ? "fallback" : "projected";
+  return { ...baseLine, amount: Math.max(0, gross), source, revenueSource, revenue, carriedOut: Math.min(0, gross) };
 };
 
 // ---- the period's accrual: its own miles, paid the Friday after it closes ----
@@ -337,11 +449,25 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   let miles: number;
   let source: AccrualLine["source"];
   let words: string;
+  const pace = input.milesPaceWeekly ?? null;
   if (future) {
-    // Nothing has rolled yet — only the loads booked into the period say anything.
-    miles = byLoads.miles;
-    source = byLoads.loads > 0 ? "loads" : "none";
-    words = byLoads.loads > 0 ? `${fmtMiles(byLoads.miles)} mi by the loads booked so far · grows as loads land` : "nothing yet · grows as loads land";
+    // Nothing has rolled yet: a normal week's miles (the last four that ran),
+    // or the loads booked into it if they say more.
+    if (pace != null && pace > byLoads.miles) {
+      miles = pace;
+      source = "projected";
+      words = `projected ${fmtMiles(pace)} mi — a normal week (last four that ran)${byLoads.loads > 0 ? ` · loads booked so far say ${fmtMiles(byLoads.miles)}` : ""} · actual miles replace it as readings land`;
+    } else {
+      miles = byLoads.miles;
+      source = byLoads.loads > 0 ? "loads" : "none";
+      words = byLoads.loads > 0 ? `${fmtMiles(byLoads.miles)} mi by the loads booked so far · grows as loads land` : "nothing yet · grows as loads land";
+    }
+  } else if (!closed && pace != null && pace > Math.max(odo.miles ?? 0, byLoads.miles)) {
+    // Open and still short of a normal week: project the week, the way the
+    // deposit does — the odometer takes over the moment it says more.
+    miles = pace;
+    source = "projected";
+    words = `projected ${fmtMiles(pace)} mi — a normal week (last four that ran) · odometer ${fmtMiles(odo.miles ?? 0)} mi so far${odo.end ? ` (last reading ${mdWords(odo.end.date)})` : ""} · actual miles replace it as readings land`;
   } else if (odo.miles == null) {
     miles = byLoads.miles;
     source = byLoads.loads > 0 ? "loads" : "none";
@@ -391,9 +517,13 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
   const input: CashBoardInput = { ...raw, settlementDay: normalizeSettlementDay(raw.settlementDay) };
   const checks = [...input.checks].map((c) => ({ ...c, date: day(c.date) })).filter((c) => c.date <= input.today);
   if (checks.length === 0) return null;
-  // The Ops number: the latest balance typed; on a day with both, the check
-  // (typed later in the day than the Friday snapshot's raw balances).
-  checks.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.kind === b.kind ? 0 : a.kind === "snapshot" ? -1 : 1));
+  // The Ops number: the latest balance typed; on a day with both, the one
+  // typed later (createdAt), else the check.
+  checks.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.createdAt && b.createdAt && a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+    return a.kind === b.kind ? 0 : a.kind === "snapshot" ? -1 : 1;
+  });
   const base = checks[checks.length - 1];
 
   const current = payWeekOf(input.today);
@@ -403,11 +533,13 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
 
   // Everything the previous period(s) still owe after the Ops number — a
   // number older than this Wednesday leaves their later-dated lines in no
-  // column otherwise. Walk back while the period has days on or after it.
+  // column otherwise. A period owns lines dated AFTER its last day: its
+  // deposit lands the Thursday after it closes and its accrual the Friday
+  // (end + 3). Walk back while a period's last line is on or after the number.
   const since: PriorLines[] = [];
   for (let k = 1; ; k++) {
     const w = shift(current, -7 * k);
-    if (w.end < base.date) break;
+    if (addDays(w.end, 3) < base.date) break;
     if (k > 8) break; // a number two months old is a number to retype, not a ledger to rebuild
     const payrollDate = nextDow(w.start, 5);
     const payroll: Line = { amount: input.weeklyPayroll, date: payrollDate, counted: countsOut(payrollDate, base) };
@@ -476,8 +608,56 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
 
   const col0 = build("current", current, base.balance, base);
   const col1 = build("next", next, col0.ending);
-  const endings = [col0.ending, col1.ending].filter((e): e is number => e != null);
-  const lowest = endings.length ? Math.min(...endings) : null;
-  const clears = lowest != null && input.floatLine != null ? lowest >= input.floatLine : null;
+  const lowest = lowestDay(base, [col0, col1], input.today);
+  const clears = lowest != null && input.floatLine != null ? lowest.amount >= input.floatLine : null;
   return { columns: [col0, col1], base, lowest, clears };
+};
+
+// Every counted line of both columns on its own day, in order, run from the
+// Ops number: the lowest balance from today on is the verdict's number — two
+// endings can clear the float while a Sunday between them sits under it.
+export const lowestDay = (base: CashCheck, columns: PeriodColumn[], today: string): LowestDay | null => {
+  const moves: { date: string; amount: number }[] = [];
+  const push = (l: Line | null | undefined, sign: 1 | -1) => {
+    if (l && l.counted && l.amount !== 0) moves.push({ date: l.date, amount: sign * l.amount });
+  };
+  for (const c of columns) {
+    for (const p of c.since) {
+      push(p.deposit, 1);
+      push(p.leftover, 1);
+      push(p.payroll, -1);
+      push(p.accrual, -1);
+      for (const b of p.bills) push(b, -1);
+      for (const m of p.moneyDays) push({ amount: m.amount, date: m.date, counted: m.counted }, -1);
+    }
+    push(c.prevDeposit, 1);
+    push(c.deposit, 1);
+    push(c.payroll, -1);
+    push(c.accrual, -1);
+    push(c.fuel.leftover, 1);
+    for (const b of c.bills) push(b, -1);
+    for (const m of c.moneyDays) push({ amount: m.amount, date: m.date, counted: m.counted }, -1);
+  }
+  moves.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  let bal = base.balance;
+  let low: LowestDay | null = null;
+  let sawToday = false;
+  const consider = (date: string) => {
+    if (date < today) return;
+    if (date === today) sawToday = true;
+    if (low == null || bal < low.amount) low = { amount: round2(bal), date };
+  };
+  // Apply each day's moves together, then read the balance at the END of the
+  // day — a deposit that lands by morning is in before anything is decided.
+  for (let i = 0; i < moves.length; ) {
+    const d = moves[i].date;
+    if (d > today && !sawToday) consider(today); // a quiet today still has a balance
+    while (i < moves.length && moves[i].date === d) {
+      bal += moves[i].amount;
+      i++;
+    }
+    consider(d);
+  }
+  if (!sawToday) consider(today);
+  return low;
 };

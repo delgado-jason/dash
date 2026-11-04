@@ -1460,41 +1460,52 @@ const GuidePage = () => {
           >
             <Formula>
               deposit = delivered loads at net (+ loads still on the road,
-              expected) − the fuel advance drawn against them − the fixed
-              deductions · ending = your Ops number − what the previous period
-              still owes after it + last period’s deposit (if it lands after
-              your number) + this period’s deposit − payroll − accrual − bills
-              + the card leftover − a run money day
+              expected — or a normal planning week when they say less) − the
+              fuel advance drawn against them − the fixed deductions − what the
+              statement before carried forward · a statement under zero lands
+              nothing and carries into the next · a TONU counts only once the
+              statement pays it · ending = your Ops number ± every line dated
+              after it, each on the day it hits the bank: last period’s deposit,
+              this period’s deposit, payroll, the accrual, the bills, the card
+              leftover, a run money day · verdict = the lowest day of the two
+              periods against the float
             </Formula>
             <Why>
               A pay period runs Wednesday to Tuesday. Whatever it delivers goes
               on the next Wednesday’s statement and lands Thursday — and that
-              money belongs to the period that earned it. So each column is
-              one period: its deposit (delivered loads minus Landstar’s cut
-              plus accessorials, minus the advance borrowed against those loads
-              — the weekly fuel advance from your Assumptions, $2,000, unless
-              the fills pass it; the statement’s actual once it’s in the vault;
-              nothing when a closed period ran no loads — minus the small fixed
-              deductions; a load still on the road is{" "}
-              <span className="text-light">expected</span>, never delivered), the fixed payroll on Friday, the accrual on the
-              period’s own miles by odometer paid the Friday after it closes,
-              the bills on their draft days, and the fuel: fills are paid from
-              the card the advance lands on, so they never come out of Ops, and
-              what’s left on the card after the fills goes to business checking
-              on Monday. The current column opens on your latest number — an{" "}
+              money belongs to the period that earned it. So each column is one
+              period, and every line sits on the day the money moves: the Ops
+              number you typed, last period’s deposit on its Thursday, payroll
+              on Friday, the accrual on the period’s own miles the Friday after
+              it closes, the bills on their draft days, the card leftover on
+              Monday (the advance borrowed against the loads minus the fuel —
+              fills never come out of Ops), this period’s own deposit on the
+              Thursday after it closes, then the ending. A faint line is already
+              inside your number. The deposit is the statement’s actual once the
+              vault has it; before that it is the delivered and expected loads —
+              or a normal planning week when they say less, so one small booking
+              never replaces the week — minus the weekly advance (
+              <span className="text-light">$2,000 unless the fills pass it</span>
+              ) and the fixed deductions, minus whatever the statement before
+              carried forward: a home week’s statement nets under zero, lands
+              nothing, and Landstar takes it out of the next one. A TONU is never
+              counted until the statement pays it — the shipper decides what it
+              pays. The fuel and the miles of an open or future period run at
+              the pace of the last four pay weeks that actually ran, so a home
+              stint never dilutes them; the odometer takes over as readings
+              land. The current column opens on your latest number — an{" "}
               <span className="text-light">OPS NOW</span> balance or the Friday
-              snapshot — and only what’s dated on or after it comes off;
-              anything earlier is shown but already inside the number. On the
-              number’s own day an OPS NOW check still has that day’s payroll
-              and drafts ahead of it, while a Friday snapshot already holds
-              them; money that lands by morning — a deposit, Monday’s card
-              leftover — counts only when it lands after the number. When the
-              number is older than this Wednesday, whatever the previous period
-              still owes after it — its accrual, its card leftover, its bills,
-              a money day — comes off the current column as{" "}
-              <span className="text-light">since your number</span>. The
-              bottom line is Ops after the period settles, and it opens the next
-              column. Tap either deposit to type the figure you know before the
+              snapshot; on a day with both, the one typed later. Only what’s
+              dated on or after it comes off; a snapshot already holds its own
+              day, including the accrual you moved before typing it, while a
+              morning check still has that day ahead. Whatever an earlier period
+              still owes after your number — its Friday accrual, its card
+              leftover, its bills — rides into the current column on its own
+              date. The verdict reads the{" "}
+              <span className="text-light">lowest day</span> across both
+              periods, not the two endings: a board can end above the float and
+              dip under it on a Sunday in between. Tap either deposit to type
+              the figure you know; it is kept on this browser until the
               statement lands.
             </Why>
           </Metric>

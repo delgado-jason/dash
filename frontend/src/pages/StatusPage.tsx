@@ -22,6 +22,8 @@ import {
   patchAccount,
   getSnapshots,
   createSnapshot,
+  getOpsChecks,
+  type OpsCheckRow,
   type PlanRow,
   type PlanStageRow,
   type SnapshotRow,
@@ -163,6 +165,7 @@ const StatusPage = () => {
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [opsChecks, setOpsChecks] = useState<OpsCheckRow[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
@@ -186,11 +189,14 @@ const StatusPage = () => {
       // fail the accrual falls back to the loads, it doesn't blank the Plan.
       getFuelEntries().catch((): FuelEntry[] => []),
       getTrips().catch((): Trip[] => []),
+      // OPS NOW checks: the board's Ops number when one is newer than the snapshot.
+      getOpsChecks().catch((): OpsCheckRow[] => []),
     ])
-      .then(([p, a, s, o, pe, l, f, t]) => {
+      .then(([p, a, s, o, pe, l, f, t, oc]) => {
         setPlans(p);
         setAccounts(a);
         setSnapshots(s);
+        setOpsChecks(oc);
         setObligations(o);
         setPeriods(pe);
         setLoads(l);
@@ -206,6 +212,18 @@ const StatusPage = () => {
 
   const plan = useMemo(() => plans.find((p) => p.active) ?? plans[0] ?? null, [plans]);
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+  const previous = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
+  // The Ops number this page measures from: the latest snapshot — or an OPS NOW
+  // check typed after it, the same rule the cash board uses (2026-11-04; the
+  // two pages used to open on different numbers).
+  const newestCheck = useMemo(
+    () =>
+      [...opsChecks]
+        .sort((x, y) => (x.as_of < y.as_of ? -1 : x.as_of > y.as_of ? 1 : String(x.created_at ?? "") < String(y.created_at ?? "") ? -1 : 1))
+        .at(-1) ?? null,
+    [opsChecks],
+  );
+  const opsFromCheck = latest && newestCheck && newestCheck.as_of.slice(0, 10) > latest.as_of.slice(0, 10) ? newestCheck : null;
 
   // Role resolution — the math reads four roles; anything else is watched.
   const activeAccounts = useMemo(
@@ -265,8 +283,8 @@ const StatusPage = () => {
   const snapInput = (sn: SnapshotRow | null): SnapshotInput | null =>
     sn
       ? {
-          as_of: sn.as_of,
-          ops: balanceOf(sn, opsAcct?.account_id),
+          as_of: sn === latest && opsFromCheck ? opsFromCheck.as_of : sn.as_of,
+          ops: sn === latest && opsFromCheck ? Number(opsFromCheck.balance) : balanceOf(sn, opsAcct?.account_id),
           vault: balanceOf(sn, vaultAcct?.account_id),
           maintenance: balanceOf(sn, maintAcct?.account_id),
           tax: balanceOf(sn, taxAcct?.account_id),
@@ -422,19 +440,31 @@ const StatusPage = () => {
   const latestFiled = filed.length ? filed[filed.length - 1].month : null;
   const opensNext = latestFiled ? monthName(nextMonth(latestFiled)) : null;
 
+  // Jason moves the Friday accrual BEFORE he types the snapshot: when the
+  // latest snapshot's Maintenance balance already rose by the accrual that is
+  // due, the move is inside the balances and must not come off Ops again.
+  const accrualMoved = useMemo(() => {
+    if (!latest || !previous || !plan) return false;
+    const due = (owedToday.miles ?? 0) * Number(plan.maintenance_per_mile);
+    if (!(due > 0)) return false;
+    const now = balanceOf(latest, maintAcct?.account_id);
+    const before = balanceOf(previous, maintAcct?.account_id);
+    if (now == null || before == null) return false;
+    return now - before >= 0.9 * due;
+  }, [latest, previous, plan, owedToday, maintAcct]);
   const status = useMemo(
-    () => (planInput ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedToday.miles) }) : null),
+    () => (planInput ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedToday.miles), accrualMoved }) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [planInput, latest, owedToday, opsAcct, vaultAcct, maintAcct, taxAcct],
+    [planInput, latest, opsFromCheck, owedToday, accrualMoved, opsAcct, vaultAcct, maintAcct, taxAcct],
   );
   // The money day panel previews the pending month on the latest balances.
   const preview = useMemo(
     () =>
       planInput && pending
-        ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedToday.miles), moneyDay: pending })
+        ? getPlanStatus(snapInput(latest), planInput, { accrual: accrualInput(owedToday, owedToday.miles), moneyDay: pending, accrualMoved })
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [planInput, latest, owedToday, pending, opsAcct, vaultAcct, maintAcct, taxAcct],
+    [planInput, latest, opsFromCheck, owedToday, accrualMoved, pending, opsAcct, vaultAcct, maintAcct, taxAcct],
   );
 
   // When a money day is open the whole page previews it — the badge, the
@@ -726,7 +756,9 @@ const StatusPage = () => {
     view?.objectiveIndex != null && view.waterfall ? view.waterfall.stages[view.objectiveIndex] : null;
   const objectiveName = objective?.stage.label ?? "the current objective";
   const pendingLabel = pending ? monthName(pending.month) : null;
-  const opsBal = balanceOf(latest, opsAcct?.account_id);
+  // The Ops figure follows the same number the math uses: an OPS NOW check
+  // typed after the snapshot replaces the snapshot's Ops balance.
+  const opsBal = opsFromCheck ? Number(opsFromCheck.balance) : balanceOf(latest, opsAcct?.account_id);
   const vaultBal = balanceOf(latest, vaultAcct?.account_id);
   const maintBal = balanceOf(latest, maintAcct?.account_id);
   const taxBal = balanceOf(latest, taxAcct?.account_id);
@@ -824,6 +856,7 @@ const StatusPage = () => {
             ) : null}
             {opensNext && <> · {opensNext.split(" ")[0]}'s opens when its P&amp;L lands</>}
             {latest && <> · snapshot {formatDate(latest.as_of)}</>}
+            {opsFromCheck && <> · <b className="font-semibold text-ink">OPS NOW</b> {formatDate(opsFromCheck.as_of)} — the Ops number</>}
             {" "}· <b className="font-semibold text-ink">{snapshots.length}</b> week
             {snapshots.length === 1 ? "" : "s"} tracked
           </span>
@@ -904,9 +937,10 @@ const StatusPage = () => {
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 ops balance
-                {view?.opsAfter != null && ((acc != null && acc > 0) || (view.moneyDay?.tax ?? 0) > 0) && (
-                  <> · {fmtMoney(view.opsAfter)} after {view.moneyDay && view.moneyDay.tax > 0 ? "the moves" : "Friday's accrual"}</>
+                {view?.opsAfter != null && !accrualMoved && ((acc != null && acc > 0) || (view.moneyDay?.tax ?? 0) > 0) && (
+                  <> · {fmtMoney(view.opsAfter)} after {view.moneyDay && view.moneyDay.tax > 0 ? "the moves" : "the accrual"}</>
                 )}
+                {accrualMoved && <> · the accrual is already in the balances</>}
                 {floorsBoard[0] && (floorsBoard[0].short > 0 ? <> · short {money(floorsBoard[0].short)}</> : <> · holds the float</>)}
               </p>
               <p className="font-condensed text-[12.5px] text-dim mt-3">
