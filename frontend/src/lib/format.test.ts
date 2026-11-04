@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { daysBetween } from "./format";
+import { daysBetween, money, moneyCents } from "./format";
 
 describe("daysBetween", () => {
   it("counts whole days between bare YYYY-MM-DD dates", () => {
@@ -49,3 +49,22 @@ describe("daysBetween", () => {
     expect(daysBetween("2026-12-31", "2027-01-01")).toBe(1);
   });
 });
+
+describe("money — negatives read like money, never like code (2026-11-04)", () => {
+  it("whole dollars: a minus sign before the dollar sign", () => {
+    expect(money(-2339.26)).toBe("−$2,339");
+    expect(money(2339.26)).toBe("$2,339");
+    expect(money(0)).toBe("$0");
+  });
+  it("cents: the same rule", () => {
+    expect(moneyCents(-420.58)).toBe("−$420.58");
+    expect(moneyCents(81.18)).toBe("$81.18");
+  });
+  it("missing or broken input is a dash, not $NaN", () => {
+    expect(money(null)).toBe("—");
+    expect(money(Number.NaN)).toBe("—");
+    expect(moneyCents(undefined)).toBe("—");
+    expect(moneyCents(Number.POSITIVE_INFINITY)).toBe("—");
+  });
+});
+

@@ -6,10 +6,13 @@ const isValidType = (t) => t === "fixed" || t === "variable";
 // Recompute + persist a period's cogs/expense totals from its lines (lines are
 // the source of truth; the period totals are a cache kept in sync on edits).
 async function recomputePeriodTotals(user_id, period_id) {
+  // A period with no lines left keeps NULL totals, never $0: a zero would read
+  // as a free month in the cost basis (2026-11-04). With lines, a section with
+  // none of its own is a true $0.
   const res = await db.query(
     `SELECT
-       COALESCE(SUM(amount) FILTER (WHERE section = 'cogs'), 0) AS cogs_total,
-       COALESCE(SUM(amount) FILTER (WHERE section = 'expenses'), 0) AS expense_total
+       CASE WHEN COUNT(*) = 0 THEN NULL ELSE COALESCE(SUM(amount) FILTER (WHERE section = 'cogs'), 0) END AS cogs_total,
+       CASE WHEN COUNT(*) = 0 THEN NULL ELSE COALESCE(SUM(amount) FILTER (WHERE section = 'expenses'), 0) END AS expense_total
      FROM expense_lines
      WHERE period_id = $1`,
     [period_id],

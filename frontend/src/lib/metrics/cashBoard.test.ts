@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, type CashBoardInput, type CashCheck } from "./cashBoard";
+import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, type CashBoardInput, type CashCheck } from "./cashBoard";
 import { collectReadings } from "./odometer";
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
@@ -50,6 +50,7 @@ const input = (over: Partial<CashBoardInput> = {}): CashBoardInput => ({
   moneyDays: [], overrides: {},
   ...over,
 });
+const round2 = (n: number) => Math.round(n * 100) / 100;
 const CUR = { start: "2026-09-30", end: "2026-10-06" };
 const NEXT = { start: "2026-10-07", end: "2026-10-13" };
 const PREV = { start: "2026-09-23", end: "2026-09-29" };
@@ -158,7 +159,15 @@ describe("buildCashBoard — Thu Oct 1, two periods, the Ops number from Sep 30"
     expect(nxt.week).toEqual(NEXT);
     expect([cur.state, nxt.state]).toEqual(["open", "future"]);
     expect(cur.opening).toBe(7309.08);
-    expect(cur.since).toEqual([]); // the number is from inside this period — nothing older is owed
+    // Last period still owes its accrual: moved the Friday after it closed (Oct 2),
+    // after the Sep 30 number — it rides in as "since your number" (2026-11-04).
+    expect(cur.since).toHaveLength(1);
+    expect(cur.since[0].week).toEqual(PREV);
+    expect(cur.since[0].accrual).toMatchObject({ date: "2026-10-02", counted: true });
+    expect(cur.since[0].accrual!.amount).toBeCloseTo(720.32, 2);
+    expect(cur.since[0].payroll).toBeNull();
+    expect(cur.since[0].leftover).toBeNull(); // Mon Sep 28 — inside the number
+    expect(cur.since[0].total).toBeCloseTo(-720.32, 2);
   });
 
   it("last period's $4,718.09 landed this morning, after the Ops number, so it goes in", () => {
@@ -172,7 +181,7 @@ describe("buildCashBoard — Thu Oct 1, two periods, the Ops number from Sep 30"
     expect(cur.bills.map((b) => b.label)).toEqual(["Google", "Prepass", "Health Ins", "Intuit"]);
     expect(cur.billsTotal).toBeCloseTo(716.48, 2);
     expect(cur.fuel.leftover).toMatchObject({ amount: 41, date: "2026-10-05", counted: true });
-    expect(cur.ending).toBeCloseTo(7309.08 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41, 2);
+    expect(cur.ending).toBeCloseTo(7309.08 - 720.32 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41, 2);
   });
 
   it("the next period opens on the current ending; the fallback deposit, payroll, Oct 7–13's bills, $41 from the card; the accrual is nothing yet", () => {
@@ -185,10 +194,13 @@ describe("buildCashBoard — Thu Oct 1, two periods, the Ops number from Sep 30"
     expect(nxt.ending).toBeCloseTo(cur.ending! + 2475 - 1908 - 140 + 41, 2);
   });
 
-  it("the lower ending clears or fails the float", () => {
-    expect(board.lowest).toBeCloseTo(cur.ending!, 2);
-    expect(board.clears).toBe(true);
-    expect(buildCashBoard(input({ floatLine: 12000 }))!.clears).toBe(false);
+  it("the verdict reads the lowest DAY, not the two endings: Oct 6, after Intuit drafts and before the Oct 8 deposit", () => {
+    // Sep 30 check 7,309.08 → Oct 1 +4,718.09 → Oct 2 −1,908 −720.32 −16.80 → Oct 4 −580.45 → Oct 5 +41 → Oct 6 −119.23
+    // → Oct 7 the NEXT period's Claude + Canva drafts (−120) land a day before the Oct 8 deposit
+    expect(board.lowest).toEqual({ amount: round2(7309.08 + 4718.09 - 1908 - 720.32 - 16.8 - 580.45 + 41 - 119.23 - 120), date: "2026-10-07" });
+    expect(board.lowest!.amount).toBeLessThan(Math.min(cur.ending!, nxt.ending!));
+    expect(board.clears).toBe(false); // both endings clear $10,000; Oct 6 does not
+    expect(buildCashBoard(input({ floatLine: 8000 }))!.clears).toBe(true);
   });
 });
 
@@ -202,10 +214,12 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     expect(cur.payroll).toMatchObject({ date: "2026-10-02", counted: true });
     expect(cur.bills.find((x) => x.label === "Google")!.counted).toBe(true);
     expect(cur.bills.find((x) => x.label === "Prepass")!.counted).toBe(true);
-    expect(cur.ending).toBeCloseTo(9000 + cur.deposit.amount - 1908 - cur.accrual.amount - 16.8 - 200 - 380.45 - 119.23 + 41, 2);
+    // last period's accrual (Fri Oct 2) comes off after a morning check typed that day
+    expect(cur.since[0]?.accrual).toMatchObject({ date: "2026-10-02", counted: true });
+    expect(cur.ending).toBeCloseTo(9000 - 720.32 + cur.deposit.amount - 1908 - cur.accrual.amount - 16.8 - 200 - 380.45 - 119.23 + 41, 2);
   });
 
-  it("a Friday snapshot, taken after payroll and the drafts landed, already holds that Friday — the accrual you move after it still counts", () => {
+  it("a Friday snapshot, taken after payroll, the drafts and the accrual move, already holds that Friday — this period's own accrual (Oct 9) still counts", () => {
     const c: CashCheck[] = [...checks, { date: "2026-10-02", balance: 9000, kind: "snapshot", note: null }];
     const b = buildCashBoard(input({ checks: c, today: "2026-10-02" }))!;
     const cur = b.columns[0];
@@ -213,6 +227,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     expect(cur.bills.find((x) => x.label === "Google")!.counted).toBe(false);
     expect(cur.bills.find((x) => x.label === "Prepass")!.counted).toBe(true);
     expect(cur.accrual.counted).toBe(true);
+    expect(cur.since).toEqual([]); // last period's Oct 2 accrual was moved before the snapshot was typed
     expect(cur.ending).toBeCloseTo(9000 + cur.deposit.amount - cur.accrual.amount - 200 - 380.45 - 119.23 + 41, 2);
   });
 
@@ -221,7 +236,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     const b = buildCashBoard(input({ checks: c }))!;
     const cur = b.columns[0];
     expect(cur.prevDeposit).toMatchObject({ date: "2026-10-01", amount: 4718.09, counted: false });
-    expect(cur.ending).toBeCloseTo(12024.08 + 2404.76 - 1908 - 234.88 - 716.48 + 41, 2);
+    expect(cur.ending).toBeCloseTo(12024.08 - 720.32 + 2404.76 - 1908 - 234.88 - 716.48 + 41, 2);
   });
 
   it("a Friday snapshot and an Ops check on the same day: the check, typed later, is the number", () => {
@@ -232,7 +247,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
   it("a run money day inside the period leaves Ops on its day", () => {
     const b = buildCashBoard(input({ moneyDays: [{ date: "2026-10-02", amount: 500, label: "Money day · August 2026" }] }))!;
     expect(b.columns[0].moneyDays).toEqual([{ date: "2026-10-02", amount: 500, label: "Money day · August 2026", counted: true }]);
-    expect(b.columns[0].ending).toBeCloseTo(7309.08 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41 - 500, 2);
+    expect(b.columns[0].ending).toBeCloseTo(7309.08 - 720.32 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41 - 500, 2);
   });
 
   it("a future-dated balance is ignored; no balance at all → no board", () => {
@@ -268,12 +283,147 @@ describe("buildCashBoard — an Ops number older than this Wednesday: what the p
     expect(p.total).toBeCloseTo(1000.52 - 1908 - 720.32 - 3291.19, 2);
   });
 
-  it("a number two periods back: the older period's own deposit landed after it, so it rides in too", () => {
+  it("a number two periods back: the older period's own deposit landed after it, so it rides in too — and the period before THAT owes its Friday accrual", () => {
     const b = buildCashBoard(input({ checks: [{ date: "2026-09-18", balance: 8000, kind: "check", note: null }] }))!;
     const since = b.columns[0].since;
-    expect(since.map((p) => p.week)).toEqual([PREV, PREV2]);
+    const PREV3 = { start: "2026-09-09", end: "2026-09-15" };
+    expect(since.map((p) => p.week)).toEqual([PREV, PREV2, PREV3]);
+    expect(since[2].accrual).toMatchObject({ date: "2026-09-18", counted: true }); // moved the Friday after Sep 9–15 closed, after a morning check
     expect(since[1].deposit).toMatchObject({ date: "2026-09-24", counted: true, loads: 1 });
     expect(since[1].deposit!.amount).toBeCloseTo(3281.4 - 2000 - 172, 2);
     expect(since[1].payroll).toMatchObject({ date: "2026-09-18", counted: true });
   });
 });
+
+// ---- 2026-11-04 · the site-wide audit's rules, on the week it was found ----
+// Wed Nov 4: the period Oct 28–Nov 3 closed last night; one load (4036503,
+// net $2,769.64) delivered Nov 3; TONU 4115417 (linehaul $2,200, FSC $300,
+// "delivery" Nov 4) is on the book; Landstar's Oct 21 and Oct 28 statements
+// netted −$370.47 and −$420.58 with no revenue (two home weeks); Jason drew a
+// $1,000 advance; the Nov 1 (Sunday) snapshot said Ops $6,979.
+describe("the audit's week — TONU, carry-forward, the Wed–Fri number, the paces", () => {
+  const nov = (over: Partial<CashBoardInput> = {}): CashBoardInput =>
+    input({
+      today: "2026-11-04",
+      checks: [{ date: "2026-11-01", balance: 6979, kind: "snapshot", note: "Settlement and payroll landed" }],
+      loads: [
+        load("2194005", "2026-10-07", "2026-10-13", 6224.94, "delivered", "paid", [608000, 609400], [1400, 60]),
+        load("4036503", "2026-11-01", "2026-11-03", 2769.64, "delivered", "invoiced", [609400, 610292], [701, 122]),
+        { ...load("4115417", "2026-11-03", "2026-11-04", 1906, "tonu", "unpaid", [null, null], [301, 124]) },
+      ],
+      settlements: [
+        { ...sep30, settlement_id: "s1014", period_ending: "2026-10-14", net: "3604.35", revenue: 7987.66, deductions: 4383.31 },
+        { ...sep30, settlement_id: "s1021", period_ending: "2026-10-21", net: "-370.47", revenue: 0, deductions: 370.47 },
+        { ...sep30, settlement_id: "s1028", period_ending: "2026-10-28", net: "-420.58", revenue: 0, deductions: 438.41 },
+      ],
+      fuelEntries: [
+        { fuel_date: "2026-10-09", gallons: 109.432, price_per_gallon: 5.356 },
+        { fuel_date: "2026-10-13", gallons: 122.737, price_per_gallon: 5.755 },
+        { fuel_date: "2026-11-01", gallons: 132.322, price_per_gallon: 5.629 },
+      ],
+      readings: [
+        { date: "2026-10-09", reading: 608641, source: "fuel" }, { date: "2026-10-13", reading: 609400, source: "fuel" },
+        { date: "2026-10-27", reading: 609469, source: "trip-end" }, { date: "2026-11-01", reading: 610292, source: "fuel" },
+      ] as CashBoardInput["readings"],
+      fuelPaceWeekly: 1800, milesPaceWeekly: 1900, buckets: { firstOfMonth: 688, standard: 250, samples: 12 },
+      ...over,
+    });
+  const NOV_CUR = { start: "2026-11-04", end: "2026-11-10" };
+  const OCT28 = { start: "2026-10-28", end: "2026-11-03" };
+
+  it("a TONU is never booked as revenue: the current period falls back to the planning week, not to a −$344 deposit", () => {
+    const d = depositForWeek(nov(), NOV_CUR);
+    expect(d.booked).toBe(0);
+    expect(d.expectedNet).toBe(0);
+    expect(d.revenueSource).toBe("fallback");
+    expect(d.amount).toBeCloseTo(4647 - 2000 - 250, 2);
+  });
+
+  it("a negative statement lands nothing and is carried: Oct 28's −$420.58 (and Oct 21's −$370.47 behind it) come off the Nov 4 statement", () => {
+    const oct28 = depositForWeek(nov(), { start: "2026-10-21", end: "2026-10-27" });
+    expect(oct28).toMatchObject({ source: "actual", amount: 0, carriedOut: -420.58 });
+    const nov4 = depositForWeek(nov(), OCT28);
+    expect(nov4.carriedIn).toBeCloseTo(-791.05, 2);
+    // 2,769.64 − $2,000 assumed advance − first-of-month bucket $688 − 791.05 carried → under zero: nothing lands, the rest carries
+    expect(nov4.amount).toBe(0);
+    expect(nov4.carriedOut).toBeCloseTo(2769.64 - 2000 - 688 - 791.05, 2);
+    // Jason's actual advance was $1,000 → +$290.59 lands (the statement said $65: a bigger first-of-month stack)
+    const real = depositForWeek(nov({ advanceDefault: 1000 }), OCT28);
+    expect(real.amount).toBeCloseTo(2769.64 - 1000 - 688 - 791.05, 2);
+    expect(real.carriedOut).toBe(0);
+  });
+
+  it("a projection that goes negative carries forward too, never below zero cash", () => {
+    const d = depositForWeek(nov({ loads: [load("4036503", "2026-11-01", "2026-11-03", 900, "delivered", "invoiced", [609400, 610292], [701, 122])] }), OCT28);
+    expect(d.amount).toBe(0);
+    expect(d.carriedOut).toBeCloseTo(900 - 2000 - 688 - 791.05, 2);
+  });
+
+  it("one small booking does not replace the planning week: an open period projects the larger of its loads and the fallback", () => {
+    const small = load("9999999", "2026-11-05", "2026-11-06", 900, "booked", "unpaid", [null, null], [200, 30]);
+    const d = depositForWeek(nov({ loads: [small] }), NOV_CUR);
+    expect(d.booked).toBe(1);
+    expect(d.revenueSource).toBe("fallback");
+    expect(d.amount).toBeCloseTo(4647 - 2000 - 250, 2);
+    const big = load("9999998", "2026-11-05", "2026-11-06", 5200, "booked", "unpaid", [null, null], [900, 30]);
+    expect(depositForWeek(nov({ loads: [big] }), NOV_CUR)).toMatchObject({ revenueSource: "loads", amount: round2(5200 - 2000 - 250) });
+  });
+
+  it("an OPS NOW check typed Wednesday keeps last period's Friday accrual (Nov 6) in the column — it was in no column before", () => {
+    const b = buildCashBoard(nov({ checks: [{ date: "2026-11-04", balance: 6476, kind: "check", note: null }] }))!;
+    const since = b.columns[0].since;
+    expect(since).toHaveLength(1);
+    expect(since[0].week).toEqual(OCT28);
+    expect(since[0].accrual).toMatchObject({ date: "2026-11-06", counted: true });
+    expect(since[0].accrual!.amount).toBeCloseTo((610292 - 609469) * 0.32, 2); // 823 mi by odometer
+    expect(since[0].leftover).toBeNull(); // Mon Nov 2 — inside the Wednesday number
+  });
+
+  it("a Friday snapshot typed after the accrual was moved does not subtract it again", () => {
+    const b = buildCashBoard(nov({ today: "2026-11-06", checks: [{ date: "2026-11-06", balance: 4300, kind: "snapshot", note: null }] }))!;
+    expect(b.columns[0].since).toEqual([]); // Nov 6's accrual is inside the snapshot
+    expect(b.columns[0].payroll.counted).toBe(false);
+  });
+
+  it("the open period's accrual is projected like its deposit — a normal week's miles until the odometer says more", () => {
+    const a = accrualForWeek(nov(), NOV_CUR);
+    expect(a).toMatchObject({ source: "projected", miles: 1900, date: "2026-11-13" });
+    expect(a.amount).toBeCloseTo(1900 * 0.32, 2);
+    const closed = accrualForWeek(nov(), OCT28);
+    expect(closed).toMatchObject({ source: "odometer", miles: 823, date: "2026-11-06" });
+  });
+
+  it("the paces skip idle weeks: four running weeks of fills and miles, not thirty calendar days", () => {
+    const fuel = [
+      { fuel_date: "2026-09-10", gallons: 100, price_per_gallon: 5 }, { fuel_date: "2026-09-17", gallons: 100, price_per_gallon: 5 },
+      { fuel_date: "2026-09-24", gallons: 100, price_per_gallon: 6 }, { fuel_date: "2026-10-01", gallons: 100, price_per_gallon: 6 },
+      { fuel_date: "2026-10-08", gallons: 200, price_per_gallon: 5 },
+    ];
+    // Oct 14 → Nov 3: three idle pay weeks. The pace is the mean of the last four weeks that ran: 1000, 600, 600, 500.
+    expect(runningWeekPace(fuel, "2026-11-04")).toBeCloseTo((1000 + 600 + 600 + 500) / 4, 2);
+    expect(runningWeekPace([], "2026-11-04")).toBeNull();
+    const readings = [
+      { date: "2026-09-08", reading: 1000 }, { date: "2026-09-15", reading: 2000 }, { date: "2026-09-22", reading: 3500 },
+      { date: "2026-09-29", reading: 5000 }, { date: "2026-10-06", reading: 7000 }, { date: "2026-10-13", reading: 9000 },
+    ].map((r) => ({ ...r, source: "fuel" })) as CashBoardInput["readings"];
+    // weeks ending Oct 13 (2,000), Oct 6 (2,000), Sep 29 (1,500), Sep 22 (1,500); the idle weeks after Oct 13 are skipped
+    expect(runningMilesPace(readings, "2026-11-04")).toBe(1750);
+  });
+
+  it("the verdict's day: the low across both periods, on its own date", () => {
+    const b = buildCashBoard(nov({ checks: [{ date: "2026-11-04", balance: 6476, kind: "check", note: null }] }))!;
+    expect(b.lowest).not.toBeNull();
+    expect(b.lowest!.date >= "2026-11-04").toBe(true);
+    expect(b.lowest!.amount).toBeLessThanOrEqual(Math.min(b.columns[0].ending!, b.columns[1].ending!));
+    expect(b.clears).toBe(false);
+  });
+
+  it("a same-day snapshot and check: the one typed later is the number", () => {
+    const later = buildCashBoard(nov({ today: "2026-11-06", checks: [
+      { date: "2026-11-06", balance: 9000, kind: "check", note: null, createdAt: "2026-11-06T10:27:00Z" },
+      { date: "2026-11-06", balance: 8800, kind: "snapshot", note: null, createdAt: "2026-11-06T20:32:00Z" },
+    ] }))!;
+    expect(later.base.balance).toBe(8800);
+  });
+});
+
