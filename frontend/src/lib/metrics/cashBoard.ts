@@ -372,6 +372,9 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   let booked = 0;
   let expectedNet = 0;
   const closed = week.end < today;
+  // The first statement that is still open: a load still on the road past its
+  // planned delivery rolls into it instead of vanishing into a closed period.
+  const firstOpenStatement = statementDateOf(payWeekOf(today), sd);
   // Delivered means the status says so. A load still on the road with a
   // planned delivery date is expected, and only into a period that hasn't
   // closed. dash's payment flag is NOT consulted — Jason marks loads paid by
@@ -384,7 +387,9 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
     const isDelivered = DELIVERED.has(String(l.load_status));
     const dateKey = isDelivered ? day(l.delivery_date ?? l.pickup_date) : day(l.delivery_date);
     if (!dateKey) continue;
-    if (expectedPayDate(dateKey, sd) !== statementDate) continue;
+    let planned = expectedPayDate(dateKey, sd);
+    if (!isDelivered && planned < firstOpenStatement) planned = firstOpenStatement;
+    if (planned !== statementDate) continue;
     if (isDelivered) {
       loadsNet += loadNetRevenue(l);
       count++;

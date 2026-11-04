@@ -418,6 +418,14 @@ describe("the audit's week — TONU, carry-forward, the Wed–Fri number, the pa
     expect(b.clears).toBe(false);
   });
 
+  it("a load still on the road past its planned delivery rolls into the first open statement — it never vanishes into a closed period", () => {
+    const late = load("7777777", "2026-10-29", "2026-10-30", 1500, "in_transit", "unpaid", [null, null], [400, 40]);
+    expect(depositForWeek(nov({ loads: [late] }), OCT28)).toMatchObject({ inTransit: 0, loads: 0 }); // the closed period gets nothing from it
+    const cur = depositForWeek(nov({ loads: [late] }), NOV_CUR);
+    expect(cur.inTransit).toBe(1);
+    expect(cur.expectedNet).toBe(1500);
+  });
+
   it("a same-day snapshot and check: the one typed later is the number", () => {
     const later = buildCashBoard(nov({ today: "2026-11-06", checks: [
       { date: "2026-11-06", balance: 9000, kind: "check", note: null, createdAt: "2026-11-06T10:27:00Z" },

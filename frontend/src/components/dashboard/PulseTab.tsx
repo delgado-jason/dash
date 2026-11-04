@@ -17,6 +17,7 @@ import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { agentStops, scoreStops } from "@/lib/metrics/stopScore";
 import { projectWeek } from "@/lib/metrics/weekProjection";
 import { nextSettlementDate } from "@/lib/metrics/settlement";
+import type { DepositLine } from "@/lib/metrics/cashBoard";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import type { Alert } from "@/types/alert";
 import { GrindMeter } from "@/components/dashboard/GrindMeter";
@@ -98,13 +99,18 @@ export const PulseTab = ({
   targets,
   alerts,
   settlementDay,
+  nextDeposit = null,
 }: {
   loads: Load[];
   trips: Trip[];
   targets: Targets;
   alerts: Alert[];
   settlementDay: number | null;
+  nextDeposit?: DepositLine | null; // the cash board's figure for the next landing, when the Dashboard has the data
 }) => {
+  // A sliced calendar day, printed as its own day — never shifted by the browser's zone.
+  const dayWords = (k: string): string =>
+    new Date(`${k.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
   const now = useMemo(() => new Date(), []);
 
   const earned = targets.weekEarned ?? 0;
@@ -371,8 +377,24 @@ export const PulseTab = ({
             </p>
           </div>
           <div>
-            <p className="ds2-label">Next settlement</p>
-            {pipeline > 0 ? (
+            <p className="ds2-label">Next deposit</p>
+            {nextDeposit ? (
+              <>
+                <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums mt-1 text-status-positive-text">
+                  {money(nextDeposit.amount)}
+                </p>
+                <p className="text-[11px] text-faint mt-0.5">
+                  lands {dayWords(nextDeposit.date)} · statement {dayWords(nextDeposit.statementDate).replace(/^[A-Za-z]+, /, "")} ·{" "}
+                  {nextDeposit.source === "actual"
+                    ? "actual, from the feed"
+                    : nextDeposit.revenueSource === "fallback"
+                      ? "nothing delivered yet — a planning week, less the advance and deductions"
+                      : `${nextDeposit.loads} delivered${nextDeposit.inTransit + nextDeposit.booked > 0 ? ` + ${nextDeposit.inTransit + nextDeposit.booked} expected` : ""} at net, less the advance and deductions`}
+                  {nextDeposit.carriedIn < 0 && <> · {money(nextDeposit.carriedIn)} carried in</>}
+                  {nextDeposit.carriedOut < 0 && <> · nothing lands, {money(nextDeposit.carriedOut)} carries</>}
+                </p>
+              </>
+            ) : pipeline > 0 ? (
               <>
                 <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums mt-1 text-status-positive-text">
                   {money(pipeline)}
