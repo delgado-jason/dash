@@ -26,6 +26,13 @@ export interface ShopSpend {
   total: number;
   serviceCount: number;
   recent: ShopService[]; // most recent first
+  // The months of the window that were actually LOGGED — from the first
+  // service ever recorded — and the spend per such month. Logging began
+  // Jan ’26, so a ÷12 in November read the shop log over twelve months that
+  // were really ten (Nod Sheet 2026-11-04, §5 "Maintenance spend"). This is
+  // the shop LOG, not the cost basis — the P&L's Repairs line is.
+  monthsLogged: number;
+  perMonth: number | null;
 }
 
 export const shopSpend = (
@@ -72,7 +79,12 @@ export const shopSpend = (
       unit: s.unit,
     }));
 
-  return { months: buckets, total, serviceCount, recent };
+  const firstLogged =
+    services.map((s) => (s.service_date ?? "").slice(0, 7)).filter((m) => m.length === 7).sort()[0] ?? null;
+  const monthsLogged = firstLogged ? buckets.filter((b) => b.month >= firstLogged).length : 0;
+  const perMonth = monthsLogged > 0 ? total / monthsLogged : null;
+
+  return { months: buckets, total, serviceCount, recent, monthsLogged, perMonth };
 };
 
 // ---- THE YEAR IN DAYS ---- (calendar heatmap of how the truck ran)

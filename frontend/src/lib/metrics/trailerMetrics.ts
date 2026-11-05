@@ -34,11 +34,17 @@ const weekKey = (iso: string): string => {
   return monday.toISOString().slice(0, 10);
 };
 
-// Maintenance attributable to the trailer (trailer + both units).
+// Maintenance attributable to the trailer: its own visits and HALF of a visit
+// logged on "both" units — the other half is the tractor's, so a shared visit
+// is counted once across the rig (2026-11-04, §5; it used to count in full
+// on both units).
 const trailerServiceSpend = (services: MaintenanceService[]): number =>
-  services
-    .filter((s) => s.unit === "trailer" || s.unit === "both")
-    .reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+  services.reduce((sum, s) => {
+    const c = Number(s.cost) || 0;
+    if (s.unit === "trailer") return sum + c;
+    if (s.unit === "both") return sum + c / 2;
+    return sum;
+  }, 0);
 
 export const computeTrailerMetrics = (
   trailer: Trailer,

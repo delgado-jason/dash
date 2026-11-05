@@ -384,7 +384,7 @@ const NAV: { group: string; items: string[] }[] = [
     items: [
       "Utilization — how hard the truck runs",
       "Fuel economy — miles per gallon",
-      "Cost to run per mile — what the truck costs you",
+      "Fuel + shop + note per mile — what the rig itself costs you",
       "Revenue per mile — what each mile earns",
     ],
   },
@@ -640,10 +640,15 @@ const GuidePage = () => {
                 too much of your book), and who's going cold.
               </TabLine>
               <TabLine name="Fleet" q="Is my rig ready to roll?">
-                Your rig at a glance — utilization (how hard the truck runs), home
-                time (days out), fuel economy, and what's due for service or
-                compliance. Plus shop spend across the year, cost-to-run per mile,
-                and a day-by-day heatmap of earning vs. home vs. idle.
+                Your rig at a glance — utilization (how hard the truck runs, the
+                same function the driver card grades), home time (days out), fuel
+                economy, and what's due for service or compliance. Plus the shop
+                log across the year — averaged over the months you have actually
+                logged, a visit on both units counted half to each — the rig's
+                fuel + shop + note per mile (the P&amp;L's all-in cost per mile
+                stays on Expenses, and the rate to book stands on that one), the
+                payoff trackers (the statement balance less the drafts since it
+                was read), and a day-by-day heatmap of earning vs. home vs. idle.
               </TabLine>
             </div>
           </Section>
@@ -2220,8 +2225,8 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="Cost to run per mile — what the truck costs you"
-            answers="What the rig costs per mile, all-in: fuel, maintenance, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into the whole rig."
+            title="Fuel + shop + note per mile — what the rig itself costs you"
+            answers="What the rig itself costs per mile: fuel, the shop log, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into the whole rig. It is NOT the P&L's all-in cost per mile — insurance, plates, the office and everything else — which lives on Expenses and is what the rate to book stands on."
             sources={[{ label: "Garage", to: "/garage" }]}
           >
             {/* Illustrative round numbers — the app computes yours live. */}
@@ -2232,7 +2237,7 @@ const GuidePage = () => {
               <span className="text-muted-text">+</span>
               <ChainBox top="$0.50" bottom="note / mi" />
               <span className="text-muted-text">=</span>
-              <ChainBox top="$1.30" bottom="cost to run / mi" />
+              <ChainBox top="$1.30" bottom="fuel + shop + note / mi" />
             </div>
             <Formula>
               fuel (30-day tank windows) + maintenance ÷ miles driven + note ÷
@@ -2253,7 +2258,15 @@ const GuidePage = () => {
               No full-tank window in the last 30 days means fuel is unknown, so
               the whole number waits rather than showing a fuel-less total. The
               same payment also shows on the payoff tracker, but as balance paid
-              down, not a per-mile cost.
+              down, not a per-mile cost — and that tracker reads the statement
+              balance less every monthly draft since the day it was read, so the
+              July balance no longer stands in November. Retype a balance on
+              Expenses → the notes and that day becomes its as-of date; the
+              tracker names the statement, its day and the drafts it counted
+              beneath the meter. The Fleet tab prints
+              the P&amp;L's all-in cost per mile beside this one so the two are
+              never confused: this is the rig's own running cost; the P&amp;L
+              figure is the cost basis.
             </Why>
           </Metric>
 

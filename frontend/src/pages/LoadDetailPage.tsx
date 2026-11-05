@@ -66,6 +66,7 @@ import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
 import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { localToday } from "@/lib/metrics/today";
 import {
   fmtPerDay,
   loadDays,
@@ -387,11 +388,20 @@ export const LoadDetailPage = () => {
   const dh = deadheadShare(load);
   // Actual empty miles from the odometer window; null until the load has run.
   const empty = loadEmptyMiles(load);
+  // The rate the Scorer and the Market price on: GROSS per DRIVEN mile — the
+  // loaded miles plus the empty ones (the odometer's once the load has run,
+  // else the deadhead booked) — judged on the booking ladder (2026-11-04,
+  // §5: gross $/driven mile for pricing; the per-loaded figure stays beside
+  // it, labelled).
+  const loadedMi = Number(load.loaded_miles) || 0;
+  const emptyMi = empty != null && empty >= 0 ? empty : Number(load.deadhead_miles) || 0;
+  const drivenMi = loadedMi + emptyMi;
+  const rateDriven = drivenMi > 0 ? revenue / drivenMi : null;
   // Price the load off the 30-DAY tank windows — mpg30 · $/gal30 divide back
   // to exactly costPerMile30, the app's one fuel rate (an all-time price
   // drifts from today's pump). Fall back to lifetime history, then to the
   // working assumptions, only when there's no recent (or any) fuel window.
-  const fs = fuelStats(fuelEntries, new Date());
+  const fs = fuelStats(fuelEntries, localToday());
   const fuelMpg = fs.mpg30 ?? fs.avgMpg ?? ASSUMED_MPG;
   const fuelPrice = fs.avgCostPerGallon30 ?? fs.avgCostPerGallon ?? ASSUMED_FUEL_PRICE;
   const usingRecentFuel = fs.mpg30 != null && fs.avgCostPerGallon30 != null;
@@ -832,10 +842,10 @@ export const LoadDetailPage = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Kpi label="Total revenue" value={money(revenue)} />
         <Kpi
-          label="Rate / mile"
-          value={fmtRpm(rpm)}
-          valueClass={rpmTextClass(rpm)}
-          sub={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} loaded mi`}
+          label="Rate / driven mi · gross"
+          value={fmtRpm(rateDriven)}
+          valueClass={rpmTextClass(rateDriven, targets.bookingLadder)}
+          sub={`${loadedMi.toLocaleString("en-US")} loaded + ${emptyMi.toLocaleString("en-US")} empty mi${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`}
         />
         <Kpi
           label="Loaded miles"

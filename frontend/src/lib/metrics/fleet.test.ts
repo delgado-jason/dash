@@ -154,3 +154,21 @@ describe("lastHomeDay — local-day anchor (timezone)", () => {
     expect(lastHomeDay([], [], [], now)).toBe("2026-08-08");
   });
 });
+
+describe("shopSpend — per month over the months actually logged (2026-11-04)", () => {
+  it("logging began in May: four logged months by Aug 15, not twelve", () => {
+    const services = [
+      { service_date: "2026-05-10", cost: 100, unit: "tractor", description: "oil" },
+      { service_date: "2026-07-01", cost: 50, unit: "both", description: "tires" },
+    ] as unknown as MaintenanceService[];
+    const r = shopSpend(services, new Date("2026-08-15T00:00:00Z"), 12);
+    expect(r.total).toBe(150);
+    expect(r.monthsLogged).toBe(4); // May, Jun, Jul, Aug
+    expect(r.perMonth).toBeCloseTo(37.5, 6);
+  });
+  it("no services → nothing logged, no per-month figure", () => {
+    const r = shopSpend([], new Date("2026-08-15T00:00:00Z"), 12);
+    expect(r.monthsLogged).toBe(0);
+    expect(r.perMonth).toBeNull();
+  });
+});

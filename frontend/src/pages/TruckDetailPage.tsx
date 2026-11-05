@@ -40,6 +40,7 @@ import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate, money } from "@/lib/format";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { mileMilestone } from "@/lib/metrics/mileClub";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";
@@ -174,7 +175,11 @@ const TruckDetailPage = () => {
     );
   }, [truck, truckLoads, services, fuelEntries, trips, id]);
 
-  const mpm = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
+  // The operator's local day, anchored (call 13): every metric on this page
+  // reads its clock through UTC getters or epoch math, so the asset page, the
+  // Fuel page and the driver card agree on what "today" is.
+  const now = useLocalToday();
+  const mpm = useMemo(() => recentMilesPerMonth(loads, now), [loads, now]);
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!truck) return;
@@ -204,7 +209,6 @@ const TruckDetailPage = () => {
     );
 
   const revenue = earnedLoads.reduce((s, l) => s + loadNetRevenue(l), 0);
-  const now = new Date();
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
   const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote);
   const allTruckMedals = computeTruckMedals({
@@ -405,6 +409,12 @@ const TruckDetailPage = () => {
                     ? ` · ${payoff.exact ? "payoff" : "on pace for"} ${formatDate(payoff.payoffDate)}`
                     : ""}
                 </p>
+                {payoff.draftsSince > 0 && (
+                  <p className="font-condensed text-[10.5px] text-faint mt-[3px] tabular-nums">
+                    statement {money(payoff.statementOwed)} as of {formatDate(payoff.balanceAsOf)} ·{" "}
+                    {payoff.draftsSince} {payoff.draftsSince === 1 ? "draft" : "drafts"} since
+                  </p>
+                )}
               </>
             ) : (
               <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
@@ -571,7 +581,7 @@ const TruckDetailPage = () => {
                   metrics.costToRunPerMile != null
                     ? `$${metrics.costToRunPerMile.toFixed(2)}`
                     : "—",
-                l: "Cost to run / mi",
+                l: "Fuel + shop + note / mi",
               },
               {
                 v: metrics.milesPerMonth != null ? num(metrics.milesPerMonth) : "—",

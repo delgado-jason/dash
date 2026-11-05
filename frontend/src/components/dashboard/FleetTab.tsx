@@ -54,7 +54,18 @@ const remain = (d: Due): string => {
   return "";
 };
 
-export const FleetTab = ({ loads }: { loads: Load[] }) => {
+// pnlCostPerMile / pnlWindow: the P&L's all-in cost per driven mile from the
+// one basis (computeRateTargets), printed beside the rig's own figure so the
+// two are never mistaken for each other (2026-11-04, §5 "Cost per mile").
+export const FleetTab = ({
+  loads,
+  pnlCostPerMile = null,
+  pnlWindow = null,
+}: {
+  loads: Load[];
+  pnlCostPerMile?: number | null;
+  pnlWindow?: string | null;
+}) => {
   const now = useMemo(() => new Date(), []);
   const fleet = useFleetData();
   const truck = fleet.trucks[0] ?? null;
@@ -219,13 +230,19 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
                     "—"
                   )}{" "}
                   <span className="text-[15px] text-dim font-condensed tracking-normal">
-                    to run, per mile
+                    fuel + shop + note, per mile
                   </span>
                 </p>
                 <p className="text-[11.5px] text-faint mt-1">
                   {costPerMile != null
                     ? costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")
                     : "forges after a full-tank fuel window in the last 30 days"}
+                  {pnlCostPerMile != null && (
+                    <>
+                      {" "}· the P&amp;L's all-in <span className="text-dim tabular-nums">{rpm(pnlCostPerMile)}/mi</span>
+                      {pnlWindow ? ` (${pnlWindow})` : ""} is on Expenses
+                    </>
+                  )}
                   {" · "}
                   <span className="text-dim tabular-nums">{odo.toLocaleString("en-US")} on the clock</span>
                   {club.next ? (
@@ -321,10 +338,10 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
           go="drivers"
         />
         <BoardCell
-          label="Shop spend · 12 mo"
+          label="Shop log · 12 mo"
           value={money(shop.total)}
           valueClassName="text-[22px]"
-          sub={`${shop.serviceCount} services · ${money(shop.total / 12)} / mo`}
+          sub={`${shop.serviceCount} services · ${shop.perMonth != null ? money(shop.perMonth) : "—"} / mo over ${shop.monthsLogged} logged · not the P&L`}
           tone={counts.overdue > 0 ? "amb" : "none"}
           to="/maintenance"
           go="maintenance"
@@ -351,7 +368,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
 
           <div className="grid grid-cols-3 gap-2 my-3">
             {[
-              { v: costPerMile != null ? rpm(costPerMile) : "—", l: "cost to run / mi" },
+              { v: costPerMile != null ? rpm(costPerMile) : "—", l: "fuel + shop + note / mi" },
               { v: metrics?.revPerMile != null ? rpm(metrics.revPerMile) : "—", l: "revenue / mi", c: "#4ade80" },
               { v: metrics?.milesPerMonth != null ? Math.round(metrics.milesPerMonth).toLocaleString() : "—", l: "miles / month" },
             ].map((e) => (
@@ -413,10 +430,10 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
       {/* shop spend + cost to run */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
         <div className="ds2-board p-4">
-          <H3 right={<span className="normal-case tracking-normal font-normal">keeping her running · last 12 months</span>}>Shop spend</H3>
+          <H3 right={<span className="normal-case tracking-normal font-normal">the shop log · last 12 months · the P&amp;L's Repairs line is the cost basis</span>}>Shop spend</H3>
           <div className="flex items-baseline gap-2.5 mb-1">
             <span className="text-[28px] font-extrabold leading-none">{money(shop.total)}</span>
-            <span className="text-[11.5px] text-muted-text">{shop.serviceCount} services{metrics?.milesPerMonth ? ` · ${money(shop.total / 12)} / mo` : ""}</span>
+            <span className="text-[11.5px] text-muted-text">{shop.serviceCount} services{shop.perMonth != null ? ` · ${money(shop.perMonth)} / mo over ${shop.monthsLogged} logged` : ""}</span>
           </div>
           {shop.total === 0 ? (
             <p className="text-xs text-muted-text py-3">No shop visits logged in the last 12 months.</p>
@@ -448,7 +465,7 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
         </div>
 
         <div className="ds2-board p-4">
-          <H3 right={<span className="normal-case tracking-normal font-normal">per mile</span>}>Cost to run</H3>
+          <H3 right={<span className="normal-case tracking-normal font-normal">per mile · the rig's own running cost</span>}>Fuel + shop + note</H3>
           {costPerMile == null ? (
             <p className="text-xs text-muted-text">
               Needs a full-tank fuel window closed in the last 30 days — fuel is
@@ -471,7 +488,10 @@ export const FleetTab = ({ loads }: { loads: Load[] }) => {
               ))}
               <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "#1a2233" }}>
                 <span className="font-bold">{rpm(costPerMile)} total / mi</span>
-                <span className="text-muted-text">all-in to keep her rolling</span>
+                <span className="text-muted-text">
+                  the rig's own running cost
+                  {pnlCostPerMile != null ? ` · the P&L's all-in is ${rpm(pnlCostPerMile)}` : " · not the P&L's all-in"}
+                </span>
               </div>
             </>
           )}

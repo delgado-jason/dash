@@ -61,6 +61,7 @@ import {
   type AgentEditDraft,
 } from "@/lib/agents/agentEdit";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { getRateLadder } from "@/lib/metrics/rateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money, daysBetween } from "@/lib/format";
@@ -421,9 +422,9 @@ const AgentDetailPage = () => {
           value={grossRev == null ? "—" : money(grossRev)}
         />
         <Kpi
-          label="Avg rate/mile"
+          label="Avg net $/loaded mi"
           value={fmtRpm(rpm)}
-          valueClass={rpmTextClass(rpm)}
+          valueClass={rpmTextClass(rpm, getRateLadder(overallTargets.basis.breakEvenRpm, overallTargets.tiers))}
           sub={
             rpm != null && overallTargets.rollingRpm != null
               ? `${rpm >= overallTargets.rollingRpm ? "▲" : "▼"} ${fmtRpm(Math.abs(rpm - overallTargets.rollingRpm))} vs your overall`

@@ -48,7 +48,8 @@ import {
 import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { computeGrind } from "@/lib/metrics/grind";
 import { loadTypeMix } from "@/lib/metrics/loadMix";
-import { underLoadDaySet, firstDeliveredPickup } from "@/lib/metrics/underLoad";
+import { firstDeliveredPickup } from "@/lib/metrics/underLoad";
+import { utilizationWindow } from "@/lib/metrics/truckMetrics";
 import { computePatches } from "@/lib/awards/patches";
 import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
@@ -145,6 +146,16 @@ const DriverDetailPage = () => {
     [driverLoads],
   );
 
+  // The per-diem marks, split the way utilization reads them: explicit home
+  // days, and travel (full/half) days.
+  const marks = useMemo(
+    () => ({
+      homeDays: perDiemDays.filter((d) => d.status === "home").map((d) => d.day),
+      travelDays: perDiemDays.filter((d) => d.status === "full" || d.status === "half").map((d) => d.day),
+    }),
+    [perDiemDays],
+  );
+
   // The player card only makes sense for a driver who actually hauls; a
   // dispatch-only driver (e.g. Brandie) keeps the plain page.
   const card = useMemo(() => {
@@ -174,23 +185,13 @@ const DriverDetailPage = () => {
     // same graded margin (QBO pretax when the archive has closed months, else
     // the app's season estimate, labelled).
     const margin = gradedMargin(financials, season, now, marginGoal);
-    // Driver utilization (days-based) — under-load days ÷ days since first load.
+    // Utilization — ONE function with the Fleet tab (truckMetrics.utilizationWindow):
+    // under-load days ÷ the window since the first load, a home mark winning
+    // over a load span (2026-11-04, §5). The card used to run its own loop
+    // without the home marks — the same 72% today by two different formulas.
     const nowKey = now.toISOString().slice(0, 10);
     const winStart = firstDeliveredPickup(driverLoads);
-    const winDays = winStart
-      ? Math.max(
-          1,
-          Math.round(
-            (Date.parse(`${nowKey}T00:00:00Z`) -
-              Date.parse(`${winStart}T00:00:00Z`)) /
-              86_400_000,
-          ),
-        )
-      : 0;
-    const utilization =
-      winDays > 0
-        ? Math.min(1, underLoadDaySet(driverLoads, winStart, nowKey).size / winDays)
-        : null;
+    const utilization = utilizationWindow(driverLoads, winStart, nowKey, marks.homeDays, marks.travelDays).utilization;
     const grind = computeGrind(driverLoads, periods, obligationsDebt, schedule, now);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => l.load_status === "delivered");
@@ -249,7 +250,7 @@ const DriverDetailPage = () => {
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, schedule, marginGoal, financials, now]);
+  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, schedule, marginGoal, financials, now, marks]);
 
   // Hometime status for the (owner-op) driver — computed CLIENT-side with the
   // same flipped lastHomeDay the Fleet tab uses (post-2026-08-18 an unmarked
