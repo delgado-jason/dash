@@ -240,6 +240,15 @@ const ScoreLoadPage = () => {
   const { trips } = useTrips(0);
   const { agents } = useAgents();
   const targets = useRateTargets(loads);
+  // The spread the blend hides — each basis month's own rate to book — so the
+  // verdict names what it graded on, the way the Market page does (§7, 2026-11-04).
+  const monthSpread = useMemo(() => {
+    const rates = targets.basis.monthsDetail
+      .filter((m) => m.costPerTotalMile != null)
+      .map((m) => (m.costPerTotalMile as number) / targets.keep);
+    if (rates.length < 2 || !(targets.keep > 0)) return null;
+    return { lo: Math.min(...rates), hi: Math.max(...rates) };
+  }, [targets.basis.monthsDetail, targets.keep]);
   const now = useMemo(() => new Date(), []);
   const scorecards = useMemo(
     () => buildAgentScorecards(agents ?? [], loads ?? [], now),
@@ -479,6 +488,14 @@ const ScoreLoadPage = () => {
                     {specialized ? "Specialized" : "Standard"}
                   </span>{" "}
                   tiers, target +{Math.round(activeTiers.target * 100)}%
+                </div>
+                <div className="font-condensed text-[12px] text-faint mt-1">
+                  basis · cash · {targets.basis.windowLabel ?? "no P&L filed"} · {targets.basis.months} of{" "}
+                  {targets.basis.monthsWanted} months filed
+                  {monthSpread && <> · months ran {fmtRpm(monthSpread.lo)}–{fmtRpm(monthSpread.hi)}</>}
+                  {targets.basis.missingLabel && (
+                    <span className="text-amber-hi"> · ⚠ no P&L filed for {targets.basis.missingLabel}</span>
+                  )}
                 </div>
               </div>
               <div className="flex-1 min-w-[220px]">
