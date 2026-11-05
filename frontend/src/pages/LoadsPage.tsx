@@ -315,7 +315,7 @@ const LoadsPage = () => {
         {viewRpm != null && (
           <>
             <span className="text-[12px] text-faint">·</span>
-            <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(viewRpm)}/mi</b>
+            <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(viewRpm)}/loaded mi · gross</b>
           </>
         )}
       </div>

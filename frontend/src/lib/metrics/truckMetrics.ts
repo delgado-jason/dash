@@ -46,14 +46,81 @@ const loadMiles = (l: Load): number => {
   return odo > 0 ? odo : Number(l.loaded_miles || 0) + Number(l.deadhead_miles || 0);
 };
 
-// Maintenance services attributable to the tractor (no per-truck link exists yet,
-// so tractor + both count; fine for a single truck). The APU counts too: the
-// TriPac hangs on this truck, its invoices are this truck's shop money, and
-// leaving them out would quietly understate what the rig costs to run.
-const truckServiceSpend = (services: MaintenanceService[]): number =>
-  services
-    .filter((s) => s.unit === "tractor" || s.unit === "both" || s.unit === "apu")
-    .reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+// Shop money attributable to the tractor: its own visits, the APU's (the
+// TriPac hangs on this truck, its invoices are this truck's shop money) and
+// HALF of a visit logged on "both" units — the other half is the trailer's,
+// so a shared visit is counted once across the rig (Nod Sheet 2026-11-04, §5
+// "Maintenance spend": it used to count in full on both units).
+export const truckServiceSpend = (services: MaintenanceService[]): number =>
+  services.reduce((sum, s) => {
+    const c = Number(s.cost) || 0;
+    if (s.unit === "tractor" || s.unit === "apu") return sum + c;
+    if (s.unit === "both") return sum + c / 2;
+    return sum;
+  }, 0);
+
+// ---- utilization: ONE function (2026-11-04, §5) ----
+// Days under a load ÷ days in the window, with every window day categorized
+// so a low number is interpretable: underLoad + home + idle = windowDays.
+// The per-diem default FLIPPED on FULL_DEFAULT_SINCE: before it an unmarked
+// day means home; from it on an unmarked day means OUT (idle unless loaded).
+// "full"/"half" (travel) days you weren't loaded are idle. An explicit home
+// mark wins over a load's date envelope. The Fleet tab and the driver card
+// both read this — the card used to run its own loop without the home marks.
+export interface UtilizationWindow {
+  windowDays: number;
+  underLoadDays: number;
+  homeDays: number;
+  idleDays: number;
+  utilization: number | null; // null until the window has a day
+}
+
+export const utilizationWindow = (
+  loads: Load[],
+  windowStart: string | null, // 'YYYY-MM-DD'
+  nowDay: string, // the operator's local day key
+  homeDays: string[],
+  travelDays: string[],
+): UtilizationWindow => {
+  // The window is half-open, [windowStart, now): 0 on the very first day
+  // (windowStart === today), which keeps the per-day loop summing exactly to
+  // windowDays. Floor at 0, not 1, so a same-day/future window doesn't claim
+  // a phantom day the loop can't fill.
+  const windowDays = windowStart
+    ? Math.max(
+        0,
+        Math.round(
+          (Date.parse(`${nowDay}T00:00:00Z`) - Date.parse(`${windowStart}T00:00:00Z`)) / DAY,
+        ),
+      )
+    : 0;
+  const underLoadSet = underLoadDaySet(loads, windowStart, nowDay);
+  const homeSet = new Set(homeDays);
+  const travelSet = new Set(travelDays);
+  let underLoadDays = 0;
+  let homeDayCount = 0;
+  let idleDays = 0;
+  if (windowStart) {
+    const cur = new Date(`${windowStart}T00:00:00Z`);
+    const end = new Date(`${nowDay}T00:00:00Z`);
+    while (cur < end) {
+      const k = cur.toISOString().slice(0, 10);
+      if (homeSet.has(k)) homeDayCount++;
+      else if (underLoadSet.has(k)) underLoadDays++;
+      else if (travelSet.has(k)) idleDays++;
+      else if (k >= FULL_DEFAULT_SINCE) idleDays++; // unmarked → out, post-flip
+      else homeDayCount++; // unmarked → home, pre-flip
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  }
+  return {
+    windowDays,
+    underLoadDays,
+    homeDays: homeDayCount,
+    idleDays,
+    utilization: windowDays > 0 ? Math.min(1, underLoadDays / windowDays) : null,
+  };
+};
 
 export const computeTruckMetrics = (
   truck: Truck,
@@ -94,47 +161,9 @@ export const computeTruckMetrics = (
   const windowStart =
     [inServiceDay, firstPickup].filter((d): d is string => !!d).sort().at(-1) ??
     null;
-  // Half-open [windowStart, now) — 0 on the very first day (windowStart === today),
-  // which keeps the per-day loop below summing exactly to windowDays. Floor at 0,
-  // not 1, so a same-day/future window doesn't claim a phantom day the loop can't fill.
-  const windowDays = windowStart
-    ? Math.max(
-        0,
-        Math.round(
-          (Date.parse(`${nowDay}T00:00:00Z`) -
-            Date.parse(`${windowStart}T00:00:00Z`)) /
-            DAY,
-        ),
-      )
-    : 0;
-
-  // Categorize every window day. The per-diem default FLIPPED on
-  // FULL_DEFAULT_SINCE: before it an unmarked day means home; from it on an
-  // unmarked day means OUT (idle unless loaded) — Jason marks home time
-  // explicitly now. "full"/"half" (travel) days you weren't loaded are idle
-  // (out, not earning). An explicit home mark wins over a load's date envelope.
-  const underLoadSet = underLoadDaySet(truckLoads, windowStart, nowDay);
-  const homeSet = new Set(homeDays);
-  const travelSet = new Set(travelDays);
-  let underLoadDays = 0;
-  let homeDayCount = 0;
-  let idleDays = 0;
-  if (windowStart) {
-    // [windowStart, now) — windowDays days, so the three counts sum to windowDays.
-    const cur = new Date(`${windowStart}T00:00:00Z`);
-    const end = new Date(`${nowDay}T00:00:00Z`);
-    while (cur < end) {
-      const k = cur.toISOString().slice(0, 10);
-      if (homeSet.has(k)) homeDayCount++;
-      else if (underLoadSet.has(k)) underLoadDays++;
-      else if (travelSet.has(k)) idleDays++;
-      else if (k >= FULL_DEFAULT_SINCE) idleDays++; // unmarked → out, post-flip
-      else homeDayCount++; // unmarked → home, pre-flip
-      cur.setUTCDate(cur.getUTCDate() + 1);
-    }
-  }
-  const utilization =
-    windowDays > 0 ? Math.min(1, underLoadDays / windowDays) : null;
+  const uw = utilizationWindow(truckLoads, windowStart, nowDay, homeDays, travelDays);
+  const { windowDays, underLoadDays, idleDays, utilization } = uw;
+  const homeDayCount = uw.homeDays;
 
   // Pace over the OPERATING window (windowStart→now — the same span utilization uses),
   // NOT raw calendar time since the in-service date. Months the truck logged nothing

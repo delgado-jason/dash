@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeTruckMetrics } from "./truckMetrics";
+import { computeTruckMetrics, utilizationWindow, truckServiceSpend } from "./truckMetrics";
 import type { Truck } from "@/types/truck";
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
@@ -161,13 +161,13 @@ describe("computeTruckMetrics — fuel $/mi rides the 30-day tank windows", () =
   it("folds real maintenance dollars in: fuel(30d) + maint ÷ miles + note", () => {
     const services = [
       { unit: "tractor", cost: "400" }, // numeric string, like Postgres sends it
-      { unit: "both", cost: 100 },
+      { unit: "both", cost: 100 }, // shared with the trailer — HALF is the tractor's (2026-11-04)
       { unit: "trailer", cost: 999 }, // not the tractor's — excluded
     ] as unknown as MaintenanceService[];
-    // One paid load = 500 mi → maint = $500 ÷ 500 mi = $1.00/mi on top of $0.60 fuel.
+    // One paid load = 500 mi → maint = $450 ÷ 500 mi = $0.90/mi on top of $0.60 fuel.
     const m = run(truck, [load("2026-01-05", "2026-01-07")], [], [], 1000, fuel, services);
-    expect(m.maintPerMile).toBeCloseTo(1.0, 6);
-    expect(m.costToRunPerMile).toBeCloseTo(0.6 + 1.0 + m.notePerMile!, 6);
+    expect(m.maintPerMile).toBeCloseTo(0.9, 6);
+    expect(m.costToRunPerMile).toBeCloseTo(0.6 + 0.9 + m.notePerMile!, 6);
   });
 
   it("counts the APU's invoices — the TriPac hangs on this truck", () => {
@@ -261,5 +261,25 @@ describe("computeTruckMetrics — loads hauled vs earned", () => {
       { ...load("2026-01-15", "2026-01-17"), load_status: "booked" } as Load,
     ];
     expect(run(truck, loads, []).loads).toBe(1);
+  });
+});
+
+describe("utilizationWindow — one function for the Fleet tab and the driver card (2026-11-04)", () => {
+  it("categorizes every window day and a home mark wins over a load span", () => {
+    // Window Oct 1 → Oct 11 (10 days): a load Oct 2–5 (4 days), home marks Oct 4 and Oct 8, a travel day Oct 9.
+    const loads = [load("2026-10-02", "2026-10-05")];
+    const u = utilizationWindow(loads, "2026-10-01", "2026-10-11", ["2026-10-04", "2026-10-08"], ["2026-10-09"]);
+    expect(u.windowDays).toBe(10);
+    expect(u.underLoadDays).toBe(3); // Oct 2, 3, 5 — Oct 4 is home
+    expect(u.homeDays).toBe(2);
+    expect(u.idleDays).toBe(5); // Oct 1, 6, 7, 9 (travel), 10 — all post-flip unmarked or travel
+    expect(u.underLoadDays + u.homeDays + u.idleDays).toBe(u.windowDays);
+    expect(u.utilization).toBeCloseTo(0.3, 6);
+  });
+  it("no window start → nothing to measure", () => {
+    expect(utilizationWindow([], null, "2026-10-11", [], []).utilization).toBeNull();
+  });
+  it("truckServiceSpend: tractor + APU in full, a shared visit at half, the trailer's not at all", () => {
+    expect(truckServiceSpend([{ unit: "tractor", cost: 400 }, { unit: "apu", cost: 50 }, { unit: "both", cost: 100 }, { unit: "trailer", cost: 999 }] as unknown as MaintenanceService[])).toBe(500);
   });
 });

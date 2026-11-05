@@ -74,12 +74,15 @@ export const mpgWindows = (entries: FuelLike[]): MpgWindow[] => {
 // has run on 30 days since 2026-09-06 — the two jobs now agree.
 export const FUEL_WINDOW_DAYS = 30;
 
-// The window's first day, inclusive — FUEL_WINDOW_DAYS back from `now`.
-// fuel_date is a DATE column keyed by its day string, so the comparison is
-// string-on-string and never round-trips through a local midnight.
+// The window's first day, inclusive: today and the FUEL_WINDOW_DAYS − 1 days
+// before it — thirty days, not thirty-one (it ran a day long, and in UTC,
+// until 2026-11-04: the Oct 5 fill was in this window and out of the board's).
+// Callers hand in the operator's LOCAL day (today.ts); fuel_date is a DATE
+// column keyed by its day string, so the comparison is string-on-string and
+// never round-trips through a local midnight.
 const windowStartKey = (now: Date): string => {
   const cutoff = new Date(now);
-  cutoff.setUTCDate(cutoff.getUTCDate() - FUEL_WINDOW_DAYS);
+  cutoff.setUTCDate(cutoff.getUTCDate() - (FUEL_WINDOW_DAYS - 1));
   return cutoff.toISOString().slice(0, 10);
 };
 

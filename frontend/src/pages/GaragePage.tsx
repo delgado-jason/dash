@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { localToday } from "@/lib/metrics/today";
 import { toPng } from "html-to-image";
 import { Share2 } from "lucide-react";
 import type { Truck } from "@/types/truck";
@@ -89,7 +90,7 @@ const GaragePage = () => {
       ...tl.map((l) => Number(l.odometer_end) || 0),
     ) ?? 0;
     const rank = careerRank(odo);
-    const fs = fuelStats(fuel.filter((f) => f.truck_id === t.truck_id), new Date());
+    const fs = fuelStats(fuel.filter((f) => f.truck_id === t.truck_id), localToday());
     cards.push({
       id: `truck:${t.truck_id}`,
       filename: `unit-${t.unit_number}-card`,

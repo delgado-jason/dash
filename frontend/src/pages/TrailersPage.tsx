@@ -11,6 +11,7 @@ import {
 } from "@/services/maintenanceService";
 import { getObligations } from "@/services/obligationsService";
 import { useLoads } from "@/hooks/useLoads";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { computeDue, recentMilesPerMonth, maxOdometer } from "@/lib/metrics/maintenance";
 import { computePayoff, isPayoffTracked } from "@/lib/metrics/payoff";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
@@ -104,7 +105,7 @@ const TrailersPage = () => {
   }, []);
 
   // Per-trailer roster line: miles carried, hauls, its 8% share, note %, clocks.
-  const now = useMemo(() => new Date(), []);
+  const now = useLocalToday(); // the local day, anchored (call 13)
   const mpm = useMemo(() => recentMilesPerMonth(loads, now), [loads, now]);
   const rows = useMemo(
     () =>

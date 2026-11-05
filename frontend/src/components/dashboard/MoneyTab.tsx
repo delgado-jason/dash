@@ -207,7 +207,7 @@ export const MoneyTab = ({
           className="border-b md:border-b-0 md:border-r ds2-cell-rule"
           label={`Income · ${year}`}
           value={money(ytdIncome)}
-          sub={`${ytd.length} month${ytd.length === 1 ? "" : "s"} · net of carrier cut`}
+          sub={`${ytd.length} month${ytd.length === 1 ? "" : "s"} · net of carrier cut · the P&L upload`}
           to="/recap"
           go="recap"
         />
@@ -216,7 +216,7 @@ export const MoneyTab = ({
           label="Operating profit"
           value={money(ytdProfit)}
           valueClassName={ytdProfit >= 0 ? "text-status-positive-text" : "text-status-negative-text"}
-          sub="income − COGS − expenses"
+          sub="income − COGS − expenses · the P&L upload (the Cash Flow archive is QBO)"
           tone={ytdProfit >= 0 ? "pos" : "neg"}
           to="/expenses"
           go="expenses"

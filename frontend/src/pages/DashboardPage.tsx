@@ -160,7 +160,7 @@ const OwnerDashboard = () => {
           ) : active === "agents" ? (
             <AgentsTab loads={loads} />
           ) : (
-            <FleetTab loads={loads} />
+            <FleetTab loads={loads} pnlCostPerMile={targets.basis.costPerTotalMile} pnlWindow={targets.basis.windowLabel} />
           )
         }
           </DashboardShell>

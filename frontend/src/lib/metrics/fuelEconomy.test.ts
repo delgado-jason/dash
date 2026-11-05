@@ -123,16 +123,18 @@ describe("fuelStats — costPerMile30 (the canonical fuel $/mi)", () => {
     expect(s.costPerMile30).toBeCloseTo(600 / 600, 5);
   });
 
-  it("pins the boundary: exactly 30 days back is IN, 31 days back is OUT", () => {
-    // now = Aug 15 → cutoff day = Jul 16 (inclusive). A window closing ON the
-    // cutoff counts; one day earlier doesn't. Pins both the 30 and the ≥.
+  it("pins the boundary: 29 days back is IN, 30 days back is OUT — today and the 29 before it", () => {
+    // now = Aug 15 → the window's first day is Jul 17 (inclusive): thirty days,
+    // Jul 17 through Aug 15. A window closing ON that day counts; one day
+    // earlier doesn't. Until 2026-11-04 the window ran a day long (Jul 16 was
+    // in), so the Oct 5 fill sat in this window and out of the cash board's.
     const win = (closeDate: string) => [
       e(100000, 120, 4.0, "2026-04-01"),
       e(100600, 120, 5.0, closeDate),
     ];
     const now = new Date("2026-08-15T00:00:00.000Z");
-    expect(fuelStats(win("2026-07-16"), now).costPerMile30).toBeCloseTo(1.0, 5);
-    expect(fuelStats(win("2026-07-15"), now).costPerMile30).toBeNull();
+    expect(fuelStats(win("2026-07-17"), now).costPerMile30).toBeCloseTo(1.0, 5);
+    expect(fuelStats(win("2026-07-16"), now).costPerMile30).toBeNull();
   });
 
   it("mpg30 · $/gal30 factor the SAME 30-day set — their quotient IS costPerMile30", () => {
@@ -160,8 +162,8 @@ describe("fuelStats — paidPerGallon30 (the price question)", () => {
   });
 
   it("ignores fills before the window, on the same inclusive boundary the windows use", () => {
-    const outside = e(100000, 130, 4.0, "2026-07-15"); // 31 days back — out
-    const inside = e(100300, 50, 6.0, "2026-07-16"); // 30 days back — in
+    const outside = e(100000, 130, 4.0, "2026-07-16"); // 30 days back — out
+    const inside = e(100300, 50, 6.0, "2026-07-17"); // 29 days back — in
     const s = fuelStats([outside, inside], now);
     expect(s.paidPerGallon30).toBeCloseTo(6.0, 6);
     expect(s.avgCostPerGallon).toBeCloseTo(820 / 180, 6); // lifetime still sees both
@@ -212,10 +214,11 @@ describe("maxFuelOdometer", () => {
 });
 
 describe("latestTankRecap", () => {
-  const now = new Date("2026-08-01T00:00:00Z");
+  const now = new Date("2026-07-31T00:00:00Z");
   // Fulls only (120 gal each, ≥ the threshold) so each closes a window with
   // mpg = miles / 120. Pass the per-tank MPGs you want; the opener is implicit.
-  // July dates — every tank closes inside the 30-day window of `now` (Aug 1).
+  // July dates — every tank closes inside the 30-day window of `now` (Jul 31:
+  // the first tank closes Jul 2, 29 days back, the window's first day).
   const tanks = (mpgs: number[], price = 5) => {
     const gal = 120;
     let odo = 100000;
@@ -259,13 +262,13 @@ describe("latestTankRecap", () => {
     // nothing. The card must fall back to "no average yet" instead.
     const aged = [
       e(100000, 120, 4.0, "2026-06-01"),
-      e(100600, 120, 4.0, "2026-06-03"), // closes 59d before now (Aug 1) — out
+      e(100600, 120, 4.0, "2026-06-03"), // closes 58d before now (Jul 31) — out
       e(101200, 120, 6.0, "2026-07-20"), // the only recent window
     ];
     const r = latestTankRecap(fuelStats(aged, now), [])!;
     expect(r.cpmVsAvg).toBeNull();
     // Two recent windows → a real comparison exists again.
-    const two = tanks([6, 6]); // both close Jul 2–3, within 30d of Aug 1
+    const two = tanks([6, 6]); // close Jul 2–3 — Jul 2 is 29 days back, in
     expect(latestTankRecap(fuelStats(two, now), [])!.cpmVsAvg).not.toBeNull();
   });
 

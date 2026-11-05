@@ -10,6 +10,7 @@ import { getFuelEntries } from "@/services/fuelService";
 import { getMaintenanceItems } from "@/services/maintenanceService";
 import { getObligations } from "@/services/obligationsService";
 import { useLoads } from "@/hooks/useLoads";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { computeDue, recentMilesPerMonth } from "@/lib/metrics/maintenance";
 import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { computePayoff, isPayoffTracked } from "@/lib/metrics/payoff";
@@ -80,7 +81,7 @@ const TrucksPage = () => {
   }, []);
 
   // Per-truck roster line: hauls, MPG, note %, and the service clocks.
-  const now = useMemo(() => new Date(), []);
+  const now = useLocalToday(); // the local day, anchored (call 13)
   const mpm = useMemo(() => recentMilesPerMonth(loads, now), [loads, now]);
   const rows = useMemo(
     () =>

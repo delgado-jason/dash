@@ -5,7 +5,8 @@ import {
   patchObligation,
   deleteObligation,
 } from "@/services/obligationsService";
-import { money } from "@/lib/format";
+import { formatDate, money } from "@/lib/format";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { isPayoffTracked, computePayoff } from "@/lib/metrics/payoff";
 
 interface Props {
@@ -49,7 +50,9 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
     .filter((o) => o.active)
     .reduce((s, o) => s + o.amount, 0);
 
-  const now = new Date();
+  // The local day, anchored (call 13); its key stamps a retyped balance.
+  const now = useLocalToday();
+  const todayKey = now.toISOString().slice(0, 10);
 
   return (
     <div className="ds2-board p-4 mt-4">
@@ -94,31 +97,44 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                       (() => {
                         const pay = computePayoff(o, now);
                         return pay.paidPct != null ? (
-                          <span className="flex items-center gap-2 mt-1">
-                            <span className="inline-flex gap-[2px] w-[110px]">
-                              {Array.from({ length: 10 }, (_, ci) => (
-                                <i
-                                  key={ci}
-                                  className="flex-1 h-[6px] rounded-[2px]"
-                                  style={
-                                    (ci + 1) / 10 <= (pay.paidPct ?? 0) + 1e-6
-                                      ? {
-                                          background:
-                                            "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                                        }
-                                      : {
-                                          background: "var(--color-well)",
-                                          border: "1px solid var(--color-hairline-lo)",
-                                        }
-                                  }
-                                />
-                              ))}
+                          <>
+                            <span className="flex items-center gap-2 mt-1">
+                              <span className="inline-flex gap-[2px] w-[110px]">
+                                {Array.from({ length: 10 }, (_, ci) => (
+                                  <i
+                                    key={ci}
+                                    className="flex-1 h-[6px] rounded-[2px]"
+                                    style={
+                                      (ci + 1) / 10 <= (pay.paidPct ?? 0) + 1e-6
+                                        ? {
+                                            background:
+                                              "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                          }
+                                        : {
+                                            background: "var(--color-well)",
+                                            border: "1px solid var(--color-hairline-lo)",
+                                          }
+                                    }
+                                  />
+                                ))}
+                              </span>
+                              <span className="font-condensed text-[10.5px] text-faint tabular-nums">
+                                {Math.round((pay.paidPct ?? 0) * 100)}% ·{" "}
+                                {money(pay.owed)} to go
+                              </span>
                             </span>
-                            <span className="font-condensed text-[10.5px] text-faint tabular-nums">
-                              {Math.round((pay.paidPct ?? 0) * 100)}% ·{" "}
-                              {money(pay.owed)} to go
-                            </span>
-                          </span>
+                            {pay.draftsSince > 0 ? (
+                              <span className="block font-condensed text-[10px] text-faint tabular-nums">
+                                statement {money(pay.statementOwed)} as of{" "}
+                                {formatDate(pay.balanceAsOf)} · {pay.draftsSince}{" "}
+                                {pay.draftsSince === 1 ? "draft" : "drafts"} since
+                              </span>
+                            ) : pay.balanceAsOf == null ? (
+                              <span className="block font-condensed text-[10px] text-faint">
+                                balance date not set · retype the balance to stamp today
+                              </span>
+                            ) : null}
+                          </>
                         ) : null;
                       })()}
                   </span>
@@ -145,11 +161,18 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                       aria-label="Save"
                       onClick={() =>
                         run(async () => {
+                          const nextBalance = editBal ? Number(editBal) : null;
                           await patchObligation(o.obligation_id, {
                             label: editLabel,
                             amount: Number(editAmt),
                             original_balance: editOrig ? Number(editOrig) : null,
-                            current_balance: editBal ? Number(editBal) : null,
+                            current_balance: nextBalance,
+                            // A retyped balance is a statement read TODAY, so its as-of
+                            // day moves with it — otherwise the payoff would subtract
+                            // last season's drafts from this month's balance (§5).
+                            ...(nextBalance !== o.current_balance
+                              ? { balance_as_of: nextBalance != null ? todayKey : null }
+                              : {}),
                             payoff_date: editPayoff || null,
                             asset_type: editAsset || null,
                           });

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { localToday } from "@/lib/metrics/today";
 import type { FuelEntry, NationalDiesel } from "@/types/fuelEntry";
 import type { Truck } from "@/types/truck";
 import {
@@ -115,7 +116,7 @@ const FuelEntriesPage = () => {
   // The clock is read INSIDE the memo: a `now` from the render body would be a
   // new Date every render, so listing it as a dependency would recompute the
   // tank windows on every keystroke. Same numbers, one less trap.
-  const stats = useMemo(() => fuelStats(entries, new Date()), [entries]);
+  const stats = useMemo(() => fuelStats(entries, localToday()), [entries]);
   // The latest completed tank, scored against his history (the "last tank" card).
   const recap = useMemo(
     () => latestTankRecap(stats, nationalSeries),
