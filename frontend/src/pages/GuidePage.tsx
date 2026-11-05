@@ -1,5 +1,9 @@
 import { createElement, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { useLoads } from "@/hooks/useLoads";
+import { useRateTargets } from "@/hooks/useRateTargets";
+import type { RateLadder } from "@/lib/metrics/rateTargets";
+import { money, rpm } from "@/lib/format";
 import { Trophy, ArrowRight } from "lucide-react";
 import { RatingMedallion } from "@/components/agents/RatingMedallion";
 import { VendorPips } from "@/components/vendors/VendorPips";
@@ -259,8 +263,9 @@ const UtilBar = ({ active, total }: { active: number; total: number }) => (
   </div>
 );
 
-// A static rate ladder for illustration.
-const MiniLadder = () => (
+// The rate ladder, drawn with the LIVE rungs (the bar's proportions are
+// illustrative; the dollars are today's — a worked number in a guide goes stale).
+const MiniLadder = ({ ladder, spec }: { ladder?: RateLadder | null; spec?: RateLadder | null }) => (
   <div>
     <div
       className="flex h-3 rounded overflow-hidden"
@@ -273,17 +278,17 @@ const MiniLadder = () => (
       <span className="absolute left-0">
         walk-away
         <br />
-        <span className="text-light">$4.34</span>
+        <span className="text-light">{rpm(ladder?.walkAway)}</span>
       </span>
       <span className="absolute left-[67%] -translate-x-1/2 text-center">
         target
         <br />
-        <span className="text-light">$5.21</span>
+        <span className="text-light">{rpm(ladder?.target)}</span>
       </span>
       <span className="absolute right-0 text-right">
         strong
         <br />
-        <span className="text-light">$5.64</span>
+        <span className="text-light">{rpm(ladder?.strong)}</span>
       </span>
     </div>
     <div
@@ -299,8 +304,8 @@ const MiniLadder = () => (
       </span>
       <span className="text-[11px] text-muted-text">oversize · hazmat · heavy</span>
       <span className="ml-auto text-muted-text">
-        target <span style={{ color: AMBER }}>$6.29</span> · strong{" "}
-        <span style={{ color: "#4ade80" }}>$6.94</span>
+        target <span style={{ color: AMBER }}>{rpm(spec?.target)}</span> · strong{" "}
+        <span style={{ color: "#4ade80" }}>{rpm(spec?.strong)}</span>
       </span>
     </div>
   </div>
@@ -333,7 +338,7 @@ const NAV: { group: string; items: string[] }[] = [
   {
     group: "The money",
     items: [
-      "Your net revenue — what you actually keep",
+      "Net and gross — two revenues, each named",
       "True cost per mile",
       "Break-even — the rate to book",
       "The rate ladder",
@@ -346,6 +351,8 @@ const NAV: { group: string; items: string[] }[] = [
       "The reload cost — what a stop leaves you",
       "Outstanding loads — how long money sits",
       "The cash board — this period and the next",
+      "OPS NOW — the number you type",
+      "ASSUMPTIONS — the planning inputs behind the board",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -547,6 +554,22 @@ const GuideToc = ({
 
 const GuidePage = () => {
   const [query, setQuery] = useState("");
+  // The live basis — the Guide quotes TODAY's figures where it used to carry
+  // worked numbers that went stale within a quarter (Nod Sheet §7, 2026-11-04).
+  const { loads } = useLoads(0);
+  const targets = useRateTargets(loads);
+  const basis = targets.basis;
+  const live = {
+    cpm: rpm(basis.costPerTotalMile),
+    keep: targets.keep > 0 ? `÷ ${Math.round(targets.keep * 100)}%` : "÷ —",
+    keepPct: targets.keep > 0 ? `${Math.round(targets.keep * 100)}%` : "—",
+    book: rpm(targets.bookingLadder.walkAway),
+    window: basis.windowLabel ?? "no P&L filed",
+    eg:
+      basis.trueMonthlyCost != null && basis.months > 0 && basis.costPerTotalMile != null
+        ? `${money(basis.trueMonthlyCost)}/mo ÷ ~${Math.round(basis.totalMiles / basis.months).toLocaleString("en-US")} miles ≈ ${rpm(basis.costPerTotalMile)} per mile · ${basis.windowLabel ?? ""}`
+        : "Upload a P&L on Expenses and this line shows your own figure.",
+  };
   return (
     <div className="p-6 bg-iron text-light font-body min-h-screen">
       <h1 className="text-3xl font-condensed mb-1">Guide</h1>
@@ -833,8 +856,8 @@ const GuidePage = () => {
           </h2>
 
           <Metric
-            title="Your net revenue — what you actually keep"
-            answers="Every revenue figure in dash is your net take-home, not the full rate the customer paid."
+            title="Net and gross — two revenues, each named"
+            answers="Net — what you keep after the carrier's cut — on the Dashboard's income, the Loads totals and the driver card. Gross — the full customer rate — wherever a rate per mile is graded: the ladder, Score a Load, the Market page, the card's Rate lever. Every figure says which it is."
             sources={[
               { label: "Dashboard", to: "/dashboard" },
               { label: "Loads", to: "/loads" },
@@ -873,9 +896,10 @@ const GuidePage = () => {
               true cost = P&amp;L operating cost + monthly obligations (truck
               note, etc.)
               <br />
-              cost per mile = true cost ÷ every mile you drove
+              cost per mile = true cost ÷ the miles the odometer chain shows across
+              your loads (loaded, and the empty miles between them)
             </Formula>
-            <Eg>$23,600/mo ÷ ~7,450 miles ≈ $3.17 per mile.</Eg>
+            <Eg>{live.eg}</Eg>
             <Why>
               Blended over your last{" "}
               <span className="text-light">six complete months</span> with a
@@ -887,8 +911,10 @@ const GuidePage = () => {
               names the months, the ones still unfiled, and the spread between
               them; the Expenses page runs its per-mile tiles, its burn and its
               rate to book on the same window. It's over{" "}
-              <span className="text-light">total</span> miles
-              (loaded and empty), because every mile you drive costs you.
+              <span className="text-light">total</span> load miles —
+              loaded, and the empty miles between loads — because every mile
+              costs you. Home and shop trips are not in the count yet; they
+              join it with the protection stage.
             </Why>
           </Metric>
 
@@ -905,31 +931,31 @@ const GuidePage = () => {
               break-even $/mi = cost per driven mile ÷ your keep %
             </Formula>
             <div className="flex items-center gap-2 flex-wrap my-3">
-              <ChainBox top="$3.17" bottom="cost / mile" />
+              <ChainBox top={live.cpm} bottom="cost / mile" />
               <ArrowRight size={16} className="text-muted-text" />
-              <ChainBox top="÷ 78%" bottom="your blended keep" />
+              <ChainBox top={live.keep} bottom="your blended keep" />
               <ArrowRight size={16} className="text-muted-text" />
-              <ChainBox top="$4.06" bottom="gross to book" />
+              <ChainBox top={live.book} bottom="gross to book" />
             </div>
             <Why>
               Two haircuts, and they're different: you fold your{" "}
               <span className="text-light">deadhead</span> into the miles
               yourself (cost is spread over every mile you drive), and you keep
-              only part of what you book — 65% + 8% of the linehaul, but{" "}
+              only part of what you book — the schedule's share of the linehaul, but{" "}
               <span className="text-light">100% of the fuel surcharge</span> and
               of tarp, detention, tolls and loading pay. So the keep is{" "}
               <span className="text-light">measured</span> from the window’s own
-              loads (net ÷ gross, about 78%), not assumed at 73%: you judge a
+              loads (net ÷ gross — {live.keepPct} on today's window), not assumed from the schedule: you judge a
               load all-in, so the rate to book divides by what you actually keep
               of an all-in dollar — the way Score a Load always has. Anything
-              above <span className="text-light">$4.06</span> (with your empty
+              above <span className="text-light">{live.book}</span> (with your empty
               miles counted) makes money. This is a{" "}
               <span className="text-light">cash</span> break-even — costs from
               your last <span className="text-light">six complete months</span>{" "}
               of P&L plus loan principal (no depreciation), stepping forward on
               the 1st of each month; your payroll is inside that cost, so
               break-even already pays you and the margin goal sits on top. Every
-              surface that shows it names the window (“cash · Apr–Sep”), the
+              surface that shows it names the window (“cash · {live.window}”), the
               months still unfiled, and the spread between the months — because
               a missing month silently shrinks the basis.
             </Why>
@@ -940,7 +966,7 @@ const GuidePage = () => {
             answers="Where your booked rate lands against your targets."
             sources={[{ label: "Dashboard", to: "/dashboard" }]}
           >
-            <MiniLadder />
+            <MiniLadder ladder={targets.bookingLadder} spec={targets.specLadder} />
             <Formula>
               walk-away = break-even · minimum / target / strong = break-even ×
               (1 + your tier %)
@@ -990,7 +1016,9 @@ const GuidePage = () => {
               The break-even here is per{" "}
               <span className="text-light">driven</span> mile (your cost/mile ÷
               your blended keep), so it's apples-to-apples with the all-in rate
-              — the same break-even the Market page books against. The
+              — the same break-even the Market page books against, and the verdict
+              panel names the basis it graded on: the window, the months filed,
+              the spread between them, and a warning when a month is unfiled. The
               Dashboard's <span className="text-light">net break-even</span> is
               a different number on purpose: cost per loaded mile, in net
               dollars, beside your net $/mi. The verdict maps to whichever tier set fits the load:{" "}
@@ -1476,10 +1504,11 @@ const GuidePage = () => {
             sources={[{ label: "Cash Flow", to: "/cashflow" }]}
           >
             <Formula>
-              deposit = delivered loads at net (+ loads still on the road,
-              expected — or a normal planning week when they say less) − the
-              fuel advance drawn against them − the fixed deductions − what the
-              statement before carried forward · a statement under zero lands
+              deposit = the period's loads at net — delivered, on the road or
+              booked, each expected at its rate; or a normal planning week when
+              they say less — minus the fuel advance drawn against them, the
+              fixed deductions, and the shortfall the statement before carried
+              forward · a statement under zero lands
               nothing and carries into the next · a TONU counts only once the
               statement pays it · ending = your Ops number ± every line dated
               after it, each on the day it hits the bank: last period’s deposit,
@@ -1528,6 +1557,59 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="OPS NOW — the number you type"
+            answers="Your Ops balance right now, typed from the bank app — the one number the cash board and the Plan page open on until the next Friday snapshot."
+            sources={[
+              { label: "Cash Flow", to: "/cashflow" },
+              { label: "Plan", to: "/status" },
+            ]}
+          >
+            <Why>
+              Type it any day, from the bank's balance. The board's current
+              column and the Plan page both open on the{" "}
+              <span className="text-light">latest</span> of an OPS NOW check and
+              a Friday snapshot — on a day with both, the one typed later. A
+              check typed in the morning still has the day's lines ahead of it
+              (payroll, a bill, a deposit), so they come off after it; a snapshot
+              holds its own day, including the accrual you moved before typing
+              it. Dash refuses a future date. A check replaces only the Ops
+              number — Maintenance, Tax and the Vault still read the snapshot.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="ASSUMPTIONS — the planning inputs behind the board"
+            answers="Nine numbers you set once on the Cash Flow page; the board and the Six-Month Road read them wherever a statement or a log hasn't measured the real thing yet."
+            sources={[{ label: "Cash Flow", to: "/cashflow" }]}
+          >
+            <p className="text-sm text-muted-text mb-2">
+              <span className="text-light">Weekly revenue fallback</span> — the
+              planning week a period's deposit falls back to when its loads say
+              less. <span className="text-light">Weekly payroll</span> — the
+              Friday line in every period.{" "}
+              <span className="text-light">Weekly fuel advance</span> — the
+              advance the board takes off a deposit unless the fills pass it.{" "}
+              <span className="text-light">Avg weekly settlement deductions</span>{" "}
+              — the fixed-deduction line until the statements measure it.{" "}
+              <span className="text-light">Monthly depreciation</span> — the
+              forecast's non-cash add-back.{" "}
+              <span className="text-light">Federal and state tax rate</span> —
+              the forecast's tax lines.{" "}
+              <span className="text-light">Financing floor</span> — the
+              forecast's principal paydown, entered negative.{" "}
+              <span className="text-light">Tax catch-up earmark</span> — what
+              the Six-Month Road's true spendable subtracts.
+            </p>
+            <Why>
+              A blank one is not zero: where a projection needs an input you
+              haven't set, the board says so and asks for it rather than
+              printing a number that looks real. The float line is the plan's,
+              edited on the Plan page; the bills live with your obligations on
+              Expenses.
+            </Why>
+          </Metric>
+
+          <Metric
             title="The settlements — Landstar's actuals"
             answers="What Landstar actually paid you each week, straight from parsed Contractor Statements."
           >
@@ -1540,8 +1622,9 @@ const GuidePage = () => {
             </p>
             <p className="text-sm text-muted-text mb-2">
               Three things happen with it: the cash board's fuel and
-              deduction lines become <span className="text-light">measured</span>{" "}
-              (30-day fuel from your log; two deduction buckets, because the
+              deduction lines read the statements once they land (an open period
+              runs its fuel at the pace of the last four pay weeks that ran; two
+              deduction buckets, because the
               first settlement of each month carries the insurance stack —
               advances excluded so fuel is never counted twice); every load
               page gets a <span className="text-light">settlement verification</span>{" "}
@@ -1549,7 +1632,8 @@ const GuidePage = () => {
               cumulative across later adjustments; and when Landstar reaches
               back into a paid load (admin fees, permit and escort fees hitting
               late), the adjustment is named, dated, and counted — a named fee
-              reads amber, an unexplained shortfall reads red.
+              reads amber unless it pulls the load's revenue under zero, which
+              reads red, as does an unexplained shortfall.
             </p>
             <p className="text-sm text-muted-text mb-2">
               Loads whose settled money doesn't match the load page's promise
@@ -1558,6 +1642,14 @@ const GuidePage = () => {
               hunt for them. And the load page's settlement line carries an{" "}
               <span className="text-light">open statement →</span> link that
               opens the most recent statement that touched the load.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              The board's columns: <span className="text-light">Statement · cash</span>{" "}
+              (the statement's date and the Thursday the money lands), Loads,
+              Revenue, Refunds, Advances, Other deductions, Net deposit. A net
+              under zero reads <span className="text-light">carried</span>, because
+              Landstar takes it out of the next statement rather than drafting
+              you.
             </p>
             <Caveat title="FIX chips mean a load isn't in dash">
               A settlement line for a load number dash doesn't know gets a FIX
@@ -1584,8 +1676,8 @@ const GuidePage = () => {
               months (marked ◦, dashed on the chart) chain from the last actual
               ending. Depreciation is <span className="text-light">inside</span>{" "}
               net income and added back as non-cash — one pair, never
-              double-counted. Set weeks off on any forecast month (November’s
-              baby week ships marked). The board header shows{" "}
+              double-counted. Set weeks off on any forecast month — the chart marks the
+              ones you've set. The board header shows{" "}
               <span className="text-light">when the archive last changed</span>{" "}
               and <span className="text-light">which months feed the baseline</span>{" "}
               — when an import moves the forecast, the header says why. The
@@ -1608,8 +1700,9 @@ const GuidePage = () => {
               from your accountant-grade QBO numbers, not the app’s load math,
               so they’re the ones to quote. The driver card’s{" "}
               <span className="text-light">margin lever</span> grades this same
-              number (pooled over the last three closed months), so the
-              bottleneck diagnosis runs on real books too.
+              number pooled over the last three closed months when the archive
+              has them, and says so; with fewer it falls back to the app's
+              season estimate, labelled as such.
             </Why>
           </Metric>
 
@@ -3636,11 +3729,13 @@ const GuidePage = () => {
               posted mid-month waits for the calendar — and runs any day but
               the month's first Friday, which is the new month's Friday; dash
               refuses both, on the form and at the server. Tax
-              comes off the top (the plan's % of the month's pre-tax profit; a
-              loss moves $0). Then the interlock: Ops must hold the float line
+              comes off the top (the plan's % of the month's pre-tax profit —
+              the P&amp;L you uploaded on Expenses, before depreciation, not the
+              QuickBooks figure; a loss moves $0). Then the interlock: Ops must hold the float line
               before there is any surplus at all; the surplus then fills
-              Maintenance to its floor, then the Vault to the ladder's first
-              rung, and only when every floor holds comes the split: the
+              Maintenance to its floor ($5,000 as of Nov 2026 — set in EDIT PLAN,
+              meant to grow with the business), then the Vault to the ladder's
+              first rung, and only when every floor holds comes the split: the
               plan's objective % to the current rung, the rest to the
               household. Under the minimum movement
               nothing moves and the money rides into next month. Tick the month
@@ -3689,7 +3784,9 @@ const GuidePage = () => {
               <span className="text-light">Recap</span>, Compliance, The Forge,
               and this Guide. The money pages — Expenses, Plan, Cash Flow,
               Market, Per&nbsp;Diem, Fuel, Garage, Trophy Room, and Settings —
-              stay owner-only, so the P&amp;L is yours alone. Her Recap covers
+              are kept off a dispatcher's menu and pages — a boundary the app
+              keeps, not the server; dash is its own only client — so the
+              P&amp;L stays out of her day-to-day. Her Recap covers
               the loads <span className="text-light">she</span> booked, in
               gross; net and profit appear nowhere on her side.
             </p>
