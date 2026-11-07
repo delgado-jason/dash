@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -435,7 +436,7 @@ export const PulseTab = ({
           label="Deadhead"
           value={deadhead != null ? `${Math.round(deadhead * 100)}%` : "—"}
           sub="odometer-true · target ≤ 20%"
-          tone={deadhead == null ? "none" : deadhead <= 0.2 ? "pos" : "amb"}
+          tone={deadhead == null ? "none" : deadhead <= DEADHEAD_TARGET ? "pos" : "amb"}
           to="/trips"
           go="trips"
         />

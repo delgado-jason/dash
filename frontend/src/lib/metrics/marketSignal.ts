@@ -23,7 +23,7 @@ export const FUEL_THRESHOLD = 0.1;
 // Consecutive prints that must agree before a direction holds.
 export const PRINTS_TO_HOLD = 2;
 // Divergence needed to call you "beating" / "lagging" the market.
-const GAP_THRESHOLD = 0.03; // 3 pts
+export const GAP_THRESHOLD = 0.03; // 3 pts
 // Standard loads needed on each side of a you-vs-market read.
 export const YVM_MIN_LOADS = 8;
 
