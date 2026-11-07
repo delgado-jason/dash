@@ -1,0 +1,340 @@
+{
+  "max": 67,
+  "lines": [
+    {
+      "file": "src/lib/metrics/rateTargets.ts",
+      "text": "const loaded = inMonth.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);",
+      "why": "a sum over loads — a load with no loaded_miles adds 0 to a loaded-miles total, which is not a money figure"
+    },
+    {
+      "file": "src/lib/metrics/rateTargets.ts",
+      "text": "const monthCost = (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsMonthly;",
+      "why": "unreachable fallback — the null check on the line above has already skipped any month missing either total"
+    },
+    {
+      "file": "src/lib/metrics/rateTargets.ts",
+      "text": "const loaded = wk.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);",
+      "why": "a sum over loads — a load with no loaded_miles adds 0 to a loaded-miles total, which is not a money figure"
+    },
+    {
+      "file": "src/lib/metrics/cashBoard.ts",
+      "text": "runningPace(today, (w) => weekOdometerMiles(readings, w).miles ?? 0, weeks);",
+      "why": "SILENT ZERO — retire in stage 4c (CASH-16): a week with no odometer reading counts as 0 miles in the running pace, dragging the projection down instead of saying unknown"
+    },
+    {
+      "file": "src/lib/metrics/cashBoard.ts",
+      "text": "} else if (!closed && pace != null && pace > Math.max(odo.miles ?? 0, byLoads.miles)) {",
+      "why": "a max() against another figure — 0 is the identity there, so a missing odometer simply loses the comparison"
+    },
+    {
+      "file": "src/lib/metrics/cashBoard.ts",
+      "text": "words = `projected ${fmtMiles(pace)} mi — a normal week (last four that ran) · odometer ${fmtMiles(odo.miles ?? 0)} mi so far${odo.end ? ` (last reading ${mdWords(odo.end.date)})` : \"\"} · actual miles replace it as readings land`;",
+      "why": "SILENT ZERO — retire in stage 4c (CASH-16): the words print 'odometer 0 mi so far' when no reading exists, instead of saying none logged"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const back = a.backwards ?? 0;",
+      "why": "a count — no backwards odometer readings is a true 0"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const lo = num(s.target_lo) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a stage with no target_lo reads as a $0 target, so 'done' is true for a missing input"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const lo = num(s.target_lo) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a stage with no target_lo reads as a $0 target, so its progress is computed against nothing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "protectedLevel = Math.max(protectedLevel, num(s.target_lo) ?? 0);",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a stage with no target_lo contributes a $0 protected level instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const vShort = Math.max(0, floors.vault - (bal.vault ?? 0));",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an account with no vault balance typed counts as $0 on hand, so the vault shows short instead of unknown"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": ": `${f.label} UNMET (${money(f.balance ?? 0)} of ${money(f.floor)})`;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): prints 'UNMET ($0 of $X)' for an account with no balance typed instead of reading unknown"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": ".map((f) => `${floorName(f)} (now ${money((f.balance ?? 0) + f.fill)} of ${money(f.floor)})`)",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an account with no balance typed counts as $0 now in the fill list instead of reading unknown"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const acc = accrual ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unknown accrual is treated as $0 when the money day is computed, instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const tax = getTaxMove(pretax, taxPct) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an uncomputable tax move becomes $0 in the money day instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const surplus = getSurplus(opsAfter, floatLine) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an uncomputable surplus becomes $0 in the money day instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const minMove = num(plan.min_move) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unset minimum move reads as $0 instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "{ ops: floatLine, maintenance: num(plan.maintenance_floor) ?? 0, vault: vaultFloorOf(plan.stages) ?? 0 },",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unset maintenance or vault floor reads as $0 in the interlock instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const objPct = num(plan.objective_pct) ?? 70;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unset objective percent silently becomes 70 instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const opsAfter = moneyDay ? moneyDay.opsAfter : ops == null ? null : ops - (acc ?? 0);",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unknown accrual is taken as $0 when projecting Ops after the move"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "{ opsAfter, maintenanceAfter: maint == null ? null : maint + (acc ?? 0), vault: num(snapshot.vault) },",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unknown accrual is taken as $0 in the maintenance-after figure"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "{ ops: floatLine, maintenance: num(plan.maintenance_floor) ?? 0, vault: vaultFloorOf(plan.stages) ?? 0 },",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unset maintenance or vault floor reads as $0 in the interlock instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const mFloor = num(plan.maintenance_floor) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unset maintenance floor reads as $0, so the maintenance check passes on a missing input"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const vFloor = vaultFloorOf(plan.stages) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unset vault floor reads as $0, so the vault check passes on a missing input"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const mOk = maint == null ? mFloor <= 0 : maint + (acc ?? 0) >= mFloor;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): an unknown accrual is taken as $0 in the maintenance check"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const vOk = (num(snapshot.vault) ?? 0) >= vFloor;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a vault balance not typed reads as $0 in the vault check instead of unknown"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const m = num(ctx.accrual.miles) ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): unknown accrual miles are printed and used as 0 in the order text instead of refusing"
+    },
+    {
+      "file": "src/lib/metrics/planStatus.ts",
+      "text": "const cu = ctx.accrual.catchUpMiles ?? 0;",
+      "why": "an optional adjustment — no catch-up miles is a true 0"
+    },
+    {
+      "file": "src/lib/metrics/cashflow.ts",
+      "text": "const off = weeksOffByMonth.get(m.month.slice(0, 10)) ?? 0;",
+      "why": "a count — a month with no weeks-off recorded has a true 0 weeks off"
+    },
+    {
+      "file": "src/lib/metrics/cashflow.ts",
+      "text": "const weeksOff = weeksOffByMonth.get(month) ?? 0;",
+      "why": "a count — a month with no weeks-off recorded has a true 0 weeks off"
+    },
+    {
+      "file": "src/lib/metrics/loadScore.ts",
+      "text": "const loaded = Number(input.loadedMiles) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): missing loaded miles become 0 and the Scorer carries on instead of refusing to grade"
+    },
+    {
+      "file": "src/lib/metrics/loadScore.ts",
+      "text": "const driven = loaded + (Number(input.deadheadMiles) || 0);",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): missing deadhead becomes 0 empty miles, so the load is graded as if driven loaded the whole way"
+    },
+    {
+      "file": "src/lib/metrics/loadScore.ts",
+      "text": "const rate = Number(input.rate) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a missing rate becomes $0 and the Scorer carries on instead of refusing to grade"
+    },
+    {
+      "file": "src/lib/metrics/payWeeks.ts",
+      "text": "const loaded = Number(l.loaded_miles ?? 0) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a pickup with no loaded miles accrues 0 miles into the week instead of being named as missing"
+    },
+    {
+      "file": "src/lib/metrics/payWeeks.ts",
+      "text": "const dead = Number(l.deadhead_miles ?? 0) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a pickup with no deadhead accrues 0 empty miles into the week instead of being named as missing"
+    },
+    {
+      "file": "src/lib/pnl/parsePnl.ts",
+      "text": "if (inCost) lines.push({ name: totalOf, current: cur ?? 0, prior: pri, section: sectionKey });",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a cost subtotal row with no current-month figure is filed as $0 instead of flagging the row"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": "getMaintenanceServices().then(setServices).catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed maintenance-services fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": "(numOrNull(s.miles) ?? 0) * perMile,",
+      "why": "SILENT ZERO — retire in stage 4c (PLAN-06): a snapshot with no miles accrues $0 in the re-truing instead of being named as unknown"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": "const stored = s.tax_moved != null ? Number(s.tax_moved) + (numOrNull(s.surplus_moved) ?? 0) : null;",
+      "why": "guarded by tax_moved != null — an older snapshot that kept tax_moved without surplus_moved adds a true 0 surplus"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": "fuelFallback: Number(assumptions.weekly_fuel_advance ?? 0),",
+      "why": "SILENT ZERO — retire in stage 4c (CASH-16): a missing weekly_fuel_advance reaches the board as $0 instead of making it refuse"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": "deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),",
+      "why": "SILENT ZERO — retire in stage 4c (CASH-16): a missing weekly_settlement_deductions reaches the board as $0 and overstates every deposit instead of refusing"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": ": moneyCents(Number(settlements[0]?.escrow_tractor ?? 0) + Number(settlements[0]?.escrow_trailer ?? 0))}",
+      "why": "guarded — both escrow fields null prints a dash; when only one side is missing it adds a true 0 of that escrow"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": ".catch(() => {}),",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed forecast-adjustments (second attempt) fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/CashFlowPage.tsx",
+      "text": ".sort((a, b) => (a.day_of_month ?? 0) - (b.day_of_month ?? 0));",
+      "why": "unreachable fallback — the filter above keeps only bills with a day_of_month, so it is only a sort key"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": "getObligations().then(setObligations).catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed obligations fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": "getSettlementSchedule().then(setSchedule).catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed settlement-schedule fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": ".catch(() => {})",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed expense-periods list fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed expense-period fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed expense-period window fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": "const selIncome = selected?.income_total ?? 0;",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a period saved without income_total shows $0 income instead of naming what is missing"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": "const selCost = (selected?.cogs_total ?? 0) + (selected?.expense_total ?? 0);",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a period saved without cogs/expense totals shows $0 cost, so the month reads as free"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": "const prof = (p.income_total ?? 0) - ((p.cogs_total ?? 0) + (p.expense_total ?? 0));",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a period with null totals reads as $0 profit in the best-month comparison instead of being left out"
+    },
+    {
+      "file": "src/pages/ExpensesPage.tsx",
+      "text": "pos: (trueMonthly.trueNetMargin ?? 0) >= 0,",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): an unknown net margin colours as non-negative while the value prints a dash"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed settlement-schedule (detention free hours) fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed fuel-entries fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed load-documents fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed settlement-lines fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": ".catch(() => {});",
+      "why": "SILENT ZERO — retire in stage 4c (NET-03): a failed accessorial-rates fetch is swallowed, so the page renders as if there were no data"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "const loadedMi = Number(load.loaded_miles) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a load with no loaded miles is graded on 0 instead of refusing"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "const emptyMi = empty != null && empty >= 0 ? empty : Number(load.deadhead_miles) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a null deadhead_miles becomes 0 empty miles, so the load is graded as zero-empty"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "loadedMiles: Number(load.loaded_miles) || 0,",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a load with no loaded miles is passed to the Scorer as 0 instead of refusing"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "deadheadMiles: empty != null && empty >= 0 ? empty : Number(load.deadhead_miles) || 0,",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): Number(load.deadhead_miles) || 0 grades a null deadhead as zero-empty (the spec's first retirement)"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "value={(Number(load.loaded_miles) || 0).toLocaleString(\"en-US\")}",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a load with no loaded miles prints 0 instead of a dash"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "value={`${(Number(load.loaded_miles) || 0).toLocaleString(\"en-US\")} mi`}",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a load with no loaded miles prints '0 mi' instead of a dash"
+    },
+    {
+      "file": "src/pages/LoadDetailPage.tsx",
+      "text": "value={`${(Number(load.deadhead_miles) || 0).toLocaleString(\"en-US\")} mi`}",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a load with no planned deadhead prints '0 mi' instead of a dash"
+    },
+    {
+      "file": "src/pages/ScoreLoadPage.tsx",
+      "text": "d.ft === \"\" && d.in === \"\" ? null : toInches(Number(d.ft) || 0, Number(d.in) || 0);",
+      "why": "form parsing — a blank feet or inches box reads 0 once the other is typed; both blank already returns null"
+    },
+    {
+      "file": "src/pages/ScoreLoadPage.tsx",
+      "text": "const deadMi = Number(deadhead) || 0;",
+      "why": "SILENT ZERO — retire in stage 4c (SCORE-02): a blank deadhead box is graded as 0 empty miles instead of asking for it"
+    }
+  ]
+}

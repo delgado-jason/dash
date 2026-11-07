@@ -3,7 +3,7 @@ import { ValidationError } from "../utils/error.js";
 
 // The identity schedule — net = gross, no carrier. Returned when a user hasn't
 // configured one so the app (and the Settings form) always has values to work with.
-const DEFAULTS = {
+export const DEFAULTS = {
   linehaul_pct: 1,
   trailer_pct: 0,
   fuel_surcharge_pct: 1,
