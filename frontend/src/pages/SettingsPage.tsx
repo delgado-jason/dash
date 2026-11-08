@@ -10,6 +10,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 import { CutTiersCard } from "@/components/settings/CutTiersCard";
+import { SettlementSplitsTable } from "@/components/settings/SettlementSplitsTable";
 import { PerDiemRatesTable } from "@/components/settings/PerDiemRatesTable";
 import { FscScheduleBox } from "@/components/settings/FscScheduleBox";
 import { TeamCard } from "@/components/settings/TeamCard";
@@ -21,53 +22,10 @@ type Tier3 = { min: number; target: number; strong: number };
 // Tiers are SET via the RateDial slider; this stored percent shape is unchanged.
 const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean percent
 
-// Rate-tier set editor: three markup inputs + a live preview at the real
-// break-even. The Scorer's verdict uses target + strong; min is the ladder's
-// lower rung.
-// A sample load for the live preview, so the effect of the percentages is visible.
-const SAMPLE_LINEHAUL = 2000;
-const SAMPLE_FSC = 300;
-
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-type Pcts = {
-  linehaul: number;
-  trailer: number;
-  fsc: number;
-  accessorial: number;
-};
-
-const Field = ({
-  label,
-  help,
-  value,
-  onChange,
-}: {
-  label: string;
-  help: string;
-  value: number;
-  onChange: (v: number) => void;
-}) => (
-  <label className="block">
-    <span className="text-sm text-light">{label}</span>
-    <div className="flex items-center gap-2 mt-1">
-      <input
-        type="number"
-        min={0}
-        max={200}
-        step={0.5}
-        value={Number.isFinite(value) ? value : ""}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
-      />
-      <span className="text-muted-text">%</span>
-    </div>
-    <span className="text-xs text-muted-text mt-1 block">{help}</span>
-  </label>
-);
-
 const SettingsPage = () => {
-  const [pcts, setPcts] = useState<Pcts | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [carrier, setCarrier] = useState("");
   const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [settlementDay, setSettlementDay] = useState(3); // 0=Sun … 6=Sat; default Wednesday
@@ -94,12 +52,7 @@ const SettingsPage = () => {
   useEffect(() => {
     getSettlementSchedule()
       .then((s) => {
-        setPcts({
-          linehaul: s.linehaul_pct * 100,
-          trailer: s.trailer_pct * 100,
-          fsc: s.fuel_surcharge_pct * 100,
-          accessorial: s.accessorial_pct * 100,
-        });
+        setLoaded(true);
         setCarrier(s.carrier_name ?? "");
         setSettlementDay(s.settlement_day);
         setDepositLag(s.deposit_lag_days);
@@ -132,11 +85,6 @@ const SettingsPage = () => {
       .catch(() => {});
   }, []);
 
-  const set = (k: keyof Pcts) => (v: number) => {
-    setMsg(null);
-    setPcts((p) => (p ? { ...p, [k]: v } : p));
-  };
-
   const ascends = (t: Tier3) => t.min <= t.target && t.target <= t.strong;
   const tierErr = !ascends(stdTiers)
     ? "Standard tiers must climb: min ≤ target ≤ strong."
@@ -145,16 +93,12 @@ const SettingsPage = () => {
       : null;
 
   const save = async () => {
-    if (!pcts || tierErr) return;
+    if (!loaded || tierErr) return;
     setSaving(true);
     setErr(null);
     setMsg(null);
     try {
       await updateSettlementSchedule({
-        linehaul_pct: pcts.linehaul / 100,
-        trailer_pct: pcts.trailer / 100,
-        fuel_surcharge_pct: pcts.fsc / 100,
-        accessorial_pct: pcts.accessorial / 100,
         carrier_name: carrier.trim() || null,
         settlement_day: settlementDay,
         deposit_lag_days: depositLag,
@@ -171,7 +115,7 @@ const SettingsPage = () => {
         margin_goal: marginGoal / 100,
       });
       await updateMyName(displayName.trim());
-      setMsg("Saved. Your revenue and targets now use this split.");
+      setMsg("Saved.");
     } catch (e) {
       setErr(
         (e as { response?: { data?: { error?: string } } })?.response?.data
@@ -182,12 +126,6 @@ const SettingsPage = () => {
     }
   };
 
-  const gross = SAMPLE_LINEHAUL + SAMPLE_FSC;
-  const net = pcts
-    ? SAMPLE_LINEHAUL * ((pcts.linehaul + pcts.trailer) / 100) +
-      SAMPLE_FSC * (pcts.fsc / 100)
-    : gross;
-  const effLinehaul = pcts ? pcts.linehaul + pcts.trailer : 100;
   const weeklyTarget =
     weeklyBE != null && marginGoal < 100
       ? weeklyBE / (1 - marginGoal / 100)
@@ -254,10 +192,10 @@ const SettingsPage = () => {
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Settlement schedule</h2>
         <p className="text-sm text-muted-text mt-1">
-          Your carrier's pay split. You keep entering each load's full customer
-          rate — this turns it into what your company actually grosses after the
-          carrier's cut. Revenue, RPM, and your rate targets all use it. Leave
-          everything at 100% if you run under your own authority.
+          Your carrier's pay split — linehaul, trailer, fuel surcharge and the
+          accessorial fallback — by the date it took effect. A load settles on
+          the split in force on its delivery day; edit a row to fix it in place,
+          or start a new schedule from the day the split changed.
         </p>
 
         <label className="block mt-4">
@@ -322,57 +260,12 @@ const SettingsPage = () => {
           </span>
         </label>
 
-        {!pcts ? (
+        <SettlementSplitsTable />
+
+        {!loaded ? (
           <p className="text-muted-text mt-5">Loading…</p>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
-              <Field
-                label="Linehaul"
-                help="Your base % of the linehaul (leased on ~65%; own authority 100%)."
-                value={pcts.linehaul}
-                onChange={set("linehaul")}
-              />
-              <Field
-                label="Trailer"
-                help="Extra % of linehaul for furnishing your trailer (flatbed: 8%)."
-                value={pcts.trailer}
-                onChange={set("trailer")}
-              />
-              <Field
-                label="Fuel surcharge"
-                help="Share of the fuel surcharge you keep (usually 100%)."
-                value={pcts.fsc}
-                onChange={set("fsc")}
-              />
-              <Field
-                label="Accessorials"
-                help="Default share of accessorial charges (tarp, detention, etc.)."
-                value={pcts.accessorial}
-                onChange={set("accessorial")}
-              />
-            </div>
-
-            <div
-              className="mt-5 rounded-lg p-4 flex flex-wrap items-center gap-x-6 gap-y-2"
-              style={{ background: "#0d1119" }}
-            >
-              <div className="text-sm text-muted-text">
-                Effective linehaul take{" "}
-                <span className="text-amber font-semibold">
-                  {effLinehaul.toFixed(0)}%
-                </span>
-              </div>
-              <div className="text-sm text-muted-text">
-                Sample: {money(SAMPLE_LINEHAUL)} linehaul + {money(SAMPLE_FSC)}{" "}
-                FSC ={" "}
-                <span className="line-through">{money(gross)}</span>{" "}
-                <span className="text-status-positive-text font-semibold">
-                  {money(net)} net
-                </span>
-              </div>
-            </div>
-
             {msg && (
               <p className="text-status-positive-text text-sm mt-4">{msg}</p>
             )}

@@ -14,6 +14,7 @@
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import type { SplitLike } from "@/types/settlementSplit";
 import {
   payWeekRange,
   getWeekEarnedGross,
@@ -158,8 +159,10 @@ export const computeGrind = (
   schedule: SettlementSchedule | null,
   now: Date,
   weeksToShow = 14,
+  // The pay split in force today (NET-01) — the basis's linehaul take.
+  split: SplitLike | null = null,
 ): Grind => {
-  const t = computeRateTargets(loads, periods, obligationsMonthly, schedule, now);
+  const t = computeRateTargets(loads, periods, obligationsMonthly, schedule, now, [], split);
   return {
     ...grindFrom(loads, t.gross, now, weeksToShow, t.gross.weeklyTarget != null, getWeekGrossEarned),
     weeklyTarget: t.gross.weeklyTarget,

@@ -8,6 +8,10 @@ import { ValidationError, NotFoundError } from "../utils/error.js";
 import {
   NET_REVENUE_SQL,
   TRAILER_NET_SQL,
+  REIMBURSEMENTS_SQL,
+  GROSS_ACCESSORIALS_SQL,
+  SPLIT_JOIN_SQL,
+  assertSplitCoverage,
   assertScheduleRow,
 } from "./sql/netRevenue.js";
 
@@ -21,10 +25,31 @@ async function requireSchedule(user_id) {
   assertScheduleRow(result.rows[0]);
 }
 
+// NET-01 + NET-07: every load must have a split in force on its day (its
+// delivery date; its pickup date before delivery; today with neither). The
+// earliest load without one is named in the refusal — never priced at 100%.
+async function requireSplitCoverage(user_id) {
+  const result = await db.query(
+    `SELECT l.load_number,
+            to_char(COALESCE(l.delivery_date, l.pickup_date, CURRENT_DATE), 'YYYY-MM-DD') AS day
+       FROM loads l
+      WHERE l.user_id = $1
+        AND NOT EXISTS (
+              SELECT 1 FROM settlement_splits s
+               WHERE s.user_id = l.user_id
+                 AND s.effective_from <= COALESCE(l.delivery_date, l.pickup_date, CURRENT_DATE))
+      ORDER BY COALESCE(l.delivery_date, l.pickup_date, CURRENT_DATE)
+      LIMIT 1`,
+    [user_id],
+  );
+  assertSplitCoverage(result.rows[0]);
+}
+
 // ---- GET LOADS SERVICE ----
 export async function getLoads(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   await requireSchedule(user_id);
+  await requireSplitCoverage(user_id);
 
   const query = `
         SELECT
@@ -69,15 +94,14 @@ export async function getLoads(user_id) {
             loaded_miles,
             linehaul,
             fuel_surcharge,
-            (SELECT COALESCE(SUM(amount), 0)
-              FROM accessorials
-              WHERE load_id = l.load_id
-            ) AS total_accessorials,
+            ${GROSS_ACCESSORIALS_SQL} AS total_accessorials,
             linehaul + fuel_surcharge
-              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
+              + ${GROSS_ACCESSORIALS_SQL}
               AS gross_revenue,
             ${NET_REVENUE_SQL} AS net_revenue,
             ${TRAILER_NET_SQL} AS trailer_net,
+            ${REIMBURSEMENTS_SQL} AS reimbursements,
+            to_char(ss.effective_from, 'YYYY-MM-DD') AS split_effective_from,
             commodity,
             weight,
             length_in,
@@ -103,8 +127,7 @@ export async function getLoads(user_id) {
         ON l.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
         ON l.destination_market_id = destination_market.market_id
-        JOIN settlement_schedules AS ss
-        ON ss.user_id = l.user_id
+        ${SPLIT_JOIN_SQL}
         WHERE l.user_id = $1
         ORDER BY pickup_date DESC;
     `;
@@ -119,6 +142,7 @@ export async function getLoad(user_id, load_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!load_id) throw new ValidationError("Missing load_id");
   await requireSchedule(user_id);
+  await requireSplitCoverage(user_id);
 
   const query = `
         SELECT
@@ -164,15 +188,14 @@ export async function getLoad(user_id, load_id) {
             loaded_miles,
             linehaul,
             fuel_surcharge,
-            (SELECT COALESCE(SUM(amount), 0)
-              FROM accessorials
-              WHERE load_id = l.load_id
-            ) AS total_accessorials,
+            ${GROSS_ACCESSORIALS_SQL} AS total_accessorials,
             linehaul + fuel_surcharge
-              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
+              + ${GROSS_ACCESSORIALS_SQL}
               AS gross_revenue,
             ${NET_REVENUE_SQL} AS net_revenue,
             ${TRAILER_NET_SQL} AS trailer_net,
+            ${REIMBURSEMENTS_SQL} AS reimbursements,
+            to_char(ss.effective_from, 'YYYY-MM-DD') AS split_effective_from,
             commodity,
             weight,
             length_in,
@@ -212,8 +235,7 @@ export async function getLoad(user_id, load_id) {
         ON l.driver_id = drv.driver_id
         LEFT JOIN trailers AS trl
         ON l.trailer_id = trl.trailer_id
-        JOIN settlement_schedules AS ss
-        ON ss.user_id = l.user_id
+        ${SPLIT_JOIN_SQL}
         LEFT JOIN users AS bu
         ON bu.user_id = l.booked_by
         LEFT JOIN profiles AS bp

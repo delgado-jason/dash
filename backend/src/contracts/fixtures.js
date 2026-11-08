@@ -5,10 +5,20 @@
 // suite breaks one field at a time.
 
 export const validSchedule = () => ({
+  settlement_day: 3,
+  deposit_lag_days: 1,
+  detention_free_hours: 3,
+  per_diem_deduct_pct: 0.8,
+  margin_goal: 0.26,
+});
+
+export const validSplit = () => ({
+  effective_from: "2026-02-03",
   linehaul_pct: 0.65,
   trailer_pct: 0.08,
   fuel_surcharge_pct: 1,
   accessorial_pct: 0.73,
+  note: "the trailer's share began with the trailer",
 });
 
 export const validAssumptions = () => ({

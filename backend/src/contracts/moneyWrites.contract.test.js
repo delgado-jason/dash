@@ -16,6 +16,8 @@ import { validateAssumptions } from "../utils/validation/assumptionsValidation.j
 import { validateObligation } from "../utils/validation/obligationValidation.js";
 import { validateExpensePeriod } from "../utils/validation/expensePeriodValidation.js";
 import { validateLoadCreate, validateLoadPatch, BOOKER_REQUIRED } from "../utils/validation/loadValidation.js";
+import { validateSettlementSplit } from "../utils/validation/settlementSplitValidation.js";
+import { validateAccessorialRate } from "../utils/validation/accessorialRateValidation.js";
 import { validatePerDiemRate } from "../utils/validation/perDiemRateValidation.js";
 import { validateFscSchedule } from "../utils/validation/fscScheduleValidation.js";
 import { validateFuelEntryCreate, validateFuelEntryPatch } from "../utils/validation/fuelValidation.js";
@@ -24,6 +26,7 @@ import { reconcileBothReading, BOTH_ONE_READING_ERROR } from "../utils/validatio
 import { validateSnapshotBalances } from "../utils/validation/planSnapshotValidation.js";
 import {
   validSchedule,
+  validSplit,
   validAssumptions,
   validObligation,
   validExpensePeriod,
@@ -59,6 +62,7 @@ const refused = (errors, fragment) =>
 describe("the valid fixtures pass clean", () => {
   test("fixtures · every valid synthetic object is accepted", () => {
     assert.deepEqual(validateSchedule(validSchedule()).errors, []);
+    assert.deepEqual(validateSettlementSplit(validSplit()).errors, []);
     assert.deepEqual(validateAssumptions(validAssumptions()).errors, []);
     assert.deepEqual(validateObligation(validObligation()).errors, []);
     assert.deepEqual(validateExpensePeriod(validExpensePeriod()), []);
@@ -67,15 +71,12 @@ describe("the valid fixtures pass clean", () => {
   });
 });
 
-describe("NET-06 · 2026-11-05 settlement schedule — a blank pct would zero every load's net", () => {
+describe("NET-06 · 2026-11-05 settlement schedule — a blank setting must not read as 0", () => {
   const cases = [
-    ["NET-06 · linehaul_pct null is refused, not read as 0", { linehaul_pct: null }, "linehaul_pct needs a number"],
-    ["NET-06 · linehaul_pct '' is refused", { linehaul_pct: "" }, "a blank would zero every load's net"],
-    ["NET-06 · linehaul_pct 'abc' is refused", { linehaul_pct: "abc" }, "linehaul_pct needs a number"],
-    ["NET-06 · fuel_surcharge_pct null is refused", { fuel_surcharge_pct: null }, "fuel_surcharge_pct needs a number"],
-    ["NET-06 · a pct above 1 is refused (bounds tightened from 2)", { accessorial_pct: 1.5 }, "accessorial_pct must be a fraction between 0 and 1"],
-    ["NET-06 · a negative pct is refused", { trailer_pct: -0.1 }, "trailer_pct must be a fraction between 0 and 1"],
-    ["NET-06 · linehaul_pct + trailer_pct > 1 is refused", { linehaul_pct: 0.95, trailer_pct: 0.08 }, "add to more than 1"],
+    ["NET-06 · settlement_day null is refused, not read as Sunday", { settlement_day: null }, "settlement_day needs a number"],
+    ["NET-06 · deposit_lag_days '' is refused", { deposit_lag_days: "" }, "a blank would read as same-day deposits"],
+    ["NET-06 · per_diem_deduct_pct 'abc' is refused", { per_diem_deduct_pct: "abc" }, "per_diem_deduct_pct needs a number"],
+    ["NET-06 · a rate tier above 3 is refused", { rate_tier_std_min: 3.5 }, "between 0 and 3"],
   ];
   for (const [name, over, message] of cases) {
     test(name, () => {
@@ -84,16 +85,62 @@ describe("NET-06 · 2026-11-05 settlement schedule — a blank pct would zero ev
     });
   }
 
-  test("NET-06 · the prod schedule 0.65 / 0.08 / 1 / 0.73 passes and comes back as numbers", () => {
+  test("NET-06 · the schedule fixture passes and comes back as numbers", () => {
     const { values, errors } = validateSchedule(validSchedule());
     assert.deepEqual(errors, []);
     assert.deepEqual(values, validSchedule());
   });
+});
 
-  test("NET-06 · a partial save judges the sum against the stored schedule", () => {
-    const stored = { ...validSchedule() };
-    refused(validateSchedule({ trailer_pct: 0.4 }, stored).errors, "add to more than 1");
-    assert.deepEqual(validateSchedule({ trailer_pct: 0.2 }, stored).errors, []);
+describe("NET-01 · dated settlement splits — a blank pct would zero every load's net", () => {
+  const cases = [
+    ["NET-01 · a blank date is refused", { effective_from: "" }, "effective_from is required"],
+    ["NET-01 · 2026-02-30 is refused", { effective_from: "2026-02-30" }, "effective_from must be a calendar day written YYYY-MM-DD"],
+    ["NET-01 · a blank pct is refused, not read as 0", { linehaul_pct: "" }, "linehaul_pct must be a fraction 0–1 (a blank would read as 0)"],
+    ["NET-01 · a null pct is refused", { fuel_surcharge_pct: null }, "fuel_surcharge_pct must be a fraction 0–1"],
+    ["NET-01 · a pct of 1.2 is refused", { accessorial_pct: 1.2 }, "accessorial_pct must be a fraction 0–1"],
+    ["NET-01 · linehaul 0.65 + trailer 0.4 is refused with the sum sentence", { linehaul_pct: 0.65, trailer_pct: 0.4 }, "linehaul_pct (0.65) + trailer_pct (0.4) add to more than 1"],
+    ["NET-01 · a 201-character note is refused", { note: "x".repeat(201) }, "note is longer than 200 characters"],
+  ];
+  for (const [name, over, message] of cases) {
+    test(name, () => {
+      const { errors } = validateSettlementSplit({ ...validSplit(), ...over });
+      refused(errors, message);
+    });
+  }
+
+  test("NET-01 · a valid split passes and comes back as numbers", () => {
+    const { values, errors } = validateSettlementSplit(validSplit());
+    assert.deepEqual(errors, []);
+    assert.deepEqual(values, validSplit());
+  });
+
+  test("NET-01 · a partial patch of only the note passes", () => {
+    const { values, errors } = validateSettlementSplit({ note: "typo fix" }, { partial: true });
+    assert.deepEqual(errors, []);
+    assert.deepEqual(values, { note: "typo fix" });
+  });
+
+  test("NET-01 · a partial patch judges the sum against the stored row", () => {
+    refused(validateSettlementSplit({ trailer_pct: 0.4 }, { partial: true, current: validSplit() }).errors, "add to more than 1");
+    assert.deepEqual(validateSettlementSplit({ trailer_pct: 0.2 }, { partial: true, current: validSplit() }).errors, []);
+  });
+});
+
+describe("NET-02 · the pass-through flag on an accessorial pay rate", () => {
+  const rate = (over = {}) => ({ accessorial_type: "Tolls", pay_pct: 1, ...over });
+
+  test("NET-02 · 'yes' is refused", () => {
+    refused(validateAccessorialRate(rate({ pass_through: "yes" })).errors, "pass_through must be true or false");
+  });
+  test("NET-02 · true and false pass as given", () => {
+    assert.equal(validateAccessorialRate(rate({ pass_through: true })).values.pass_through, true);
+    assert.equal(validateAccessorialRate(rate({ pass_through: false })).values.pass_through, false);
+  });
+  test("NET-02 · absent reads false", () => {
+    const { values, errors } = validateAccessorialRate(rate());
+    assert.deepEqual(errors, []);
+    assert.equal(values.pass_through, false);
   });
 });
 

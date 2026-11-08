@@ -1,3 +1,4 @@
+import { loadCashIn } from "@/lib/metrics/rateTargets";
 import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
@@ -187,9 +188,10 @@ const LoadsPage = () => {
   const deltaFor = (load: Load): number | null => {
     const summary = setlMap.get(load.load_id);
     if (!summary) return null;
+    // The statement pays the net PLUS the reimbursements (tolls) — NET-02.
     const expected =
       load.net_revenue != null && Number.isFinite(Number(load.net_revenue))
-        ? Number(load.net_revenue)
+        ? loadCashIn(load)
         : null;
     return settlementDelta(summary.gross_settled, expected);
   };

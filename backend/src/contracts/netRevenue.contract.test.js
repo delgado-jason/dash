@@ -11,10 +11,16 @@ import { join } from "node:path";
 import {
   NET_REVENUE_SQL,
   TRAILER_NET_SQL,
+  REIMBURSEMENTS_SQL,
+  GROSS_ACCESSORIALS_SQL,
+  SPLIT_JOIN_SQL,
   NO_SCHEDULE_MESSAGE,
   assertScheduleRow,
+  assertSplitCoverage,
+  noSplitMessage,
   netRevenueOf,
   trailerNetOf,
+  reimbursementsOf,
 } from "../services/sql/netRevenue.js";
 
 const servicesDir = fileURLToPath(new URL("../services/", import.meta.url));
@@ -86,13 +92,41 @@ describe("NET-01 · net revenue = the schedule's cut of each component", () => {
   });
 });
 
-describe("NET-02 · gross is untouched by the schedule", () => {
-  test("the gross_revenue SQL stays a plain sum (linehaul + FSC + accessorials)", () => {
+describe("NET-02 · gross is the revenue components — a pass-through reimbursement is not revenue (Q8, 2026-11-05; built 2026-11-08)", () => {
+  const PASS_RATES = { ...PAY_RATES, Tolls: { pay_pct: 1.0, pass_through: true } };
+  const WITH_TOLL = { ...LOAD, accessorials: [...LOAD.accessorials, { type: "Tolls", amount: 200 }] };
+
+  test("gross_revenue and total_accessorials read GROSS_ACCESSORIALS_SQL at both SELECTs", () => {
     const text = readFileSync(join(servicesDir, "loadServices.js"), "utf8");
-    assert.match(
-      norm(text),
-      /linehaul \+ fuel_surcharge \+ \(SELECT COALESCE\(SUM\(amount\), 0\) FROM accessorials WHERE load_id = l\.load_id\) AS gross_revenue/,
-    );
+    assert.equal(text.match(/\$\{GROSS_ACCESSORIALS_SQL\} AS total_accessorials/g)?.length, 2);
+    assert.equal(norm(text).match(/linehaul \+ fuel_surcharge \+ \$\{GROSS_ACCESSORIALS_SQL\} AS gross_revenue/g)?.length, 2);
+    assert.equal(text.match(/\$\{REIMBURSEMENTS_SQL\} AS reimbursements/g)?.length, 2);
+  });
+
+  test("GROSS_ACCESSORIALS_SQL is pinned: every accessorial that is not a pass-through", () => {
+    assert.equal(norm(GROSS_ACCESSORIALS_SQL), '(SELECT COALESCE(SUM(a.amount), 0) FROM accessorials a LEFT JOIN accessorial_pay_rates apr ON apr.user_id = l.user_id AND apr.accessorial_type = a.accessorial_type WHERE a.load_id = l.load_id AND NOT COALESCE(apr.pass_through, FALSE))');
+  });
+
+  test("a $200 toll marked pass-through leaves the earned net exactly where it was", () => {
+    assert.equal(netRevenueOf(WITH_TOLL, SCHEDULE, PASS_RATES), netRevenueOf(LOAD, SCHEDULE, PAY_RATES));
+    assert.equal(netRevenueOf(WITH_TOLL, SCHEDULE, PASS_RATES), 2429);
+  });
+
+  test("the toll rides in reimbursements at its pay rate; a load with no pass-through has none", () => {
+    assert.equal(reimbursementsOf(WITH_TOLL, PASS_RATES), 200);
+    assert.equal(reimbursementsOf(LOAD, PASS_RATES), 0);
+    // the same toll typed without the flag is ordinary revenue at its rate
+    assert.equal(reimbursementsOf(WITH_TOLL, { ...PAY_RATES, Tolls: 1.0 }), 0);
+    assert.equal(netRevenueOf(WITH_TOLL, SCHEDULE, { ...PAY_RATES, Tolls: 1.0 }), 2629);
+  });
+
+  test("the trailer's share never rides on a pass-through, even one paid at the linehaul rate", () => {
+    const rates = { ...PAY_RATES, Tolls: { pay_pct: 0.73, pass_through: true } };
+    assert.equal(trailerNetOf(WITH_TOLL, SCHEDULE, rates), trailerNetOf(LOAD, SCHEDULE, PAY_RATES));
+  });
+
+  test("REIMBURSEMENTS_SQL is pinned", () => {
+    assert.equal(norm(REIMBURSEMENTS_SQL), 'ROUND( (SELECT COALESCE(SUM(a.amount * apr.pay_pct), 0) FROM accessorials a JOIN accessorial_pay_rates apr ON apr.user_id = l.user_id AND apr.accessorial_type = a.accessorial_type AND apr.pass_through WHERE a.load_id = l.load_id) , 2)');
   });
 });
 
@@ -185,7 +219,7 @@ describe("NET-01/04/05 · one source for the SQL", () => {
     // settlementScheduleServices.js owns the schedule's own columns (its
     // DEFAULTS, validation and upsert), which are not a net-revenue formula.
     const unexpected = offenders.filter(
-      (p) => !p.endsWith("settlementScheduleServices.js"),
+      (p) => !p.endsWith("settlementScheduleServices.js") && !p.endsWith("settlementSplitServices.js"),
     );
     assert.deepEqual(unexpected, []);
   });
@@ -197,17 +231,22 @@ describe("NET-01/04/05 · one source for the SQL", () => {
 });
 
 describe("NET-01/04 · SQL <-> JS lockstep", () => {
+  test("SPLIT_JOIN_SQL is pinned: the split in force on the load's day (NET-01, Q10 2026-11-05)", () => {
+    assert.equal(norm(SPLIT_JOIN_SQL), 'LEFT JOIN LATERAL ( SELECT s.linehaul_pct, s.trailer_pct, s.fuel_surcharge_pct, s.accessorial_pct, s.effective_from FROM settlement_splits s WHERE s.user_id = l.user_id AND s.effective_from <= COALESCE(l.delivery_date, l.pickup_date, CURRENT_DATE) ORDER BY s.effective_from DESC LIMIT 1 ) AS ss ON TRUE');
+    assert.match(SPLIT_JOIN_SQL, /LEFT JOIN LATERAL/); // NULLs for an uncovered load — refused before it runs
+  });
+
   test("NET_REVENUE_SQL is pinned: edit the SQL, the mirror and this pin together", () => {
     assert.equal(
       norm(NET_REVENUE_SQL),
-      "ROUND( l.linehaul * (ss.linehaul_pct + ss.trailer_pct) + l.fuel_surcharge * ss.fuel_surcharge_pct + (SELECT COALESCE(SUM( a.amount * COALESCE(apr.pay_pct, ss.accessorial_pct) ), 0) FROM accessorials a LEFT JOIN accessorial_pay_rates apr ON apr.user_id = l.user_id AND apr.accessorial_type = a.accessorial_type WHERE a.load_id = l.load_id) , 2)",
+      "ROUND( l.linehaul * (ss.linehaul_pct + ss.trailer_pct) + l.fuel_surcharge * ss.fuel_surcharge_pct + (SELECT COALESCE(SUM( a.amount * COALESCE(apr.pay_pct, ss.accessorial_pct) ), 0) FROM accessorials a LEFT JOIN accessorial_pay_rates apr ON apr.user_id = l.user_id AND apr.accessorial_type = a.accessorial_type WHERE a.load_id = l.load_id AND NOT COALESCE(apr.pass_through, FALSE)) , 2)",
     );
   });
 
   test("TRAILER_NET_SQL is pinned", () => {
     assert.equal(
       norm(TRAILER_NET_SQL),
-      "ROUND( l.linehaul * ss.trailer_pct + ss.trailer_pct * ( SELECT COALESCE(SUM(a.amount), 0) FROM accessorials a LEFT JOIN accessorial_pay_rates apr ON apr.user_id = l.user_id AND apr.accessorial_type = a.accessorial_type WHERE a.load_id = l.load_id AND COALESCE(apr.pay_pct, ss.accessorial_pct) = ss.linehaul_pct + ss.trailer_pct) , 2)",
+      "ROUND( l.linehaul * ss.trailer_pct + ss.trailer_pct * ( SELECT COALESCE(SUM(a.amount), 0) FROM accessorials a LEFT JOIN accessorial_pay_rates apr ON apr.user_id = l.user_id AND apr.accessorial_type = a.accessorial_type WHERE a.load_id = l.load_id AND NOT COALESCE(apr.pass_through, FALSE) AND COALESCE(apr.pay_pct, ss.accessorial_pct) = ss.linehaul_pct + ss.trailer_pct) , 2)",
     );
   });
 });
@@ -231,11 +270,23 @@ describe("NET-07 · no schedule row is refused, not priced at 100%", () => {
 
   // The service needs a database to run, so its wiring is pinned on the text:
   // an existence check before each query, and an INNER JOIN, never a LEFT JOIN.
-  test("loadServices checks for the row and INNER JOINs the schedule at both SELECTs", () => {
+  test("loadServices checks for the schedule row AND every load's split, and joins the split at both SELECTs", () => {
     const text = readFileSync(join(servicesDir, "loadServices.js"), "utf8");
     assert.equal(text.match(/await requireSchedule\(user_id\);/g)?.length, 2);
+    assert.equal(text.match(/await requireSplitCoverage\(user_id\);/g)?.length, 2);
     assert.match(text, /assertScheduleRow\(result\.rows\[0\]\)/);
-    assert.equal(text.match(/\n\s+JOIN settlement_schedules AS ss\n/g)?.length, 2);
-    assert.ok(!/LEFT JOIN settlement_schedules/.test(text));
+    assert.match(text, /assertSplitCoverage\(result\.rows\[0\]\)/);
+    assert.equal(text.match(/\$\{SPLIT_JOIN_SQL\}/g)?.length, 2);
+    assert.ok(!/JOIN settlement_schedules/.test(text)); // the undated row is settings now, not a price
+  });
+
+  test("a load before the first split is refused with the load and its day named (NET-01 + NET-07)", () => {
+    const uncovered = { load_number: "1234567", day: "2026-01-03" };
+    assert.equal(
+      noSplitMessage(uncovered),
+      "load 1234567 (Jan 3, 2026) is before your first settlement split — add a split from that day in Settings",
+    );
+    assert.throws(() => assertSplitCoverage(uncovered), (e) => e.name === "ValidationError" && e.statusCode === 400);
+    assert.doesNotThrow(() => assertSplitCoverage(undefined));
   });
 });

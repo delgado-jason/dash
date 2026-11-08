@@ -123,6 +123,6 @@ export const fscParWords = (p: FscPar): string => {
   if (p.kind === "table")
     return `par on Landstar's table (eff. ${shortDay(p.effective_from)}) at ${p.priceIsThisWeek ? "this week's " : ""}$${p.price.toFixed(3)}: ${centsWords(p.cpm)} a loaded mile`;
   if (p.kind === "estimate")
-    return "par · estimate — the price above the ~$1.25/gal peg on loaded miles; paste Landstar's table in Settings for the real number";
+    return "par · estimate — the price above the ~$1.29/gal peg on loaded miles; paste Landstar's table in Settings for the real number";
   return `par unknown — ${p.reason}`;
 };

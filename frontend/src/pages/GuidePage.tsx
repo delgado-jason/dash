@@ -946,7 +946,18 @@ const GuidePage = () => {
               yourself (cost is spread over every mile you drive), and you keep
               only part of what you book — the schedule's share of the linehaul, but{" "}
               <span className="text-light">100% of the fuel surcharge</span> and
-              of tarp, detention, tolls and loading pay. So the keep is{" "}
+              of tarp, detention and loading pay. A toll is different: Landstar
+              hands it back as a{" "}
+              <span className="text-light">reimbursement</span>, not revenue, so
+              it sits below a load's total and leaves gross, the rate per mile
+              and the booking stats alike (tick other types as pass-throughs on
+              Settings as you confirm them). The schedule's share is{" "}
+              <span className="text-light">dated</span>: a load settles on the
+              split in force on its delivery day — your January loads on the
+              pre-trailer row (no trailer share), everything from Feb 3, 2026 on
+              the trailer's 8% — and the load page says which ("settled on the
+              Feb 3, 2026 schedule"). Fix a row in place on Settings; start a
+              new one from the day the split changed. So the keep is{" "}
               <span className="text-light">measured</span> from the window’s own
               loads (net ÷ gross — {live.keepPct} on today's window), not assumed from the schedule: you judge a
               load all-in, so the rate to book divides by what you actually keep
@@ -2019,7 +2030,7 @@ const GuidePage = () => {
               100% of the fuel surcharge — but a surcharge was{" "}
               <span className="text-light">never meant to cover 100% of
               fuel</span>. The schedule pays only the price ABOVE a contract peg
-              (~$1.25/gal), on <span className="text-light">loaded miles
+              (~$1.29/gal — fitted from Landstar's own weekly report in Nov 2026), on <span className="text-light">loaded miles
               only</span>: you eat the first peg-dollars of every gallon and
               every deadhead mile by design. So the card grades you against{" "}
               <span className="text-light">par</span> — what the schedule
@@ -2027,7 +2038,7 @@ const GuidePage = () => {
               green at or above par, amber within 5 points, red beyond (FSC
               leaking: loads booked light on surcharge, or deadhead eating the
               collected miles). Par moves with diesel: pricier fuel raises it,
-              cheap fuel lowers it. Your MPG above the schedule’s 6.0 base is a
+              cheap fuel lowers it. Your MPG above the schedule’s 5.81 base is a
               real bonus you keep. Only months with logged fuel are counted, so
               a month you haven't entered fills for never shows a false 0%. The
               card headlines the{" "}

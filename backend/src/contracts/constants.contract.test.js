@@ -31,6 +31,12 @@ test("CONST-01 · the settlement-schedule defaults carry no per_diem_rate", () =
   assert.equal("per_diem_rate" in DEFAULTS, false);
 });
 
+// NET-01 (2026-11-08): the split lives in settlement_splits, dated — Rule change: NET-01
+test("CONST-01 · the settlement-schedule defaults carry none of the four split pcts", () => {
+  for (const f of ["linehaul_pct", "trailer_pct", "fuel_surcharge_pct", "accessorial_pct"])
+    assert.equal(f in DEFAULTS, false, f);
+});
+
 // The plan's maintenance_per_mile default is a database default (migration
 // 083), not JS, so it is pinned by reading the migration text.
 test("CONST-01 · the plan's maintenance_per_mile default is 0.32", () => {

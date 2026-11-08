@@ -25,6 +25,7 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod, ExpenseLine, ExpenseType, ExpenseSection } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import type { SettlementSplit } from "@/types/settlementSplit";
 import type { AccessorialRate } from "@/types/accessorialRate";
 import type { Accessorial } from "@/types/accessorial";
 import type { SettlementSummary, SettlementLine } from "@/types/settlement";
@@ -46,6 +47,7 @@ export type Book = {
   periods: ExpensePeriod[];
   obligations: Obligation[];
   schedule: SettlementSchedule;
+  splits: SettlementSplit[]; // the dated pay splits (NET-01) — one row, in force for every load
   perDiemRates: PerDiemRate[];
   payRates: AccessorialRate[];
   settlements: SettlementSummary[];
@@ -166,7 +168,7 @@ const DELIVERED: readonly Spec[] = [
 const HOME_AFTER = 17;
 const HOME_TRIP = { date: "2026-08-11", miles: 565 };
 
-const SCHEDULE: Readonly<Pick<SettlementSchedule, "linehaul_pct" | "trailer_pct" | "fuel_surcharge_pct" | "accessorial_pct">> = {
+const SCHEDULE: Readonly<Pick<SettlementSplit, "linehaul_pct" | "trailer_pct" | "fuel_surcharge_pct" | "accessorial_pct">> = {
   linehaul_pct: 0.65,
   trailer_pct: 0.08,
   fuel_surcharge_pct: 1,
@@ -174,9 +176,9 @@ const SCHEDULE: Readonly<Pick<SettlementSchedule, "linehaul_pct" | "trailer_pct"
 };
 // Job-Site Delivery deliberately has NO row: it takes the accessorial_pct fallback.
 const PAY_RATES: readonly AccessorialRate[] = [
-  { accessorial_type: "Tarp", pay_pct: 1 },
-  { accessorial_type: "Hazmat", pay_pct: 0.73 },
-  { accessorial_type: "High Value-EVC", pay_pct: 0 },
+  { accessorial_type: "Tarp", pay_pct: 1, pass_through: false },
+  { accessorial_type: "Hazmat", pay_pct: 0.73, pass_through: false },
+  { accessorial_type: "High Value-EVC", pay_pct: 0, pass_through: false },
 ];
 
 // NET-01 in whole cents (every input is whole dollars, so this is exact):
@@ -576,8 +578,10 @@ export const syntheticBook = (): Book => {
   ];
 
   // ---- the settlement schedule ----
+  const splits: SettlementSplit[] = [
+    { split_id: "split-1", effective_from: "2026-01-01", ...SCHEDULE, note: "the book's one split — in force for every load" },
+  ];
   const schedule: SettlementSchedule = {
-    ...SCHEDULE,
     carrier_name: "Carrier A",
     detention_free_hours: 3,
     settlement_day: 3,
@@ -593,7 +597,7 @@ export const syntheticBook = (): Book => {
     rate_tier_spec_strong: 0.6,
     margin_goal: 0.26,
   };
-  const payRates: AccessorialRate[] = PAY_RATES.map((r) => ({ ...r }));
+  const payRates: AccessorialRate[] = PAY_RATES.map((r) => ({ ...r })); // no pass-through in the book — NET-02 is tested on its own fixtures
 
   // ---- statements: one per pay week that delivered, plus the home week ----
   const settlements: SettlementSummary[] = [];
@@ -793,6 +797,7 @@ export const syntheticBook = (): Book => {
     periods,
     obligations,
     schedule,
+    splits,
     perDiemRates,
     payRates,
     settlements,

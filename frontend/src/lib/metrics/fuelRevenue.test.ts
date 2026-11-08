@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
-import { fuelVsRevenue } from "./fuelRevenue";
+import { fuelVsRevenue, FSC_BASE_MPG } from "./fuelRevenue";
 
 const NOW = new Date("2026-07-15T12:00:00Z");
 beforeEach(() => {
@@ -34,7 +34,7 @@ const load = (o: Partial<Load>): Load =>
 describe("fuelVsRevenue — expectedCoverage (the FSC standard)", () => {
   it("par = (price − peg)/price × loaded share × MPG bonus — Jason's August shape", () => {
     // ~August 2026: $4.942/gal blended, 68.7% loaded share, MPG ≈ base.
-    // Expected ≈ (4.942 − 1.25)/4.942 × 0.687 ≈ 51.3% — his actual 53.3%
+    // Expected ≈ (4.942 − 1.29)/4.942 × 0.687 ≈ 50.8% — his actual 53.3%
     // coverage is ON PAR, not "short of 100%" like the old red stamp claimed.
     const entries = [fuel({ fuel_date: "2026-06-10", gallons: 1000, price_per_gallon: 4.942 })];
     const loads = [
@@ -45,19 +45,19 @@ describe("fuelVsRevenue — expectedCoverage (the FSC standard)", () => {
         deadhead_miles: 313, // driven 1000 → loaded share .687
       }),
     ];
-    const m = fuelVsRevenue(entries, loads, 6.0).months[0];
-    expect(m.expectedCoverage).toBeCloseTo(((4.942 - 1.25) / 4.942) * 0.687, 3);
+    const m = fuelVsRevenue(entries, loads, FSC_BASE_MPG).months[0]; // MPG at the schedule's base: no bonus
+    expect(m.expectedCoverage).toBeCloseTo(((4.942 - 1.29) / 4.942) * 0.687, 3);
     expect(m.fscCoverage!).toBeGreaterThan(m.expectedCoverage!); // on par
   });
 
-  it("your MPG above the schedule's 6.0 base raises the bar (the bonus is yours to collect)", () => {
+  it("your MPG above the schedule's base (5.81, FSC-01) raises the bar (the bonus is yours to collect)", () => {
     const entries = [fuel({ gallons: 1000, price_per_gallon: 4.0 })];
     const loads = [load({ loaded_miles: 800, deadhead_miles: 200, fuel_surcharge: "1500" })];
-    const at6 = fuelVsRevenue(entries, loads, 6.0).months[0].expectedCoverage!;
-    const at66 = fuelVsRevenue(entries, loads, 6.6).months[0].expectedCoverage!;
-    expect(at66 / at6).toBeCloseTo(1.1, 5);
+    const atBase = fuelVsRevenue(entries, loads, FSC_BASE_MPG).months[0].expectedCoverage!;
+    const atPlusTen = fuelVsRevenue(entries, loads, FSC_BASE_MPG * 1.1).months[0].expectedCoverage!;
+    expect(atPlusTen / atBase).toBeCloseTo(1.1, 5);
     // No MPG data → no bonus claimed, the term drops to 1.
-    expect(fuelVsRevenue(entries, loads, null).months[0].expectedCoverage!).toBeCloseTo(at6, 5);
+    expect(fuelVsRevenue(entries, loads, null).months[0].expectedCoverage!).toBeCloseTo(atBase, 5);
   });
 
   it("null when the bar can't be computed: price at/below the peg, or no driven miles", () => {
@@ -197,7 +197,7 @@ describe("par on Landstar's pasted table (GL-155)", () => {
   const loads = [load({ delivery_date: "2026-06-15", loaded_miles: 5000, deadhead_miles: 1000, fuel_surcharge: "3000" })];
 
   it("a table in force and the month's national price → loaded miles × the band, over the spend", () => {
-    const r = fuelVsRevenue(entries, loads, 6, now, {
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, {
       schedules: [table("2026-04-01")],
       dieselByMonth: new Map([["2026-06", 4.7]]),
       latestDiesel: { price: 5.153, period: "2026-11-02" },
@@ -220,20 +220,20 @@ describe("par on Landstar's pasted table (GL-155)", () => {
   });
 
   it("a table but no national price for the month → unknown, named; never the estimate behind the table's name", () => {
-    const r = fuelVsRevenue(entries, loads, 6, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map(), latestDiesel: null });
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map(), latestDiesel: null });
     expect(r.months[0].par).toEqual({ kind: "unknown", reason: "no national diesel price for Jun 2026" });
     expect(r.months[0].expectedCoverage).toBeNull();
   });
 
   it("a price below the table's first band → unknown, named", () => {
-    const r = fuelVsRevenue(entries, loads, 6, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map([["2026-06", 3.5]]), latestDiesel: null });
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map([["2026-06", 3.5]]), latestDiesel: null });
     expect(r.months[0].par).toEqual({ kind: "unknown", reason: "$3.500 is below the table's first band" });
   });
 
   it("no table in force for the month → the peg estimate, labelled", () => {
-    const r = fuelVsRevenue(entries, loads, 6, now, { schedules: [table("2026-07-01")], dieselByMonth: new Map([["2026-06", 4.7]]), latestDiesel: null });
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table("2026-07-01")], dieselByMonth: new Map([["2026-06", 4.7]]), latestDiesel: null });
     expect(r.months[0].par).toEqual({ kind: "estimate" });
-    expect(r.months[0].expectedCoverage).toBeCloseTo(((4.5 - 1.25) / 4.5) * (5000 / 6000), 6);
-    expect(fuelVsRevenue(entries, loads, 6, now).months[0].par).toEqual({ kind: "estimate" }); // no inputs at all
+    expect(r.months[0].expectedCoverage).toBeCloseTo(((4.5 - 1.29) / 4.5) * (5000 / 6000), 6);
+    expect(fuelVsRevenue(entries, loads, FSC_BASE_MPG, now).months[0].par).toEqual({ kind: "estimate" }); // no inputs at all
   });
 });

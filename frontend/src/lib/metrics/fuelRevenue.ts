@@ -16,10 +16,15 @@ import { bandFor, scheduleInForce, type FscPar } from "./fscTable";
 // price = that month's blended $/gal; peg = the FSC schedule's base price;
 // base MPG = the schedule's divisor (industry convention 6.0); your MPG above
 // base is a real bonus (the schedule pays as if you burned more than you do).
-// PEG NOTE: 1.25 is the industry-typical DOE base — verify the exact number
-// against the Landstar FSC schedule (ICOA appendix) and correct it here.
-export const FSC_PEG = 1.25; // $/gal the surcharge does NOT cover
-export const FSC_BASE_MPG = 6.0; // the schedule's assumed MPG
+// FITTED 2026-11-08 (FSC-01) from Landstar's Ranger fuel surcharge report
+// effective 11/03/26–11/09/26, which prints the scale's output at four prices
+// (national $6.292 → 86¢; PADD 1A $6.416 → 88¢; PADD 4 $6.445 → 89¢; PADD 5
+// $7.272 → $1.03): cents per mile = (price − peg) ÷ base mpg, rounded to the
+// cent, fits all four with peg 1.04–1.55 and base 5.53–6.08; the centre is
+// $1.29 at 5.81 mpg. The old $1.25 / 6.0 read 84¢ where Landstar paid 86¢.
+// A pasted table (fscTable.ts) beats this estimate whenever one is in force.
+export const FSC_PEG = 1.29; // $/gal the surcharge does NOT cover
+export const FSC_BASE_MPG = 5.81; // the schedule's assumed MPG
 
 // Fuel against the money it relates to, per month. Two readings:
 //   • fuelPctNet   — fuel spend as a share of NET revenue (what the business

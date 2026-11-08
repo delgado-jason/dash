@@ -16,6 +16,7 @@ export const AccessorialRatesCard = () => {
   const [rates, setRates] = useState<AccessorialRate[] | null>(null);
   const [newType, setNewType] = useState("");
   const [newPct, setNewPct] = useState(73);
+  const [newPass, setNewPass] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -41,8 +42,21 @@ export const AccessorialRatesCard = () => {
     setMsg(null);
     setErr(null);
     try {
-      await upsertAccessorialRate(type, pctInt / 100);
+      const current = rates?.find((r) => r.accessorial_type === type);
+      await upsertAccessorialRate(type, pctInt / 100, current?.pass_through ?? false);
       setMsg(`Saved ${type}.`);
+    } catch (e) {
+      setErr(errText(e));
+      load();
+    }
+  };
+
+  const togglePass = async (r: AccessorialRate, checked: boolean) => {
+    setMsg(null);
+    setErr(null);
+    try {
+      await upsertAccessorialRate(r.accessorial_type, r.pay_pct, checked);
+      await load();
     } catch (e) {
       setErr(errText(e));
       load();
@@ -66,8 +80,9 @@ export const AccessorialRatesCard = () => {
     setMsg(null);
     setErr(null);
     try {
-      await upsertAccessorialRate(t, newPct / 100);
+      await upsertAccessorialRate(t, newPct / 100, newPass);
       setNewType("");
+      setNewPass(false);
       setNewPct(73);
       await load();
     } catch (e) {
@@ -82,6 +97,10 @@ export const AccessorialRatesCard = () => {
         What you keep of each accessorial charge. These feed your net revenue and
         the dropdown when you add a charge to a load. Anything not listed here
         falls back to your default accessorial rate above.
+      </p>
+      <p className="font-condensed text-[12px] text-muted-text mt-1">
+        a pass-through is paid back in full but is not revenue — it leaves gross, the rate per mile and the
+        booking stats
       </p>
 
       {!rates ? (
@@ -113,6 +132,14 @@ export const AccessorialRatesCard = () => {
                   className="w-20 bg-steel rounded px-2 py-1 text-light text-right tabular-nums"
                 />
                 <span className="text-muted-text text-sm">%</span>
+                <label className="flex items-center gap-1.5 text-sm text-muted-text">
+                  <input
+                    type="checkbox"
+                    checked={r.pass_through}
+                    onChange={(e) => togglePass(r, e.target.checked)}
+                  />
+                  pass-through
+                </label>
                 <button
                   onClick={() => remove(r.accessorial_type)}
                   className="text-muted-text hover:text-destructive"
@@ -142,6 +169,10 @@ export const AccessorialRatesCard = () => {
               className="w-20 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
             />
             <span className="text-muted-text text-sm">%</span>
+            <label className="flex items-center gap-1.5 text-sm text-muted-text">
+              <input type="checkbox" checked={newPass} onChange={(e) => setNewPass(e.target.checked)} />
+              pass-through
+            </label>
             <button
               onClick={add}
               disabled={!newType.trim()}

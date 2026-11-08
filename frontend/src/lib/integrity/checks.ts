@@ -15,6 +15,7 @@ import { collectReadings } from "@/lib/metrics/odometer";
 import { retrueAccrued } from "@/lib/metrics/accrualTruth";
 import { archiveGaps } from "@/lib/metrics/cashflow";
 import { settlementDelta } from "@/lib/metrics/settlements";
+import { splitInForce } from "@/lib/metrics/splits";
 import { isDelivered } from "@/lib/metrics/status";
 import { weekLabel } from "@/lib/metrics/payWeeks";
 import { dayWords, rateInForce, sortRates } from "@/lib/perDiem/rates";
@@ -224,7 +225,10 @@ export const runIntegrityChecks = (inputs: IntegrityInputs): Issue[] => {
   for (const l of delivered) {
     if (voided.has(l.load_number)) continue;
     const lines = linesByLoad.get(String(l.load_number).trim());
-    const expected = typed(l.net_revenue);
+    // The statement pays the earned net PLUS the pass-through reimbursements
+    // (tolls, NET-02) — the verification expects both.
+    const earned = typed(l.net_revenue);
+    const expected = earned == null ? null : earned + (typed(l.reimbursements) ?? 0);
     if (!lines || lines.length === 0 || expected == null) continue;
     const settled = lines.reduce((s, x) => s + (typed(x.revenue) ?? 0), 0);
     const delta = settlementDelta(settled, expected);
@@ -278,7 +282,7 @@ export const runIntegrityChecks = (inputs: IntegrityInputs): Issue[] => {
     const d = day(a.created_at) || null;
     unrated.set(type, { n: cur.n + 1, amount: cur.amount + (typed(a.amount) ?? 0), since: cur.since == null || (d != null && d < cur.since) ? d : cur.since });
   }
-  const fallbackPct = typed(inputs.schedule?.accessorial_pct);
+  const fallbackPct = typed(splitInForce(inputs.splits ?? [], inputs.today)?.accessorial_pct);
   for (const [type, u] of unrated) {
     issues.push({
       id: "INT-ACC-UNRATED",

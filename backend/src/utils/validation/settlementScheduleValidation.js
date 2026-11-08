@@ -7,16 +7,15 @@ import { toNumber } from "./moneyFields.js";
 // Partial, like the PUT: only the fields present are checked and returned. A
 // numeric field that is null, '' or not a number is REFUSED — never read as
 // Number(null) = 0, which would zero every load's net.
-//   pcts            linehaul_pct, trailer_pct, fuel_surcharge_pct,
-//                   accessorial_pct: 0–1 (tightened from 0–2, 2026-11-05)
-//   linehaul_pct + trailer_pct ≤ 1
+//   (the pay split — four pcts and their sum rule — moved to the dated
+//   settlementSplitValidation.js, NET-01, 2026-11-08)
 //   tiers           0–3, each set ascending (min ≤ target ≤ strong)
 //   margin_goal     [0,1)    settlement_day 0–6    deposit_lag_days 0–6
 //   per_diem_deduct_pct 0–1
 //   hometime_threshold_days 1–365    detention_free_hours 0–24
 //
-// `current` is the stored (or default) schedule: the cross-field rules (the
-// pct sum and the tier order) judge the merge of `current` and the incoming
+// `current` is the stored (or default) schedule: the cross-field rule (the
+// tier order) judge the merge of `current` and the incoming
 // values. Without it they judge only what arrives, and skip a rule whose other
 // half is not known.
 export const OPERATIONS = [
@@ -30,7 +29,6 @@ export const OPERATIONS = [
   "car hauler",
   "other",
 ];
-export const PCT_FIELDS = ["linehaul_pct", "trailer_pct", "fuel_surcharge_pct", "accessorial_pct"];
 export const STD_TIER_FIELDS = ["rate_tier_std_min", "rate_tier_std_target", "rate_tier_std_strong"];
 export const SPEC_TIER_FIELDS = ["rate_tier_spec_min", "rate_tier_spec_target", "rate_tier_spec_strong"];
 export const TIER_FIELDS = [...STD_TIER_FIELDS, ...SPEC_TIER_FIELDS];
@@ -55,12 +53,6 @@ export const validateSchedule = (data, current = null) => {
     if (!ok(n)) errors.push(sentence);
     else values[f] = n;
   };
-
-  for (const f of PCT_FIELDS) {
-    if (d[f] === undefined) continue;
-    const n = numeric(f, "a blank would zero every load's net");
-    set(f, n, (x) => x >= 0 && x <= 1, `${f} must be a fraction between 0 and 1`);
-  }
 
   if (d.carrier_name !== undefined) values.carrier_name = (d.carrier_name ?? "").trim() || null;
 
@@ -125,11 +117,6 @@ export const validateSchedule = (data, current = null) => {
   const merged = { ...(current ?? {}), ...values };
   const known = (f) => toNumber(merged[f]) != null;
   const m = (f) => Number(merged[f]);
-
-  if (known("linehaul_pct") && known("trailer_pct") && m("linehaul_pct") + m("trailer_pct") > 1 + 1e-9)
-    errors.push(
-      `linehaul_pct (${m("linehaul_pct")}) + trailer_pct (${m("trailer_pct")}) add to more than 1 — the carrier and the trailer can't take more than 100% of the linehaul`,
-    );
 
   const ascends = (fields) => {
     if (!fields.every(known)) return true;

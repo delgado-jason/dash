@@ -16,6 +16,7 @@ import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { computeRateTargets } from "@/hooks/useRateTargets";
 import { monthMiles } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { useSplitToday } from "@/hooks/useSplitToday";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 import { ExpenseLedger } from "@/components/expenses/ExpenseLedger";
@@ -57,6 +58,7 @@ const ExpensesPage = () => {
   const loading = loadedKey !== refreshKey;
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+  const split = useSplitToday(); // the pay split in force today (NET-01)
 
   // Obligations live at the page level so the headline KPIs + chart can fold
   // them into true cost; the card just edits the list and calls this back.
@@ -170,8 +172,8 @@ const ExpensesPage = () => {
   // blended three months and divided by the 73% linehaul take while the
   // Market page blended six and divided by the measured keep).
   const targets = useMemo(
-    () => computeRateTargets(loads, periods, obligationsCost, schedule, localToday(), trips),
-    [loads, periods, obligationsCost, schedule, trips],
+    () => computeRateTargets(loads, periods, obligationsCost, schedule, localToday(), trips, split),
+    [loads, periods, obligationsCost, schedule, trips, split],
   );
   const basisWord = targets.basis.windowLabel ?? "no P&L filed";
   // Full periods (with lines) for the basis months, so the sit/run burn blends
