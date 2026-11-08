@@ -48,6 +48,7 @@ import {
   verdictBasis,
   monthName,
   money as fmtMoney,
+  FIX_SNAPSHOT,
   type PlanStageInput,
   type SnapshotInput,
   type PlanInput,
@@ -59,9 +60,11 @@ import { weeksOwed, milesInWeeks, weekLabel, payWeekOf, isFirstFriday } from "@/
 import { collectReadings, weekOdometerMiles, readingWords, IMPLAUSIBLE_WEEK_MI } from "@/lib/metrics/odometer";
 import { retrueAccrued, retrueWords } from "@/lib/metrics/accrualTruth";
 import { money, formatDate } from "@/lib/format";
+import { MissingInputLine } from "@/components/integrity/MissingInput";
+import { missingWords, type MissingInput } from "@/lib/integrity/require";
 
 // The Plan page (ADMIN-03, #500). Two beats. THE FRIDAY: snapshot first —
-// raw balances in — then the accrual out (the pay week's miles × $/mile →
+// raw balances in — then the accrual out (the pay week's mileage × $/mile →
 // Maintenance). THE MONEY DAY: opens when the month's P&L is filed, runs any
 // day, never the first Friday: tax off the top → the interlock (three floors
 // in order Ops → Maintenance → Vault) → the surplus → the split. dash hands
@@ -388,6 +391,7 @@ const StatusPage = () => {
       deadheadMiles: m.deadheadMiles,
       noDeadhead: m.noDeadhead,
       loadsMiles: m.miles,
+      loadedMissing: m.loadedMissing,
       // The pre-fill: the odometer's miles, or the loads' when a week has no
       // reading before it. Never a fake zero — an empty week is 0 miles.
       miles: gap ? m.miles : prefill,
@@ -425,7 +429,10 @@ const StatusPage = () => {
   const owedToday = useMemo(() => owedFor(todayKey()), [loads, readings, lastAccrued]);
   // What this Friday's accrual runs on: the owed week(s) plus the catch-up
   // (never below zero — an over-accrual nets off and the rest waits).
-  const owedTodayMiles = owedToday.weeks.length ? Math.max(0, owedToday.miles + catchUpMiles) : null;
+  // A week with no odometer reading AND no loads (or loads missing their loaded
+  // miles) has no miles to speak of — unknown, so the accrual refuses (PLAN-06).
+  const milesKnown = (o: Owed): boolean => !(o.source === "loads" && (o.loads === 0 || o.loadedMissing.length > 0));
+  const owedTodayMiles = owedToday.weeks.length && milesKnown(owedToday) ? Math.max(0, owedToday.miles + catchUpMiles) : null;
 
   // ---- the money day's clock: the earliest filed month nobody has settled ----
   const filed = useMemo(
@@ -469,7 +476,8 @@ const StatusPage = () => {
   // due, the move is inside the balances and must not come off Ops again.
   const accrualMoved = useMemo(() => {
     if (!latest || !previous || !plan) return false;
-    const due = (owedTodayMiles ?? 0) * Number(plan.maintenance_per_mile);
+    if (owedTodayMiles == null) return false; // miles unknown: nothing to compare the rise against
+    const due = owedTodayMiles * Number(plan.maintenance_per_mile);
     if (!(due > 0)) return false;
     const now = balanceOf(latest, maintAcct?.account_id);
     const before = balanceOf(previous, maintAcct?.account_id);
@@ -499,8 +507,8 @@ const StatusPage = () => {
     () =>
       snapshots.map((s) => ({
         week: formatDate(s.as_of) ?? s.as_of,
-        ops: balanceOf(s, opsAcct?.account_id) ?? 0,
-        vault: balanceOf(s, vaultAcct?.account_id) ?? 0,
+        ops: balanceOf(s, opsAcct?.account_id), // null = no balance typed: a gap in the line, never $0
+        vault: balanceOf(s, vaultAcct?.account_id),
       })),
     [snapshots, opsAcct, vaultAcct],
   );
@@ -528,7 +536,7 @@ const StatusPage = () => {
     setFAsOf(today);
     setFBalances({});
     setFNote("");
-    setFMiles(o.weeks.length ? String(Math.max(0, o.miles + catchUpMiles)) : "");
+    setFMiles(o.weeks.length && milesKnown(o) ? String(Math.max(0, o.miles + catchUpMiles)) : "");
     setFMoneyDay(moneyDay && !!pending);
     setError(null);
     setCopied(false);
@@ -538,7 +546,7 @@ const StatusPage = () => {
     setFAsOf(v);
     if (v) {
       const o = owedFor(v);
-      setFMiles(o.weeks.length ? String(Math.max(0, o.miles + catchUpMiles)) : "");
+      setFMiles(o.weeks.length && milesKnown(o) ? String(Math.max(0, o.miles + catchUpMiles)) : "");
     }
   };
 
@@ -558,6 +566,10 @@ const StatusPage = () => {
   }, [planInput, fBalances, fMiles, fMoneyDay, pending, owedForm, opsAcct, vaultAcct, maintAcct, taxAcct]);
 
   const saveSnapshot = async () => {
+    if (formMoneyDay && draftStatus?.moneyDayRefused) {
+      setError(`Can't run the money day — ${missingWords(draftStatus.moneyDayRefused.missing)}`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -570,7 +582,7 @@ const StatusPage = () => {
         note: fNote.trim() || null,
         balances: activeAccounts.map((a) => ({
           account_id: a.account_id,
-          balance: Number(fBalances[a.account_id] || 0),
+          balance: Number(fBalances[a.account_id]), // the button is disabled until every balance is typed
         })),
         miles: accrues ? Number(fMiles) : null,
         pay_week_start: accrues ? owedForm.weeks[owedForm.weeks.length - 1].start : null,
@@ -787,7 +799,25 @@ const StatusPage = () => {
   // ---- derived words ----
   const perMile = plan ? num(plan.maintenance_per_mile) : null;
   const taxPct = plan ? num(plan.tax_pct) : null;
-  const objPct = plan ? (num(plan.objective_pct) ?? 70) : 70;
+  const objPct = plan ? num(plan.objective_pct) : null; // null = unset: the words say so, never 70
+  const objPctWords = objPct == null ? "the objective percent (unset)" : `${objPct} %`;
+  const householdWords = objPct == null ? "the rest" : `${100 - objPct} %`;
+  // A refusal's line, one per place the fix lives: balances in the snapshot
+  // form, plan numbers in EDIT PLAN, anything else by its route.
+  const refusalLines = (what: string, missing: MissingInput[]) => {
+    const groups = new Map<string, MissingInput[]>();
+    for (const m of missing) groups.set(m.fixTo ?? m.fixAt, [...(groups.get(m.fixTo ?? m.fixAt) ?? []), m]);
+    return [...groups.values()].map((g) => (
+      <MissingInputLine
+        key={g[0].key}
+        what={what}
+        missing={g}
+        onFix={g[0].fixAt === FIX_SNAPSHOT ? () => openSnapshot(false) : openPlanEditor}
+        className="block mt-[2px]"
+      />
+    ));
+  };
+  const noBalance = <span className="text-faint">no balance typed</span>;
   const floatLine = plan ? num(plan.float_line) : null;
   const objective =
     view?.objectiveIndex != null && view.waterfall ? view.waterfall.stages[view.objectiveIndex] : null;
@@ -816,7 +846,7 @@ const StatusPage = () => {
   };
   const floorBalanceBefore: Record<FloorStatus["key"], number | null> = { ops: opsBal, maintenance: maintBal, vault: vaultBal };
   const stampFor = (f: FloorStatus, i: number): { tone: "amber" | "dim" | "pos"; text: string } =>
-    f.met ? { tone: "pos", text: "MET" } : f.state === "held" ? { tone: "amber", text: "HELD" } : { tone: "dim", text: i === 1 ? "NEXT" : "THEN" };
+    f.met === null ? { tone: "dim", text: "WAITS" } : f.met ? { tone: "pos", text: "MET" } : f.state === "held" ? { tone: "amber", text: "HELD" } : { tone: "dim", text: i === 1 ? "NEXT" : "THEN" };
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -887,6 +917,13 @@ const StatusPage = () => {
                 })}
               </span>
             </>
+          ) : view && view.waitingOn.length > 0 ? (
+            <>
+              <span className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] border-2 border-dashed border-hairline text-faint">
+                VERDICT WAITS
+              </span>
+              <span>{refusalLines("give the verdict", view.waitingOn)}</span>
+            </>
           ) : (
             <span className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] border-2 border-dashed border-hairline text-faint">
               NO SNAPSHOT YET
@@ -897,9 +934,11 @@ const StatusPage = () => {
             {pending && pendingLabel ? (
               <>
                 {" "}· <b className="font-semibold text-amber-hi">{pendingLabel.split(" ")[0]}'s money day is open</b> — P&amp;L filed,{" "}
-                {pending.pretaxProfit != null && pending.pretaxProfit < 0
-                  ? `a loss of ${money(-pending.pretaxProfit)}`
-                  : `profit ${money(pending.pretaxProfit ?? 0)}`}
+                {pending.pretaxProfit == null
+                  ? "no profit figure on the filed P&L"
+                  : pending.pretaxProfit < 0
+                    ? `a loss of ${money(-pending.pretaxProfit)}`
+                    : `profit ${money(pending.pretaxProfit)}`}
                 {queue.length === 2 && <> · {monthName(queue[1].month).split(" ")[0]}'s is queued behind it</>}
                 {queue.length > 2 && <> · {queue.length - 1} more months are queued behind it</>}
               </>
@@ -912,6 +951,16 @@ const StatusPage = () => {
           </span>
         </div>
 
+        {/* the money day panel — refused when an input it needs isn't set */}
+        {pending && pendingLabel && preview?.moneyDayRefused && !preview.moneyDay && (
+          <div className="ds2-board overflow-hidden mt-4" style={{ borderLeft: "3px solid var(--color-amber)" }}>
+            <div className={BOARD_HEAD}>
+              <span className={BOARD_TITLE}>Money day · {pendingLabel} — the P&amp;L is filed</span>
+              <span className={BOARD_SUB}>· nothing moves on a guess</span>
+            </div>
+            <div className="px-4 py-3">{refusalLines(preview.moneyDayRefused.what, preview.moneyDayRefused.missing)}</div>
+          </div>
+        )}
         {/* the money day panel */}
         {pending && pendingLabel && preview?.moneyDay && (() => {
           const md = preview.moneyDay;
@@ -934,8 +983,8 @@ const StatusPage = () => {
               {step(1, `Tax — ${md.taxPct} % of ${pendingLabel.split(" ")[0]}'s pre-tax profit (${md.pretaxProfit < 0 ? "−" : ""}${money(Math.abs(md.pretaxProfit))})`, md.pretaxProfit < 0 ? "$0 · a loss" : money(md.tax))}
               {step(
                 2,
-                `The interlock — Ops ${fmtMoney(md.opsAfter)} after ${md.tax > 0 ? "the accrual and the tax move" : "this week's accrual"}, floor ${money(floatLine ?? 0)}`,
-                held ? `HELD — ${held.label}, short ${money(held.short)}` : "all three floors hold",
+                `The interlock — Ops ${fmtMoney(md.opsAfter)} after ${md.tax > 0 ? "the accrual and the tax move" : "this week's accrual"}, floor ${floatLine != null ? money(floatLine) : "unset"}`,
+                held ? `HELD — ${held.label}, short ${held.short != null ? money(held.short) : "unknown"}` : "all three floors hold",
                 !held,
               )}
               {step(
@@ -952,7 +1001,7 @@ const StatusPage = () => {
               )}
               {step(
                 4,
-                `Split — ${objectiveName} · household`,
+                `Split — ${objectiveName} · household (${objPctWords} · ${householdWords})`,
                 il.heldBy || md.belowMin || il.remainder <= 0
                   ? `$0 · $0 — ${md.belowMin ? "under the minimum" : "interlock"}`
                   : `${money(md.objective)} · ${money(md.household)}`,
@@ -983,15 +1032,15 @@ const StatusPage = () => {
             </div>
             <div className="p-4">
               <p className="font-display text-[40px] leading-none tabular-nums">
-                {opsBal != null ? money(opsBal) : "—"}
+                {opsBal != null ? money(opsBal) : <span className="font-condensed text-[18px] text-faint">no balance typed</span>}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 ops balance
-                {view?.opsAfter != null && !accrualMoved && ((acc != null && acc > 0) || (view.moneyDay?.tax ?? 0) > 0) && (
+                {view?.opsAfter != null && !accrualMoved && ((acc != null && acc > 0) || (view.moneyDay != null && view.moneyDay.tax > 0)) && (
                   <> · {fmtMoney(view.opsAfter)} after {view.moneyDay && view.moneyDay.tax > 0 ? "the moves" : "the accrual"}</>
                 )}
                 {accrualMoved && <> · the accrual is already in the balances</>}
-                {floorsBoard[0] && (floorsBoard[0].short > 0 ? <> · short {money(floorsBoard[0].short)}</> : <> · holds the float</>)}
+                {floorsBoard[0] && floorsBoard[0].short != null && (floorsBoard[0].short > 0 ? <> · short {money(floorsBoard[0].short)}</> : <> · holds the float</>)}
               </p>
               <p className="font-condensed text-[12.5px] text-dim mt-3">
                 {view?.verdict === "below-float"
@@ -999,8 +1048,10 @@ const StatusPage = () => {
                   : view?.verdict === "floors-first"
                     ? `Ops holds the float. On the money day the surplus fills ${maintAcct?.name ?? "Maintenance"} and the ${vaultAcct?.name ?? "Vault"} to their floors before anything is split.`
                     : view?.verdict === "on-plan"
-                      ? `Every floor holds. On the money day the surplus splits ${objPct} % to ${objectiveName} · ${100 - objPct} % household.`
-                      : "Take the first Friday snapshot and the orders appear here."}
+                      ? `Every floor holds. On the money day the surplus splits ${objPctWords} to ${objectiveName} · ${householdWords} household.`
+                      : view && view.waitingOn.length > 0
+                        ? "The verdict waits — see what it needs above."
+                        : "Take the first Friday snapshot and the orders appear here."}
               </p>
               <p className="font-condensed text-[11.5px] text-faint mt-3">
                 snapshot first, then move the money — next week's snapshot confirms the moves landed.
@@ -1017,18 +1068,18 @@ const StatusPage = () => {
           >
             <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
               <span className="font-forge font-bold text-[17px]" style={{ letterSpacing: "1.5px" }}>THE VAULT — GENERAL RESERVE</span>
-              <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 3 · {floorsBoard[2] ? money(floorsBoard[2].floor) : "—"}</span>
+              <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 3 · {floorsBoard[2]?.floor != null ? money(floorsBoard[2].floor) : "unset"}</span>
             </div>
             <div className="p-4">
               <p className="font-display text-[40px] leading-none tabular-nums">
-                {vaultBal != null ? money(vaultBal) : "—"}
+                {vaultBal != null ? money(vaultBal) : <span className="font-condensed text-[18px] text-faint">no balance typed</span>}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 vault balance
                 {latest?.note && <> · {formatDate(latest.as_of)}: <span className="normal-case tracking-normal">"{latest.note.length > 64 ? `${latest.note.slice(0, 64)}…` : latest.note}"</span></>}
               </p>
               <p className="font-condensed text-[12.5px] text-dim mt-3">
-                {floorsBoard[2] && !floorsBoard[2].met
+                {floorsBoard[2] && floorsBoard[2].met === false && floorsBoard[2].floor != null
                   ? `Third in the fill order — after ${opsAcct?.name ?? "Ops"} and ${maintAcct?.name ?? "Maintenance"} hold their floors, the surplus builds this to ${money(floorsBoard[2].floor)}.`
                   : view?.cushion
                     ? `The floor holds · ${money(view.cushion.toGoal)} to the goal. Money above the ratchet goes whole to ${objectiveName}.`
@@ -1048,25 +1099,28 @@ const StatusPage = () => {
             {floorsBoard.map((f, i) => {
               const before = floorBalanceBefore[f.key];
               const st = stampFor(f, i);
-              const pct = f.floor > 0 && f.balance != null ? Math.min(1, Math.max(0, (f.balance + f.fill) / f.floor)) : 0;
+              const pct = f.floor != null && f.floor > 0 && f.balance != null ? Math.min(1, Math.max(0, (f.balance + f.fill) / f.floor)) : 0;
               return (
                 <div key={f.key} className="flex items-center gap-[14px] px-4 py-3 border-t ds2-cell-rule first:border-t-0">
                   <Ring state={f.met ? "done" : f.state === "held" ? "act" : "pend"}>{i + 1}</Ring>
                   <div className="flex-1 min-w-0">
                     <p className="font-condensed font-semibold text-[15px]">{floorTitle[f.key]}</p>
                     <p className="font-condensed text-[12px] text-faint mt-[2px]">
-                      {before != null ? money(before) : "—"}
+                      {before != null ? money(before) : noBalance}
                       {f.key !== "vault" && f.balance != null && before != null && Math.round(f.balance) !== Math.round(before) && (
                         <> → {fmtMoney(f.balance)} after the {f.key === "ops" && view.moneyDay && view.moneyDay.tax > 0 ? "moves" : "accrual"}</>
                       )}
-                      {" "}· floor {money(f.floor)}
+                      {" "}· floor {f.floor != null ? money(f.floor) : "unset"}
                       {f.fill > 0 && <> · <span className="text-amber-hi">fills {money(f.fill)} today</span></>}
-                      {f.short > 0 ? (
+                      {f.short == null ? (
+                        <> · <span className="text-amber-hi">waits</span></>
+                      ) : f.short > 0 ? (
                         <> · <span className={f.state === "held" ? "text-amber-hi" : ""}>short {money(f.short)}</span></>
                       ) : (
                         <> · holds</>
                       )}
                     </p>
+                    {f.missing.length > 0 && <p className="mt-[2px]">{refusalLines(`judge the ${f.label} floor`, f.missing)}</p>}
                     <div className="max-w-[320px] mt-[6px]">
                       <Cells pct={pct} dim={f.state === "next"} />
                     </div>
@@ -1082,7 +1136,7 @@ const StatusPage = () => {
             )}
             <div className="px-4 py-2 border-t ds2-cell-rule">
               <span className={BOARD_SUB}>
-                when all three hold: surplus × {objPct} % → {objectiveName} · × {100 - objPct} % → household · under {plan ? money(num(plan.min_move) ?? 0) : "$500"} nothing moves
+                when all three hold: surplus × {objPctWords} → {objectiveName} · × {householdWords} → household · under {num(plan?.min_move) != null ? money(num(plan?.min_move)!) : "the minimum (unset)"} nothing moves
               </span>
             </div>
           </div>
@@ -1121,15 +1175,16 @@ const StatusPage = () => {
                     )}
                     {st.state !== "done" && isFloor && (
                       <p className="font-condensed text-[12px] text-faint mt-[2px]">
-                        {money(st.currentValue ?? 0)} of {money(Number(st.stage.target_lo ?? 0))} · filled by the interlock, not the split
+                        {st.currentValue != null ? money(st.currentValue) : "no balance typed"}{num(st.stage.target_lo) != null && <> of {money(num(st.stage.target_lo)!)}</>} · filled by the interlock, not the split
                       </p>
                     )}
+                    {st.missing.length > 0 && <p className="mt-[2px]">{refusalLines(`grade rung ${st.stage.position}`, st.missing)}</p>}
                     {isObjective && (
                       <p className="font-condensed text-[12px] text-amber-hi mt-[2px]">
                         {st.stage.kind === "obligation" && st.currentValue != null && (
                           <>{money(st.currentValue)} left{st.stage.obligation?.original_balance ? ` of ${money(st.stage.obligation.original_balance)}` : ""} · </>
                         )}
-                        gets {objPct} % of the surplus once the floors hold
+                        gets {objPctWords} of the surplus once the floors hold
                         {st.overflow != null && st.overflow > 0
                           ? ` · ${money(st.overflow)} above the ratchet — send it here whole`
                           : " · anything above the ratchet in the Vault still goes here whole"}
@@ -1147,7 +1202,7 @@ const StatusPage = () => {
                       {st.stage.kind === "obligation"
                         ? "balance left"
                         : st.stage.kind === "trailer"
-                          ? `above the ratchet · of ${money(Number(st.stage.target_lo ?? 0))}${st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}`
+                          ? `above the ratchet${num(st.stage.target_lo) != null ? ` · of ${money(num(st.stage.target_lo)!)}${st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}` : " · no target"}`
                           : st.stage.target_lo != null
                             ? `of ${money(Number(st.stage.target_lo))}${st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}`
                             : ""}
@@ -1171,7 +1226,7 @@ const StatusPage = () => {
             <div className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule first:border-t-0">
               <div className="flex-1 min-w-0">
                 <p className="font-condensed font-semibold text-[16px]">
-                  {maintAcct.name} <span className="text-[13px] text-faint font-normal">{maintBal != null ? money(maintBal) : "—"}</span>
+                  {maintAcct.name} <span className="text-[13px] text-faint font-normal">{maintBal != null ? money(maintBal) : "no balance typed"}</span>
                 </p>
                 <p className="font-condensed text-[13px] text-dim mt-[2px]">
                   {owedToday.weeks.length && acc != null && perMile != null ? (
@@ -1205,10 +1260,15 @@ const StatusPage = () => {
                       )}
                     </>
                   )}
-                  {floorsBoard[1] && (floorsBoard[1].short > 0 ? <> · floor {money(floorsBoard[1].floor)}, {money(floorsBoard[1].short)} short after</> : <> · floor {money(floorsBoard[1].floor)} holds</>)}
+                  {floorsBoard[1] && floorsBoard[1].floor != null && floorsBoard[1].short != null && (floorsBoard[1].short > 0 ? <> · floor {money(floorsBoard[1].floor)}, {money(floorsBoard[1].short)} short after</> : <> · floor {money(floorsBoard[1].floor)} holds</>)}
                 </p>
                 {status?.accrualFlag && (
                   <p className="font-condensed text-[12px] text-amber-hi mt-[2px]">{status.accrualFlag}</p>
+                )}
+                {owedToday.weeks.length > 0 && owedTodayMiles == null && (
+                  <p className="mt-[2px]">
+                    {refusalLines("accrue Maintenance", [{ key: "accrual_miles", label: `the mileage for pay week ${owedToday.label} (no odometer reading, and its loads don't carry them)`, fixAt: FIX_SNAPSHOT }])}
+                  </p>
                 )}
               </div>
               <span className={`font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap ${owedToday.weeks.length ? "text-[#4ade80] bg-[rgba(74,222,128,.10)]" : "text-dim bg-[rgba(132,148,171,.12)]"}`}>
@@ -1220,12 +1280,12 @@ const StatusPage = () => {
             <div className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule">
               <div className="flex-1 min-w-0">
                 <p className="font-condensed font-semibold text-[16px]">
-                  {taxAcct.name} <span className="text-[13px] text-faint font-normal">{taxBal != null ? money(taxBal) : "—"}</span>
+                  {taxAcct.name} <span className="text-[13px] text-faint font-normal">{taxBal != null ? money(taxBal) : "no balance typed"}</span>
                 </p>
                 <p className="font-condensed text-[13px] text-dim mt-[2px]">
                   {pending && pendingLabel && preview?.moneyDay ? (
                     <>
-                      {pendingLabel.split(" ")[0]}'s money day: {taxPct} % of {pending.pretaxProfit != null && pending.pretaxProfit < 0 ? "−" : ""}{money(Math.abs(pending.pretaxProfit ?? 0))} = <b className="text-ink font-semibold">{money(preview.moneyDay.tax)}</b>
+                      {pendingLabel.split(" ")[0]}'s money day: {taxPct} % of {pending.pretaxProfit != null && pending.pretaxProfit < 0 ? "−" : ""}{pending.pretaxProfit != null ? money(Math.abs(pending.pretaxProfit)) : "no profit figure"} = <b className="text-ink font-semibold">{money(preview.moneyDay.tax)}</b>
                       {prevFiled && prevTax != null && (() => {
                         // A settled month reads what its money day MOVED (085),
                         // never today's P&L — unless it settled before the amount
@@ -1255,7 +1315,7 @@ const StatusPage = () => {
           {otherReserves.map((a) => (
             <div key={a.account_id} className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule">
               <p className="font-condensed font-semibold text-[16px] flex-1">
-                {a.name} <span className="text-[13px] text-faint font-normal">{balanceOf(latest, a.account_id) != null ? money(balanceOf(latest, a.account_id)!) : "—"}</span>
+                {a.name} <span className="text-[13px] text-faint font-normal">{balanceOf(latest, a.account_id) != null ? money(balanceOf(latest, a.account_id)!) : "no balance typed"}</span>
               </p>
               <span className="font-condensed text-[11px] text-faint">watched</span>
             </div>
@@ -1397,6 +1457,11 @@ const StatusPage = () => {
                     </p>
                   </div>
                 )}
+                {formMoneyDay && draftStatus?.moneyDayRefused && (
+                  <p className="col-span-2 border border-dashed border-hairline rounded-[8px] px-3 py-2">
+                    {refusalLines(draftStatus.moneyDayRefused.what, draftStatus.moneyDayRefused.missing)}
+                  </p>
+                )}
                 {formMoneyDay && draftStatus?.moneyDay ? (
                   <div className="col-span-2">
                     <label className={LBL}>The entry as you type · for Excel</label>
@@ -1425,6 +1490,7 @@ const StatusPage = () => {
                   disabled={
                     busy ||
                     asOfFuture ||
+                    (formMoneyDay && !!draftStatus?.moneyDayRefused) ||
                     !opsAcct ||
                     !vaultAcct ||
                     activeAccounts.some((a) => (fBalances[a.account_id] ?? "").trim() === "")

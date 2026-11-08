@@ -1,14 +1,16 @@
 // THE DEPOSIT AND THE PLAN'S MONEY — buildCashBoard on the synthetic book at
 // TODAY = Wed 2026-11-04 (pay weeks run Wednesday to Tuesday).
 //
-// Locked rules: CASH-01 · 02 · 03 · 04 · 05 · 06 · 07 · 13, PLAN accrual (the
-// Friday accrual = the pay week's chain miles × the plan's $/mile), ODO-03.
+// Locked rules: CASH-01 · 02 · 03 · 04 · 05 · 06 · 07 · 13 · 16, PLAN accrual
+// (the Friday accrual = the pay week's chain miles × the plan's $/mile), ODO-03.
 //
-// Owed to stage 4c (red until the silent-zero fixes land, deliberately not in
-// this file): CASH-16 (a missing weekly_payroll / weekly_revenue / deductions
-// makes the board refuse), PLAN-06 (a money day with an unknown accrual or an
-// unset floor refuses), and "an account with no balance typed reads unknown,
-// not UNMET ($0 of $X)".
+// CASH-16 (Nod Sheet "The Protection Stage", call 5): a planning input that
+// isn't set refuses the line that needs it, every other line keeps its number,
+// the ending waits.
+//
+// Owed elsewhere (plan.contract.test.ts): PLAN-06 (a money day with an unknown
+// accrual or an unset floor refuses), and "an account with no balance typed
+// reads unknown, not UNMET ($0 of $X)".
 import { describe, it, expect } from "vitest";
 import { syntheticBook, TODAY, type Book } from "@/test/fixtures/book";
 import type { Load } from "@/types/load";
@@ -204,7 +206,7 @@ describe("CASH-05 · a TONU never counts, nor a cancelled load", () => {
       const b = depositForWeek(noStatements(without), w);
       expect(a.loads).toBe(b.loads);
       expect(a.loadsNet).toBeCloseTo(b.loadsNet, 2);
-      expect(a.amount).toBeCloseTo(b.amount, 2);
+      expect(a.amount).toBeCloseTo(b.amount!, 2);
     }
   });
 
@@ -295,7 +297,7 @@ describe("CASH-03 · a closed period keeps every delivered load whatever payment
     const b = cashInput(flip(syntheticBook()));
     for (const w of closedWeeks()) {
       expect(w.end < TODAY).toBe(true);
-      expect(depositForWeek(b, w).amount).toBeCloseTo(depositForWeek(a, w).amount, 2);
+      expect(depositForWeek(b, w).amount).toBeCloseTo(depositForWeek(a, w).amount!, 2);
     }
   });
 
@@ -306,7 +308,7 @@ describe("CASH-03 · a closed period keeps every delivered load whatever payment
     for (const w of closedWeeks()) {
       const da = depositForWeek(a, w);
       const db = depositForWeek(b, w);
-      expect(db.amount).toBeCloseTo(da.amount, 2);
+      expect(db.amount).toBeCloseTo(da.amount!, 2);
       expect(db.loads).toBe(da.loads);
       expect(db.loadsNet).toBeCloseTo(da.loadsNet, 2);
       delivered += da.loads;
@@ -389,5 +391,70 @@ describe("PLAN · the Friday accrual = the pay week's chain miles × the plan's 
     expect(next?.accrual.amount).toBeCloseTo(280.96, 2);
     expect(next?.accrual.date).toBe("2026-11-20");
     expect(cur?.accrual.amount).toBeCloseTo((cur?.accrual.miles as number) * perMile, 2);
+  });
+});
+
+describe("CASH-16 · a planning input that isn't set refuses its line — never $0", () => {
+  const book = syntheticBook();
+  const complete = buildCashBoard(cashInput(book))!;
+
+  it("CASH-16 · a missing weekly payroll makes the board refuse the line, never project at $0", () => {
+    const board = buildCashBoard({ ...cashInput(book), weeklyPayroll: null })!;
+    const [cur, next] = board.columns;
+    const [curOk, nextOk] = complete.columns;
+    expect(cur.payroll.amount).toBeNull();
+    expect(cur.payroll.missing?.[0].label).toBe("weekly payroll");
+    expect(cur.payroll.missing?.[0].fixAt).toBe("ASSUMPTIONS");
+    expect(cur.ending).toBeNull();
+    expect(cur.missing.map((m) => m.key)).toEqual(["weeklyPayroll"]);
+    // the ending needs every line — the next period opens on it, so it waits too
+    expect(next.ending).toBeNull();
+    expect(board.lowest).toBeNull();
+    expect(board.clears).toBeNull();
+    expect(board.missing.map((m) => m.key)).toEqual(["weeklyPayroll"]);
+    // every other line keeps its number
+    for (const [c, ok] of [[cur, curOk], [next, nextOk]] as const) {
+      expect(c.deposit).toEqual(ok.deposit);
+      expect(c.accrual).toEqual(ok.accrual);
+      expect(c.fuel).toEqual(ok.fuel);
+      expect(c.bills).toEqual(ok.bills);
+      expect(c.prevDeposit).toEqual(ok.prevDeposit);
+      expect(c.catchUp).toEqual(ok.catchUp);
+    }
+    expect(next.payroll.amount).toBeNull();
+    // a typed $0 payroll is a real answer, not a gap
+    expect(buildCashBoard({ ...cashInput(book), weeklyPayroll: 0 })!.columns[0].payroll.amount).toBe(0);
+  });
+
+  it("CASH-16 · a missing weekly fuel advance makes the deposit line refuse, naming the advance", () => {
+    const board = buildCashBoard({ ...cashInput(book), advanceDefault: null })!;
+    const [cur] = board.columns;
+    const [curOk] = complete.columns;
+    // this period's deposit has no statement on file, so it needs the advance
+    expect(cur.deposit.source).not.toBe("actual");
+    expect(cur.deposit.amount).toBeNull();
+    expect(cur.deposit.missing?.[0].label).toBe("the weekly fuel advance");
+    expect(cur.ending).toBeNull();
+    expect(board.lowest).toBeNull();
+    expect(board.missing.some((m) => m.key === "advanceDefault")).toBe(true);
+    // the lines that don't need the advance keep their exact numbers
+    expect(cur.payroll).toEqual(curOk.payroll);
+    expect(cur.accrual).toEqual(curOk.accrual);
+    expect(cur.bills).toEqual(curOk.bills);
+  });
+
+  it("CASH-16 · a missing $ per mile makes the accrual refuse; a missing revenue fallback or deductions refuse the projection", () => {
+    const noMile = buildCashBoard({ ...cashInput(book), perMile: null })!;
+    expect(noMile.columns[0].accrual.amount).toBeNull();
+    expect(noMile.columns[0].accrual.missing?.[0].label).toBe("the plan's $ per mile");
+    expect(noMile.columns[0].accrual.missing?.[0].fixTo).toBe("/status");
+    expect(noMile.columns[0].ending).toBeNull();
+    expect(noMile.columns[0].payroll).toEqual(complete.columns[0].payroll);
+    const noRev = buildCashBoard({ ...cashInput(book), weeklyRevenueFallback: null })!;
+    expect(noRev.columns[0].deposit.amount).toBeNull();
+    expect(noRev.columns[0].deposit.missing?.[0].label).toBe("the weekly revenue fallback");
+    const noDed = buildCashBoard({ ...cashInput(book), deductionsFallback: null, buckets: { firstOfMonth: null, standard: null, samples: 0 } })!;
+    expect(noDed.columns[0].deposit.amount).toBeNull();
+    expect(noDed.columns[0].deposit.missing?.[0].label).toBe("the weekly settlement deductions");
   });
 });

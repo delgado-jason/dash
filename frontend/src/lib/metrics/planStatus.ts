@@ -22,6 +22,29 @@
 // The FIRST vault stage is floor 3 of the interlock; the current OBJECTIVE is
 // the first not-done rung after it.
 
+import { requireInputs, missingWords, type MissingInput } from "@/lib/integrity/require";
+
+// ---- the words a refusal speaks (PLAN-06, Nod Sheet "The Protection Stage",
+// call 5): each input the Plan page's figures need, and where it is set. A
+// balance is typed in the Friday snapshot; every plan number is in EDIT PLAN.
+export const FIX_SNAPSHOT = "FRIDAY SNAPSHOT";
+export const FIX_PLAN = "EDIT PLAN";
+const w = (key: string, label: string, fixAt: string, fixTo?: string): MissingInput => ({ key, label, fixAt, ...(fixTo ? { fixTo } : {}) });
+export const WORDS = {
+  ops: w("balance_ops", "the Ops balance", FIX_SNAPSHOT),
+  maintenance: w("balance_maintenance", "the Maintenance balance", FIX_SNAPSHOT),
+  vault: w("balance_vault", "the Vault balance", FIX_SNAPSHOT),
+  miles: w("accrual_miles", "the pay week's mileage", FIX_SNAPSHOT),
+  per_mile: w("maintenance_per_mile", "the maintenance $/mile", FIX_PLAN),
+  float_line: w("float_line", "the float line", FIX_PLAN),
+  tax_pct: w("tax_pct", "the tax percent", FIX_PLAN),
+  min_move: w("min_move", "the minimum move", FIX_PLAN),
+  maintenance_floor: w("maintenance_floor", "the Maintenance floor", FIX_PLAN),
+  objective_pct: w("objective_pct", "the objective percent", FIX_PLAN),
+  vault_floor: w("vault_floor", "a Vault rung to carry the reserve floor", FIX_PLAN),
+  pretax: w("pretax_profit", "the month's pre-tax profit", "the Expenses P&L", "/expenses"),
+};
+
 export interface PlanStageInput {
   stage_id?: string;
   position: number;
@@ -187,6 +210,15 @@ export const vaultFloorOf = (stages: PlanStageInput[]): number | null => {
   return first ? num(first.target_lo) : null;
 };
 
+// The words for an unset reserve floor: the rung that should carry it, or the
+// absence of any vault rung.
+export const vaultFloorMissing = (stages: PlanStageInput[]): MissingInput => {
+  const first = [...stages]
+    .filter((s) => s.kind === "vault")
+    .sort((a, b) => a.position - b.position)[0];
+  return first ? stageTargetWords(first) : WORDS.vault_floor;
+};
+
 export interface CushionProgress {
   toFloor: number; // remaining to the floor (0 when past it)
   toGoal: number; // remaining to the goal's low end
@@ -211,39 +243,55 @@ export const getCushionProgress = (
   };
 };
 
-export type StageState = "done" | "active" | "pending";
+export type StageState = "done" | "active" | "pending" | "unknown";
 
 export interface StageStatus {
   stage: PlanStageInput;
-  state: StageState;
+  state: StageState; // "unknown" = the rung has no target, so it can't be judged (PLAN-06)
   progress: number; // 0..1 — obligation stages measure paid-down share
   currentValue: number | null; // what the meter reads (vault $, balance left, fund $)
   // Active non-vault stages only: dollars above the protected ratchet,
   // available to send this Friday.
   overflow: number | null;
+  missing: MissingInput[]; // the target this rung needs and doesn't have
 }
 
 export interface WaterfallStatus {
   stages: StageStatus[];
-  activeIndex: number | null; // null = every stage done (the plan's finish line)
-  protectedLevel: number; // the current vault ratchet
+  // null = every stage done (the plan's finish line) — OR the walk stopped at
+  // a rung with no target: then `refusedAt` names it and activeIndex stays null.
+  activeIndex: number | null;
+  protectedLevel: number; // the current vault ratchet (what the done rungs before a refusal protect)
+  refusedAt: number | null; // the first rung that needed a target it doesn't have
+  missing: MissingInput[]; // every rung target that is unset, in ladder order
 }
 
-const stageDone = (s: PlanStageInput, vault: number, ratchet: number): boolean => {
-  const lo = num(s.target_lo) ?? 0;
-  if (s.kind === "vault") return vault >= lo;
-  if (s.kind === "trailer") return lo > 0 && vault - ratchet >= lo;
+// A vault or trailer rung is measured against its target; an obligation rung
+// is measured by its bound balance and needs none.
+export const stageTargetWords = (s: PlanStageInput): MissingInput => ({
+  key: `stage_${s.position}_target`,
+  label: `rung ${s.position}'s target`,
+  fixAt: FIX_PLAN,
+});
+
+const stageDone = (s: PlanStageInput, lo: number | null, vault: number, ratchet: number): boolean => {
+  if (s.kind === "vault") return lo != null && vault >= lo;
+  if (s.kind === "trailer") return lo != null && lo > 0 && vault - ratchet >= lo;
   const bal = num(s.obligation?.current_balance ?? null);
   return bal != null && bal <= 0;
 };
 
-const stageProgress = (s: PlanStageInput, vault: number, ratchet: number): { pct: number; value: number | null } => {
-  const lo = num(s.target_lo) ?? 0;
+const stageProgress = (
+  s: PlanStageInput,
+  lo: number | null,
+  vault: number,
+  ratchet: number,
+): { pct: number; value: number | null } => {
   if (s.kind === "vault")
-    return { pct: lo > 0 ? Math.min(1, Math.max(0, vault / lo)) : 0, value: vault };
+    return { pct: lo != null && lo > 0 ? Math.min(1, Math.max(0, vault / lo)) : 0, value: vault };
   if (s.kind === "trailer") {
     const above = Math.max(0, vault - ratchet);
-    return { pct: lo > 0 ? Math.min(1, above / lo) : 0, value: above };
+    return { pct: lo != null && lo > 0 ? Math.min(1, above / lo) : 0, value: above };
   }
   const bal = num(s.obligation?.current_balance ?? null);
   const orig = num(s.obligation?.original_balance ?? null);
@@ -264,18 +312,35 @@ export const getWaterfallStage = (
   const ordered = [...stages].sort((a, b) => a.position - b.position);
 
   let activeIndex: number | null = null;
+  let refusedAt: number | null = null;
   let protectedLevel = 0;
   const out: StageStatus[] = [];
 
   for (let i = 0; i < ordered.length; i++) {
     const s = ordered[i];
-    const done = activeIndex === null && stageDone(s, vault, protectedLevel);
-    const { pct, value } = stageProgress(s, vault, protectedLevel);
-    if (done && s.kind === "vault") {
-      protectedLevel = Math.max(protectedLevel, num(s.target_lo) ?? 0);
+    const lo = num(s.target_lo);
+    // A rung that is measured against a target and has none REFUSES — it is
+    // never a $0 target (PLAN-06). The first such rung before the active one
+    // stops the walk: nothing behind it can be judged.
+    if (s.kind !== "obligation" && lo == null) {
+      if (activeIndex === null && refusedAt === null) refusedAt = i;
+      out.push({
+        stage: s, state: refusedAt === i ? "unknown" : "pending", progress: 0,
+        currentValue: s.kind === "vault" ? vault : null, overflow: null, missing: [stageTargetWords(s)],
+      });
+      continue;
+    }
+    if (refusedAt !== null) {
+      out.push({ stage: s, state: "pending", progress: 0, currentValue: null, overflow: null, missing: [] });
+      continue;
+    }
+    const done = activeIndex === null && stageDone(s, lo, vault, protectedLevel);
+    const { pct, value } = stageProgress(s, lo, vault, protectedLevel);
+    if (done && s.kind === "vault" && lo != null) {
+      protectedLevel = Math.max(protectedLevel, lo);
     }
     if (!done && activeIndex === null) activeIndex = i;
-    out.push({ stage: s, state: done ? "done" : "pending", progress: pct, currentValue: value, overflow: null });
+    out.push({ stage: s, state: done ? "done" : "pending", progress: pct, currentValue: value, overflow: null, missing: [] });
   }
 
   if (activeIndex !== null) {
@@ -286,7 +351,7 @@ export const getWaterfallStage = (
     }
   }
 
-  return { stages: out, activeIndex, protectedLevel };
+  return { stages: out, activeIndex, protectedLevel, refusedAt, missing: out.flatMap((o) => o.missing) };
 };
 
 // The current OBJECTIVE: the first not-done rung that isn't floor 3 (the
@@ -296,6 +361,10 @@ export const objectiveIndexOf = (w: WaterfallStatus | null, stages: PlanStageInp
   const floorStage = [...stages].filter((s) => s.kind === "vault").sort((a, b) => a.position - b.position)[0];
   for (let i = 0; i < w.stages.length; i++) {
     const st = w.stages[i];
+    // A rung with no target can't be judged: it is the objective unless it is
+    // floor 3 itself, in which case nothing behind it is known.
+    if (st.state === "unknown")
+      return floorStage && st.stage.kind === "vault" && st.stage.position === floorStage.position ? null : i;
     if (st.state === "done") continue;
     if (floorStage && st.stage.kind === "vault" && st.stage.position === floorStage.position) continue;
     return i;
@@ -307,59 +376,99 @@ export const objectiveIndexOf = (w: WaterfallStatus | null, stages: PlanStageInp
 
 export type FloorKey = "ops" | "maintenance" | "vault";
 
+// A floor is UNKNOWN when it lacks the balance or the floor it is measured
+// by — it never reads as a $0 balance or a $0 floor (PLAN-06).
 export interface FloorStatus {
   key: FloorKey;
   label: string; // the SOP's word: operating · maintenance · reserve
   balance: number | null; // after the accrual (and, on a money day, the tax move)
-  floor: number;
-  short: number; // still short AFTER any fill
+  floor: number | null; // null = no floor set
+  short: number | null; // still short AFTER any fill; null = unknown
   fill: number; // directed here from the surplus today
-  met: boolean;
-  state: "met" | "held" | "next"; // held = the first unmet floor, next = behind it
+  met: boolean | null; // null = unknown
+  state: "met" | "held" | "next" | "unknown"; // held = the first unmet floor, next = behind it
+  missing: MissingInput[]; // what this floor is waiting for
 }
 
 export interface Interlock {
   floors: FloorStatus[]; // in fill order
-  heldBy: FloorKey | null; // the floor holding the month, null = all met
-  remainder: number; // surplus left after the fills — splits only when heldBy is null
+  heldBy: FloorKey | null; // the floor holding the month, null = all met (or still waiting — see waitingOn)
+  remainder: number; // surplus left after the fills — splits only when heldBy is null and nothing is waiting
+  waitingOn: MissingInput[]; // every input an unknown floor needs; non-empty = the interlock is not final
 }
+
+const dedupe = (list: MissingInput[]): MissingInput[] => {
+  const seen = new Set<string>();
+  return list.filter((m) => (seen.has(m.key) ? false : (seen.add(m.key), true)));
+};
 
 export const getInterlock = (
   bal: { opsAfter: number | null; maintenanceAfter: number | null; vault: number | null },
-  floors: { ops: number; maintenance: number; vault: number },
+  floors: { ops: number | null; maintenance: number | null; vault: number | null },
   avail: number, // the surplus available to direct (0 on a plain Friday or under the minimum)
+  // Why a balance is null when it isn't simply untyped (an unknown accrual),
+  // and the words for an unset vault floor (which rung is missing its target).
+  why: { blame?: Partial<Record<FloorKey, MissingInput[]>>; vaultFloor?: MissingInput } = {},
 ): Interlock => {
   let left = Math.max(0, avail);
-  const ops: FloorStatus = {
-    key: "ops", label: "operating", balance: bal.opsAfter, floor: floors.ops,
-    short: bal.opsAfter == null ? floors.ops : Math.max(0, floors.ops - bal.opsAfter),
-    fill: 0, met: false, state: "next",
-  };
-  ops.met = ops.short <= 0;
+  let blocked = false; // an unknown floor ahead: nothing can be directed past it
 
-  const mShort = bal.maintenanceAfter == null ? floors.maintenance : Math.max(0, floors.maintenance - bal.maintenanceAfter);
-  const mFill = Math.min(left, mShort);
-  left -= mFill;
+  const missingFor = (key: FloorKey, balance: number | null, floor: number | null): MissingInput[] => {
+    const out: MissingInput[] = [];
+    if (floor == null) out.push(key === "ops" ? WORDS.float_line : key === "maintenance" ? WORDS.maintenance_floor : why.vaultFloor ?? WORDS.vault_floor);
+    if (balance == null) out.push(...(why.blame?.[key] ?? [key === "ops" ? WORDS.ops : key === "maintenance" ? WORDS.maintenance : WORDS.vault]));
+    return out;
+  };
+
+  const ops: FloorStatus = { key: "ops", label: "operating", balance: bal.opsAfter, floor: floors.ops, short: null, fill: 0, met: null, state: "next", missing: missingFor("ops", bal.opsAfter, floors.ops) };
+  if (ops.missing.length === 0 && ops.balance != null && ops.floor != null) {
+    ops.short = Math.max(0, ops.floor - ops.balance);
+    ops.met = ops.short <= 0;
+  } else blocked = true;
+
+  const direct = (f: FloorStatus): void => {
+    if (f.missing.length > 0 || f.balance == null || f.floor == null) {
+      blocked = true;
+      return;
+    }
+    const need = Math.max(0, f.floor - f.balance);
+    const fill = blocked ? 0 : Math.min(left, need);
+    left -= fill;
+    f.fill = fill;
+    f.short = need - fill;
+    f.met = need - fill <= 0;
+  };
+
   const maintenance: FloorStatus = {
     key: "maintenance", label: "maintenance", balance: bal.maintenanceAfter, floor: floors.maintenance,
-    short: mShort - mFill, fill: mFill, met: mShort - mFill <= 0, state: "next",
+    short: null, fill: 0, met: null, state: "next", missing: missingFor("maintenance", bal.maintenanceAfter, floors.maintenance),
   };
-
-  const vShort = Math.max(0, floors.vault - (bal.vault ?? 0));
-  const vFill = Math.min(left, vShort);
-  left -= vFill;
+  direct(maintenance);
   const vault: FloorStatus = {
     key: "vault", label: "reserve", balance: bal.vault, floor: floors.vault,
-    short: vShort - vFill, fill: vFill, met: vShort - vFill <= 0, state: "next",
+    short: null, fill: 0, met: null, state: "next", missing: missingFor("vault", bal.vault, floors.vault),
   };
+  direct(vault);
 
   const list = [ops, maintenance, vault];
   let heldBy: FloorKey | null = null;
+  let waiting = false;
   for (const f of list) {
-    if (f.met) f.state = "met";
-    else if (heldBy === null) { heldBy = f.key; f.state = "held"; }
+    if (f.met === true) f.state = "met";
+    else if (f.met === null) {
+      f.state = "unknown";
+      waiting = true;
+    } else if (heldBy === null && !waiting) {
+      heldBy = f.key;
+      f.state = "held";
+    }
   }
-  return { floors: list, heldBy, remainder: heldBy === null ? left : 0 };
+  return {
+    floors: list,
+    heldBy,
+    remainder: heldBy === null && !waiting ? left : 0,
+    waitingOn: dedupe(list.flatMap((f) => f.missing)),
+  };
 };
 
 // ---- the money day ----
@@ -373,7 +482,7 @@ export interface MoneyDay {
   expenses: number | null;
   taxPct: number;
   tax: number;
-  accrual: number; // the accrual taken on the same snapshot (0 if none)
+  accrual: number; // the accrual taken on the same snapshot (0 only when none is owed or it already moved)
   opsBefore: number;
   opsAfter: number; // ops − accrual − tax
   surplus: number; // max(0, opsAfter − float)
@@ -395,6 +504,8 @@ const CONT = " ".repeat(18);
 const line = (label: string, value: string, note?: string): string =>
   `${pad(label)} ${note ? `${value.padEnd(12)} ${note}` : value}`;
 const floorName = (f: FloorStatus): string => (f.key === "vault" ? "the Vault" : f.key === "maintenance" ? "Maintenance" : "Ops");
+// A figure that may be unknown: the word, never a dollar sign on nothing.
+const moneyOr = (n: number | null, unknown = "unset"): string => (n == null ? unknown : money(n));
 
 const buildEntry = (md: Omit<MoneyDay, "entry">, floatLine: number): string[] => {
   const { interlock: il } = md;
@@ -415,7 +526,9 @@ const buildEntry = (md: Omit<MoneyDay, "entry">, floatLine: number): string[] =>
   const floorWord = (f: FloorStatus): string =>
     f.met
       ? `${f.label} met${f.key === "maintenance" && md.accrual > 0 && f.balance != null ? ` (${money(f.balance)} after the accrual)` : ""}`
-      : `${f.label} UNMET (${money(f.balance ?? 0)} of ${money(f.floor)})`;
+      : f.balance == null
+        ? `${f.label} UNKNOWN (no balance typed)`
+        : `${f.label} UNMET (${money(f.balance)} of ${moneyOr(f.floor)})`;
   const floorsList = (): string[] => {
     const met = il.floors.filter((f) => f.met).map(floorWord);
     const unmet = il.floors.filter((f) => !f.met).map(floorWord);
@@ -425,13 +538,13 @@ const buildEntry = (md: Omit<MoneyDay, "entry">, floatLine: number): string[] =>
   };
   const fills = il.floors.filter((f) => f.fill > 0);
   const directed = fills
-    .map((f) => `${floorName(f)} (now ${money((f.balance ?? 0) + f.fill)} of ${money(f.floor)})`)
+    .map((f) => (f.balance == null ? `${floorName(f)} (+${money(f.fill)} today)` : `${floorName(f)} (now ${money(f.balance + f.fill)} of ${moneyOr(f.floor)})`))
     .join(" · ");
 
   if (il.heldBy === "ops") {
     // The SOP's interlock template — six lines.
-    lines.push(line("Floors", `HELD — operating, short ${money(ops.short)}`));
-    lines.push(`${CONT}${[maint, vault].map((f) => (f.met ? `${f.label} met` : `${f.label} short ${money(f.short)}`)).join(" · ")}`);
+    lines.push(line("Floors", `HELD — operating, short ${moneyOr(ops.short, "unknown")}`));
+    lines.push(`${CONT}${[maint, vault].map((f) => (f.met ? `${f.label} met` : `${f.label} short ${moneyOr(f.short, "unknown")}`)).join(" · ")}`);
     lines.push(line("Surplus", "$0", surplusWhy));
     lines.push(line("Distribution", "$0 — interlock"));
     return lines;
@@ -465,57 +578,104 @@ const buildEntry = (md: Omit<MoneyDay, "entry">, floatLine: number): string[] =>
   return lines;
 };
 
+// What a refused figure carries: the verb the page prints after "Can't …" and
+// the inputs that are missing (MissingInputLine reads exactly this).
+export interface Refusal {
+  what: string; // "run the money day"
+  missing: MissingInput[];
+}
+
+export const MONEY_DAY_WHAT = "run the money day";
+
+// The money day never moves money on a guess. It needs the balances it reads,
+// the plan numbers it applies and the month's profit — and the accrual taken
+// on the same snapshot, when one is owed. Anything unset REFUSES (Nod Sheet
+// "The Protection Stage", call 5). `accrual` null = unknown; a snapshot that
+// owes no accrual (or whose accrual already moved) passes 0, honestly.
+export const runMoneyDay = (
+  snapshot: SnapshotInput | null,
+  plan: PlanInput | null,
+  md: MoneyDayInput | null,
+  accrual: number | null,
+  objectiveLabel: string | null,
+  accrualWhy?: MissingInput[],
+): { moneyDay: MoneyDay | null; refused: Refusal | null } => {
+  if (!snapshot || !plan || !md) return { moneyDay: null, refused: null };
+  const vaultFloorWords = vaultFloorMissing(plan.stages);
+  const need = requireInputs(
+    {
+      ops: snapshot.ops,
+      maintenance: snapshot.maintenance,
+      vault: snapshot.vault,
+      float_line: plan.float_line,
+      tax_pct: plan.tax_pct,
+      min_move: plan.min_move,
+      maintenance_floor: plan.maintenance_floor,
+      objective_pct: plan.objective_pct,
+      vault_floor: vaultFloorOf(plan.stages),
+      pretax: md.pretaxProfit,
+    },
+    {
+      ops: WORDS.ops, maintenance: WORDS.maintenance, vault: WORDS.vault,
+      float_line: WORDS.float_line, tax_pct: WORDS.tax_pct, min_move: WORDS.min_move,
+      maintenance_floor: WORDS.maintenance_floor, objective_pct: WORDS.objective_pct,
+      vault_floor: vaultFloorWords, pretax: WORDS.pretax,
+    },
+  );
+  const missing: MissingInput[] = need.ok ? [] : [...need.missing];
+  if (accrual == null) missing.push(...(accrualWhy && accrualWhy.length ? accrualWhy : [WORDS.miles]));
+  const refuse = (m: MissingInput[]) => ({ moneyDay: null, refused: { what: MONEY_DAY_WHAT, missing: dedupe(m) } });
+  if (!need.ok || accrual == null) return refuse(missing);
+
+  const v = need.values;
+  const tax = getTaxMove(v.pretax, v.tax_pct);
+  if (tax == null) return refuse([WORDS.tax_pct, WORDS.pretax]); // unreachable: both inputs were present
+  const opsAfter = v.ops - accrual - tax;
+  const surplus = getSurplus(opsAfter, v.float_line);
+  if (surplus == null) return refuse([WORDS.ops, WORDS.float_line]); // unreachable: both inputs were present
+  const belowMin = surplus > 0 && surplus < v.min_move;
+  const interlock = getInterlock(
+    { opsAfter, maintenanceAfter: v.maintenance + accrual, vault: v.vault },
+    { ops: v.float_line, maintenance: v.maintenance_floor, vault: v.vault_floor },
+    belowMin ? 0 : surplus,
+  );
+  // Whole dollars, and the two halves always add back to the remainder —
+  // the entry's Surplus, Objective and Distribution lines must reconcile.
+  const objective = Math.round(interlock.remainder * (v.objective_pct / 100));
+  const household = Math.round(interlock.remainder) - objective;
+  const base = {
+    month: md.month, monthLabel: monthName(md.month), pretaxProfit: v.pretax,
+    income: num(md.income ?? null), cogs: num(md.cogs ?? null), expenses: num(md.expenses ?? null), taxPct: v.tax_pct, tax,
+    accrual, opsBefore: v.ops, opsAfter, surplus, minMove: v.min_move, belowMin, interlock,
+    objective, household, objectiveLabel,
+  };
+  return { moneyDay: { ...base, entry: buildEntry(base, v.float_line) }, refused: null };
+};
+
 export const getMoneyDay = (
   snapshot: SnapshotInput | null,
   plan: PlanInput | null,
   md: MoneyDayInput | null,
   accrual: number | null,
   objectiveLabel: string | null,
-): MoneyDay | null => {
-  if (!snapshot || !plan || !md) return null;
-  const ops = num(snapshot.ops);
-  const floatLine = num(plan.float_line);
-  const pretax = num(md.pretaxProfit);
-  const taxPct = num(plan.tax_pct);
-  if (ops == null || floatLine == null || pretax == null || taxPct == null) return null;
-  const acc = accrual ?? 0;
-  const tax = getTaxMove(pretax, taxPct) ?? 0;
-  const opsAfter = ops - acc - tax;
-  const surplus = getSurplus(opsAfter, floatLine) ?? 0;
-  const minMove = num(plan.min_move) ?? 0;
-  const belowMin = surplus > 0 && surplus < minMove;
-  const maint = num(snapshot.maintenance);
-  const interlock = getInterlock(
-    { opsAfter, maintenanceAfter: maint == null ? null : maint + acc, vault: num(snapshot.vault) },
-    { ops: floatLine, maintenance: num(plan.maintenance_floor) ?? 0, vault: vaultFloorOf(plan.stages) ?? 0 },
-    belowMin ? 0 : surplus,
-  );
-  // Whole dollars, and the two halves always add back to the remainder —
-  // the entry's Surplus, Objective and Distribution lines must reconcile.
-  const objPct = num(plan.objective_pct) ?? 70;
-  const objective = Math.round(interlock.remainder * (objPct / 100));
-  const household = Math.round(interlock.remainder) - objective;
-  const base = {
-    month: md.month, monthLabel: monthName(md.month), pretaxProfit: pretax,
-    income: num(md.income ?? null), cogs: num(md.cogs ?? null), expenses: num(md.expenses ?? null), taxPct, tax,
-    accrual: acc, opsBefore: ops, opsAfter, surplus, minMove, belowMin, interlock,
-    objective, household, objectiveLabel,
-  };
-  return { ...base, entry: buildEntry(base, floatLine) };
-};
+): MoneyDay | null => runMoneyDay(snapshot, plan, md, accrual, objectiveLabel).moneyDay;
 
 // ---- the whole verdict ----
 
 export interface PlanStatus {
   accrual: number | null; // this snapshot's maintenance move (null = no miles given)
   accrualFlag: string | null; // "2 odometer readings go backwards — …" / "1 of 2 loads has no deadhead logged — …"
-  opsAfter: number | null; // ops − accrual (− tax on a money day)
+  opsAfter: number | null; // ops − accrual (− tax on a money day); null = unknown
   verdict: "on-plan" | "floors-first" | "below-float" | null;
+  // Why the verdict is null on a snapshot: the inputs it waits for ("waits for
+  // the Tax balance"). Empty when the verdict stands (or there is nothing to judge).
+  waitingOn: MissingInput[];
   interlock: Interlock | null; // the three floors as the balances stand (fills only on a money day)
   cushion: CushionProgress | null;
   waterfall: WaterfallStatus | null;
   objectiveIndex: number | null;
   moneyDay: MoneyDay | null;
+  moneyDayRefused: Refusal | null; // a money day was asked for and cannot run — and why
   orders: string[]; // the marching orders, in plain words
 }
 
@@ -528,9 +688,18 @@ export const getPlanStatus = (
 ): PlanStatus | null => {
   if (!snapshot || !plan) return null;
   const perMile = num(plan.maintenance_per_mile);
-  const accDue = ctx.accrual ? getAccrual(ctx.accrual.miles, perMile) : null;
-  // What still has to leave Ops: nothing when the move is already in the balances.
-  const acc = ctx.accrualMoved ? 0 : accDue;
+  const accIn = ctx.accrual ?? null;
+  const accDue = accIn ? getAccrual(accIn.miles, perMile) : null;
+  // What still has to leave Ops: nothing when no week is owed or the move is
+  // already in the balances (a true $0) — but an owed accrual whose miles or
+  // rate isn't set is UNKNOWN (null), never $0.
+  const accrualOwed = accIn != null && !ctx.accrualMoved;
+  const acc: number | null = accrualOwed ? accDue : 0;
+  const accMissing: MissingInput[] = [];
+  if (accIn && accrualOwed && accDue == null) {
+    if (num(accIn.miles) == null) accMissing.push(WORDS.miles);
+    if (perMile == null) accMissing.push(WORDS.per_mile);
+  }
   const accrualFlag = accrualFlagOf(ctx.accrual);
 
   const waterfall = getWaterfallStage(snapshot, plan.stages);
@@ -544,47 +713,61 @@ export const getPlanStatus = (
     vaultStages[vaultStages.length - 1]?.target_lo ?? null,
   );
 
-  const moneyDay = getMoneyDay(snapshot, plan, ctx.moneyDay ?? null, acc, objectiveLabel);
+  const { moneyDay, refused: moneyDayRefused } = runMoneyDay(
+    snapshot, plan, ctx.moneyDay ?? null, acc, objectiveLabel, accMissing,
+  );
 
   const ops = num(snapshot.ops);
   const floatLine = num(plan.float_line);
   const maint = num(snapshot.maintenance);
-  const opsAfter = moneyDay ? moneyDay.opsAfter : ops == null ? null : ops - (acc ?? 0);
-  const interlock =
-    floatLine == null
-      ? null
-      : moneyDay
-        ? moneyDay.interlock
-        : getInterlock(
-            { opsAfter, maintenanceAfter: maint == null ? null : maint + (acc ?? 0), vault: num(snapshot.vault) },
-            { ops: floatLine, maintenance: num(plan.maintenance_floor) ?? 0, vault: vaultFloorOf(plan.stages) ?? 0 },
-            0,
-          );
+  const vault = num(snapshot.vault);
+  const mFloor = num(plan.maintenance_floor);
+  const vFloor = vaultFloorOf(plan.stages);
+  const vFloorWords = vaultFloorMissing(plan.stages);
+  const opsAfter = moneyDay ? moneyDay.opsAfter : ops == null || acc == null ? null : ops - acc;
+  const interlock = moneyDay
+    ? moneyDay.interlock
+    : getInterlock(
+        { opsAfter, maintenanceAfter: maint == null || acc == null ? null : maint + acc, vault },
+        { ops: floatLine, maintenance: mFloor, vault: vFloor },
+        0,
+        { blame: { ops: ops != null && acc == null ? accMissing : undefined, maintenance: maint != null && acc == null ? accMissing : undefined }, vaultFloor: vFloorWords },
+      );
 
   // The verdict reads where the balances stand after the accrual, before any
   // fill: under the float → HOLD; float held but a reserve under its floor →
-  // FLOORS FIRST; every floor holds → ON PLAN.
+  // FLOORS FIRST; every floor holds → ON PLAN. A verdict that needs an input
+  // that isn't set WAITS on it (waitingOn) — a missing balance is never $0.
+  // Under the float is certain even with the accrual unknown (it only lowers Ops).
   let verdict: PlanStatus["verdict"] = null;
-  if (opsAfter != null && floatLine != null) {
-    if (opsAfter < floatLine) verdict = "below-float";
+  const waiting: MissingInput[] = [];
+  if (ops == null) waiting.push(WORDS.ops);
+  if (floatLine == null) waiting.push(WORDS.float_line);
+  if (ops != null && floatLine != null) {
+    if (ops < floatLine || (opsAfter != null && opsAfter < floatLine)) verdict = "below-float";
+    else if (acc == null) waiting.push(...accMissing);
     else {
-      const mFloor = num(plan.maintenance_floor) ?? 0;
-      const vFloor = vaultFloorOf(plan.stages) ?? 0;
-      const mOk = maint == null ? mFloor <= 0 : maint + (acc ?? 0) >= mFloor;
-      const vOk = (num(snapshot.vault) ?? 0) >= vFloor;
-      verdict = mOk && vOk ? "on-plan" : "floors-first";
+      const mOk = mFloor == null || maint == null ? null : maint + acc >= mFloor;
+      const vOk = vFloor == null || vault == null ? null : vault >= vFloor;
+      if (mOk === false || vOk === false) verdict = "floors-first";
+      else if (mOk === null || vOk === null) {
+        if (mFloor == null) waiting.push(WORDS.maintenance_floor);
+        if (maint == null) waiting.push(WORDS.maintenance);
+        if (vFloor == null) waiting.push(vFloorWords);
+        if (vault == null) waiting.push(WORDS.vault);
+      } else verdict = "on-plan";
     }
   }
 
   const orders: string[] = [];
-  if (accDue != null && ctx.accrual && perMile != null) {
-    const m = num(ctx.accrual.miles) ?? 0;
+  const accMiles = accIn ? num(accIn.miles) : null;
+  if (accDue != null && ctx.accrual && accMiles != null && perMile != null) {
     const cu = ctx.accrual.catchUpMiles ?? 0;
     const reTrued = cu !== 0 ? ` · incl. ${cu > 0 ? "+" : "−"}${miles(Math.abs(cu))} mi re-trued, ${ctx.accrual.catchUpLabel ?? "closed weeks"}` : "";
     orders.push(
       ctx.accrualMoved
-        ? `Maintenance accrual ${money(accDue)} (${miles(m)} mi × $${perMile}${reTrued}) — already moved, the balances show it`
-        : `Accrue Maintenance ${money(accDue)} (${miles(m)} mi × $${perMile}${reTrued})`,
+        ? `Maintenance accrual ${money(accDue)} (${miles(accMiles)} mi × $${perMile}${reTrued}) — already moved, the balances show it`
+        : `Accrue Maintenance ${money(accDue)} (${miles(accMiles)} mi × $${perMile}${reTrued})`,
     );
   }
   if (moneyDay) {
@@ -593,7 +776,7 @@ export const getPlanStatus = (
       `Tax ${money(moneyDay.tax)} (${moneyDay.monthLabel}: ${moneyDay.pretaxProfit < 0 ? "a loss" : `${moneyDay.taxPct} % of ${money(moneyDay.pretaxProfit)}`})`,
     );
     if (il.heldBy === "ops") {
-      orders.push(`Surplus $0 — held by the operating floor, short ${money(il.floors[0].short)}`);
+      orders.push(`Surplus $0 — held by the operating floor, short ${moneyOr(il.floors[0].short, "unknown")}`);
     } else if (moneyDay.belowMin) {
       orders.push(`Surplus ${money(moneyDay.surplus)} — under the ${money(moneyDay.minMove)} minimum, nothing moves`);
     } else {
@@ -602,22 +785,27 @@ export const getPlanStatus = (
       }
       if (il.heldBy !== null) {
         const held = il.floors.find((f) => f.key === il.heldBy)!;
-        orders.push(`held by the ${held.label} floor, short ${money(held.short)}`);
+        orders.push(`held by the ${held.label} floor, short ${moneyOr(held.short, "unknown")}`);
       } else if (il.remainder > 0) {
         orders.push(`${objectiveLabel ?? "Objective"} ${money(moneyDay.objective)} · Household ${money(moneyDay.household)}`);
       } else {
         orders.push("Surplus $0 — nothing to split");
       }
     }
-  } else if (opsAfter != null && floatLine != null && opsAfter < floatLine) {
-    orders.push("Below the float — hold");
+  } else {
+    if (moneyDayRefused && ctx.moneyDay)
+      orders.push(`${monthName(ctx.moneyDay.month).split(" ")[0]}'s money day can't run — ${missingWords(moneyDayRefused.missing)}`);
+    if (verdict === "below-float") orders.push("Below the float — hold");
   }
   const act = waterfall?.activeIndex != null ? waterfall.stages[waterfall.activeIndex] : null;
   if (act && act.overflow != null && act.overflow > 0) {
     orders.push(`${money(act.overflow)} above the ratchet — send it to ${act.stage.label}`);
   }
 
-  return { accrual: accDue, accrualFlag, opsAfter, verdict, interlock, cushion, waterfall, objectiveIndex, moneyDay, orders };
+  return {
+    accrual: accDue, accrualFlag, opsAfter, verdict, waitingOn: dedupe(waiting), interlock, cushion, waterfall,
+    objectiveIndex, moneyDay, moneyDayRefused, orders,
+  };
 };
 
 // ---- the guards that were words (Nod Sheet 2026-11-04, §4 · 5) ----

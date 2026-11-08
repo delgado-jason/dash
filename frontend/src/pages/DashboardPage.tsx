@@ -83,14 +83,17 @@ const OwnerDashboard = () => {
     const today = now.toISOString().slice(0, 10);
     const cur = payWeekOf(today);
     const prev = { start: addDays(cur.start, -7), end: addDays(cur.end, -7) };
-    const raw = assumptions.weekly_fuel_advance;
-    const adv = raw == null || raw === "" || !Number.isFinite(Number(raw)) ? 2000 : Number(raw);
+    // A blank planning input is unknown, never a default (stage 4c): the board
+    // then refuses the line that needs it and the tile says what is missing.
+    const num = (v: unknown): number | null =>
+      v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
+    const adv = num(assumptions.weekly_fuel_advance);
     const input: CashBoardInput = {
       today, settlementDay, depositLagDays: depositLag, floatLine: null, checks: [], loads, settlements, fuelEntries,
-      obligations: [], readings: [], weeklyPayroll: 0, perMile: 0,
+      obligations: [], readings: [], weeklyPayroll: num(assumptions.weekly_payroll), perMile: null,
       fuelPaceWeekly: runningWeekPace(fuelEntries, today), fuelFallback: adv, advanceDefault: adv,
-      buckets: deductionBuckets(settlements), deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),
-      weeklyRevenueFallback: Number(assumptions.weekly_revenue), moneyDays: [], overrides: {},
+      buckets: deductionBuckets(settlements), deductionsFallback: num(assumptions.weekly_settlement_deductions),
+      weeklyRevenueFallback: num(assumptions.weekly_revenue), moneyDays: [], overrides: {},
     };
     const last = depositForWeek(input, prev);
     return last.date >= today ? last : depositForWeek(input, cur);

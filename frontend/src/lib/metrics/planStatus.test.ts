@@ -113,10 +113,16 @@ describe("getInterlock — three floors in Jason's order", () => {
     expect(il.heldBy).toBeNull();
     expect(il.remainder).toBe(3559);
   });
-  it("a missing maintenance balance is treated as an empty floor, not a met one", () => {
+  // Corrected 2026-11-07 (PLAN-06): this used to pin "an empty floor" — a
+  // missing balance read as $0 and the floor as UNMET. It is UNKNOWN: neither
+  // met nor short, and the interlock names what it waits for.
+  it("a missing maintenance balance is unknown — neither met nor an empty floor", () => {
     const il = getInterlock({ opsAfter: 12000, maintenanceAfter: null, vault: 20000 }, { ops: 10000, maintenance: 5000, vault: 15000 }, 0);
-    expect(il.floors[1].met).toBe(false);
-    expect(il.heldBy).toBe("maintenance");
+    expect(il.floors[1].met).toBeNull();
+    expect(il.floors[1].short).toBeNull();
+    expect(il.floors[1].state).toBe("unknown");
+    expect(il.heldBy).toBeNull();
+    expect(il.waitingOn.map((m) => m.label)).toEqual(["the Maintenance balance"]);
   });
 });
 

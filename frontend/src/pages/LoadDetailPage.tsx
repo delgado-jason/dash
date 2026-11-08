@@ -63,7 +63,10 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/Panel";
 
 import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
-import { scoreLoad, VERDICT_META } from "@/lib/metrics/loadScore";
+import { LoadSaveError } from "@/lib/loads/loadSaveError";
+import { deliveredNeeds } from "@/lib/loads/deliveredNeeds";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
+import { scoreLoad, knownNumber, VERDICT_META } from "@/lib/metrics/loadScore";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { localToday } from "@/lib/metrics/today";
@@ -203,6 +206,7 @@ export const LoadDetailPage = () => {
   const [accTypes, setAccTypes] = useState<string[]>([]);
   const [otherMode, setOtherMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [statusSel, setStatusSel] = useState("");
   const [paymentSel, setPaymentSel] = useState("");
 
@@ -219,14 +223,21 @@ export const LoadDetailPage = () => {
   const [freeHours, setFreeHours] = useState(3);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
 
+  // What failed to load beside the load itself — named, with one Retry, never a
+  // page that renders as if there were no data (NET-03).
+  const [auxFailed, setAuxFailed] = useState<string[]>([]);
+  const [auxKey, setAuxKey] = useState(0);
+  const noteFailed = (what: string) => setAuxFailed((f) => (f.includes(what) ? f : [...f, what]));
+
   useEffect(() => {
+    setAuxFailed([]);
     getSettlementSchedule()
       .then((s) => setFreeHours(s.detention_free_hours))
-      .catch(() => {});
+      .catch(() => noteFailed("the settlement schedule"));
     getFuelEntries()
       .then(setFuelEntries)
-      .catch(() => {});
-  }, []);
+      .catch(() => noteFailed("the fuel log"));
+  }, [auxKey]);
 
   // Mark a detention/TONU fee collected — clears the owed flag + row highlight.
   const markPaid = async (field: "detention_paid" | "tonu_paid") => {
@@ -325,22 +336,26 @@ export const LoadDetailPage = () => {
       .then((docs) => {
         if (active) setDocuments(docs);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) noteFailed("the load's documents");
+      });
     getLoadSettlementLines(load.load_id)
       .then((lines) => {
         if (active) setSettlementLines(lines);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) noteFailed("the settlement lines");
+      });
     return () => {
       active = false;
     };
-  }, [load?.load_id]);
+  }, [load?.load_id, auxKey]);
 
   useEffect(() => {
     getAccessorialRates()
       .then((rs) => setAccTypes(rs.map((r) => r.accessorial_type)))
-      .catch(() => {});
-  }, []);
+      .catch(() => noteFailed("the accessorial rates"));
+  }, [auxKey]);
 
   // Decision 5A: dash's READ on whose customer this load is — never a write.
   // It looks at the agent's other loads for a party name that recurs, and
@@ -394,10 +409,13 @@ export const LoadDetailPage = () => {
   // else the deadhead booked) — judged on the booking ladder (2026-11-04,
   // §5: gross $/driven mile for pricing; the per-loaded figure stays beside
   // it, labelled).
-  const loadedMi = Number(load.loaded_miles) || 0;
-  const emptyMi = empty != null && empty >= 0 ? empty : Number(load.deadhead_miles) || 0;
-  const drivenMi = loadedMi + emptyMi;
-  const rateDriven = drivenMi > 0 ? revenue / drivenMi : null;
+  // A null deadhead or a missing odometer is UNKNOWN, never zero-empty
+  // (SCORE-02): the rate and the grade wait for the odometer.
+  const loadedMi = knownNumber(load.loaded_miles);
+  const emptyMi = empty != null && empty >= 0 ? empty : knownNumber(load.deadhead_miles);
+  const drivenMi = loadedMi != null && emptyMi != null ? loadedMi + emptyMi : null;
+  const rateDriven = drivenMi != null && drivenMi > 0 ? revenue / drivenMi : null;
+  const fmtMi = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
   // Price the load off the 30-DAY tank windows — mpg30 · $/gal30 divide back
   // to exactly costPerMile30, the app's one fuel rate (an all-time price
   // drifts from today's pump). Fall back to lifetime history, then to the
@@ -410,18 +428,24 @@ export const LoadDetailPage = () => {
   const fuel = estimateLoadFuel(load, fuelMpg, fuelPrice);
   const accTotal = accessorials.reduce((s, a) => s + Number(a.amount), 0);
 
+  // A delivered load needs its end odometer and delivery date (mock 4).
+  const needsDelivered = deliveredNeeds(statusSel, load.odometer_end, load.delivery_date);
+
   const handleSaveChanges = async () => {
     if (statusSel === load.load_status && paymentSel === load.payment_status)
       return;
+    if (needsDelivered) return;
     try {
+      setSaveError(null);
       setIsSaving(true);
       await patchLoad(load.load_id, {
         load_status: statusSel,
         payment_status: paymentSel,
       });
       setRefreshKey((p) => p + 1);
-    } catch {
-      // surfaced by the row's own state; nothing to do here
+    } catch (e) {
+      // The server's own sentences when it refused with details (400).
+      setSaveError(e instanceof LoadSaveError && e.details.length ? e.details.join(" ") : "Couldn't save — the server didn't take it.");
     } finally {
       setIsSaving(false);
     }
@@ -592,10 +616,10 @@ export const LoadDetailPage = () => {
               const g = scoreLoad(
                 {
                   rate: loadRevenue(load),
-                  loadedMiles: Number(load.loaded_miles) || 0,
+                  loadedMiles: knownNumber(load.loaded_miles),
                   // Odometer is truth: grade a run load on its ACTUAL empty miles,
                   // falling back to the planning estimate only until the window exists.
-                  deadheadMiles: empty != null && empty >= 0 ? empty : Number(load.deadhead_miles) || 0,
+                  deadheadMiles: empty != null && empty >= 0 ? empty : knownNumber(load.deadhead_miles),
                 },
                 { costPerDrivenMile: basis.costPerTotalMile, payTake: basis.payTake },
               );
@@ -840,17 +864,29 @@ export const LoadDetailPage = () => {
         </div>
       )}
 
+      {auxFailed.length > 0 && (
+        <FetchFailed
+          className="mb-3"
+          what={auxFailed.join(", ").replace(/, ([^,]*)$/, " and $1")}
+          onRetry={() => setAuxKey((k) => k + 1)}
+        />
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Kpi label="Total revenue" value={money(revenue)} />
         <Kpi
           label="Rate / driven mi · gross"
           value={fmtRpm(rateDriven)}
           valueClass={rpmTextClass(rateDriven, targets.bookingLadder)}
-          sub={`${loadedMi.toLocaleString("en-US")} loaded + ${emptyMi.toLocaleString("en-US")} empty mi${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`}
+          sub={
+            emptyMi == null
+              ? `Deadhead — needs the odometer${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`
+              : `${fmtMi(loadedMi)} loaded + ${fmtMi(emptyMi)} empty mi${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`
+          }
         />
         <Kpi
           label="Loaded miles"
-          value={(Number(load.loaded_miles) || 0).toLocaleString("en-US")}
+          value={fmtMi(loadedMi)}
         />
         <Kpi
           label="Deadhead"
@@ -978,7 +1014,7 @@ export const LoadDetailPage = () => {
           <p className={cardLbl}>Mileage</p>
           <Row
             label="Loaded"
-            value={`${(Number(load.loaded_miles) || 0).toLocaleString("en-US")} mi`}
+            value={loadedMi == null ? "—" : `${fmtMi(loadedMi)} mi`}
           />
           <Row
             label="Deadhead (actual)"
@@ -990,7 +1026,7 @@ export const LoadDetailPage = () => {
           />
           <Row
             label="Deadhead (planned)"
-            value={`${(Number(load.deadhead_miles) || 0).toLocaleString("en-US")} mi`}
+            value={knownNumber(load.deadhead_miles) == null ? "—" : `${fmtMi(knownNumber(load.deadhead_miles))} mi`}
           />
           <Row
             label="Odometer"
@@ -1241,13 +1277,17 @@ export const LoadDetailPage = () => {
               ))}
             </select>
             <button
-              disabled={isSaving}
+              disabled={isSaving || !!needsDelivered}
               onClick={handleSaveChanges}
               className="bg-amber text-steel px-4 py-1.5 rounded text-sm font-semibold disabled:opacity-50"
             >
               {isSaving ? "Saving…" : "Save"}
             </button>
           </div>
+          {needsDelivered && (
+            <p className="font-condensed text-[12px] text-amber-hi mt-2">{needsDelivered}</p>
+          )}
+          {saveError && <p className="font-condensed text-[12px] text-amber-hi mt-2">{saveError}</p>}
         </Panel>
       </div>
 
@@ -1284,6 +1324,9 @@ export const LoadDetailPage = () => {
                         />
                       ) : (
                         a.accessorial_type
+                      )}
+                      {a.warning && (
+                        <p className="font-condensed text-[12px] text-amber-hi mt-0.5">{a.warning}</p>
                       )}
                     </td>
                     <td className="py-2 text-right whitespace-nowrap">

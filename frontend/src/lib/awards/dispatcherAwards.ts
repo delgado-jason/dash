@@ -112,10 +112,13 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
     scoreLoad(
       {
         rate: loadGross(l),
-        loadedMiles: Number(l.loaded_miles) || 0,
+        // Unknown is unknown (SCORE-02, stage 4c): a load with no loaded miles or
+        // no deadhead logged gets NO verdict from scoreLoad, so it can never read
+        // as a steal on the strength of miles it never recorded.
+        loadedMiles: l.loaded_miles == null ? null : Number(l.loaded_miles),
         // Actual empty miles once the load has run. Until then it's still a
         // prospective load — which is exactly what the planning estimate is for.
-        deadheadMiles: loadEmptyMiles(l) ?? (Number(l.deadhead_miles) || 0),
+        deadheadMiles: loadEmptyMiles(l) ?? (l.deadhead_miles == null ? null : Number(l.deadhead_miles)),
       },
       scoreBasis,
       // Specialized freight is graded on the higher set, mirroring the Scorer.

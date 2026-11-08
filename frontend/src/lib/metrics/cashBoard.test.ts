@@ -216,7 +216,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     expect(cur.bills.find((x) => x.label === "Prepass")!.counted).toBe(true);
     // last period's accrual (Fri Oct 2) comes off after a morning check typed that day
     expect(cur.since[0]?.accrual).toMatchObject({ date: "2026-10-02", counted: true });
-    expect(cur.ending).toBeCloseTo(9000 - 720.32 + cur.deposit.amount - 1908 - cur.accrual.amount - 16.8 - 200 - 380.45 - 119.23 + 41, 2);
+    expect(cur.ending).toBeCloseTo(9000 - 720.32 + cur.deposit.amount! - 1908 - cur.accrual.amount! - 16.8 - 200 - 380.45 - 119.23 + 41, 2);
   });
 
   it("a Friday snapshot, taken after payroll, the drafts and the accrual move, already holds that Friday — this period's own accrual (Oct 9) still counts", () => {
@@ -228,7 +228,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     expect(cur.bills.find((x) => x.label === "Prepass")!.counted).toBe(true);
     expect(cur.accrual.counted).toBe(true);
     expect(cur.since).toEqual([]); // last period's Oct 2 accrual was moved before the snapshot was typed
-    expect(cur.ending).toBeCloseTo(9000 + cur.deposit.amount - cur.accrual.amount - 200 - 380.45 - 119.23 + 41, 2);
+    expect(cur.ending).toBeCloseTo(9000 + cur.deposit.amount! - cur.accrual.amount! - 200 - 380.45 - 119.23 + 41, 2);
   });
 
   it("an Ops number typed the day the deposit lands already holds it — nothing is added twice", () => {

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router";
 import {
@@ -41,6 +42,8 @@ import {
 import { collectReadings, addDays } from "@/lib/metrics/odometer";
 import { payWeekOf, weekLabel, type PayWeek } from "@/lib/metrics/payWeeks";
 import { getMoneyDay, monthName, type PlanStageInput } from "@/lib/metrics/planStatus";
+import type { MissingInput } from "@/lib/integrity/require";
+import { MissingInputLine } from "@/components/integrity/MissingInput";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
 const FIELD =
@@ -48,8 +51,8 @@ const FIELD =
 
 // Money reads the same on every page (format.ts): a negative is "−$1,908",
 // never "$-1,908" — this page used to carry its own copies (2026-11-04).
-const money = (n: number): string => fmtMoney(n);
-const moneyCents = (n: number): string => fmtMoneyCents(n);
+const money = (n: number | null | undefined): string => fmtMoney(n);
+const moneyCents = (n: number | null | undefined): string => fmtMoneyCents(n);
 const signed = (n: number): string =>
   n === 0 ? "0.00" : `${n > 0 ? "+" : "−"}${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -76,6 +79,23 @@ const numOrNull = (v: string | number | null | undefined): number | null => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
+// What the board is waiting for, in the owner's words — "payroll", "payroll and
+// the fuel advance". A blank input is never $0: the line that needs it refuses,
+// the ending waits (Nod Sheet "The Protection Stage", call 5).
+const WAITS_FOR: Record<string, string> = {
+  weeklyPayroll: "payroll",
+  advanceDefault: "the fuel advance",
+  deductionsFallback: "the deductions",
+  weeklyRevenueFallback: "the revenue fallback",
+  fuelFallback: "the fuel fallback",
+  perMile: "the plan’s $ per mile",
+};
+const waitsFor = (missing: MissingInput[]): string => {
+  const names = missing.map((m) => WAITS_FOR[m.key] ?? m.label);
+  return names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+};
+const NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six"];
+const blankInputs = (n: number): string => `${NUMBER_WORDS[n] ?? n} blank input${n === 1 ? "" : "s"}`;
 const fills = (n: number): string => `${n} fill${n === 1 ? "" : "s"}`;
 const weekSpan = (w: PayWeek): string => `${dayFull(w.start)} – ${dayFull(w.end)}`;
 
@@ -123,6 +143,7 @@ const CashFlowPage = () => {
   const [showOpsNow, setShowOpsNow] = useState(false);
 
   const [loadError, setLoadError] = useState(false);
+  const [adjustFailed, setAdjustFailed] = useState(false);
 
   // allSettled, not all: one flaky call must not throw away the other twelve
   // and render a stocked page as brand-new onboarding.
@@ -238,8 +259,15 @@ const CashFlowPage = () => {
   // and delivery, and both ends of every trip log (rev 3, issue 8).
   // Shop visits carry the truck's meter too — a fourth source for the chain.
   const [services, setServices] = useState<MaintenanceService[]>([]);
+  const [servicesFailed, setServicesFailed] = useState(false);
+  const loadServices = useCallback(() => {
+    setServicesFailed(false);
+    getMaintenanceServices().then(setServices).catch(() => setServicesFailed(true));
+  }, []);
+  // The first fetch runs straight from the effect (no synchronous setState —
+  // the React Compiler lint); Retry goes through loadServices, which clears the flag.
   useEffect(() => {
-    getMaintenanceServices().then(setServices).catch(() => {});
+    getMaintenanceServices().then(setServices).catch(() => setServicesFailed(true));
   }, []);
   const readings = useMemo(
     () => collectReadings(fuelEntries, loads ?? [], trips, services),
@@ -249,7 +277,8 @@ const CashFlowPage = () => {
   // its deposit is projected.
   const milesPace = useMemo(() => runningMilesPace(readings, asOfKey), [readings, asOfKey]);
 
-  const perMile = plan ? Number(plan.maintenance_per_mile) : 0;
+  // null stays null — a plan with no $/mile makes the accrual refuse, never $0.
+  const perMile = plan ? numOrNull(plan.maintenance_per_mile) : null;
 
   // A run money day's outflow: tax off the top plus the surplus that actually
   // moved, on the day of the snapshot that ran it — recomputed by the same
@@ -272,6 +301,10 @@ const CashFlowPage = () => {
       const period = periods.find((p) => p.period_month.slice(0, 10) === month);
       if (!period || period.income_total == null || period.cogs_total == null || period.expense_total == null) continue;
       const pretax = period.income_total - period.cogs_total - period.expense_total;
+      // The accrual the snapshot moved: its miles × the plan's $/mile — unknown,
+      // not $0, when the snapshot stored no miles or the plan has no $/mile.
+      const snapMiles = numOrNull(s.miles);
+      const accrualAmount = snapMiles == null || perMile == null ? null : snapMiles * perMile;
       const md = getMoneyDay(
         {
           as_of: s.as_of.slice(0, 10),
@@ -282,7 +315,7 @@ const CashFlowPage = () => {
         },
         planInput,
         { month, pretaxProfit: pretax },
-        (numOrNull(s.miles) ?? 0) * perMile,
+        accrualAmount,
         null,
       );
       if (!md) continue;
@@ -290,6 +323,20 @@ const CashFlowPage = () => {
       // re-read off a P&L that may have been edited since. Older money days
       // (before Nov 4, 2026) kept only the month tag and are recomputed.
       const stored = s.tax_moved != null ? Number(s.tax_moved) + (numOrNull(s.surplus_moved) ?? 0) : null;
+      if (stored == null && accrualAmount == null) {
+        // Nothing kept what the day moved and its accrual is unknown — say so.
+        out.push({
+          date: s.as_of.slice(0, 10),
+          amount: null,
+          label: `Money day · ${monthName(month)}`,
+          missing: [
+            snapMiles == null
+              ? { key: `snapshotMiles-${s.as_of.slice(0, 10)}`, label: `the miles on the ${monthName(month)} snapshot`, fixAt: "PLAN", fixTo: "/status" }
+              : { key: "perMile", label: "the plan's $ per mile", fixAt: "EDIT PLAN", fixTo: "/status" },
+          ],
+        });
+        continue;
+      }
       out.push({
         date: s.as_of.slice(0, 10),
         amount: stored ?? md.tax + (md.belowMin ? 0 : md.surplus),
@@ -317,15 +364,15 @@ const CashFlowPage = () => {
       fuelEntries,
       obligations,
       readings,
-      weeklyPayroll: Number(assumptions.weekly_payroll),
+      weeklyPayroll: numOrNull(assumptions.weekly_payroll),
       perMile,
       fuelPaceWeekly: fuelPace,
       milesPaceWeekly: milesPace,
-      fuelFallback: Number(assumptions.weekly_fuel_advance ?? 0),
-      advanceDefault: advanceOf(assumptions),
+      fuelFallback: numOrNull(assumptions.weekly_fuel_advance),
+      advanceDefault: numOrNull(assumptions.weekly_fuel_advance),
       buckets,
-      deductionsFallback: Number(assumptions.weekly_settlement_deductions ?? 0),
-      weeklyRevenueFallback: Number(assumptions.weekly_revenue),
+      deductionsFallback: numOrNull(assumptions.weekly_settlement_deductions),
+      weeklyRevenueFallback: numOrNull(assumptions.weekly_revenue),
       moneyDays,
       overrides: netPayOverrides,
       accruals,
@@ -394,7 +441,7 @@ const CashFlowPage = () => {
   // The fuel tile's four-week range: the last four CLOSED pay weeks' actual
   // fills, so the volatility Jason named is on the page as numbers.
   const fuelCtx = useMemo(
-    () => ({ fuelEntries, today: asOfKey, fuelPaceWeekly: fuelPace, fuelFallback: 0, advanceDefault: advanceOf(assumptions), settlements, settlementDay: setlDay }),
+    () => ({ fuelEntries, today: asOfKey, fuelPaceWeekly: fuelPace, fuelFallback: null, advanceDefault: numOrNull(assumptions?.weekly_fuel_advance), settlements, settlementDay: setlDay }),
     [fuelEntries, asOfKey, fuelPace, assumptions, settlements, setlDay],
   );
   const fuelWeeks = useMemo(() => {
@@ -403,7 +450,7 @@ const CashFlowPage = () => {
     for (let i = 0; i < 4; i++) {
       w = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
       const f = fuelForWeek(fuelCtx, w);
-      out.push({ week: w, amount: f.spent, fills: f.fills });
+      out.push({ week: w, amount: f.soFar, fills: f.fills }); // a closed week's fills — its actual
     }
     return out;
   }, [fuelCtx, asOfKey]);
@@ -421,6 +468,8 @@ const CashFlowPage = () => {
   const badgeWord =
     board == null
       ? "NO BALANCE YET"
+      : board.missing.length > 0
+        ? `WAITS FOR ${waitsFor(board.missing).toUpperCase()}`
       : board.clears == null
         ? "NO FLOAT LINE"
         : board.clears
@@ -445,10 +494,10 @@ const CashFlowPage = () => {
   })();
 
   // ---- the lines, by the day the money moves (2026-11-04, call 1 nodded) ----
-  const revFallback = assumptions ? Number(assumptions.weekly_revenue) : 0;
-  const advanceDefault = advanceOf(assumptions);
+  const revFallback = assumptions ? numOrNull(assumptions.weekly_revenue) : null;
+  const advanceDefault = assumptions ? numOrNull(assumptions.weekly_fuel_advance) : null;
   const inOps = " · in your number";
-  const advanceWords = (d: { advances: number; advancesSource: DepositLine["advancesSource"] }): string =>
+  const advanceWords = (d: { advances: number | null; advancesSource: DepositLine["advancesSource"] }): string =>
     d.advancesSource === "actual"
       ? `advances ${money(d.advances)} (the statement)`
       : d.advancesSource === "fills"
@@ -466,7 +515,7 @@ const CashFlowPage = () => {
     const head = `${own ? "statement" : `last period’s (${weekLabel(d.week)}) · statement`} ${md(d.statementDate)}`;
     let body: string;
     if (d.source === "actual") body = "actual, from the feed";
-    else if (d.source === "override") body = `you said ${money(d.amount)} · the loads say ${money(d.revenue - d.advances - d.bucket + d.carriedIn)}`;
+    else if (d.source === "override") body = `you said ${money(d.amount)} · the loads say ${d.revenue == null || d.advances == null || d.bucket == null ? "—" : money(d.revenue - d.advances - d.bucket + d.carriedIn)}`;
     else if (d.revenueSource === "fallback")
       body = `${d.loads + d.inTransit + d.booked > 0 ? `${delivered}${expected} say less than a normal week — ` : "nothing booked yet — "}the ${money(revFallback)} planning week − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}`;
     else body = `${delivered}${expected} − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}`;
@@ -476,11 +525,11 @@ const CashFlowPage = () => {
     return [head, body, ...carry, `${d.date < asOfKey ? "landed" : "lands"} ${dayFull(d.date)}`].join(" · ");
   };
   const depositEdit = (d: DepositLine): LedgerLine["edit"] =>
-    d.source === "actual"
+    d.source === "actual" || d.amount == null // a refused deposit has no figure to edit — it needs its input first
       ? null
       : {
           id: `dep-${d.statementDate}`,
-          value: d.source === "override" ? (netPayOverrides[d.statementDate] ?? d.amount) : d.amount,
+          value: d.source === "override" ? (netPayOverrides[d.statementDate] ?? d.amount!) : d.amount!,
           onCommit: (v: number) => setNetPayOverrides((prev) => ({ ...prev, [d.statementDate]: v })),
           clear:
             d.source === "override"
@@ -517,42 +566,50 @@ const CashFlowPage = () => {
       out.push({ key: "ops", date: bse.date, label: `Ops · ${who}`, note: `typed ${dayFull(bse.date)} · ${rule}${bse.note ? ` · “${bse.note}”` : ""}`, amount: bse.balance, stamp: null, counted: true, kind: "ops" });
       for (const pr of c.since) {
         const wk = weekLabel(pr.week);
-        if (pr.deposit) out.push({ key: `s-dep-${pr.week.start}`, date: pr.deposit.date, label: `Deposit · ${wk}`, note: depositWords(pr.deposit, false), amount: pr.deposit.amount, stamp: depositStamp(pr.deposit), counted: true, kind: "deposit" });
-        if (pr.leftover && pr.leftover.amount !== 0) out.push({ key: `s-left-${pr.week.start}`, date: pr.leftover.date, label: `Card leftover → Ops · ${wk}`, note: "what the advance left after the fills", amount: pr.leftover.amount, stamp: null, counted: true, kind: "leftover" });
-        if (pr.payroll) out.push({ key: `s-pay-${pr.week.start}`, date: pr.payroll.date, label: `Payroll · ${wk}`, note: "assumption", amount: -pr.payroll.amount, stamp: null, counted: true, kind: "payroll" });
-        if (pr.accrual && pr.accrual.amount !== 0) out.push({ key: `s-acc-${pr.week.start}`, date: pr.accrual.date, label: `Accrual · ${wk}`, note: pr.accrual.words, amount: -pr.accrual.amount, stamp: pr.accrual.source === "projected" ? "PROJECTED" : null, counted: true, flag: pr.accrual.flag, kind: "accrual" });
+        if (pr.deposit) out.push({ key: `s-dep-${pr.week.start}`, date: pr.deposit.date, label: `Deposit · ${wk}`, note: depositWords(pr.deposit, false), amount: pr.deposit.amount, missing: pr.deposit.missing, stamp: depositStamp(pr.deposit), counted: true, kind: "deposit" });
+        if (pr.leftover && pr.leftover.amount !== 0) out.push({ key: `s-left-${pr.week.start}`, date: pr.leftover.date, label: `Card leftover → Ops · ${wk}`, note: "what the advance left after the fills", amount: pr.leftover.amount, missing: pr.leftover.missing, stamp: null, counted: true, kind: "leftover" });
+        if (pr.payroll) out.push({ key: `s-pay-${pr.week.start}`, date: pr.payroll.date, label: `Payroll · ${wk}`, note: "assumption", amount: negate(pr.payroll.amount), missing: pr.payroll.missing, stamp: null, counted: true, kind: "payroll" });
+        if (pr.accrual && pr.accrual.amount !== 0) out.push({ key: `s-acc-${pr.week.start}`, date: pr.accrual.date, label: `Accrual · ${wk}`, note: pr.accrual.words, amount: negate(pr.accrual.amount), missing: pr.accrual.missing, stamp: pr.accrual.source === "projected" ? "PROJECTED" : null, counted: true, flag: pr.accrual.flag, kind: "accrual" });
         out.push(...billLines(pr.bills, `s-${pr.week.start}`, wk));
-        for (const m of pr.moneyDays) out.push({ key: `s-md-${m.date}`, date: m.date, label: m.label, note: `${wk} · tax and the surplus that moved`, amount: -m.amount, stamp: null, counted: true, kind: "money" });
+        for (const m of pr.moneyDays) out.push({ key: `s-md-${m.date}`, date: m.date, label: m.label, note: `${wk} · tax and the surplus that moved`, amount: negate(m.amount), missing: m.missing, stamp: null, counted: true, kind: "money" });
       }
     } else {
       out.push({ key: "ops", date: c.week.start, label: "Opens on the current period’s ending", note: null, amount: c.opening, stamp: null, counted: true, kind: "ops" });
     }
     if (c.prevDeposit) {
       const d = c.prevDeposit;
-      out.push({ key: "prevdep", date: d.date, label: "Last period’s deposit", note: depositWords(d, false) + (d.counted ? "" : inOps), amount: d.amount, stamp: depositStamp(d), counted: d.counted, edit: depositEdit(d), kind: "deposit" });
+      out.push({ key: "prevdep", date: d.date, label: "Last period’s deposit", note: depositWords(d, false) + (d.counted ? "" : inOps), amount: d.amount, missing: d.missing, stamp: depositStamp(d), counted: d.counted, edit: depositEdit(d), kind: "deposit" });
     }
-    out.push({ key: "dep", date: c.deposit.date, label: "This period’s deposit", note: depositWords(c.deposit, true) + (c.deposit.counted ? "" : inOps), amount: c.deposit.amount, stamp: depositStamp(c.deposit), counted: c.deposit.counted, edit: depositEdit(c.deposit), kind: "deposit" });
-    out.push({ key: "pay", date: c.payroll.date, label: "Payroll", note: `assumption${c.payroll.counted ? "" : inOps}`, amount: -c.payroll.amount, stamp: null, counted: c.payroll.counted, kind: "payroll" });
+    out.push({ key: "dep", date: c.deposit.date, label: "This period’s deposit", note: depositWords(c.deposit, true) + (c.deposit.counted ? "" : inOps), amount: c.deposit.amount, missing: c.deposit.missing, stamp: depositStamp(c.deposit), counted: c.deposit.counted, edit: depositEdit(c.deposit), kind: "deposit" });
+    out.push({ key: "pay", date: c.payroll.date, label: "Payroll", note: `assumption${c.payroll.counted ? "" : inOps}`, amount: negate(c.payroll.amount), missing: c.payroll.missing, stamp: null, counted: c.payroll.counted, kind: "payroll" });
     if (c.accrual.amount !== 0)
-      out.push({ key: "acc", date: c.accrual.date, label: `Accrual · ${weekLabel(c.week)}`, note: `${c.accrual.words ?? ""}${c.accrual.counted ? "" : inOps}`, amount: -c.accrual.amount, stamp: c.accrual.source === "projected" ? "PROJECTED" : null, counted: c.accrual.counted, flag: c.accrual.flag, kind: "accrual" });
+      out.push({ key: "acc", date: c.accrual.date, label: `Accrual · ${weekLabel(c.week)}`, note: `${c.accrual.words ?? ""}${c.accrual.counted ? "" : inOps}`, amount: negate(c.accrual.amount), missing: c.accrual.missing, stamp: c.accrual.source === "projected" ? "PROJECTED" : null, counted: c.accrual.counted, flag: c.accrual.flag, kind: "accrual" });
     if (c.catchUp && c.catchUp.amount !== 0)
-      out.push({ key: "catchup", date: c.catchUp.date, label: c.catchUp.amount > 0 ? "Accrual catch-up · closed weeks re-trued" : "Accrual hold-back · closed weeks re-trued", note: `${c.catchUp.words ?? ""}${c.catchUp.counted ? "" : inOps}`, amount: -c.catchUp.amount, stamp: "RE-TRUED", counted: c.catchUp.counted, kind: "accrual" });
+      out.push({ key: "catchup", date: c.catchUp.date, label: c.catchUp.miles != null && c.catchUp.miles < 0 ? "Accrual hold-back · closed weeks re-trued" : "Accrual catch-up · closed weeks re-trued", note: `${c.catchUp.words ?? ""}${c.catchUp.counted ? "" : inOps}`, amount: negate(c.catchUp.amount), missing: c.catchUp.missing, stamp: "RE-TRUED", counted: c.catchUp.counted, kind: "accrual" });
     if (c.fuel.advancesSource !== "none") {
       const f = c.fuel;
       const fuelWords =
         c.state === "open"
           ? `${f.fills === 0 ? "no fill logged yet" : `${fills(f.fills)} so far ${money(f.soFar)}`} · ${f.spentSource === "pace" ? "fuel at the pace of the last four running weeks" : "fuel actual"}`
           : "fuel at the pace of the last four running weeks";
-      out.push({ key: "left", date: f.leftover.date, label: "Card leftover → Ops", note: `${money(f.advances)} advanced (${advanceWords(f).replace(/^advances? /, "")}) − ${money(f.spent)} fuel · ${fuelWords}${f.leftover.counted ? "" : inOps}`, amount: f.leftover.amount, stamp: f.spentSource === "actual" ? null : "AT PACE", counted: f.leftover.counted, kind: "leftover" });
+      out.push({ key: "left", date: f.leftover.date, label: "Card leftover → Ops", note: `${money(f.advances)} advanced (${advanceWords(f).replace(/^advances? /, "")}) − ${money(f.spent)} fuel · ${fuelWords}${f.leftover.counted ? "" : inOps}`, amount: f.leftover.amount, missing: f.leftover.missing, stamp: f.spentSource === "actual" ? null : "AT PACE", counted: f.leftover.counted, kind: "leftover" });
     }
     out.push(...billLines(c.bills, c.key, null));
-    for (const m of c.moneyDays) out.push({ key: `md-${m.date}`, date: m.date, label: m.label, note: `tax and the surplus that moved${m.counted ? "" : inOps}`, amount: -m.amount, stamp: null, counted: m.counted, kind: "money" });
+    for (const m of c.moneyDays) out.push({ key: `md-${m.date}`, date: m.date, label: m.label, note: `tax and the surplus that moved${m.counted ? "" : inOps}`, amount: negate(m.amount), missing: m.missing, stamp: null, counted: m.counted, kind: "money" });
     out.sort((x, y) => (x.kind === "ops" ? -1 : y.kind === "ops" ? 1 : x.date < y.date ? -1 : x.date > y.date ? 1 : KIND_ORDER[x.kind] - KIND_ORDER[y.kind]));
     const e = c.ending;
     const under = e != null && floatLine != null && e < floatLine;
     out.push({
       key: "end", date: c.deposit.date, label: "Ending",
-      note: `Ops after this period’s deposit lands${floatLine != null && e != null ? (under ? ` · under the ${money(floatLine)} float` : " · clears the float") : ""}${c.key === "current" ? " · opens the next period" : ""}`,
+      note:
+        e == null
+          ? c.missing.length > 0 || board!.missing.length > 0
+            ? (() => {
+                const why = c.missing.length > 0 ? c.missing : board!.missing;
+                return `waits for ${waitsFor(why)} — ${blankInputs(why.length)}, no ending`;
+              })()
+            : "waits for the current period’s ending"
+          : `Ops after this period’s deposit lands${floatLine != null ? (under ? ` · under the ${money(floatLine)} float` : " · clears the float") : ""}${c.key === "current" ? " · opens the next period" : ""}`,
       amount: e, stamp: null, counted: true, kind: "ending", tone: e == null ? undefined : endTone(e),
     });
     return out;
@@ -585,6 +642,26 @@ const CashFlowPage = () => {
           </span>
         </div>
 
+        {servicesFailed && (
+          <FetchFailed
+            what="the shop log's odometer readings"
+            detail="the odometer chain runs without them until it loads"
+            onRetry={loadServices}
+            className="mt-3"
+          />
+        )}
+        {adjustFailed && (
+          <FetchFailed
+            what="the forecast's weeks off"
+            onRetry={() => {
+              setAdjustFailed(false);
+              getForecastAdjustments()
+                .then((adj) => setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)]))))
+                .catch(() => setAdjustFailed(true));
+            }}
+            className="mt-3"
+          />
+        )}
         {loadError && (
           <p className="mt-3 font-condensed text-[12.5px]" style={{ color: "var(--color-warn)" }}>
             ⚠ some data didn’t load — the boards below may be missing pieces.{" "}
@@ -629,6 +706,7 @@ const CashFlowPage = () => {
                   {board.lowest != null ? money(board.lowest.amount) : "—"}
                 </b>
                 {board.lowest != null && <> · {dayFull(board.lowest.date)}</>}
+                {board.missing.length > 0 && <> · waits for {waitsFor(board.missing)} — {blankInputs(board.missing.length)}, no verdict</>}
                 {floatLine != null && (
                   <> · float <b className="font-semibold text-ink tabular-nums">{money(floatLine)}</b></>
                 )}
@@ -666,7 +744,7 @@ const CashFlowPage = () => {
                       </span>
                     </div>
                     {lines.map((l) => (
-                      <LedgerRow key={l.key} line={l} editing={editing} setEditing={setEditing} />
+                      <LedgerRow key={l.key} line={l} editing={editing} setEditing={setEditing} onFix={() => setShowAssume(true)} />
                     ))}
                   </div>
                 ))}
@@ -997,7 +1075,7 @@ const CashFlowPage = () => {
                                   .catch(() =>
                                     getForecastAdjustments()
                                       .then((adj) => setAdjustments(new Map(adj.map((r) => [r.month.slice(0, 10), Number(r.weeks_off)]))))
-                                      .catch(() => {}),
+                                      .catch(() => setAdjustFailed(true)),
                                   );
                               }
                             }}
@@ -1070,14 +1148,8 @@ const CashFlowPage = () => {
 };
 
 // ---- the cash board's lines ----
+const negate = (n: number | null): number | null => (n == null ? null : -n);
 const OVERRIDES_KEY = "dash.cashboard.deposit-overrides";
-// The weekly fuel advance borrowed against the loads. A typed $0 means "no
-// advance" and stays $0; only a missing value falls back to the $2,000 habit.
-const advanceOf = (a: { weekly_fuel_advance?: string | number | null } | null | undefined): number => {
-  const v = a?.weekly_fuel_advance;
-  return v == null || v === "" || !Number.isFinite(Number(v)) ? 2000 : Number(v);
-};
-
 const WEEK_TITLE: Record<PeriodColumn["key"], string> = {
   current: "Current period",
   next: "Next period",
@@ -1094,6 +1166,7 @@ export interface LedgerLine {
   counted: boolean; // false → already inside the Ops number, shown faint
   flag?: string | null;
   tone?: string;
+  missing?: MissingInput[]; // a refused line: the input it needs isn't set
   edit?: { id: string; value: number; onCommit: (v: number) => void; clear: (() => void) | null } | null;
   kind: "ops" | "deposit" | "payroll" | "accrual" | "leftover" | "bill" | "money" | "ending";
 }
@@ -1113,11 +1186,12 @@ const dShort = (k: string): string =>
   new Date(`${k}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 
 const LedgerRow = ({
-  line, editing, setEditing,
+  line, editing, setEditing, onFix,
 }: {
   line: LedgerLine;
   editing: string | null;
   setEditing: (v: string | null) => void;
+  onFix: () => void;
 }) => {
   const plain = line.kind === "ops" || line.kind === "ending";
   const figure =
@@ -1131,7 +1205,13 @@ const LedgerRow = ({
       <div className="font-condensed text-[11px] tracking-[.06em] uppercase text-faint pt-[3px] whitespace-nowrap">{dShort(line.date)}</div>
       <div className="min-w-0">
         <div className={`font-condensed ${line.kind === "ending" ? "font-semibold text-ink" : "text-dim"} text-[13px]`}>{line.label}</div>
-        {line.note && <div className="font-condensed text-[11px] text-faint leading-[1.35] mt-0.5">{line.note}</div>}
+        {line.missing && line.missing.length > 0 ? (
+          <div className="mt-0.5">
+            <MissingInputLine what="place this line" missing={line.missing} onFix={onFix} />
+          </div>
+        ) : (
+          line.note && <div className="font-condensed text-[11px] text-faint leading-[1.35] mt-0.5">{line.note}</div>
+        )}
         {line.flag && <div className="font-condensed text-[11px] text-amber-hi leading-[1.35] mt-0.5">{line.flag}</div>}
       </div>
       <div className="text-right whitespace-nowrap tabular-nums">

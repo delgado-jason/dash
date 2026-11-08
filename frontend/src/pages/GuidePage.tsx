@@ -353,6 +353,7 @@ const NAV: { group: string; items: string[] }[] = [
       "The cash board — this period and the next",
       "OPS NOW — the number you type",
       "ASSUMPTIONS — the planning inputs behind the board",
+      "What dash refuses — a blank is never zero",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -1606,6 +1607,62 @@ const GuidePage = () => {
               printing a number that looks real. The float line is the plan's,
               edited on the Plan page; the bills live with your obligations on
               Expenses.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="What dash refuses — a blank is never zero"
+            answers="Where a number needs an input you haven't given, dash says what is missing and where to set it, instead of running with $0 in its place and printing a figure that looks real."
+            sources={[
+              { label: "Cash Flow", to: "/cashflow" },
+              { label: "Plan", to: "/status" },
+              { label: "Loads", to: "/loads" },
+            ]}
+          >
+            <p className="text-sm text-muted-text mb-2">
+              <span className="text-light">On the cash board</span>, a planning
+              input that isn't set refuses the line that needs it — "Can't place
+              this line — weekly payroll isn't set. Set it in ASSUMPTIONS ›" —
+              while every other line keeps its number; the ending, which needs
+              every line, waits ("waits for payroll — one blank input, no
+              ending"), and so does the verdict.{" "}
+              <span className="text-light">On the Plan page</span>, an account
+              with no balance typed reads "no balance typed", never $0 of your
+              floor; a ladder stage with no target refuses its rung; a money day
+              whose accrual is unknown — a gap in the odometer chain, or a
+              snapshot that stored no miles — or whose Maintenance floor is unset
+              refuses to run and says why.{" "}
+              <span className="text-light">On a load</span>, a deadhead that was
+              never logged is unknown, not zero: the grade reads "—" with "needs
+              the odometer" rather than scoring the load as if it ran empty for
+              free.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              <span className="text-light">The load form</span> won't save a load
+              as delivered until it has its end odometer and its delivery date:
+              "A delivered load needs its end odometer and its delivery date —
+              empty miles, the Friday accrual and break-even all read them." The
+              server holds the same rule, and the database behind it.{" "}
+              <span className="text-light">The server</span> refuses, in a
+              sentence, a blank keep percentage (it would zero every load's net),
+              a share above 100%, a tax rate typed as 15 instead of 0.15, an
+              odometer typed as 0, a P&amp;L month that isn't the 1st, P&amp;L
+              lines that don't add to the file's totals, a statement that doesn't
+              end on your settlement day, a snapshot missing an active account's
+              balance, a fill-up dated in the future or read a thousand miles
+              below the fill before it, and a load priced with no settlement
+              schedule at all.
+            </p>
+            <Why>
+              A missing input used to become a number. Payroll not set meant $0
+              payroll in the projection; a deadhead never logged meant zero empty
+              miles and the best possible grade; a snapshot with no Tax balance
+              meant UNMET ($0 of $9,500). Each read as a fact. Now the figure
+              that needs the input is the one that stops, names the input and
+              points at the box, and nothing around it is touched. When a page's
+              data fails to load, it says so in red — "Couldn't load the P&amp;L —
+              the server didn't answer. Retry ›" — with dashes in the tiles,
+              never the empty state that would claim you have no data.
             </Why>
           </Metric>
 
@@ -3704,7 +3761,7 @@ const GuidePage = () => {
               orders and Excel keeps the log.{" "}
               <span className="text-light">Every Friday</span>: snapshot
               first — after the settlement and payroll land, punch in the raw
-              balances — then the accrual: the pay week's miles (Wednesday to
+              balances — then the accrual: the pay week's mileage (Wednesday to
               Tuesday) by odometer — the reading at the week's end minus the
               reading at its start, from every fill, every load's pickup and
               delivery, and every trip log, so every mile the truck rolls

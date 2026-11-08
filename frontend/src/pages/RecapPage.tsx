@@ -26,6 +26,7 @@ import { careerRank } from "@/lib/metrics/playerCard";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { isDelivered } from "@/lib/metrics/status";
 
 const SCOPES: { key: RecapScope; label: string }[] = [
@@ -57,13 +58,27 @@ const RecapPage = () => {
   // is free to switch scopes.
   const [autoScoped, setAutoScoped] = useState(!!navScope);
 
+  // A failed fetch is named with a Retry — the poster is never drawn from a
+  // book that is missing its fuel, P&L, notes, trucks or schedule (NET-03).
+  const [failed, setFailed] = useState<string[]>([]);
+  const [fetchKey, setFetchKey] = useState(0);
   useEffect(() => {
-    getFuelEntries().then(setFuel).catch(() => {});
-    getExpensePeriods().then(setPeriods).catch(() => {});
-    getObligations().then(setObligations).catch(() => {});
-    getTrucks().then(setTrucks).catch(() => {});
-    getSettlementSchedule().then(setSchedule).catch(() => {});
-  }, []);
+    let active = true;
+    const note = (what: string) => {
+      if (active) setFailed((f) => (f.includes(what) ? f : [...f, what]));
+    };
+    const ok = (what: string) => {
+      if (active) setFailed((f) => f.filter((w) => w !== what));
+    };
+    getFuelEntries().then((v) => { if (active) setFuel(v); ok("the fuel log"); }).catch(() => note("the fuel log"));
+    getExpensePeriods().then((v) => { if (active) setPeriods(v); ok("the P&L"); }).catch(() => note("the P&L"));
+    getObligations().then((v) => { if (active) setObligations(v); ok("the obligations"); }).catch(() => note("the obligations"));
+    getTrucks().then((v) => { if (active) setTrucks(v); ok("the trucks"); }).catch(() => note("the trucks"));
+    getSettlementSchedule().then((v) => { if (active) setSchedule(v); ok("the settlement schedule"); }).catch(() => note("the settlement schedule"));
+    return () => {
+      active = false;
+    };
+  }, [fetchKey]);
 
   // The operator's local day, anchored, rolling at midnight (call 13).
   const now = useLocalToday();
@@ -131,7 +146,13 @@ const RecapPage = () => {
         </button>
       </div>
 
-      {stats.loads === 0 ? (
+      {failed.length > 0 ? (
+        <FetchFailed
+          className="text-center mt-10"
+          what={failed.join(", ").replace(/, ([^,]*)$/, " and $1")}
+          onRetry={() => setFetchKey((k) => k + 1)}
+        />
+      ) : stats.loads === 0 ? (
         <p className="text-center text-muted-text mt-10">
           No runs logged for {range.label}.
         </p>
