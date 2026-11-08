@@ -8,7 +8,7 @@ import { GradeChip } from "./MarketLedger";
 
 const pct = (n: number | null) => (n == null ? "—" : `${Math.round(n * 100)}%`);
 const otColor = (n: number | null) =>
-  n == null ? "#8b93a3" : n >= 0.9 ? "#4ade80" : n >= 0.7 ? "#e0a020" : "#f87171";
+  n == null ? "var(--color-muted-text)" : n >= 0.9 ? "var(--color-status-positive-text)" : n >= 0.7 ? "var(--color-amber)" : "var(--color-status-negative-text)";
 
 // "Aug 11 · PA" — the next load's origin MARKET when the book names one, else
 // its state. "again" when you reloaded in the market this load came from.

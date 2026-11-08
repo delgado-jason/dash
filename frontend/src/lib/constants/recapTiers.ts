@@ -1,7 +1,7 @@
 import type { RecapScope } from "@/lib/metrics/recap";
 
 // Bronze → silver → gold. One source of truth for the prestige look so the recap
-// CARD and the ceremony POP always match. Colors are the dash comic palette.
+// CARD and the ceremony POP always match. Colors are theme tokens (var strings); the bronze and silver metals have no token and stay literal.
 export interface RecapTier {
   metal: string; // border + primary accent
   inner: string | null; // inner foil line (quarter/year)
@@ -36,41 +36,41 @@ export const RECAP_TIERS: Record<RecapScope, RecapTier> = {
     laurels: false,
     banner: false,
     border: 2,
-    cardBg: "#10151f",
+    cardBg: "var(--color-panel)",
   },
   quarter: {
     metal: "#aab4c4",
-    inner: "#5a6478",
-    title: "#dfe6f0",
-    medalBg: "#1a2130",
-    medalInk: "#dfe6f0",
-    chipBg: "#1a2130",
+    inner: "var(--color-faint)",
+    title: "var(--color-ink)",
+    medalBg: "var(--color-plate-b)",
+    medalInk: "var(--color-ink)",
+    chipBg: "var(--color-plate-b)",
     chipBorder: "#cdd6e3",
-    chipInk: "#dfe6f0",
+    chipInk: "var(--color-ink)",
     kicker: "QUARTER RECAP",
     stars: 2,
     crown: false,
     laurels: true,
     banner: false,
     border: 3,
-    cardBg: "#10151f",
+    cardBg: "var(--color-panel)",
   },
   year: {
-    metal: "#f5b03a",
-    inner: "#7a5410",
-    title: "#ffe08a",
-    medalBg: "#0a0d13",
-    medalInk: "#f5b03a",
-    chipBg: "#3a2a0a",
-    chipBorder: "#f5b03a",
-    chipInk: "#ffe08a",
+    metal: "var(--color-amber-hi)",
+    inner: "var(--color-amber-dark)",
+    title: "var(--color-hot)",
+    medalBg: "var(--color-canvas)",
+    medalInk: "var(--color-amber-hi)",
+    chipBg: "var(--color-status-aware-bg)",
+    chipBorder: "var(--color-amber-hi)",
+    chipInk: "var(--color-hot)",
     kicker: "GRAND FINALE",
     stars: 3,
     crown: true,
     laurels: true,
     banner: true,
     border: 3,
-    cardBg: "#120f08",
+    cardBg: "var(--color-panel)",
   },
 };
 

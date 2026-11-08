@@ -39,12 +39,12 @@ const ChartTooltip = ({
         fontSize: 12,
       }}
     >
-      <div style={{ color: "#ebedf5", fontWeight: 600, marginBottom: 4 }}>
+      <div style={{ color: "var(--color-ink)", fontWeight: 600, marginBottom: 4 }}>
         {d.month}
       </div>
-      <div style={{ color: "#f5b03a" }}>Income {money(d.income)}</div>
-      <div style={{ color: "#4f8cd6" }}>Cost {money(d.cost)}</div>
-      <div style={{ color: "#e8940a" }}>
+      <div style={{ color: "var(--color-chart-amber)" }}>Income {money(d.income)}</div>
+      <div style={{ color: "var(--color-chart-blue)" }}>Cost {money(d.cost)}</div>
+      <div style={{ color: "var(--color-amber)" }}>
         Profit {money(d.profit)} · {margin.toFixed(0)}%
       </div>
     </div>
@@ -80,15 +80,15 @@ export const ExpenseYtdChart = ({
       </p>
       <ResponsiveContainer width="100%" height="88%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#141c2a" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline-lo)" vertical={false} />
           <XAxis
             dataKey="month"
-            tick={{ fill: "#5a6880", fontSize: 11 }}
+            tick={{ fill: "var(--color-faint)", fontSize: 11 }}
             tickLine={false}
-            axisLine={{ stroke: "#1c2637" }}
+            axisLine={{ stroke: "var(--color-hairline)" }}
           />
           <YAxis
-            tick={{ fill: "#5a6880", fontSize: 11 }}
+            tick={{ fill: "var(--color-faint)", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) => `$${Math.round(v / 1000)}k`}
@@ -99,18 +99,18 @@ export const ExpenseYtdChart = ({
             type="monotone"
             dataKey="income"
             name="Income"
-            stroke="#f5b03a"
+            stroke="var(--color-chart-amber)"
             strokeWidth={2.5}
-            dot={{ r: 3, fill: "#f5b03a" }}
+            dot={{ r: 3, fill: "var(--color-chart-amber)" }}
             activeDot={{ r: 5 }}
           />
           <Line
             type="monotone"
             dataKey="cost"
             name="Cost"
-            stroke="#4f8cd6"
+            stroke="var(--color-chart-blue)"
             strokeWidth={2.5}
-            dot={{ r: 3, fill: "#4f8cd6" }}
+            dot={{ r: 3, fill: "var(--color-chart-blue)" }}
             activeDot={{ r: 5 }}
           />
         </LineChart>

@@ -143,7 +143,7 @@ export const ExpenseUpload = ({ onSaved, onCancel }: Props) => {
                   </td>
                   <td className="p-1 text-right">
                     <button
-                      className="text-faint hover:text-[#e05252]"
+                      className="text-faint hover:text-status-negative-text"
                       aria-label="Remove line"
                       onClick={() => removeLine(i)}
                     >

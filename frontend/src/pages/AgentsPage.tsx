@@ -187,7 +187,7 @@ const AgentsPage = () => {
             </button>
           ))}
         </div>
-        <div className="flex gap-0.5 bg-well rounded-[9px] p-1" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
+        <div className="flex gap-0.5 bg-well rounded-[9px] p-1" style={{ boxShadow: "var(--shadow-inset)" }}>
           {(["table", "cards"] as const).map((v) => (
             <button
               key={v}
@@ -203,7 +203,7 @@ const AgentsPage = () => {
       </div>
 
       <input
-        className="h-9 rounded-[10px] px-3.5 text-sm w-full max-w-md text-ink placeholder:text-faint bg-well border-0 mb-4" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
+        className="h-9 rounded-[10px] px-3.5 text-sm w-full max-w-md text-ink placeholder:text-faint bg-well border-0 mb-4" style={{ boxShadow: "var(--shadow-inset)" }}
         placeholder="Search name or code"
         value={search}
         onChange={(e) => setSearch(e.target.value)}

@@ -56,23 +56,23 @@ export const PaceMeter = ({
                           ? "var(--color-amber-hi)"
                           : "var(--color-chart-amber)",
                       boxShadow: od
-                        ? "0 0 9px rgba(255,207,122,.7)"
+                        ? "0 0 9px color-mix(in srgb, var(--color-hot) 70%, transparent)"
                         : tip
-                          ? "0 0 7px rgba(245,176,58,.5)"
-                          : "inset 0 1px 0 rgba(255,255,255,.15)",
+                          ? "0 0 7px color-mix(in srgb, var(--color-amber-hi) 50%, transparent)"
+                          : "inset 0 1px 0 var(--color-highlight)",
                     }
                   : com
                     ? {
                         background: od
-                          ? "rgba(245,176,58,.55)"
-                          : "rgba(200,127,10,.3)",
+                          ? "color-mix(in srgb, var(--color-amber-hi) 55%, transparent)"
+                          : "color-mix(in srgb, var(--color-amber-dark) 30%, transparent)",
                         boxShadow: od
-                          ? "0 0 6px rgba(245,176,58,.4)"
+                          ? "0 0 6px color-mix(in srgb, var(--color-amber-hi) 40%, transparent)"
                           : undefined,
                       }
                     : {
                         background: "var(--color-well)",
-                        boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)",
+                        boxShadow: "var(--shadow-inset)",
                       }
               }
             />
@@ -96,6 +96,7 @@ export const PaceMeter = ({
 };
 
 // Shared plain-words marker builder — "floor $6,800" / "target $9,180".
+// eslint-disable-next-line react-refresh/only-export-components -- pre-existing, untouched by the colour sweep; owed to this page's phase C restructure
 export const paceMarker = (label: string, value: number): PaceMarker => ({
   value,
   label: `${label} ${money(value)}`,

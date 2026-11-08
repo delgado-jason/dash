@@ -143,8 +143,8 @@ export const VERDICT_META: Record<
   Verdict,
   { label: string; fg: string; bg: string }
 > = {
-  pass: { label: "SCRAP", fg: "#e24b4a", bg: "#2a1414" }, // below break-even — loses money
-  meh: { label: "THIN", fg: "#f5b03a", bg: "#2a2110" }, // above break-even, under target
-  take: { label: "SOLID", fg: "#5dcaa5", bg: "#12261f" }, // clears your target
-  steal: { label: "PRIME", fg: "#ffcf7a", bg: "#2a2410" }, // clears your strong tier
+  pass: { label: "SCRAP", fg: "var(--color-status-negative-text)", bg: "var(--color-status-negative-bg)" }, // below break-even — loses money
+  meh: { label: "THIN", fg: "var(--color-amber-hi)", bg: "var(--color-status-aware-bg)" }, // above break-even, under target
+  take: { label: "SOLID", fg: "var(--color-cat2)", bg: "color-mix(in srgb, var(--color-cat2) 14%, transparent)" }, // clears your target
+  steal: { label: "PRIME", fg: "var(--color-hot)", bg: "var(--color-status-aware-bg)" }, // clears your strong tier
 };

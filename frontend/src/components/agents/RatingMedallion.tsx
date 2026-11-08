@@ -5,10 +5,10 @@ import type { LucideIcon } from "lucide-react";
 // of five stars. (System unchanged; only the display.)
 const TIERS: Record<number, { label: string; cls: string; Icon: LucideIcon }> = {
   5: { label: "Call first", cls: "bg-amber text-steel", Icon: Crown },
-  4: { label: "Good", cls: "bg-[#2fae6b] text-[#06231a]", Icon: ThumbsUp },
-  3: { label: "Default", cls: "bg-[#45526e] text-light", Icon: Minus },
-  2: { label: "Avoid", cls: "bg-[#d9761c] text-steel", Icon: AlertTriangle },
-  1: { label: "Blacklist", cls: "bg-[#d23b3b] text-white", Icon: Ban },
+  4: { label: "Good", cls: "bg-status-positive-text text-canvas", Icon: ThumbsUp },
+  3: { label: "Default", cls: "bg-plate text-ink", Icon: Minus },
+  2: { label: "Avoid", cls: "bg-amber text-on-amber", Icon: AlertTriangle },
+  1: { label: "Blacklist", cls: "bg-status-negative-text text-canvas", Icon: Ban },
 };
 
 export const RatingMedallion = ({

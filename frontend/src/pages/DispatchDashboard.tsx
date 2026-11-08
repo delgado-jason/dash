@@ -256,7 +256,7 @@ const DispatchDashboard = () => {
             <span className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow">
               <span
                 className="w-1.5 h-1.5 rounded-full bg-amber"
-                style={{ boxShadow: "0 0 7px rgba(232,148,10,.9)" }}
+                style={{ boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 90%, transparent)" }}
               />
               {rank.name}
               <span className="text-faint font-medium text-[10.5px]">
@@ -272,7 +272,7 @@ const DispatchDashboard = () => {
               background:
                 "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
               boxShadow:
-                "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
             }}
           >
             <Zap size={15} /> SCORE A LOAD
@@ -406,7 +406,7 @@ const DispatchDashboard = () => {
                     className="absolute top-[13px] w-[2px] h-[30px] -translate-x-1/2 bg-amber-hi"
                     style={{
                       left: `${pos(cur)}%`,
-                      boxShadow: "0 0 9px rgba(245,176,58,.8)",
+                      boxShadow: "0 0 9px color-mix(in srgb, var(--color-amber-hi) 80%, transparent)",
                     }}
                   />
                 )}

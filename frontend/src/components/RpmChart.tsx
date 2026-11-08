@@ -28,10 +28,10 @@ const formatMonthLabel = (month: string): string => {
   return date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 };
 
-const GREEN = "#1d9e75";
-const RED = "#e24b4a";
-const MUTED = "#9daabb";
-const GRID = "#2a3347";
+const GREEN = "var(--color-status-positive-text)";
+const RED = "var(--color-status-negative-text)";
+const MUTED = "var(--color-dim)";
+const GRID = "var(--color-hairline)";
 
 export const RpmChart = ({ data, breakEven }: Props) => {
   return (
@@ -64,10 +64,10 @@ export const RpmChart = ({ data, breakEven }: Props) => {
           />
           <Tooltip
             contentStyle={{
-              background: "#1c2333",
-              border: "1px solid #2a3347",
+              background: "var(--color-iron)",
+              border: "1px solid var(--color-hairline)",
               borderRadius: 8,
-              color: "#ebedf5",
+              color: "var(--color-ink)",
               fontSize: 12,
             }}
             labelFormatter={(label) => formatMonthLabel(label as string)}

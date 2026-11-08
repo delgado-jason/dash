@@ -299,7 +299,7 @@ export const MoneyTab = ({
                 )}
               </p>
               {best && (
-                <span className="inline-flex items-center gap-2 mt-3.5 px-3 py-[7px] rounded-lg bg-well" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.55)" }}>
+                <span className="inline-flex items-center gap-2 mt-3.5 px-3 py-[7px] rounded-lg bg-well" style={{ boxShadow: "var(--shadow-inset)" }}>
                   <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">
                     BEST MONTH
                   </span>
@@ -327,7 +327,7 @@ export const MoneyTab = ({
               {cov.covered ? (
                 <span
                   className="inline-block self-start px-3.5 py-1.5 rounded-lg font-forge font-bold text-[16px] tracking-[.14em] text-status-positive-text border-2 border-status-positive-text -rotate-3"
-                  style={{ boxShadow: "inset 0 0 12px rgba(74,222,128,.15)" }}
+                  style={{ boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-positive-text) 15%, transparent)" }}
                 >
                   MONTH COVERED
                 </span>
@@ -355,7 +355,7 @@ export const MoneyTab = ({
               Add the month on Expenses →
             </Link>
             {best && (
-              <span className="ml-4 inline-flex items-center gap-2 px-3 py-[7px] rounded-lg bg-well" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.55)" }}>
+              <span className="ml-4 inline-flex items-center gap-2 px-3 py-[7px] rounded-lg bg-well" style={{ boxShadow: "var(--shadow-inset)" }}>
                 <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">
                   BEST MONTH
                 </span>

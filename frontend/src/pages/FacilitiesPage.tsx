@@ -130,7 +130,7 @@ const FacilitiesPage = () => {
               style={{
                 background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
                 boxShadow:
-                  "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
               }}
             >
               + ADD FACILITY
@@ -149,7 +149,7 @@ const FacilitiesPage = () => {
           </span>
           <input
             className="ml-auto h-[34px] px-3 rounded-[9px] bg-well font-condensed text-[13px] text-ink placeholder:text-faint min-w-[210px] outline-none"
-            style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+            style={{ boxShadow: "var(--shadow-inset)" }}
             placeholder="⌕  search name, address, city…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -171,7 +171,7 @@ const FacilitiesPage = () => {
 
         {/* possible duplicates — appears only when the finder flags */}
         {dupes.length > 0 && (
-          <div className="ds2-board overflow-hidden mt-4" style={{ borderColor: "rgba(232,148,10,.4)" }}>
+          <div className="ds2-board overflow-hidden mt-4" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 40%, transparent)" }}>
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
               <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-amber-hi">
                 Possible duplicates
@@ -192,7 +192,7 @@ const FacilitiesPage = () => {
                     <button
                       onClick={() => setConfirmCluster(cluster)}
                       className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-amber-hi bg-well border border-amber/35"
-                      style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                      style={{ boxShadow: "var(--shadow-inset)" }}
                     >
                       MERGE {cluster.length - 1} INTO KEEPER →
                     </button>
@@ -282,7 +282,7 @@ const FacilitiesPage = () => {
                   {dwellStr ? (
                     <span
                       className={`text-right font-condensed font-semibold text-[14px] tabular-nums ${
-                        slow ? "text-[#f0a35e]" : ""
+                        slow ? "text-amber-hi" : ""
                       }`}
                     >
                       {dwellStr}
@@ -337,7 +337,7 @@ const FacilitiesPage = () => {
                       </span>
                     ))}
                   </div>
-                  <p className="font-condensed text-[12px] text-[#e05252] mt-3">
+                  <p className="font-condensed text-[12px] text-status-negative-text mt-3">
                     ⚠ This can't be undone.
                   </p>
                   {mergeErr && (

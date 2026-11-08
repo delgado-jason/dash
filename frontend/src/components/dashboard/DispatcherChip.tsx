@@ -28,7 +28,7 @@ export const DispatcherChip = () => {
     <Link
       to={`/dispatcher/${selfId}`}
       className="inline-flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 hover:opacity-90"
-      style={{ background: "#161d2b", border: "1px solid #2a3347" }}
+      style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}
       title="Your dispatcher page"
     >
       {me?.avatar_url ? (
@@ -36,12 +36,12 @@ export const DispatcherChip = () => {
           src={me.avatar_url}
           alt={name}
           className="w-[30px] h-[30px] rounded-full object-cover border-2"
-          style={{ borderColor: "#e8940a" }}
+          style={{ borderColor: "var(--color-amber)" }}
         />
       ) : (
         <span
           className="w-[30px] h-[30px] rounded-full overflow-hidden border-2 block"
-          style={{ borderColor: "#e8940a" }}
+          style={{ borderColor: "var(--color-amber)" }}
         >
           <AvatarFallback kind="user" />
         </span>

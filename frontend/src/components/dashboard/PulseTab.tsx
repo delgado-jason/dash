@@ -196,7 +196,7 @@ export const PulseTab = ({
     if (nextUp)
       rows.push({
         kind: "Pickup",
-        cls: "text-[#7ab0e8]",
+        cls: "text-status-info-text",
         title: nextUp.lane,
         detail: `${fmtDayIso(nextUp.pickup_date)} · ${nextUp.agent}`,
         amount: nextUp.gross,
@@ -318,7 +318,7 @@ export const PulseTab = ({
                 className="absolute top-[15px] w-[2px] h-[32px] -translate-x-1/2 bg-amber-hi"
                 style={{
                   left: `${pos(cur)}%`,
-                  boxShadow: "0 0 9px rgba(245,176,58,.8)",
+                  boxShadow: "0 0 9px color-mix(in srgb, var(--color-amber-hi) 80%, transparent)",
                 }}
               />
             )}

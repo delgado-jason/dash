@@ -132,7 +132,7 @@ const InboundChart = ({ data }: { data: { month: string; share: number | null }[
         <XAxis dataKey="month" tick={{ fill: "var(--color-faint)", fontSize: 11 }} />
         <YAxis domain={[0, 1]} tickFormatter={(v: number) => `${Math.round(v * 100)}%`} tick={{ fill: "var(--color-faint)", fontSize: 11 }} />
         <Tooltip formatter={(v) => `${Math.round(Number(v) * 100)}%`} contentStyle={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline)", borderRadius: 8, fontSize: 12 }} />
-        <Line type="monotone" dataKey="share" stroke="#e8940a" strokeWidth={2} dot />
+        <Line type="monotone" dataKey="share" stroke="var(--color-amber)" strokeWidth={2} dot />
       </LineChart>
     </ResponsiveContainer>
   </div>
@@ -194,12 +194,12 @@ const NowSuggested = ({ row }: { row: SuggestionRow<Agent> }) => (
     <span
       className={
         isProspectVerdict(row)
-          ? "text-[#7ab0e8] font-semibold"
+          ? "text-status-info-text font-semibold"
           : row.losing || row.direction === "down"
             ? "text-status-negative-text font-semibold"
             : row.direction === "up"
               ? "text-status-positive-text font-semibold"
-              : "text-[#7ab0e8] font-semibold"
+              : "text-status-info-text font-semibold"
       }
     >
       {row.suggestionWord}
@@ -224,7 +224,7 @@ const VERDICT_META: Record<Verdict, { label: string; tone: PillTone }> = {
 };
 
 const lastLoadTone = (days: number | null): string =>
-  days == null ? "var(--color-faint)" : days > 60 ? "var(--color-status-negative-text)" : days > 30 ? "#f5c37a" : "var(--color-ink)";
+  days == null ? "var(--color-faint)" : days > 60 ? "var(--color-status-negative-text)" : days > 30 ? "var(--color-amber-hi)" : "var(--color-ink)";
 
 // The $/day verdict, once, so the table column and the phone's fact grid say
 // the same thing: green/amber/red against the ladder's daily target (2A),
@@ -330,7 +330,7 @@ const ScoreTable = ({
             <Fragment key={r.agent.agent_id}>
               {groupHead && (
                 <tr>
-                  <td colSpan={10} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[13px] tracking-[.08em] text-amber-hi" style={{ background: "rgba(232,148,10,.05)" }}>
+                  <td colSpan={10} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[13px] tracking-[.08em] text-amber-hi" style={{ background: "color-mix(in srgb, var(--color-amber) 5%, transparent)" }}>
                     {bucketWord(r.bucket).toUpperCase()}
                   </td>
                 </tr>

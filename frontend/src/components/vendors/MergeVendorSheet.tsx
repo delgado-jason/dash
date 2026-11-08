@@ -107,12 +107,12 @@ const MergePicker = ({
             margin: 0,
             padding: 4,
             listStyle: "none",
-            background: "#141b28",
-            border: "1px solid #2a3347",
+            background: "var(--color-panel)",
+            border: "1px solid var(--color-hairline)",
             borderRadius: 9,
             maxHeight: 220,
             overflowY: "auto",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            boxShadow: "var(--shadow-pop)",
           }}
         >
           {rows.map((row, i) => (
@@ -133,22 +133,22 @@ const MergePicker = ({
                 borderRadius: 6,
                 cursor: "pointer",
                 fontSize: 14,
-                color: "#f4f7fb",
-                background: i === active ? "#20293a" : "transparent",
+                color: "var(--color-ink)",
+                background: i === active ? "var(--color-plate-b)" : "transparent",
               }}
             >
               {row.kind === "create" ? (
                 <>
-                  <span style={{ color: "#f5b03a", fontSize: 12 }}>+</span>
+                  <span style={{ color: "var(--color-amber-hi)", fontSize: 12 }}>+</span>
                   <span>Create "{createName}" and merge</span>
                 </>
               ) : (
                 <>
-                  <span style={{ color: "#5f6b80", fontSize: 12 }}>◈</span>
+                  <span style={{ color: "var(--color-faint)", fontSize: 12 }}>◈</span>
                   <span>
                     {row.match.vendor.name}
                     {row.match.alias && (
-                      <span style={{ color: "#9fb0c9" }}>
+                      <span style={{ color: "var(--color-dim)" }}>
                         {" "}
                         · also "{row.match.alias}"
                       </span>
@@ -252,7 +252,7 @@ const MergeVendorSheet = ({
 
         <div
           className="bg-well rounded-[10px] px-3 py-2.5 mt-3"
-          style={{ boxShadow: "inset 0 2px 6px rgba(0,0,0,.45)" }}
+          style={{ boxShadow: "var(--shadow-inset)" }}
         >
           <p className="font-condensed font-semibold text-[10px] tracking-[.14em] uppercase text-amber-hi">
             DASH

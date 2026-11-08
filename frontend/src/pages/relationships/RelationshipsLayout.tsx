@@ -211,7 +211,7 @@ const RelationshipsLayout = () => {
             title={`inbound share of attributed loads since ${SYSTEM_START}`}
             className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow hover:text-hot"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber" style={{ boxShadow: "0 0 7px rgba(232,148,10,.9)" }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber" style={{ boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 90%, transparent)" }} />
             INBOUND {data.loadsLoading ? "…" : data.loadsError ? "—" : headline}
           </Link>
           <PrimaryButton size="md" onClick={openProspect}>

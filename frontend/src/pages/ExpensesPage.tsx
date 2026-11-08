@@ -252,7 +252,7 @@ const ExpensesPage = () => {
           {periods.length > 1 && (
             <span
               className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px] overflow-x-auto"
-              style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+              style={{ boxShadow: "var(--shadow-inset)" }}
               role="tablist"
             >
               {[...periods]
@@ -281,7 +281,7 @@ const ExpensesPage = () => {
             style={{
               background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
               boxShadow:
-                "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
             }}
           >
             UPLOAD P&L
@@ -329,7 +329,7 @@ const ExpensesPage = () => {
                   <>
                     {" "}
                     ·{" "}
-                    <b className="font-bold" style={{ color: selMargin >= 0 ? "#6fd08c" : "#e05252" }}>
+                    <b className="font-bold" style={{ color: selMargin >= 0 ? "var(--color-status-positive-text)" : "var(--color-status-negative-text)" }}>
                       {(selMargin * 100).toFixed(1)}% margin
                     </b>
                   </>
@@ -370,7 +370,7 @@ const ExpensesPage = () => {
                   >
                     <p
                       className="font-condensed font-semibold text-[22px] tabular-nums"
-                      style={"pos" in k && k.pos != null ? { color: k.pos ? "#6fd08c" : "#e05252" } : undefined}
+                      style={"pos" in k && k.pos != null ? { color: k.pos ? "var(--color-status-positive-text)" : "var(--color-status-negative-text)" } : undefined}
                     >
                       {k.v}
                     </p>
@@ -414,7 +414,7 @@ const ExpensesPage = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2">
                   <div className="px-[18px] py-[14px] sm:border-r border-b sm:border-b-0 ds2-cell-rule">
-                    <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase" style={{ color: "#4f8cd6" }}>
+                    <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase" style={{ color: "var(--color-chart-blue)" }}>
                       Cost to sit
                     </p>
                     <p className="font-display text-[34px] tracking-[.02em] mt-1 tabular-nums">
@@ -459,14 +459,14 @@ const ExpensesPage = () => {
               <div
                 className="relative overflow-hidden rounded-[14px] border mt-4"
                 style={{
-                  background: "linear-gradient(180deg, #0e1420, #0b101a)",
+                  background: "linear-gradient(180deg, var(--color-panel), var(--color-well))",
                   borderColor: "var(--color-hairline)",
-                  boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+                  boxShadow: "var(--shadow-pop)",
                 }}
               >
                 <div
                   className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule"
-                  style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+                  style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
                 >
                   <div>
                     <div className="font-forge font-bold text-[20px] leading-none" style={{ letterSpacing: "1.5px" }}>
@@ -481,7 +481,7 @@ const ExpensesPage = () => {
                 <div className="flex items-center gap-[10px] flex-wrap px-[18px] py-[14px]">
                   <span
                     className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
-                    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "var(--shadow-inset)" }}
                   >
                     <b className="text-ink tabular-nums">${targets.basis.costPerTotalMile?.toFixed(2)}</b> / total
                     mi — your all-in cost
@@ -489,7 +489,7 @@ const ExpensesPage = () => {
                   <span className="font-condensed text-faint">→</span>
                   <span
                     className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
-                    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                    style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "var(--shadow-inset)" }}
                   >
                     ÷ <b className="text-ink">{Math.round(targets.keep * 100)}%</b>{" "}
                     {targets.keepSource === "blended" ? "blended keep" : "linehaul take"}
@@ -497,7 +497,7 @@ const ExpensesPage = () => {
                   <span className="font-condensed text-faint">→</span>
                   <span
                     className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
-                    style={{ background: "var(--color-well)", border: "1px solid rgba(245,176,58,.55)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                    style={{ background: "var(--color-well)", border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)", boxShadow: "var(--shadow-inset)" }}
                   >
                     <b className="font-display text-[22px] tracking-[.04em] text-amber-hi tabular-nums">
                       ${targets.bookingLadder.walkAway?.toFixed(2)}
@@ -537,7 +537,7 @@ const ExpensesPage = () => {
                   <div
                     style={{
                       width: `${metrics.fixedPct ? metrics.fixedPct * 100 : 0}%`,
-                      background: "#4f8cd6",
+                      background: "var(--color-chart-blue)",
                     }}
                   />
                   <div style={{ flex: 1, background: "var(--color-amber)" }} />
@@ -545,7 +545,7 @@ const ExpensesPage = () => {
               </div>
               <div className="px-4 pb-3 pt-2 font-condensed text-[13px] text-dim flex gap-6 flex-wrap">
                 <span>
-                  <span style={{ color: "#4f8cd6" }}>●</span> Fixed{" "}
+                  <span style={{ color: "var(--color-chart-blue)" }}>●</span> Fixed{" "}
                   <b className="text-ink tabular-nums">{money(metrics.fixedTotal)}</b>
                 </span>
                 <span>
@@ -590,7 +590,7 @@ const ExpensesPage = () => {
             <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
               >
                 <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
                   UPLOAD P&L

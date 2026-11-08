@@ -59,13 +59,13 @@ const plural = (n: number) => (n !== 1 ? "s" : "");
 // Confirmed money-owed states get a colored bar; a detention *candidate* stays
 // subtle (just the "det?" chip, no bar/tint) so the table isn't a wall of amber.
 const BAR: Partial<Record<LoadFlag, string>> = {
-  tonu: "#e24b4a",
-  detention: "#e8940a",
-  "in-transit": "#3fb950",
+  tonu: "var(--color-status-negative-text)",
+  detention: "var(--color-amber)",
+  "in-transit": "var(--color-status-positive-text)",
 };
 const TINT: Partial<Record<LoadFlag, string>> = {
-  tonu: "rgba(226,75,74,0.10)",
-  detention: "rgba(232,148,10,0.10)",
+  tonu: "color-mix(in srgb, var(--color-status-negative-text) 10%, transparent)",
+  detention: "color-mix(in srgb, var(--color-amber) 10%, transparent)",
 };
 
 const Chip = ({ bg, fg, text }: { bg: string; fg: string; text: string }) => (
@@ -92,7 +92,7 @@ const LoadRow = ({
   const tonuPaid = load.load_status === "tonu" && load.tonu_paid;
   return (
     <tr
-      className="border-t ds2-cell-rule align-top hover:bg-white/[.02] transition-colors"
+      className="border-t ds2-cell-rule align-top hover:bg-ink/[.02] transition-colors"
       style={flag && TINT[flag] ? { background: TINT[flag] } : undefined}
     >
       <td
@@ -109,19 +109,19 @@ const LoadRow = ({
         >
           {load.load_number}
         </Link>
-        {flag === "detention" && <Chip bg="#7a4718" fg="#f5c37a" text="DET" />}
+        {flag === "detention" && <Chip bg="color-mix(in srgb, var(--color-amber) 35%, transparent)" fg="var(--color-hot)" text="DET" />}
         {flag === "detention-eligible" && (
-          <Chip bg="transparent" fg="#8b98a9" text="det?" />
+          <Chip bg="transparent" fg="var(--color-dim)" text="det?" />
         )}
         {setlDelta != null && (
           <Chip
-            bg="#3a1417"
-            fg="#f2a6a3"
+            bg="var(--color-status-negative-bg)"
+            fg="color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)"
             text={`SETL ${setlDelta < 0 ? "−" : "+"}$${Math.abs(setlDelta).toFixed(0)}`}
           />
         )}
-        {detPaid && <Chip bg="#12251a" fg="#6f9a80" text="det paid" />}
-        {tonuPaid && <Chip bg="#12251a" fg="#6f9a80" text="tonu paid" />}
+        {detPaid && <Chip bg="var(--color-status-positive-bg)" fg="color-mix(in srgb, var(--color-status-positive-text) 70%, transparent)" text="det paid" />}
+        {tonuPaid && <Chip bg="var(--color-status-positive-bg)" fg="color-mix(in srgb, var(--color-status-positive-text) 70%, transparent)" text="tonu paid" />}
       </td>
       <td className="py-2">
         <StatusBadge value={load.load_status} />
@@ -300,7 +300,7 @@ const LoadsPage = () => {
         <span className="flex-1" />
         <button
           className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] text-canvas hover:brightness-105"
-          style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))", boxShadow: "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)" }}
+          style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))", boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)" }}
           onClick={() => setShowCreateForm(true)}
         >
           + CREATE LOAD
@@ -324,7 +324,7 @@ const LoadsPage = () => {
 
       <div className="flex flex-wrap items-center gap-2.5 mt-3">
         <input
-          className="h-9 rounded-[10px] px-3.5 text-sm flex-1 min-w-[180px] text-ink placeholder:text-faint bg-well border-0" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
+          className="h-9 rounded-[10px] px-3.5 text-sm flex-1 min-w-[180px] text-ink placeholder:text-faint bg-well border-0" style={{ boxShadow: "var(--shadow-inset)" }}
           placeholder="Search load #, agency, city"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -336,7 +336,7 @@ const LoadsPage = () => {
           onChange={setStatusFilter}
         />
         <select
-          className="h-9 rounded-[10px] px-2.5 text-sm text-ink bg-well border-0" style={{ boxShadow: "inset 0 2px 5px rgba(0,0,0,.55)" }}
+          className="h-9 rounded-[10px] px-2.5 text-sm text-ink bg-well border-0" style={{ boxShadow: "var(--shadow-inset)" }}
           value={paymentFilter}
           onChange={(e) => setPaymentFilter(e.target.value)}
         >
@@ -350,25 +350,25 @@ const LoadsPage = () => {
       {inTransit.length > 0 && (
         <div
           className="border rounded-xl overflow-hidden mt-4"
-          style={{ borderColor: "#1f4d33" }}
+          style={{ borderColor: "color-mix(in srgb, var(--color-status-positive-text) 30%, transparent)" }}
         >
           <div
             className="px-3 py-2 flex items-center gap-2"
             style={{
-              background: "rgba(63,185,80,0.12)",
-              borderBottom: "1px solid #1f4d33",
+              background: "color-mix(in srgb, var(--color-status-positive-text) 12%, transparent)",
+              borderBottom: "1px solid color-mix(in srgb, var(--color-status-positive-text) 30%, transparent)",
             }}
           >
             <span className="text-base">🚚</span>
             <span
               className="font-condensed text-lg"
-              style={{ color: "#6fd08c" }}
+              style={{ color: "var(--color-status-positive-text)" }}
             >
               On the road
             </span>
             <span
               className="text-[11px] px-2 py-0.5 rounded-full"
-              style={{ background: "#12251a", color: "#6fd08c" }}
+              style={{ background: "var(--color-status-positive-bg)", color: "var(--color-status-positive-text)" }}
             >
               {inTransit.length}
             </span>
@@ -376,7 +376,7 @@ const LoadsPage = () => {
               what's rolling now
             </span>
           </div>
-          <div className="overflow-x-auto" style={{ background: "#12180f" }}>
+          <div className="overflow-x-auto" style={{ background: "var(--color-well)" }}>
             <table className="w-full text-sm min-w-[760px] px-2 [&_td]:pr-5 [&_td:last-child]:pr-0 [&_td:first-child]:pl-3">
               <tbody>
                 {inTransit.map((load) => (

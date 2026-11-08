@@ -58,6 +58,11 @@
   --color-amber-dark: var(--t-amber-dark);
   --color-amber-light: var(--t-amber-light);
   --color-on-amber: #0b0f17; /* text on an amber fill, both looks */
+  /* the two shadows, themed: a resting card and a raised layer (phase A2) */
+  --shadow-card: var(--t-shadow-card);
+  --shadow-pop: var(--t-shadow-pop);
+  --shadow-inset: var(--t-shadow-inset); /* a sunk well or field */
+  --color-highlight: rgba(255, 255, 255, 0.5); /* the sheen on an amber fill, both looks */
 
   /* DTS Brand Fonts */
   --font-display: "Bebas Neue", sans-serif;
@@ -130,6 +135,9 @@
   -----------------------------------------------------------*/
 :root {
   color-scheme: light;
+  --t-shadow-card: 0 1px 2px rgba(15, 26, 43, 0.06);
+  --t-shadow-pop: 0 10px 24px rgba(15, 26, 43, 0.14);
+  --t-shadow-inset: inset 0 1px 2px rgba(15, 26, 43, 0.08);
   --t-steel: #e8ecf3;
   --t-iron: #ffffff;
   --t-plate: #e1e6ee;
@@ -170,6 +178,9 @@
 }
 .dark {
   color-scheme: dark;
+  --t-shadow-card: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --t-shadow-pop: 0 12px 28px rgba(0, 0, 0, 0.55);
+  --t-shadow-inset: inset 0 2px 6px rgba(0, 0, 0, 0.6);
   --t-steel: #0d1117;
   --t-iron: #1c2333;
   --t-plate: #2a3347;

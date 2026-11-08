@@ -124,7 +124,7 @@ export const LogServiceSheet = ({
           <FieldLabel>Unit</FieldLabel>
           <span
             className="inline-flex h-[32px] p-[3px] rounded-[9px] bg-well gap-[2px]"
-            style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+            style={{ boxShadow: "var(--shadow-inset)" }}
             role="group"
             aria-label="Unit"
           >

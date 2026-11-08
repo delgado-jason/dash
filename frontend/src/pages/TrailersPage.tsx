@@ -72,9 +72,9 @@ const FIELDS: FormField[] = [
 ];
 
 const STATUS_CHIP: Record<string, string> = {
-  active: "text-[#6fd08c] border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]",
-  maintenance: "text-amber-hi border-[rgba(232,148,10,.45)] bg-[rgba(232,148,10,.1)]",
-  out_of_service: "text-[#e05252] border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]",
+  active: "text-status-positive-text border-status-positive-text/35 bg-status-positive-text/8",
+  maintenance: "text-amber-hi border-amber/45 bg-amber/10",
+  out_of_service: "text-status-negative-text border-status-negative-text/45 bg-status-negative-text/10",
   inactive: "text-faint border-hairline",
 };
 
@@ -214,7 +214,7 @@ const TrailersPage = () => {
               style={{
                 background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
                 boxShadow:
-                  "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
               }}
             >
               + ADD TRAILER
@@ -271,12 +271,12 @@ const TrailersPage = () => {
                       {t.status.replace(/_/g, " ")}
                     </span>
                     {overdue > 0 && (
-                      <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#e05252] border border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]">
+                      <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
                         {overdue} OVERDUE
                       </span>
                     )}
                     {overdue === 0 && soon > 0 && (
-                      <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-[rgba(232,148,10,.45)] bg-[rgba(232,148,10,.1)]">
+                      <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-amber/45 bg-amber/10">
                         {soon} SERVICE{soon === 1 ? "" : "S"} CLOSE
                       </span>
                     )}
@@ -293,10 +293,10 @@ const TrailersPage = () => {
                   <span
                     className="font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
                     style={{
-                      color: "#f0c24a",
-                      border: "1.5px solid rgba(240,194,74,.55)",
+                      color: "var(--color-amber-hi)",
+                      border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
                       boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,.15), 0 1px 2px rgba(0,0,0,.5)",
+                        "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 15%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
                     }}
                   >
                     {m.label} CLUB

@@ -387,14 +387,14 @@ const LoadForm = ({
         className="mt-1.5 w-full flex items-center gap-2 rounded-[8px] border px-2.5 py-1.5 text-left transition-colors"
         style={
           create
-            ? { borderColor: "rgba(93,202,165,.42)", background: "rgba(93,202,165,.08)" }
-            : { borderColor: "rgba(232,148,10,.40)", background: "rgba(232,148,10,.06)" }
+            ? { borderColor: "color-mix(in srgb, var(--color-cat2) 42%, transparent)", background: "color-mix(in srgb, var(--color-cat2) 8%, transparent)" }
+            : { borderColor: "color-mix(in srgb, var(--color-amber) 40%, transparent)", background: "color-mix(in srgb, var(--color-amber) 6%, transparent)" }
         }
         title={`${create ? "Create & use" : "Use"} ${rec.market_name} — ${rec.reason}`}
       >
         <span
           className="shrink-0 text-[10.5px] font-condensed font-semibold uppercase tracking-[.09em]"
-          style={{ color: create ? "#5dcaa5" : "#f5b03a" }}
+          style={{ color: create ? "var(--color-cat2)" : "var(--color-amber-hi)" }}
         >
           {create ? "+ Create & use" : "Use"}
         </span>
@@ -403,7 +403,7 @@ const LoadForm = ({
           {create && (
             <span
               className="ml-1.5 text-[9.5px] uppercase tracking-[.08em] rounded-[5px] px-1.5 py-px"
-              style={{ color: "#5dcaa5", border: "1px solid rgba(93,202,165,.45)" }}
+              style={{ color: "var(--color-cat2)", border: "1px solid color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}
             >
               new
             </span>
@@ -731,7 +731,7 @@ const LoadForm = ({
               <Label>
                 How’d this load come to you?{!initialData && <span className="text-destructive"> *</span>}
               </Label>
-              <div className="inline-flex border rounded-md overflow-hidden mt-1" style={{ borderColor: "var(--color-hairline, #2a3347)" }}>
+              <div className="inline-flex border rounded-md overflow-hidden mt-1" style={{ borderColor: "var(--color-hairline)" }}>
                 {(
                   [
                     ["agent_reached_out", "Agent reached out"],
@@ -1496,7 +1496,7 @@ const LoadForm = ({
                 />
               </div>
               {isOverWidth(formData.width_in) && (
-                <p className="text-xs mt-2" style={{ color: "#f5b03a" }}>
+                <p className="text-xs mt-2" style={{ color: "var(--color-amber-hi)" }}>
                   {formatInches(formData.width_in)} wide is over the 8'6" legal
                   limit — flag it Oversize in Load Type.
                 </p>

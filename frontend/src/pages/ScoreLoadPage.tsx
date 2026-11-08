@@ -42,10 +42,10 @@ const markerPct = (
 
 // Destination market grade → forge stencil badge.
 const GRADE_META: Record<MarketGrade, { label: string; color: string }> = {
-  strong: { label: "STRONG", color: "#5dcaa5" },
-  fair: { label: "FAIR", color: "#8494ab" },
-  soft: { label: "SOFT", color: "#e8940a" },
-  thin: { label: "THIN", color: "#5a6880" },
+  strong: { label: "STRONG", color: "var(--color-cat2)" },
+  fair: { label: "FAIR", color: "var(--color-dim)" },
+  soft: { label: "SOFT", color: "var(--color-amber)" },
+  thin: { label: "THIN", color: "var(--color-faint)" },
 };
 
 // ---- forge inputs ----
@@ -210,7 +210,7 @@ const AgentField = ({
         <ul
           role="listbox"
           className="absolute left-0 right-0 z-30 mt-1 p-1 rounded-lg bg-panel border border-hairline max-h-56 overflow-y-auto"
-          style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+          style={{ boxShadow: "var(--shadow-pop)" }}
         >
           {matches.map((a) => (
             <li
@@ -446,8 +446,8 @@ const ScoreLoadPage = () => {
             <div className="ml-auto flex items-baseline gap-3 flex-wrap">
               <span className="font-condensed text-dim text-[13px]">${Number(rate).toLocaleString("en-US")}</span>
               {agent && <span className="font-condensed text-dim text-[13px]">{agentLabel(agent)}</span>}
-              {isNewAgent && <span className="font-forge text-[11px] tracking-wider" style={{ color: "#5dcaa5" }}>NEW AGENT</span>}
-              <span className="font-condensed text-[12px] px-2 py-0.5 rounded" style={{ background: "rgba(53,160,140,.14)", color: "#5dcaa5" }}>
+              {isNewAgent && <span className="font-forge text-[11px] tracking-wider" style={{ color: "var(--color-cat2)" }}>NEW AGENT</span>}
+              <span className="font-condensed text-[12px] px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--color-cat2) 14%, transparent)", color: "var(--color-cat2)" }}>
                 {specialized ? "Specialized" : "Flatbed"}
               </span>
             </div>
@@ -458,7 +458,7 @@ const ScoreLoadPage = () => {
             <div
               className="ds2-board p-3.5 mb-3"
               style={{
-                borderLeft: `3px solid ${call.tone === "good" ? "#5dcaa5" : call.tone === "bad" ? "#e24b4a" : "#e8940a"}`,
+                borderLeft: `3px solid ${call.tone === "good" ? "var(--color-cat2)" : call.tone === "bad" ? "var(--color-status-negative-text)" : "var(--color-amber)"}`,
               }}
             >
               <Lbl accent>The call</Lbl>
@@ -473,7 +473,7 @@ const ScoreLoadPage = () => {
                 <Lbl accent>Verdict</Lbl>
                 <div className="font-forge leading-none" style={{ fontSize: 50, color: meta.fg }}>{meta.label}</div>
               </div>
-              <div className="pl-5" style={{ borderLeft: "1px solid rgba(255,255,255,.08)" }}>
+              <div className="pl-5" style={{ borderLeft: "1px solid color-mix(in srgb, var(--color-ink) 8%, transparent)" }}>
                 <div className="flex items-baseline gap-2">
                   <span className="font-display text-[34px] text-ink">{fmtRpm(score.allInRpm)}</span>
                   <span className="font-condensed text-[13px] text-dim">/ driven mi (all-in)</span>
@@ -485,7 +485,7 @@ const ScoreLoadPage = () => {
                       {Math.round(score.pctOverBreakeven * 100)}% over break-even ·{" "}
                     </>
                   )}
-                  <span style={{ color: specialized ? "#f5b03a" : "#5dcaa5" }}>
+                  <span style={{ color: specialized ? "var(--color-amber-hi)" : "var(--color-cat2)" }}>
                     {specialized ? "Specialized" : "Standard"}
                   </span>{" "}
                   tiers, target +{Math.round(activeTiers.target * 100)}%
@@ -502,10 +502,10 @@ const ScoreLoadPage = () => {
               <div className="flex-1 min-w-[220px]">
                 <Lbl>Where it lands</Lbl>
                 <div className="flex rounded-[5px] overflow-hidden relative" style={{ height: 10 }}>
-                  <div style={{ flex: 1, background: "#2a1414" }} />
-                  <div style={{ flex: 1, background: "#2a2110" }} />
-                  <div style={{ flex: 1, background: "#12261f" }} />
-                  <div style={{ flex: 1, background: "#2a2410" }} />
+                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-status-negative-text) 14%, transparent)" }} />
+                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-amber-hi) 14%, transparent)" }} />
+                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-cat2) 14%, transparent)" }} />
+                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-hot) 14%, transparent)" }} />
                   <div
                     style={{
                       position: "absolute",
@@ -513,15 +513,15 @@ const ScoreLoadPage = () => {
                       top: -3,
                       width: 2,
                       height: 16,
-                      background: "#e6ecf7",
+                      background: "var(--color-ink)",
                     }}
                   />
                 </div>
                 <div className="flex justify-between text-[8.5px] font-condensed tracking-wide mt-1">
-                  <span style={{ color: "#e24b4a" }}>SCRAP</span>
-                  <span style={{ color: "#f5b03a" }}>THIN</span>
-                  <span style={{ color: "#5dcaa5" }}>SOLID</span>
-                  <span style={{ color: "#ffcf7a" }}>PRIME</span>
+                  <span style={{ color: "var(--color-status-negative-text)" }}>SCRAP</span>
+                  <span style={{ color: "var(--color-amber-hi)" }}>THIN</span>
+                  <span style={{ color: "var(--color-cat2)" }}>SOLID</span>
+                  <span style={{ color: "var(--color-hot)" }}>PRIME</span>
                 </div>
               </div>
             </div>
@@ -533,7 +533,7 @@ const ScoreLoadPage = () => {
               <Lbl>Freight vs deadhead</Lbl>
               <div className="grid grid-cols-2 gap-2.5 mt-2 mb-2.5">
                 <Well className="px-3 py-2">
-                  <div className="font-condensed text-[11px]" style={{ color: "#5dcaa5" }}>FREIGHT</div>
+                  <div className="font-condensed text-[11px]" style={{ color: "var(--color-cat2)" }}>FREIGHT</div>
                   <div className="font-display text-[20px] text-ink">
                     {fmtRpm(score.loadedRpm)}<span className="font-condensed text-[11px] text-faint"> /loaded</span>
                   </div>
@@ -565,7 +565,7 @@ const ScoreLoadPage = () => {
                 <Lbl>Destination · where it leaves you</Lbl>
                 <span
                   className="font-forge text-[16px] tracking-wide"
-                  style={{ color: destFactor.market ? GRADE_META[destFactor.market.grade].color : "#5a6880" }}
+                  style={{ color: destFactor.market ? GRADE_META[destFactor.market.grade].color : "var(--color-faint)" }}
                 >
                   {destFactor.market ? GRADE_META[destFactor.market.grade].label : "UNPROVEN"}
                 </span>
@@ -597,7 +597,7 @@ const ScoreLoadPage = () => {
                       <span
                         key={m.state}
                         className="font-condensed text-[11.5px] px-2 py-0.5 rounded"
-                        style={{ background: "rgba(53,160,140,.12)", color: "#5dcaa5" }}
+                        style={{ background: "color-mix(in srgb, var(--color-cat2) 12%, transparent)", color: "var(--color-cat2)" }}
                       >
                         {m.state} {fmtRpm(m.medianRpm)} · {m.loadsOut}
                       </span>
@@ -633,7 +633,7 @@ const ScoreLoadPage = () => {
                 </>
               ) : isNewAgent ? (
                 <div className="text-[12.5px] text-dim mt-1">
-                  <span className="font-forge text-[12px] tracking-wider mr-1.5" style={{ color: "#5dcaa5" }}>NEW</span>
+                  <span className="font-forge text-[12px] tracking-wider mr-1.5" style={{ color: "var(--color-cat2)" }}>NEW</span>
                   No history yet — the rate scores on its own; the relationship builds once you book.
                 </div>
               ) : (
@@ -646,16 +646,16 @@ const ScoreLoadPage = () => {
                 <Lbl>What to ask the agent</Lbl>
                 <div className="mt-2 flex flex-col gap-2">
                   <Well className="flex items-baseline justify-between px-3 py-1.5">
-                    <span className="font-condensed text-[11px]" style={{ color: "#e24b4a" }}>FLOOR</span>
+                    <span className="font-condensed text-[11px]" style={{ color: "var(--color-status-negative-text)" }}>FLOOR</span>
                     <span className="font-display text-[18px] text-ink">{money(counter.floor)}</span>
                   </Well>
-                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "#1a5c3a" }}>
-                    <span className="font-condensed text-[11px]" style={{ color: "#5dcaa5" }}>SOLID</span>
-                    <span className="font-display text-[18px]" style={{ color: "#5dcaa5" }}>{money(counter.take)}</span>
+                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
+                    <span className="font-condensed text-[11px]" style={{ color: "var(--color-cat2)" }}>SOLID</span>
+                    <span className="font-display text-[18px]" style={{ color: "var(--color-cat2)" }}>{money(counter.take)}</span>
                   </Well>
-                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "#6b5410" }}>
-                    <span className="font-condensed text-[11px]" style={{ color: "#ffcf7a" }}>PRIME</span>
-                    <span className="font-display text-[18px]" style={{ color: "#ffcf7a" }}>{money(counter.steal)}</span>
+                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-hot) 45%, transparent)" }}>
+                    <span className="font-condensed text-[11px]" style={{ color: "var(--color-hot)" }}>PRIME</span>
+                    <span className="font-display text-[18px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
                   </Well>
                 </div>
               </div>
@@ -674,7 +674,7 @@ const ScoreLoadPage = () => {
           <NumField label="Rate" value={rate} onChange={setRate} prefix="$" />
 
           <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
-            Route <span className="normal-case tracking-normal" style={{ color: "#4a5566" }}>— city autocompletes</span>
+            Route <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— city autocompletes</span>
           </p>
           <PlaceRow label="Truck now" place={truckNow} onChange={setTruck} />
           <PlaceRow label="Pickup" place={pickup} onChange={setPickup} />
@@ -685,7 +685,7 @@ const ScoreLoadPage = () => {
             <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
             {isNewAgent && (
               <div className="mt-1.5 flex items-center gap-2">
-                <span className="font-forge text-[11px] tracking-wider px-2 py-0.5 rounded" style={{ background: "rgba(53,160,140,.15)", color: "#5dcaa5" }}>
+                <span className="font-forge text-[11px] tracking-wider px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--color-cat2) 15%, transparent)", color: "var(--color-cat2)" }}>
                   NEW AGENT
                 </span>
                 <span className="text-[11px] text-dim">no history yet · not saved until you book</span>
@@ -694,7 +694,7 @@ const ScoreLoadPage = () => {
           </div>
 
           <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
-            Load size <span className="normal-case tracking-normal" style={{ color: "#4a5566" }}>— leave blank if legal</span>
+            Load size <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— leave blank if legal</span>
           </p>
           <div className="mb-2">
             <NumField label="Gross wt" value={wt} onChange={setWt} suffix="lb" />
@@ -708,25 +708,25 @@ const ScoreLoadPage = () => {
           <label
             className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer select-none bg-well border ${hazmat ? "border-amber/60" : "border-hairline"}`}
           >
-            <input type="checkbox" checked={hazmat} onChange={(e) => setHazmat(e.target.checked)} className="accent-[#e8940a]" />
+            <input type="checkbox" checked={hazmat} onChange={(e) => setHazmat(e.target.checked)} className="accent-amber" />
             <span className="text-[12.5px] text-ink">Hazmat</span>
             <span className="ml-auto text-[10px] text-faint">premium · specialized tiers</span>
           </label>
 
           {anyDim &&
             (oversize.oversize ? (
-              <div className="flex items-start gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "#241a06", border: "1px solid #85500b" }}>
+              <div className="flex items-start gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "var(--color-status-aware-bg)", border: "1px solid color-mix(in srgb, var(--color-amber) 50%, transparent)" }}>
                 <span className="font-forge text-[15px] tracking-wide text-amber">OVERSIZE</span>
                 <span className="text-[11px] mt-0.5 text-dim">{oversize.reasons.join(" · ")} → specialized tiers</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "#0f2018", border: "1px solid #1a5c3a" }}>
-                <span className="font-forge text-[15px] tracking-wide" style={{ color: "#5dcaa5" }}>LEGAL</span>
+              <div className="flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "var(--color-status-positive-bg)", border: "1px solid color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
+                <span className="font-forge text-[15px] tracking-wide" style={{ color: "var(--color-cat2)" }}>LEGAL</span>
                 <span className="text-[11px] text-dim">standard flatbed → standard tiers</span>
               </div>
             ))}
 
-          <div className="text-[10px] mt-3 mb-1" style={{ color: routeErr ? "#e8940a" : "#5a6880" }}>
+          <div className="text-[10px] mt-3 mb-1" style={{ color: routeErr ? "var(--color-amber)" : "var(--color-faint)" }}>
             {routeNote}
           </div>
           <div className="flex gap-2.5">

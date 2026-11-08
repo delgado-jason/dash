@@ -344,9 +344,9 @@ export const fleetHealth = (counts: {
 }): FleetHealth => {
   const assessable = counts.overdue + counts.soon + counts.ok;
   if (assessable === 0)
-    return { score: null, label: "No data", color: "#9daabb" };
+    return { score: null, label: "No data", color: "var(--color-dim)" };
   const score = Math.round(((counts.ok + 0.5 * counts.soon) / assessable) * 100);
-  if (score >= 85) return { score, label: "Healthy", color: "#1d9e75" };
-  if (score >= 60) return { score, label: "Needs attention", color: "#e8940a" };
-  return { score, label: "Rough shape", color: "#e24b4a" };
+  if (score >= 85) return { score, label: "Healthy", color: "var(--color-status-positive-text)" };
+  if (score >= 60) return { score, label: "Needs attention", color: "var(--color-amber)" };
+  return { score, label: "Rough shape", color: "var(--color-status-negative-text)" };
 };

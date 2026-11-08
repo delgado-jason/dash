@@ -27,7 +27,7 @@ export const DieselCompareCard = ({
   const delta =
     yourCostPerGallon == null ? null : yourCostPerGallon - national.value;
   const under = delta != null && delta < 0;
-  const deltaColor = delta == null ? "#9daabb" : under ? "#4ade80" : "#e8940a";
+  const deltaColor = delta == null ? "var(--color-dim)" : under ? "var(--color-status-positive-text)" : "var(--color-amber)";
 
   return (
     <div className="ds2-board p-4 mt-4">
@@ -40,7 +40,7 @@ export const DieselCompareCard = ({
             U.S. retail avg · week of {fmtWeek(national.period)} · EIA
           </p>
         </div>
-        {under && <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#6fd08c] border-2 border-[#6fd08c] rounded-[6px] px-[10px] py-[2px] -rotate-3">UNDER THE NATIONAL</span>}
+        {under && <span className="font-forge font-bold text-[12px] tracking-[.12em] text-status-positive-text border-2 border-status-positive-text rounded-[6px] px-[10px] py-[2px] -rotate-3">UNDER THE NATIONAL</span>}
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-4">

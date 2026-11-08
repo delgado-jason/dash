@@ -104,7 +104,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
                 </button>
               )}
               <button
-                className="hover:text-[#e05252]"
+                className="hover:text-status-negative-text"
                 aria-label="Delete"
                 onClick={() => !busy && run(() => deleteExpenseLine(l.line_id))}
               >

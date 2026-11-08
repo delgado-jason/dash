@@ -29,10 +29,10 @@ const formatMonthLabel = (month: string): string => {
   return date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 };
 
-const AMBER = "#e8940a";
-const AMBER_BRIGHT = "#f5b03a";
-const MUTED = "#9daabb";
-const GRID = "#2a3347";
+const AMBER = "var(--color-amber)";
+const AMBER_BRIGHT = "var(--color-amber-hi)";
+const MUTED = "var(--color-dim)";
+const GRID = "var(--color-hairline)";
 
 export const RevenueChart = ({ data, target }: Props) => {
   return (
@@ -60,12 +60,12 @@ export const RevenueChart = ({ data, target }: Props) => {
             tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
           />
           <Tooltip
-            cursor={{ fill: "rgba(255,255,255,0.04)" }}
+            cursor={{ fill: "color-mix(in srgb, var(--color-ink) 4%, transparent)" }}
             contentStyle={{
-              background: "#1c2333",
-              border: "1px solid #2a3347",
+              background: "var(--color-iron)",
+              border: "1px solid var(--color-hairline)",
               borderRadius: 8,
-              color: "#ebedf5",
+              color: "var(--color-ink)",
               fontSize: 12,
             }}
             labelFormatter={(label) => formatMonthLabel(label as string)}

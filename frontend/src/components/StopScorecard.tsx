@@ -3,10 +3,10 @@ import { fmtDuration } from "@/lib/stopTimes";
 
 // Shorter dwell is better — green under 90m, amber under 3h, red beyond.
 const dwellTone = (mins: number | null): string => {
-  if (mins == null) return "#f5e6c8";
-  if (mins < 90) return "#8fd6a8";
-  if (mins < 180) return "#f5c37a";
-  return "#f2a6a3";
+  if (mins == null) return "var(--color-ink)";
+  if (mins < 90) return "var(--color-status-positive-text)";
+  if (mins < 180) return "var(--color-amber-hi)";
+  return "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)";
 };
 
 const Tile = ({
@@ -20,11 +20,11 @@ const Tile = ({
 }) => (
   <div
     className="rounded-[10px] px-3 py-2.5 text-center flex-1 min-w-[88px]"
-    style={{ background: "#0f1626" }}
+    style={{ background: "var(--color-well)" }}
   >
     <div
       className="font-condensed text-xl leading-none"
-      style={{ color: tone ?? "#f5e6c8" }}
+      style={{ color: tone ?? "var(--color-ink)" }}
     >
       {value}
     </div>
@@ -64,17 +64,17 @@ export const StopScorecard = ({ score, countLabel, countValue }: Props) => {
             score.onTimePct != null ? `${Math.round(score.onTimePct * 100)}%` : "—"
           }
           label="On-time"
-          tone={score.onTimePct != null ? "#8fd6a8" : undefined}
+          tone={score.onTimePct != null ? "var(--color-status-positive-text)" : undefined}
         />
         <Tile
           value={`${score.detentionCount} / ${score.timedStops}`}
           label="Detention"
-          tone={score.detentionCount > 0 ? "#f5c37a" : "#8fd6a8"}
+          tone={score.detentionCount > 0 ? "var(--color-amber-hi)" : "var(--color-status-positive-text)"}
         />
         <Tile value={String(countValue)} label={countLabel} />
       </div>
       {score.unpaidCount > 0 && (
-        <p className="text-[11px] mt-2" style={{ color: "#f2a6a3" }}>
+        <p className="text-[11px] mt-2" style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
           {score.unpaidCount} detention {score.unpaidCount === 1 ? "load" : "loads"}{" "}
           still unpaid — worth chasing.
         </p>

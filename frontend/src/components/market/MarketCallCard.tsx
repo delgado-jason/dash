@@ -3,20 +3,20 @@ import { indexSentence } from "@/lib/metrics/marketSignal";
 import { rpm as fmtRpm } from "@/lib/format";
 
 const ACTION_COLOR: Record<TierCall["action"], string> = {
-  raise: "#5dcaa5",
-  hold: "#f5b03a",
-  protect: "#f5b03a",
-  "under-floor": "#e8940a", // caution — below break-even, but not a loss
-  "cut-costs": "#e24b4a",
-  "no-call": "#8494ab",
+  raise: "var(--color-cat2)",
+  hold: "var(--color-amber-hi)",
+  protect: "var(--color-amber-hi)",
+  "under-floor": "var(--color-amber)", // caution — below break-even, but not a loss
+  "cut-costs": "var(--color-status-negative-text)",
+  "no-call": "var(--color-dim)",
 };
 
 const RUNG_COLOR: Record<string, string> = {
-  strong: "#5dcaa5",
-  target: "#f5b03a",
-  floor: "#8494ab",
-  breakEven: "#e24b4a",
-  you: "#f5b03a",
+  strong: "var(--color-cat2)",
+  target: "var(--color-amber-hi)",
+  floor: "var(--color-dim)",
+  breakEven: "var(--color-status-negative-text)",
+  you: "var(--color-amber-hi)",
 };
 
 const RUNG_TAG: Record<string, string> = {
@@ -67,7 +67,7 @@ const TierColumn = ({ call }: { call: TierCall }) => {
             <div
               key={r.key}
               className="flex items-center justify-between rounded-[7px] px-2.5 py-1.5"
-              style={r.you ? { background: "rgba(232,148,10,.13)", border: "1px solid rgba(232,148,10,.36)" } : undefined}
+              style={r.you ? { background: "color-mix(in srgb, var(--color-amber) 13%, transparent)", border: "1px solid color-mix(in srgb, var(--color-amber) 36%, transparent)" } : undefined}
             >
               <span className="text-[12.5px]" style={{ color: RUNG_COLOR[r.key], fontWeight: r.you ? 600 : 400 }}>
                 {r.label}
@@ -75,7 +75,7 @@ const TierColumn = ({ call }: { call: TierCall }) => {
                   <span className="text-[9.5px] uppercase tracking-[.06em] text-faint ml-1.5">{RUNG_TAG[r.key]}</span>
                 )}
               </span>
-              <span className="font-condensed text-[16px]" style={{ color: r.you ? "#f5b03a" : "#e6ecf7", fontWeight: r.you ? 600 : 400 }}>
+              <span className="font-condensed text-[16px]" style={{ color: r.you ? "var(--color-amber-hi)" : "var(--color-ink)", fontWeight: r.you ? 600 : 400 }}>
                 {fmtRpm(r.rate)}
               </span>
             </div>
@@ -87,10 +87,10 @@ const TierColumn = ({ call }: { call: TierCall }) => {
 };
 
 const BADGE = {
-  firming: { arrow: "▲", color: "#5dcaa5", bg: "rgba(93,202,165,.10)", border: "rgba(93,202,165,.32)" },
-  softening: { arrow: "▼", color: "#f5b03a", bg: "rgba(232,148,10,.10)", border: "rgba(232,148,10,.32)" },
-  flat: { arrow: "▬", color: "#8494ab", bg: "rgba(132,148,171,.10)", border: "rgba(132,148,171,.28)" },
-  none: { arrow: "—", color: "#5a6880", bg: "rgba(90,104,123,.10)", border: "rgba(90,104,123,.26)" },
+  firming: { arrow: "▲", color: "var(--color-cat2)", bg: "color-mix(in srgb, var(--color-cat2) 10%, transparent)", border: "color-mix(in srgb, var(--color-cat2) 32%, transparent)" },
+  softening: { arrow: "▼", color: "var(--color-amber-hi)", bg: "color-mix(in srgb, var(--color-amber) 10%, transparent)", border: "color-mix(in srgb, var(--color-amber) 32%, transparent)" },
+  flat: { arrow: "▬", color: "var(--color-dim)", bg: "color-mix(in srgb, var(--color-dim) 10%, transparent)", border: "color-mix(in srgb, var(--color-dim) 28%, transparent)" },
+  none: { arrow: "—", color: "var(--color-faint)", bg: "color-mix(in srgb, var(--color-faint) 10%, transparent)", border: "color-mix(in srgb, var(--color-faint) 26%, transparent)" },
 } as const;
 
 // The signal's badge: a direction only when it HOLDS and isn't fuel; otherwise

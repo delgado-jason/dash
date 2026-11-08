@@ -100,7 +100,7 @@ export const AgentTable = ({
                 key={c.key}
                 onClick={() => setSort(c.key)}
                 className="text-right font-normal text-[10px] uppercase tracking-wide py-2 px-2 cursor-pointer select-none whitespace-nowrap hover:text-ink"
-                style={{ color: sort === c.key ? "#f5b03a" : undefined }}
+                style={{ color: sort === c.key ? "var(--color-amber-hi)" : undefined }}
               >
                 {c.label}
                 {sort === c.key ? " ▼" : ""}
@@ -117,16 +117,16 @@ export const AgentTable = ({
             const trend = card.trend ? TREND_META[card.trend] : null;
             const tint =
               card.tier === "call-first"
-                ? "linear-gradient(90deg,rgba(74,222,128,.06),transparent 45%)"
+                ? "linear-gradient(90deg,color-mix(in srgb, var(--color-status-positive-text) 6%, transparent),transparent 45%)"
                 : card.tier === "watch"
-                  ? "linear-gradient(90deg,rgba(245,166,35,.05),transparent 45%)"
+                  ? "linear-gradient(90deg,color-mix(in srgb, var(--color-amber-hi) 5%, transparent),transparent 45%)"
                   : undefined;
             return (
               <tr
                 key={agent.agent_id}
                 onClick={() => navigate(`/agents/${agent.agent_id}`)}
                 className="cursor-pointer hover:bg-well/40"
-                style={{ background: tint, borderTop: "0.5px solid rgba(255,255,255,0.06)" }}
+                style={{ background: tint, borderTop: "0.5px solid color-mix(in srgb, var(--color-ink) 6%, transparent)" }}
               >
                 <td className="py-2 px-2">
                   <div className="flex items-center gap-2 min-w-0">
@@ -142,11 +142,11 @@ export const AgentTable = ({
                       </span>
                     )}
                     {card.ratingFlag && (
-                      <TriangleAlert size={12} style={{ color: "#f5a623", flexShrink: 0 }} />
+                      <TriangleAlert size={12} style={{ color: "var(--color-amber-hi)", flexShrink: 0 }} />
                     )}
                   </div>
                 </td>
-                <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: "#f5b03a" }}>
+                <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: "var(--color-amber-hi)" }}>
                   {stars(agent.rating)}
                 </td>
                 <td className="text-right py-2 px-2">
@@ -159,7 +159,7 @@ export const AgentTable = ({
                 </td>
                 <td
                   className="text-right py-2 px-2 tabular-nums"
-                  style={{ color: card.medianRpm != null && card.tier === "call-first" ? "#4ade80" : undefined }}
+                  style={{ color: card.medianRpm != null && card.tier === "call-first" ? "var(--color-status-positive-text)" : undefined }}
                 >
                   {card.medianRpm != null ? fmtRpm(card.medianRpm) : "—"}
                 </td>
@@ -170,7 +170,7 @@ export const AgentTable = ({
                 <td className="text-right py-2 px-2 tabular-nums">{money(card.revenue)}</td>
                 <td
                   className="text-right py-2 px-2 tabular-nums"
-                  style={{ color: shareOf(agent.agent_id) > SINGLE_CAP ? "#f5a623" : "var(--color-dim)" }}
+                  style={{ color: shareOf(agent.agent_id) > SINGLE_CAP ? "var(--color-amber-hi)" : "var(--color-dim)" }}
                   title="share of your last-90-day book"
                 >
                   {shareOf(agent.agent_id) > 0 ? `${Math.round(shareOf(agent.agent_id) * 100)}%` : "—"}

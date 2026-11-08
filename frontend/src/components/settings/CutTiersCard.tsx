@@ -9,12 +9,12 @@ import {
 import { classifyCutTier, type CutTier } from "@/lib/metrics/cutPlanner";
 
 const TIERS: { key: CutTier; label: string; color: string; blurb: string }[] = [
-  { key: "off_limits", label: "Off-limits", color: "#5a6880", blurb: "never cut" },
-  { key: "essential", label: "Essential", color: "#8494ab", blurb: "trim overspend only" },
-  { key: "discretionary", label: "Discretionary", color: "#5dcaa5", blurb: "pare into it" },
-  { key: "deferrable", label: "Deferrable", color: "#f5b03a", blurb: "defer a portion" },
-  { key: "efficiency", label: "Efficiency", color: "#e8940a", blurb: "small slice" },
-  { key: "last_resort", label: "Last resort", color: "#e24b4a", blurb: "your pay" },
+  { key: "off_limits", label: "Off-limits", color: "var(--color-faint)", blurb: "never cut" },
+  { key: "essential", label: "Essential", color: "var(--color-dim)", blurb: "trim overspend only" },
+  { key: "discretionary", label: "Discretionary", color: "var(--color-cat2)", blurb: "pare into it" },
+  { key: "deferrable", label: "Deferrable", color: "var(--color-amber-hi)", blurb: "defer a portion" },
+  { key: "efficiency", label: "Efficiency", color: "var(--color-amber)", blurb: "small slice" },
+  { key: "last_resort", label: "Last resort", color: "var(--color-status-negative-text)", blurb: "your pay" },
 ];
 const COLOR = Object.fromEntries(TIERS.map((t) => [t.key, t.color])) as Record<CutTier, string>;
 const LABEL = Object.fromEntries(TIERS.map((t) => [t.key, t.label])) as Record<CutTier, string>;

@@ -132,9 +132,9 @@ const schedLabel = (
 
 const ONTIME_STYLE: Record<OnTime, { bg: string; fg: string; label: string }> =
   {
-    "on-time": { bg: "#0f2419", fg: "#8fd6a8", label: "On time" },
-    late: { bg: "#3a1417", fg: "#f2a6a3", label: "Late" },
-    waited: { bg: "#2a1e0e", fg: "#f5c37a", label: "Waited" },
+    "on-time": { bg: "var(--color-status-positive-bg)", fg: "var(--color-status-positive-text)", label: "On time" },
+    late: { bg: "var(--color-status-negative-bg)", fg: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)", label: "Late" },
+    waited: { bg: "var(--color-status-aware-bg)", fg: "var(--color-amber-hi)", label: "Waited" },
   };
 
 const OnTimeBadge = ({ status }: { status: OnTime | null }) => {
@@ -697,7 +697,7 @@ export const LoadDetailPage = () => {
                 type="checkbox"
                 checked={load.claim_filed === true}
                 onChange={(e) => void setClaimFiled(e.target.checked)}
-                className="accent-[#e8940a]"
+                className="accent-amber"
               />
               Claim filed
             </label>
@@ -779,11 +779,11 @@ export const LoadDetailPage = () => {
       {tonuOwed(load) && (
         <div
           className="mb-4 rounded-lg p-4 flex items-center gap-3 flex-wrap"
-          style={{ border: "1px solid #7a2f2e", background: "#241012" }}
+          style={{ border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 45%, transparent)", background: "var(--color-status-negative-bg)" }}
         >
-          <Ban size={20} style={{ color: "#f2a6a3" }} />
+          <Ban size={20} style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }} />
           <div className="flex-1 min-w-[180px]">
-            <p className="font-condensed text-lg" style={{ color: "#f2a6a3" }}>
+            <p className="font-condensed text-lg" style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
               TONU fee owed · {money(revenue)}
             </p>
             <p className="text-[11px] text-dim">
@@ -793,7 +793,7 @@ export const LoadDetailPage = () => {
           <button
             onClick={() => markPaid("tonu_paid")}
             className="text-xs px-3 py-1.5 rounded font-semibold"
-            style={{ background: "#e24b4a", color: "#120f08" }}
+            style={{ background: "var(--color-status-negative-text)", color: "var(--color-on-amber)" }}
           >
             Mark TONU paid
           </button>
@@ -802,7 +802,7 @@ export const LoadDetailPage = () => {
       {load.load_status === "tonu" && load.tonu_paid && (
         <div
           className="mb-4 rounded-lg px-4 py-2 text-sm"
-          style={{ background: "#12180f", color: "#6f9a80" }}
+          style={{ background: "var(--color-status-positive-bg)", color: "color-mix(in srgb, var(--color-status-positive-text) 70%, transparent)" }}
         >
           TONU fee paid ✓
         </div>
@@ -813,11 +813,11 @@ export const LoadDetailPage = () => {
       {detentionEligible(load, freeHours) && (
         <div
           className="mb-4 rounded-lg p-4 flex items-start gap-3 flex-wrap"
-          style={{ border: "1px solid #7a4718", background: "#241a0e" }}
+          style={{ border: "1px solid color-mix(in srgb, var(--color-amber) 45%, transparent)", background: "var(--color-status-aware-bg)" }}
         >
-          <Clock size={20} style={{ color: "#f5b03a" }} />
+          <Clock size={20} style={{ color: "var(--color-amber-hi)" }} />
           <div className="flex-1 min-w-[180px]">
-            <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
+            <p className="font-condensed text-lg" style={{ color: "var(--color-amber-hi)" }}>
               Possible detention · {detentionLabel(load, freeHours)}
             </p>
             <p className="text-[11px] text-dim">
@@ -830,14 +830,14 @@ export const LoadDetailPage = () => {
             <button
               onClick={() => setDetentionBillable(true)}
               className="text-xs px-3 py-1.5 rounded font-semibold"
-              style={{ background: "#e8940a", color: "#161008" }}
+              style={{ background: "var(--color-amber)", color: "var(--color-on-amber)" }}
             >
               Detention will be paid
             </button>
             <button
               onClick={() => setDetentionBillable(false)}
               className="text-xs px-3 py-1.5 rounded"
-              style={{ background: "#2a3347", color: "#c7d0dd" }}
+              style={{ background: "var(--color-plate)", color: "var(--color-muted-text)" }}
             >
               No detention
             </button>
@@ -847,11 +847,11 @@ export const LoadDetailPage = () => {
       {detentionOwed(load) && (
         <div
           className="mb-4 rounded-lg p-4 flex items-center gap-3 flex-wrap"
-          style={{ border: "1px solid #7a4718", background: "#241a0e" }}
+          style={{ border: "1px solid color-mix(in srgb, var(--color-amber) 45%, transparent)", background: "var(--color-status-aware-bg)" }}
         >
-          <Clock size={20} style={{ color: "#f5b03a" }} />
+          <Clock size={20} style={{ color: "var(--color-amber-hi)" }} />
           <div className="flex-1 min-w-[180px]">
-            <p className="font-condensed text-lg" style={{ color: "#f5b03a" }}>
+            <p className="font-condensed text-lg" style={{ color: "var(--color-amber-hi)" }}>
               Detention · {detentionLabel(load, freeHours)} · waiting on payment
             </p>
             <p className="text-[11px] text-dim">
@@ -862,7 +862,7 @@ export const LoadDetailPage = () => {
           <button
             onClick={() => markPaid("detention_paid")}
             className="text-xs px-3 py-1.5 rounded font-semibold"
-            style={{ background: "#e8940a", color: "#161008" }}
+            style={{ background: "var(--color-amber)", color: "var(--color-on-amber)" }}
           >
             Mark detention paid
           </button>
@@ -871,7 +871,7 @@ export const LoadDetailPage = () => {
       {detentionCollected(load) && (
         <div
           className="mb-4 rounded-lg px-4 py-2 text-sm"
-          style={{ background: "#12180f", color: "#6f9a80" }}
+          style={{ background: "var(--color-status-positive-bg)", color: "color-mix(in srgb, var(--color-status-positive-text) 70%, transparent)" }}
         >
           Detention paid ✓
         </div>
@@ -1253,8 +1253,8 @@ export const LoadDetailPage = () => {
                         className="w-2.5 h-2.5 rounded-full"
                         style={
                           on
-                            ? { background: "var(--color-amber)", boxShadow: "0 0 7px rgba(232,148,10,.6)" }
-                            : { background: "var(--color-well)", boxShadow: "inset 0 1px 3px rgba(0,0,0,.6)" }
+                            ? { background: "var(--color-amber)", boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 60%, transparent)" }
+                            : { background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }
                         }
                       />
                       <span className={`text-[9px] font-semibold tracking-[.1em] uppercase ${on ? "text-dim" : "text-faint"}`}>{nm}</span>

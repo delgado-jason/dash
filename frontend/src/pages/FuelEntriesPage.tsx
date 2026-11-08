@@ -382,7 +382,7 @@ const FuelEntriesPage = () => {
             style={{
               background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
               boxShadow:
-                "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
             }}
           >
             + LOG FILL-UP
@@ -458,11 +458,11 @@ const FuelEntriesPage = () => {
                 <span className="font-display text-[17px] tracking-[.05em] w-[40px]">{r.st}</span>
                 <span
                   className="flex-1 h-[8px] rounded-[3px] overflow-hidden"
-                  style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                  style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
                 >
                   <i
                     className="block h-full"
-                    style={{ width: `${(r.gal / byState.maxGal) * 100}%`, background: "#c87f0a" }}
+                    style={{ width: `${(r.gal / byState.maxGal) * 100}%`, background: "var(--color-amber-dark)" }}
                   />
                 </span>
                 <span className="w-[130px] text-right text-[13px] text-dim tabular-nums">
@@ -522,14 +522,14 @@ const FuelEntriesPage = () => {
                         {e.company_name || "—"}
                         {pl ? ` · ${pl}` : ""}
                         {full && mpg != null && (
-                          <span className="ml-2 font-display text-[11px] tracking-[.1em] text-[#6fd08c] border border-[rgba(111,208,140,.4)] rounded-[4px] px-[6px] py-[1px] whitespace-nowrap">
+                          <span className="ml-2 font-display text-[11px] tracking-[.1em] text-status-positive-text border border-status-positive-text/40 rounded-[4px] px-[6px] py-[1px] whitespace-nowrap">
                             CLOSED THE TANK · {mpg.toFixed(1)} MPG
                           </span>
                         )}
                       </span>
                       <span className="text-right tabular-nums whitespace-nowrap">
                         {full ? (
-                          <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.07)] mr-1.5">
+                          <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-amber-hi border border-amber/40 bg-amber/7 mr-1.5">
                             FULL
                           </span>
                         ) : (
@@ -552,7 +552,7 @@ const FuelEntriesPage = () => {
                           ev.stopPropagation();
                           remove(e.fuel_entry_id);
                         }}
-                        className="text-right text-faint hover:text-[#e05252] text-[13px]"
+                        className="text-right text-faint hover:text-status-negative-text text-[13px]"
                       >
                         ✕
                       </button>
@@ -579,7 +579,7 @@ const FuelEntriesPage = () => {
             <div className="relative w-full max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
               >
                 <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
                   {editingId ? "EDIT FILL-UP" : "LOG FILL-UP"}
@@ -675,19 +675,19 @@ const FuelEntriesPage = () => {
             <div
               className="sm:col-span-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
               style={{
-                background: ppgOver ? "#331414" : "#12331f",
-                border: `1px solid ${ppgOver ? "#5b2020" : "#1f5636"}`,
+                background: ppgOver ? "var(--color-status-negative-bg)" : "var(--color-status-positive-bg)",
+                border: `1px solid ${ppgOver ? "color-mix(in srgb, var(--color-status-negative-text) 35%, transparent)" : "color-mix(in srgb, var(--color-status-positive-text) 35%, transparent)"}`,
               }}
             >
               <span className="text-muted-text text-xs">Price / gallon</span>
               <span
                 className="font-semibold tabular-nums"
-                style={{ color: ppgOver ? "#f0857a" : "#4ade80" }}
+                style={{ color: ppgOver ? "var(--color-status-negative-text)" : "var(--color-status-positive-text)" }}
               >
                 {computedPpg == null ? "—" : `$${computedPpg.toFixed(3)} / gal`}
               </span>
               {ppgOver && (
-                <span className="text-[11px] text-[#f0857a]">
+                <span className="text-[11px] text-status-negative-text">
                   over the $10 limit — check gallons
                 </span>
               )}

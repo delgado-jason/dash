@@ -5,11 +5,11 @@ import { money } from "@/lib/format";
 
 type Targets = ReturnType<typeof useRateTargets>;
 
-const RED = "#e24b4a";
-const AMBER = "#e8940a";
-const GREEN = "#1d9e75";
-const GREEN_TICK = "#35c47a"; // brighter than the fill, so the target tick reads on top of it
-const TRACK = "#232c3f";
+const RED = "var(--color-status-negative-text)";
+const AMBER = "var(--color-amber)";
+const GREEN = "color-mix(in srgb, var(--color-status-positive-text) 80%, var(--color-well))";
+const GREEN_TICK = "var(--color-status-positive-text)"; // brighter than the fill, so the target tick reads on top of it
+const TRACK = "var(--color-plate)";
 
 // This week's gross vs floor (break-even) and target (your margin goal). The bar
 // spans past target for headroom; solid fill is EARNED (delivered), the faded
@@ -83,7 +83,7 @@ const LegendItem = ({
       className="inline-block rounded-sm shrink-0"
       style={{ width: 9, height: 9, background: color }}
     />
-    <span style={emphasize ? { color: "#c8d0dc", fontWeight: 600 } : undefined}>
+    <span style={emphasize ? { color: "var(--color-ink)", fontWeight: 600 } : undefined}>
       {label} {value}
     </span>
   </span>
@@ -107,7 +107,7 @@ const TargetBurst = () => (
       height={52}
       style={{ transform: "rotate(-8deg)" }}
     >
-      <polygon points={BURST} fill={GREEN} stroke="#0d1117" strokeWidth={1.5} />
+      <polygon points={BURST} fill={GREEN} stroke="var(--color-canvas)" strokeWidth={1.5} />
       <text
         x={30}
         y={34}
@@ -115,7 +115,7 @@ const TargetBurst = () => (
         className="font-condensed"
         fontWeight={600}
         fontSize={11}
-        fill="#04241a"
+        fill="var(--color-on-amber)"
       >
         TARGET!
       </text>

@@ -11,7 +11,7 @@ import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { MeterCells } from "@/components/awards/HardwareBoard";
 import { money, rpm as fmtRpm } from "@/lib/format";
 
-const GOLD = "#fcd34d";
+const GOLD = "var(--color-hot)";
 
 const Stat = ({
   label,
@@ -36,11 +36,11 @@ const TrophyTile = ({ t }: { t: SeasonTrophy }) => (
     className="rounded-xl p-3 text-center border"
     style={
       t.earned
-        ? { background: "#2a2410", borderColor: "#f5a623" }
-        : { background: "#121a26", borderColor: "#232d43", opacity: 0.75 }
+        ? { background: "var(--color-status-aware-bg)", borderColor: "var(--color-amber-hi)" }
+        : { background: "var(--color-well)", borderColor: "var(--color-hairline)", opacity: 0.75 }
     }
   >
-    <div className="flex justify-center" style={{ color: t.earned ? GOLD : "#586b86" }}>
+    <div className="flex justify-center" style={{ color: t.earned ? GOLD : "var(--color-faint)" }}>
       <span
         aria-hidden
         className={`font-forge font-bold ${t.earned ? "text-amber-hi" : "text-faint"}`}
@@ -52,7 +52,7 @@ const TrophyTile = ({ t }: { t: SeasonTrophy }) => (
     <p className="text-[12.5px] font-semibold mt-1.5">{t.name}</p>
     <p
       className="text-[11px] mt-0.5"
-      style={{ color: t.earned ? GOLD : "#8b97a8" }}
+      style={{ color: t.earned ? GOLD : "var(--color-muted-text)" }}
     >
       {t.detail}
     </p>
@@ -104,8 +104,8 @@ export const DispatcherSeasonCard = ({
   const rateColor =
     season.avgRpm != null && target != null
       ? season.avgRpm >= target
-        ? "#4ade80"
-        : "#f5a623"
+        ? "var(--color-status-positive-text)"
+        : "var(--color-amber-hi)"
       : undefined;
 
   return (
@@ -184,7 +184,7 @@ export const DispatcherSeasonCard = ({
               style={{
                 background: "var(--color-well)",
                 borderColor: "var(--color-hairline-lo)",
-                color: "#9fb0c9",
+                color: "var(--color-dim)",
               }}
             >
               {e.label}

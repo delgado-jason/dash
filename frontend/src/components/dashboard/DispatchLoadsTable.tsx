@@ -23,11 +23,11 @@ const FILTERS: { key: Filter; label: string }[] = [
 ];
 
 const STATUS_COLOR: Record<string, string> = {
-  booked: "#8fb9ff",
-  in_transit: "#4ade80",
-  delivered: "#9daabb",
-  cancelled: "#f87171",
-  tonu: "#f5c37a",
+  booked: "var(--color-status-info-text)",
+  in_transit: "var(--color-status-positive-text)",
+  delivered: "var(--color-muted-text)",
+  cancelled: "var(--color-status-negative-text)",
+  tonu: "var(--color-amber-hi)",
 };
 const STATUS_LABEL: Record<string, string> = {
   booked: "booked",
@@ -55,7 +55,7 @@ const rowDate = (l: Load): string | null | undefined =>
   isDelivered(l) ? l.delivery_date : l.pickup_date;
 
 const StatusChip = ({ status }: { status: string }) => (
-  <span style={{ color: STATUS_COLOR[status] ?? "#9daabb" }}>
+  <span style={{ color: STATUS_COLOR[status] ?? "var(--color-muted-text)" }}>
     {STATUS_LABEL[status] ?? status}
   </span>
 );
@@ -132,7 +132,7 @@ export const DispatchLoadsTable = ({
         </span>
       </div>
 
-      <div className="flex items-center gap-2 bg-[#141a26] border border-[#2a3347] rounded-md px-2.5 py-1.5 mb-2.5">
+      <div className="flex items-center gap-2 bg-well border border-hairline rounded-md px-2.5 py-1.5 mb-2.5">
         <Search size={13} className="text-dim shrink-0" />
         <input
           value={search}
@@ -149,12 +149,12 @@ export const DispatchLoadsTable = ({
               key={l.load_id}
               to={`/loads/${l.load_id}`}
               className="block rounded-lg px-2.5 py-1.5 hover:opacity-90"
-              style={{ background: "#132234", border: "1px solid #2b5a8c" }}
+              style={{ background: "var(--color-status-info-bg)", border: "1px solid color-mix(in srgb, var(--color-status-info-text) 40%, transparent)" }}
             >
               <div className="flex items-center justify-between">
                 <span
                   className="text-[10px] flex items-center gap-1"
-                  style={{ color: "#60a5fa" }}
+                  style={{ color: "var(--color-status-info-text)" }}
                 >
                   <Truck size={11} /> ON THE ROAD
                 </span>
@@ -178,8 +178,8 @@ export const DispatchLoadsTable = ({
             className="rounded-full px-2.5 py-0.5 text-[11px]"
             style={
               filter === f.key
-                ? { background: "#e8940a", color: "#10151f", fontWeight: 600 }
-                : { background: "#232c3f", color: "#cdd8e8" }
+                ? { background: "var(--color-amber)", color: "var(--color-on-amber)", fontWeight: 600 }
+                : { background: "var(--color-plate)", color: "var(--color-ink)" }
             }
           >
             {f.label}
@@ -206,9 +206,9 @@ export const DispatchLoadsTable = ({
             <Link
               key={l.load_id}
               to={`/loads/${l.load_id}`}
-              className="grid grid-cols-[46px_1fr_66px_46px] items-center text-[11px] py-1.5 px-1 border-b border-[#202838] last:border-b-0 hover:opacity-80"
+              className="grid grid-cols-[46px_1fr_66px_46px] items-center text-[11px] py-1.5 px-1 border-b border-hairline-lo last:border-b-0 hover:opacity-80"
             >
-              <span style={{ color: "#8fb9ff" }} className="underline">
+              <span style={{ color: "var(--color-status-info-text)" }} className="underline">
                 #{l.load_number}
               </span>
               <span className="text-ink truncate flex items-center gap-1.5">
@@ -216,7 +216,7 @@ export const DispatchLoadsTable = ({
                 {owed && (
                   <span
                     className="shrink-0 rounded px-1 text-[9px]"
-                    style={{ background: "#7a4718", color: "#f5c37a" }}
+                    style={{ background: "var(--color-status-aware-bg)", color: "var(--color-amber-hi)" }}
                   >
                     {fmtDuration(detentionMinutes(l, freeHours))}
                   </span>
@@ -224,7 +224,7 @@ export const DispatchLoadsTable = ({
                 {eligible && (
                   <span
                     className="shrink-0 rounded px-1 text-[9px]"
-                    style={{ color: "#8b98a9" }}
+                    style={{ color: "var(--color-muted-text)" }}
                   >
                     det?
                   </span>
@@ -252,7 +252,7 @@ export const DispatchLoadsTable = ({
             onClick={() => setPage(clamped - 1)}
             disabled={clamped === 0}
             className="w-6 h-5 rounded flex items-center justify-center disabled:opacity-30"
-            style={{ background: "#232c3f", color: "#cdd8e8" }}
+            style={{ background: "var(--color-plate)", color: "var(--color-ink)" }}
             aria-label="Previous page"
           >
             <ChevronLeft size={13} />
@@ -261,7 +261,7 @@ export const DispatchLoadsTable = ({
             onClick={() => setPage(clamped + 1)}
             disabled={clamped >= pages - 1}
             className="w-6 h-5 rounded flex items-center justify-center disabled:opacity-30"
-            style={{ background: "#232c3f", color: "#cdd8e8" }}
+            style={{ background: "var(--color-plate)", color: "var(--color-ink)" }}
             aria-label="Next page"
           >
             <ChevronRight size={13} />

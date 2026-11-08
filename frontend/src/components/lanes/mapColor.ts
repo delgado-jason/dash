@@ -10,13 +10,25 @@ import type { LedgerRow } from "@/lib/metrics/marketLedger";
 //
 // Ramps are the house scales, so the two renderers can never drift.
 
-export const VOL_RAMP = ["#6b4e12", "#9a6c0e", "#c8890a", "#e8940a", "#f5b03a"];
-export const RATE_RAMP = ["#134e3a", "#1a6b4e", "#26855f", "#35b07a", "#4ade80"];
+export const VOL_RAMP = [
+  "color-mix(in srgb, var(--color-amber) 35%, var(--color-well))",
+  "color-mix(in srgb, var(--color-amber) 55%, var(--color-well))",
+  "color-mix(in srgb, var(--color-amber) 75%, var(--color-well))",
+  "var(--color-amber)",
+  "var(--color-amber-hi)",
+];
+export const RATE_RAMP = [
+  "color-mix(in srgb, var(--color-status-positive-text) 30%, var(--color-well))",
+  "color-mix(in srgb, var(--color-status-positive-text) 45%, var(--color-well))",
+  "color-mix(in srgb, var(--color-status-positive-text) 62%, var(--color-well))",
+  "color-mix(in srgb, var(--color-status-positive-text) 80%, var(--color-well))",
+  "var(--color-status-positive-text)",
+];
 // The IN half is the same green scale read BACKWARDS: fewer empty miles is
 // better, so the brightest end belongs to the smallest number. Both money
 // metrics then say the same thing — brighter is better.
 export const IN_RAMP = RATE_RAMP;
-export const NO_DATA = "#10161f"; // v2 well — unlit territory recedes
+export const NO_DATA = "var(--color-well)"; // v2 well — unlit territory recedes
 
 // Below this many loads on the metric's own side a market is a story, not a
 // market: it gets the hatch, not a shade.

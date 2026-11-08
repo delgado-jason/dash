@@ -62,7 +62,7 @@ const Editor = ({ existing, onDone, onCancel }: EditorProps) => {
 
   const field = "bg-steel rounded px-2 py-1.5 text-light text-sm";
   return (
-    <div className="rounded px-3 py-3" style={{ background: "#0d1119" }}>
+    <div className="rounded px-3 py-3" style={{ background: "var(--color-well)" }}>
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="date"
@@ -194,7 +194,7 @@ export const PerDiemRatesTable = () => {
               <div
                 key={r.rate_id}
                 className="flex items-center gap-3 rounded px-3 py-2"
-                style={{ background: "#0d1119" }}
+                style={{ background: "var(--color-well)" }}
               >
                 <span className="text-sm text-muted-text w-[130px] shrink-0">from {dayWords(r.effective_from)}</span>
                 <span className="text-sm text-light flex-1">

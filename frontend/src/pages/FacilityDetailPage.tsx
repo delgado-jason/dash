@@ -45,9 +45,9 @@ interface StopRow {
 }
 
 const APPT_CLAUSE: Record<OnTime, (t: string) => { text: string; tone: string }> = {
-  waited: (t) => ({ text: `· beat the ${t} appt`, tone: "text-[#6fd08c]" }),
-  "on-time": (t) => ({ text: `· made the ${t} appt`, tone: "text-[#6fd08c]" }),
-  late: (t) => ({ text: `· missed the ${t} appt`, tone: "text-[#e05252]" }),
+  waited: (t) => ({ text: `· beat the ${t} appt`, tone: "text-status-positive-text" }),
+  "on-time": (t) => ({ text: `· made the ${t} appt`, tone: "text-status-positive-text" }),
+  late: (t) => ({ text: `· missed the ${t} appt`, tone: "text-status-negative-text" }),
 };
 
 const FacilityDetailPage = () => {
@@ -244,7 +244,7 @@ const FacilityDetailPage = () => {
                       of {score.timedStops} stop{score.timedStops === 1 ? "" : "s"}
                     </span>
                     {score.unpaidCount > 0 && (
-                      <span className="text-[12.5px] text-[#e05252] font-medium">
+                      <span className="text-[12.5px] text-status-negative-text font-medium">
                         {" "}
                         · {score.unpaidCount} unpaid
                       </span>
@@ -270,7 +270,7 @@ const FacilityDetailPage = () => {
                             ? {
                                 background:
                                   "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                                boxShadow: "0 0 8px rgba(232,148,10,.3)",
+                                boxShadow: "0 0 8px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                               }
                             : { border: "1px dashed var(--color-hairline)" }
                         }
@@ -343,7 +343,7 @@ const FacilityDetailPage = () => {
             rows={3}
             placeholder="Gate codes, who to call, where they stage oversize, which door — write it once, read it every time you're routed back."
             className="w-full mt-[10px] bg-well border border-hairline-lo rounded-[10px] px-[14px] py-[12px] text-[14px] leading-[1.55] text-ink placeholder:text-faint placeholder:font-condensed placeholder:text-[13px] outline-none resize-y"
-            style={{ boxShadow: "inset 0 2px 6px rgba(0,0,0,.45)" }}
+            style={{ boxShadow: "var(--shadow-inset)" }}
           />
           {notesDirty && (
             <button
@@ -352,7 +352,7 @@ const FacilityDetailPage = () => {
               className="mt-2 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] text-canvas disabled:opacity-50"
               style={{
                 background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                boxShadow: "0 4px 10px rgba(232,148,10,.25)",
+                boxShadow: "0 4px 10px color-mix(in srgb, var(--color-amber) 25%, transparent)",
               }}
             >
               {savingNotes ? "SAVING…" : "SAVE NOTES"}
@@ -386,7 +386,7 @@ const FacilityDetailPage = () => {
               onClick={doMerge}
               disabled={!mergeTarget || merging}
               className="h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline disabled:opacity-40"
-              style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+              style={{ boxShadow: "var(--shadow-inset)" }}
             >
               {merging ? "MERGING…" : "MERGE"}
             </button>

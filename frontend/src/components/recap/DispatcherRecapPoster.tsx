@@ -14,21 +14,21 @@ const TrophyTile = ({ t }: { t: SeasonTrophy }) => (
   <div
     className="flex-1 rounded-[9px] px-2 py-2 text-center"
     style={{
-      background: "#1c2333",
-      border: `1px solid ${t.earned ? "rgba(245,176,58,.5)" : "transparent"}`,
+      background: "var(--color-iron)",
+      border: `1px solid ${t.earned ? "color-mix(in srgb, var(--color-amber-hi) 50%, transparent)" : "transparent"}`,
     }}
   >
     <div
       aria-hidden
       className="font-forge font-bold text-[11px] tracking-[1px]"
-      style={{ color: t.earned ? "#f5b03a" : "#586b86" }}
+      style={{ color: t.earned ? "var(--color-amber-hi)" : "var(--color-faint)" }}
     >
       {t.earned ? "WON" : "—"}
     </div>
-    <div className="text-[11px] font-semibold mt-0.5" style={{ color: "#f5e6c8" }}>
+    <div className="text-[11px] font-semibold mt-0.5" style={{ color: "var(--color-ink)" }}>
       {t.name}
     </div>
-    <div className="text-[10px] mt-0.5" style={{ color: t.earned ? "#fcd34d" : "#8b97a8" }}>
+    <div className="text-[10px] mt-0.5" style={{ color: t.earned ? "var(--color-hot)" : "var(--color-dim)" }}>
       {t.detail}
     </div>
     <div className="mt-1.5">
@@ -46,11 +46,11 @@ const TopBox = ({
   label: string;
   value: string | null;
 }) => (
-  <div className="flex-1 min-w-[130px] rounded-[10px] px-3 py-2.5" style={{ background: "#1c2333" }}>
+  <div className="flex-1 min-w-[130px] rounded-[10px] px-3 py-2.5" style={{ background: "var(--color-iron)" }}>
     <div className="text-[10px] text-muted-text tracking-wide">
       {icon} {label}
     </div>
-    <div className="font-forge font-bold text-[16px] mt-0.5" style={{ color: "#f5b03a" }}>
+    <div className="font-forge font-bold text-[16px] mt-0.5" style={{ color: "var(--color-amber-hi)" }}>
       {value ?? "—"}
     </div>
   </div>
@@ -94,15 +94,15 @@ export const DispatcherRecapPoster = ({
       {t.banner && (
         <div
           className="relative h-44 sm:h-52 flex items-center justify-center overflow-hidden"
-          style={{ borderBottom: `${t.border}px solid ${t.metal}`, background: "#0a0d13" }}
+          style={{ borderBottom: `${t.border}px solid ${t.metal}`, background: "var(--color-canvas)" }}
         >
-          <Truck size={72} style={{ color: "#2a3347" }} />
+          <Truck size={72} style={{ color: "var(--color-plate)" }} />
         </div>
       )}
 
       <div className="relative p-5 sm:p-6">
         <div className="text-center mb-5">
-          <div className="font-forge font-bold tracking-[3px] text-[11px] flex items-center justify-center gap-1.5" style={{ color: "#9daabb" }}>
+          <div className="font-forge font-bold tracking-[3px] text-[11px] flex items-center justify-center gap-1.5" style={{ color: "var(--color-dim)" }}>
             {t.crown && <Crown size={14} style={{ color: t.metal }} />}
             Booked by {who} · Dispatch ·{" "}
             <span className="font-forge font-bold tracking-[3px]" style={{ color: t.title }}>
@@ -129,9 +129,9 @@ export const DispatcherRecapPoster = ({
         </div>
 
         <div className="flex gap-2 mb-2">
-          <Hero value={kMoney(stats.grossBooked)} label="BOOKED GROSS" color="#4ade80" big={big} />
-          <Hero value={String(stats.loadsBooked)} label="LOADS" color="#f5b03a" big={big} />
-          <Hero value={stats.avgRpm != null ? `$${stats.avgRpm.toFixed(2)}` : "—"} label="AVG $/MI" color="#60a5fa" big={big} />
+          <Hero value={kMoney(stats.grossBooked)} label="BOOKED GROSS" color="var(--color-status-positive-text)" big={big} />
+          <Hero value={String(stats.loadsBooked)} label="LOADS" color="var(--color-amber-hi)" big={big} />
+          <Hero value={stats.avgRpm != null ? `$${stats.avgRpm.toFixed(2)}` : "—"} label="AVG $/MI" color="var(--color-status-info-text)" big={big} />
         </div>
 
         <div className="flex gap-2 mb-2">
@@ -143,12 +143,12 @@ export const DispatcherRecapPoster = ({
 
         <div className="flex gap-2 mb-2">
           <TopBox
-            icon={<Star size={12} className="inline -mt-0.5" style={{ color: "#e8940a" }} />}
+            icon={<Star size={12} className="inline -mt-0.5" style={{ color: "var(--color-amber)" }} />}
             label="TOP AGENT"
             value={stats.topAgent}
           />
           <TopBox
-            icon={<MapPin size={12} className="inline -mt-0.5" style={{ color: "#e8940a" }} />}
+            icon={<MapPin size={12} className="inline -mt-0.5" style={{ color: "var(--color-amber)" }} />}
             label="TOP LANE"
             value={stats.topLane}
           />
@@ -160,8 +160,8 @@ export const DispatcherRecapPoster = ({
           ))}
         </div>
 
-        <div className="text-center mt-4 border-t pt-3" style={{ borderColor: stats.scope === "year" ? "#2a2010" : "#1c2333" }}>
-          <span className="font-forge font-bold tracking-[2px] text-[12px]" style={{ color: "#9daabb" }}>
+        <div className="text-center mt-4 border-t pt-3" style={{ borderColor: stats.scope === "year" ? "var(--color-hairline-lo)" : "var(--color-iron)" }}>
+          <span className="font-forge font-bold tracking-[2px] text-[12px]" style={{ color: "var(--color-dim)" }}>
             BEST STREAK {bestStreak} WK · KEEP BOOKING
           </span>
         </div>

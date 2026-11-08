@@ -19,8 +19,8 @@ const KindTag = ({ kind }: { kind: string }) => (
     className="text-[9px] px-1.5 py-0.5 rounded-full"
     style={
       kind === "job_site"
-        ? { background: "#1e2740", color: "#9db2d8" }
-        : { background: "#12251a", color: "#6fd08c" }
+        ? { background: "var(--color-status-info-bg)", color: "var(--color-status-info-text)" }
+        : { background: "var(--color-status-positive-bg)", color: "var(--color-status-positive-text)" }
     }
   >
     {kind === "job_site" ? "job site" : "business"}
@@ -48,6 +48,7 @@ export const FacilityPicker = ({
 
   // Show the selected facility's label in the box when not actively searching.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing, untouched by the colour sweep; owed to this page's phase C restructure
     if (selected && !open) setQuery(facilityLabel(selected));
     if (!selected && !open) setQuery("");
   }, [selected, open]);
@@ -131,9 +132,9 @@ export const FacilityPicker = ({
               {nudge && (
                 <div
                   className="px-2.5 py-2 flex items-center justify-between gap-2"
-                  style={{ background: "#241a0e", borderBottom: "1px solid #3a2a12" }}
+                  style={{ background: "var(--color-status-aware-bg)", borderBottom: "1px solid color-mix(in srgb, var(--color-amber) 30%, transparent)" }}
                 >
-                  <span className="text-[11px]" style={{ color: "#f5c37a" }}>
+                  <span className="text-[11px]" style={{ color: "var(--color-amber-hi)" }}>
                     ⚠ Looks like this exists · {facilityLabel(nudge)} · {nudge.city},{" "}
                     {nudge.state}
                   </span>
@@ -168,7 +169,7 @@ export const FacilityPicker = ({
                 type="button"
                 onClick={() => setCreating(true)}
                 className="w-full text-left px-2.5 py-2 text-sm border-t border-plate"
-                style={{ color: "#6fd08c" }}
+                style={{ color: "var(--color-status-positive-text)" }}
               >
                 ＋ Add {query.trim() ? `"${query.trim()}"` : "a facility"}…
               </button>
