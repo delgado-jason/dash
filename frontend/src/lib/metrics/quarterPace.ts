@@ -7,6 +7,7 @@
 import type { Load } from "@/types/load";
 import { loadNetRevenue } from "./rateTargets";
 import { rangeFor, resolvePeriod } from "./recap";
+import { isDelivered } from "./status";
 
 const MS_DAY = 86_400_000;
 
@@ -23,7 +24,7 @@ const aggregate = (
   const s = start.getTime();
   const c = cutoff.getTime();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.delivery_date) continue;
+    if (!isDelivered(l) || !l.delivery_date) continue;
     const t = new Date(l.delivery_date.slice(0, 10) + "T00:00:00Z").getTime();
     if (t >= s && t < c) {
       net += loadNetRevenue(l);

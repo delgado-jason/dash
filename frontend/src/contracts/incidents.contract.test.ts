@@ -6,6 +6,8 @@
 // Locked rules: BASIS-02, PNL-01/02/04, MKT-08, CASH-03/06, PACE-02, DAY-02,
 // MKT-01, DIAL-02.
 import { describe, it, expect } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { syntheticBook, brokenPeriod, TODAY, type Book } from "@/test/fixtures/book";
 import type { Load } from "@/types/load";
 import { parsePnlRows } from "@/lib/pnl/parsePnl";
@@ -217,8 +219,26 @@ describe("MKT-08 · 2026-11-01 (v1.236.0 read the gap) · copied start readings 
 });
 
 describe("CASH-06 · PACE-02 · DAY-02 · a planned delivery is expected, never delivered — on every surface", () => {
-  // Stage 4b adds lib/metrics/status.ts (isDelivered / NEVER_REVENUE) and the
-  // contract that no module outside it compares load_status to 'delivered'.
+  // One definition of "delivered" and "never revenue": lib/metrics/status.ts.
+  // No other module under src/lib or src/hooks may compare load_status to
+  // 'delivered', or build its own Set that lists "invoiced" (a payment_status).
+  it("no module outside lib/metrics/status.ts redefines delivered or the never-revenue set", () => {
+    const root = resolve(process.cwd(), "src");
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const p = join(dir, e.name);
+        return e.isDirectory() ? walk(p) : [p];
+      });
+    const files = [...walk(join(root, "lib")), ...walk(join(root, "hooks"))].filter(
+      (p) => /\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p) && relative(root, p) !== join("lib", "metrics", "status.ts"),
+    );
+    expect(files.length).toBeGreaterThan(50);
+    const offenders = files.filter((p) => {
+      const src = readFileSync(p, "utf8");
+      return /load_status\s*===\s*"delivered"/.test(src) || /new Set\(\s*\[[^\]]*"invoiced"/.test(src);
+    });
+    expect(offenders.map((p) => relative(root, p)), "redefines delivered / never-revenue outside lib/metrics/status.ts").toEqual([]);
+  });
   const book = syntheticBook();
   const onRoad = book.loads.filter(isOnTheRoad);
   const bookedLoad = book.loads.find((l) => l.load_status === "booked") as Load;

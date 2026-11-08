@@ -44,6 +44,7 @@ import { useLocalToday } from "@/hooks/useLocalToday";
 import { mileMilestone } from "@/lib/metrics/mileClub";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { isDelivered } from "@/lib/metrics/status";
 
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
@@ -141,7 +142,7 @@ const TruckDetailPage = () => {
   const earnedLoads = useMemo(
     () =>
       truckLoads.filter(
-        (l) => l.load_status === "delivered" && l.payment_status === "paid",
+        (l) => isDelivered(l) && l.payment_status === "paid",
       ),
     [truckLoads],
   );
@@ -149,7 +150,7 @@ const TruckDetailPage = () => {
   // delivered but haven't been paid for yet was still hauled. (Revenue stays on
   // earnedLoads: you've only earned money on the paid ones.)
   const deliveredLoads = useMemo(
-    () => truckLoads.filter((l) => l.load_status === "delivered"),
+    () => truckLoads.filter((l) => isDelivered(l)),
     [truckLoads],
   );
 

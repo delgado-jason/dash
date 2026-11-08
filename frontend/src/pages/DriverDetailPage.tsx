@@ -58,6 +58,7 @@ import { driverRecordChips } from "@/components/awards/RecordBook";
 import { LeversBoard } from "@/components/playercard/LeversBoard";
 import { MedalBadge } from "@/components/awards/MedalBadge";
 import { monthCoverage } from "@/lib/metrics/monthCoverage";
+import { isDelivered } from "@/lib/metrics/status";
 
 const Spec = ({
   label,
@@ -141,7 +142,7 @@ const DriverDetailPage = () => {
   const earnedLoads = useMemo(
     () =>
       driverLoads.filter(
-        (l) => l.load_status === "delivered" && l.payment_status === "paid",
+        (l) => isDelivered(l) && l.payment_status === "paid",
       ),
     [driverLoads],
   );
@@ -194,7 +195,7 @@ const DriverDetailPage = () => {
     const utilization = utilizationWindow(driverLoads, winStart, nowKey, marks.homeDays, marks.travelDays).utilization;
     const grind = computeGrind(driverLoads, periods, obligationsDebt, schedule, now);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
-    const del = driverLoads.filter((l) => l.load_status === "delivered");
+    const del = driverLoads.filter((l) => isDelivered(l));
     const paidPcts = [
       assetLoanStatus(obligations, "truck", now),
       assetLoanStatus(obligations, "trailer", now),
@@ -295,7 +296,7 @@ const DriverDetailPage = () => {
   const revenue = earnedLoads.reduce((s, l) => s + loadNetRevenue(l), 0);
   const milesHauled = driverLoads.reduce(
     (s, l) =>
-      l.load_status === "delivered" ? s + (Number(l.loaded_miles) || 0) : s,
+      isDelivered(l) ? s + (Number(l.loaded_miles) || 0) : s,
     0,
   );
   const name = `${driver.first_name} ${driver.last_name}`;

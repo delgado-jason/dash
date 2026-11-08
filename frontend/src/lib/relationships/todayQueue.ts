@@ -43,6 +43,7 @@ import { deliveredCount, lastLoadKey } from "./agentRpm";
 import { daysSinceMeaningful, lastMeaningfulContact } from "./meaningfulContact";
 import { daysBetweenKeys, keyOf, localDayKey, shortDate } from "./dayKeys";
 import { contactKind, contactTypeLabel, defaultTouchType, type ContactDirection, type ContactType } from "./contactTypes";
+import { isDelivered } from "@/lib/metrics/status";
 
 export const CLOSE_OUT_DAYS = 14;
 export const LIST_ROWS = 3;
@@ -326,7 +327,7 @@ export const buildToday = (input: TodayInput): TodayModel => {
       const last = lastMeaningfulContact(a.agent_id, contacts, loads);
       const quietDays = last == null ? null : Math.max(0, daysBetweenKeys(last, todayKey));
       if (quietDays != null && quietDays < REACTIVATION_QUIET_DAYS) return [];
-      const gross = loads.filter((l) => l.agent_id === a.agent_id && l.load_status === "delivered").reduce((s, l) => s + loadGross(l), 0);
+      const gross = loads.filter((l) => l.agent_id === a.agent_id && isDelivered(l)).reduce((s, l) => s + loadGross(l), 0);
       return [{ agent: a, delivered, gross, quietDays, place: placeOf(a), lastLoad: lastLoadKey(loads, a.agent_id) }];
     });
   const prospecting: Agent[] = book.prospects.filter((a) => deliveredCount(loads, a.agent_id) === 0 && !owedACall(a));

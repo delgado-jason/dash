@@ -17,6 +17,7 @@ import { loadGross } from "@/lib/metrics/rateTargets";
 import { keyOf, localDayKey } from "./dayKeys";
 import { footprintPoint } from "@/lib/loads/customerEnd";
 import type { FootprintCoverageLike, FootprintLoadLike } from "./capacityList";
+import { isDelivered } from "@/lib/metrics/status";
 
 export interface FiveContactLike {
   agent_id: string;
@@ -176,7 +177,7 @@ export const hygiene = <A extends HygieneAgentLike>(
   coverage: FootprintCoverageLike[],
 ): HygieneItem<A>[] => {
   const withOrigin = new Set<string>();
-  for (const l of loads) if (l.agent_id && l.load_status === "delivered" && footprintPoint(l)) withOrigin.add(l.agent_id);
+  for (const l of loads) if (l.agent_id && isDelivered(l) && footprintPoint(l)) withOrigin.add(l.agent_id);
   const withStated = new Set(coverage.map((c) => c.agent_id));
   const items: HygieneItem<A>[] = [
     { key: "phone", label: "missing a phone", agents: activeAgents.filter((a) => !(a.phone ?? "").trim()) },

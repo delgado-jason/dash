@@ -1,5 +1,6 @@
 import type { Load } from "@/types/load";
 import { loadRevenue } from "./loads";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // How the pay week actually finishes — each load counted exactly ONCE, by
 // where its delivery lands inside the pay week [weekStart, weekStart + 7d).
@@ -37,11 +38,11 @@ export const projectWeek = (
   let incoming = 0;
   let incomingCount = 0;
   for (const l of loads) {
-    if (l.load_status === "cancelled" || l.load_status === "tonu") continue;
+    if (isNeverRevenue(l)) continue;
     if (!l.delivery_date) continue;
     const t = new Date(String(l.delivery_date).slice(0, 10) + "T00:00:00Z").getTime();
     if (t < start || t >= end) continue;
-    if (l.load_status === "delivered") {
+    if (isDelivered(l)) {
       earned += loadRevenue(l);
     } else {
       incoming += loadRevenue(l);

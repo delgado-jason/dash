@@ -9,6 +9,7 @@ import {
   detentionMinutes,
 } from "@/lib/detention";
 import { fmtDuration } from "@/lib/stopTimes";
+import { isDelivered } from "@/lib/metrics/status";
 
 const PAGE = 10;
 
@@ -51,7 +52,7 @@ const fmtDate = (iso: string | null | undefined): string =>
 // The date that matters for the row: delivered → when it delivered, otherwise
 // when it picks up.
 const rowDate = (l: Load): string | null | undefined =>
-  l.load_status === "delivered" ? l.delivery_date : l.pickup_date;
+  isDelivered(l) ? l.delivery_date : l.pickup_date;
 
 const StatusChip = ({ status }: { status: string }) => (
   <span style={{ color: STATUS_COLOR[status] ?? "#9daabb" }}>

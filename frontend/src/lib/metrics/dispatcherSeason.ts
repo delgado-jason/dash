@@ -7,6 +7,7 @@ import { loadGross, type RateLadder } from "./rateTargets";
 import { agentStops, scoreStops } from "./stopScore";
 import { rangeFor, resolvePeriod, type RecapScope, type RecapRange } from "./recap";
 import type { Award } from "./awards";
+import { isDelivered } from "./status";
 
 const isReal = (l: Load) => l.load_status !== "cancelled";
 
@@ -168,7 +169,7 @@ export const dispatchSeason = (
 ): DispatchSeason => {
   const mine = loadsInPeriod(loads, userId, range);
   const avgRpm = grossPerMile(mine);
-  const delivered = mine.filter((l) => l.load_status === "delivered");
+  const delivered = mine.filter((l) => isDelivered(l));
   const onTimePct = delivered.length
     ? scoreStops(agentStops(delivered, freeHours)).onTimePct
     : null;

@@ -16,6 +16,7 @@
 import { onTimeStatus } from "@/lib/detention";
 import { daysBetweenKeys, keyOf, localDayKey, utcDayKey } from "./dayKeys";
 import { hasMarker, type MarkerContactLike, type MarkerNoteLike } from "./markers";
+import { isDelivered } from "@/lib/metrics/status";
 
 export const LOAD_THRESHOLDS = [5, 10, 25, 50, 100] as const;
 export const STREAK_THRESHOLDS = [10, 20, 50] as const;
@@ -54,7 +55,7 @@ export const milestoneMarker = (kind: MilestoneKind, n: number): string => `[mil
 // then picked up, then the load number, so the order is stable.
 export const deliveredInOrder = <L extends MilestoneLoadLike>(loads: L[], agentId: string): L[] =>
   loads
-    .filter((l) => l.agent_id === agentId && l.load_status === "delivered")
+    .filter((l) => l.agent_id === agentId && isDelivered(l))
     .sort((a, b) => {
       const ka = keyOf(a.delivery_date ?? a.pickup_date ?? "");
       const kb = keyOf(b.delivery_date ?? b.pickup_date ?? "");

@@ -1,5 +1,6 @@
 import { db } from "../../db/pool.js";
 import { ValidationError } from "../utils/error.js";
+import { validateAssumptions } from "../utils/validation/assumptionsValidation.js";
 
 // Cash-flow planning layer: assumptions (one typed row), the monthly QBO
 // archive (permanent — upsert only, never delete), and per-month forecast
@@ -28,13 +29,17 @@ export async function getAssumptions(user_id) {
 
 export async function patchAssumptions(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
+  // CASH-16: a blank, non-numeric or out-of-range assumption is a 400 with a
+  // sentence, before any SQL — never a null that reads as $0.
+  const checked = validateAssumptions(data);
+  if (checked.errors.length > 0) throw new ValidationError(checked.errors[0], checked.errors);
   const updates = [];
   const values = [];
   let i = 1;
   for (const f of ASSUMPTION_FIELDS) {
     if (data[f] !== undefined) {
       updates.push(`${f} = $${i++}`);
-      values.push(data[f]);
+      values.push(checked.values[f]);
     }
   }
   if (updates.length === 0) throw new ValidationError("No editable fields provided");

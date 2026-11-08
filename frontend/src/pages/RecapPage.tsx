@@ -26,6 +26,7 @@ import { careerRank } from "@/lib/metrics/playerCard";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { isDelivered } from "@/lib/metrics/status";
 
 const SCOPES: { key: RecapScope; label: string }[] = [
   { key: "month", label: "Month" },
@@ -35,7 +36,7 @@ const SCOPES: { key: RecapScope; label: string }[] = [
 
 const hasData = (loads: Load[], r: RecapRange): boolean =>
   loads.some((l) => {
-    if (l.load_status !== "delivered" || !l.delivery_date) return false;
+    if (!isDelivered(l) || !l.delivery_date) return false;
     const t = new Date(l.delivery_date.slice(0, 10) + "T00:00:00Z").getTime();
     return t >= r.start.getTime() && t < r.end.getTime();
   });

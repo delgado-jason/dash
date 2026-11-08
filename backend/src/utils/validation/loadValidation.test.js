@@ -164,3 +164,43 @@ describe("agency_id — required on a create, clearable on a patch", () => {
     assert.deepEqual(validateLoadPatch({ agent_id: null }), ["agent_id is not a valid UUID"]);
   });
 });
+
+describe("ODO-05/06 — odometer window and the delivered load", () => {
+  const NEEDS = "a delivered load needs its end odometer and its delivery date — empty miles, the Friday accrual and break-even all read them";
+  const delivered = { load_status: "delivered", delivery_date: "2026-10-14", odometer_start: 500000, odometer_end: 500850 };
+  const mine = (errors) => errors.filter((e) => /odometer|delivered/.test(e));
+  const create = (over) => mine(validateLoadCreate({ ...delivered, ...over }));
+
+  test("a delivered load with its date and both readings passes", () => {
+    assert.deepEqual(create({}), []);
+  });
+  test("a delivered create without end, start or date says the nodded sentence", () => {
+    assert.deepEqual(create({ odometer_end: null }), [NEEDS]);
+    assert.deepEqual(create({ odometer_start: undefined }), [NEEDS]);
+    assert.deepEqual(create({ delivery_date: null }).filter((e) => e === NEEDS), [NEEDS]);
+  });
+  test("a booked load needs none of it", () => {
+    assert.deepEqual(create({ load_status: "booked", delivery_date: undefined, odometer_start: undefined, odometer_end: undefined }), []);
+  });
+  test("end must be greater than start", () => {
+    assert.match(create({ odometer_end: 500000 })[0], /odometer_end \(500000\) must be greater than odometer_start \(500000\)/);
+    assert.match(create({ odometer_end: 499999 })[0], /must be greater than odometer_start/);
+  });
+  test("a typed 0 is refused, null and absent are not", () => {
+    assert.ok(mine(validateLoadPatch({ odometer_start: 0 })).includes("odometer_start must be greater than 0"));
+    assert.ok(mine(validateLoadPatch({ odometer_end: 0 })).includes("odometer_end must be greater than 0"));
+    assert.deepEqual(validateLoadPatch({ odometer_start: null, odometer_end: null }), []);
+    assert.deepEqual(validateLoadPatch({ odometer_start: undefined }), []);
+  });
+  test("fuel_surcharge and linehaul money fields", () => {
+    assert.deepEqual(validateLoadPatch({ fuel_surcharge: 0 }), []);
+    assert.deepEqual(validateLoadPatch({ fuel_surcharge: -1 }), ["fuel_surcharge must be greater than or equal to 0"]);
+    assert.deepEqual(validateLoadPatch({ linehaul: -1 }), ["linehaul must be greater than 0"]);
+  });
+  test("a patch merges over the stored readings when the caller supplies them", () => {
+    const existing = { pickup_date: "2026-10-12", delivery_date: "2026-10-14", load_status: "delivered", odometer_start: 500000, odometer_end: 500850 };
+    assert.deepEqual(validateLoadPatch({ odometer_end: 400000 }, existing).filter((e) => /must be greater/.test(e)).length, 1);
+    assert.ok(validateLoadPatch({ odometer_end: null }, existing).includes(NEEDS));
+    assert.deepEqual(validateLoadPatch({ load_status: "delivered" }), []); // stored row unseen: nothing to judge
+  });
+});

@@ -8,6 +8,7 @@ import {
 import { median } from "./stats";
 import { perDayOver, type PerDayTotals } from "./perDay";
 import { agentStops, scoreStops } from "./stopScore";
+import { isDelivered } from "./status";
 
 // Minimum loads before a lane/market can win an RPM-based KPI — keeps a single
 // lucky run from crowning a corridor. Volume KPIs ignore this.
@@ -59,7 +60,7 @@ export interface LanesSummary {
 // ---- helpers ----
 
 const deliveredOnly = (loads: Load[]): Load[] =>
-  loads.filter((load) => load.load_status === "delivered");
+  loads.filter((load) => isDelivered(load));
 
 // All-in gross (numeric columns serialize as strings — coerce).
 const grossRevenue = (loads: Load[]): number =>

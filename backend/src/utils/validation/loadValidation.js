@@ -245,28 +245,32 @@ const rules = {
     }
   },
   shipper_name: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("string", value)) {
       errors.push("shipper_name must be a string");
     }
   },
   receiver_name: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("string", value)) {
       errors.push("receiver_name must be a string");
     }
   },
   commodity: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("string", value)) {
       errors.push("commodity must be a string");
     }
   },
   weight: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("integer", value)) {
       errors.push("weight must be an integer");
@@ -292,7 +296,8 @@ const rules = {
       errors.push("height_in must be a positive integer (inches)");
   },
   deadhead_miles: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("integer", value)) {
       errors.push("deadhead_miles must be an integer");
@@ -325,7 +330,8 @@ const rules = {
       errors.push("customer_end must be one of: shipper, receiver, neither");
   },
   odometer_start: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("integer", value)) {
       errors.push("odometer_start must be an integer");
@@ -336,7 +342,8 @@ const rules = {
     }
   },
   odometer_end: (value, errors) => {
-    if (!value) return;
+    // ODO-05: only a missing value is skipped — a typed 0 is refused below.
+    if (value == null) return;
 
     if (!isValidType("integer", value)) {
       errors.push("odometer_end must be an integer");
@@ -384,6 +391,37 @@ export const validateDateOrder = (pickup_date, delivery_date, errors) => {
   }
 };
 
+// ---- CROSS-FIELD: the odometer window and the delivered load ----
+// ODO-05: odometer_end must be greater than odometer_start when both are
+// present. ODO-06: a delivered load needs its delivery_date and BOTH readings —
+// empty miles, the Friday accrual and break-even all read them (Jason nodded the
+// sentence).
+//
+// `pick(field)` answers {known, value}: a create knows every field (an absent
+// one is blank); a PATCH knows what it carries, then what `existing` carries,
+// and skips a rule whose half it cannot see.
+export const DELIVERED_NEEDS =
+  "a delivered load needs its end odometer and its delivery date — empty miles, the Friday accrual and break-even all read them";
+
+const blankValue = (v) => v == null || (typeof v === "string" && v.trim() === "");
+
+export const validateReadings = (pick, errors) => {
+  const s = pick("odometer_start");
+  const e = pick("odometer_end");
+  if (
+    s.known && e.known &&
+    Number.isInteger(s.value) && Number.isInteger(e.value) &&
+    s.value >= 1 && e.value >= 1 && e.value <= s.value
+  ) {
+    errors.push(`odometer_end (${e.value}) must be greater than odometer_start (${s.value})`);
+  }
+  const status = pick("load_status");
+  if (status.known && typeof status.value === "string" && status.value.trim() === "delivered") {
+    const needs = ["delivery_date", "odometer_start", "odometer_end"].map(pick);
+    if (needs.some((f) => f.known && blankValue(f.value))) errors.push(DELIVERED_NEEDS);
+  }
+};
+
 // ---- CREATE LOAD VALIDATION ----
 export const validateLoadCreate = (data) => {
   const errors = [];
@@ -418,13 +456,15 @@ export const validateLoadCreate = (data) => {
   }
 
   validateDateOrder(data.pickup_date, data.delivery_date, errors);
+  validateReadings((f) => ({ known: true, value: data[f] }), errors);
 
   return errors;
 };
 
 // ---- PATCH LOAD VALIDATION ----
 // `existing` is the stored row's { pickup_date, delivery_date } as 'YYYY-MM-DD'
-// strings. A PATCH may change only one of the two, so the date-order check has
+// strings, and — when the caller has them — { load_status, odometer_start,
+// odometer_end } for the delivered/odometer rules. A PATCH may change only one of the two, so the date-order check has
 // to compare the incoming value against what's already saved.
 export const validateLoadPatch = (data, existing = {}) => {
   const errors = [];
@@ -440,6 +480,11 @@ export const validateLoadPatch = (data, existing = {}) => {
     data.delivery_date ?? existing.delivery_date,
     errors,
   );
+  validateReadings((f) => {
+    if (data[f] !== undefined) return { known: true, value: data[f] };
+    if (f in existing) return { known: true, value: existing[f] };
+    return { known: false, value: undefined };
+  }, errors);
 
   return errors;
 };

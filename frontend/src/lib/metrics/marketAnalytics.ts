@@ -7,6 +7,7 @@ import { dayKey } from "@/lib/perDiem";
 import type { RateLadder } from "./rateTargets";
 import { loadGross } from "./rateTargets";
 import { isSpecializedLoadType } from "@/lib/dimensions";
+import { isDelivered } from "./status";
 
 export type RateBucket = "standard" | "hazmat" | "specialized";
 
@@ -36,7 +37,7 @@ const bucketOf = (l: Load): RateBucket =>
 // Delivered loads with a computable gross rate per driven mile, oldest → newest.
 export const ratePoints = (loads: Load[]): RatePoint[] =>
   loads
-    .filter((l) => l.load_status === "delivered" && l.delivery_date)
+    .filter((l) => isDelivered(l) && l.delivery_date)
     .map((l): RatePoint | null => {
       const d = drivenMiles(l);
       const rate = d > 0 ? loadGross(l) / d : NaN;

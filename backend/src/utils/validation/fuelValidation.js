@@ -1,5 +1,42 @@
 import { isValidType, isDateValid } from "../helper.js";
 import { apuHoursErrors } from "./maintenanceValidation.js";
+import { monthDay } from "./moneyFields.js";
+
+// ODO-05 · how far below an earlier-dated fill a reading may sit before it is
+// refused as a typo (a rolled-back or mistyped odometer).
+export const BACKWARDS_TOLERANCE_MI = 1000;
+
+const DAY_MS = 86_400_000;
+const utcKey = (d) => d.toISOString().slice(0, 10);
+// The far edge of today: UTC-today + 1 (Railway runs UTC, the business is
+// Central) — a full day of slack, and still refuses a mis-picked month.
+const tomorrowKey = (now) => utcKey(new Date(Date.parse(utcKey(now) + "T00:00:00Z") + DAY_MS));
+
+// The clock and the odometer sequence, which the per-field rules cannot see.
+//   fuel_date        not in the future
+//   odometer_reading not more than 1,000 mi below the earlier-dated fill
+// `previous` is {fuel_date, odometer_reading} of the truck's latest fill dated
+// before this one (null when there is none). Either argument may be absent on
+// a patch that touches only the other.
+export const validateFuelSequence = ({ fuel_date, odometer_reading, previous = null } = {}, now = new Date()) => {
+  const errors = [];
+  const dateOk = typeof fuel_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fuel_date.trim()) && !Number.isNaN(Date.parse(fuel_date.trim()));
+  if (dateOk && fuel_date.trim() > tomorrowKey(now))
+    errors.push("fuel_date can't be in the future");
+  if (
+    previous &&
+    Number.isInteger(odometer_reading) &&
+    Number.isFinite(Number(previous.odometer_reading)) &&
+    (!dateOk || String(previous.fuel_date).slice(0, 10) <= fuel_date.trim())
+  ) {
+    const below = Number(previous.odometer_reading) - odometer_reading;
+    if (below > BACKWARDS_TOLERANCE_MI)
+      errors.push(
+        `this reading is ${below.toLocaleString("en-US")} mi below the ${monthDay(previous.fuel_date)} fill — check the odometer`,
+      );
+  }
+  return errors;
+};
 
 /**
  * Fields to validate:
@@ -125,7 +162,7 @@ const rules = {
 };
 
 // ---- CREATE FUEL ENTRY VALIDATION ----
-export const validateFuelEntryCreate = (data) => {
+export const validateFuelEntryCreate = (data, { previous = null, now = new Date() } = {}) => {
   const errors = [];
 
   // Check for mandatory fields
@@ -143,17 +180,39 @@ export const validateFuelEntryCreate = (data) => {
     }
   }
 
+  if (errors.length === 0)
+    errors.push(...validateFuelSequence({ ...data, previous }, now));
+
   return errors;
 };
 
 // ---- PATCH FUEL ENTRY VALIDATION ----
-export const validateFuelEntryPatch = (data) => {
+// `existing` is the stored row {fuel_date, odometer_reading}: a patch may move
+// only one of the two, so the sequence check merges the incoming over it.
+export const validateFuelEntryPatch = (data, { previous = null, existing = null, now = new Date() } = {}) => {
   const errors = [];
 
   for (const field in data) {
     if (rules[field]) {
       rules[field](data[field], errors);
     }
+  }
+
+  if (
+    errors.length === 0 &&
+    (data.fuel_date !== undefined || data.odometer_reading !== undefined)
+  ) {
+    const ex = existing ?? {};
+    errors.push(
+      ...validateFuelSequence(
+        {
+          fuel_date: data.fuel_date ?? ex.fuel_date,
+          odometer_reading: data.odometer_reading ?? ex.odometer_reading,
+          previous,
+        },
+        now,
+      ),
+    );
   }
 
   return errors;

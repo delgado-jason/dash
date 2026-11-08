@@ -1,5 +1,6 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import { validateExpensePeriod } from "../utils/validation/expensePeriodValidation.js";
 
 const isValidType = (t) => t === "fixed" || t === "variable";
 
@@ -72,6 +73,15 @@ export async function saveExpensePeriod(user_id, data) {
       );
     }
   }
+
+  // PNL-05: the server re-reconciles what the UI checks: a real first-of-month
+  // period, numeric amounts, a known section, and lines that add to the totals.
+  const refusals = validateExpensePeriod({
+    period_month,
+    totals: { income_total, cogs_total, expense_total },
+    lines,
+  });
+  if (refusals.length > 0) throw new ValidationError(refusals[0], refusals);
 
   const client = await db.pool.connect();
   try {

@@ -89,3 +89,28 @@ describe("isFirstFriday", () => {
     assert.equal(isFirstFriday("2027-01-08"), false);
   });
 });
+
+import { validateSnapshotBalances } from "./planSnapshotValidation.js";
+
+describe("validateSnapshotBalances — every active account, once", () => {
+  const accounts = [
+    { account_id: "a", name: "Ops", active: true },
+    { account_id: "b", name: "Tax", active: true },
+    { account_id: "c", name: "Old", active: false },
+  ];
+  test("a full snapshot passes; an inactive account needs none", () => {
+    assert.deepEqual(validateSnapshotBalances([{ account_id: "a", balance: 1 }, { account_id: "b", balance: 0 }], accounts), []);
+  });
+  test("a missing active account names itself", () => {
+    assert.deepEqual(validateSnapshotBalances([{ account_id: "a", balance: 1 }], accounts), [
+      "this snapshot has no balance for Tax — type it or mark the account inactive",
+    ]);
+  });
+  test("a duplicate is refused", () => {
+    const e = validateSnapshotBalances([{ account_id: "a", balance: 1 }, { account_id: "a", balance: 2 }, { account_id: "b", balance: 3 }], accounts);
+    assert.deepEqual(e, ["this snapshot lists Ops twice — one balance per account"]);
+  });
+  test("an account outside the plan is refused", () => {
+    assert.match(validateSnapshotBalances([{ account_id: "z", balance: 1 }, { account_id: "a", balance: 1 }, { account_id: "b", balance: 1 }], accounts)[0], /isn't in your plan/);
+  });
+});

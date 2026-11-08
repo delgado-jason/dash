@@ -28,6 +28,7 @@ import { loadRevenue } from "./loads";
 import { perDayOver, type PerDayTotals } from "./perDay";
 import { agentRows, type AgentStat } from "./lanes";
 import { outboundStrength, inboundStrength, type MarketGrade, type GradeCosts, NO_COSTS } from "./marketFactor";
+import { isDelivered } from "./status";
 
 // ------------------------------------------------------------- the windows
 
@@ -49,8 +50,6 @@ const shiftKey = (key: string, days: number): string =>
   new Date(Date.parse(`${key}T00:00:00Z`) + days * DAY_MS)
     .toISOString()
     .slice(0, 10);
-
-const isDelivered = (l: Load): boolean => l.load_status === "delivered";
 
 // Is this delivered load inside the window? Dated by its DELIVERY day, against
 // TODAY in the account's own zone (localDayKey — Central; after 7pm Central a

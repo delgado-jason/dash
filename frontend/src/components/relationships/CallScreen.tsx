@@ -54,6 +54,7 @@ import {
 import CoverageEditor from "./CoverageEditor";
 import { CapGate } from "./CapGate";
 import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, GhostLink, PrimaryButton, PrimaryLink, SectionHead } from "./primitives";
+import { isDelivered } from "@/lib/metrics/status";
 
 // THE CALL SCREEN — /relationships/calls/:agentId. One screen, one job:
 // Brandie is on the phone and cannot navigate, so everything the Gameplan
@@ -276,7 +277,7 @@ export const CallScreen = ({
   const bucket = useMemo(() => bucketOf(agent, ctx), [agent, ctx]);
 
   // ---- what the record says ----
-  const delivered = useMemo(() => loads.filter((l) => l.agent_id === agent.agent_id && l.load_status === "delivered"), [loads, agent.agent_id]);
+  const delivered = useMemo(() => loads.filter((l) => l.agent_id === agent.agent_id && isDelivered(l)), [loads, agent.agent_id]);
   const gross = useMemo(() => delivered.reduce((s, l) => s + loadGross(l), 0), [delivered]);
   const dialedMarkets = useMemo(() => originMarketsByAgent(delivered).get(agent.agent_id) ?? [], [delivered, agent.agent_id]);
   const topMarket = dialedMarkets[0]
@@ -341,7 +342,7 @@ export const CallScreen = ({
   const hauledFrom = useMemo(() => {
     if (!target) return [];
     if (target.agent_id === agent.agent_id) return dialedMarkets;
-    return originMarketsByAgent(loads.filter((l) => l.agent_id === target.agent_id && l.load_status === "delivered")).get(target.agent_id) ?? [];
+    return originMarketsByAgent(loads.filter((l) => l.agent_id === target.agent_id && isDelivered(l))).get(target.agent_id) ?? [];
   }, [target, agent.agent_id, dialedMarkets, loads]);
   // Questions 3–5 — the markers THEIR contacts already carry.
   const markers = useMemo(

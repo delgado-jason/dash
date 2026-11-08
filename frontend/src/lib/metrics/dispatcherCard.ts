@@ -7,6 +7,7 @@ import { loadGross, type RateLadder } from "./rateTargets";
 import { detentionCollectedMinutes } from "@/lib/detention";
 import { agentStops, scoreStops } from "./stopScore";
 import { rpmGrade, type Grade } from "./playerCard";
+import { isDelivered } from "./status";
 
 // Career ranks climb on lifetime loads booked — the dispatcher's analogue of the
 // driver's lifetime miles.
@@ -104,7 +105,7 @@ export const getDispatcherCard = (
   );
 
   // On-time only over loads that actually ran.
-  const delivered = mine.filter((l) => l.load_status === "delivered");
+  const delivered = mine.filter((l) => isDelivered(l));
   const stopScore = scoreStops(agentStops(delivered, freeHours));
   const onTimePct = stopScore.onTimePct;
 

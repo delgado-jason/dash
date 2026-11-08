@@ -13,6 +13,7 @@ import type { AgentScorecard } from "./agentScorecard";
 // Type-only (erased at build, so no import cycle): the load sequence the IN
 // half grades lives with the ledger that builds it.
 import type { SequencedLoad, NextLeg } from "./marketLedger";
+import { isDelivered } from "./status";
 
 const up = (s?: string | null): string => String(s ?? "").trim().toUpperCase();
 const loadedRpm = (l: Load): number | null => {
@@ -101,7 +102,7 @@ export const outboundStrength = (
   keyFor: (l: Load) => string = (l) => up(l.origin_state),
   costs: GradeCosts = NO_COSTS,
 ): Map<string, OutboundMarket> => {
-  const delivered = loads.filter((l) => l.load_status === "delivered");
+  const delivered = loads.filter((l) => isDelivered(l));
   const byState = new Map<string, Load[]>();
   for (const l of delivered) {
     const s = keyFor(l);
@@ -294,7 +295,7 @@ export const destinationFactor = (
     const strongStates = new Set(strongMarkets.map((m) => m.state));
     const seen = new Set<string>();
     for (const l of loads) {
-      if (l.load_status !== "delivered" || !strongStates.has(up(l.origin_state))) continue;
+      if (!isDelivered(l) || !strongStates.has(up(l.origin_state))) continue;
       const key = cityKey(l.origin_city, l.origin_state);
       if (seen.has(key)) continue;
       seen.add(key);

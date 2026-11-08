@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 import { formatPhone } from "@/lib/phone";
 import { formatDate } from "@/lib/format";
+import { isDelivered } from "@/lib/metrics/status";
 
 const FIELDS: FormField[] = [
   { name: "first_name", label: "First name", required: true },
@@ -43,7 +44,7 @@ const DriversPage = () => {
   const statsByDriver = useMemo(() => {
     const map = new Map<string, { miles: number; hauls: number }>();
     for (const l of loads) {
-      if (l.load_status !== "delivered" || !l.driver_id) continue;
+      if (!isDelivered(l) || !l.driver_id) continue;
       const a = map.get(l.driver_id) ?? { miles: 0, hauls: 0 };
       a.miles += Number(l.loaded_miles) || 0;
       a.hauls += 1;

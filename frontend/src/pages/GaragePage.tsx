@@ -18,11 +18,12 @@ import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { maxOdometer } from "@/lib/metrics/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RigCard, type RigCardProps } from "@/components/celebrations/RigCard";
+import { isDelivered } from "@/lib/metrics/status";
 
 const kMi = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}K`);
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
-const delivered = (loads: Load[]) => loads.filter((l) => l.load_status === "delivered");
+const delivered = (loads: Load[]) => loads.filter((l) => isDelivered(l));
 const statesOf = (loads: Load[]) => {
   const s = new Set<string>();
   for (const l of loads) {

@@ -11,6 +11,7 @@ import { loadNetRevenue } from "./rateTargets";
 import { fuelStats } from "./fuelEconomy";
 import { underLoadDaySet } from "./underLoad";
 import { FULL_DEFAULT_SINCE } from "@/lib/perDiem";
+import { isDelivered } from "./status";
 
 export interface TruckMetrics {
   utilization: number | null; // under-load days ÷ window days (0..1)
@@ -134,11 +135,11 @@ export const computeTruckMetrics = (
 ): TruckMetrics => {
   // Earned freight — delivered AND paid — matches the truck's net revenue elsewhere.
   const earned = truckLoads.filter(
-    (l) => l.load_status === "delivered" && l.payment_status === "paid",
+    (l) => isDelivered(l) && l.payment_status === "paid",
   );
   // Loads HAULED is delivered (paid or not) — payment status doesn't change
   // whether the truck ran the load.
-  const delivered = truckLoads.filter((l) => l.load_status === "delivered");
+  const delivered = truckLoads.filter((l) => isDelivered(l));
   const netRevenue = earned.reduce((s, l) => s + loadNetRevenue(l), 0);
   const totalMiles = earned.reduce((s, l) => s + loadMiles(l), 0);
 
@@ -155,7 +156,7 @@ export const computeTruckMetrics = (
     ? truck.in_service_date.slice(0, 10)
     : null;
   const firstPickup = truckLoads
-    .filter((l) => l.load_status === "delivered" && l.pickup_date)
+    .filter((l) => isDelivered(l) && l.pickup_date)
     .map((l) => l.pickup_date.slice(0, 10))
     .sort()[0];
   const windowStart =

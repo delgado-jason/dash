@@ -23,6 +23,7 @@ import type { TrophyDef } from "@/lib/trophies/catalog";
 import type { TrophyStatus } from "@/lib/trophies/status";
 import type { Trophy } from "@/types/trophy";
 import { money } from "@/lib/format";
+import { isDelivered } from "./status";
 
 // Grandest → smallest. trophy = career Hall monument; medal = a tier-up; recap = a
 // period close; patch = a stacked hard feat; record = a new personal best.
@@ -91,7 +92,7 @@ export const earnedAwards = (i: AwardInputs): Award[] => {
   }
 
   // ---- Medals (tier-up): the fixed milestone ladder + a career rank-up ----
-  const del = i.loads.filter((l) => l.load_status === "delivered");
+  const del = i.loads.filter((l) => isDelivered(l));
   const season = getSeasonStats(i.periods, i.loads, i.trips, i.now, i.obligationsDebtMonthly);
   const medals = computeMedals({
     lifetimeMiles: i.lifetimeMiles,

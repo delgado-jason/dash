@@ -95,6 +95,7 @@ import {
   suggestCustomerEnd,
   type CustomerEnd,
 } from "@/lib/loads/customerEnd";
+import { isDelivered } from "@/lib/metrics/status";
 
 const fmtDate = (d?: string | null) =>
   d
@@ -625,14 +626,14 @@ export const LoadDetailPage = () => {
                 <span
                   className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10"
                   title={`${fmtPerDay(perDay)} a day over ${days} day${days === 1 ? "" : "s"} on the truck${
-                    load.load_status === "delivered" ? "" : " — planned, this load has not delivered yet"
+                    isDelivered(load) ? "" : " — planned, this load has not delivered yet"
                   }${word ? ` · ${word}` : ""}`}
                 >
                   <span className="font-forge font-bold text-[11px] tracking-[.14em]" style={{ color: fg }}>
                     {fmtPerDay(perDay)} /DAY
                   </span>
                   <span className="font-condensed font-semibold text-[10.5px] text-faint">
-                    {load.load_status === "delivered" ? `${days}d on the truck` : `${days}d planned`}
+                    {isDelivered(load) ? `${days}d on the truck` : `${days}d planned`}
                   </span>
                 </span>
               );

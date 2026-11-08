@@ -3,6 +3,7 @@ import type { AgentNote } from "@/types/agentNote";
 import type { AgentRatingHistory } from "@/types/agentRatingHistory";
 import type { TimelineEvent } from "@/types/timelineEvent";
 import type { AgentContact } from "@/services/agentContactsService";
+import { isDelivered } from "./status";
 
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
@@ -42,7 +43,7 @@ export const getGrossRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
 
   const filteredLoads = loads.filter(
-    (load) => load.load_status === "delivered",
+    (load) => isDelivered(load),
   );
 
   const grossRev = getLoadRevenue(filteredLoads);
@@ -55,7 +56,7 @@ export const getAverageRPM = (loads: Load[] | null): number | null => {
   if (!loads) return null;
 
   const filteredLoads = loads.filter(
-    (load) => load.load_status === "delivered",
+    (load) => isDelivered(load),
   );
 
   const grossRev = getLoadRevenue(filteredLoads);
@@ -74,7 +75,7 @@ export const getLastLoadDate = (loads: Load[] | null): string | null => {
   if (!loads) return null;
 
   const filteredLoads = loads.filter(
-    (load) => load.load_status === "delivered",
+    (load) => isDelivered(load),
   );
 
   const deliveryDates: string[] = [];

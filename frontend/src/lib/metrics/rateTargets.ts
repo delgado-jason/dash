@@ -11,6 +11,7 @@ import {
   BASIS_MONTHS,
 } from "@/lib/constants/targets";
 import { localToday } from "./today";
+import { isDelivered } from "./status";
 
 // Rate & pace targets, all derived live from the P&L + loads. Pure functions
 // take `now` explicitly so they're testable without touching the clock.
@@ -85,7 +86,7 @@ export const completeMonthsBefore = (
 export const monthMiles = (loads: Load[], year: number, month: number) => {
   const inMonth = loads.filter(
     (l) =>
-      l.load_status === "delivered" &&
+      isDelivered(l) &&
       l.delivery_date &&
       new Date(l.delivery_date).getUTCFullYear() === year &&
       new Date(l.delivery_date).getUTCMonth() === month,
@@ -366,7 +367,7 @@ export const getWeekEarnedGross = (
   end: Date,
 ): number =>
   loadsInWeek(loads, start, end)
-    .filter((l) => l.load_status === "delivered")
+    .filter((l) => isDelivered(l))
     .reduce((s, l) => s + loadNetRevenue(l), 0);
 
 // This week's GROSS dollars (full customer rate) — for the rate & pace card, which
@@ -385,7 +386,7 @@ export const getWeekGrossEarned = (
   end: Date,
 ): number =>
   loadsInWeek(loads, start, end)
-    .filter((l) => l.load_status === "delivered")
+    .filter((l) => isDelivered(l))
     .reduce((s, l) => s + loadGross(l), 0);
 
 // The week's still-open slice — in-window loads that haven't delivered yet.
@@ -400,7 +401,7 @@ export const getWeekGrossPipeline = (
   end: Date,
 ): number =>
   loadsInWeek(loads, start, end)
-    .filter((l) => l.load_status !== "delivered")
+    .filter((l) => !isDelivered(l))
     .reduce((s, l) => s + loadGross(l), 0);
 
 // Booked beyond the current pay week — the pipeline a dispatcher just built

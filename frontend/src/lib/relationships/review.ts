@@ -35,6 +35,7 @@ import { markersOf } from "./markers";
 import { hygiene, type HygieneItem } from "./fridayFive";
 import { coolingSection, type CoolingSection } from "./cooling";
 import { nameOf } from "./nameOf";
+import { isDelivered } from "@/lib/metrics/status";
 
 // The bucket in words — every board and the report print it the same way.
 export const bucketWord = (b: Bucket): string =>
@@ -645,7 +646,7 @@ const deliveredIn = (loads: Load[], agentId: string, win: ReviewWindow): Load[] 
   loads.filter(
     (l) =>
       l.agent_id === agentId &&
-      l.load_status === "delivered" &&
+      isDelivered(l) &&
       !!l.delivery_date &&
       keyOf(l.delivery_date) >= win.startKey &&
       keyOf(l.delivery_date) <= win.endKey,
@@ -753,7 +754,7 @@ export const scorecardRows = <A extends ReviewAgentLike>(
 
 const deliveredInRange = (loads: Load[], r: RecapRange): Load[] =>
   loads.filter((l) => {
-    if (l.load_status !== "delivered" || !l.delivery_date) return false;
+    if (!isDelivered(l) || !l.delivery_date) return false;
     const t = Date.parse(`${keyOf(l.delivery_date)}T00:00:00Z`);
     return t >= r.start.getTime() && t < r.end.getTime();
   });

@@ -19,6 +19,7 @@ import { completedPayWeekTotals } from "./payWeeks";
 import { qboPretaxMargin, type FinancialMonth } from "./cashflow";
 import { RANK_TIERS } from "@/lib/constants/playerCard";
 import { MARGIN_GOAL } from "@/lib/constants/targets";
+import { isDelivered } from "./status";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -235,7 +236,7 @@ export const getSeasonStats = (
   const trueNet = netProfit - obligationsDebtMonthly * n;
 
   const seasonLoads = loads.filter(
-    (l) => l.load_status === "delivered" && inWindow(l.delivery_date, months),
+    (l) => isDelivered(l) && inWindow(l.delivery_date, months),
   );
   const loaded = seasonLoads.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);
   // Actual deadhead, odometer-derived, with non-revenue trips counted as fully
@@ -313,7 +314,7 @@ export const personalBests = (
   now: Date,
 ): PersonalBests => {
   const delivered = loads.filter(
-    (l) => l.load_status === "delivered" && l.delivery_date,
+    (l) => isDelivered(l) && l.delivery_date,
   );
 
   // `now` arrives anchored (a UTC-midnight local day), so its ISO day is the
@@ -361,7 +362,7 @@ export const earnedTrophies = (opts: {
 
   const byAgent = new Map<string, { name: string; count: number }>();
   for (const l of opts.loads)
-    if (l.load_status === "delivered" && l.agent_id) {
+    if (isDelivered(l) && l.agent_id) {
       const a = byAgent.get(l.agent_id) ?? { name: l.agent, count: 0 };
       a.count += 1;
       byAgent.set(l.agent_id, a);
@@ -372,7 +373,7 @@ export const earnedTrophies = (opts: {
   if (topAgent && topAgent.count >= 5)
     out.push({ key: "relationship", name: "Relationship Builder", icon: "users", detail: `${topAgent.name} ×${topAgent.count}` });
 
-  const delivered = opts.loads.filter((l) => l.load_status === "delivered").length;
+  const delivered = opts.loads.filter((l) => isDelivered(l)).length;
   const century = [500, 250, 100].find((m) => delivered >= m);
   if (century)
     out.push({ key: "century", name: `${century} Loads`, icon: "stack", detail: "Career" });

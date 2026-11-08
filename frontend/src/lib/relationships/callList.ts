@@ -35,6 +35,7 @@ import { lastLoadKey } from "./agentRpm";
 import { lastMeaningfulContact } from "./meaningfulContact";
 import { DAY_MS, daysBetweenKeys, keyOf, localDayKey, shortDate, utcDayKey } from "./dayKeys";
 import { nameOf } from "./nameOf";
+import { isDelivered } from "@/lib/metrics/status";
 
 // ---- market grades ----
 export type MarketGrade = "A" | "B" | "C";
@@ -58,7 +59,7 @@ export const marketGrades = (loads: Load[], now: Date): MarketGrades => {
   const fromKey = utcDayKey(new Date(now.getTime() - GRADE_WINDOW_DAYS * DAY_MS));
   const acc = new Map<string, { gross: number; n: number }>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.pickup_date) continue;
+    if (!isDelivered(l) || !l.pickup_date) continue;
     const k = keyOf(l.pickup_date);
     if (k < fromKey || k > toKey) continue;
     const st = stateKey(l.origin_state);
@@ -266,7 +267,7 @@ export const reactivationList = (
   const ctx = { loads, contacts, now, loadsReady };
   const deliveredBy = new Map<string, Load[]>();
   for (const l of loads) {
-    if (!l.agent_id || l.load_status !== "delivered") continue;
+    if (!l.agent_id || !isDelivered(l)) continue;
     (deliveredBy.get(l.agent_id) ?? deliveredBy.set(l.agent_id, []).get(l.agent_id)!).push(l);
   }
   const stated = new Map<string, number>();
@@ -369,7 +370,7 @@ export const convertedCount = (loads: Load[], now: Date): number => {
   const nowKey = utcDayKey(now);
   const first = new Map<string, string>();
   for (const l of loads) {
-    if (!l.agent_id || l.load_status !== "delivered") continue;
+    if (!l.agent_id || !isDelivered(l)) continue;
     const raw = l.delivery_date ?? l.pickup_date;
     if (!raw) continue;
     const k = keyOf(raw);
@@ -396,7 +397,7 @@ export const prospectsList = (
   const nowKey = utcDayKey(now);
   const ctx = { loads, contacts, now, loadsReady };
   const hasDelivered = new Set<string>();
-  for (const l of loads) if (l.agent_id && l.load_status === "delivered") hasDelivered.add(l.agent_id);
+  for (const l of loads) if (l.agent_id && isDelivered(l)) hasDelivered.add(l.agent_id);
   const stated = new Map<string, number>();
   for (const c of coverage) stated.set(c.agent_id, (stated.get(c.agent_id) ?? 0) + 1);
 

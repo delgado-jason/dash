@@ -19,6 +19,7 @@ import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
+import { isDelivered } from "@/lib/metrics/status";
 
 const FIELDS: FormField[] = [
   {
@@ -88,7 +89,7 @@ const TrucksPage = () => {
       trucks.map((t) => {
         const odo = Number(t.current_odometer) || 0;
         const hauls = loads.filter(
-          (l) => l.truck_id === t.truck_id && l.load_status === "delivered",
+          (l) => l.truck_id === t.truck_id && isDelivered(l),
         ).length;
         const mpg = fuelStats(
           fuel.filter((f) => f.truck_id === t.truck_id),
