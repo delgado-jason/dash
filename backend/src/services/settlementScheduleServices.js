@@ -17,7 +17,6 @@ export const DEFAULTS = {
   detention_free_hours: 3,
   settlement_day: 3, // Wednesday — day of week the weekly settlement lands
   deposit_lag_days: 1, // the cash lands this many days after the settlement (#502)
-  per_diem_rate: 69,
   per_diem_deduct_pct: 0.8,
   hometime_threshold_days: 42, // GL-140 (Jason, 2026-11-05)
   operation: "flatbed",
@@ -36,7 +35,6 @@ const COLUMNS = [
   "detention_free_hours",
   "settlement_day",
   "deposit_lag_days",
-  "per_diem_rate",
   "per_diem_deduct_pct",
   "hometime_threshold_days",
   "operation",

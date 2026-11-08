@@ -15,7 +15,6 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   carrier_name: (s.carrier_name as string | null) ?? null,
   detention_free_hours:
     s.detention_free_hours != null ? Number(s.detention_free_hours) : DEFAULT_DETENTION_FREE_HOURS,
-  per_diem_rate: s.per_diem_rate != null ? Number(s.per_diem_rate) : 69,
   per_diem_deduct_pct:
     s.per_diem_deduct_pct != null ? Number(s.per_diem_deduct_pct) : 0.8,
   hometime_threshold_days:

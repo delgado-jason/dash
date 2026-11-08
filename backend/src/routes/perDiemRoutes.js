@@ -7,9 +7,61 @@ import {
   upsertPerDiemDay,
   deletePerDiemDay,
 } from "../services/perDiemServices.js";
+import {
+  listPerDiemRates,
+  createPerDiemRate,
+  updatePerDiemRate,
+  deletePerDiemRate,
+} from "../services/perDiemRateServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
+
+// ---- GL-136 dated rates ---- declared before "/" and "/:day" so "/rates" is
+// never read as a day.
+const rateError = (res, err) => {
+  if (err.type === "validation" || err.type === "not_found" || err.type === "conflict")
+    return res.status(err.statusCode).json({ error: err.message, details: err.details });
+  return res
+    .status(500)
+    .json({ error: "Internal Server Error", message: err.message });
+};
+
+router.get("/rates", async (req, res) => {
+  try {
+    const rates = await listPerDiemRates(req.user.user_id);
+    return res.status(200).json({ rates });
+  } catch (err) {
+    return rateError(res, err);
+  }
+});
+
+router.post("/rates", async (req, res) => {
+  try {
+    const rate = await createPerDiemRate(req.user.user_id, req.body);
+    return res.status(201).json({ rate });
+  } catch (err) {
+    return rateError(res, err);
+  }
+});
+
+router.patch("/rates/:rate_id", async (req, res) => {
+  try {
+    const rate = await updatePerDiemRate(req.user.user_id, req.params.rate_id, req.body);
+    return res.status(200).json({ rate });
+  } catch (err) {
+    return rateError(res, err);
+  }
+});
+
+router.delete("/rates/:rate_id", async (req, res) => {
+  try {
+    await deletePerDiemRate(req.user.user_id, req.params.rate_id);
+    return res.status(204).end();
+  } catch (err) {
+    return rateError(res, err);
+  }
+});
 
 // ---- GET the last home day (for the hometime metric) ----
 // Declared before "/" so the literal path matches ahead of the year list.

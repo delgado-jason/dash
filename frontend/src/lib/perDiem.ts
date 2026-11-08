@@ -1,6 +1,8 @@
 import type { Load } from "@/types/load";
 import type { PerDiemStatus } from "@/types/perDiem";
+import type { PerDiemRate } from "@/types/perDiemRate";
 import { isDelivered } from "@/lib/metrics/status";
+import { priceDays, type PerDiemSegment, type PricedStatus } from "@/lib/perDiem/rates";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -63,17 +65,23 @@ export interface PerDiemSummary {
   fullDays: number;
   halfDays: number;
   inferredCount: number; // inferred-out days not yet manually confirmed
-  deductible: number;
+  segments: PerDiemSegment[]; // the year's days by the rate in force on each (GL-136)
+  missingDays: string[]; // counted days no rate covers — refused, never priced at $0
+  gross: number | null; // Σ full × rate + half × rate × 0.75; null while a day is missing
+  deductible: number | null; // round(gross × deductible share); null while a day is missing
 }
 
-// Full days at the rate, half days at 75%, times the deductible share.
+// Each counted day is priced by the rate in force THAT day (dated rates,
+// GL-136): full days at the rate, half days at 75%, then the deductible share.
 // Walks every calendar day of `year` through `cap` (today, or the year's end
 // for a past year) — it must, because from the boundary on the UNMARKED days
 // are the full days. Marks past the cap (planned home time) don't count yet.
+// A day before the first rate row is listed in `missingDays` and the totals
+// are withheld (null) — the page refuses in the line that needs the rate.
 export const computePerDiem = (
   manual: Map<string, PerDiemStatus>,
   inferred: Set<string>,
-  rate: number,
+  rates: PerDiemRate[],
   deductPct: number,
   year: number,
   cap: Date,
@@ -81,24 +89,37 @@ export const computePerDiem = (
   let fullDays = 0;
   let halfDays = 0;
   let inferredCount = 0;
+  const counted: Array<readonly [string, PricedStatus]> = [];
   const capKey = dayKey(cap);
   const cur = new Date(year, 0, 1);
   while (cur.getFullYear() === year) {
     const k = dayKey(cur);
     if (k > capKey) break;
     const s = effectiveStatus(k, manual, inferred);
-    if (s === "full") fullDays++;
-    else if (s === "half") halfDays++;
+    if (s === "full") {
+      fullDays++;
+      counted.push([k, "full"]);
+    } else if (s === "half") {
+      halfDays++;
+      counted.push([k, "half"]);
+    }
     // The confirm-nudge only means something in the pre-boundary era — after
     // it, unmarked IS the claim, there's nothing to confirm.
     if (k < FULL_DEFAULT_SINCE && !manual.has(k) && inferred.has(k))
       inferredCount++;
     cur.setDate(cur.getDate() + 1);
   }
-  const deductible = Math.round(
-    (fullDays * rate + halfDays * rate * 0.75) * deductPct,
-  );
-  return { fullDays, halfDays, inferredCount, deductible };
+  const priced = priceDays(counted, rates);
+  const deductible = priced.gross == null ? null : Math.round(priced.gross * deductPct);
+  return {
+    fullDays,
+    halfDays,
+    inferredCount,
+    segments: priced.segments,
+    missingDays: priced.missingDays,
+    gross: priced.gross,
+    deductible,
+  };
 };
 
 // The next status when a day is tapped. null means "clear the manual mark"

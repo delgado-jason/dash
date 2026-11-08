@@ -10,6 +10,7 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 import { CutTiersCard } from "@/components/settings/CutTiersCard";
+import { PerDiemRatesTable } from "@/components/settings/PerDiemRatesTable";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 import { Panel } from "@/components/ui/Panel";
@@ -70,7 +71,6 @@ const SettingsPage = () => {
   const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [settlementDay, setSettlementDay] = useState(3); // 0=Sun … 6=Sat; default Wednesday
   const [depositLag, setDepositLag] = useState(1); // days after the settlement the cash lands
-  const [perDiemRate, setPerDiemRate] = useState(69);
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [hometimeThresh, setHometimeThresh] = useState(42);
   const [operation, setOperation] = useState("flatbed");
@@ -103,7 +103,6 @@ const SettingsPage = () => {
         setSettlementDay(s.settlement_day);
         setDepositLag(s.deposit_lag_days);
         setFreeHours(s.detention_free_hours);
-        setPerDiemRate(s.per_diem_rate);
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
         setHometimeThresh(s.hometime_threshold_days);
         setOperation(s.operation);
@@ -159,7 +158,6 @@ const SettingsPage = () => {
         settlement_day: settlementDay,
         deposit_lag_days: depositLag,
         detention_free_hours: freeHours,
-        per_diem_rate: perDiemRate,
         per_diem_deduct_pct: perDiemPct / 100,
         hometime_threshold_days: hometimeThresh,
         operation,
@@ -508,30 +506,13 @@ const SettingsPage = () => {
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Per diem</h2>
         <p className="text-sm text-muted-text mt-1">
-          The IRS special M&amp;IE daily rate and your deductible share. The rate
-          updates each October; DOT hours-of-service drivers deduct 80%. Drives the
-          Per Diem tracker's totals.
+          The IRS transportation rate, each row from its start date — add a row on
+          the day the IRS rate changes (Oct 1 in a change year); past years keep the
+          rate they were filed at. Your deductible share is saved with the schedule
+          above.
         </p>
+        <PerDiemRatesTable />
         <div className="flex flex-wrap gap-6 mt-4">
-          <label className="block">
-            <span className="text-sm text-light">Daily rate</span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-muted-text">$</span>
-              <input
-                type="number"
-                min={0}
-                max={500}
-                step={1}
-                value={Number.isFinite(perDiemRate) ? perDiemRate : ""}
-                onChange={(e) => {
-                  setMsg(null);
-                  setPerDiemRate(Number(e.target.value));
-                }}
-                className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
-              />
-              <span className="text-muted-text">/ day</span>
-            </div>
-          </label>
           <label className="block">
             <span className="text-sm text-light">Deductible</span>
             <div className="flex items-center gap-2 mt-1">

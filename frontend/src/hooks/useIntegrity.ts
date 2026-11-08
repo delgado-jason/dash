@@ -9,6 +9,7 @@ import { getMonthlyFinancials, getCashAssumptions } from "@/services/cashflowSer
 import { getObligations } from "@/services/obligationsService";
 import { getAllAccessorials } from "@/services/accessorialService";
 import { getAccessorialRates } from "@/services/accessorialRateService";
+import { getPerDiemRates } from "@/services/perDiemRateService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getSnapshots, getAccounts, getPlans } from "@/services/planService";
 import { getMaintenanceServices } from "@/services/maintenanceService";
@@ -23,7 +24,7 @@ type Fetched = Omit<IntegrityInputs, "today" | "role" | "basis">;
 
 const EMPTY: Fetched = {
   loads: [], trips: [], fuel: [], settlements: [], settlementLines: [], periods: [],
-  financials: [], obligations: [], accessorials: [], payRates: [], schedule: null,
+  financials: [], obligations: [], accessorials: [], payRates: [], schedule: null, perDiemRates: [],
   snapshots: [], accounts: [], plan: null, assumptions: null, services: [],
 };
 
@@ -62,6 +63,7 @@ const loadAll = async (): Promise<Loaded> => {
     ["the plan", getPlans()],
     ["the planning assumptions", getCashAssumptions()],
     ["the service log", getMaintenanceServices()],
+    ["the per-diem rates", getPerDiemRates()],
   ];
   const settled = await Promise.allSettled(jobs.map(([, p]) => p));
   const failed: string[] = [];
@@ -89,6 +91,7 @@ const loadAll = async (): Promise<Loaded> => {
     plan: plans.find((p) => p.active) ?? plans[0] ?? null,
     assumptions: v(14, null),
     services: v(15, EMPTY.services),
+    perDiemRates: v(16, null), // unknown when the fetch failed — the check is skipped, not fed []
   };
   return { data, failed };
 };

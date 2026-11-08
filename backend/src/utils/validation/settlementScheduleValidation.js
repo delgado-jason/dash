@@ -12,7 +12,7 @@ import { toNumber } from "./moneyFields.js";
 //   linehaul_pct + trailer_pct ≤ 1
 //   tiers           0–3, each set ascending (min ≤ target ≤ strong)
 //   margin_goal     [0,1)    settlement_day 0–6    deposit_lag_days 0–6
-//   per_diem_rate   0–500    per_diem_deduct_pct 0–1
+//   per_diem_deduct_pct 0–1
 //   hometime_threshold_days 1–365    detention_free_hours 0–24
 //
 // `current` is the stored (or default) schedule: the cross-field rules (the
@@ -87,11 +87,6 @@ export const validateSchedule = (data, current = null) => {
       (x) => Number.isInteger(x) && x >= 0 && x <= 6,
       "deposit_lag_days must be a whole number of days, 0 through 6",
     );
-  }
-
-  if (d.per_diem_rate !== undefined) {
-    const n = numeric("per_diem_rate", "a blank would read as no per diem");
-    set("per_diem_rate", n, (x) => x >= 0 && x <= 500, "per_diem_rate must be between 0 and 500");
   }
 
   if (d.per_diem_deduct_pct !== undefined) {

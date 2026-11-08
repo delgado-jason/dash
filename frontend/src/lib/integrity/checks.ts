@@ -17,6 +17,7 @@ import { archiveGaps } from "@/lib/metrics/cashflow";
 import { settlementDelta } from "@/lib/metrics/settlements";
 import { isDelivered } from "@/lib/metrics/status";
 import { weekLabel } from "@/lib/metrics/payWeeks";
+import { dayWords, rateInForce, sortRates } from "@/lib/perDiem/rates";
 import { sortIssues, type IntegrityInputs, type Issue, type IssueRecord } from "./issue";
 
 // The IRS special transportation M&IE per diem — the FY2026 rate. Dated rates
@@ -366,20 +367,39 @@ export const runIntegrityChecks = (inputs: IntegrityInputs): Issue[] => {
     }
   }
 
-  // ---- INT-SETTING: per diem below the IRS transportation rate ----
-  const perDiem = typed(inputs.schedule?.per_diem_rate);
-  if (perDiem != null && perDiem < IRS_PER_DIEM_RATE) {
-    issues.push({
-      id: "INT-SETTING",
-      key: "INT-SETTING:per_diem_rate",
-      severity: "money",
-      title: `Per diem is ${dollars(perDiem)}/day; the IRS transportation rate is ${dollars(IRS_PER_DIEM_RATE)}.`,
-      detail: `Every day out is deducted at ${dollars(perDiem)} instead of ${dollars(IRS_PER_DIEM_RATE)} — ${dollars(IRS_PER_DIEM_RATE - perDiem)} a day short before the deductible share.`,
-      fixAt: "Settings → per diem",
-      fixTo: "/settings",
-      since: null,
-      records: [{ kind: "setting", key: "per_diem_rate", href: "/settings" }],
-    });
+  // ---- INT-SETTING: no per-diem rate covers today, or the one in force is below the IRS rate ----
+  // A failed fetch hands null, not []: unknown is skipped — never read as "no rate on file".
+  if (inputs.perDiemRates != null) {
+    const inForce = rateInForce(inputs.perDiemRates, inputs.today);
+    if (inForce == null) {
+      const oldest = sortRates(inputs.perDiemRates)[0];
+      issues.push({
+        id: "INT-SETTING",
+        key: "INT-SETTING:per_diem_rate",
+        severity: "money",
+        title: "No per-diem rate covers today — every day out is unpriced until one does.",
+        detail: oldest
+          ? `The oldest rate on file starts ${dayWords(oldest.effective_from)}; add a row with a start on or before today.`
+          : "No rates are on file.",
+        fixAt: "Settings → per diem rates",
+        fixTo: "/settings",
+        since: null,
+        records: [{ kind: "setting", key: "per_diem_rate", href: "/settings" }],
+      });
+    } else if (inForce.rate < IRS_PER_DIEM_RATE) {
+      const perDiem = inForce.rate;
+      issues.push({
+        id: "INT-SETTING",
+        key: "INT-SETTING:per_diem_rate",
+        severity: "money",
+        title: `Per diem is ${dollars(perDiem)}/day; the IRS transportation rate is ${dollars(IRS_PER_DIEM_RATE)}.`,
+        detail: `The rate in force today started ${dayWords(inForce.effective_from)}. Every day out is deducted at ${dollars(perDiem)} instead of ${dollars(IRS_PER_DIEM_RATE)} — ${dollars(IRS_PER_DIEM_RATE - perDiem)} a day short before the deductible share.`,
+        fixAt: "Settings → per diem rates",
+        fixTo: "/settings",
+        since: null,
+        records: [{ kind: "setting", key: "per_diem_rate", href: "/settings" }],
+      });
+    }
   }
 
   // ---- INT-NOTE-UNDATED: a tracked balance with no as-of date ----

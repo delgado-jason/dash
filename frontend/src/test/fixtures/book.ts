@@ -19,6 +19,7 @@
 //  · Net and gross revenue are filled the way the backend does (NET-01/02).
 //
 // Every call returns a FRESH object graph — mutate it freely in a test.
+import type { PerDiemRate } from "@/types/perDiemRate";
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import type { ExpensePeriod, ExpenseLine, ExpenseType, ExpenseSection } from "@/types/expense";
@@ -45,6 +46,7 @@ export type Book = {
   periods: ExpensePeriod[];
   obligations: Obligation[];
   schedule: SettlementSchedule;
+  perDiemRates: PerDiemRate[];
   payRates: AccessorialRate[];
   settlements: SettlementSummary[];
   settlementLines: BookSettlementLine[];
@@ -566,6 +568,12 @@ export const syntheticBook = (): Book => {
     },
   ];
 
+  // ---- the dated per-diem rates (the clean book has $80 in force on TODAY) ----
+  const perDiemRates: PerDiemRate[] = [
+    { rate_id: "pdr-2025", effective_from: "2025-01-01", rate: 69, note: "the rate 2025 was filed at — kept so past years never move" },
+    { rate_id: "pdr-2026", effective_from: "2026-01-01", rate: 80, note: "IRS FY2026 transportation rate" },
+  ];
+
   // ---- the settlement schedule ----
   const schedule: SettlementSchedule = {
     ...SCHEDULE,
@@ -573,7 +581,6 @@ export const syntheticBook = (): Book => {
     detention_free_hours: 3,
     settlement_day: 3,
     deposit_lag_days: 1,
-    per_diem_rate: 80,
     per_diem_deduct_pct: 0.8,
     hometime_threshold_days: 42,
     operation: "flatbed",
@@ -785,6 +792,7 @@ export const syntheticBook = (): Book => {
     periods,
     obligations,
     schedule,
+    perDiemRates,
     payRates,
     settlements,
     settlementLines,

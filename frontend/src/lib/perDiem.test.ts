@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { PerDiemStatus } from "@/types/perDiem";
+import type { PerDiemRate } from "@/types/perDiemRate";
 import {
   inferredOutDays,
   effectiveStatus,
@@ -10,6 +11,10 @@ import {
 
 const L = (o: Record<string, unknown>): Load =>
   ({ load_status: "delivered", ...o }) as unknown as Load;
+
+// One undated-looking rate for the day-counting tests: $69 since long before
+// any year they walk, so every counted day is priced and only the counts matter.
+const RATE_69: PerDiemRate[] = [{ rate_id: "r69", effective_from: "2000-01-01", rate: 69, note: null }];
 
 describe("inferredOutDays", () => {
   it("covers every day of a multi-day delivered haul, within the year and up to cap", () => {
@@ -63,7 +68,7 @@ describe("effectiveStatus + computePerDiem", () => {
 
   it("totals full/half and counts unconfirmed inferred days (pre-boundary era)", () => {
     // Cap in May — the whole walk stays before the 2026-08-18 default flip.
-    const s = computePerDiem(manual, inferred, 69, 0.8, 2026, new Date(2026, 4, 31));
+    const s = computePerDiem(manual, inferred, RATE_69, 0.8, 2026, new Date(2026, 4, 31));
     // full: 03-03, 03-04, 05-20 = 3 ; half: 03-02, 03-05 = 2 ; 04-10 is home
     expect(s.fullDays).toBe(3);
     expect(s.halfDays).toBe(2);
@@ -96,7 +101,7 @@ describe("the 2026-08-18 default flip — unmarked counts FULL from the boundary
       ["2026-08-19", "home"],
       ["2026-08-20", "half"],
     ]);
-    const s = computePerDiem(manual, new Set(), 69, 0.8, 2026, new Date(2026, 7, 22));
+    const s = computePerDiem(manual, new Set(), RATE_69, 0.8, 2026, new Date(2026, 7, 22));
     expect(s.fullDays).toBe(3);
     expect(s.halfDays).toBe(1);
     // (3*69 + 1*51.75) * 0.8 = 258.75 * 0.8 = 207
@@ -106,14 +111,14 @@ describe("the 2026-08-18 default flip — unmarked counts FULL from the boundary
 
   it("a manual mark past the cap (planned home time) doesn't count yet", () => {
     const manual = new Map<string, PerDiemStatus>([["2026-08-25", "half"]]);
-    const s = computePerDiem(manual, new Set(), 69, 0.8, 2026, new Date(2026, 7, 22));
+    const s = computePerDiem(manual, new Set(), RATE_69, 0.8, 2026, new Date(2026, 7, 22));
     expect(s.halfDays).toBe(0);
     expect(s.fullDays).toBe(5); // 08-18..08-22 auto-full
   });
 
   it("pre-boundary inference still works alongside the post-boundary default", () => {
     const inferred = new Set<string>(["2026-08-15"]); // load-covered, pre-flip
-    const s = computePerDiem(new Map(), inferred, 69, 0.8, 2026, new Date(2026, 7, 19));
+    const s = computePerDiem(new Map(), inferred, RATE_69, 0.8, 2026, new Date(2026, 7, 19));
     expect(s.fullDays).toBe(3); // 08-15 (inferred) + 08-18 + 08-19 (auto)
     expect(s.inferredCount).toBe(1);
   });
@@ -123,7 +128,7 @@ describe("the 2026-08-18 default flip — unmarked counts FULL from the boundary
     // (confirmable); 08-18/19 are auto-full like any post-flip day — unmarked
     // IS the claim there, nothing to confirm.
     const inferred = new Set<string>(["2026-08-17", "2026-08-18", "2026-08-19"]);
-    const s = computePerDiem(new Map(), inferred, 69, 0.8, 2026, new Date(2026, 7, 20));
+    const s = computePerDiem(new Map(), inferred, RATE_69, 0.8, 2026, new Date(2026, 7, 20));
     expect(s.fullDays).toBe(4); // 08-17 (inferred) + 08-18..08-20 (auto)
     expect(s.inferredCount).toBe(1); // 08-17 only
   });
@@ -131,7 +136,7 @@ describe("the 2026-08-18 default flip — unmarked counts FULL from the boundary
   it("a past year is walked entirely under the old rules (unmarked = home)", () => {
     const manual = new Map<string, PerDiemStatus>([["2025-06-02", "half"]]);
     const inferred = new Set<string>(["2025-06-10"]);
-    const s = computePerDiem(manual, inferred, 69, 0.8, 2025, new Date(2025, 11, 31));
+    const s = computePerDiem(manual, inferred, RATE_69, 0.8, 2025, new Date(2025, 11, 31));
     // 365 unmarked days stay home — only the mark and the load-covered day count.
     expect(s.fullDays).toBe(1);
     expect(s.halfDays).toBe(1);
@@ -154,5 +159,71 @@ describe("nextStatus cycle", () => {
     expect(nextStatus("full", true)).toBe("half"); // legacy explicit full folds in
     expect(nextStatus("half", true)).toBe("home");
     expect(nextStatus("home", true)).toBeNull();
+  });
+});
+
+describe("computePerDiem prices each day by the rate in force that day (GL-136)", () => {
+  const RATES: PerDiemRate[] = [
+    { rate_id: "r80", effective_from: "2026-01-01", rate: 80, note: "IRS FY2026 transportation rate" },
+    { rate_id: "r69", effective_from: "2025-01-01", rate: 69, note: "the rate 2025 was filed at" },
+  ];
+
+  it("a year under one rate is one segment, and the old single-rate total", () => {
+    const manual = new Map<string, PerDiemStatus>([["2026-08-20", "half"]]);
+    const s = computePerDiem(manual, new Set(), RATES, 0.8, 2026, new Date(2026, 7, 22));
+    // 08-18, 08-19, 08-21, 08-22 auto-full + 08-20 half → (4 × 80 + 60) × 0.8 = 304
+    expect(s.segments).toHaveLength(1);
+    expect(s.segments[0]).toMatchObject({ rate_id: "r80", fullDays: 4, halfDays: 1 });
+    expect(s.gross).toBeCloseTo(380, 6);
+    expect(s.deductible).toBe(304);
+    expect(s.missingDays).toEqual([]);
+  });
+
+  it("a year whose counted days straddle two rates prices each at its own", () => {
+    // 2025 is pre-flip (unmarked = home), so only marks count: two full days in
+    // December 2025 at $69 … and a 2025 walk never reaches 2026, so one segment.
+    const manual = new Map<string, PerDiemStatus>([
+      ["2025-12-30", "full"],
+      ["2025-12-31", "half"],
+    ]);
+    const s = computePerDiem(manual, new Set(), RATES, 0.8, 2025, new Date(2025, 11, 31));
+    expect(s.segments.map((x) => x.rate_id)).toEqual(["r69"]);
+    expect(s.gross).toBeCloseTo(69 + 51.75, 6);
+    expect(s.deductible).toBe(97); // 120.75 × 0.8 = 96.6 → 97
+  });
+
+  it("a rate that starts mid-year splits the year into two segments", () => {
+    const rates: PerDiemRate[] = [
+      ...RATES,
+      { rate_id: "r86", effective_from: "2026-10-01", rate: 86, note: "IRS FY2027" },
+    ];
+    // Post-flip, unmarked = full: Sep 29 – Oct 2 → two at $80, two at $86.
+    const s = computePerDiem(new Map(), new Set(), rates, 0.8, 2026, new Date(2026, 9, 2));
+    const sep = s.segments.find((x) => x.rate_id === "r80");
+    const oct = s.segments.find((x) => x.rate_id === "r86");
+    expect(oct).toMatchObject({ fullDays: 2, halfDays: 0, amount: 172 });
+    expect(sep?.fullDays).toBe(44); // Aug 18 → Sep 30: 14 + 30 auto-full days at $80
+    expect(s.segments.map((x) => x.rate_id)).toEqual(["r80", "r86"]); // oldest first
+  });
+
+  it("a counted day before the first rate is refused: listed, totals withheld", () => {
+    const manual = new Map<string, PerDiemStatus>([
+      ["2024-06-02", "half"],
+      ["2024-06-03", "full"],
+    ]);
+    const s = computePerDiem(manual, new Set(), RATES, 0.8, 2024, new Date(2024, 11, 31));
+    expect(s.fullDays).toBe(1);
+    expect(s.halfDays).toBe(1);
+    expect(s.missingDays).toEqual(["2024-06-02", "2024-06-03"]);
+    expect(s.segments).toEqual([]);
+    expect(s.gross).toBeNull();
+    expect(s.deductible).toBeNull();
+  });
+
+  it("no rates at all: every counted day is missing, nothing is priced at $0", () => {
+    const s = computePerDiem(new Map(), new Set(), [], 0.8, 2026, new Date(2026, 7, 19));
+    expect(s.fullDays).toBe(2); // 08-18, 08-19 auto-full
+    expect(s.missingDays).toEqual(["2026-08-18", "2026-08-19"]);
+    expect(s.deductible).toBeNull();
   });
 });

@@ -16,6 +16,7 @@ const empty = (over: Partial<IntegrityInputs> = {}): IntegrityInputs => ({
   accessorials: [],
   payRates: [],
   schedule: null,
+  perDiemRates: syntheticBook().perDiemRates,
   snapshots: [],
   accounts: [],
   plan: null,
@@ -108,9 +109,25 @@ describe("edge cases", () => {
   });
 
   it("a per diem of exactly the IRS rate is quiet; cents print with cents", () => {
-    const b = syntheticBook();
-    expect(runIntegrityChecks(empty({ schedule: { ...b.schedule, per_diem_rate: 80 } }))).toEqual([]);
-    const i = runIntegrityChecks(empty({ schedule: { ...b.schedule, per_diem_rate: 69.5 } }));
+    const row = { rate_id: "r", effective_from: "2026-01-01", rate: 80, note: null };
+    expect(runIntegrityChecks(empty({ perDiemRates: [row] }))).toEqual([]);
+    const i = runIntegrityChecks(empty({ perDiemRates: [{ ...row, rate: 69.5 }] }));
     expect(i[0].title).toBe("Per diem is $69.50/day; the IRS transportation rate is $80.");
+    expect(i[0].detail.startsWith("The rate in force today started Jan 1, 2026. ")).toBe(true);
+  });
+
+  it("no rate in force today raises the unpriced issue", () => {
+    const none = runIntegrityChecks(empty({ perDiemRates: [] }));
+    expect(none.map((x) => x.id)).toEqual(["INT-SETTING"]);
+    expect(none[0].title).toBe("No per-diem rate covers today — every day out is unpriced until one does.");
+    expect(none[0].detail).toBe("No rates are on file.");
+    const later = runIntegrityChecks(empty({ perDiemRates: [{ rate_id: "r", effective_from: "2027-10-01", rate: 86, note: null }] }));
+    expect(later[0].detail).toBe("The oldest rate on file starts Oct 1, 2027; add a row with a start on or before today.");
+  });
+});
+
+describe("INT-SETTING · an unknown rates list (the fetch failed) is skipped", () => {
+  it("null raises nothing — a failed fetch is never read as no rate on file", () => {
+    expect(runIntegrityChecks(empty({ perDiemRates: null })).filter((i) => i.id === "INT-SETTING")).toEqual([]);
   });
 });
