@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { LoadSaveError } from "@/lib/loads/loadSaveError";
+import { deliveredNeeds } from "@/lib/loads/deliveredNeeds";
 import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
@@ -561,7 +563,10 @@ const LoadForm = ({
       ? "Delivery date can't be earlier than the pickup date."
       : null;
 
+  const needsDelivered = deliveredNeeds(formData.load_status, formData.odometer_end, formData.delivery_date);
+
   const handleSubmit = async () => {
+    if (needsDelivered) return;
     if (dateOrderError) {
       setError(dateOrderError);
       return;
@@ -576,8 +581,10 @@ const LoadForm = ({
       await onSubmit(formData);
       onSuccess();
       onClose();
-    } catch {
-      setError("Unable to create a new load");
+    } catch (e) {
+      // The server's own sentences when it refused with details (400).
+      if (e instanceof LoadSaveError && e.details.length) setError(e.details.join(" "));
+      else setError("Unable to create a new load");
     }
   };
 
@@ -1583,6 +1590,9 @@ const LoadForm = ({
                 onChange={handleChange}
                 value={formData.odometer_end ?? ""}
               ></Input>
+              {needsDelivered && (
+                <p className="font-condensed text-[12px] text-amber-hi mt-1">{needsDelivered}</p>
+              )}
             </div>
           </div>
         </div>
@@ -1611,7 +1621,7 @@ const LoadForm = ({
           </div>
         </div>
         {error && <p className="text-destructive text-sm mt-3">{error}</p>}
-        <Button className="mt-4" onClick={handleSubmit}>
+        <Button className="mt-4" onClick={handleSubmit} disabled={!!needsDelivered}>
           {mode === "create" ? "Create Load" : "Save Changes"}
         </Button>
       </div>

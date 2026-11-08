@@ -1,5 +1,5 @@
 import api from "./api";
-import { AxiosError } from "axios";
+import { loadSaveErrorFrom } from "@/lib/loads/loadSaveError";
 import type { Load } from "@/types/load";
 import type { CustomerEnd } from "@/lib/loads/customerEnd";
 import { withCustomerEnd } from "./loadsService";
@@ -30,11 +30,8 @@ export const patchLoad = async (
     // say "Validation failed — customer_end must be one of shipper, receiver,
     // neither" instead of a flat "Unable to patch load" — the same shape
     // patchAgentService uses. The claim toggle reads by name now too.
-    if (error instanceof AxiosError && error.response?.data) {
-      const body = error.response.data as { error?: string; details?: string[] };
-      const detail = Array.isArray(body.details) && body.details.length ? ` — ${body.details.join("; ")}` : "";
-      if (body.error) throw new Error(`${body.error}${detail}`);
-    }
+    const refused = loadSaveErrorFrom(error);
+    if (refused) throw refused;
     throw new Error("Unable to patch load");
   }
 };

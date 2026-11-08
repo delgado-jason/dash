@@ -61,6 +61,7 @@ import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type Odo
 import { accrualFlagOf } from "./planStatus";
 import { accrualsByWeek, retrueAccrued, retrueWords, type AccrualRecord } from "./accrualTruth";
 import { isDelivered, isNeverRevenue } from "./status";
+import { requireInputs, type InputWords, type MissingInput } from "@/lib/integrity/require";
 
 export interface CashCheck {
   date: string; // YYYY-MM-DD
@@ -78,8 +79,9 @@ export interface FuelLike {
 
 export interface MoneyDayMove {
   date: string; // the snapshot's day
-  amount: number; // what left Ops: tax + the surplus that moved
+  amount: number | null; // what left Ops: tax + the surplus that moved; null when it can't be placed (see `missing`)
   label: string; // "Money day · August 2026"
+  missing?: MissingInput[]; // e.g. the snapshot logged no miles, so its accrual — and the move — is unknown
 }
 
 export interface CashBoardInput {
@@ -93,15 +95,18 @@ export interface CashBoardInput {
   fuelEntries: FuelLike[];
   obligations: Obligation[];
   readings: OdometerReading[];
-  weeklyPayroll: number;
-  perMile: number; // the plan's maintenance $/mile
+  // The planning inputs are nullable on purpose (Nod Sheet "The Protection
+  // Stage", call 5): a blank is NOT $0. The line that needs one refuses —
+  // amount null + the words for what is missing — and the column's ending waits.
+  weeklyPayroll: number | null;
+  perMile: number | null; // the plan's maintenance $/mile
   fuelPaceWeekly: number | null; // $/week over the last four running pay weeks (runningWeekPace); null → fuelFallback
-  fuelFallback: number;
+  fuelFallback: number | null;
   milesPaceWeekly?: number | null; // odometer miles/week over the last four running pay weeks (runningMilesPace)
-  advanceDefault: number; // the weekly fuel advance borrowed against the loads — $2,000
+  advanceDefault: number | null; // the weekly fuel advance borrowed against the loads — $2,000
   buckets: DeductionBuckets;
-  deductionsFallback: number;
-  weeklyRevenueFallback: number; // when nothing is booked into a period yet
+  deductionsFallback: number | null;
+  weeklyRevenueFallback: number | null; // when nothing is booked into a period yet
   moneyDays: MoneyDayMove[];
   overrides: Record<string, number>; // statement date → deposit
   // The accruals the snapshots recorded (miles + the week they covered), so a
@@ -112,21 +117,23 @@ export interface CashBoardInput {
 
 // A dated line. `counted` = it goes into the column's Ops arithmetic.
 export interface Line {
-  amount: number;
+  amount: number | null; // null = refused: a planning input it needs isn't set (see `missing`)
   date: string;
   counted: boolean;
+  missing?: MissingInput[];
 }
 
 export interface FuelLine {
-  spent: number; // the period's fills — actual once closed (or once they pass the pace), else the pace
+  spent: number | null; // the period's fills — actual once closed (or once they pass the pace), else the pace; null when the pace's fallback isn't set
   spentSource: "actual" | "pace";
   fills: number;
   soFar: number;
-  advances: number; // drawn in the period — the statement's actual, else assumed
+  advances: number | null; // drawn in the period — the statement's actual, else assumed; null when the weekly advance isn't set
   // actual = the statement · assumed = the weekly advance · fills = the logged
   // fills passed it · none = no loads, no draw
   advancesSource: "actual" | "assumed" | "fills" | "none";
   leftover: Line; // advances − spent → Ops, the Monday inside the period
+  missing: MissingInput[]; // the planning inputs the advance / the pace needed and didn't have
 }
 
 export interface DepositLine extends Line {
@@ -136,7 +143,7 @@ export interface DepositLine extends Line {
   // An open period projects the larger of its loads and the planning fallback —
   // one small booking must not replace a whole week's expected revenue.
   revenueSource: "loads" | "fallback" | "none";
-  revenue: number; // delivered + expected (or the fallback) before the advance and the bucket
+  revenue: number | null; // delivered + expected (or the fallback) before the advance and the bucket; null when refused
   // Landstar carries a negative statement into the next one. carriedIn is what
   // earlier statements left owing (≤ 0, already applied to amount); carriedOut
   // is what this statement itself carries forward (≤ 0) — nothing lands.
@@ -147,9 +154,9 @@ export interface DepositLine extends Line {
   inTransit: number;
   booked: number;
   expectedNet: number;
-  advances: number;
+  advances: number | null;
   advancesSource: FuelLine["advancesSource"];
-  bucket: number;
+  bucket: number | null;
   bucketKind: "first" | "standard" | "fallback";
   fuel: FuelLine; // the period's fuel, computed once
 }
@@ -182,7 +189,8 @@ export interface PriorLines {
   deposit: DepositLine | null; // an older period's deposit that landed after the number
   bills: BillLine[];
   moneyDays: MoneyDayLine[];
-  total: number; // signed: inflows − outflows, counted lines only
+  total: number | null; // signed: inflows − outflows, counted lines only; null when a counted line is refused
+  missing: MissingInput[];
 }
 
 export interface PeriodColumn {
@@ -203,7 +211,10 @@ export interface PeriodColumn {
   bills: BillLine[];
   billsTotal: number; // counted only
   moneyDays: MoneyDayLine[];
-  ending: number | null;
+  ending: number | null; // null when the column has no opening, or a counted line is refused (see `missing`)
+  // The planning inputs a COUNTED line of this column needed and didn't have —
+  // deduplicated by key. Non-empty ⇒ ending is null.
+  missing: MissingInput[];
 }
 
 export interface LowestDay {
@@ -216,6 +227,7 @@ export interface CashBoard {
   base: CashCheck; // the Ops number the current column opens on
   lowest: LowestDay | null; // the lowest day across both periods, by every counted line's own date
   clears: boolean | null; // lowest.amount ≥ the float line
+  missing: MissingInput[]; // both columns' missing inputs, deduplicated — the verdict waits while any is set
 }
 
 // "Delivered" and "never revenue" (a cancelled load, a TONU) come from
@@ -223,6 +235,35 @@ export interface CashBoard {
 // listed "invoiced" and "paid"; those are payment_status values, never a
 // load_status, so they were unreachable entries and dropping them changes
 // nothing.
+
+// ---- the planning inputs a line can refuse for ----
+const INPUT_WORDS = {
+  weeklyPayroll: { label: "weekly payroll", fixAt: "ASSUMPTIONS" },
+  advanceDefault: { label: "the weekly fuel advance", fixAt: "ASSUMPTIONS" },
+  deductionsFallback: { label: "the weekly settlement deductions", fixAt: "ASSUMPTIONS" },
+  weeklyRevenueFallback: { label: "the weekly revenue fallback", fixAt: "ASSUMPTIONS" },
+  fuelFallback: { label: "the weekly fuel fallback", fixAt: "ASSUMPTIONS" },
+  perMile: { label: "the plan's $ per mile", fixAt: "EDIT PLAN", fixTo: "/status" },
+} satisfies Record<string, InputWords>;
+type PlanKey = keyof typeof INPUT_WORDS;
+
+// What of `keys` isn't set on the input — through the one gate (requireInputs).
+const missingIn = (input: Partial<Record<PlanKey, number | null>>, keys: PlanKey[]): MissingInput[] => {
+  const probe: Record<string, number | null | undefined> = {};
+  const words: Record<string, InputWords> = {};
+  for (const k of keys) {
+    probe[k] = input[k];
+    words[k] = INPUT_WORDS[k];
+  }
+  const r = requireInputs(probe, words);
+  return r.ok ? [] : r.missing;
+};
+const dedupe = (list: MissingInput[]): MissingInput[] => {
+  const seen = new Set<string>();
+  return list.filter((m) => (seen.has(m.key) ? false : (seen.add(m.key), true)));
+};
+const countedMissing = (lines: ({ counted: boolean; missing?: MissingInput[] } | null | undefined)[]): MissingInput[] =>
+  dedupe(lines.flatMap((l) => (l && l.counted && l.missing ? l.missing : [])));
 
 const num = (v: number | string | null | undefined): number => {
   const n = Number(v);
@@ -291,7 +332,7 @@ const fillsIn = (fuel: FuelLike[], week: PayWeek, upTo?: string): { total: numbe
 // no week ran.
 const runningPace = (
   today: string,
-  valueOf: (week: PayWeek) => number,
+  valueOf: (week: PayWeek) => number | null,
   weeks = 4,
   lookback = 12,
 ): number | null => {
@@ -300,7 +341,7 @@ const runningPace = (
   for (let i = 0; i < lookback && vals.length < weeks; i++) {
     w = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
     const v = valueOf(w);
-    if (v > 0) vals.push(v);
+    if (v != null && v > 0) vals.push(v);
   }
   if (vals.length === 0) return null;
   return round2(vals.reduce((a, b) => a + b, 0) / vals.length);
@@ -312,7 +353,7 @@ export const runningWeekPace = (fuel: FuelLike[], today: string, weeks = 4): num
 
 // Odometer miles/week over the last four pay weeks that rolled.
 export const runningMilesPace = (readings: OdometerReading[], today: string, weeks = 4): number | null =>
-  runningPace(today, (w) => weekOdometerMiles(readings, w).miles ?? 0, weeks);
+  runningPace(today, (w) => weekOdometerMiles(readings, w).miles, weeks);
 
 // The period's fuel: the log's fills once the period closes; while it's open,
 // the fills so far or the 30-day pace, whichever is larger; a future period
@@ -327,23 +368,30 @@ export const fuelForWeek = (
   base?: CashCheck,
   noLoads = false,
 ): FuelLine => {
-  const paceWeekly = input.fuelPaceWeekly ?? input.fuelFallback;
   const closed = week.end < input.today;
   const { total, count } = closed ? fillsIn(input.fuelEntries, week) : fillsIn(input.fuelEntries, week, input.today);
-  const spent = closed ? total : Math.max(paceWeekly, total);
-  const spentSource: FuelLine["spentSource"] = closed || total >= paceWeekly ? "actual" : "pace";
+  // The pace: the last four running weeks, else the fallback — which refuses
+  // (spent null) when it isn't set. A closed period stands on its fills alone.
+  const paceMissing = !closed && input.fuelPaceWeekly == null ? missingIn(input, ["fuelFallback"]) : [];
+  const paceWeekly = Number(input.fuelPaceWeekly ?? input.fuelFallback);
+  const spent = closed ? total : paceMissing.length ? null : Math.max(paceWeekly, total);
+  const spentSource: FuelLine["spentSource"] = closed || (paceMissing.length === 0 && total >= paceWeekly) ? "actual" : "pace";
   const statementDate = statementDateOf(week, input.settlementDay);
   const actual = input.settlements.find((s) => day(s.period_ending) === statementDate);
   const advancesActual = actual ? num(actual.advances) : null;
-  const advances = advancesActual ?? (noLoads ? 0 : Math.max(input.advanceDefault, total));
+  const advMissing = advancesActual == null && !noLoads ? missingIn(input, ["advanceDefault"]) : [];
+  const advanceDefault = Number(input.advanceDefault);
+  const advances = advancesActual ?? (noLoads ? 0 : advMissing.length ? null : Math.max(advanceDefault, total));
   const advancesSource: FuelLine["advancesSource"] =
-    advancesActual != null ? "actual" : noLoads ? "none" : total > input.advanceDefault ? "fills" : "assumed";
+    advancesActual != null ? "actual" : noLoads ? "none" : advMissing.length === 0 && total > advanceDefault ? "fills" : "assumed";
   const monday = nextDow(week.start, 1);
-  return {
-    spent, spentSource, fills: count, soFar: total,
-    advances, advancesSource,
-    leftover: { amount: round2(Math.max(0, advances - spent)), date: monday, counted: countsIn(monday, base) },
-  };
+  const missing = dedupe([...advMissing, ...paceMissing]);
+  const counted = countsIn(monday, base);
+  const leftover: Line =
+    advances == null || spent == null
+      ? { amount: null, date: monday, counted, missing }
+      : { amount: round2(Math.max(0, advances - spent)), date: monday, counted };
+  return { spent, spentSource, fills: count, soFar: total, advances, advancesSource, leftover, missing };
 };
 
 // ---- a period's own deposit ----
@@ -368,14 +416,16 @@ const carriedInto = (settlements: SettlementSummary[], statementDate: string): n
 };
 
 export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: CashCheck): DepositLine => {
-  const { settlements, loads, overrides, buckets, deductionsFallback, weeklyRevenueFallback, today } = input;
+  const { settlements, loads, overrides, buckets, deductionsFallback, today } = input;
   const sd = normalizeSettlementDay(input.settlementDay);
   const statementDate = statementDateOf(week, sd);
   const date = addDays(statementDate, input.depositLagDays);
   const counted = countsIn(date, base);
   const first = isFirstOfMonth(statementDate);
   const bucketVal = first ? (buckets.firstOfMonth ?? buckets.standard) : (buckets.standard ?? buckets.firstOfMonth);
-  const bucket = bucketVal ?? deductionsFallback;
+  // The deductions bucket: the statements' own, else the planning fallback —
+  // which refuses the projection when it isn't set.
+  const bucket: number | null = bucketVal ?? (missingIn(input, ["deductionsFallback"]).length ? null : Number(deductionsFallback));
   const bucketKind: DepositLine["bucketKind"] = bucketVal == null ? "fallback" : first ? "first" : "standard";
 
   let loadsNet = 0;
@@ -435,21 +485,36 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   // is open or future and the loads say less than a normal week — the
   // planning fallback. A closed period stands on its loads alone.
   const fromLoads = round2(loadsNet + expectedNet);
+  // What this projection needs and doesn't have: the weekly advance (when no
+  // statement gives it), the deductions (when no statement bucket does), and —
+  // for an open or future period — the planning week it is measured against.
+  const refused = dedupe([
+    ...(fuel.advances == null ? missingIn(input, ["advanceDefault"]) : []),
+    ...(bucket == null ? missingIn(input, ["deductionsFallback"]) : []),
+    ...(!closed ? missingIn(input, ["weeklyRevenueFallback"]) : []),
+  ]);
+  if (refused.length) {
+    return {
+      ...baseLine, amount: null, missing: refused, source: "projected",
+      revenueSource: closed ? (noLoads ? "none" : "loads") : "loads", revenue: null, carriedOut: 0,
+    };
+  }
+  const revFallback = Number(input.weeklyRevenueFallback);
   let revenue: number;
   let revenueSource: DepositLine["revenueSource"];
   if (closed) {
     revenue = fromLoads;
     revenueSource = noLoads ? "none" : "loads";
-  } else if (fromLoads >= weeklyRevenueFallback) {
+  } else if (fromLoads >= revFallback) {
     revenue = fromLoads;
     revenueSource = "loads";
   } else {
-    revenue = round2(weeklyRevenueFallback);
+    revenue = round2(revFallback);
     revenueSource = "fallback";
   }
   // A closed period that ran nothing drew nothing — but Landstar's recurring
   // deductions still post, so the statement carries a deficit forward.
-  const gross = round2(revenue - fuel.advances - bucket + carriedIn);
+  const gross = round2(revenue - fuel.advances! - bucket! + carriedIn);
   const source: DepositLine["source"] = revenueSource === "fallback" ? "fallback" : "projected";
   return { ...baseLine, amount: Math.max(0, gross), source, revenueSource, revenue, carriedOut: Math.min(0, gross) };
 };
@@ -467,6 +532,9 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   const rec = closed && input.accruals ? accrualsByWeek(input.accruals).get(week.start) : undefined;
   const date = rec ? rec.movedOn : nextDow(addDays(week.end, 1), 5); // else the Friday after the period closes
   const counted = countsMove(date, base);
+  const pmMissing = missingIn(input, ["perMile"]);
+  const perMile = Number(input.perMile);
+  const pm = pmMissing.length ? "$ per mile (not set)" : `$${perMile}`;
   let miles: number;
   let source: AccrualLine["source"];
   let words: string;
@@ -476,7 +544,7 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
     source = "snapshot";
     const chainNow = odo.miles == null ? `${fmtMiles(byLoads.miles)} by loads` : fmtMiles(odo.miles);
     words = rec.own
-      ? `${fmtMiles(rec.stored)} mi moved with the ${mdWords(rec.movedOn)} snapshot × $${input.perMile} · the chain now says ${chainNow} — any difference rides in the catch-up`
+      ? `${fmtMiles(rec.stored)} mi moved with the ${mdWords(rec.movedOn)} snapshot × ${pm} · the chain now says ${chainNow} — any difference rides in the catch-up`
       : `accrued with the ${mdWords(rec.movedOn)} snapshot — its miles are booked on that snapshot's own week`;
   } else if (future) {
     // Nothing has rolled yet: a normal week's miles (the last four that ran),
@@ -495,7 +563,7 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
     // deposit does — the odometer takes over the moment it says more.
     miles = pace;
     source = "projected";
-    words = `projected ${fmtMiles(pace)} mi — a normal week (last four that ran) · odometer ${fmtMiles(odo.miles ?? 0)} mi so far${odo.end ? ` (last reading ${mdWords(odo.end.date)})` : ""} · actual miles replace it as readings land`;
+    words = `projected ${fmtMiles(pace)} mi — a normal week (last four that ran) · ${odo.miles == null ? "no odometer reading yet" : `odometer ${fmtMiles(odo.miles)} mi so far`}${odo.end ? ` (last reading ${mdWords(odo.end.date)})` : ""} · actual miles replace it as readings land`;
   } else if (odo.miles == null) {
     miles = byLoads.miles;
     source = byLoads.loads > 0 ? "loads" : "none";
@@ -503,7 +571,7 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   } else if (closed) {
     miles = odo.miles;
     source = "odometer";
-    words = `${fmtMiles(odo.miles)} mi by odometer (${readingWords(odo.start!)} → ${readingWords(odo.end!)}) × $${input.perMile} · loads said ${fmtMiles(byLoads.miles)}`;
+    words = `${fmtMiles(odo.miles)} mi by odometer (${readingWords(odo.start!)} → ${readingWords(odo.end!)}) × ${pm} · loads said ${fmtMiles(byLoads.miles)}`;
   } else {
     miles = Math.max(odo.miles, byLoads.miles);
     source = odo.miles >= byLoads.miles ? "odometer" : "loads";
@@ -516,7 +584,16 @@ export const accrualForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
     loadsMiles: byLoads.miles, readingsWords: odo.start && odo.end ? `${readingWords(odo.start)} → ${readingWords(odo.end)}` : null,
     endSlips: odo.endSlips, backwards: odo.backwards.length, implausibleMiles: implausible,
   });
-  return { amount: round2(miles * input.perMile), date, counted, miles, source, words, flag };
+  if (pmMissing.length) return { amount: null, date, counted, miles, source, words, flag, missing: pmMissing };
+  return { amount: round2(miles * perMile), date, counted, miles, source, words, flag };
+};
+
+// ---- payroll: the fixed weekly figure, Friday ----
+
+const payrollLine = (input: CashBoardInput, date: string, base?: CashCheck): Line => {
+  const counted = countsOut(date, base);
+  const missing = missingIn(input, ["weeklyPayroll"]);
+  return missing.length ? { amount: null, date, counted, missing } : { amount: Number(input.weeklyPayroll), date, counted };
 };
 
 // ---- bills ----
@@ -564,16 +641,18 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
   // the next Friday, so the Plan's order and this ledger are the same figure.
   const retrue = input.accruals ? retrueAccrued(input.accruals, input.readings, input.loads, input.today) : null;
   const catchUpDate = nextDow(input.today, 5);
+  const cuMissing = missingIn(input, ["perMile"]);
   const catchUp: AccrualLine | null =
     retrue && retrue.deltaMiles !== 0
       ? {
-          amount: round2(retrue.deltaMiles * input.perMile),
+          amount: cuMissing.length ? null : round2(retrue.deltaMiles * Number(input.perMile)),
           date: catchUpDate,
           counted: true,
           miles: retrue.deltaMiles,
           source: "odometer",
-          words: `${retrueWords(retrue)} × $${input.perMile} · rides with the ${mdWords(catchUpDate)} accrual`,
+          words: `${retrueWords(retrue)} × ${cuMissing.length ? "$ per mile (not set)" : `$${input.perMile}`} · rides with the ${mdWords(catchUpDate)} accrual`,
           flag: null,
+          ...(cuMissing.length ? { missing: cuMissing } : {}),
         }
       : null;
 
@@ -588,7 +667,7 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
     if (addDays(w.end, 3) < base.date) break;
     if (k > 8) break; // a number two months old is a number to retype, not a ledger to rebuild
     const payrollDate = nextDow(w.start, 5);
-    const payroll: Line = { amount: input.weeklyPayroll, date: payrollDate, counted: countsOut(payrollDate, base) };
+    const payroll = payrollLine(input, payrollDate, base);
     const accrual = accrualForWeek(input, w, base);
     const dep = depositForWeek(input, w, base);
     // The previous period's own deposit lands inside the current period and
@@ -597,12 +676,15 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
     const leftover = dep.fuel.leftover;
     const bills = billsIn(input.obligations, w, base);
     const moneyDays = moneyDaysIn(input.moneyDays, w, base);
-    const total = round2(
-      (deposit ? deposit.amount : 0) + (leftover.counted ? leftover.amount : 0)
-      - (payroll.counted ? payroll.amount : 0) - (accrual.counted ? accrual.amount : 0)
-      - bills.filter((b) => b.counted).reduce((s, b) => s + b.amount, 0)
-      - moneyDays.filter((m) => m.counted).reduce((s, m) => s + m.amount, 0),
-    );
+    const missing = countedMissing([deposit, leftover, payroll, accrual, ...moneyDays]);
+    const total = missing.length
+      ? null
+      : round2(
+          (deposit ? deposit.amount! : 0) + (leftover.counted ? leftover.amount! : 0)
+          - (payroll.counted ? payroll.amount! : 0) - (accrual.counted ? accrual.amount! : 0)
+          - bills.filter((b) => b.counted).reduce((s, b) => s + b.amount, 0)
+          - moneyDays.filter((m) => m.counted).reduce((s, m) => s + m.amount!, 0),
+        );
     const any = payroll.counted || accrual.counted || leftover.counted || deposit != null || bills.some((b) => b.counted) || moneyDays.some((m) => m.counted);
     if (any) {
       since.push({
@@ -614,6 +696,7 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
         bills: bills.filter((b) => b.counted),
         moneyDays: moneyDays.filter((m) => m.counted),
         total,
+        missing,
       });
     }
   }
@@ -623,7 +706,7 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
     const fuel = deposit.fuel;
     const accrual = accrualForWeek(input, week, base);
     const payrollDate = nextDow(week.start, 5);
-    const payroll: Line = { amount: input.weeklyPayroll, date: payrollDate, counted: countsOut(payrollDate, base) };
+    const payroll = payrollLine(input, payrollDate, base);
     const bills = billsIn(input.obligations, week, base);
     const moneyDays = moneyDaysIn(input.moneyDays, week, base);
     // The catch-up lands in the column its Friday falls in.
@@ -631,19 +714,25 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
     // Last period's deposit lands on the Thursday inside the current period.
     const prevDeposit = key === "current" ? depositForWeek(input, prev, base) : null;
     const prevIn = prevDeposit && prevDeposit.date >= week.start && prevDeposit.date <= week.end ? prevDeposit : null;
-    const sinceTotal = key === "current" ? since.reduce((s, p) => s + p.total, 0) : 0;
+    // A refused COUNTED line — here or in what the previous periods still owe —
+    // means the ending needs an input that isn't set: it waits, never $0.
+    const missing = dedupe([
+      ...since.flatMap((p) => p.missing),
+      ...countedMissing([prevIn, deposit, payroll, accrual, cu, fuel.leftover, ...moneyDays]),
+    ]);
+    const sinceTotal = key === "current" ? since.reduce((s, p) => s + (p.total ?? NaN), 0) : 0;
 
-    let ending: number | null = opening;
+    let ending: number | null = missing.length ? null : opening;
     if (ending != null) {
       ending += sinceTotal;
-      if (prevIn?.counted) ending += prevIn.amount;
-      if (deposit.counted) ending += deposit.amount;
-      if (payroll.counted) ending -= payroll.amount;
-      if (accrual.counted) ending -= accrual.amount;
-      if (cu?.counted) ending -= cu.amount;
-      if (fuel.leftover.counted) ending += fuel.leftover.amount;
+      if (prevIn?.counted) ending += prevIn.amount!;
+      if (deposit.counted) ending += deposit.amount!;
+      if (payroll.counted) ending -= payroll.amount!;
+      if (accrual.counted) ending -= accrual.amount!;
+      if (cu?.counted) ending -= cu.amount!;
+      if (fuel.leftover.counted) ending += fuel.leftover.amount!;
       for (const b of bills) if (b.counted) ending -= b.amount;
-      for (const m of moneyDays) if (m.counted) ending -= m.amount;
+      for (const m of moneyDays) if (m.counted) ending -= m.amount!;
       ending = round2(ending);
     }
     return {
@@ -651,15 +740,16 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
       since: key === "current" ? since : [],
       prevDeposit: prevIn, deposit, payroll, accrual, catchUp: cu, fuel, bills,
       billsTotal: round2(bills.filter((b) => b.counted).reduce((s, b) => s + b.amount, 0)),
-      moneyDays, ending,
+      moneyDays, ending, missing,
     };
   };
 
   const col0 = build("current", current, base.balance, base);
   const col1 = build("next", next, col0.ending);
-  const lowest = lowestDay(base, [col0, col1], input.today);
+  const missing = dedupe([...col0.missing, ...col1.missing]);
+  const lowest = missing.length ? null : lowestDay(base, [col0, col1], input.today);
   const clears = lowest != null && input.floatLine != null ? lowest.amount >= input.floatLine : null;
-  return { columns: [col0, col1], base, lowest, clears };
+  return { columns: [col0, col1], base, lowest, clears, missing };
 };
 
 // Every counted line of both columns on its own day, in order, run from the
@@ -667,8 +757,10 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
 // endings can clear the float while a Sunday between them sits under it.
 export const lowestDay = (base: CashCheck, columns: PeriodColumn[], today: string): LowestDay | null => {
   const moves: { date: string; amount: number }[] = [];
+  let blocked = false; // a counted line is refused — no lowest day without every line
   const push = (l: Line | null | undefined, sign: 1 | -1) => {
-    if (l && l.counted && l.amount !== 0) moves.push({ date: l.date, amount: sign * l.amount });
+    if (l && l.counted && l.amount == null) blocked = true;
+    else if (l && l.counted && l.amount !== 0) moves.push({ date: l.date, amount: sign * l.amount! });
   };
   for (const c of columns) {
     for (const p of c.since) {
@@ -688,6 +780,7 @@ export const lowestDay = (base: CashCheck, columns: PeriodColumn[], today: strin
     for (const b of c.bills) push(b, -1);
     for (const m of c.moneyDays) push({ amount: m.amount, date: m.date, counted: m.counted }, -1);
   }
+  if (blocked) return null;
   moves.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   let bal = base.balance;
   let low: LowestDay | null = null;

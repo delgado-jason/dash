@@ -284,7 +284,7 @@ describe("CASH-06 · PACE-02 · DAY-02 · a planned delivery is expected, never 
     const b = { ...cashInput(bare()), settlements: [] };
     for (let k = 1; k <= 30; k++) {
       const w = payWeekOf(new Date(Date.parse(`${TODAY}T00:00:00Z`) - 7 * 86400000 * k).toISOString().slice(0, 10));
-      expect(depositForWeek(a, w).amount).toBeCloseTo(depositForWeek(b, w).amount, 2);
+      expect(depositForWeek(a, w).amount).toBeCloseTo(depositForWeek(b, w).amount!, 2);
     }
   });
 
@@ -357,14 +357,14 @@ describe("CASH-03 · 2026-11-04 · a closed period keeps every delivered load wh
     const b = cashInput(flipped());
     for (const w of closedWeeks()) {
       expect(w.end < TODAY).toBe(true);
-      expect(depositForWeek(b, w).amount).toBeCloseTo(depositForWeek(a, w).amount, 2);
+      expect(depositForWeek(b, w).amount).toBeCloseTo(depositForWeek(a, w).amount!, 2);
     }
   });
 
   it("…also when the deposit is projected from the loads (no statement in the vault)", () => {
     const a = { ...cashInput(syntheticBook()), settlements: [] };
     const b = { ...cashInput(flipped()), settlements: [] };
-    for (const w of closedWeeks()) expect(depositForWeek(b, w).amount).toBeCloseTo(depositForWeek(a, w).amount, 2);
+    for (const w of closedWeeks()) expect(depositForWeek(b, w).amount).toBeCloseTo(depositForWeek(a, w).amount!, 2);
   });
 });
 

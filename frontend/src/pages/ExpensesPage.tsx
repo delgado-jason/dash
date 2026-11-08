@@ -24,6 +24,7 @@ import { sitRunCosts } from "@/lib/metrics/sitRun";
 import { BandedLadder } from "@/components/ui/BandedLadder";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money } from "@/lib/format";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
 
 // That month's miles from loads (drives cost-per-mile + break-even) — the
 // basis's own monthMiles (a union of odometer spans), so the month tile and
@@ -55,11 +56,31 @@ const ExpensesPage = () => {
 
   // Obligations live at the page level so the headline KPIs + chart can fold
   // them into true cost; the card just edits the list and calls this back.
+  // A failed fetch is a named, retryable line — never a page that renders as if
+  // there were no data (NET-03). Cleared when the retry lands.
+  const [obligationsFailed, setObligationsFailed] = useState(false);
+  const [scheduleFailed, setScheduleFailed] = useState(false);
+  const [periodsFailed, setPeriodsFailed] = useState(false);
+  const [periodFailed, setPeriodFailed] = useState(false);
+  const [windowFailed, setWindowFailed] = useState(false);
+
   const reloadObligations = () =>
-    getObligations().then(setObligations).catch(() => {});
+    getObligations()
+      .then((o) => {
+        setObligations(o);
+        setObligationsFailed(false);
+      })
+      .catch(() => setObligationsFailed(true));
+  const reloadSchedule = () =>
+    getSettlementSchedule()
+      .then((sc) => {
+        setSchedule(sc);
+        setScheduleFailed(false);
+      })
+      .catch(() => setScheduleFailed(true));
 
   useEffect(() => {
-    getSettlementSchedule().then(setSchedule).catch(() => {});
+    reloadSchedule();
   }, []);
   useEffect(() => {
     reloadObligations();
@@ -72,13 +93,16 @@ const ExpensesPage = () => {
       .then((ps) => {
         if (!active) return;
         setPeriods(ps);
+        setPeriodsFailed(false);
         setSelectedId((cur) =>
           cur && ps.some((p) => p.period_id === cur)
             ? cur
             : (ps[0]?.period_id ?? null),
         );
       })
-      .catch(() => {})
+      .catch(() => {
+        if (active) setPeriodsFailed(true);
+      })
       .finally(() => {
         if (active) setLoadedKey(refreshKey);
       });
@@ -93,9 +117,14 @@ const ExpensesPage = () => {
     if (!selectedId) return;
     getExpensePeriod(selectedId)
       .then((p) => {
-        if (active) setFetched(p);
+        if (active) {
+          setFetched(p);
+          setPeriodFailed(false);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setPeriodFailed(true);
+      });
     return () => {
       active = false;
     };
@@ -157,9 +186,14 @@ const ExpensesPage = () => {
     if (windowIds.length === 0) return;
     Promise.all(windowIds.map((pid) => getExpensePeriod(pid)))
       .then((ps) => {
-        if (active) setWindowFetched(ps);
+        if (active) {
+          setWindowFetched(ps);
+          setWindowFailed(false);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setWindowFailed(true);
+      });
     return () => {
       active = false;
     };
@@ -183,16 +217,30 @@ const ExpensesPage = () => {
       ? getTrueMonthly(metrics.monthlyCost, obligationsTotal, selected.income_total)
       : null;
 
-  const selIncome = selected?.income_total ?? 0;
-  const selCost = (selected?.cogs_total ?? 0) + (selected?.expense_total ?? 0);
-  const selProfit = selIncome - selCost;
-  const selMargin = selIncome > 0 ? selProfit / selIncome : null;
+  // A month saved without a total has no figure for it — "—", never $0 (NET-03).
+  const profitOf = (p: ExpensePeriod | null | undefined): number | null =>
+    p == null || p.income_total == null || p.cogs_total == null || p.expense_total == null
+      ? null
+      : p.income_total - (p.cogs_total + p.expense_total);
+  const selIncome = selected == null ? null : selected.income_total;
+  const selCost =
+    selected == null || selected.cogs_total == null || selected.expense_total == null
+      ? null
+      : selected.cogs_total + selected.expense_total;
+  const selProfit = profitOf(selected);
+  const selMargin = selProfit != null && selIncome != null && selIncome > 0 ? selProfit / selIncome : null;
+  const dollars = (n: number | null) => (n == null ? "—" : money(n));
+  // Months with no totals are left out of the comparison, not counted as $0.
   const isBestMonth =
     selected != null &&
+    selProfit != null &&
     periods.every((p) => {
-      const prof = (p.income_total ?? 0) - ((p.cogs_total ?? 0) + (p.expense_total ?? 0));
-      return p.period_id === selected.period_id || prof <= selProfit;
+      const prof = profitOf(p);
+      return p.period_id === selected.period_id || prof == null || prof <= selProfit;
     });
+  // Inputs that failed to load: the figures built on them print "—".
+  const costUnsure = obligationsFailed;
+  const basisUnsure = obligationsFailed || scheduleFailed;
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -243,11 +291,20 @@ const ExpensesPage = () => {
           </button>
         </div>
 
+        {(obligationsFailed || scheduleFailed) && (
+          <div className="mt-4 flex flex-col gap-1">
+            {obligationsFailed && <FetchFailed what="the obligations" onRetry={reloadObligations} />}
+            {scheduleFailed && <FetchFailed what="the settlement schedule" onRetry={reloadSchedule} />}
+          </div>
+        )}
+
         {loading ? (
           <div className="mt-4">
             <StatCardsSkeleton count={3} />
             <BlockSkeleton className="h-64 mt-6" />
           </div>
+        ) : periodsFailed ? (
+          <FetchFailed className="mt-4" what="the P&L" onRetry={refresh} />
         ) : periods.length === 0 ? (
           <div className="mt-4">
             <EmptyState
@@ -268,9 +325,9 @@ const ExpensesPage = () => {
                     this month was saved without its totals — re-upload its P&L ·{" "}
                   </span>
                 )}
-                · <b className="font-semibold text-ink tabular-nums">{money(selIncome)}</b> in ·{" "}
-                <b className="font-semibold text-ink tabular-nums">{money(selCost)}</b> out ·{" "}
-                <b className="font-semibold text-ink tabular-nums">{money(selProfit)}</b> kept
+                · <b className="font-semibold text-ink tabular-nums">{dollars(selIncome)}</b> in ·{" "}
+                <b className="font-semibold text-ink tabular-nums">{dollars(selCost)}</b> out ·{" "}
+                <b className="font-semibold text-ink tabular-nums">{dollars(selProfit)}</b> kept
                 {selMargin != null && (
                   <>
                     {" "}
@@ -288,26 +345,26 @@ const ExpensesPage = () => {
             <div className="ds2-board overflow-hidden mt-4">
               <div className="grid grid-cols-2 md:grid-cols-5">
                 {[
-                  { v: money(trueMonthly.trueMonthlyCost), l: "True monthly cost" },
-                  { v: money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
+                  { v: costUnsure ? "—" : money(trueMonthly.trueMonthlyCost), l: "True monthly cost" },
+                  { v: costUnsure ? "—" : money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
                   {
-                    v: targets.basis.costPerTotalMile == null ? "—" : `$${targets.basis.costPerTotalMile.toFixed(2)}`,
+                    v: basisUnsure || targets.basis.costPerTotalMile == null ? "—" : `$${targets.basis.costPerTotalMile.toFixed(2)}`,
                     l: `Cost / total mi · ${basisWord}`,
                   },
                   {
                     v:
-                      targets.basis.breakEvenRpm == null
+                      basisUnsure || targets.basis.breakEvenRpm == null
                         ? "—"
                         : `$${targets.basis.breakEvenRpm.toFixed(2)}`,
                     l: `Break-even / loaded mi · ${basisWord}`,
                   },
                   {
                     v:
-                      trueMonthly.trueNetMargin == null
+                      costUnsure || trueMonthly.trueNetMargin == null
                         ? "—"
                         : `${(trueMonthly.trueNetMargin * 100).toFixed(1)}%`,
                     l: "Net margin · app est.",
-                    pos: (trueMonthly.trueNetMargin ?? 0) >= 0,
+                    pos: costUnsure || trueMonthly.trueNetMargin == null ? undefined : trueMonthly.trueNetMargin >= 0,
                   },
                 ].map((k, ki) => (
                   <div
@@ -316,7 +373,7 @@ const ExpensesPage = () => {
                   >
                     <p
                       className="font-condensed font-semibold text-[22px] tabular-nums"
-                      style={"pos" in k ? { color: k.pos ? "#6fd08c" : "#e05252" } : undefined}
+                      style={"pos" in k && k.pos != null ? { color: k.pos ? "#6fd08c" : "#e05252" } : undefined}
                     >
                       {k.v}
                     </p>
@@ -343,8 +400,12 @@ const ExpensesPage = () => {
               )}
             </div>
 
+            {windowFailed && !costUnsure && (
+              <FetchFailed className="mt-4" what="the P&L months behind the burn" onRetry={refresh} />
+            )}
+
             {/* the burn — sit vs run */}
-            {burn && (
+            {burn && !costUnsure && (
               <div className="ds2-board overflow-hidden mt-4">
                 <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
                   <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
@@ -397,7 +458,7 @@ const ExpensesPage = () => {
             )}
 
             {/* rate to book — the crown jewel */}
-            {targets.bookingLadder.walkAway != null && (
+            {targets.bookingLadder.walkAway != null && !basisUnsure && (
               <div
                 className="relative overflow-hidden rounded-[14px] border mt-4"
                 style={{
@@ -460,7 +521,7 @@ const ExpensesPage = () => {
               </div>
             )}
 
-            {periods.length > 1 && (
+            {periods.length > 1 && !costUnsure && (
               <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
             )}
 
@@ -505,7 +566,9 @@ const ExpensesPage = () => {
 
             {/* Break-even rows only — the P&L bills (insurance, subscriptions)
                 live on the Cash Flow page's draft calendar, not here. */}
-            <ObligationsCard items={obligations.filter((o) => !o.on_pl)} onChange={reloadObligations} />
+            {!obligationsFailed && (
+              <ObligationsCard items={obligations.filter((o) => !o.on_pl)} onChange={reloadObligations} />
+            )}
 
             <div className="ds2-board p-4 mt-4">
               <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint mb-2">
@@ -519,6 +582,8 @@ const ExpensesPage = () => {
               />
             </div>
           </>
+        ) : periodFailed ? (
+          <FetchFailed className="mt-4" what="this month's P&L" onRetry={refresh} />
         ) : null}
 
         {/* upload — the forged popup */}

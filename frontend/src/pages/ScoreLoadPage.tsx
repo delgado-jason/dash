@@ -5,7 +5,7 @@ import { useTrips } from "@/hooks/useTrips";
 import { windowLoads, DEFAULT_WINDOW } from "@/lib/metrics/marketLedger";
 import { useAgents } from "@/hooks/useAgents";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { scoreLoad, counterRates, VERDICT_META } from "@/lib/metrics/loadScore";
+import { scoreLoad, counterRates, knownNumber, VERDICT_META } from "@/lib/metrics/loadScore";
 import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
 import { emptyNextAnchor } from "@/lib/metrics/foreman";
 import { useCityCoords } from "@/hooks/useCityCoords";
@@ -369,7 +369,7 @@ const ScoreLoadPage = () => {
   // Type 0 and mean it.
   const entered = rate !== "" && loaded !== "" && deadhead !== "";
   const score = scoreLoad(
-    { rate: Number(rate), loadedMiles: Number(loaded), deadheadMiles: Number(deadhead) },
+    { rate: knownNumber(rate), loadedMiles: knownNumber(loaded), deadheadMiles: knownNumber(deadhead) },
     { costPerDrivenMile: targets.basis.costPerTotalMile, payTake: targets.basis.payTake },
     activeTiers,
   );
@@ -385,9 +385,10 @@ const ScoreLoadPage = () => {
   const counter =
     belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
 
-  const deadMi = Number(deadhead) || 0;
-  const deadShare = score.drivenMiles > 0 ? deadMi / score.drivenMiles : 0;
-  const freightDrag = deadShare >= 0.12 && belowTarget;
+  // A blank deadhead box is unknown, not 0 empty miles (SCORE-02).
+  const deadMi = knownNumber(deadhead);
+  const deadShare = deadMi != null && score.drivenMiles > 0 ? deadMi / score.drivenMiles : null;
+  const freightDrag = deadShare != null && deadShare >= 0.12 && belowTarget;
 
   const isNewAgent =
     !agent && agentQuery.trim().length >= 2 && matchAgents(agents ?? [], agentQuery).length === 0;
@@ -540,12 +541,14 @@ const ScoreLoadPage = () => {
                 <Well className="px-3 py-2">
                   <div className="font-condensed text-[11px] text-amber">DEADHEAD</div>
                   <div className="font-display text-[20px] text-ink">
-                    {deadMi.toLocaleString("en-US")}<span className="font-condensed text-[11px] text-faint"> mi · {Math.round(deadShare * 100)}%</span>
+                    {deadMi == null ? "—" : deadMi.toLocaleString("en-US")}<span className="font-condensed text-[11px] text-faint">{deadMi == null || deadShare == null ? " needs the odometer" : ` mi · ${Math.round(deadShare * 100)}%`}</span>
                   </div>
                 </Well>
               </div>
               <p className="text-[12.5px] text-dim">
-                {freightDrag
+                {deadShare == null
+                  ? "Deadhead unknown — needs the odometer. Type it in (0 only if the truck is already there) and this reads."
+                  : freightDrag
                   ? "Good freight — the deadhead is the knock, not the load. Weigh the reposition, or lean on the agent for the backhaul."
                   : deadShare < 0.05
                     ? "Deadhead's slim — this is close to what the freight itself pays."

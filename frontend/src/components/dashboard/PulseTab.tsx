@@ -31,6 +31,7 @@ import { CountUp } from "@/components/ui/CountUp";
 import { PaceMeter, paceMarker } from "@/components/ui/PaceMeter";
 import { DUR, GSAP_EASE, STAGGER } from "@/theme/motion";
 import { money, rpm as fmtRpm } from "@/lib/format";
+import { missingWords } from "@/lib/integrity/require";
 import { isDelivered } from "@/lib/metrics/status";
 
 gsap.registerPlugin(useGSAP);
@@ -393,7 +394,9 @@ export const PulseTab = ({
                 </p>
                 <p className="text-[11px] text-faint mt-0.5">
                   lands {dayWords(nextDeposit.date)} · statement {dayWords(nextDeposit.statementDate).replace(/^[A-Za-z]+, /, "")} ·{" "}
-                  {nextDeposit.source === "actual"
+                  {nextDeposit.missing?.length ? (
+                    <span className="text-amber-hi">{missingWords(nextDeposit.missing)} — set it in ASSUMPTIONS on Cash Flow</span>
+                  ) : nextDeposit.source === "actual"
                     ? "actual, from the feed"
                     : nextDeposit.revenueSource === "fallback"
                       ? "nothing delivered yet — a planning week, less the advance and deductions"

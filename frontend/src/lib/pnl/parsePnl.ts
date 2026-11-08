@@ -83,6 +83,8 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
   let expenseTotal: number | null = null;
   let incomeSum = 0; // the income section's own top-level rows, for the fallback
   let incomeRows = 0;
+  // Rows the parser refuses rather than read as $0 (PNL-03).
+  const rowErrors: string[] = [];
 
   for (const row of rows) {
     const name = (row[0] ?? "").trim();
@@ -140,7 +142,11 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
       // A category subtotal closing a group. Emit only at the top level.
       depth = Math.max(0, depth - 1);
       if (depth === 0) {
-        if (inCost) lines.push({ name: totalOf, current: cur ?? 0, prior: pri, section: sectionKey });
+        if (inCost && cur == null)
+          rowErrors.push(
+            `"Total ${totalOf}" has no amount for this month — a blank is not $0. Fill the cell in the export (or type 0 if it really was nothing) and try again.`,
+          );
+        else if (inCost && cur != null) lines.push({ name: totalOf, current: cur, prior: pri, section: sectionKey });
         else if (section === "income" && cur != null) { incomeSum += cur; incomeRows++; }
       }
       continue;
@@ -181,7 +187,7 @@ export const parsePnlRows = (rows: string[][]): ParsedPnl => {
   // the file didn't carry is summed from the lines and said so; lines that
   // disagree with the file's own total are an error — the month is not saved.
   const warnings: string[] = [];
-  const errors: string[] = [];
+  const errors: string[] = [...rowErrors];
   const sum = (key: "cogs" | "expenses") => lines.filter((l) => l.section === key).reduce((s, l) => s + l.current, 0);
   const check = (label: string, total: number | null, lineSum: number, n: number, set: (v: number) => void) => {
     if (n === 0) return;

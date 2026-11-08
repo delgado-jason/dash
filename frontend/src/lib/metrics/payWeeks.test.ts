@@ -52,12 +52,27 @@ describe("milesInWeeks — the week's loads, by pickup date", () => {
   ];
   it("this pay week: 1,669 loaded + 330 deadhead = 1,999 from two loads", () => {
     const m = milesInWeeks(loads, [{ start: "2026-09-16", end: "2026-09-22" }]);
-    expect(m).toEqual({ loads: 2, loadedMiles: 1669, deadheadMiles: 330, miles: 1999, noDeadhead: 0, loadNumbers: ["7330381", "2990007"] });
+    expect(m).toEqual({ loads: 2, loadedMiles: 1669, deadheadMiles: 330, miles: 1999, noDeadhead: 0, loadNumbers: ["7330381", "2990007"], loadedMissing: [], deadheadMissing: [] });
   });
   it("a zero deadhead is flagged, not treated as free miles", () => {
     const m = milesInWeeks(loads, [{ start: "2026-09-09", end: "2026-09-15" }]);
     expect(m.miles).toBe(900);
     expect(m.noDeadhead).toBe(1);
+  });
+  it("PLAN-06 · a pickup with no miles typed is named, not counted as 0 — a typed 0 is a number", () => {
+    const w = [{ start: "2026-09-16", end: "2026-09-22" }];
+    const m = milesInWeeks(
+      [
+        { load_number: "A1", pickup_date: "2026-09-17", loaded_miles: null, deadhead_miles: 40 },
+        { load_number: "B2", pickup_date: "2026-09-18", loaded_miles: 500, deadhead_miles: "" },
+        { load_number: "C3", pickup_date: "2026-09-19", loaded_miles: 300, deadhead_miles: 0 },
+      ],
+      w,
+    );
+    expect(m.loadedMissing).toEqual(["A1"]);
+    expect(m.deadheadMissing).toEqual(["B2"]);
+    expect(m.miles).toBe(840); // the figures that exist — the lists say it is incomplete
+    expect(m.noDeadhead).toBe(2); // B2 (blank) and C3 (a typed 0)
   });
   it("a cancelled load was never driven — its miles don't accrue", () => {
     const m = milesInWeeks(

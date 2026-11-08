@@ -14,6 +14,14 @@ export interface PayWeek {
   end: string; // YYYY-MM-DD, the Tuesday (inclusive)
 }
 
+// A typed figure, or null when none was typed — blank and non-numeric are
+// missing; a typed 0 is a number.
+const typed = (v: number | string | null | undefined): number | null => {
+  if (v == null || (typeof v === "string" && v.trim() === "")) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
 const ymd = (d: Date): string => d.toISOString().slice(0, 10);
 const utc = (s: string): Date => new Date(`${String(s).slice(0, 10)}T00:00:00Z`);
 const addDays = (d: Date, n: number): Date => {
@@ -60,6 +68,12 @@ export interface WeekMiles {
   miles: number; // loaded + deadhead
   noDeadhead: number; // loads carrying 0/unlogged deadhead — the flag
   loadNumbers: string[];
+  // A pickup with no figure typed is NAMED, never counted as 0 miles (PLAN-06):
+  // `miles` above is a sum over the figures that exist, so when either list is
+  // non-empty the week's loads-based miles are incomplete (loadedMissing) or
+  // the empty miles are under-counted (deadheadMissing).
+  loadedMissing: string[]; // load numbers with no loaded_miles
+  deadheadMissing: string[]; // load numbers with no deadhead_miles logged (blank, not a typed 0)
 }
 
 interface LoadLike {
@@ -73,17 +87,20 @@ interface LoadLike {
 // Miles of the loads PICKED UP inside the given weeks — a load that spans
 // two weeks lands in the week it started (nodded, rev 1 issue 2).
 export const milesInWeeks = (loads: LoadLike[], weeks: PayWeek[]): WeekMiles => {
-  const out: WeekMiles = { loads: 0, loadedMiles: 0, deadheadMiles: 0, miles: 0, noDeadhead: 0, loadNumbers: [] };
+  const out: WeekMiles = { loads: 0, loadedMiles: 0, deadheadMiles: 0, miles: 0, noDeadhead: 0, loadNumbers: [], loadedMissing: [], deadheadMissing: [] };
   for (const l of loads) {
     if (isNeverRevenue(l)) continue; // never driven as planned — no miles to accrue
     const day = String(l.pickup_date ?? "").slice(0, 10);
     if (!weeks.some((w) => day >= w.start && day <= w.end)) continue;
-    const loaded = Number(l.loaded_miles ?? 0) || 0;
-    const dead = Number(l.deadhead_miles ?? 0) || 0;
+    const loaded = typed(l.loaded_miles);
+    const dead = typed(l.deadhead_miles);
+    const name = l.load_number ?? "(no load number)";
     out.loads += 1;
-    out.loadedMiles += loaded;
-    out.deadheadMiles += dead;
-    if (dead <= 0) out.noDeadhead += 1;
+    if (loaded == null) out.loadedMissing.push(name);
+    else out.loadedMiles += loaded;
+    if (dead == null) out.deadheadMissing.push(name);
+    else out.deadheadMiles += dead;
+    if (dead == null || dead <= 0) out.noDeadhead += 1;
     if (l.load_number) out.loadNumbers.push(l.load_number);
   }
   out.miles = out.loadedMiles + out.deadheadMiles;

@@ -7,10 +7,23 @@ import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 export type Verdict = "pass" | "meh" | "take" | "steal";
 
 export interface ScoreInput {
-  rate: number; // the all-in GROSS $ offered
-  loadedMiles: number;
-  deadheadMiles: number;
+  rate: number | null; // the all-in GROSS $ offered
+  loadedMiles: number | null;
+  // null = unknown (no odometer, nothing typed). Never 0: zero is "the truck is
+  // already at the shipper", a real answer; unknown is a refusal to grade.
+  deadheadMiles: number | null;
 }
+
+// A number when the value is a real, finite number; null for null/undefined/
+// blank/NaN. Zero stays zero.
+export const knownNumber = (v: unknown): number | null => {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string" && v.trim() === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+export const DEADHEAD_UNKNOWN = "deadhead unknown — needs the odometer";
 
 // From the trailing cost engine (getCostBasis).
 export interface ScoreBasis {
@@ -27,7 +40,8 @@ export interface LoadScore {
   net: number | null; // rate after the carrier's cut
   cost: number | null; // cost of the driven miles
   profit: number | null; // net − cost
-  verdict: Verdict | null; // null when there's no cost basis yet
+  verdict: Verdict | null; // null when there's no cost basis yet, or an input is unknown
+  missing: string[]; // what the Scorer refused to guess ("deadhead unknown — needs the odometer")
 }
 
 export const scoreLoad = (
@@ -35,10 +49,17 @@ export const scoreLoad = (
   basis: ScoreBasis,
   tiers: RateTiers = RATE_TIERS,
 ): LoadScore => {
-  const loaded = Number(input.loadedMiles) || 0;
-  const driven = loaded + (Number(input.deadheadMiles) || 0);
-  const rate = Number(input.rate) || 0;
-  const loadedRpm = loaded > 0 ? rate / loaded : null; // freight's own rate
+  const loadedK = knownNumber(input.loadedMiles);
+  const deadK = knownNumber(input.deadheadMiles);
+  const rateK = knownNumber(input.rate);
+  const missing: string[] = [];
+  if (rateK == null) missing.push("rate unknown — type what it pays");
+  if (loadedK == null) missing.push("loaded miles unknown — needs the route");
+  if (deadK == null) missing.push(DEADHEAD_UNKNOWN);
+  // Driven miles are only a number when BOTH legs are known.
+  const driven = loadedK != null && deadK != null ? loadedK + deadK : 0;
+  const rate = rateK == null ? NaN : rateK; // not used while a rate is missing (we return before the math)
+  const loadedRpm = rateK != null && loadedK != null && loadedK > 0 ? rateK / loadedK : null; // freight's own rate
   const { costPerDrivenMile, payTake } = basis;
 
   const empty: LoadScore = {
@@ -51,7 +72,11 @@ export const scoreLoad = (
     cost: null,
     profit: null,
     verdict: null,
+    missing,
   };
+
+  // Unknown input → no grade, no numbers built on a guess.
+  if (missing.length) return empty;
 
   // Need miles and a calibrated cost basis to score anything.
   if (
@@ -86,6 +111,7 @@ export const scoreLoad = (
     cost,
     profit,
     verdict,
+    missing,
   };
 };
 
