@@ -19,6 +19,7 @@ import { validateLoadCreate, validateLoadPatch, BOOKER_REQUIRED } from "../utils
 import { validateSettlementSplit } from "../utils/validation/settlementSplitValidation.js";
 import { validateAccessorialRate } from "../utils/validation/accessorialRateValidation.js";
 import { validatePerDiemRate } from "../utils/validation/perDiemRateValidation.js";
+import { validateFscScalePoint } from "../utils/validation/fscScalePointValidation.js";
 import { validateFscSchedule } from "../utils/validation/fscScheduleValidation.js";
 import { validateFuelEntryCreate, validateFuelEntryPatch } from "../utils/validation/fuelValidation.js";
 import { normalizeOpsCheck, DEPOSIT_LANDED_ERROR } from "../utils/validation/opsCheckValidation.js";
@@ -34,6 +35,7 @@ import {
   validSnapshotAccounts,
   validPerDiemRate,
   validFscSchedule,
+  validFscScalePoint,
   validSnapshotBalances,
 } from "./fixtures.js";
 
@@ -357,6 +359,24 @@ describe("GL-155 · surcharge band tables", () => {
     const f = validFscSchedule();
     const shuffled = { ...f, bands: [f.bands[2], { low: "4.00", high: "4.049", cpm: "0.58" }, f.bands[1]] };
     const { values, errors } = validateFscSchedule(shuffled);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(values, f);
+  });
+});
+
+describe("FSC-02 · the weekly scale point", () => {
+  const bad = (patch, fragment) => refused(validateFscScalePoint({ ...validFscScalePoint(), ...patch }).errors, fragment);
+  test("a blank week is refused", () => bad({ week_of: "" }, "week_of is required"));
+  test("2026-02-30 is refused", () => bad({ week_of: "2026-02-30" }, "week_of must be a calendar day written YYYY-MM-DD"));
+  test("a blank national price is refused, never zero", () => bad({ national_avg: "" }, "national_avg must be a diesel price between $0 and $20 a gallon"));
+  test("$25 a gallon is refused", () => bad({ national_avg: 25 }, "national_avg must be a diesel price between $0 and $20 a gallon"));
+  test("86 (cents) is refused — the UI converts", () => bad({ cents_per_mile: 86 }, "cents_per_mile must be between $0 and $5 a loaded mile (0.86 = 86¢)"));
+  test("a pct of 6 is refused", () => bad({ pct_of_linehaul: 6 }, "pct_of_linehaul must be a fraction 0–5 (0.52 = 52%)"));
+  test("a regions list missing cpm is refused", () => bad({ regions: [{ region: "PADD 1A", price: 6.416 }] }, "regions must be a list of { region, price, cpm }"));
+  test("a 201-character note is refused", () => bad({ note: "x".repeat(201) }, "note is longer than 200 characters"));
+  test("the Nov 3 report passes with numeric values", () => {
+    const f = validFscScalePoint();
+    const { values, errors } = validateFscScalePoint({ ...f, national_avg: "6.292", cents_per_mile: "0.86", pct_of_linehaul: "0.52" });
     assert.deepEqual(errors, []);
     assert.deepEqual(values, f);
   });

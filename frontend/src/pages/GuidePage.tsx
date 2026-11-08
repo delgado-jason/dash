@@ -2049,24 +2049,28 @@ const GuidePage = () => {
               grade.
             </Why>
             <Why>
-              <span className="text-light">Par from Landstar's own table.</span>{" "}
-              Landstar publishes its surcharge as a band table — a national
-              diesel price range to a rate per loaded mile — and changes it with
-              no feed to read. Paste it on the Settings page with its effective
-              date whenever a new one arrives; every table is kept. A month then
-              reads the table in force on its first day at that month's national
-              average diesel price (this week's price for the month still
-              running): expected surcharge = loaded miles × the band's rate, and
-              par is that against the fuel spend. The card says which it used —{" "}
+              <span className="text-light">Par from Landstar's own scale.</span>{" "}
+              What Landstar publishes each week is not a band table but the
+              scale's answer for the week — the Ranger report's header line,{" "}
+              <span className="text-light">National Average $6.292 → .86 cents
+              per mile</span>, with the regional PADD points beside it. Paste
+              that line on the Settings page once a week; dash keeps every week
+              and fits the scale from the points (cents per mile = (price − peg)
+              ÷ base mpg — one report with its PADD lines already pins it to the
+              cent). A month then reads the scale at its national average diesel
+              price (this week's price for the month still running): expected
+              surcharge = loaded miles × the rate, and par is that against the
+              fuel spend. The card says which it used —{" "}
               <span className="text-light">
-                par on Landstar's table (eff. Oct 1) at this week's $5.153: 78¢ a
-                loaded mile
+                par on Landstar's scale at this week's $6.292: 86¢ a loaded mile
+                · the week's printed rate
               </span>
-              . With no table in force it says{" "}
+              . A pasted band table, if you ever have one, wins over the scale
+              while it is in force; with neither the card says{" "}
               <span className="text-light">par · estimate</span> and uses the peg
-              formula above; with a table but no national price for the month it
+              formula above; with a scale but no national price for the month it
               says <span className="text-light">par unknown</span> and grades
-              nothing, rather than hiding the estimate behind the table's name.
+              nothing, rather than hiding the estimate behind Landstar's name.
             </Why>
           </Metric>
 

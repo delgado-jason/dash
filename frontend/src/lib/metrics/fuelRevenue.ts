@@ -1,6 +1,8 @@
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { FscSchedule } from "@/types/fscSchedule";
+import type { FscScalePoint } from "@/types/fscScalePoint";
+import { fitScale, scaleCpmAt, type FscScaleFit } from "./fscScale";
 import { loadNetRevenue } from "./rateTargets";
 import { isDelivered } from "./status";
 import { bandFor, scheduleInForce, type FscPar } from "./fscTable";
@@ -55,6 +57,9 @@ export interface FuelMonth {
 // and this week's price for the month still running.
 export interface FscParInputs {
   schedules: FscSchedule[];
+  // Landstar's weekly scale points (mock 8). Par reads a pasted table first,
+  // then the scale fitted from these, then the estimate.
+  points: FscScalePoint[];
   dieselByMonth: Map<string, number>;
   latestDiesel: { price: number; period: string } | null;
 }
@@ -108,9 +113,10 @@ const monthPar = (a: {
   loadedShare: number | null;
   mpgBonus: number;
   fsc: FscParInputs | null;
+  scale: FscScaleFit | null;
 }): { expectedCoverage: number | null; par: FscPar } => {
   const table = a.fsc ? scheduleInForce(a.fsc.schedules, `${a.month}-01`) : null;
-  if (!table) {
+  if (!table && !a.scale) {
     const expectedCoverage =
       a.ppg != null && a.ppg > FSC_PEG && a.loadedShare != null
         ? ((a.ppg - FSC_PEG) / a.ppg) * a.loadedShare * a.mpgBonus
@@ -122,6 +128,18 @@ const monthPar = (a: {
   const price = weekly ?? monthly;
   if (price == null)
     return { expectedCoverage: null, par: { kind: "unknown", reason: `no national diesel price for ${monthWords(a.month)}` } };
+  if (!table) {
+    // Landstar's scale, fitted from the weekly points (mock 8). When the price
+    // IS a report's national average, the cent is the one Landstar printed.
+    const fit = a.scale!;
+    const printed = (a.fsc?.points ?? []).find((p) => Math.abs(p.national_avg - price) < 0.0005);
+    const cpm = printed ? printed.cents_per_mile : scaleCpmAt(fit, price);
+    const expectedFsc = a.loaded * cpm;
+    return {
+      expectedCoverage: a.fuelSpend > 0 ? expectedFsc / a.fuelSpend : null,
+      par: { kind: "scale", price, priceIsThisWeek: weekly != null, cpm, reports: fit.reports, pairs: fit.pairs, published: printed != null },
+    };
+  }
   const band = bandFor(table.bands, price);
   if (!band)
     return {
@@ -152,6 +170,7 @@ export const fuelVsRevenue = (
   fscPar: FscParInputs | null = null,
 ): FuelVsRevenue => {
   const cur = currentMonthKey(now);
+  const scale = fscPar ? fitScale(fscPar.points) : null;
   // Fuel spend + gallons per month.
   const spend = new Map<string, number>();
   const gallons = new Map<string, number>();
@@ -209,6 +228,7 @@ export const fuelVsRevenue = (
         loadedShare,
         mpgBonus,
         fsc: fscPar,
+        scale,
       });
       return {
         month: k,

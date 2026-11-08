@@ -21,6 +21,8 @@ import {
 } from "@/lib/metrics/fuelEconomy";
 import { fuelVsRevenue } from "@/lib/metrics/fuelRevenue";
 import { getFscSchedules } from "@/services/fscScheduleService";
+import { getFscScalePoints } from "@/services/fscScalePointService";
+import type { FscScalePoint } from "@/types/fscScalePoint";
 import type { FscSchedule } from "@/types/fscSchedule";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { useLoads } from "@/hooks/useLoads";
@@ -61,6 +63,8 @@ const FuelEntriesPage = () => {
   );
   const [fscSchedules, setFscSchedules] = useState<FscSchedule[] | null>(null);
   const [fscFailed, setFscFailed] = useState(false);
+  const [scalePoints, setScalePoints] = useState<FscScalePoint[] | null>(null);
+  const [scaleFailed, setScaleFailed] = useState(false);
   const [filledToTop, setFilledToTop] = useState(true); // filling up is the rule
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -125,6 +129,9 @@ const FuelEntriesPage = () => {
     getFscSchedules()
       .then(setFscSchedules)
       .catch(() => setFscFailed(true));
+    getFscScalePoints()
+      .then(setScalePoints)
+      .catch(() => setScaleFailed(true));
   }, []);
 
   const retryFsc = () => {
@@ -132,6 +139,13 @@ const FuelEntriesPage = () => {
     getFscSchedules()
       .then(setFscSchedules)
       .catch(() => setFscFailed(true));
+  };
+
+  const retryScale = () => {
+    setScaleFailed(false);
+    getFscScalePoints()
+      .then(setScalePoints)
+      .catch(() => setScaleFailed(true));
   };
 
   // The clock is read INSIDE the memo: a `now` from the render body would be a
@@ -163,15 +177,16 @@ const FuelEntriesPage = () => {
         loads,
         stats.avgMpg,
         new Date(),
-        fscFailed
+        fscFailed || scaleFailed
           ? null
           : {
               schedules: fscSchedules ?? [],
+              points: scalePoints ?? [],
               dieselByMonth: new Map(nationalSeries.map((m) => [m.month, m.value])),
               latestDiesel: national ? { price: national.value, period: national.period } : null,
             },
       ),
-    [entries, loads, stats.avgMpg, fscSchedules, fscFailed, nationalSeries, national],
+    [entries, loads, stats.avgMpg, fscSchedules, fscFailed, scalePoints, scaleFailed, nationalSeries, national],
   );
   const dieselData = useMemo(
     () => dieselChartData(entries, nationalSeries),
@@ -419,7 +434,10 @@ const FuelEntriesPage = () => {
         {fscFailed && (
           <FetchFailed what="the surcharge tables" onRetry={retryFsc} className="mt-4" />
         )}
-        <FuelVsRevenueCard data={fuelRev} parUnavailable={fscFailed} />
+        {scaleFailed && (
+          <FetchFailed what="Landstar's weekly scale" onRetry={retryScale} className="mt-4" />
+        )}
+        <FuelVsRevenueCard data={fuelRev} parUnavailable={fscFailed || scaleFailed} />
 
         {/* fuel by state — the IFTA strip */}
         {(byState.states.length > 0 || byState.unassigned.fills > 0) && (

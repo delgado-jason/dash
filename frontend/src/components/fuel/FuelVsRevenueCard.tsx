@@ -157,7 +157,7 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
           </p>
           <p className={"text-[10.5px] mt-1 " + (parUnavailable ? "font-condensed text-amber-hi" : "text-faint")}>
             {parUnavailable
-              ? "par unavailable — couldn't load the surcharge tables"
+              ? "par unavailable — couldn't load the surcharge tables or the weekly scale"
               : fscParWords(m.par)}
           </p>
         </div>
@@ -170,7 +170,7 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
           {!parUnavailable && sf.expectedCoverage != null ? ` vs ~${pct0(sf.expectedCoverage)} par` : ""} ·{" "}
           {money(sf.fsc)} FSC vs {money(sf.fuelSpend)} fuel — a partial month, not graded
           <br />
-          {parUnavailable ? "par unavailable — couldn't load the surcharge tables" : fscParWords(sf.par)}
+          {parUnavailable ? "par unavailable — couldn't load the surcharge tables or the weekly scale" : fscParWords(sf.par)}
         </p>
       )}
 

@@ -112,8 +112,17 @@ export type FscPar =
       cpm: number; // the band's $ per loaded mile
       expectedFsc: number; // loaded miles × cpm
     }
-  | { kind: "estimate" } // no table in force — the peg formula, labelled
-  | { kind: "unknown"; reason: string }; // a table is in force but the month cannot be priced
+  | {
+      kind: "scale"; // no table in force, but Landstar's weekly points fit the scale (mock 8)
+      price: number;
+      priceIsThisWeek: boolean;
+      cpm: number;
+      reports: number; // weekly reports on file
+      pairs: number; // (price, cpm) pairs the fit read
+      published: boolean; // the price is a report's own national average, so the cent is the printed one
+    }
+  | { kind: "estimate" } // no table and no scale — the peg formula, labelled
+  | { kind: "unknown"; reason: string }; // a table or scale is in force but the month cannot be priced
 
 // "Oct 1" — the effective date as the sheet prints it.
 const shortDay = (key: string): string =>
@@ -122,7 +131,9 @@ const shortDay = (key: string): string =>
 export const fscParWords = (p: FscPar): string => {
   if (p.kind === "table")
     return `par on Landstar's table (eff. ${shortDay(p.effective_from)}) at ${p.priceIsThisWeek ? "this week's " : ""}$${p.price.toFixed(3)}: ${centsWords(p.cpm)} a loaded mile`;
+  if (p.kind === "scale")
+    return `par on Landstar's scale at ${p.priceIsThisWeek ? "this week's " : ""}$${p.price.toFixed(3)}: ${centsWords(p.cpm)} a loaded mile · ${p.published ? "the week's printed rate" : `fitted from ${p.reports} report${p.reports === 1 ? "" : "s"}, ${p.pairs} points`}`;
   if (p.kind === "estimate")
-    return "par · estimate — the price above the ~$1.29/gal peg on loaded miles; paste Landstar's table in Settings for the real number";
+    return "par · estimate — the price above the ~$1.29/gal peg on loaded miles; paste this week's Landstar line in Settings for the real number";
   return `par unknown — ${p.reason}`;
 };
