@@ -11,6 +11,7 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { AccessorialRatesCard } from "@/components/settings/AccessorialRatesCard";
 import { CutTiersCard } from "@/components/settings/CutTiersCard";
 import { PerDiemRatesTable } from "@/components/settings/PerDiemRatesTable";
+import { FscScheduleBox } from "@/components/settings/FscScheduleBox";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 import { Panel } from "@/components/ui/Panel";
@@ -535,6 +536,16 @@ const SettingsPage = () => {
         <span className="text-xs text-muted-text mt-3 block">
           Saved with the schedule above.
         </span>
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Fuel surcharge schedule</h2>
+        <p className="text-sm text-muted-text mt-1">
+          Landstar's fuel-surcharge band table — paste it with its effective date whenever Landstar
+          publishes a new one. Every table is kept; a month's par on the Fuel page reads the table in
+          force then at that month's national diesel price.
+        </p>
+        <FscScheduleBox />
       </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">

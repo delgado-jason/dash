@@ -38,3 +38,18 @@ describe("odometer_reading — against the earlier-dated fill", () => {
     assert.deepEqual(validateFuelSequence({ fuel_date: "2026-10-01", odometer_reading: 100, previous }, NOW), []);
   });
 });
+
+describe("filled_to_top — GL-154", () => {
+  test("absent, true and false pass", () => {
+    for (const o of [{}, { filled_to_top: true }, { filled_to_top: false }])
+      assert.deepEqual(validateFuelEntryCreate(fill(o), { now: NOW }), []);
+  });
+  test("anything but a real boolean is refused", () => {
+    for (const bad of ["yes", "true", 1, 0, null, ""])
+      assert.deepEqual(validateFuelEntryCreate(fill({ filled_to_top: bad }), { now: NOW }), ["filled_to_top must be true or false"]);
+  });
+  test("a patch checks it too", () => {
+    assert.deepEqual(validateFuelEntryPatch({ filled_to_top: false }, { now: NOW }), []);
+    assert.deepEqual(validateFuelEntryPatch({ filled_to_top: "no" }, { now: NOW }), ["filled_to_top must be true or false"]);
+  });
+});

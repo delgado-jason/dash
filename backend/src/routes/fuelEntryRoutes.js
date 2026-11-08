@@ -12,6 +12,12 @@ import {
   getNationalDieselMonthly,
 } from "../services/fuelPriceService.js";
 
+import {
+  listFscSchedules,
+  createFscSchedule,
+  deleteFscSchedule,
+} from "../services/fscScheduleServices.js";
+
 const router = express.Router();
 router.use(requireAuth);
 
@@ -37,6 +43,42 @@ router.get("/", async (req, res) => {
       error: "Internal Server Error",
       message: err.message,
     });
+  }
+});
+
+// ---- GL-155 Landstar fuel-surcharge band tables ----
+// Literal paths: declared before "/:fuel_entry_id" so "fsc-schedules" is never
+// read as an id.
+const fscError = (res, err) => {
+  if (err.type === "validation" || err.type === "not_found" || err.type === "conflict")
+    return res.status(err.statusCode).json({ error: err.message, details: err.details });
+  return res.status(500).json({ error: "Internal Server Error", message: err.message });
+};
+
+router.get("/fsc-schedules", async (req, res) => {
+  try {
+    const schedules = await listFscSchedules(req.user.user_id);
+    return res.status(200).json({ schedules });
+  } catch (err) {
+    return fscError(res, err);
+  }
+});
+
+router.post("/fsc-schedules", async (req, res) => {
+  try {
+    const schedule = await createFscSchedule(req.user.user_id, req.body);
+    return res.status(201).json({ schedule });
+  } catch (err) {
+    return fscError(res, err);
+  }
+});
+
+router.delete("/fsc-schedules/:schedule_id", async (req, res) => {
+  try {
+    await deleteFscSchedule(req.user.user_id, req.params.schedule_id);
+    return res.status(204).end();
+  } catch (err) {
+    return fscError(res, err);
   }
 });
 

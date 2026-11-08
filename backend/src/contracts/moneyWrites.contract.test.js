@@ -17,6 +17,8 @@ import { validateObligation } from "../utils/validation/obligationValidation.js"
 import { validateExpensePeriod } from "../utils/validation/expensePeriodValidation.js";
 import { validateLoadCreate, validateLoadPatch, BOOKER_REQUIRED } from "../utils/validation/loadValidation.js";
 import { validatePerDiemRate } from "../utils/validation/perDiemRateValidation.js";
+import { validateFscSchedule } from "../utils/validation/fscScheduleValidation.js";
+import { validateFuelEntryCreate, validateFuelEntryPatch } from "../utils/validation/fuelValidation.js";
 import { validateSnapshotBalances } from "../utils/validation/planSnapshotValidation.js";
 import {
   validSchedule,
@@ -26,6 +28,7 @@ import {
   validDeliveredLoad,
   validSnapshotAccounts,
   validPerDiemRate,
+  validFscSchedule,
   validSnapshotBalances,
 } from "./fixtures.js";
 
@@ -271,5 +274,41 @@ describe("GL-136 · per-diem rate rows", () => {
     const { values, errors } = validatePerDiemRate({ note: "typo fixed" }, { partial: true });
     assert.deepEqual(errors, []);
     assert.deepEqual(values, { note: "typo fixed" });
+  });
+});
+
+describe("GL-154 · the fill-up tick", () => {
+  const NOW = new Date("2026-11-04T20:00:00Z");
+  const fill = (over = {}) => ({ fuel_date: "2026-11-03", gallons: 100, price_per_gallon: 3.5, odometer_reading: 600000, fuel_state: "TX", ...over });
+  test('filled_to_top "yes" is refused with the sentence', () => {
+    refused(validateFuelEntryCreate(fill({ filled_to_top: "yes" }), { now: NOW }), "filled_to_top must be true or false");
+    refused(validateFuelEntryPatch({ filled_to_top: 1 }, { now: NOW }), "filled_to_top must be true or false");
+  });
+  test("true passes", () => assert.deepEqual(validateFuelEntryCreate(fill({ filled_to_top: true }), { now: NOW }), []));
+  test("false passes", () => assert.deepEqual(validateFuelEntryCreate(fill({ filled_to_top: false }), { now: NOW }), []));
+  test("absent passes (the column default stands)", () => assert.deepEqual(validateFuelEntryCreate(fill(), { now: NOW }), []));
+});
+
+describe("GL-155 · surcharge band tables", () => {
+  const bad = (patch, fragment) => {
+    const { errors } = validateFscSchedule({ ...validFscSchedule(), ...patch });
+    refused(errors, fragment);
+  };
+  test("fewer than two bands is refused", () => bad({ bands: [{ low: 4, high: null, cpm: 0.5 }] }, "a surcharge table needs at least two bands"));
+  test("a backwards band is refused", () =>
+    bad({ bands: [{ low: 4.3, high: 4.2, cpm: 0.5 }, { low: 4.5, high: null, cpm: 0.6 }] }, "the band $4.30–$4.20 runs backwards"));
+  test("overlapping bands are refused", () =>
+    bad({ bands: [{ low: 4.0, high: 4.1, cpm: 0.5 }, { low: 4.05, high: 4.149, cpm: 0.6 }] }, "the bands $4.00–$4.10 and $4.05–$4.149 overlap"));
+  test("$6 a mile is refused", () =>
+    bad({ bands: [{ low: 4.0, high: 4.4, cpm: 0.5 }, { low: 4.5, high: null, cpm: 6 }] }, "the band $4.50 and up pays $6.00 a mile — outside $0–$5"));
+  test("an open band that is not last is refused", () =>
+    bad({ bands: [{ low: 4.0, high: null, cpm: 0.5 }, { low: 4.5, high: 4.6, cpm: 0.6 }] }, 'only the last band can run "and up"'));
+  test("2026-02-30 is refused", () => bad({ effective_from: "2026-02-30" }, "calendar day written YYYY-MM-DD"));
+  test("a valid three-band table with an and-up last band passes, sorted and numeric", () => {
+    const f = validFscSchedule();
+    const shuffled = { ...f, bands: [f.bands[2], { low: "4.00", high: "4.049", cpm: "0.58" }, f.bands[1]] };
+    const { values, errors } = validateFscSchedule(shuffled);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(values, f);
   });
 });

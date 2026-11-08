@@ -15,6 +15,7 @@ const coerce = (f: any): FuelEntry => ({
   // Optional: an integer column, but a missing reading must stay null — a
   // Number(null) of 0 would be a meter reading nobody took.
   apu_hours: f.apu_hours == null ? null : Number(f.apu_hours),
+  filled_to_top: f.filled_to_top === true,
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -34,7 +35,7 @@ export const updateFuelEntry = async (
   id: string,
   data: Record<string, unknown>,
 ): Promise<void> => {
-  await api.patch(`/fuel-entries/${id}`, data);
+  await api.patch(`/fuel/${id}`, data); // the router mounts at /fuel — this used to post to a path that did not exist
 };
 
 export const deleteFuelEntry = async (id: string): Promise<void> => {

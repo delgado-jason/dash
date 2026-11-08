@@ -1,5 +1,6 @@
 import type { FuelVsRevenue, FuelMonth } from "@/lib/metrics/fuelRevenue";
 import { money } from "@/lib/format";
+import { fscParWords } from "@/lib/metrics/fscTable";
 
 const pct0 = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -17,14 +18,14 @@ const monthLabel = (ym: string, opts: Intl.DateTimeFormatOptions) =>
 // or deadhead eating the collected miles).
 const coverGrade = (c: number | null, exp: number | null): "par" | "close" | "short" | "unknown" => {
   if (c == null) return "unknown";
-  if (exp == null) return c >= 1 ? "par" : "unknown"; // no bar computable — only 100% is safely green
+  if (exp == null) return "unknown"; // no bar computable — never graded, never green by default
   if (c >= exp) return "par";
   if (c >= exp - 0.05) return "close";
   return "short";
 };
 const gradeColor = { par: "#4ade80", close: "#e8940a", short: "#f87171", unknown: "#9daabb" } as const;
 
-const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
+const CoverageTrend = ({ months, parUnavailable }: { months: FuelMonth[]; parUnavailable: boolean }) => {
   const recent = months.slice(-6).filter((m) => m.fscCoverage != null);
   if (recent.length < 2) return null;
   const max = Math.max(1, ...recent.map((m) => m.fscCoverage ?? 0));
@@ -37,7 +38,8 @@ const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
       <div className="flex items-end gap-3 h-20">
         {recent.map((m) => {
           const c = m.fscCoverage ?? 0;
-          const g = coverGrade(m.fscCoverage, m.expectedCoverage);
+          const exp = parUnavailable ? null : m.expectedCoverage;
+          const g = coverGrade(m.fscCoverage, exp);
           return (
             <div
               key={m.month}
@@ -50,16 +52,16 @@ const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
                 {pct0(c)}
               </span>
               <div className="w-full flex items-end relative" style={{ height: 48 }}>
-                {m.expectedCoverage != null && (
+                {exp != null && (
                   <span
                     className="absolute left-0 right-0"
                     style={{
-                      bottom: `${Math.min(48, (m.expectedCoverage / max) * 48)}px`,
+                      bottom: `${Math.min(48, (exp / max) * 48)}px`,
                       height: 2,
                       background: "#e8edf6",
                       opacity: 0.5,
                     }}
-                    title={`par ~${pct0(m.expectedCoverage)}`}
+                    title={`par ~${pct0(exp)}`}
                   />
                 )}
                 <div
@@ -85,17 +87,18 @@ const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
 // Fuel put next to the money it relates to: what share of gross it eats, and
 // whether the fuel surcharge is still covering it. Only months with logged fuel
 // are counted, so an un-logged month never shows a false 0%.
-export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
+export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: FuelVsRevenue; parUnavailable?: boolean }) => {
   const m = data.headline;
   if (!m) return null;
   const sf = data.soFar;
 
-  const grade = coverGrade(m.fscCoverage, m.expectedCoverage);
+  const expected = parUnavailable ? null : m.expectedCoverage;
+  const grade = coverGrade(m.fscCoverage, expected);
   const covered = grade === "par";
   // Dollars short of the month's EXPECTED collection, not of 100% of fuel.
   const gap =
-    m.fscCoverage != null && m.expectedCoverage != null
-      ? m.fsc - m.expectedCoverage * m.fuelSpend
+    m.fscCoverage != null && expected != null
+      ? m.fsc - expected * m.fuelSpend
       : null;
 
   return (
@@ -144,17 +147,18 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
           </p>
           <p className="text-2xl font-condensed mt-1" style={{ color: gradeColor[grade] }}>
             {m.fscCoverage == null ? "—" : pct0(m.fscCoverage)}
-            {m.expectedCoverage != null && (
-              <span className="text-[13px] text-faint"> vs ~{pct0(m.expectedCoverage)} par</span>
+            {expected != null && (
+              <span className="text-[13px] text-faint"> vs ~{pct0(expected)} par</span>
             )}
           </p>
           <p className="text-[11px] mt-0.5" style={{ color: grade === "short" ? "#f2a6a3" : "#9daabb" }}>
             {money(m.fsc)} FSC vs {money(m.fuelSpend)} fuel
             {gap != null && gap < -1 ? ` · ${money(Math.abs(gap))} under par` : ""}
           </p>
-          <p className="text-[10.5px] text-faint mt-1">
-            par = price above the ~$1.25/gal peg, loaded miles only — full
-            coverage was never the game
+          <p className={"text-[10.5px] mt-1 " + (parUnavailable ? "font-condensed text-amber-hi" : "text-faint")}>
+            {parUnavailable
+              ? "par unavailable — couldn't load the surcharge tables"
+              : fscParWords(m.par)}
           </p>
         </div>
       </div>
@@ -163,12 +167,14 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
         <p className="text-[11px] text-faint mt-3">
           {monthLabel(sf.month, { month: "long" })} so far ·{" "}
           {sf.fscCoverage == null ? "—" : pct0(sf.fscCoverage)}
-          {sf.expectedCoverage != null ? ` vs ~${pct0(sf.expectedCoverage)} par` : ""} ·{" "}
+          {!parUnavailable && sf.expectedCoverage != null ? ` vs ~${pct0(sf.expectedCoverage)} par` : ""} ·{" "}
           {money(sf.fsc)} FSC vs {money(sf.fuelSpend)} fuel — a partial month, not graded
+          <br />
+          {parUnavailable ? "par unavailable — couldn't load the surcharge tables" : fscParWords(sf.par)}
         </p>
       )}
 
-      <CoverageTrend months={data.months} />
+      <CoverageTrend months={data.months} parUnavailable={parUnavailable} />
     </div>
   );
 };

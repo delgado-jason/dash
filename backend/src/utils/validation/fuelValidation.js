@@ -42,7 +42,7 @@ export const validateFuelSequence = ({ fuel_date, odometer_reading, previous = n
  * Fields to validate:
  * fuel_date, gallons, price_per_gallon,
  * odometer_reading, apu_hours, company_name,
- * fuel_city, fuel_state
+ * fuel_city, fuel_state, filled_to_top
  */
 
 const rules = {
@@ -114,6 +114,13 @@ const rules = {
     if (value === undefined || value === null) return;
 
     for (const e of apuHoursErrors(value)) errors.push(e);
+  },
+  // GL-154 · the "filled to the top" tick. Only a ticked fill closes a tank
+  // window. Absent leaves the column default (TRUE); anything but a real
+  // boolean is refused — "yes" or 1 would be guessed at.
+  filled_to_top: (value, errors) => {
+    if (value === undefined) return;
+    if (value !== true && value !== false) errors.push("filled_to_top must be true or false");
   },
   company_name: (value, errors) => {
     if (value === undefined) return;

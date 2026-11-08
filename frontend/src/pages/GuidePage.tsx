@@ -1913,8 +1913,13 @@ const GuidePage = () => {
               stretch
             </Formula>
             <Why>
-              A fill of <span className="text-light">120+ gallons</span> is a
-              full tank; smaller top-offs roll into the next full. Measuring
+              A fill is a <span className="text-light">full tank</span> when you
+              say so: the fill-up form's{" "}
+              <span className="text-light">Filled to the top</span> tick, on by
+              default because filling up is your rule — untick a partial, and it
+              rolls into the next full instead of closing a window. (Until Nov
+              2026 "full" was a guess, 120 gallons or more; every older fill was
+              marked by that rule, so history reads as it did.) Measuring
               full-to-full is why it's honest — actual pump gallons against
               actual odometer miles. The fill-up form also takes an optional{" "}
               <span className="text-light">APU hours</span> reading — nothing to
@@ -2024,6 +2029,26 @@ const GuidePage = () => {
               collected, so grading it would swing with the calendar. The running
               month shows under the tiles as "so far", with its figures and no
               grade.
+            </Why>
+            <Why>
+              <span className="text-light">Par from Landstar's own table.</span>{" "}
+              Landstar publishes its surcharge as a band table — a national
+              diesel price range to a rate per loaded mile — and changes it with
+              no feed to read. Paste it on the Settings page with its effective
+              date whenever a new one arrives; every table is kept. A month then
+              reads the table in force on its first day at that month's national
+              average diesel price (this week's price for the month still
+              running): expected surcharge = loaded miles × the band's rate, and
+              par is that against the fuel spend. The card says which it used —{" "}
+              <span className="text-light">
+                par on Landstar's table (eff. Oct 1) at this week's $5.153: 78¢ a
+                loaded mile
+              </span>
+              . With no table in force it says{" "}
+              <span className="text-light">par · estimate</span> and uses the peg
+              formula above; with a table but no national price for the month it
+              says <span className="text-light">par unknown</span> and grades
+              nothing, rather than hiding the estimate behind the table's name.
             </Why>
           </Metric>
 
