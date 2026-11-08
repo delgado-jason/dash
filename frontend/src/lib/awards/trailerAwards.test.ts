@@ -97,3 +97,11 @@ describe("trailerRecords", () => {
     expect(trailerRecords(loads).heaviestLoad).toBe(49_000);
   });
 });
+
+describe("computeTrailerMedals — the Hub Club waits for a reading (GL-07)", () => {
+  it("null hub miles: no Hub Club medal at all, the other medals unchanged", () => {
+    const keys = computeTrailerMedals({ hubMiles: null, earnings: 11_000, deliveredCount: 44, loanPaidPct: null }).map((m) => m.key);
+    expect(keys).not.toContain("hub-club");
+    expect(keys).toEqual(expect.arrayContaining(["trailer-earner", "workhorse"]));
+  });
+});

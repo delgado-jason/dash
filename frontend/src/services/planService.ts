@@ -124,6 +124,9 @@ export interface OpsCheckRow {
   created_at?: string | null; // when it was typed
   balance: string | number; // numeric — coerce at the boundary
   note: string | null;
+  // Q3 (2026-11-05): on a day a deposit is dated, whether it had landed when the
+  // balance was typed. null = not asked (no deposit that day, or an older check).
+  deposit_landed: boolean | null;
 }
 
 export const getOpsChecks = async (): Promise<OpsCheckRow[]> => {
@@ -135,6 +138,7 @@ export const createOpsCheck = async (data: {
   as_of: string;
   balance: number;
   note: string | null;
+  deposit_landed: boolean | null;
 }): Promise<OpsCheckRow> => {
   const res = await api.post("/plans/ops-checks", data);
   return res.data.check;

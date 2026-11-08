@@ -249,6 +249,7 @@ const CashFlowPage = () => {
         balance: Number(c.balance),
         kind: "check",
         note: c.note,
+        depositLanded: c.deposit_landed ?? null,
         createdAt: c.created_at ?? null,
       });
     }
@@ -381,6 +382,22 @@ const CashFlowPage = () => {
     assumptions, asOfKey, setlDay, lag, floatLine, checks, loads, settlements,
     fuelEntries, obligations, readings, perMile, fuelPace, milesPace, buckets, moneyDays, netPayOverrides, accruals,
   ]);
+
+  // The deposit the board holds dated exactly `day` (Q3, 2026-11-07): this
+  // period's own, last period's landing inside it, and any older period's the
+  // number hasn't reached. Null when no deposit is dated that day — the OPS NOW
+  // popup then has no deposit field. The amount is null when the deposit's
+  // planning input is refused.
+  const depositDatedOn = (day: string): { amount: number | null } | null => {
+    if (!board) return null;
+    for (const col of board.columns) {
+      const lines = [col.deposit, col.prevDeposit, ...col.since.map((p) => p.deposit)];
+      // A line whose amount is known to be nothing (a home week, a negative carry) is
+      // not a deposit to ask about; an unknown amount (refused inputs) still is.
+      for (const d of lines) if (d && d.date.slice(0, 10) === day && (d.amount == null || d.amount > 0)) return { amount: d.amount };
+    }
+    return null;
+  };
 
   const forecast = useMemo(
     () => (assumptions ? buildForecast(financials, assumptions, adjustments, 6, utc(asOfKey)) : null),
@@ -1108,6 +1125,7 @@ const CashFlowPage = () => {
           <OpsNowPopup
             today={asOfKey}
             base={board?.base ?? null}
+            depositOn={depositDatedOn}
             onClose={() => setShowOpsNow(false)}
             onSaved={() => {
               setShowOpsNow(false);
@@ -1698,20 +1716,25 @@ const AssumptionsPopup = ({
 // after it comes off. The note is where you name what the bank knows and dash
 // doesn't (a card charge, a transfer) — it prints on the Ops cell.
 const OpsNowPopup = ({
-  today, base, onClose, onSaved,
+  today, base, depositOn, onClose, onSaved,
 }: {
   today: string;
   base: CashCheck | null; // the number the board opens on today
+  depositOn: (day: string) => { amount: number | null } | null; // the deposit dated that day, if any
   onClose: () => void;
   onSaved: () => void;
 }) => {
   const [asOf, setAsOf] = useState(today);
   const [balance, setBalance] = useState("");
   const [note, setNote] = useState("");
+  // "it has landed" — unticked by default: he types before the bank posts.
+  const [landed, setLanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const typed = Number(balance);
   const dayKey = isDayKey(asOf.slice(0, 10)) ? asOf.slice(0, 10) : null;
+  // Only on a day a deposit is dated is there a field to ask about.
+  const dep = dayKey ? depositOn(dayKey) : null;
   // A balance can only be from a day that has already happened: the board
   // opens on it and takes off everything dated on or after it.
   const future = dayKey != null && dayKey > today;
@@ -1732,7 +1755,7 @@ const OpsNowPopup = ({
     setBusy(true);
     setErr(null);
     try {
-      await createOpsCheck({ as_of: dayKey, balance: typed, note: note.trim() || null });
+      await createOpsCheck({ as_of: dayKey, balance: typed, note: note.trim() || null, deposit_landed: dep ? landed : null });
       onSaved();
     } catch {
       setErr("Save failed — nothing was recorded. Try again.");
@@ -1753,12 +1776,24 @@ const OpsNowPopup = ({
         <div className="p-5">
           <div className="mb-3">
             <label className={LBL} htmlFor="opsnow-asof">As of</label>
-            <input id="opsnow-asof" type="date" className={FIELD} value={asOf} max={today} onChange={(e) => { setAsOf(e.target.value); setErr(null); }} />
+            <input id="opsnow-asof" type="date" className={FIELD} value={asOf} max={today} onChange={(e) => { setAsOf(e.target.value); setLanded(false); setErr(null); }} />
           </div>
           <div className="mb-3">
             <label className={LBL} htmlFor="opsnow-balance">Ops balance</label>
             <input id="opsnow-balance" inputMode="decimal" placeholder="0.00" className={FIELD} value={balance} onChange={(e) => { setBalance(e.target.value); setErr(null); }} />
           </div>
+          {dep && (
+            <div className="mb-3">
+              <span className={LBL}>{dayKey === today ? "Today’s deposit" : `The deposit dated ${md(dayKey!)}`}</span>
+              <label className="flex items-center gap-2 font-condensed text-[13.5px] text-ink cursor-pointer">
+                <input id="opsnow-landed" type="checkbox" checked={landed} onChange={(e) => setLanded(e.target.checked)} />
+                it has landed
+              </label>
+              <p className="font-condensed text-[12px] text-faint mt-1">
+                {dep.amount != null ? `Landstar’s ${money(dep.amount)}` : "a deposit"} is dated {dayKey === today ? "today" : md(dayKey!)} · unticked, the board keeps it still to come
+              </p>
+            </div>
+          )}
           <div className="mb-3">
             <label className={LBL} htmlFor="opsnow-note">Note · optional</label>
             <input id="opsnow-note" className={FIELD} value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="before Friday’s payroll and the sweep" />

@@ -8,6 +8,7 @@ import {
   type ServiceInput,
 } from "@/services/maintenanceService";
 import { LogServiceSheet } from "./LogServiceSheet";
+import type { MeterReading } from "@/lib/metrics/trailerMeter";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { moneyCents } from "@/lib/format";
 // Flagging two spellings of one shop is all this page does: the MERGE lives on
@@ -17,6 +18,7 @@ import { spellingKey } from "@/lib/maintenance/spellingKey";
 interface Props {
   services: MaintenanceService[];
   items: MaintenanceItem[];
+  readings: MeterReading[]; // the truck's dated odometer readings (the trailer's meter)
   onChange: () => void;
   openSignal?: number; // bumping it opens the log-service form (statusbar CTA)
 }
@@ -24,14 +26,14 @@ interface Props {
 const num = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
 
 // The reading cell — each unit's own meter. An APU visit reads HOURS; a
-// combined service stacks the truck odometer over the trailer hub.
+// combined service stacks the truck odometer over the trailer's reading (the truck's odometer).
 const reading = (s: MaintenanceService) => {
   if (s.unit === "both")
     return (
       <>
         {num(s.odometer)}
         {s.trailer_hub != null && (
-          <span className="text-xs block">{num(s.trailer_hub)} hub</span>
+          <span className="text-xs block">{num(s.trailer_hub)} trailer · truck odometer</span>
         )}
       </>
     );
@@ -113,7 +115,7 @@ const VendorCell = ({
   );
 };
 
-export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props) => {
+export const ServicesTab = ({ services, items, readings, onChange, openSignal = 0 }: Props) => {
   // The rolodex, for linking vendor names through the bridge (same name rule
   // the spend readout uses).
   const { vendors: rolodex } = useVendors(0);
@@ -254,6 +256,7 @@ export const ServicesTab = ({ services, items, onChange, openSignal = 0 }: Props
           <LogServiceSheet
             items={items}
             vendors={rolodex}
+            readings={readings}
             onSave={save}
             onCancel={() => setShowForm(false)}
             busy={busy}

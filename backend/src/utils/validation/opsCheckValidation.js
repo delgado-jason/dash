@@ -3,6 +3,9 @@ import { ValidationError } from "../error.js";
 // OPS NOW (#502): the bank's Ops balance on a date, typed by the owner.
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+export const DEPOSIT_LANDED_ERROR =
+  "deposit_landed must be true or false, or left out on a day with no deposit";
+
 const utcDayKey = (d) => d.toISOString().slice(0, 10);
 
 // The far edge of "today". The server's zone is not the owner's (Railway runs
@@ -12,7 +15,7 @@ const utcDayKey = (d) => d.toISOString().slice(0, 10);
 const tomorrowKey = (now) =>
   utcDayKey(new Date(Date.parse(`${utcDayKey(now)}T00:00:00Z`) + 86_400_000));
 
-export const normalizeOpsCheck = ({ as_of, balance, note } = {}, now = new Date()) => {
+export const normalizeOpsCheck = ({ as_of, balance, note, deposit_landed } = {}, now = new Date()) => {
   const day = String(as_of ?? "").trim();
   if (!DATE_RE.test(day) || Number.isNaN(Date.parse(`${day}T00:00:00Z`)))
     throw new ValidationError("as_of must be a YYYY-MM-DD date");
@@ -26,6 +29,10 @@ export const normalizeOpsCheck = ({ as_of, balance, note } = {}, now = new Date(
   const n = Number(String(balance).replace(/[$,]/g, ""));
   if (!Number.isFinite(n) || n < -1_000_000 || n > 10_000_000)
     throw new ValidationError("balance must be a number between -1,000,000 and 10,000,000");
+  // Q3: asked only on a day a deposit is dated. Absent = not asked (NULL), which
+  // is a real answer and NOT a "no".
+  if (deposit_landed !== undefined && deposit_landed !== null && typeof deposit_landed !== "boolean")
+    throw new ValidationError(DEPOSIT_LANDED_ERROR);
   const text = note == null ? null : String(note).trim().slice(0, 200) || null;
-  return { as_of: day, balance: Math.round(n * 100) / 100, note: text };
+  return { as_of: day, balance: Math.round(n * 100) / 100, note: text, deposit_landed: deposit_landed ?? null };
 };

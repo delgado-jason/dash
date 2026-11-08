@@ -60,7 +60,6 @@ export const TRAILER_FIELDS: FormField[] = [
   { name: "vin", label: "VIN" },
   { name: "plate_number", label: "Plate", placeholder: "DTS780" },
   { name: "plate_state", label: "State", placeholder: "AL" },
-  { name: "current_hub", label: "Hubodometer", type: "number", placeholder: "456123" },
   {
     name: "status",
     label: "Status",

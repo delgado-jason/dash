@@ -255,7 +255,7 @@ export async function createSnapshot(user_id, data) {
 
 // ---- ops checks (OPS NOW, #502) — the bank's Ops balance on a date ----
 
-const OPS_CHECK_COLS = `check_id, user_id, to_char(as_of, 'YYYY-MM-DD') AS as_of, balance, note, created_at`;
+const OPS_CHECK_COLS = `check_id, user_id, to_char(as_of, 'YYYY-MM-DD') AS as_of, balance, note, deposit_landed, created_at`;
 
 export async function getOpsChecks(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
@@ -269,14 +269,15 @@ export async function getOpsChecks(user_id) {
 // One check per day: typing a second balance the same day replaces the first.
 export async function createOpsCheck(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const { as_of, balance, note } = normalizeOpsCheck(data);
+  const { as_of, balance, note, deposit_landed } = normalizeOpsCheck(data);
   const result = await db.query(
-    `INSERT INTO public.ops_checks (user_id, as_of, balance, note)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO public.ops_checks (user_id, as_of, balance, note, deposit_landed)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (user_id, as_of) DO UPDATE
-       SET balance = EXCLUDED.balance, note = EXCLUDED.note, created_at = now()
+       SET balance = EXCLUDED.balance, note = EXCLUDED.note,
+           deposit_landed = EXCLUDED.deposit_landed, created_at = now()
      RETURNING ${OPS_CHECK_COLS}`,
-    [user_id, as_of, balance, note],
+    [user_id, as_of, balance, note, deposit_landed],
   );
   return result.rows[0];
 }

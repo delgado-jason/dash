@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeOpsCheck } from "./opsCheckValidation.js";
+import { normalizeOpsCheck, DEPOSIT_LANDED_ERROR } from "./opsCheckValidation.js";
 
 test("a typed balance lands as a number on its date, note trimmed", () => {
   assert.deepEqual(normalizeOpsCheck({ as_of: "2026-09-30", balance: "7,309.08", note: "  before payroll " }), {
-    as_of: "2026-09-30", balance: 7309.08, note: "before payroll",
+    as_of: "2026-09-30", balance: 7309.08, note: "before payroll", deposit_landed: null,
   });
   assert.deepEqual(normalizeOpsCheck({ as_of: "2026-09-30", balance: 0 }).balance, 0);
   assert.equal(normalizeOpsCheck({ as_of: "2026-09-30", balance: 1, note: "" }).note, null);
@@ -39,4 +39,16 @@ test("a balance can only be from today or earlier", () => {
   assert.equal(normalizeOpsCheck({ as_of: "2026-09-30", balance: 1 }, now).as_of, "2026-09-30");
   assert.equal(normalizeOpsCheck({ as_of: "2026-09-29", balance: 1 }, now).as_of, "2026-09-29");
   assert.equal(normalizeOpsCheck({ as_of: "2026-10-01", balance: 1 }, now).as_of, "2026-10-01");
+});
+
+// Q3 (migration 096): NULL = not asked, FALSE = typed before it landed,
+// TRUE = already inside the balance.
+test("deposit_landed: true and false stand, absent is null (not asked), anything else is refused", () => {
+  const base = { as_of: "2026-10-08", balance: 1 };
+  assert.equal(normalizeOpsCheck({ ...base, deposit_landed: true }).deposit_landed, true);
+  assert.equal(normalizeOpsCheck({ ...base, deposit_landed: false }).deposit_landed, false);
+  assert.equal(normalizeOpsCheck(base).deposit_landed, null);
+  assert.equal(normalizeOpsCheck({ ...base, deposit_landed: null }).deposit_landed, null);
+  for (const bad of ["yes", "true", 1, 0, ""])
+    assert.throws(() => normalizeOpsCheck({ ...base, deposit_landed: bad }), (e) => e.message === DEPOSIT_LANDED_ERROR);
 });

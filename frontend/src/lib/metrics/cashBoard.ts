@@ -69,6 +69,10 @@ export interface CashCheck {
   kind: "snapshot" | "check";
   note: string | null;
   createdAt?: string | null; // when it was typed — breaks a same-day tie (the later one is the number)
+  // Q3 (Jason, 2026-11-05; mock 3 nodded 2026-11-07): on a day a deposit is dated,
+  // the OPS NOW form asks whether it had landed. false = typed before it (the
+  // deposit stays ahead of the number); true = already inside; null = not asked.
+  depositLanded?: boolean | null;
 }
 
 export interface FuelLike {
@@ -304,7 +308,13 @@ const nextDow = (from: string, target: number): string => {
 const countsOut = (date: string, base?: CashCheck): boolean =>
   base == null || date > day(base.date) || (date === day(base.date) && base.kind === "check");
 // Money that is there by morning — a deposit, the Monday card leftover.
-const countsIn = (date: string, base?: CashCheck): boolean => base == null || date > day(base.date);
+// A deposit dated the check's own day is in the number unless the check says
+// it had NOT landed yet (Q3: the form's tick, unticked = typed before the ACH).
+// A check that never asked (null) keeps the old reading: in the number.
+const countsIn = (date: string, base?: CashCheck): boolean =>
+  base == null ||
+  date > day(base.date) ||
+  (date === day(base.date) && base.kind === "check" && base.depositLanded === false);
 // Jason's own moves — the accrual, a money day — follow the outflow rule: he
 // moves the money BEFORE he types the snapshot, so a snapshot dated the move's
 // day already holds it; a morning check still has it ahead (2026-11-04).

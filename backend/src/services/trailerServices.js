@@ -3,7 +3,7 @@ import { ValidationError, NotFoundError } from "../utils/error.js";
 
 const SELECT_COLS = `
   trailer_id, unit_number, vin, plate_number, plate_state, trailer_type,
-  length_ft, make, model, year, current_hub, status, avatar_url,
+  length_ft, make, model, year, status, avatar_url,
   in_service_date, notes, created_at, updated_at`;
 
 const ALLOWED = [
@@ -16,7 +16,6 @@ const ALLOWED = [
   "make",
   "model",
   "year",
-  "current_hub",
   "status",
   "avatar_url",
   "in_service_date",
