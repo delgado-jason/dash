@@ -4124,6 +4124,28 @@ const GuidePage = () => {
             </Why>
           </Section>
 
+          <Section title="Appearance — light and dark">
+            <Metric
+              title="Day Cab and Night Cab"
+              answers="Why does dash look different on my phone than on the laptop?"
+            >
+              <Formula>
+                System follows the device · Light and Dark hold · remembered on this device only
+              </Formula>
+              <Why>
+                dash has two looks built from one set of colour names:{" "}
+                <span className="text-light">Night Cab</span>, the dark cab with
+                amber instruments, and <span className="text-light">Day Cab</span>,
+                the same cab in daylight — cool paper, white panels, navy ink, amber
+                kept for the instruments and deepened where it has to be read as
+                words. On a device that has never chosen, dash follows the operating
+                system's setting and changes with it. The toggle at the foot of the
+                sidebar switches with one tap; Settings → Appearance offers System,
+                Light and Dark. The choice is stored on the device, never on the
+                account, so the phone can stay dark while the office laptop is light.
+              </Why>
+            </Metric>
+          </Section>
           <Section title="What a dispatcher sees">
             <p className="text-sm text-muted-text">
               A dispatcher's menu is trimmed to the day-to-day: the Dispatch

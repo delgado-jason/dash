@@ -15,6 +15,8 @@ import {
   Flame,
   BookOpen,
   Volume2,
+  Sun,
+  Moon,
   VolumeX,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +37,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { isDispatcher } from "@/lib/roles";
 import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
+import { useTheme } from "@/hooks/useTheme";
 
 // `adminOnly` items are owner-only; a dispatcher's nav filters them out (and the
 // route guard bounces her if she types the URL). Keep these flags in lockstep
@@ -113,6 +116,7 @@ const AppSidebar = () => {
   const { pathname } = useLocation();
   const dispatcher = isDispatcher();
   const [sfxOn, setSfxOn] = useState(sfxEnabled());
+  const { resolved: resolvedTheme, toggle: toggleTheme } = useTheme();
   const navItems = navFor(dispatcher);
   const active = (to: string) =>
     pathname === to || pathname.startsWith(to + "/");
@@ -244,6 +248,18 @@ const AppSidebar = () => {
           >
             {sfxOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
             <span>Sound {sfxOn ? "on" : "off"}</span>
+          </button>
+        </div>
+        <div className="px-4 pt-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center gap-2 text-sm text-faint transition-colors hover:text-ink"
+            aria-label={resolvedTheme === "dark" ? "Switch to the light look" : "Switch to the dark look"}
+            title={resolvedTheme === "dark" ? "Dark · tap for light" : "Light · tap for dark"}
+          >
+            {resolvedTheme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+            <span>{resolvedTheme === "dark" ? "Dark" : "Light"}</span>
           </button>
         </div>
         <div className="px-4 pb-4 pt-1 text-sm text-faint">
