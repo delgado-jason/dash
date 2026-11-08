@@ -1,5 +1,8 @@
 # The gate: a pull request cannot merge while a business rule's test is red.
 # Frontend: types, lint, vitest. Backend: node:test. (2026-11-04, call 15.)
+# Stage 4a (2026-11-06): the business-rule contracts run as their own named
+# step, and a PR that touches a contract or a pinned constant must say which
+# rule moved and why — 'Rule change: <id> — <reason>' — in its body.
 name: ci
 on:
   pull_request:
@@ -24,7 +27,27 @@ jobs:
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
           FILES=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- 'frontend/src/**/*.ts' 'frontend/src/**/*.tsx' | sed 's#^frontend/##')
           if [ -n "$FILES" ]; then echo "$FILES" | xargs npx eslint --max-warnings=0; else echo "no frontend source changed"; fi
+      # A red contract shows as its own step, named for the rule it locks.
+      - name: business-rule contracts
+        run: npx vitest run src/contracts --reporter=verbose
       - run: npx vitest run
+      # The rule-change gate: a contract or a pinned constant may only move
+      # with a sentence in the PR body saying which rule and why. The body is
+      # passed through env, never interpolated into the script.
+      - name: rule-change gate
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          CHANGED=$(git diff --name-only "$BASE" HEAD -- frontend/src/contracts backend/src/contracts frontend/src/lib/constants/targets.ts)
+          if [ -n "$CHANGED" ] && ! grep -q 'Rule change:' <<< "$PR_BODY"; then
+            echo "::error::This PR changes a locked business rule:"; echo "$CHANGED"
+            echo "::error::Say which rule and why in the PR body: 'Rule change: <id> — <reason>'."
+            exit 1
+          fi
+          echo "rule-change gate: ${CHANGED:-no locked file changed}"
   backend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: backend } }
@@ -33,4 +56,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
+      - name: business-rule contracts
+        run: node --test "src/contracts/*.test.js"
       - run: npm test
