@@ -5,6 +5,7 @@ import type { Load } from "@/types/load";
 import type { MaintenanceService } from "@/types/maintenance";
 import type { Trailer } from "@/types/trailer";
 import { loadTrailerNet } from "./rateTargets";
+import { isDelivered } from "./status";
 
 export interface TrailerMetrics {
   utilization: number | null; // active weeks ÷ weeks in service
@@ -54,7 +55,7 @@ export const computeTrailerMetrics = (
   assetNote = 0, // monthly trailer note — folds into cost-to-run
 ): TrailerMetrics => {
   const earnedLoads = trailerLoads.filter(
-    (l) => l.load_status === "delivered" && l.payment_status === "paid",
+    (l) => isDelivered(l) && l.payment_status === "paid",
   );
   const earnings = earnedLoads.reduce((s, l) => s + loadTrailerNet(l), 0);
   const totalMiles = earnedLoads.reduce((s, l) => s + loadMiles(l), 0);

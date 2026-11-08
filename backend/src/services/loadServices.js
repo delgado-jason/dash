@@ -5,10 +5,26 @@ import {
 } from "../utils/validation/loadValidation.js";
 import { footprintPointOf } from "../utils/footprintPoint.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import {
+  NET_REVENUE_SQL,
+  TRAILER_NET_SQL,
+  assertScheduleRow,
+} from "./sql/netRevenue.js";
+
+// NET-07: a user with no settlement schedule row is refused, never priced at a
+// 100% keep. The net_revenue / trailer_net SQL INNER JOINs the schedule.
+async function requireSchedule(user_id) {
+  const result = await db.query(
+    "SELECT 1 FROM settlement_schedules WHERE user_id = $1",
+    [user_id],
+  );
+  assertScheduleRow(result.rows[0]);
+}
 
 // ---- GET LOADS SERVICE ----
 export async function getLoads(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
+  await requireSchedule(user_id);
 
   const query = `
         SELECT
@@ -17,10 +33,10 @@ export async function getLoads(user_id) {
             load_type,
             load_status,
             booked_via,
-            loads.agent_id,
-            loads.agency_id,
+            l.agent_id,
+            l.agency_id,
             agencies.agency_code AS agency_code,
-            loads.posting_code AS posting_code,
+            l.posting_code AS posting_code,
             agents.first_name || ' ' || agents.last_name AS agent,
             shipper_name,
             shipper_facility_id,
@@ -31,7 +47,7 @@ export async function getLoads(user_id) {
             pickup_date,
             origin_city,
             origin_state,
-            loads.origin_market_id,
+            l.origin_market_id,
             origin_market.market_name AS origin_market,
             receiver_name,
             receiver_facility_id,
@@ -42,7 +58,7 @@ export async function getLoads(user_id) {
             delivery_date,
             destination_city,
             destination_state,
-            loads.destination_market_id,
+            l.destination_market_id,
             destination_market.market_name AS delivery_market,
             detention_paid,
             detention_billable,
@@ -55,38 +71,13 @@ export async function getLoads(user_id) {
             fuel_surcharge,
             (SELECT COALESCE(SUM(amount), 0)
               FROM accessorials
-              WHERE load_id = loads.load_id
+              WHERE load_id = l.load_id
             ) AS total_accessorials,
             linehaul + fuel_surcharge
-              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = loads.load_id)
+              + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
               AS gross_revenue,
-            ROUND(
-              linehaul * (COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
-              + fuel_surcharge * COALESCE(ss.fuel_surcharge_pct, 1)
-              + (SELECT COALESCE(SUM(
-                     a.amount * COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
-                   ), 0)
-                 FROM accessorials a
-                 LEFT JOIN accessorial_pay_rates apr
-                   ON apr.user_id = loads.user_id
-                   AND apr.accessorial_type = a.accessorial_type
-                 WHERE a.load_id = loads.load_id)
-            , 2) AS net_revenue,
-            -- The trailer's cut: its % of linehaul plus its % of the base-rate
-            -- accessorials it rides on (those paid at linehaul_pct + trailer_pct).
-            -- FSC and flat-100% accessorials belong to the tractor, not the trailer.
-            ROUND(
-              linehaul * COALESCE(ss.trailer_pct, 0)
-              + COALESCE(ss.trailer_pct, 0) * (
-                  SELECT COALESCE(SUM(a.amount), 0)
-                  FROM accessorials a
-                  LEFT JOIN accessorial_pay_rates apr
-                    ON apr.user_id = loads.user_id
-                    AND apr.accessorial_type = a.accessorial_type
-                  WHERE a.load_id = loads.load_id
-                    AND COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
-                        = COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
-            , 2) AS trailer_net,
+            ${NET_REVENUE_SQL} AS net_revenue,
+            ${TRAILER_NET_SQL} AS trailer_net,
             commodity,
             weight,
             length_in,
@@ -95,26 +86,26 @@ export async function getLoads(user_id) {
             odometer_start,
             odometer_end,
             payment_status,
-            loads.truck_id,
-            loads.driver_id,
-            loads.trailer_id,
-            loads.booked_by,
-            loads.created_at AS created_at,
-            loads.updated_at AS updated_at
-        FROM loads
-        -- LEFT: loads.agency_id is nullable since 075 (an inner join would
+            l.truck_id,
+            l.driver_id,
+            l.trailer_id,
+            l.booked_by,
+            l.created_at AS created_at,
+            l.updated_at AS updated_at
+        FROM loads AS l
+        -- LEFT: l.agency_id is nullable since 075 (an inner join would
         -- silently drop every load whose agency isn't on file yet).
         LEFT JOIN agencies
-        ON loads.agency_id = agencies.agency_id
+        ON l.agency_id = agencies.agency_id
         JOIN agents
-        ON loads.agent_id = agents.agent_id
+        ON l.agent_id = agents.agent_id
         JOIN markets AS origin_market
-        ON loads.origin_market_id = origin_market.market_id
+        ON l.origin_market_id = origin_market.market_id
         JOIN markets AS destination_market
-        ON loads.destination_market_id = destination_market.market_id
-        LEFT JOIN settlement_schedules AS ss
-        ON ss.user_id = loads.user_id
-        WHERE loads.user_id = $1
+        ON l.destination_market_id = destination_market.market_id
+        JOIN settlement_schedules AS ss
+        ON ss.user_id = l.user_id
+        WHERE l.user_id = $1
         ORDER BY pickup_date DESC;
     `;
 
@@ -127,6 +118,7 @@ export async function getLoads(user_id) {
 export async function getLoad(user_id, load_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!load_id) throw new ValidationError("Missing load_id");
+  await requireSchedule(user_id);
 
   const query = `
         SELECT
@@ -179,33 +171,8 @@ export async function getLoad(user_id, load_id) {
             linehaul + fuel_surcharge
               + (SELECT COALESCE(SUM(amount), 0) FROM accessorials WHERE load_id = l.load_id)
               AS gross_revenue,
-            ROUND(
-              linehaul * (COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
-              + fuel_surcharge * COALESCE(ss.fuel_surcharge_pct, 1)
-              + (SELECT COALESCE(SUM(
-                     a.amount * COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
-                   ), 0)
-                 FROM accessorials a
-                 LEFT JOIN accessorial_pay_rates apr
-                   ON apr.user_id = l.user_id
-                   AND apr.accessorial_type = a.accessorial_type
-                 WHERE a.load_id = l.load_id)
-            , 2) AS net_revenue,
-            -- The trailer's cut: its % of linehaul plus its % of the base-rate
-            -- accessorials it rides on (those paid at linehaul_pct + trailer_pct).
-            -- FSC and flat-100% accessorials belong to the tractor, not the trailer.
-            ROUND(
-              linehaul * COALESCE(ss.trailer_pct, 0)
-              + COALESCE(ss.trailer_pct, 0) * (
-                  SELECT COALESCE(SUM(a.amount), 0)
-                  FROM accessorials a
-                  LEFT JOIN accessorial_pay_rates apr
-                    ON apr.user_id = l.user_id
-                    AND apr.accessorial_type = a.accessorial_type
-                  WHERE a.load_id = l.load_id
-                    AND COALESCE(apr.pay_pct, COALESCE(ss.accessorial_pct, 1))
-                        = COALESCE(ss.linehaul_pct, 1) + COALESCE(ss.trailer_pct, 0))
-            , 2) AS trailer_net,
+            ${NET_REVENUE_SQL} AS net_revenue,
+            ${TRAILER_NET_SQL} AS trailer_net,
             commodity,
             weight,
             length_in,
@@ -245,7 +212,7 @@ export async function getLoad(user_id, load_id) {
         ON l.driver_id = drv.driver_id
         LEFT JOIN trailers AS trl
         ON l.trailer_id = trl.trailer_id
-        LEFT JOIN settlement_schedules AS ss
+        JOIN settlement_schedules AS ss
         ON ss.user_id = l.user_id
         LEFT JOIN users AS bu
         ON bu.user_id = l.booked_by
@@ -510,11 +477,17 @@ export async function patchLoad(user_id, load_id, data) {
   // A PATCH may move only one of the two dates, so the date-order check needs
   // the stored row to compare against. Pulled as text (to_char) so the dates
   // never round-trip through a JS Date and pick up a timezone shift.
+  // A patch is judged against the row it lands on: the dates for their order,
+  // and the status + both readings for the delivered rule and the window check
+  // (stage 4b, 2026-11-07 — a patch used to see only the stored dates, so
+  // 'delivered' could be set without the end reading the whole chain reads).
   let existingDates = {};
-  if (data.pickup_date !== undefined || data.delivery_date !== undefined) {
+  const judged = ["pickup_date", "delivery_date", "load_status", "odometer_start", "odometer_end"];
+  if (judged.some((f) => data[f] !== undefined)) {
     const current = await db.query(
       `SELECT to_char(pickup_date, 'YYYY-MM-DD')   AS pickup_date,
-              to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date
+              to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date,
+              load_status, odometer_start, odometer_end
          FROM loads
         WHERE load_id = $1 AND user_id = $2;`,
       [load_id, user_id],

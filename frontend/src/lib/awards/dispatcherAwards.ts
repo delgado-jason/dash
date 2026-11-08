@@ -18,6 +18,7 @@ import {
   SPEC_TIERS,
   type RateTiers,
 } from "@/lib/constants/targets";
+import { isDelivered } from "@/lib/metrics/status";
 
 export interface DispatcherAwardInput {
   loads: Load[];
@@ -103,7 +104,7 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
     specTiers = SPEC_TIERS,
   } = input;
   const mine = loads.filter((l) => l.booked_by === userId && l.load_status !== "cancelled");
-  const delivered = mine.filter((l) => l.load_status === "delivered");
+  const delivered = mine.filter((l) => isDelivered(l));
   const target = ladder.target ?? Infinity;
   const walkAway = ladder.walkAway ?? Infinity;
 

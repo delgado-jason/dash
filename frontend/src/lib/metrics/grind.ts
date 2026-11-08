@@ -22,6 +22,7 @@ import {
   type GrossTargets,
 } from "./rateTargets";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
+import { isDelivered } from "./status";
 
 const WEEK_MS = 7 * 86400000;
 
@@ -113,7 +114,7 @@ const grindFrom = (
   const thisWeek: WeekStatus = hasLadder ? classify(thisWeekGross, targets) : "home";
 
   const delivered = loads.filter(
-    (l) => l.load_status === "delivered" && l.delivery_date,
+    (l) => isDelivered(l) && l.delivery_date,
   );
   if (!hasLadder || delivered.length === 0)
     return { weeks: [], currentStreak: 0, bestStreak: 0, thisWeek, thisWeekGross, hasLadder };
@@ -186,7 +187,7 @@ export const computePersonalGrind = (
     weeks: [], currentStreak: 0, bestStreak: 0, thisWeek: "home", thisWeekGross: 0, hasLadder: false,
     activeWeeks: 0, weeksNeeded: MIN_ACTIVE_WEEKS,
   };
-  const delivered = mine.filter((l) => l.load_status === "delivered" && l.delivery_date);
+  const delivered = mine.filter((l) => isDelivered(l) && l.delivery_date);
   if (delivered.length === 0) return empty;
 
   let earliest = delivered[0].delivery_date!;

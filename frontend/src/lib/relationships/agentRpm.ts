@@ -7,6 +7,7 @@
 import type { Load } from "@/types/load";
 import { loadGross } from "@/lib/metrics/rateTargets";
 import { DAY_MS, keyOf, utcDayKey } from "./dayKeys";
+import { isDelivered } from "@/lib/metrics/status";
 
 export const RPM_WINDOW_DAYS = 365;
 
@@ -17,8 +18,8 @@ export interface AgentRpm {
   gross: number;
 }
 
-const isDelivered = (l: Load, agentId: string): boolean =>
-  l.agent_id === agentId && l.load_status === "delivered";
+const isDeliveredFor = (l: Load, agentId: string): boolean =>
+  l.agent_id === agentId && isDelivered(l);
 
 // The all-in ARITHMETIC itself, over whatever set of loads the caller has
 // already chosen. Exported so a whole agency desk is graded with the very same
@@ -44,7 +45,7 @@ export const agentAllInRpm = (loads: Load[], agentId: string, now: Date): AgentR
   const fromKey = utcDayKey(new Date(now.getTime() - RPM_WINDOW_DAYS * DAY_MS));
   const mine: Load[] = [];
   for (const l of loads) {
-    if (!isDelivered(l, agentId) || !l.pickup_date) continue;
+    if (!isDeliveredFor(l, agentId) || !l.pickup_date) continue;
     const k = keyOf(l.pickup_date);
     if (k < fromKey || k > toKey) continue;
     mine.push(l);
@@ -56,7 +57,7 @@ export const agentAllInRpm = (loads: Load[], agentId: string, now: Date): AgentR
 // not the RPM window.
 export const deliveredCount = (loads: Load[], agentId: string): number => {
   let n = 0;
-  for (const l of loads) if (isDelivered(l, agentId)) n++;
+  for (const l of loads) if (isDeliveredFor(l, agentId)) n++;
   return n;
 };
 

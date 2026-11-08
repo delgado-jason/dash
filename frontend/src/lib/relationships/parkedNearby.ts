@@ -25,6 +25,7 @@ import { bucketOf } from "./buckets";
 import { lastMeaningfulContact, type MeaningfulContactLike } from "./meaningfulContact";
 import { deliveredCount, lastLoadKey } from "./agentRpm";
 import { daysBetweenKeys, keyOf, utcDayKey } from "./dayKeys";
+import { isDelivered } from "@/lib/metrics/status";
 
 export const PARKED_RADIUS_MILES = 75;
 
@@ -75,7 +76,7 @@ const collect = (
   };
   const grossBy = new Map<string, number>();
   for (const l of loads) {
-    if (l.load_status !== "delivered") continue; // booked / cancelled never count
+    if (!isDelivered(l)) continue; // booked / cancelled never count
     const p = footprintPoint(l); // follows the load's customer-end mark
     push(l.agent_id, p?.city, p?.state);
     if (l.agent_id) grossBy.set(l.agent_id, (grossBy.get(l.agent_id) ?? 0) + loadGross(l));

@@ -60,3 +60,15 @@ export const validateAccessorialPatch = (data) => {
 
   return errors;
 };
+
+// NET-05 · an accessorial type with no accessorial_pay_rates row is ACCEPTED,
+// but paid at the schedule's accessorial_pct fallback — say so. Pure: returns
+// the sentence, or null when the type has its own rate.
+//   rated          true when accessorial_pay_rates has a row for the type
+//   accessorial_pct the schedule's fallback fraction (0.73 → "73%")
+export const accessorialRateWarning = (accessorial_type, rated, accessorial_pct) => {
+  if (rated) return null;
+  const pct = Math.round(Number(accessorial_pct) * 10000) / 100;
+  if (!Number.isFinite(pct)) return null;
+  return `${accessorial_type} has no pay rate — it is paid at the ${pct}% fallback; set it in Settings`;
+};

@@ -1,5 +1,6 @@
 import type { Load } from "@/types/load";
 import type { PerDiemStatus } from "@/types/perDiem";
+import { isDelivered } from "@/lib/metrics/status";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -29,7 +30,7 @@ export const inferredOutDays = (
   const capKey = dayKey(cap);
   const yr = String(year);
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.pickup_date) continue;
+    if (!isDelivered(l) || !l.pickup_date) continue;
     const start = l.pickup_date.slice(0, 10);
     const end = (l.delivery_date ?? l.pickup_date).slice(0, 10);
     const cur = new Date(`${start}T00:00:00`);

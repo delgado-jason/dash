@@ -21,6 +21,7 @@ import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 import { money } from "@/lib/format";
+import { isDelivered } from "@/lib/metrics/status";
 
 const FIELDS: FormField[] = [
   {
@@ -111,7 +112,7 @@ const TrailersPage = () => {
     () =>
       trailers.map((t) => {
         const mine = loads.filter(
-          (l) => l.trailer_id === t.trailer_id && l.load_status === "delivered",
+          (l) => l.trailer_id === t.trailer_id && isDelivered(l),
         );
         const miles = mine.reduce((s, l) => {
           const a = Number(l.odometer_start);

@@ -2,8 +2,23 @@ import { db } from "../../db/pool.js";
 import {
   validateAccessorialCreate,
   validateAccessorialPatch,
+  accessorialRateWarning,
 } from "../utils/validation/accessorialValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import { getSettlementSchedule } from "./settlementScheduleServices.js";
+
+// NET-05: the type is accepted either way; with no pay-rate row the response
+// carries a warning naming the fallback it will be paid at. The warning rides on
+// the returned accessorial (the route wraps it as { accessorial }).
+async function withRateWarning(user_id, row) {
+  const rate = await db.query(
+    `SELECT 1 FROM accessorial_pay_rates WHERE user_id = $1 AND accessorial_type = $2`,
+    [user_id, row.accessorial_type],
+  );
+  const schedule = await getSettlementSchedule(user_id);
+  const warning = accessorialRateWarning(row.accessorial_type, rate.rowCount > 0, schedule.accessorial_pct);
+  return warning ? { ...row, warning } : row;
+}
 
 // ---- GET ACCESSORIALS SERVICE ----
 export async function getAccessorials(user_id, load_id) {
@@ -86,7 +101,7 @@ export async function createAccessorial(user_id, load_id, data) {
   result = await db.query(query, values);
 
   // Return created row
-  return result.rows[0];
+  return withRateWarning(user_id, result.rows[0]);
 }
 
 // ---- PATCH ACCESSORIAL SERVICE ----
@@ -147,7 +162,9 @@ export async function patchAccessorial(user_id, accessorial_id, data) {
     throw new NotFoundError("Accessorial not found");
   }
 
-  return result.rows[0];
+  return data.accessorial_type !== undefined
+    ? withRateWarning(user_id, result.rows[0])
+    : result.rows[0];
 }
 
 // ---- DELETE ACCESSORIAL SERVICE ----

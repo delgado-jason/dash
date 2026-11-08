@@ -7,6 +7,7 @@ import { loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { computeStack } from "./adaptiveBar";
 import { tiered, type Medal } from "./medals";
 import type { Patch } from "./patches";
+import { isDelivered } from "@/lib/metrics/status";
 
 const loadMiles = (l: Load): number => {
   const odo =
@@ -20,7 +21,7 @@ const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
 const delivered = (loads: Load[]): Load[] =>
   loads
-    .filter((l) => l.load_status === "delivered" && l.delivery_date)
+    .filter((l) => isDelivered(l) && l.delivery_date)
     .sort((a, b) => (a.delivery_date! < b.delivery_date! ? -1 : 1));
 
 // Chronological monthly series → one value per month, in time order.

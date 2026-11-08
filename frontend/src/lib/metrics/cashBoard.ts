@@ -60,6 +60,7 @@ import { payWeekOf, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
 import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type OdometerReading } from "./odometer";
 import { accrualFlagOf } from "./planStatus";
 import { accrualsByWeek, retrueAccrued, retrueWords, type AccrualRecord } from "./accrualTruth";
+import { isDelivered, isNeverRevenue } from "./status";
 
 export interface CashCheck {
   date: string; // YYYY-MM-DD
@@ -217,11 +218,11 @@ export interface CashBoard {
   clears: boolean | null; // lowest.amount ≥ the float line
 }
 
-// A load has DELIVERED when its status says so — never on a planned date.
-const DELIVERED = new Set(["delivered", "invoiced", "paid"]);
-// Never revenue in a projection: a cancelled load, and a TONU — the shipper
-// decides what a TONU pays, and that shows up on the statement, not before.
-const NEVER_REVENUE = new Set(["cancelled", "tonu"]);
+// "Delivered" and "never revenue" (a cancelled load, a TONU) come from
+// ./status — one definition for every page. This file's old DELIVERED set also
+// listed "invoiced" and "paid"; those are payment_status values, never a
+// load_status, so they were unreachable entries and dropping them changes
+// nothing.
 
 const num = (v: number | string | null | undefined): number => {
   const n = Number(v);
@@ -394,14 +395,14 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   // is never projected: whatever the shipper agrees to pay arrives on the
   // statement.
   for (const l of loads) {
-    if (NEVER_REVENUE.has(String(l.load_status))) continue;
-    const isDelivered = DELIVERED.has(String(l.load_status));
-    const dateKey = isDelivered ? day(l.delivery_date ?? l.pickup_date) : day(l.delivery_date);
+    if (isNeverRevenue(l)) continue;
+    const delivered = isDelivered(l);
+    const dateKey = delivered ? day(l.delivery_date ?? l.pickup_date) : day(l.delivery_date);
     if (!dateKey) continue;
     let planned = expectedPayDate(dateKey, sd);
-    if (!isDelivered && planned < firstOpenStatement) planned = firstOpenStatement;
+    if (!delivered && planned < firstOpenStatement) planned = firstOpenStatement;
     if (planned !== statementDate) continue;
-    if (isDelivered) {
+    if (delivered) {
       loadsNet += loadNetRevenue(l);
       count++;
     } else if (!closed) {

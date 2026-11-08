@@ -9,6 +9,7 @@ import { loadGross, loadNetRevenue } from "@/lib/metrics/rateTargets";
 import { formatInches } from "@/lib/dimensions";
 import { computeStack, type BarOpts } from "./adaptiveBar";
 import { money } from "@/lib/format";
+import { isDelivered } from "@/lib/metrics/status";
 
 export interface Patch {
   key: string;
@@ -38,7 +39,7 @@ const isSuperload = (l: Load): boolean =>
 
 const delivered = (loads: Load[]): Load[] =>
   loads
-    .filter((l) => l.load_status === "delivered" && l.delivery_date)
+    .filter((l) => isDelivered(l) && l.delivery_date)
     .sort((a, b) => (a.delivery_date! < b.delivery_date! ? -1 : 1));
 
 const weekKey = (iso: string): string => {

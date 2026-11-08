@@ -16,6 +16,7 @@ import {
   type MeaningfulLoadLike,
 } from "./meaningfulContact";
 import { isEstablished } from "./tierSuggestion";
+import { isDelivered } from "@/lib/metrics/status";
 
 export type Bucket = "tier1" | "tier2" | "tier3" | "prospect" | "parked";
 
@@ -120,7 +121,7 @@ export const partitionBook = <A extends BookAgentLike>(
   const nowKey = utcDayKey(ctx.now);
   const delivered = new Map<string, number>();
   for (const l of ctx.loads) {
-    if (!l.agent_id || l.load_status !== "delivered") continue;
+    if (!l.agent_id || !isDelivered(l)) continue;
     delivered.set(l.agent_id, (delivered.get(l.agent_id) ?? 0) + 1);
   }
   const rank = new Map<string, Ranked>();

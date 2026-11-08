@@ -5,6 +5,7 @@ import { detentionOwed, detentionMinutes } from "@/lib/detention";
 import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
 import { median } from "./stats";
 import { localToday, anchorDay } from "./today";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // Every clock here is the operator's LOCAL day, anchored (today.ts), handed in
 // as `now` — callers on a page pass useLocalToday() so the figures roll at
@@ -25,7 +26,7 @@ export const getRevenueMTD = (loads: Load[], now: Date = localToday()): number |
   // Filter loads
   const filteredLoads = loads.filter(
     (load) =>
-      load.load_status === "delivered" &&
+      isDelivered(load) &&
       load.delivery_date &&
       new Date(load.delivery_date).getUTCFullYear() === currentYear &&
       new Date(load.delivery_date).getUTCMonth() === currentMonth,
@@ -49,7 +50,7 @@ export const getRevenueLastMonth = (loads: Load[], now: Date = localToday()): nu
   const filteredLoads = loads.filter(
     (load) =>
       load.delivery_date &&
-      load.load_status === "delivered" &&
+      isDelivered(load) &&
       new Date(load.delivery_date).getUTCFullYear() === prevYear &&
       new Date(load.delivery_date).getUTCMonth() === prevMonth,
   );
@@ -64,7 +65,7 @@ export const getRevenueYTD = (loads: Load[], now: Date = localToday()): number |
   const filteredLoads = loads.filter(
     (load) =>
       load.delivery_date &&
-      load.load_status === "delivered" &&
+      isDelivered(load) &&
       new Date(load.delivery_date).getUTCFullYear() === now.getUTCFullYear(),
   );
 
@@ -88,8 +89,7 @@ export interface MonthlyDeadhead {
 const deadheadLoad = (load: Load): boolean =>
   hasOdometerWindow(load) &&
   !!load.delivery_date &&
-  load.load_status !== "cancelled" &&
-  load.load_status !== "tonu";
+  !isNeverRevenue(load);
 const deadheadTrip = (trip: Trip): boolean =>
   trip.odometer_start != null && trip.odometer_end != null && !!trip.trip_date;
 
@@ -247,7 +247,7 @@ export const getMonthlyRevenue = (
   now: Date = localToday(),
 ): { month: string; revenue: number }[] => {
   const delivered = loads.filter(
-    (load) => load.load_status === "delivered" && load.delivery_date,
+    (load) => isDelivered(load) && load.delivery_date,
   );
 
   // Bucket delivered loads by month key
@@ -271,7 +271,7 @@ export const getMonthlyRPM = (
   now: Date = localToday(),
 ): { month: string; rpm: number | null }[] => {
   const delivered = loads.filter(
-    (load) => load.load_status === "delivered" && load.delivery_date,
+    (load) => isDelivered(load) && load.delivery_date,
   );
 
   const buckets: Record<string, Load[]> = {};
@@ -338,7 +338,7 @@ export const getOutstandingLoads = (loads: Load[], today: Date = localToday()): 
 
   const outstanding = loads.filter(
     (load) =>
-      load.load_status === "delivered" &&
+      isDelivered(load) &&
       (load.payment_status === "unpaid" ||
         load.payment_status === "invoiced") &&
       load.delivery_date,
@@ -373,7 +373,7 @@ export const getLoadsMonthly = (loads: Load[], now: Date = localToday()): Monthl
   const countIn = (y: number, m: number): number =>
     loads.filter(
       (load) =>
-        load.load_status === "delivered" &&
+        isDelivered(load) &&
         load.delivery_date &&
         new Date(load.delivery_date).getUTCFullYear() === y &&
         new Date(load.delivery_date).getUTCMonth() === m,
@@ -403,7 +403,7 @@ const agentGross = (loads: Load[]): number =>
 export const getAgentGrossTable = (loads: Load[]): AgentRevenue[] => {
   const byAgent = new Map<string, Load[]>();
   for (const load of loads) {
-    if (load.load_status !== "delivered") continue;
+    if (!isDelivered(load)) continue;
     const bucket = byAgent.get(load.agent_id);
     if (bucket) bucket.push(load);
     else byAgent.set(load.agent_id, [load]);
@@ -469,7 +469,7 @@ export const getRecentDeliveredLoads = (
   limit = 5,
 ): RecentLoad[] => {
   const delivered = loads.filter(
-    (load) => load.load_status === "delivered" && load.delivery_date,
+    (load) => isDelivered(load) && load.delivery_date,
   );
 
   delivered.sort((a, b) =>

@@ -1,6 +1,6 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error.js";
-import { normalizeSnapshotExtras, monthLabel } from "../utils/validation/planSnapshotValidation.js";
+import { normalizeSnapshotExtras, monthLabel, validateSnapshotBalances } from "../utils/validation/planSnapshotValidation.js";
 import { validatePlanFields } from "../utils/validation/planFieldsValidation.js";
 import { normalizeOpsCheck } from "../utils/validation/opsCheckValidation.js";
 
@@ -214,6 +214,10 @@ export async function createSnapshot(user_id, data) {
   // the accrual's miles + pay week, the money day's settled month (closed,
   // never the first Friday) and what it moved (085).
   const extras = normalizeSnapshotExtras(data);
+  // PLAN-07: a balance for every active account, none twice, none foreign (a
+  // read of the plan accounts; nothing is written yet).
+  const refusals = validateSnapshotBalances(balances, await getAccounts(user_id));
+  if (refusals.length > 0) throw new ValidationError(refusals[0], refusals);
   // One snapshot + its balances land together or not at all.
   const client = await db.pool.connect();
   try {

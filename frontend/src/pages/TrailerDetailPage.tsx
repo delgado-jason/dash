@@ -36,6 +36,7 @@ import { useLocalToday } from "@/hooks/useLocalToday";
 import { mileMilestone } from "@/lib/metrics/mileClub";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";
+import { isDelivered } from "@/lib/metrics/status";
 
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
@@ -125,7 +126,7 @@ const TrailerDetailPage = () => {
   const earnedLoads = useMemo(
     () =>
       trailerLoads.filter(
-        (l) => l.load_status === "delivered" && l.payment_status === "paid",
+        (l) => isDelivered(l) && l.payment_status === "paid",
       ),
     [trailerLoads],
   );
@@ -134,7 +135,7 @@ const TrailerDetailPage = () => {
     [earnedLoads],
   );
   const deliveredLoads = useMemo(
-    () => trailerLoads.filter((l) => l.load_status === "delivered"),
+    () => trailerLoads.filter((l) => isDelivered(l)),
     [trailerLoads],
   );
   // Every clock on this trailer, most urgent first — runs on the hub scale.

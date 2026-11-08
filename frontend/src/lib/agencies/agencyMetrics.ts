@@ -39,6 +39,7 @@ import { DAY_MS, daysBetweenKeys, keyOf, utcDayKey } from "@/lib/relationships/d
 import { money, rpm } from "@/lib/format";
 import { codeOf, type AgentCode } from "./codeOf";
 import type { CodedAgencyLike } from "./otherCodes";
+import { isDelivered } from "@/lib/metrics/status";
 
 // ---------------------------------------------------------------- the window
 
@@ -95,7 +96,7 @@ const inWindow = (raw: string | null | undefined, range: AgencyRange): boolean =
 // in it — the same end of the load agentAllInRpm windows on, so the desk's
 // number and the person's number are measured over the same days.
 export const deliveredInWindow = (loads: readonly Load[], range: AgencyRange): Load[] =>
-  loads.filter((l) => l.load_status === "delivered" && inWindow(l.pickup_date, range));
+  loads.filter((l) => isDelivered(l) && inWindow(l.pickup_date, range));
 
 // ------------------------------------------------------------------ the band
 

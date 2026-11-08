@@ -114,3 +114,32 @@ export const monthLabel = (ymd) => {
     timeZone: "UTC",
   });
 };
+
+// PLAN-07 · a snapshot's balances against the plan's accounts. Pure: returns
+// the list of refusals ([] = fine).
+//   - every ACTIVE account needs a balance (a missing one would read as $0)
+//   - one balance per account (a duplicate is two answers to one question)
+//   - every balance names an account of this plan
+// `accounts` is the user's plan_accounts: [{account_id, name, active}].
+export const validateSnapshotBalances = (balances, accounts = []) => {
+  const errors = [];
+  const byId = new Map(accounts.map((a) => [String(a.account_id), a]));
+  const label = (id) => byId.get(String(id))?.name ?? String(id);
+
+  const seen = new Set();
+  for (const b of Array.isArray(balances) ? balances : []) {
+    const id = String(b?.account_id);
+    if (!byId.has(id)) {
+      errors.push("a balance names an account that isn't in your plan");
+      continue;
+    }
+    if (seen.has(id)) errors.push(`this snapshot lists ${label(id)} twice — one balance per account`);
+    seen.add(id);
+  }
+
+  for (const a of accounts) {
+    if (a.active !== false && !seen.has(String(a.account_id)))
+      errors.push(`this snapshot has no balance for ${a.name} — type it or mark the account inactive`);
+  }
+  return errors;
+};

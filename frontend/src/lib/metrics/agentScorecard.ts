@@ -9,6 +9,7 @@ import type { Agent } from "@/types/agent";
 import { loadRevenue } from "./loads"; // GROSS per load
 import { median } from "./stats";
 import { detentionOwed, detentionCollected } from "@/lib/detention";
+import { isDelivered } from "./status";
 
 // Below this many delivered loads an agent is "thin data" — shown, never scored.
 export const MIN_SCORE_LOADS = 2;
@@ -106,7 +107,7 @@ const rawScorecard = (
   loads: Load[],
   now: number,
 ): Omit<AgentScorecard, "tier" | "ratingFlag"> => {
-  const delivered = loads.filter((l) => l.load_status === "delivered");
+  const delivered = loads.filter((l) => isDelivered(l));
   const rpms = delivered.map(loadRpm).filter((r): r is number => r !== null);
   const revenue = delivered.reduce((s, l) => s + loadRevenue(l), 0);
 
@@ -367,7 +368,7 @@ export const agentMomentum = (
   const priorCut = nowMs - 180 * MS_DAY;
   const acc = new Map<string, { r: number; p: number }>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.agent_id || !l.delivery_date) continue;
+    if (!isDelivered(l) || !l.agent_id || !l.delivery_date) continue;
     const t = new Date(l.delivery_date).getTime();
     const cur = acc.get(l.agent_id) ?? { r: 0, p: 0 };
     if (t >= recentCut && t <= nowMs) cur.r += loadRevenue(l);
@@ -395,7 +396,7 @@ export const concentrationAnalytics = (
   const cutoff = now.getTime() - windowDays * MS_DAY;
   const rev = new Map<string, number>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.agent_id || !l.delivery_date) continue;
+    if (!isDelivered(l) || !l.agent_id || !l.delivery_date) continue;
     if (new Date(l.delivery_date).getTime() < cutoff) continue;
     rev.set(l.agent_id, (rev.get(l.agent_id) ?? 0) + loadRevenue(l));
   }

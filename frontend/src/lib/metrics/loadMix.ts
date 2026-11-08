@@ -1,4 +1,5 @@
 import type { Load } from "@/types/load";
+import { isDelivered } from "./status";
 
 // A driver's share of a given load_type among their DELIVERED loads — the work
 // actually run (booked/in-transit haven't happened; cancelled didn't). The
@@ -17,7 +18,7 @@ export const SPECIALIST_MIN_COUNT = 5;
 export const STRIP_MIN_COUNT = 10;
 
 export const loadTypeMix = (loads: Array<Load>, loadType: string): TypeMix => {
-  const delivered = loads.filter((l) => l.load_status === "delivered");
+  const delivered = loads.filter((l) => isDelivered(l));
   const count = delivered.filter((l) => l.load_type === loadType).length;
   const pct = delivered.length > 0 ? count / delivered.length : null;
   return {

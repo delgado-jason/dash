@@ -1,6 +1,7 @@
 import type { Load } from "@/types/load";
 import type { Agent } from "@/types/agent";
 import { loadRevenue } from "./loads";
+import { isDelivered } from "./status";
 
 // Agent achievements, tallied over calendar-quarter leaderboards derived from
 // delivered loads. The board (starburst) is more inclusive than the podium
@@ -28,7 +29,7 @@ interface QAgg {
 const byQuarterAgent = (loads: Load[]): Map<string, Map<string, QAgg>> => {
   const out = new Map<string, Map<string, QAgg>>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.delivery_date || !l.agent_id) continue;
+    if (!isDelivered(l) || !l.delivery_date || !l.agent_id) continue;
     const q = quarterKey(l.delivery_date);
     let agents = out.get(q);
     if (!agents) {
@@ -258,7 +259,7 @@ export const perAgentStats = (loads: Load[]): Map<string, AgentStat> => {
       lastWorked: null,
     };
     if (l.load_status !== "cancelled") s.loadCount += 1;
-    if (l.load_status === "delivered") {
+    if (isDelivered(l)) {
       s.revenue += loadRevenue(l);
       if (l.delivery_date) {
         const dd = l.delivery_date.slice(0, 10);
@@ -298,7 +299,7 @@ export const rosterKpis = (
     if (pd && pd >= cutoffStr && l.load_status !== "cancelled")
       active.add(l.agent_id);
     if (
-      l.load_status === "delivered" &&
+      isDelivered(l) &&
       l.delivery_date &&
       l.delivery_date.slice(0, 10) >= cutoffStr
     ) {

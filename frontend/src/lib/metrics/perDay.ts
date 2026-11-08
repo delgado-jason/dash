@@ -33,6 +33,7 @@ import type { Load } from "@/types/load";
 import { loadGross } from "./rateTargets";
 import { daysBetweenKeys, keyOf } from "@/lib/relationships/dayKeys";
 import { money } from "@/lib/format";
+import { isDelivered } from "./status";
 
 // ---------------------------------------------------------------- the figure
 
@@ -84,7 +85,7 @@ export const perDayOver = (loads: Iterable<Load>): PerDayTotals => {
   let days = 0;
   let n = 0;
   for (const l of loads) {
-    if (l.load_status !== "delivered") continue;
+    if (!isDelivered(l)) continue;
     const d = loadDays(l);
     if (d == null) continue;
     const g = loadGross(l);

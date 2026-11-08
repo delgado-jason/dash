@@ -12,6 +12,7 @@ import { mpgWindows } from "./fuelEconomy";
 import { classify, bestStreakOf, type WeekStatus } from "./grind";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import { isDelivered } from "./status";
 
 const WEEK_MS = 7 * 86400000;
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -75,7 +76,7 @@ const inRange = (d: string | null | undefined, r: RecapRange): boolean => {
 
 // The delivered loads that fall inside a range.
 export const loadsInRange = (loads: Load[], r: RecapRange): Load[] =>
-  loads.filter((l) => l.load_status === "delivered" && inRange(l.delivery_date, r));
+  loads.filter((l) => isDelivered(l) && inRange(l.delivery_date, r));
 
 // Does the range contain any earned (delivered) freight? Drives both the recap
 // page's empty state and which completed periods are worth celebrating.
@@ -131,7 +132,7 @@ export const computeRecap = (
   // on a three-month net target of the recap's own).
   schedule: SettlementSchedule | null = null,
 ): RecapStats => {
-  const mine = loads.filter((l) => l.load_status === "delivered" && inRange(l.delivery_date, range));
+  const mine = loads.filter((l) => isDelivered(l) && inRange(l.delivery_date, range));
 
   const gross = mine.reduce((s, l) => s + loadRevenue(l), 0);
   const loadedMiles = mine.reduce((s, l) => s + Number(l.loaded_miles || 0), 0);

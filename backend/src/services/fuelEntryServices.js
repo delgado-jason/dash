@@ -2,8 +2,24 @@ import { db } from "../../db/pool.js";
 import {
   validateFuelEntryCreate,
   validateFuelEntryPatch,
+  validateFuelSequence,
 } from "../utils/validation/fuelValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+
+// ODO-05: the truck's latest fill dated before this one — what a new reading is
+// held against. Dates come back as text so no timezone can shift them.
+async function previousFill(user_id, truck_id, fuel_date, excludeId = null) {
+  const result = await db.query(
+    `SELECT to_char(fuel_date, 'YYYY-MM-DD') AS fuel_date, odometer_reading
+       FROM fuel_entries
+      WHERE user_id = $1 AND truck_id = $2 AND fuel_date < $3
+        AND ($4::uuid IS NULL OR fuel_entry_id <> $4)
+      ORDER BY fuel_date DESC, created_at DESC
+      LIMIT 1`,
+    [user_id, truck_id, fuel_date, excludeId],
+  );
+  return result.rows[0] ?? null;
+}
 
 // --- GET FUEL ENTRIES SERVICE
 export async function getFuelEntries(user_id, truck_id) {
@@ -124,6 +140,14 @@ export async function createFuelEntry(user_id, truck_id, trip_id, data) {
 
   if (result.rowCount === 0) throw new NotFoundError("Truck not found");
 
+  // ODO-05: a reading far below an earlier fill is a typo, not a fill.
+  const seqErrors = validateFuelSequence({
+    fuel_date: data.fuel_date,
+    odometer_reading: data.odometer_reading,
+    previous: await previousFill(user_id, truck_id, data.fuel_date),
+  });
+  if (seqErrors.length > 0) throw new ValidationError("Validation failed", seqErrors);
+
   if (trip_id) {
     // Confirm trip exists and belongs to user
     result = await db.query(
@@ -204,6 +228,30 @@ export async function patchFuelEntry(user_id, fuel_entry_id, data) {
 
   // if errors, reject request
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
+
+  // ODO-05: judge a moved date or reading against the stored row and the fill
+  // before it (a read; nothing is written yet).
+  if (data.fuel_date !== undefined || data.odometer_reading !== undefined || data.truck_id) {
+    const cur = await db.query(
+      `SELECT truck_id, to_char(fuel_date, 'YYYY-MM-DD') AS fuel_date, odometer_reading
+         FROM fuel_entries
+        WHERE user_id = $1 AND fuel_entry_id = $2`,
+      [user_id, fuel_entry_id],
+    );
+    if (cur.rowCount === 0) throw new NotFoundError("Fuel entry not found");
+    const ex = cur.rows[0];
+    const seqErrors = validateFuelSequence({
+      fuel_date: data.fuel_date ?? ex.fuel_date,
+      odometer_reading: data.odometer_reading ?? ex.odometer_reading,
+      previous: await previousFill(
+        user_id,
+        data.truck_id ?? ex.truck_id,
+        data.fuel_date ?? ex.fuel_date,
+        fuel_entry_id,
+      ),
+    });
+    if (seqErrors.length > 0) throw new ValidationError("Validation failed", seqErrors);
+  }
 
   // If patching truck_id, validate
   if (data.truck_id) {

@@ -7,6 +7,7 @@
 import type { Load } from "@/types/load";
 import { payWeekRange, loadGross } from "@/lib/metrics/rateTargets";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
+import { isDelivered, isNeverRevenue } from "./status";
 
 export interface PayWeek {
   start: string; // YYYY-MM-DD, the Wednesday
@@ -74,7 +75,7 @@ interface LoadLike {
 export const milesInWeeks = (loads: LoadLike[], weeks: PayWeek[]): WeekMiles => {
   const out: WeekMiles = { loads: 0, loadedMiles: 0, deadheadMiles: 0, miles: 0, noDeadhead: 0, loadNumbers: [] };
   for (const l of loads) {
-    if (l.load_status === "cancelled" || l.load_status === "tonu") continue; // never driven as planned — no miles to accrue
+    if (isNeverRevenue(l)) continue; // never driven as planned — no miles to accrue
     const day = String(l.pickup_date ?? "").slice(0, 10);
     if (!weeks.some((w) => day >= w.start && day <= w.end)) continue;
     const loaded = Number(l.loaded_miles ?? 0) || 0;
@@ -112,7 +113,7 @@ export const completedPayWeekTotals = (
   const running = payWeekOf(today).start;
   const totals = new Map<string, PayWeekTotal>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.delivery_date) continue;
+    if (!isDelivered(l) || !l.delivery_date) continue;
     const week = payWeekOf(String(l.delivery_date).slice(0, 10));
     if (week.start >= running) continue;
     if (bounds.from && week.start < bounds.from) continue;

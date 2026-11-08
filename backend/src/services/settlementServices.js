@@ -1,5 +1,7 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import { validateSettlementIngest } from "../utils/validation/settlementIngestValidation.js";
+import { getSettlementSchedule } from "./settlementScheduleServices.js";
 
 const SHA_RE = /^[0-9a-f]{64}$/;
 const rawPrefix = process.env.DOCS_URL_PREFIX || "https://files.dts-ops.co/";
@@ -120,6 +122,19 @@ export async function ingestSettlement(user_id, body) {
       unit: l.unit ? String(l.unit).slice(0, 10) : null,
     };
   });
+
+  // The statement must land on the schedule's settlement day and add up: header
+  // revenue/deductions equal the lines (a read-only schedule fetch; nothing has
+  // been written yet).
+  const schedule = await getSettlementSchedule(user_id);
+  const refusals = validateSettlementIngest({
+    period_ending: b.period_ending,
+    revenue: totals.revenue,
+    deductions: totals.deductions,
+    lines,
+    settlement_day: schedule.settlement_day,
+  });
+  if (refusals.length > 0) throw new ValidationError(refusals[0], refusals);
 
   const client = await db.pool.connect();
   try {

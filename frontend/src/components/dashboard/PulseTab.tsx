@@ -31,6 +31,7 @@ import { CountUp } from "@/components/ui/CountUp";
 import { PaceMeter, paceMarker } from "@/components/ui/PaceMeter";
 import { DUR, GSAP_EASE, STAGGER } from "@/theme/motion";
 import { money, rpm as fmtRpm } from "@/lib/format";
+import { isDelivered } from "@/lib/metrics/status";
 
 gsap.registerPlugin(useGSAP);
 
@@ -149,7 +150,7 @@ export const PulseTab = ({
   const pipelineLoads = useMemo(
     () =>
       loads.filter(
-        (l) => l.load_status === "delivered" && l.payment_status !== "paid",
+        (l) => isDelivered(l) && l.payment_status !== "paid",
       ),
     [loads],
   );
@@ -167,7 +168,7 @@ export const PulseTab = ({
     const cutoff = now.getTime() - 90 * 86_400_000;
     const recent = loads.filter(
       (l) =>
-        l.load_status === "delivered" &&
+        isDelivered(l) &&
         l.delivery_date &&
         new Date(l.delivery_date).getTime() >= cutoff,
     );

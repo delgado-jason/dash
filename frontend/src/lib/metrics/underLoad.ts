@@ -1,4 +1,5 @@
 import type { Load } from "@/types/load";
+import { isDelivered } from "./status";
 
 const DAY = 86_400_000;
 
@@ -13,7 +14,7 @@ export const underLoadDaySet = (
 ): Set<string> => {
   const set = new Set<string>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.pickup_date) continue;
+    if (!isDelivered(l) || !l.pickup_date) continue;
     const s = l.pickup_date.slice(0, 10);
     const e = (l.delivery_date ?? l.pickup_date).slice(0, 10);
     const cur = new Date(`${s}T00:00:00Z`);
@@ -32,7 +33,7 @@ export const underLoadDaySet = (
 // window start for a driver-scoped view (no truck in-service date needed).
 export const firstDeliveredPickup = (loads: Load[]): string | null =>
   loads
-    .filter((l) => l.load_status === "delivered" && l.pickup_date)
+    .filter((l) => isDelivered(l) && l.pickup_date)
     .map((l) => l.pickup_date.slice(0, 10))
     .sort()[0] ?? null;
 

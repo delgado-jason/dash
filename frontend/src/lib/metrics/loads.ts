@@ -3,6 +3,7 @@ import type { Load } from "@/types/load";
 // Aliased so the money KPIs below report what the company actually keeps.
 import { loadNetRevenue as loadNet } from "./rateTargets";
 import { loadDeadheadPct } from "./deadhead";
+import { isDelivered } from "./status";
 
 // Total revenue for a load = linehaul + fuel surcharge + accessorials.
 // Postgres numerics arrive as strings, so coerce before adding.
@@ -21,7 +22,7 @@ export const getInTransitCount = (loads: Array<Load>): number =>
 export const outstandingLoads = (loads: Array<Load>): Array<Load> =>
   loads.filter(
     (load) =>
-      (load.load_status === "delivered" && load.payment_status === "unpaid") ||
+      (isDelivered(load) && load.payment_status === "unpaid") ||
       load.payment_status === "invoiced",
   );
 
@@ -50,7 +51,7 @@ export const deliveredThisMonth = (
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
   return loads.filter((load) => {
-    if (load.load_status !== "delivered" || !load.delivery_date) return false;
+    if (!isDelivered(load) || !load.delivery_date) return false;
     const d = new Date(load.delivery_date);
     return d.getUTCFullYear() === year && d.getUTCMonth() === month;
   });

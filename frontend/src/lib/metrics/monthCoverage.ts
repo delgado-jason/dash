@@ -4,6 +4,7 @@ import type { ExpensePeriod } from "@/types/expense";
 // basis the P&L income line uses and the true-cost threshold is measured on.
 import { getCostBasis, loadNetRevenue } from "./rateTargets";
 import { BASIS_MONTHS } from "@/lib/constants/targets";
+import { isDelivered } from "./status";
 
 // THE month metric (Jason, 2026-08-10): "one load will cover my notes — what I
 // really need to track is covering my monthly expense threshold, and whether I
@@ -61,7 +62,7 @@ export const monthCoverage = (
   const mtd = loads
     .filter(
       (l) =>
-        l.load_status === "delivered" &&
+        isDelivered(l) &&
         l.delivery_date &&
         l.delivery_date.slice(0, 7) === nowKey,
     )

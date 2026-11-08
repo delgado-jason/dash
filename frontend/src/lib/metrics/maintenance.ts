@@ -3,6 +3,7 @@ import type { Load } from "@/types/load";
 import type { Alert } from "@/types/alert";
 import { median } from "./stats";
 import { DEFAULT_APU_HOURS_PER_ROAD_DAY } from "./apuHours";
+import { isDelivered } from "./status";
 
 const MS_DAY = 86_400_000;
 const DAYS_PER_MONTH = 30.44;
@@ -257,7 +258,7 @@ export const recentMilesPerMonth = (loads: Load[], now: Date): number | null => 
   const cutoff = now.getTime() - 120 * MS_DAY;
   const byMonth = new Map<string, number>();
   for (const l of loads) {
-    if (l.load_status !== "delivered" || !l.delivery_date) continue;
+    if (!isDelivered(l) || !l.delivery_date) continue;
     if (new Date(l.delivery_date).getTime() < cutoff) continue;
     if (l.odometer_end == null || l.odometer_start == null) continue;
     const miles = Number(l.odometer_end) - Number(l.odometer_start);

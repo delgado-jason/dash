@@ -33,6 +33,7 @@ import { useLocalToday } from "@/hooks/useLocalToday";
 import { useExpensePeriods } from "@/hooks/useExpensePeriods";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getMonthlyFinancials, type MonthlyFinancialRow } from "@/services/cashflowService";
+import { isDelivered } from "@/lib/metrics/status";
 
 const fmtDate = (d: string) =>
   new Date(d.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", {
@@ -260,7 +261,7 @@ const TrophyHallPage = () => {
       ...loads.map((l) => Number(l.odometer_end) || 0),
     );
     const cumulativeGross = loads
-      .filter((l) => l.load_status === "delivered")
+      .filter((l) => isDelivered(l))
       .reduce((s, l) => s + loadNetRevenue(l), 0);
     return computeAllStatuses(TROPHY_CATALOG, byKey, {
       lifetimeMiles,
@@ -284,7 +285,7 @@ const TrophyHallPage = () => {
       maxFuelOdometer(fuel) ?? 0,
       ...loads.map((l) => Number(l.odometer_end) || 0),
     );
-    const del = loads.filter((l) => l.load_status === "delivered");
+    const del = loads.filter((l) => isDelivered(l));
     const paidPcts = [
       assetLoanStatus(obligations, "truck", now),
       assetLoanStatus(obligations, "trailer", now),
@@ -323,13 +324,13 @@ const TrophyHallPage = () => {
       ? fuel.filter((f) => f.truck_id === truck0.truck_id)
       : [];
     const trailerLoads = loads.filter((l) => l.trailer_id != null);
-    const tDel = trailerLoads.filter((l) => l.load_status === "delivered");
+    const tDel = trailerLoads.filter((l) => isDelivered(l));
     return {
       truckMedals: truck0
         ? computeTruckMedals({
             odometer: Number(truck0.current_odometer) || 0,
             avgMpg: fuelStats(truckFuel, now).avgMpg,
-            deliveredCount: truckLoads.filter((l) => l.load_status === "delivered").length,
+            deliveredCount: truckLoads.filter((l) => isDelivered(l)).length,
             loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
             utilization: null,
           })

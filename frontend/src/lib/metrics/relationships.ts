@@ -6,6 +6,7 @@
 import type { Load } from "@/types/load";
 import type { ContactType } from "@/lib/relationships/contactTypes";
 import { keyOf, localDayKey } from "@/lib/relationships/dayKeys";
+import { isDelivered } from "./status";
 
 // The day the relationship system went live — the inbound gauge's baseline.
 export const SYSTEM_START = "2026-09-03";
@@ -113,7 +114,7 @@ export const closeOutPending = (
   );
   return loads.filter(
     (l) =>
-      l.load_status === "delivered" &&
+      isDelivered(l) &&
       l.delivery_date &&
       l.delivery_date.slice(0, 10) >= start &&
       l.delivery_date.slice(0, 10) <= end &&

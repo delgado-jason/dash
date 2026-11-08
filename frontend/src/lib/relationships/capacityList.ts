@@ -22,6 +22,7 @@ import { bucketOf, type Bucket, type BookAgentLike } from "./buckets";
 import { capStatus, type CapContactLike } from "./contactCap";
 import { keyOf } from "./dayKeys";
 import type { MeaningfulContactLike, MeaningfulLoadLike } from "./meaningfulContact";
+import { isDelivered } from "@/lib/metrics/status";
 
 export const CAPACITY_RADIUS_MILES = 150;
 export const PARKED_RADIUS_MILES = 75;
@@ -70,7 +71,7 @@ export const footprintPoints = (
     out.push({ city: c, state: s, source });
   };
   for (const l of loads)
-    if (l.agent_id === agentId && l.load_status === "delivered") {
+    if (l.agent_id === agentId && isDelivered(l)) {
       const p = footprintPoint(l);
       if (p) add(p.city, p.state, "load");
     }
@@ -194,7 +195,7 @@ export const emptyNextWhen = (loads: Load[], trips: TripEndLike[] = []): EmptyNe
     return { city: anchor.city, state: anchor.state, source: "last-trip", dayKey: keyOf(trip.trip_date), time: null };
   }
   const latest = loads
-    .filter((l) => l.load_status === "delivered" && l.destination_city && l.destination_state && l.delivery_date)
+    .filter((l) => isDelivered(l) && l.destination_city && l.destination_state && l.delivery_date)
     .reduce((best, l) => ((l.delivery_date as string) > (best.delivery_date as string) ? l : best));
   return { city: latest.destination_city, state: latest.destination_state, source: "last-delivered", dayKey: keyOf(latest.delivery_date as string), time: null };
 };

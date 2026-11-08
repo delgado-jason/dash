@@ -31,6 +31,7 @@ import {
   newAwards,
   type Award,
 } from "@/lib/metrics/awards";
+import { isDelivered } from "@/lib/metrics/status";
 
 // Per-device "seen" store. Earned-award facts are objective (computed from data);
 // which ones a device has already celebrated is per-device — that's what lets
@@ -148,7 +149,7 @@ export const useAwardPops = (
     const byKey: Record<string, Trophy> = {};
     for (const t of data.trophies) byKey[t.trophy_key] = t;
     const cumulativeGross = loads
-      .filter((l) => l.load_status === "delivered")
+      .filter((l) => isDelivered(l))
       .reduce((s, l) => s + loadNetRevenue(l), 0);
     const statuses = computeAllStatuses(TROPHY_CATALOG, byKey, {
       lifetimeMiles,

@@ -32,6 +32,7 @@ import { otherCodes } from "@/lib/agencies/otherCodes";
 import { AgentRow, type RowChip } from "@/components/relationships/AgentRow";
 import { CodeChip, GhostButton, SectionHead } from "@/components/relationships/primitives";
 import { AgencyForm } from "@/components/agencies/AgencyForm";
+import { isDelivered } from "@/lib/metrics/status";
 
 // /agencies/:agency_id — the one page for a desk. What it delivered, what it
 // pays per mile against the live ladder, the people inside it with THEIR
@@ -144,7 +145,7 @@ const AgencyPage = () => {
   const trail = useMemo(() => codeTrail(row?.agency ?? null, delivered), [row, delivered]);
 
   // Freight on the board that hasn't run yet — booked, dispatched, in transit.
-  const booked = windowed.filter((l) => l.load_status !== "delivered").length;
+  const booked = windowed.filter((l) => !isDelivered(l)).length;
   const loading = data.loading || data.loadsLoading;
   const shown = showAllLoads ? windowed : windowed.slice(0, LOADS_FOLD);
 
@@ -406,7 +407,7 @@ const AgencyPage = () => {
                         <span className="flex items-center gap-2 flex-wrap">
                           <span className="font-condensed font-medium text-[14px] text-amber">{l.load_number}</span>
                           {l.posting_code && <CodeChip code={l.posting_code} kind="posting" />}
-                          {l.load_status !== "delivered" && (
+                          {!isDelivered(l) && (
                             <StatusPill tone="amber">{l.load_status.replace(/_/g, " ")}</StatusPill>
                           )}
                         </span>

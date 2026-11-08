@@ -39,6 +39,7 @@ import { getRegion, getMacro } from "@/lib/constants/states";
 import { bucketOf } from "@/lib/relationships/buckets";
 import { codeOf, type CodeKind } from "@/lib/agencies/codeOf";
 import type { MeaningfulContactLike } from "@/lib/relationships/meaningfulContact";
+import { isDelivered } from "./status";
 
 // ---- load types ----
 export const LOAD_TYPES = [
@@ -156,7 +157,7 @@ export const emptyNextAnchor = (loads: Load[], trips: TripEndLike[] = []): Ancho
   }
   const delivered = loads.filter(
     (l) =>
-      l.load_status === "delivered" &&
+      isDelivered(l) &&
       l.destination_city &&
       l.destination_state &&
       l.delivery_date,
@@ -228,18 +229,18 @@ const loadRpm = (l: Load): number | null => {
 // An agent's typical gross $/loaded mile for ONE load type (delivered loads only).
 const agentTypeRpm = (loads: Load[], type: LoadType): number | null => {
   const rpms = loads
-    .filter((l) => l.load_status === "delivered" && l.load_type === type)
+    .filter((l) => isDelivered(l) && l.load_type === type)
     .map(loadRpm)
     .filter((r): r is number => r != null);
   return rpms.length ? median(rpms) : null;
 };
 
 const agentTypeCount = (loads: Load[], type: LoadType): number =>
-  loads.filter((l) => l.load_status === "delivered" && l.load_type === type).length;
+  loads.filter((l) => isDelivered(l) && l.load_type === type).length;
 
 // Delivered loads of ANY type — "have they hauled you anything yet".
 const agentTypeCountAll = (loads: Load[]): number =>
-  loads.filter((l) => l.load_status === "delivered").length;
+  loads.filter((l) => isDelivered(l)).length;
 
 // The agent's $/day over the same delivered loads of the judged type — miles
 // or no miles — weighted Σgross ÷ Σdays. Not quite the same SET as
@@ -278,7 +279,7 @@ const dominantType = (loads: Load[]): LoadType => {
 // — so it can't tell strong oversize agents from weak ones. The median can.)
 const typeBenchmark = (type: LoadType, allLoads: Load[]): number | null => {
   const mine = allLoads
-    .filter((l) => l.load_status === "delivered" && l.load_type === type)
+    .filter((l) => isDelivered(l) && l.load_type === type)
     .map(loadRpm)
     .filter((r): r is number => r != null);
   return mine.length ? median(mine) : null;
