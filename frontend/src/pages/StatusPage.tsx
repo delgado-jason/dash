@@ -406,6 +406,7 @@ const StatusPage = () => {
   const [pHomeHi, setPHomeHi] = useState("");
   const [pPerMile, setPPerMile] = useState("");
   const [pMaintFloor, setPMaintFloor] = useState("");
+  const [pLeaveWeeks, setPLeaveWeeks] = useState("");
   const [pTaxPct, setPTaxPct] = useState("");
   const [pMinMove, setPMinMove] = useState("");
   const [pObjPct, setPObjPct] = useState("");
@@ -422,6 +423,7 @@ const StatusPage = () => {
     setPHomeHi(plan.float_line_home_hi ?? "");
     setPPerMile(String(plan.maintenance_per_mile ?? ""));
     setPMaintFloor(String(plan.maintenance_floor ?? ""));
+    setPLeaveWeeks(String(plan.leave_weeks ?? ""));
     setPTaxPct(String(plan.tax_pct ?? ""));
     setPMinMove(String(plan.min_move ?? ""));
     setPObjPct(String(plan.objective_pct ?? ""));
@@ -453,6 +455,7 @@ const StatusPage = () => {
     float_line_home_hi: pHomeHi ? Number(pHomeHi) : null,
     maintenance_per_mile: Number(pPerMile),
     maintenance_floor: Number(pMaintFloor),
+    leave_weeks: Number(pLeaveWeeks),
     tax_pct: Number(pTaxPct),
     min_move: Number(pMinMove),
     objective_pct: Number(pObjPct),
@@ -542,6 +545,7 @@ const StatusPage = () => {
         tax_weekly: Number(plan.tax_weekly),
         maintenance_per_mile: Number(plan.maintenance_per_mile),
         maintenance_floor: Number(plan.maintenance_floor),
+        leave_weeks: Number(plan.leave_weeks),
         tax_pct: Number(plan.tax_pct),
         min_move: Number(plan.min_move),
         objective_pct: Number(plan.objective_pct),
@@ -1303,6 +1307,7 @@ const StatusPage = () => {
                 </div>
                 <div><label className={LBL}>Maintenance · $ per mile</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pPerMile} onChange={(e) => setPPerMile(e.target.value)} /></div>
                 <div><label className={LBL}>Maintenance floor · floor 2</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pMaintFloor} onChange={(e) => setPMaintFloor(e.target.value)} /></div>
+                <div><label className={LBL}>Leave horizon · weeks of a parked truck</label><input inputMode="numeric" className={`${FIELD} border-amber`} value={pLeaveWeeks} onChange={(e) => setPLeaveWeeks(e.target.value)} /></div>
                 <div><label className={LBL}>Tax · % of pre-tax profit</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pTaxPct} onChange={(e) => setPTaxPct(e.target.value)} /></div>
                 <div><label className={LBL}>Minimum movement</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pMinMove} onChange={(e) => setPMinMove(e.target.value)} /></div>
                 <div><label className={LBL}>Split · objective % <span className="normal-case tracking-normal text-faint">household gets the rest</span></label><div className="flex items-center gap-2"><input inputMode="decimal" className={`${FIELD} border-amber`} value={pObjPct} onChange={(e) => setPObjPct(e.target.value)} /><span className="font-condensed text-[12px] text-faint whitespace-nowrap">· household {pObjPct.trim() !== "" && Number.isFinite(Number(pObjPct)) ? 100 - Number(pObjPct) : "—"}</span></div></div>

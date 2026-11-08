@@ -698,7 +698,7 @@ const GuidePage = () => {
               <br />
               ON THE CLOCK · the Next rail · detention owed
               <br />
-              THE LONG GAME · the three floors · the stage
+              THE LONG GAME · the three floors · the stage · the leave reserve
             </Formula>
             <Why>
               <span className="text-light">Cash on hand</span> is the Cash Flow
@@ -749,7 +749,19 @@ const GuidePage = () => {
               the truck is free and clear from the truck's own loan, or says why
               it can't.
             </Why>
-          </Metric>
+          <Why>
+                <span className="text-light">Leave reserve</span> is the Vault in
+                weeks of a parked truck. A parked week costs your weekly payroll
+                plus the sit cost — fixed costs and the notes, the same figure the
+                Expenses page prints — and the card divides the Vault by it:
+                "0.0 wk of 4 · Vault $0 · a parked week ≈ $3,000 · 4 weeks ≈
+                $13,100". The horizon in weeks is yours, set on the Plan page
+                (EDIT PLAN); settlements still to land are not counted toward it,
+                because a reserve you can spend only if a check arrives is not a
+                reserve. A missing payroll, basis, balance or horizon is named
+                with where to set it, never read as zero.
+              </Why>
+            </Metric>
 
           <h2
             id={slug("The Foreman")}

@@ -13,13 +13,13 @@ import { normalizeOpsCheck } from "../utils/validation/opsCheckValidation.js";
 const PLAN_FIELDS = [
   "label", "year", "float_line", "float_line_home_lo", "float_line_home_hi",
   "maintenance_weekly", "tax_weekly", "active",
-  "maintenance_per_mile", "tax_pct", "maintenance_floor", "min_move", "objective_pct",
+  "maintenance_per_mile", "tax_pct", "maintenance_floor", "min_move", "objective_pct", "leave_weeks",
   "first_money_month",
 ];
 // DATE columns go out as YYYY-MM-DD strings (house rule) — never a timestamp.
 const PLAN_COLS = `plan_id, user_id, label, year, float_line, float_line_home_lo,
   float_line_home_hi, maintenance_weekly, tax_weekly, active, created_at, updated_at,
-  maintenance_per_mile, tax_pct, maintenance_floor, min_move, objective_pct,
+  maintenance_per_mile, tax_pct, maintenance_floor, min_move, objective_pct, leave_weeks,
   to_char(first_money_month, 'YYYY-MM-DD') AS first_money_month`;
 const SNAPSHOT_COLS = `snapshot_id, user_id, to_char(as_of, 'YYYY-MM-DD') AS as_of, note,
   miles, to_char(pay_week_start, 'YYYY-MM-DD') AS pay_week_start,

@@ -24,7 +24,7 @@ import { ExpenseYtdChart } from "@/components/expenses/ExpenseYtdChart";
 import { ObligationsCard } from "@/components/expenses/ObligationsCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { sitRunCosts } from "@/lib/metrics/sitRun";
+import { burnFromPeriods } from "@/lib/metrics/sitCost";
 import { BandedLadder } from "@/components/ui/BandedLadder";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money } from "@/lib/format";
@@ -205,18 +205,9 @@ const ExpensesPage = () => {
     };
   }, [windowIds, refreshKey]);
 
-  const burn = useMemo(() => {
-    if (windowFull.length === 0) return null;
-    let fixed = 0;
-    let variable = 0;
-    for (const p of windowFull) {
-      const m = getExpenseMetrics(p, 0, 0);
-      fixed += m.fixedTotal;
-      variable += m.variableTotal;
-    }
-    const n = windowFull.length;
-    return sitRunCosts(fixed / n, variable / n, obligationsTotal);
-  }, [windowFull, obligationsTotal]);
+  // ONE sit/run burn (lib/metrics/sitCost): the landing's leave reserve reads
+  // the same function, so a parked week costs the same on both pages.
+  const burn = useMemo(() => burnFromPeriods(windowFull, obligationsTotal), [windowFull, obligationsTotal]);
 
   const trueMonthly =
     metrics && selected
