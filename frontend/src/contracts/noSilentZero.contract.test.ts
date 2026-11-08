@@ -17,6 +17,7 @@ import allowlist from "./silent-zero-allowlist.json";
 const FILES = [
   "src/lib/metrics/rateTargets.ts",
   "src/lib/metrics/cashBoard.ts",
+  "src/lib/metrics/cashBoardInput.ts",
   "src/lib/metrics/planStatus.ts",
   "src/lib/metrics/cashflow.ts",
   "src/lib/metrics/settlements.ts",

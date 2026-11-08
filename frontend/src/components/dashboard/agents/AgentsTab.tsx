@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { TriangleAlert } from "lucide-react";
 import type { Load } from "@/types/load";
@@ -9,10 +9,14 @@ import {
   concentrationAnalytics,
 } from "@/lib/metrics/agentScorecard";
 import { SPECIALTY_META, flagText } from "@/components/agents/agentDisplay";
-import { money, rpm as fmtRpm } from "@/lib/format";
+import { money } from "@/lib/format";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { AgentScatter, type ScatterPoint } from "./AgentScatter";
-import { RaceBoard } from "./RaceBoard";
+import { Leaderboard } from "./Leaderboard";
+import { useAgencies } from "@/hooks/useAgencies";
+import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
+import { buildLeaderboard } from "@/lib/metrics/leaderboard";
+import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { nameOf } from "@/lib/relationships/nameOf";
 
 const FRESH = (d: number | null): string =>
@@ -30,9 +34,32 @@ const Badge = ({ tag }: { tag: "oversize" | "specialty" }) => {
   );
 };
 
-export const AgentsTab = ({ loads }: { loads: Load[] }) => {
-  const { agents } = useAgents();
+export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder | null }) => {
+  const [retryKey, setRetryKey] = useState(0);
+  const { agents, error: agentsError } = useAgents(retryKey);
+  const { agencies, error: agenciesError } = useAgencies(retryKey);
   const now = useMemo(() => new Date(), []);
+
+  // The contact log only feeds "last contact" in an expanded desk. A failed
+  // read is shown there, never read as "never contacted".
+  const [contactsState, setContactsState] = useState<{ contacts: AgentContact[]; failed: boolean }>({
+    contacts: [],
+    failed: false,
+  });
+  useEffect(() => {
+    let active = true;
+    getAgentContacts()
+      .then((contacts) => active && setContactsState({ contacts, failed: false }))
+      .catch(() => active && setContactsState({ contacts: [], failed: true }));
+    return () => {
+      active = false;
+    };
+  }, [retryKey]);
+
+  const board = useMemo(
+    () => buildLeaderboard({ agencies, agents, loads, contacts: contactsState.contacts, ladder, now }),
+    [agencies, agents, loads, contactsState.contacts, ladder, now],
+  );
 
   const scorecards = useMemo(
     () => buildAgentScorecards(agents ?? [], loads, now),
@@ -90,36 +117,16 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
 
   const flags = useMemo(() => rows.filter((r) => r.card.ratingFlag), [rows]);
 
-  const rateLeader = roster.rateLeader ? byId.get(roster.rateLeader.agentId) : null;
   const coldTop = roster.goingCold ? byId.get(roster.goingCold.agentId) : null;
   const topShares = conc.shares.slice(0, 3);
   const elseShare = Math.max(0, 1 - topShares.reduce((s, x) => s + x.share, 0));
 
   return (
     <div className="flex flex-col gap-3">
-      {/* the glance — four doors */}
-      <Board className="grid grid-cols-2 md:grid-cols-4">
+      {/* the glance — two doors (the rate and the bench jobs live in the leaderboard) */}
+      <Board className="grid grid-cols-2">
         <BoardCell
-          className="border-b md:border-b-0 md:border-r ds2-cell-rule"
-          label="Rate leader"
-          value={roster.rateLeader ? `${fmtRpm(roster.rateLeader.medianRpm)}/mi` : "—"}
-          valueClassName="text-[22px] text-status-positive-text"
-          sub={rateLeader ? `${nameOf(rateLeader)}` : "need 2+ loads"}
-          tone={roster.rateLeader ? "pos" : "none"}
-          to={roster.rateLeader ? `/agents/${roster.rateLeader.agentId}` : "/agents"}
-          go="agent"
-        />
-        <BoardCell
-          className="border-b md:border-b-0 md:border-r ds2-cell-rule"
-          label="Oversize bench"
-          value={String(roster.oversizeBench)}
-          valueClassName="text-[22px] text-amber-light"
-          sub={`specialists · ${roster.specCapable} spec-capable`}
-          to="/agents"
-          go="agents"
-        />
-        <BoardCell
-          className="md:border-r ds2-cell-rule"
+          className="border-r ds2-cell-rule"
           label="Concentration"
           value={conc.top3Pct != null ? `${Math.round(conc.top3Pct * 100)}%` : "—"}
           valueClassName={`text-[22px] ${conc.overSingleCap ? "text-amber-light" : ""}`}
@@ -147,6 +154,19 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
         />
       </Board>
 
+      {/* the leaderboard — by desk, graded on the booking ladder */}
+      <Leaderboard
+        board={board}
+        ladder={ladder}
+        now={now}
+        contactsFailed={contactsState.failed}
+        failed={
+          agentsError || agenciesError
+            ? { onRetry: () => setRetryKey((k) => k + 1) }
+            : null
+        }
+      />
+
       {/* hero scatter */}
       <div className="ds2-board p-4">
         <div className="flex items-center justify-between mb-1">
@@ -161,8 +181,8 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
         </div>
       </div>
 
-      {/* running-lately + quarterly board */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {/* running-lately */}
+      <div className="grid grid-cols-1 gap-3">
         <div className="ds2-board p-4">
           <h3 className="ds2-label mb-2.5 flex justify-between items-center">
             Running with lately
@@ -191,8 +211,6 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
             ))
           )}
         </div>
-
-        <RaceBoard loads={loads} />
       </div>
 
       {/* concentration + going cold + gut-vs-data */}

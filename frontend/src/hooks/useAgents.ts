@@ -12,6 +12,7 @@ export const useAgents = (refreshKey: number = 0) => {
       try {
         const data = await getAgents();
         setAgents(data);
+        setError(null);
       } catch {
         setError("Failed to load agents");
       } finally {

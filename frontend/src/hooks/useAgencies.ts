@@ -12,6 +12,7 @@ export const useAgencies = (refreshKey: number = 0) => {
       try {
         const data = await getAgencies();
         setAgencies(data);
+        setError(null);
       } catch {
         setError("Failed to load agencies");
       } finally {
