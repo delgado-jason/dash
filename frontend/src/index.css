@@ -49,14 +49,15 @@
   -----------------------------------------------------------*/
 
   /* DTS Brand Colors */
-  --color-steel: #0d1117;
-  --color-iron: #1c2333;
-  --color-plate: #2a3347;
+  --color-steel: var(--t-steel);
+  --color-iron: var(--t-iron);
+  --color-plate: var(--t-plate);
   --color-amber: #e8940a;
-  --color-light: #ebedf5;
-  --color-muted-text: #9daabb;
-  --color-amber-dark: #b5700a;
-  --color-amber-light: #f5b03a;
+  --color-light: var(--t-light);
+  --color-muted-text: var(--t-muted-text);
+  --color-amber-dark: var(--t-amber-dark);
+  --color-amber-light: var(--t-amber-light);
+  --color-on-amber: #0b0f17; /* text on an amber fill, both looks */
 
   /* DTS Brand Fonts */
   --font-display: "Bebas Neue", sans-serif;
@@ -68,20 +69,20 @@
   -----------------------------------------------------------*/
 
   /* Status Colors */
-  --color-status-positive-bg: #1a3a2a;
-  --color-status-positive-text: #4ade80;
+  --color-status-positive-bg: var(--t-status-positive-bg);
+  --color-status-positive-text: var(--t-status-positive-text);
 
-  --color-status-negative-bg: #3a1a1a;
-  --color-status-negative-text: #f87171;
+  --color-status-negative-bg: var(--t-status-negative-bg);
+  --color-status-negative-text: var(--t-status-negative-text);
 
-  --color-status-aware-bg: #3a2a0a;
+  --color-status-aware-bg: var(--t-status-aware-bg);
   --color-status-aware-text: var(--color-amber);
 
-  --color-status-neutral-bg: #2d333b;
+  --color-status-neutral-bg: var(--t-status-neutral-bg);
   --color-status-neutral-text: var(--color-muted-text);
 
-  --color-status-info-bg: #1a2a3a;
-  --color-status-info-text: #60a5fa;
+  --color-status-info-bg: var(--t-status-info-bg);
+  --color-status-info-text: var(--t-status-info-text);
 
   /* --------------------------------------------------------
     DESIGN SYSTEM v2 — "Night Cab, forged reserve"
@@ -89,35 +90,123 @@
     Coexists with the v1 kit above while pages migrate
     slice-by-slice; v1 tokens are pruned in the cleanup slice.
   -----------------------------------------------------------*/
-  --color-canvas: #070a10;
-  --color-rail: #05080d; /* sidebar/nav — one step below canvas */
-  --color-panel: #0c111a;
-  --color-well: #090d15;
-  --color-hairline: #1c2637;
-  --color-hairline-lo: #141c2a;
-  --color-ink: #e6ecf7;
-  --color-dim: #8494ab;
-  --color-faint: #5a6880;
-  --color-amber-hi: #f5b03a;
-  --color-hot: #ffcf7a;
-  --color-plate-a: #2b3448;
-  --color-plate-b: #1f2737;
-  --color-plate-lo: #171e2c;
+  --color-canvas: var(--t-canvas);
+  --color-rail: var(--t-rail); /* sidebar/nav — one step below canvas */
+  --color-panel: var(--t-panel);
+  --color-well: var(--t-well);
+  --color-hairline: var(--t-hairline);
+  --color-hairline-lo: var(--t-hairline-lo);
+  --color-ink: var(--t-ink);
+  --color-dim: var(--t-dim);
+  --color-faint: var(--t-faint);
+  --color-amber-hi: var(--t-amber-hi);
+  --color-hot: var(--t-hot);
+  --color-plate-a: var(--t-plate-a);
+  --color-plate-b: var(--t-plate-b);
+  --color-plate-lo: var(--t-plate-lo);
   /* Data marks only — brand amber sits above the dark-surface lightness
      band, so charts use these validated steps (CVD ΔE 24.5, ≥3:1). */
-  --color-chart-amber: #c87f0a;
-  --color-chart-blue: #4f8cd6;
+  --color-chart-amber: var(--t-chart-amber);
+  --color-chart-blue: var(--t-chart-blue);
   /* Categorical set (cost categories) — fixed order, never cycled. Validated
      2026-08-09: all six dark-band checks pass in THIS adjacency order. */
-  --color-cat1: #c87f0a; /* amber */
-  --color-cat2: #35a08c; /* teal */
-  --color-cat3: #8f7ad0; /* violet */
-  --color-cat4: #c65f7d; /* rose */
-  --color-cat5: #4f8cd6; /* blue */
-  --color-cat6: #8a8f28; /* olive */
+  --color-cat1: var(--t-cat1); /* amber */
+  --color-cat2: var(--t-cat2); /* teal */
+  --color-cat3: var(--t-cat3); /* violet */
+  --color-cat4: var(--t-cat4); /* rose */
+  --color-cat5: var(--t-cat5); /* blue */
+  --color-cat6: var(--t-cat6); /* olive */
 
   /* The Forge — game-layer voice. Game surfaces only, never operational UI. */
   --font-forge: "Big Shoulders Stencil", "Barlow Condensed", sans-serif;
+}
+
+/* --------------------------------------------------------
+    THE TWO LOOKS — one token set, two value sets
+    (Nod Sheet "The Redesign", phase A, 2026-11-08)
+    Day Cab is the default root; Night Cab rides the `dark` class that
+    index.html's inline script and src/lib/theme.ts set from the device's
+    choice (dash.theme) or the operating system's setting.
+  -----------------------------------------------------------*/
+:root {
+  color-scheme: light;
+  --t-steel: #e8ecf3;
+  --t-iron: #ffffff;
+  --t-plate: #e1e6ee;
+  --t-light: #0f1a2b;
+  --t-muted-text: #4a5870;
+  --t-amber-dark: #8f5a00;
+  --t-amber-light: #a86400;
+  --t-status-positive-bg: #e4f3ea;
+  --t-status-positive-text: #15803d;
+  --t-status-negative-bg: #fbe9e7;
+  --t-status-negative-text: #b42318;
+  --t-status-aware-bg: #fbefd9;
+  --t-status-neutral-bg: #eef1f6;
+  --t-status-info-bg: #e6eefb;
+  --t-status-info-text: #1d4ed8;
+  --t-canvas: #f2f4f8;
+  --t-rail: #e8ecf3;
+  --t-panel: #ffffff;
+  --t-well: #eaeef4;
+  --t-hairline: #cfd6e2;
+  --t-hairline-lo: #e1e6ee;
+  --t-ink: #0f1a2b;
+  --t-dim: #4a5870;
+  --t-faint: #6b788f;
+  --t-amber-hi: #a86400;
+  --t-hot: #7a4a00;
+  --t-plate-a: #dfe5ee;
+  --t-plate-b: #e9eef5;
+  --t-plate-lo: #f0f3f8;
+  --t-chart-amber: #b06f00;
+  --t-chart-blue: #2f6fc1;
+  --t-cat1: #b06f00;
+  --t-cat2: #1f7f6e;
+  --t-cat3: #6b55b8;
+  --t-cat4: #a8465f;
+  --t-cat5: #2f6fc1;
+  --t-cat6: #6b7020;
+}
+.dark {
+  color-scheme: dark;
+  --t-steel: #0d1117;
+  --t-iron: #1c2333;
+  --t-plate: #2a3347;
+  --t-light: #ebedf5;
+  --t-muted-text: #9daabb;
+  --t-amber-dark: #b5700a;
+  --t-amber-light: #f5b03a;
+  --t-status-positive-bg: #1a3a2a;
+  --t-status-positive-text: #4ade80;
+  --t-status-negative-bg: #3a1a1a;
+  --t-status-negative-text: #f87171;
+  --t-status-aware-bg: #3a2a0a;
+  --t-status-neutral-bg: #2d333b;
+  --t-status-info-bg: #1a2a3a;
+  --t-status-info-text: #60a5fa;
+  --t-canvas: #070a10;
+  --t-rail: #05080d;
+  --t-panel: #0c111a;
+  --t-well: #090d15;
+  --t-hairline: #1c2637;
+  --t-hairline-lo: #141c2a;
+  --t-ink: #e6ecf7;
+  --t-dim: #8494ab;
+  --t-faint: #5a6880;
+  --t-amber-hi: #f5b03a;
+  --t-hot: #ffcf7a;
+  --t-plate-a: #2b3448;
+  --t-plate-b: #1f2737;
+  --t-plate-lo: #171e2c;
+  --t-chart-amber: #c87f0a;
+  --t-chart-blue: #4f8cd6;
+  --t-cat1: #c87f0a;
+  --t-cat2: #35a08c;
+  --t-cat3: #8f7ad0;
+  --t-cat4: #c65f7d;
+  --t-cat5: #4f8cd6;
+  --t-cat6: #8a8f28;
 }
 
 /* Design System v2 — motion tokens, mirrored in src/theme/motion.ts for
@@ -140,37 +229,39 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Day Cab through the tokens — the same mapping the .dark block uses, so a
+     shadcn control reads the theme instead of a neutral grey. */
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-panel);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-panel);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-amber);
+  --primary-foreground: var(--color-on-amber);
+  --secondary: var(--color-well);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-well);
+  --muted-foreground: var(--color-dim);
+  --accent: var(--color-amber-hi);
+  --accent-foreground: var(--color-on-amber);
+  --destructive: var(--color-status-negative-text);
+  --border: var(--color-hairline);
+  --input: var(--color-hairline);
+  --ring: var(--color-amber);
+  --chart-1: var(--color-cat1);
+  --chart-2: var(--color-cat2);
+  --chart-3: var(--color-cat3);
+  --chart-4: var(--color-cat4);
+  --chart-5: var(--color-cat5);
+  --sidebar: var(--color-rail);
+  --sidebar-foreground: var(--color-dim);
+  --sidebar-primary: var(--color-amber);
+  --sidebar-primary-foreground: var(--color-on-amber);
+  --sidebar-accent: var(--color-well);
+  --sidebar-accent-foreground: var(--color-ink);
+  --sidebar-border: var(--color-hairline-lo);
+  --sidebar-ring: var(--color-amber);
 }
 
 /* --------------------------------------------------------
@@ -542,4 +633,37 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   background: var(--dial-thumb, #f5b03a);
   border: 3px solid #0d1117;
   box-shadow: 0 0 0 2px var(--dial-thumb, #f5b03a), 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* ===== Day Cab overrides — the forged, steel and noir surfaces read as flat
+   panels in daylight until phase B retires them; glows and ink shadows off. ===== */
+:root:not(.dark) .ds-panel--steel,
+:root:not(.dark) .ds-panel--hero,
+:root:not(.dark) .ds-panel--noir,
+:root:not(.dark) .ds2-forged {
+  background: var(--color-panel);
+  border: 1px solid var(--color-hairline);
+  box-shadow: 0 1px 2px rgba(15, 26, 43, 0.06);
+}
+:root:not(.dark) .ds-panel--hero::before,
+:root:not(.dark) .ds-panel--noir::after,
+:root:not(.dark) .ds2-forged::before {
+  display: none;
+}
+:root:not(.dark) .ds2-well {
+  box-shadow: inset 0 1px 2px rgba(15, 26, 43, 0.08);
+}
+:root:not(.dark) .ds2-nav-active::before {
+  box-shadow: none;
+}
+:root:not(.dark) .ds-sfx {
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+:root:not(.dark) .ds-skeleton {
+  background: linear-gradient(90deg, #e1e6ee 25%, #eef1f6 50%, #e1e6ee 75%);
+  background-size: 200% 100%;
+}
+:root:not(.dark) .ds-panel--interactive:hover {
+  box-shadow: 0 6px 16px rgba(15, 26, 43, 0.12);
 }

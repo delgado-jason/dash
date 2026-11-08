@@ -15,6 +15,7 @@ import { PerDiemRatesTable } from "@/components/settings/PerDiemRatesTable";
 import { FscScheduleBox } from "@/components/settings/FscScheduleBox";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
+import { useTheme } from "@/hooks/useTheme";
 import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
@@ -40,6 +41,7 @@ const SettingsPage = () => {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sfx, setSfx] = useState(sfxEnabled());
+  const { preference: themePreference, resolved: resolvedTheme, setPreference: setThemePreference } = useTheme();
   const [displayName, setDisplayName] = useState("");
 
   // Real break-even for the tier previews + weekly-target preview (cost-based,
@@ -136,6 +138,34 @@ const SettingsPage = () => {
       <h1 className="text-3xl font-condensed">Settings</h1>
 
       {localStorage.getItem("role") === "admin" && <TeamCard />}
+
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Appearance</h2>
+        <p className="text-sm text-muted-text mt-1">
+          How dash paints itself on this device. System follows the device and
+          changes with it; Light and Dark hold. Remembered on this device only —
+          the phone can be dark while the laptop is light.
+        </p>
+        <div role="radiogroup" aria-label="Appearance" className="mt-4 inline-flex overflow-hidden rounded-md border border-hairline text-sm">
+          {(["system", "light", "dark"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="radio"
+              aria-checked={themePreference === p}
+              onClick={() => setThemePreference(p)}
+              className={`px-4 py-1.5 font-condensed transition-colors ${
+                themePreference === p ? "bg-amber text-on-amber font-semibold" : "text-dim hover:text-ink"
+              }`}
+            >
+              {p === "system" ? "System" : p === "light" ? "Light" : "Dark"}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-faint mt-2">
+          Showing {resolvedTheme} now{themePreference === "system" ? " · following the device" : ""}.
+        </p>
+      </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Sound effects</h2>
