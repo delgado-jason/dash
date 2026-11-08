@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { Driver } from "@/types/driver";
+import type { Load } from "@/types/load";
 import { getDrivers, createDriver } from "@/services/driversService";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
@@ -12,6 +13,11 @@ import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 import { formatPhone } from "@/lib/phone";
 import { formatDate } from "@/lib/format";
 import { isDelivered } from "@/lib/metrics/status";
+import { driverLifetimeMiles } from "@/lib/metrics/driverLifetimeMiles";
+import { getTrucks } from "@/services/trucksService";
+import { getFuelEntries } from "@/services/fuelService";
+import type { Truck } from "@/types/truck";
+import type { FuelEntry } from "@/types/fuelEntry";
 
 const FIELDS: FormField[] = [
   { name: "first_name", label: "First name", required: true },
@@ -38,20 +44,31 @@ const DriversPage = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { loads } = useLoads(0);
+  // The rig's odometer is what the badge reads (GL-151) — the same inputs the driver card uses.
+  const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [fuel, setFuel] = useState<FuelEntry[]>([]);
   const navigate = useNavigate();
 
-  // Career hauls + miles per driver, from their delivered loads.
+  // Career hauls per driver (delivered loads) and career MILES off the truck
+  // odometer — what the driver card and the rank ladder read, not loaded miles.
   const statsByDriver = useMemo(() => {
     const map = new Map<string, { miles: number; hauls: number }>();
+    const byDriver = new Map<string, Load[]>();
     for (const l of loads) {
-      if (!isDelivered(l) || !l.driver_id) continue;
+      if (!l.driver_id) continue;
+      byDriver.set(l.driver_id, [...(byDriver.get(l.driver_id) ?? []), l]);
+      if (!isDelivered(l)) continue;
       const a = map.get(l.driver_id) ?? { miles: 0, hauls: 0 };
-      a.miles += Number(l.loaded_miles) || 0;
       a.hauls += 1;
       map.set(l.driver_id, a);
     }
+    for (const [driverId, driverLoads] of byDriver) {
+      const a = map.get(driverId) ?? { miles: 0, hauls: 0 };
+      a.miles = driverLifetimeMiles(trucks, fuel, driverLoads);
+      map.set(driverId, a);
+    }
     return map;
-  }, [loads]);
+  }, [loads, trucks, fuel]);
 
   const load = () =>
     getDrivers()
@@ -61,6 +78,11 @@ const DriversPage = () => {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    getTrucks().then(setTrucks).catch(() => {});
+    getFuelEntries().then(setFuel).catch(() => {});
   }, []);
 
   const save = async (data: Record<string, unknown>) => {
@@ -133,7 +155,7 @@ const DriversPage = () => {
         ) : (
           <div className="ds2-board overflow-hidden mt-4">
             {drivers.map((d) => {
-              const stats = statsByDriver.get(d.driver_id) ?? { miles: 0, hauls: 0 };
+              const stats = statsByDriver.get(d.driver_id) ?? { miles: driverLifetimeMiles(trucks, fuel, []), hauls: 0 };
               const m = mileMilestone(stats.miles);
               const cdl = d.cdl_expiration
                 ? `CDL thru ${formatDate(d.cdl_expiration)}`
@@ -166,7 +188,7 @@ const DriversPage = () => {
                     </div>
                     <div className="font-condensed text-[13px] text-dim mt-[3px]">
                       {stats.hauls} haul{stats.hauls === 1 ? "" : "s"} ·{" "}
-                      {stats.miles.toLocaleString("en-US")} mi hauled
+                      {stats.miles.toLocaleString("en-US")} mi on the odometer
                       {cdl ? ` · ${cdl}` : ""}
                       {d.endorsements ? ` · ${d.endorsements}` : ""}
                     </div>

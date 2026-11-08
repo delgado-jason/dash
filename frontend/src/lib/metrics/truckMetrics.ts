@@ -34,6 +34,7 @@ export interface TruckMetrics {
   totalMiles: number;
   netRevenue: number;
   loads: number;
+  windowStart: string | null; // the utilization window's first day ('YYYY-MM-DD')
 }
 
 const DAY = 86_400_000;
@@ -68,6 +69,17 @@ export const truckServiceSpend = (services: MaintenanceService[]): number =>
 // "full"/"half" (travel) days you weren't loaded are idle. An explicit home
 // mark wins over a load's date envelope. The Fleet tab and the driver card
 // both read this — the card used to run its own loop without the home marks.
+// "lifetime since Jan 6, 2026" — the utilization window runs from the later of
+// the in-service day and the first load to today, so the tile says so, with the
+// date computed from the data (GL-144), never typed. null when there is no window.
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const lifetimeSinceLabel = (windowStart: string | null): string | null => {
+  if (!windowStart) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(windowStart);
+  if (!m) return null;
+  return `lifetime since ${MONTH_ABBR[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`;
+};
+
 export interface UtilizationWindow {
   windowDays: number;
   underLoadDays: number;
@@ -207,6 +219,7 @@ export const computeTruckMetrics = (
     totalMiles,
     netRevenue,
     loads: delivered.length,
+    windowStart,
   };
 };
 

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { Load } from "@/types/load";
 import {
   getBookedCount,
   getInTransitCount,
@@ -7,6 +8,7 @@ import {
   deliveredThisMonth,
   loadRevenue,
   loadsKpis,
+  loadsViewTotals,
 } from "./loads";
 
 describe("getBookedCount", () => {
@@ -20,7 +22,7 @@ describe("getBookedCount", () => {
     ];
 
     // Act
-    const result = getBookedCount(loads as any);
+    const result = getBookedCount(loads as unknown as Load[]);
 
     // Assert
     expect(result).toBe(2);
@@ -60,7 +62,7 @@ describe("getOutstandingTotal", () => {
       },
     ];
 
-    const result = getOutstandingTotal(loads as any);
+    const result = getOutstandingTotal(loads as unknown as Load[]);
     expect(result).toBe(4900);
   });
 });
@@ -76,7 +78,7 @@ describe("deliveredThisMonth", () => {
       { load_status: "delivered", delivery_date: null }, // null delivery date ✓
     ];
 
-    const result = deliveredThisMonth(loads as any, now);
+    const result = deliveredThisMonth(loads as unknown as Load[], now);
 
     expect(result.length).toBe(2);
   });
@@ -85,7 +87,7 @@ describe("deliveredThisMonth", () => {
 describe("loadRevenue", () => {
   it("sums linehaul, fuel surcharge, and accessorials (string-safe)", () => {
     const load = { linehaul: "1000", fuel_surcharge: "250.5", total_accessorials: "100" };
-    expect(loadRevenue(load as any)).toBe(1350.5);
+    expect(loadRevenue(load as unknown as Load)).toBe(1350.5);
   });
 });
 
@@ -96,7 +98,7 @@ describe("getInTransitCount", () => {
       { load_status: "booked" },
       { load_status: "in_transit" },
     ];
-    expect(getInTransitCount(loads as any)).toBe(2);
+    expect(getInTransitCount(loads as unknown as Load[])).toBe(2);
   });
 });
 
@@ -108,7 +110,7 @@ describe("outstandingLoads", () => {
       { load_status: "delivered", payment_status: "paid" }, // ✗
       { load_status: "booked", payment_status: "unpaid" }, // ✗ (not delivered, not invoiced)
     ];
-    expect(outstandingLoads(loads as any).length).toBe(2);
+    expect(outstandingLoads(loads as unknown as Load[]).length).toBe(2);
   });
 });
 
@@ -139,7 +141,7 @@ describe("loadsKpis", () => {
       { load_status: "in_transit", payment_status: "unpaid" },
     ];
 
-    const k = loadsKpis(loads as any, now);
+    const k = loadsKpis(loads as unknown as Load[], now);
     expect(k.deliveredCount).toBe(2);
     expect(k.deliveredNet).toBe(3000);
     expect(k.loadedMiles).toBe(1500);
@@ -164,7 +166,7 @@ describe("loadsKpis", () => {
         loaded_miles: 1000,
       },
     ];
-    const k = loadsKpis(loads as any, now);
+    const k = loadsKpis(loads as unknown as Load[], now);
     expect(k.deliveredNet).toBe(1460); // dollars kept = net
     expect(k.arTotal).toBe(1460); // owed = net
     expect(k.rpm).toBeCloseTo(2); // rate/mile = gross (2000 / 1000)
@@ -182,6 +184,27 @@ describe("loadsKpis", () => {
         loaded_miles: 0,
       },
     ];
-    expect(loadsKpis(loads as any, now).rpm).toBeNull();
+    expect(loadsKpis(loads as unknown as Load[], now).rpm).toBeNull();
+  });
+});
+
+describe("loadsViewTotals — the Loads page header (GL-104)", () => {
+  const ld = (o: Record<string, unknown>) =>
+    ({ load_status: "delivered", linehaul: "5000", fuel_surcharge: "0", total_accessorials: "0", loaded_miles: 1000, ...o }) as unknown as Load;
+
+  it("a TONU in the view changes nothing: count, gross and $/loaded mi ignore it", () => {
+    const booked = [ld({}), ld({ linehaul: "4000" })];
+    const tonu = ld({ load_status: "tonu", linehaul: "2500", loaded_miles: 301 });
+    const t = loadsViewTotals([...booked, tonu]);
+    expect(t).toEqual(loadsViewTotals(booked));
+    expect(t.count).toBe(2);
+    expect(t.gross).toBe(9000);
+    expect(t.rpm).toBeCloseTo(4.5, 5);
+  });
+
+  it("a view of only TONUs is zero loads and no rate, not $8.31/mi", () => {
+    const t = loadsViewTotals([ld({ load_status: "tonu", linehaul: "2500", loaded_miles: 301 })]);
+    expect(t.count).toBe(0);
+    expect(t.rpm).toBeNull();
   });
 });

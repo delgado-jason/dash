@@ -1,6 +1,8 @@
 // Mileage "clubs" — a comic rank a truck/trailer/driver earns by odometer, the
 // fleet parallel to agent prestige. Named clubs run to 1M; beyond that we keep
 // minting +500K platinum markers.
+import { MILE_CLUB_RUNGS } from "@/lib/constants/playerCard";
+
 export type MileTier = "bronze" | "silver" | "gold" | "platinum";
 
 export const fmtMiles = (n: number): string => {
@@ -12,7 +14,7 @@ export const fmtMiles = (n: number): string => {
 };
 
 const markerAt = (i: number): number => {
-  const base = [100_000, 250_000, 500_000, 1_000_000];
+  const base = MILE_CLUB_RUNGS;
   return i < base.length ? base[i] : 1_000_000 + (i - 3) * 500_000;
 };
 const tierOf = (marker: number): MileTier =>
@@ -20,7 +22,7 @@ const tierOf = (marker: number): MileTier =>
     ? "platinum"
     : marker >= 500_000
       ? "gold"
-      : marker >= 250_000
+      : marker >= 300_000
         ? "silver"
         : "bronze";
 const titleOf = (marker: number): string =>
@@ -28,7 +30,7 @@ const titleOf = (marker: number): string =>
     ? "Million-Miler"
     : marker >= 500_000
       ? "Workhorse"
-      : marker >= 250_000
+      : marker >= 300_000
         ? "Road Warrior"
         : "Seasoned";
 

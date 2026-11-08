@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { RateDial } from "@/components/settings/RateDial";
 import { useEffect, useState } from "react";
 import {
@@ -66,12 +67,12 @@ const Field = ({
 const SettingsPage = () => {
   const [pcts, setPcts] = useState<Pcts | null>(null);
   const [carrier, setCarrier] = useState("");
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [settlementDay, setSettlementDay] = useState(3); // 0=Sun … 6=Sat; default Wednesday
   const [depositLag, setDepositLag] = useState(1); // days after the settlement the cash lands
   const [perDiemRate, setPerDiemRate] = useState(69);
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
-  const [hometimeThresh, setHometimeThresh] = useState(21);
+  const [hometimeThresh, setHometimeThresh] = useState(42);
   const [operation, setOperation] = useState("flatbed");
   const [stdTiers, setStdTiers] = useState<Tier3>({ min: 10, target: 20, strong: 30 });
   const [specTiers, setSpecTiers] = useState<Tier3>({ min: 35, target: 45, strong: 60 });

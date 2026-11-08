@@ -137,19 +137,29 @@ export const visitorsByDay = (
 };
 
 // 365 bars is a smear, so the 12-month window folds the days into weeks.
-// Buckets are cut from the END so the last one always ends on today; the
-// oldest one is short if the range doesn't divide by seven. Visitors add up
-// across days for free — see the note at the top of this file.
+// Buckets are cut from the END so the last one always ends on today. When the
+// range doesn't divide by seven the leftover days at the front (365 = 52 x 7
+// + 1) are MERGED into the next week instead of drawn as a short bar at a
+// 7-day width — so every bar is a full week, and the oldest one may cover
+// 8-13 days (its visitors still add up honestly). Fewer than seven days in
+// all is one bucket, as before. Visitors add up across days for free — see the
+// note at the top of this file.
 export const visitorsByWeek = (rows: TrafficDay[]): TrafficWeek[] => {
   const weeks: TrafficWeek[] = [];
+  const lead = rows.length % 7;
+  const fullWeeks = Math.floor(rows.length / 7);
   for (let end = rows.length; end > 0; end -= 7) {
-    const bucket = rows.slice(Math.max(0, end - 7), end);
+    // The oldest full week swallows the leftover lead days.
+    const oldest = fullWeeks > 0 && end - 7 === lead;
+    const start = oldest || end < 7 ? 0 : end - 7;
+    const bucket = rows.slice(start, end);
     weeks.push({
       day: bucket[bucket.length - 1].day,
       from: bucket[0].day,
       visitors: bucket.reduce((sum, r) => sum + r.visitors, 0),
       views: bucket.reduce((sum, r) => sum + r.views, 0),
     });
+    if (oldest) break;
   }
   return weeks.reverse();
 };

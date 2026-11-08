@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  cadenceMonths,
   earlierCount,
   errText,
   fmtDay,
@@ -229,5 +230,18 @@ describe("renewalSheetErrors — the sheet's gate, a problem per field", () => {
     expect(renewalSheetErrors({ renewedOn: "2026-09-13", nextExpiry: "2027-02-30" }, now).nextExpiry).toBe(
       "That isn't a real date.",
     );
+  });
+});
+
+describe("cadenceMonths — a DOT medical card never exceeds 24 months", () => {
+  it("caps a medical cadence of 48 at 24, so Mark renewed prefills two years", () => {
+    expect(cadenceMonths("medical", 48)).toBe(24);
+    expect(nextExpiry("2026-11-04", cadenceMonths("medical", 48))).toBe("2028-11-04");
+  });
+  it("leaves 24 and shorter alone, and other categories uncapped", () => {
+    expect(cadenceMonths("medical", 24)).toBe(24);
+    expect(cadenceMonths("medical", 12)).toBe(12);
+    expect(cadenceMonths("hazmat", 60)).toBe(60);
+    expect(cadenceMonths("medical", null)).toBeNull();
   });
 });

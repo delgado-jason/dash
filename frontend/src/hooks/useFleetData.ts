@@ -15,6 +15,8 @@ import { getComplianceItems } from "@/services/complianceService";
 import { getDrivers } from "@/services/driversService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getObligations } from "@/services/obligationsService";
+import { getTrips } from "@/services/tripsService";
+import { homeTripDays } from "@/lib/metrics/hometime";
 
 // Everything the Fleet tab needs, fetched once when the tab opens (it only mounts
 // when Fleet is the active dashboard tab, so these calls are lazy).
@@ -27,6 +29,7 @@ export interface FleetData {
   services: MaintenanceService[];
   homeDays: string[]; // explicit per-diem "home" marks
   travelDays: string[]; // per-diem "full"/"half" (on-the-road) marks
+  homeTripDays: string[]; // days of home-purpose trips — they reset the home-time counter too
   compliance: ComplianceItem[];
   drivers: Driver[];
   nationalDiesel: number | null; // $/gal
@@ -35,7 +38,7 @@ export interface FleetData {
 }
 
 const EMPTY: Omit<FleetData, "loading"> = {
-  trucks: [], trailers: [], fuel: [], items: [], services: [], homeDays: [], travelDays: [],
+  trucks: [], trailers: [], fuel: [], items: [], services: [], homeDays: [], travelDays: [], homeTripDays: [],
   compliance: [], drivers: [], nationalDiesel: null, hometimeThreshold: null, assetNote: 0,
 };
 
@@ -48,7 +51,7 @@ export const useFleetData = (): FleetData => {
     const year = localToday().getUTCFullYear(); // the operator's local year, not UTC's
     (async () => {
       try {
-        const [trucks, trailers, fuel, items, services, pdThis, pdPrev, compliance, drivers, nat, sched, obligations] =
+        const [trucks, trailers, fuel, items, services, pdThis, pdPrev, compliance, drivers, nat, sched, obligations, trips] =
           await Promise.all([
             getTrucks(),
             getTrailers(),
@@ -62,6 +65,7 @@ export const useFleetData = (): FleetData => {
             getNationalDiesel().catch(() => null),
             getSettlementSchedule().catch(() => null),
             getObligations().catch(() => []),
+            getTrips(),
           ]);
         if (!alive) return;
         const perDiem = [...pdThis, ...pdPrev];
@@ -69,6 +73,7 @@ export const useFleetData = (): FleetData => {
           trucks, trailers, fuel, items, services, compliance, drivers,
           homeDays: perDiem.filter((d) => d.status === "home").map((d) => d.day),
           travelDays: perDiem.filter((d) => d.status === "full" || d.status === "half").map((d) => d.day),
+          homeTripDays: homeTripDays(trips),
           nationalDiesel: nat?.value ?? null,
           hometimeThreshold: sched?.hometime_threshold_days ?? null,
           // the rig's own notes (truck + trailer); a plain loan like Best Egg isn't

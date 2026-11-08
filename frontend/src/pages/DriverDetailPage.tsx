@@ -18,7 +18,7 @@ import { getMonthlyFinancials } from "@/services/cashflowService";
 import type { MonthlyFinancialRow } from "@/services/cashflowService";
 import { useLocalToday } from "@/hooks/useLocalToday";
 import { localToday } from "@/lib/metrics/today";
-import { hometimeStatus } from "@/lib/metrics/hometime";
+import { hometimeStatus, homeTripDays, lastHomeSignal } from "@/lib/metrics/hometime";
 import { lastHomeDay } from "@/lib/metrics/fleet";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
@@ -36,7 +36,7 @@ import {
   monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
 import { MARGIN_GOAL, marginGoalFrom } from "@/lib/constants/targets";
-import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
+import { driverLifetimeMiles } from "@/lib/metrics/driverLifetimeMiles";
 import {
   careerRank,
   getSeasonStats,
@@ -49,7 +49,7 @@ import { getQuarterPace } from "@/lib/metrics/quarterPace";
 import { computeGrind } from "@/lib/metrics/grind";
 import { loadTypeMix } from "@/lib/metrics/loadMix";
 import { firstDeliveredPickup } from "@/lib/metrics/underLoad";
-import { utilizationWindow } from "@/lib/metrics/truckMetrics";
+import { utilizationWindow, lifetimeSinceLabel } from "@/lib/metrics/truckMetrics";
 import { computePatches } from "@/lib/awards/patches";
 import { computeMedals, earnedMedals } from "@/lib/awards/medals";
 import { assetLoanStatus } from "@/lib/metrics/payoff";
@@ -84,7 +84,7 @@ const DriverDetailPage = () => {
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [perDiemDays, setPerDiemDays] = useState<PerDiemDay[]>([]);
   const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
-  const [hometimeThreshold, setHometimeThreshold] = useState(21);
+  const [hometimeThreshold, setHometimeThreshold] = useState<number | null>(null); // null until Settings loads — the chip waits (GL-140)
   const [operation, setOperation] = useState("flatbed");
   // The schedule itself rides along: the one basis (computeRateTargets) reads
   // the tiers, the keep and the margin goal off it (2026-11-04).
@@ -164,12 +164,7 @@ const DriverDetailPage = () => {
     // Active DEBT obligations (owner draws and on-P&L bills excluded) drive
     // break-even/rate and subtract from True Net — one rule, one helper.
     const obligationsDebt = monthlyObligationCost(obligations);
-    const lifetimeMiles = Math.max(
-      0,
-      ...trucks.map((t) => Number(t.current_odometer) || 0),
-      maxFuelOdometer(fuel) ?? 0,
-      ...driverLoads.map((l) => Number(l.odometer_end) || 0),
-    );
+    const lifetimeMiles = driverLifetimeMiles(trucks, fuel, driverLoads);
     // ONE basis (2026-11-04, §5 / call 12): the same computeRateTargets the
     // Dashboard, the Market and Score a Load stand on — six months, the keep
     // measured from the window's own loads. The card used to blend three
@@ -213,7 +208,7 @@ const DriverDetailPage = () => {
     return {
       rank: careerRank(lifetimeMiles),
       season,
-      pace: getQuarterPace(driverLoads, now),
+      pace: getQuarterPace(driverLoads, now, marks.homeDays),
       rpmGrade: rpmG,
       marginGrade: margin.grade,
       marginValue: margin.value,
@@ -221,6 +216,7 @@ const DriverDetailPage = () => {
       marginBasis: margin.basis,
       rateBasis: basis.windowLabel ? `gross $/driven mi · ${basis.windowLabel}` : null,
       utilization,
+      utilBasis: lifetimeSinceLabel(winStart),
       utilGrade: utilizationGrade(utilization),
       windowRpm: t.grossRate,
       medals: earnedMedals(medals),
@@ -258,13 +254,20 @@ const DriverDetailPage = () => {
   // day is OUT), so the two chips can never disagree. The old backend
   // last-home endpoint only knew explicit marks.
   const hometime = useMemo(() => {
+    if (hometimeThreshold == null) return null; // never grade against a default
     const homeDays = perDiemDays.filter((d) => d.status === "home").map((d) => d.day);
     const travelDays = perDiemDays
       .filter((d) => d.status === "full" || d.status === "half")
       .map((d) => d.day);
-    const lastHome = lastHomeDay(loads ?? [], homeDays, travelDays, now);
+    // A home-purpose trip resets the counter too (GL-141) — the per-diem
+    // deduction still reads the marks alone.
+    const lastHome = lastHomeSignal(
+      lastHomeDay(loads ?? [], homeDays, travelDays, now),
+      homeTripDays(driverTrips),
+      now,
+    );
     return hometimeStatus(lastHome, hometimeThreshold, now);
-  }, [perDiemDays, loads, hometimeThreshold, now]);
+  }, [perDiemDays, loads, driverTrips, hometimeThreshold, now]);
 
   const saveEdit = async (data: Record<string, unknown>) => {
     if (!driver) return;
@@ -352,18 +355,18 @@ const DriverDetailPage = () => {
                   INACTIVE
                 </span>
               )}
-              {hometime.state === "over" && (
+              {hometime?.state === "over" && (
                 <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#e05252] border border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]">
                   OUT {hometime.daysOut} DAYS · PAST YOUR {hometime.threshold}-DAY LINE
                 </span>
               )}
-              {hometime.state === "ok" && (
+              {hometime?.state === "ok" && (
                 <span className="font-condensed font-semibold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-dim border border-hairline">
                   OUT {hometime.daysOut} DAY{hometime.daysOut === 1 ? "" : "S"} ·{" "}
                   {hometime.toTarget} TO YOUR LINE
                 </span>
               )}
-              {hometime.state === "home" && (
+              {hometime?.state === "home" && (
                 <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
                   HOME
                 </span>
@@ -407,6 +410,7 @@ const DriverDetailPage = () => {
               marginBasis={card.marginBasis}
               rateBasis={card.rateBasis}
               utilization={card.utilization}
+              utilBasis={card.utilBasis}
               utilGrade={card.utilGrade}
               windowRpm={card.windowRpm}
               pace={card.pace}

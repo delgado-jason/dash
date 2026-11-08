@@ -6,6 +6,7 @@ import {
 import {
   validateComplianceRenewal,
   addMonths,
+  cappedRenewalMonths,
   CDL_NUMBER_MAX,
 } from "../utils/validation/complianceRenewalValidation.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
@@ -265,7 +266,7 @@ export async function renewComplianceItem(user_id, compliance_item_id, body, act
     await client.query("BEGIN");
 
     const cur = await client.query(
-      `SELECT ${CLOSING_CYCLE} FROM compliance_items
+      `SELECT ${CLOSING_CYCLE}, category FROM compliance_items
         WHERE user_id = $1 AND compliance_item_id = $2
         FOR UPDATE`,
       [user_id, compliance_item_id],
@@ -273,7 +274,11 @@ export async function renewComplianceItem(user_id, compliance_item_id, body, act
     if (cur.rowCount === 0) throw new NotFoundError("Compliance item not found");
     const closing = cur.rows[0];
 
-    const next_expires_on = resolveNextExpiry(body, renewed_on, closing.renewal_months);
+    const next_expires_on = resolveNextExpiry(
+      body,
+      renewed_on,
+      cappedRenewalMonths(closing.category, closing.renewal_months),
+    );
 
     await client.query(
       `INSERT INTO compliance_renewals

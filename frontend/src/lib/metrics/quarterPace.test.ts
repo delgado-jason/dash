@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
-import { getQuarterPace } from "./quarterPace";
+import { getQuarterPace, homeDaysWords } from "./quarterPace";
 
 const load = (delivery_date: string, net: number): Load => ({
   load_id: delivery_date + ":" + net,
@@ -102,5 +102,32 @@ describe("getQuarterPace", () => {
     const p = getQuarterPace(q3, NOW); // no Q2 loads
     expect(p.verdict).toBe("no-prior");
     expect(p.prevFinalNet).toBe(0);
+  });
+});
+
+describe("homeDaysSoFar — the home-day count printed beside the verdict (GL-142)", () => {
+  it("counts distinct home marks inside the elapsed window only; the pace keeps calendar days", () => {
+    const marks = [
+      "2026-06-30", // last quarter — not this window
+      "2026-07-01",
+      "2026-07-01", // a duplicate mark is one day
+      "2026-07-05",
+      "2026-07-06",
+    ];
+    const p = getQuarterPace([], NOW, marks);
+    expect(p.homeDaysSoFar).toBe(3);
+    expect(homeDaysWords(p)).toBe(`3 home days in these ${p.daysElapsed}`);
+  });
+
+  it("reads \"18 home days in these 35\" and singular \"1 home day\"", () => {
+    expect(homeDaysWords({ homeDaysSoFar: 18, daysElapsed: 35 })).toBe("18 home days in these 35");
+    expect(homeDaysWords({ homeDaysSoFar: 1, daysElapsed: 35 })).toBe("1 home day in these 35");
+    expect(homeDaysWords({ homeDaysSoFar: 0, daysElapsed: 35 })).toBe("0 home days in these 35");
+  });
+
+  it("marks not supplied → no words, never a fake 0", () => {
+    const p = getQuarterPace([], NOW);
+    expect(p.homeDaysSoFar).toBeNull();
+    expect(homeDaysWords(p)).toBeNull();
   });
 });

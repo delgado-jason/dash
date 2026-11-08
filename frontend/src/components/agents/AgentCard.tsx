@@ -20,6 +20,7 @@ import {
   flagText,
 } from "./agentDisplay";
 import { money, rpm as fmtRpm } from "@/lib/format";
+import { nameOf } from "@/lib/relationships/nameOf";
 
 // Short live blurb — only shown when the agent is currently on the board this
 // quarter, so it stays a highlight rather than clutter.
@@ -97,7 +98,7 @@ export const AgentCard = ({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <p className="font-condensed text-lg leading-tight truncate">
-              {agent.first_name} {agent.last_name}
+              {nameOf(agent)}
             </p>
             {spec && (
               <span

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { LoadSaveError } from "@/lib/loads/loadSaveError";
 import { deliveredNeeds } from "@/lib/loads/deliveredNeeds";
+import { bookerNeeded } from "@/lib/loads/bookerNeeded";
 import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
 import type { Market } from "@/types/market";
@@ -47,6 +48,7 @@ import { Input, inputClass } from "@/components/ui/input";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { Label } from "@/components/ui/label";
 import { formatPhone } from "@/lib/phone";
+import { nameOf } from "@/lib/relationships/nameOf";
 import {
   Select,
   SelectContent,
@@ -565,8 +567,10 @@ const LoadForm = ({
 
   const needsDelivered = deliveredNeeds(formData.load_status, formData.odometer_end, formData.delivery_date);
 
+  const needsBooker = bookerNeeded(formData.booked_by);
+
   const handleSubmit = async () => {
-    if (needsDelivered) return;
+    if (needsDelivered || needsBooker) return;
     if (dateOrderError) {
       setError(dateOrderError);
       return;
@@ -594,7 +598,7 @@ const LoadForm = ({
   }));
   const driverOptions = drivers.map((d) => ({
     id: d.driver_id,
-    name: `${d.first_name} ${d.last_name}`,
+    name: nameOf(d),
   }));
   const trailerOptions = trailers.map((t) => ({
     id: t.trailer_id,
@@ -694,7 +698,7 @@ const LoadForm = ({
               </Select>
             </div>
             {/* Booked by — anyone on the account; defaults to the owner */}
-            {team.length > 1 && (
+            {(team.length > 1 || needsBooker) && (
               <div>
                 <Label htmlFor="booked_by">Booked by</Label>
                 <Select
@@ -717,6 +721,9 @@ const LoadForm = ({
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+                {needsBooker && (
+                  <p className="font-condensed text-[12px] text-amber-hi mt-1">{needsBooker}</p>
+                )}
               </div>
             )}
             {/* Attribution — who initiated this booking (relationship system) */}
@@ -795,7 +802,7 @@ const LoadForm = ({
                     <SelectGroup>
                       {filteredAgents.map((agent) => (
                         <SelectItem key={agent.agent_id} value={agent.agent_id}>
-                          {agent.first_name + " " + agent.last_name}
+                          {nameOf(agent)}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -1621,7 +1628,7 @@ const LoadForm = ({
           </div>
         </div>
         {error && <p className="text-destructive text-sm mt-3">{error}</p>}
-        <Button className="mt-4" onClick={handleSubmit} disabled={!!needsDelivered}>
+        <Button className="mt-4" onClick={handleSubmit} disabled={!!needsDelivered || !!needsBooker}>
           {mode === "create" ? "Create Load" : "Save Changes"}
         </Button>
       </div>

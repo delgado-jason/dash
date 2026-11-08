@@ -23,7 +23,7 @@ import {
 } from "@/services/complianceService";
 import { getDrivers, patchDriver } from "@/services/driversService";
 import { RenewSheet } from "@/components/compliance/RenewSheet";
-import { earlierCount, errText, fmtDay, renewalLine } from "@/lib/compliance/renewal";
+import { cadenceMonths, earlierCount, errText, fmtDay, renewalLine } from "@/lib/compliance/renewal";
 import { PrimaryButton } from "@/components/relationships/primitives";
 import { getTrucks } from "@/services/trucksService";
 import { getTrailers } from "@/services/trailersService";
@@ -713,7 +713,9 @@ const CompliancePage = () => {
                     // A driver record carries no cadence, so the CDL sheet asks
                     // for the expiry instead of guessing at it.
                     renewalMonths={
-                      renewing.kind === "item" ? renewing.item.renewal_months : null
+                      renewing.kind === "item"
+                        ? cadenceMonths(renewing.item.category, renewing.item.renewal_months)
+                        : null
                     }
                     currentDocNumber={
                       renewing.kind === "item"

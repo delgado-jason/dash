@@ -29,6 +29,11 @@ describe("getLoadCount", () => {
 
     expect(result).toBe(2);
   });
+
+  it("a TONU is never a booked load (GL-104)", () => {
+    const loads = [{ load_status: "delivered" }, { load_status: "tonu" }];
+    expect(getLoadCount(loads as unknown as Load[])).toBe(1);
+  });
 });
 
 // ---- CANCELLED COUNT TEST ----

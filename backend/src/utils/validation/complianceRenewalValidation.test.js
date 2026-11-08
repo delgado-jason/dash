@@ -7,6 +7,7 @@ import {
   isDayKey,
   validateComplianceRenewal,
   addMonths,
+  cappedRenewalMonths,
 } from "./complianceRenewalValidation.js";
 
 // The clock is injected, never read from the machine — otherwise "not in the
@@ -196,5 +197,15 @@ describe("addMonths — the cadence's next expiry, clamped to the month", () => 
     assert.equal(addMonths(null, 12), null);
     assert.equal(addMonths("2026-09-13", null), null);
     assert.equal(addMonths("2026-09-13", 1.5), null);
+  });
+});
+
+describe("cappedRenewalMonths — a medical card never exceeds 24 months", () => {
+  test("48 on a medical item is 24; everything else is untouched", () => {
+    assert.equal(cappedRenewalMonths("medical", 48), 24);
+    assert.equal(cappedRenewalMonths("medical", 24), 24);
+    assert.equal(cappedRenewalMonths("medical", 12), 12);
+    assert.equal(cappedRenewalMonths("hazmat", 60), 60);
+    assert.equal(cappedRenewalMonths("medical", null), null);
   });
 });

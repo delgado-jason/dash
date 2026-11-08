@@ -195,9 +195,12 @@ export const DispatcherCard = ({ card }: { card: DispatcherCardData }) => {
           <>
             <Cells fill={floorFill} notch={TARGET_AT} notchLabel="FLOOR" />
             <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
-              she books at {fmtRate(card.avgBookedRate as number)}/mi gross · the floor
-              is the walk-away — {fmtRate(card.breakEven as number)}/mi · past the
+              she books at {fmtRate(card.avgBookedRate as number)} gross $/driven mi · the
+              floor is the walk-away — {fmtRate(card.breakEven as number)}/mi · past the
               notch is margin she found
+              {card.drivenUnknown > 0
+                ? ` · ${card.drivenUnknown} load${card.drivenUnknown === 1 ? "" : "s"} left out — driven miles unknown`
+                : ""}
             </p>
           </>
         ) : (

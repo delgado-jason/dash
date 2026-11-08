@@ -11,6 +11,7 @@ import {
   DWELL_TONE,
   TREND_META,
 } from "./agentDisplay";
+import { nameOf } from "@/lib/relationships/nameOf";
 
 export interface AgentRow {
   agent: Agent;
@@ -130,7 +131,7 @@ export const AgentTable = ({
                 <td className="py-2 px-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-medium text-ink truncate">
-                      {agent.first_name} {agent.last_name}
+                      {nameOf(agent)}
                     </span>
                     {spec && (
                       <span

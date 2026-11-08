@@ -62,6 +62,15 @@ const trophy = (loads: Load[], key: "booking" | "rate" | "perfect") =>
     (t) => t.key === key,
   )!;
 
+describe("a TONU is never a booked load (GL-104)", () => {
+  it("the booking count and the season rate ignore it", () => {
+    const real = nAt(3, 5);
+    const withTonu = [...real, atRpm(8.31, { load_id: "t", load_status: "tonu" })];
+    expect(trophy(withTonu, "booking")).toEqual(trophy(real, "booking"));
+    expect(trophy(withTonu, "rate")).toEqual(trophy(real, "rate"));
+  });
+});
+
 describe("dispatchSeason trophies", () => {
   it("Booking Champion earns at the month bar and shows progress below it", () => {
     const bar = BOOKING_BAR.month;

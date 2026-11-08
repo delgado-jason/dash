@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLoads } from "@/hooks/useLoads";
@@ -37,7 +38,7 @@ const DispatcherRecapPage = () => {
   const grind = usePersonalGrind(mine);
 
   const [who, setWho] = useState("you");
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [scope, setScope] = useState<RecapScope>("month");
   const [ago, setAgo] = useState(0);
 

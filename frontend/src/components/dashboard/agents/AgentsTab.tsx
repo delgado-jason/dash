@@ -13,6 +13,7 @@ import { money, rpm as fmtRpm } from "@/lib/format";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { AgentScatter, type ScatterPoint } from "./AgentScatter";
 import { RaceBoard } from "./RaceBoard";
+import { nameOf } from "@/lib/relationships/nameOf";
 
 const FRESH = (d: number | null): string =>
   d == null ? "#8b93a3" : d <= 14 ? "#4ade80" : d <= 45 ? "#f5b03a" : "#8b93a3";
@@ -55,7 +56,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
 
   const name = (id: string) => {
     const a = byId.get(id);
-    return a ? `${a.first_name} ${a.last_name}` : "—";
+    return a ? `${nameOf(a)}` : "—";
   };
 
   // "Running with lately" — recent 90-day gross per agent (from the concentration
@@ -103,7 +104,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
           label="Rate leader"
           value={roster.rateLeader ? `${fmtRpm(roster.rateLeader.medianRpm)}/mi` : "—"}
           valueClassName="text-[22px] text-status-positive-text"
-          sub={rateLeader ? `${rateLeader.first_name} ${rateLeader.last_name}` : "need 2+ loads"}
+          sub={rateLeader ? `${nameOf(rateLeader)}` : "need 2+ loads"}
           tone={roster.rateLeader ? "pos" : "none"}
           to={roster.rateLeader ? `/agents/${roster.rateLeader.agentId}` : "/agents"}
           go="agent"
@@ -179,7 +180,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
               >
                 <span className="text-[12px] truncate flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: FRESH(card.daysSince) }} />
-                  {agent.first_name} {agent.last_name}
+                  {nameOf(agent)}
                   {card.specialty.tag !== "standard" && <Badge tag={card.specialty.tag} />}
                 </span>
                 <span className="text-[11px] text-right" style={{ color: FRESH(card.daysSince) }}>
@@ -240,7 +241,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
               return (
                 <Link key={agent.agent_id} to={`/agents/${agent.agent_id}`} className="flex items-center gap-2 py-[7px] text-[12px] border-t ds2-cell-rule first:border-t-0">
                   <span className="truncate text-ink font-semibold">
-                    {agent.first_name} {agent.last_name}
+                    {nameOf(agent)}
                     {card.specialty.tag !== "standard" && <> <Badge tag={card.specialty.tag} /></>}
                   </span>
                   <span className="flex gap-[3px] flex-none ml-auto">
@@ -274,7 +275,7 @@ export const AgentsTab = ({ loads }: { loads: Load[] }) => {
               <Link key={agent.agent_id} to={`/agents/${agent.agent_id}`} className="flex gap-2 items-start py-1.5 text-[11.5px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
                 <TriangleAlert size={13} style={{ color: "#f5a623", flexShrink: 0, marginTop: 1 }} />
                 <span>
-                  <span className="font-semibold">{agent.first_name} {agent.last_name}</span> — {flagText(card)}
+                  <span className="font-semibold">{nameOf(agent)}</span> — {flagText(card)}
                 </span>
               </Link>
             ))

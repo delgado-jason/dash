@@ -17,6 +17,8 @@ const norm = (data) => {
 };
 
 // ---- GET FACILITIES SERVICE ---- (with per-facility load counts by role)
+// A cancelled booking is not a visit — the stop never happened — so the
+// counts skip load_status = 'cancelled'.
 export async function getFacilities(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
 
@@ -31,8 +33,8 @@ export async function getFacilities(user_id) {
             f.notes,
             f.created_at,
             f.updated_at,
-            (SELECT COUNT(*)::int FROM loads WHERE shipper_facility_id = f.facility_id) AS as_shipper,
-            (SELECT COUNT(*)::int FROM loads WHERE receiver_facility_id = f.facility_id) AS as_receiver
+            (SELECT COUNT(*)::int FROM loads WHERE shipper_facility_id = f.facility_id AND load_status <> 'cancelled') AS as_shipper,
+            (SELECT COUNT(*)::int FROM loads WHERE receiver_facility_id = f.facility_id AND load_status <> 'cancelled') AS as_receiver
         FROM facilities f
         WHERE f.user_id = $1
         ORDER BY f.name;

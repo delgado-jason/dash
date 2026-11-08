@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useMemo, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
@@ -92,7 +93,7 @@ const LanesPage = () => {
   );
   const lanes = useMemo(() => repeatLanes(loads, win, now), [loads, win, now]);
 
-  const freeHours = schedule ? Number(schedule.detention_free_hours) : 3;
+  const freeHours = schedule ? Number(schedule.detention_free_hours) : DEFAULT_DETENTION_FREE_HOURS;
   const detail = useMemo(
     () =>
       selected

@@ -12,6 +12,18 @@ export const loadRevenue = (load: Load): number =>
   Number(load.fuel_surcharge) +
   Number(load.total_accessorials);
 
+// The Loads page header: count, gross and gross $/loaded mile of what is in
+// view. A TONU is never a booked load (it shows as its own row and counts only
+// as the cash the statement paid), so it is out of all three.
+export const loadsViewTotals = (
+  view: Array<Load>,
+): { count: number; gross: number; miles: number; rpm: number | null } => {
+  const booked = view.filter((l) => l.load_status !== "tonu");
+  const gross = booked.reduce((s, l) => s + loadRevenue(l), 0);
+  const miles = booked.reduce((s, l) => s + (Number(l.loaded_miles) || 0), 0);
+  return { count: booked.length, gross, miles, rpm: miles > 0 ? gross / miles : null };
+};
+
 export const getBookedCount = (loads: Array<Load>): number =>
   loads.filter((load) => load.load_status === "booked").length;
 

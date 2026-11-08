@@ -4,6 +4,7 @@ import {
   validateDateOrder,
   validateLoadCreate,
   validateLoadPatch,
+  BOOKER_REQUIRED,
 } from "./loadValidation.js";
 
 const errsFor = (pickup, delivery) => {
@@ -202,5 +203,31 @@ describe("ODO-05/06 — odometer window and the delivered load", () => {
     assert.deepEqual(validateLoadPatch({ odometer_end: 400000 }, existing).filter((e) => /must be greater/.test(e)).length, 1);
     assert.ok(validateLoadPatch({ odometer_end: null }, existing).includes(NEEDS));
     assert.deepEqual(validateLoadPatch({ load_status: "delivered" }), []); // stored row unseen: nothing to judge
+  });
+});
+
+describe("GL-106 — booked_by is required", () => {
+  const BOOKER = "7d0f6a52-3a6f-4142-8e6d-5f6071829304";
+  const bookerErrors = (errors) => errors.filter((e) => e.includes("booker") || e.includes("booked_by"));
+
+  test("a create without booked_by says the booker sentence", () => {
+    assert.deepEqual(bookerErrors(validateLoadCreate({})), [BOOKER_REQUIRED]);
+  });
+  test("a create with a UUID booker passes the rule", () => {
+    assert.deepEqual(bookerErrors(validateLoadCreate({ booked_by: BOOKER })), []);
+  });
+  test("a create with null or blank says the sentence once", () => {
+    assert.deepEqual(bookerErrors(validateLoadCreate({ booked_by: null })), [BOOKER_REQUIRED]);
+    assert.deepEqual(bookerErrors(validateLoadCreate({ booked_by: " " })), [BOOKER_REQUIRED]);
+  });
+  test("a non-uuid is refused by name without throwing", () => {
+    assert.deepEqual(bookerErrors(validateLoadCreate({ booked_by: "nope" })), ["booked_by is not a valid UUID"]);
+    assert.deepEqual(bookerErrors(validateLoadCreate({ booked_by: 7 })), ["booked_by is not a valid UUID"]);
+  });
+  test("a patch that does not mention booked_by is untouched; one that nulls it is refused", () => {
+    assert.deepEqual(bookerErrors(validateLoadPatch({ load_number: "1" })), []);
+    assert.deepEqual(bookerErrors(validateLoadPatch({ booked_by: null })), [BOOKER_REQUIRED]);
+    assert.deepEqual(bookerErrors(validateLoadPatch({ booked_by: "" })), [BOOKER_REQUIRED]);
+    assert.deepEqual(bookerErrors(validateLoadPatch({ booked_by: BOOKER })), []);
   });
 });

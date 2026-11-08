@@ -503,16 +503,35 @@ describe("currentTractorMiles / recentMilesPerMonth", () => {
     expect(currentTractorMiles(loads)).toBe(568737);
   });
 
-  it("takes the median of recent monthly totals, ignoring a low outlier month", () => {
-    // now = 2026-07-09 (see top of file). Three months: May 9000, June 8000,
-    // July 1000 (a breakdown month). A mean would say 6000; the median holds at
-    // the typical 8000 so the projection doesn't lurch.
+  it("takes the median of COMPLETE monthly totals, ignoring a low outlier month", () => {
+    // now = 2026-07-09 (see top of file). Complete months: Apr 8000, May 9000,
+    // Jun 1000 (a breakdown month). A mean would say 6000; the median holds at
+    // 8000. July (running) is excluded.
     const loads = [
+      load({ delivery_date: "2026-04-20", odometer_start: 0, odometer_end: 8000 }),
       load({ delivery_date: "2026-05-10", odometer_start: 0, odometer_end: 9000 }),
-      load({ delivery_date: "2026-06-10", odometer_start: 0, odometer_end: 8000 }),
-      load({ delivery_date: "2026-07-05", odometer_start: 0, odometer_end: 1000 }),
+      load({ delivery_date: "2026-06-10", odometer_start: 0, odometer_end: 1000 }),
     ];
     expect(recentMilesPerMonth(loads, now)).toBeCloseTo(8000, 5);
+  });
+
+  it("excludes the running month: a 9-day-old month never moves the pace", () => {
+    const base = [
+      load({ delivery_date: "2026-04-10", odometer_start: 0, odometer_end: 6000 }),
+      load({ delivery_date: "2026-05-10", odometer_start: 0, odometer_end: 7000 }),
+      load({ delivery_date: "2026-06-10", odometer_start: 0, odometer_end: 8000 }),
+    ];
+    const withPartial = [
+      ...base,
+      load({ delivery_date: "2026-07-05", odometer_start: 0, odometer_end: 500 }),
+    ];
+    expect(recentMilesPerMonth(withPartial, now)).toBe(recentMilesPerMonth(base, now));
+    expect(recentMilesPerMonth(withPartial, now)).toBeCloseTo(7000, 5);
+  });
+
+  it("null pace when only the running month has miles", () => {
+    const loads = [load({ delivery_date: "2026-07-05", odometer_start: 0, odometer_end: 500 })];
+    expect(recentMilesPerMonth(loads, now)).toBeNull();
   });
 
   it("null pace when there are no recent miles", () => {

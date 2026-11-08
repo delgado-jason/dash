@@ -96,3 +96,33 @@ describe("timedStopCount", () => {
     expect(timedStopCount([])).toBe(0);
   });
 });
+
+describe("cancelled bookings are not facility visits", () => {
+  it("a cancelled load adds no dwell and no last visit", () => {
+    const t = facilityTimes(
+      [
+        load({ shipper_facility_id: "f1", pickup_date: "2026-05-08", load_status: "delivered" }),
+        load({
+          shipper_facility_id: "f1",
+          shipper_in: "06:00:00",
+          shipper_out: "18:00:00",
+          pickup_date: "2026-09-01",
+          load_status: "cancelled",
+        }),
+      ],
+      "f1",
+    );
+    expect(t.lastVisit).toBe("2026-05-08");
+    expect(t.timed).toBe(0);
+    expect(t.medianDwellMin).toBeNull();
+  });
+
+  it("timedStopCount skips cancelled loads", () => {
+    expect(
+      timedStopCount([
+        load({ shipper_facility_id: "f1", shipper_in: "06:00:00", shipper_out: "07:00:00", load_status: "cancelled" }),
+        load({ shipper_facility_id: "f1", shipper_in: "06:00:00", shipper_out: "07:00:00", load_status: "delivered" }),
+      ]),
+    ).toBe(1);
+  });
+});

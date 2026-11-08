@@ -376,7 +376,13 @@ const WebsitePage = () => {
             value={subscribers?.window_count ?? null}
             note={
               subscribers
-                ? `${subscribers.total} total`
+                ? `${subscribers.total} total${
+                    subscribers.test_excluded
+                      ? ` · (${subscribers.test_excluded} test address${
+                          subscribers.test_excluded === 1 ? "" : "es"
+                        } excluded)`
+                      : ""
+                  }`
                 : (subsError ?? "loading…")
             }
             rule="border-t sm:border-l lg:border-t-0 border-hairline-lo"

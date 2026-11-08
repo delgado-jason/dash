@@ -3,7 +3,7 @@ import type { AgentNote } from "@/types/agentNote";
 import type { AgentRatingHistory } from "@/types/agentRatingHistory";
 import type { TimelineEvent } from "@/types/timelineEvent";
 import type { AgentContact } from "@/services/agentContactsService";
-import { isDelivered } from "./status";
+import { isDelivered, isNeverRevenue } from "./status";
 
 const getLoadRevenue = (loads: Load[] | null): number | null => {
   if (!loads) return null;
@@ -24,7 +24,7 @@ export const getLoadCount = (loads: Load[] | null): number => {
     return 0;
   }
 
-  const notCancelled = loads.filter((load) => load.load_status !== "cancelled");
+  const notCancelled = loads.filter((load) => !isNeverRevenue(load));
 
   return notCancelled.length;
 };

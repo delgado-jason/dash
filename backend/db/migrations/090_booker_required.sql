@@ -1,0 +1,12 @@
+-- Every load names who booked it (Jason's call, Nod Sheet "The Numbers,
+-- Site-Wide" GL-106, 2026-11-05: "this should be a required field moving
+-- forward"; general items 5a, 2026-11-07).
+--
+-- The scoreboard, the dispatcher card and the Recap split loads by booked_by;
+-- a load with none vanished from both sides (7059883, $5,445, Aug 10 — set to
+-- Jason on Nov 6). The load form and the API now refuse a load without its
+-- booker; this is the last line. Counted on 2026-11-07: 0 NULL on prod and on
+-- dev, so no backfill and the constraint validates everywhere. The FK keeps
+-- ON DELETE SET NULL by name but can no longer null the column — deleting a
+-- user who booked loads is refused by the NOT NULL, which is the right answer.
+ALTER TABLE loads ALTER COLUMN booked_by SET NOT NULL;

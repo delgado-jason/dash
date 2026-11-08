@@ -1,4 +1,5 @@
 import type { Agent } from "@/types/agent";
+import { cleanName } from "@/lib/relationships/nameOf";
 import { codeOf } from "@/lib/agencies/codeOf";
 
 // The 3-letter code an agent wears off the load board — their own posting code
@@ -7,7 +8,7 @@ import { codeOf } from "@/lib/agencies/codeOf";
 // under it.
 export const agentCode = (a: Agent): string => codeOf(a)?.code ?? "";
 export const agentFullName = (a: Agent): string =>
-  `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim();
+  `${cleanName(a.first_name)} ${cleanName(a.last_name)}`.trim();
 
 // How an agent reads on the Scorer: "EWT · Danielle Carder" (code, then name).
 export const agentLabel = (a: Agent): string => {

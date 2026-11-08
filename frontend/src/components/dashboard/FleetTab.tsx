@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { Load } from "@/types/load";
 import { useFleetData } from "@/hooks/useFleetData";
-import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
+import { computeTruckMetrics, lifetimeSinceLabel } from "@/lib/metrics/truckMetrics";
 import { computeDue, fleetHealth, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import { apuDueOptions } from "@/lib/metrics/apuHours";
 import { shopSpend, fleetHeatmap, lastHomeDay, type DayStatus } from "@/lib/metrics/fleet";
-import { hometimeStatus } from "@/lib/metrics/hometime";
+import { hometimeStatus, lastHomeSignal } from "@/lib/metrics/hometime";
 import { itemToCheckable, cdlToCheckable, computeComplianceDue, type ComplianceLevel } from "@/lib/metrics/compliance";
 import { mpgWindows, monthlyFuelPrice } from "@/lib/metrics/fuelEconomy";
 import { money, rpm, dieselPrice } from "@/lib/format";
@@ -17,7 +17,6 @@ import { GaugeDial } from "@/components/ui/GaugeDial";
 import { CountUp } from "@/components/ui/CountUp";
 import { mileMilestone, fmtMiles } from "@/lib/metrics/mileClub";
 
-const HOME_TARGET_FALLBACK = 42; // only if the settlement-schedule setting is missing
 
 const DAY_FILL: Record<DayStatus, string> = {
   underload: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
@@ -79,10 +78,14 @@ export const FleetTab = ({
   const shop = useMemo(() => shopSpend(fleet.services, now, 12), [fleet.services, now]);
   const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, fleet.travelDays, now, 8), [loads, fleet.homeDays, fleet.travelDays, now]);
 
+  // GL-140: the chip grades against the threshold in Settings and nothing
+  // else — while the schedule is still loading (or has no threshold) it waits
+  // rather than grading you against a guess.
   const home = useMemo(() => {
-    const lh = lastHomeDay(loads, fleet.homeDays, fleet.travelDays, now);
-    return hometimeStatus(lh, fleet.hometimeThreshold ?? HOME_TARGET_FALLBACK, now);
-  }, [loads, fleet.homeDays, fleet.travelDays, fleet.hometimeThreshold, now]);
+    if (fleet.hometimeThreshold == null) return null;
+    const lh = lastHomeSignal(lastHomeDay(loads, fleet.homeDays, fleet.travelDays, now), fleet.homeTripDays, now);
+    return hometimeStatus(lh, fleet.hometimeThreshold, now);
+  }, [loads, fleet.homeDays, fleet.travelDays, fleet.homeTripDays, fleet.hometimeThreshold, now]);
 
   const dues = useMemo(() => {
     const cur = truck ? Number(truck.current_odometer) || null : null;
@@ -322,7 +325,9 @@ export const FleetTab = ({
                 {util != null ? pct(util) : "—"}
               </p>
               <p className="text-[10.5px] text-faint mt-1">
-                {metrics ? `${metrics.idleDays} idle days in window` : "no loads yet"}
+                {metrics
+                  ? `${lifetimeSinceLabel(metrics.windowStart) ?? "no window yet"} · ${metrics.idleDays} idle days`
+                  : "no loads yet"}
               </p>
             </div>
           </div>
@@ -330,10 +335,10 @@ export const FleetTab = ({
         <BoardCell
           className="md:border-r ds2-cell-rule"
           label="Home time"
-          value={home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut} days out`}
-          valueClassName={`text-[22px] ${home.state === "over" ? "text-amber-light" : ""}`}
-          sub={home.state === "none" ? "no home marks yet" : home.state === "over" ? `past your ${home.threshold}-day target` : `${home.toTarget} left to your ${home.threshold}-day target`}
-          tone={home.state === "over" ? "amb" : "none"}
+          value={!home ? "—" : home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut} days out`}
+          valueClassName={`text-[22px] ${home?.state === "over" ? "text-amber-light" : ""}`}
+          sub={!home ? "waits for the home-time target in Settings" : home.state === "none" ? "no home marks yet" : home.state === "over" ? `past your ${home.threshold}-day target` : `${home.toTarget} left to your ${home.threshold}-day target`}
+          tone={home?.state === "over" ? "amb" : "none"}
           to="/drivers"
           go="drivers"
         />

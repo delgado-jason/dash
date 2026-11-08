@@ -6,7 +6,7 @@
 import type { Load } from "@/types/load";
 import type { ContactType } from "@/lib/relationships/contactTypes";
 import { keyOf, localDayKey } from "@/lib/relationships/dayKeys";
-import { isDelivered } from "./status";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // The day the relationship system went live — the inbound gauge's baseline.
 export const SYSTEM_START = "2026-09-03";
@@ -154,7 +154,7 @@ export const bookedInWindow = (
   toKey: string,
 ): Load[] =>
   loads.filter((l) => {
-    if (l.load_status === "cancelled" || !l.created_at) return false;
+    if (isNeverRevenue(l) || !l.created_at) return false;
     const booked = keyOf(l.created_at);
     return booked >= fromKey && booked <= toKey;
   });
@@ -191,7 +191,7 @@ export const inboundTrend = (
 ): { month: string; share: number; attributed: number }[] => {
   const byMonth = new Map<string, Load[]>();
   for (const l of loads) {
-    if (l.load_status === "cancelled" || !l.created_at || l.booked_via == null) continue;
+    if (isNeverRevenue(l) || !l.created_at || l.booked_via == null) continue;
     const k = keyOf(l.created_at).slice(0, 7);
     const arr = byMonth.get(k) ?? [];
     arr.push(l);

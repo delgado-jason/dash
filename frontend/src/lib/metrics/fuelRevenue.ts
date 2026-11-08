@@ -42,8 +42,31 @@ export interface FuelMonth {
 
 export interface FuelVsRevenue {
   months: FuelMonth[]; // chronological; ONLY months with logged fuel
-  latest: FuelMonth | null; // most recent such month
+  latest: FuelMonth | null; // most recent such month (may be the running one)
+  // What the card LEADS with: the last COMPLETE month with logged fuel (on
+  // Nov 7, October). A month one fill old would read 27% vs 70% and mean
+  // nothing. Falls back to the running month only when it is the sole month.
+  headline: FuelMonth | null;
+  // The running month, shown as a "so far" line beneath the headline — null
+  // when it has no logged fuel yet, or when it IS the headline.
+  soFar: FuelMonth | null;
 }
+
+// "YYYY-MM" of `now` (local calendar month).
+const currentMonthKey = (now: Date): string =>
+  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+// The headline / so-far pick, pure on the month list so it can be tested alone.
+export const pickFscMonths = (
+  months: FuelMonth[],
+  now: Date,
+): { headline: FuelMonth | null; soFar: FuelMonth | null } => {
+  const cur = currentMonthKey(now);
+  const complete = months.filter((m) => m.month < cur);
+  const running = months.find((m) => m.month === cur) ?? null;
+  if (complete.length === 0) return { headline: running, soFar: null };
+  return { headline: complete[complete.length - 1], soFar: running };
+};
 
 const monthKey = (isoDate: string): string => isoDate.slice(0, 7); // "YYYY-MM"
 
@@ -53,6 +76,7 @@ export const fuelVsRevenue = (
   // Lifetime tank-window MPG (fuelStats.avgMpg) — the schedule's bonus term.
   // null → the term drops to 1 (no bonus claimed without data).
   avgMpg: number | null = null,
+  now: Date = new Date(),
 ): FuelVsRevenue => {
   // Fuel spend + gallons per month.
   const spend = new Map<string, number>();
@@ -117,5 +141,9 @@ export const fuelVsRevenue = (
       };
     });
 
-  return { months, latest: months.length ? months[months.length - 1] : null };
+  return {
+    months,
+    latest: months.length ? months[months.length - 1] : null,
+    ...pickFscMonths(months, now),
+  };
 };

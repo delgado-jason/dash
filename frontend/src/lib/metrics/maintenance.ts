@@ -250,8 +250,10 @@ export const currentTractorMiles = (loads: Load[]): number | null => {
 
 // Recent driving pace (miles/month) that drives the mileage→date projection.
 // We bucket delivered miles by calendar month over a recent window, then take
-// the MEDIAN of the last few monthly totals — so one anomalous month (a
-// breakdown that idles the truck, a monster haul, or the partial current month)
+// the MEDIAN of the last three COMPLETE months — the running month is
+// EXCLUDED (a month that is four days old would take a slot and drag the
+// median down, so every mileage ETA would move at each month start). One
+// anomalous month (a breakdown that idles the truck, a monster haul) still
 // can't skew the projection the way a mean would. Window is generous (120d) to
 // reliably capture ~3 full months.
 export const recentMilesPerMonth = (loads: Load[], now: Date): number | null => {
@@ -266,7 +268,9 @@ export const recentMilesPerMonth = (loads: Load[], now: Date): number | null => 
     const key = l.delivery_date.slice(0, 7); // YYYY-MM (ISO prefix, UTC-safe)
     byMonth.set(key, (byMonth.get(key) ?? 0) + miles);
   }
+  const runningMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const recent = [...byMonth.keys()]
+    .filter((k) => k < runningMonth)
     .sort()
     .slice(-3)
     .map((k) => byMonth.get(k)!);

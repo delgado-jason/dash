@@ -150,3 +150,36 @@ describe("fuelVsRevenue", () => {
     expect(r.months[0].fscCoverage).toBeCloseTo(0, 4); // fsc 0 / spend
   });
 });
+
+describe("fuelVsRevenue — headline is the last COMPLETE month", () => {
+  const nov7 = new Date(2026, 10, 7);
+  const entries = [
+    fuel({ fuel_date: "2026-09-10" }),
+    fuel({ fuel_date: "2026-10-10" }),
+    fuel({ fuel_date: "2026-11-03" }),
+  ];
+
+  it("on Nov 7 the headline is October and November is the so-far line", () => {
+    const r = fuelVsRevenue(entries, [], null, nov7);
+    expect(r.headline?.month).toBe("2026-10");
+    expect(r.soFar?.month).toBe("2026-11");
+  });
+
+  it("no fuel yet in the running month: headline October, no so-far line", () => {
+    const r = fuelVsRevenue(entries.slice(0, 2), [], null, nov7);
+    expect(r.headline?.month).toBe("2026-10");
+    expect(r.soFar).toBeNull();
+  });
+
+  it("only the running month has fuel: it headlines, with no so-far line", () => {
+    const r = fuelVsRevenue(entries.slice(2), [], null, nov7);
+    expect(r.headline?.month).toBe("2026-11");
+    expect(r.soFar).toBeNull();
+  });
+
+  it("no months at all", () => {
+    const r = fuelVsRevenue([], [], null, nov7);
+    expect(r.headline).toBeNull();
+    expect(r.soFar).toBeNull();
+  });
+});
