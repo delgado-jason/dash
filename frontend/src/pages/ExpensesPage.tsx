@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
+import { localToday } from "@/lib/metrics/today";
 import type { ExpensePeriod } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
 import {
@@ -29,9 +32,9 @@ import { FetchFailed } from "@/components/integrity/FetchFailed";
 // That month's miles from loads (drives cost-per-mile + break-even) — the
 // basis's own monthMiles (a union of odometer spans), so the month tile and
 // the rate to book can never count a mile differently (2026-11-04, DB-04).
-const monthMilesOf = (loads: Load[], periodMonth: string) => {
+const monthMilesOf = (loads: Load[], periodMonth: string, trips: Trip[] = []) => {
   const d = new Date(periodMonth);
-  const m = monthMiles(loads, d.getUTCFullYear(), d.getUTCMonth());
+  const m = monthMiles(loads, d.getUTCFullYear(), d.getUTCMonth(), trips);
   return { totalMiles: m.total, loadedMiles: m.loaded };
 };
 
@@ -40,6 +43,7 @@ const NO_PERIODS: ExpensePeriod[] = [];
 const ExpensesPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const { loads } = useLoads(0);
+  const { trips } = useTrips(0); // home and shop miles join the basis (BASIS-07)
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // The selected period's full record is fetched into `fetched`; `selected` is
@@ -135,9 +139,9 @@ const ExpensesPage = () => {
   const miles = useMemo(
     () =>
       selected
-        ? monthMilesOf(loads, selected.period_month)
+        ? monthMilesOf(loads, selected.period_month, trips)
         : { totalMiles: 0, loadedMiles: 0 },
-    [selected, loads],
+    [selected, loads, trips],
   );
   const metrics = selected
     ? getExpenseMetrics(selected, miles.totalMiles, miles.loadedMiles)
@@ -166,8 +170,8 @@ const ExpensesPage = () => {
   // blended three months and divided by the 73% linehaul take while the
   // Market page blended six and divided by the measured keep).
   const targets = useMemo(
-    () => computeRateTargets(loads, periods, obligationsCost, schedule),
-    [loads, periods, obligationsCost, schedule],
+    () => computeRateTargets(loads, periods, obligationsCost, schedule, localToday(), trips),
+    [loads, periods, obligationsCost, schedule, trips],
   );
   const basisWord = targets.basis.windowLabel ?? "no P&L filed";
   // Full periods (with lines) for the basis months, so the sit/run burn blends

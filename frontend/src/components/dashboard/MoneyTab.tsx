@@ -134,8 +134,8 @@ export const MoneyTab = ({
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
   ).getUTCDate();
   const cov = useMemo(
-    () => monthCoverage(periods, obligationsMonthly, loads, now),
-    [periods, obligationsMonthly, loads, now],
+    () => monthCoverage(periods, obligationsMonthly, loads, now, trips),
+    [periods, obligationsMonthly, loads, now, trips],
   );
   const projIncome =
     cov.income > 0 && dayOfMonth > 0 ? (cov.income / dayOfMonth) * daysInMonth : null;

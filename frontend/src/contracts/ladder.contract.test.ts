@@ -17,8 +17,10 @@ import { perDayTone } from "@/lib/metrics/perDay";
 
 const now = new Date(`${TODAY}T00:00:00Z`);
 
-const targetsOf = (book: Book) =>
-  computeRateTargets(book.loads, book.periods, monthlyObligationCost(book.obligations), book.schedule, now);
+// The basis the pages stand on: loads AND the trip log (BASIS-07, 2026-11-07 —
+// home and shop miles join the odometer union; Jason's call of Nov 5).
+const targetsOf = (book: Book, trips = book.trips) =>
+  computeRateTargets(book.loads, book.periods, monthlyObligationCost(book.obligations), book.schedule, now, trips);
 
 describe("BASIS-01/03/08/09/10 · NET-09 · the ladder's golden numbers (six months, May–Oct ’26)", () => {
   const book = syntheticBook();
@@ -41,17 +43,24 @@ describe("BASIS-01/03/08/09/10 · NET-09 · the ladder's golden numbers (six mon
   });
 
   it("BASIS-01/03 · cost per driven mile = Σ true cost ÷ Σ total miles", () => {
-    // derived: 78,280.01 ÷ 20,177 mi (Σ odometer windows of the 31 loads delivered May–Oct) = 3.87967
+    // derived: 78,280.01 ÷ 20,742 mi = 3.77399 — the 31 loads delivered May–Oct span 20,177 mi as a
+    // union, plus the one logged home trip (Aug 11, 511,469 → 512,034 = 565 mi) that sits between two
+    // loads and so adds its miles once (BASIS-07).
     const sumCost = book.periods.reduce((s, p) => s + (p.cogs_total as number) + (p.expense_total as number), 0) + 6 * 1200;
     const window = book.loads.filter(
       (l) => l.load_status === "delivered" && String(l.delivery_date) >= "2026-05-01" && String(l.delivery_date) < "2026-11-01",
     );
-    const sumMiles = window.reduce((s, l) => s + ((l.odometer_end as number) - (l.odometer_start as number)), 0);
+    const loadMiles = window.reduce((s, l) => s + ((l.odometer_end as number) - (l.odometer_start as number)), 0);
+    const tripMiles = book.trips
+      .filter((tr) => String(tr.trip_date) >= "2026-05-01" && String(tr.trip_date) < "2026-11-01")
+      .reduce((s, tr) => s + ((tr.odometer_end as number) - (tr.odometer_start as number)), 0);
+    const sumMiles = loadMiles + tripMiles;
     expect(window).toHaveLength(31);
-    expect(sumMiles).toBe(20177);
-    expect(t.basis.totalMiles).toBe(20177);
+    expect(loadMiles).toBe(20177);
+    expect(tripMiles).toBe(565);
+    expect(t.basis.totalMiles).toBe(20742);
     expect(sumCost / sumMiles).toBeCloseTo(t.basis.costPerTotalMile as number, 10);
-    expect(t.basis.costPerTotalMile).toBeCloseTo(3.8797, 4);
+    expect(t.basis.costPerTotalMile).toBeCloseTo(3.774, 4);
   });
 
   it("NET-09 · the keep is Σnet ÷ Σgross over the basis window's delivered loads", () => {
@@ -70,27 +79,40 @@ describe("BASIS-01/03/08/09/10 · NET-09 · the ladder's golden numbers (six mon
   });
 
   it("BASIS-08 · your gross rate per driven mile (the ladder's marker) = Σgross ÷ Σtotal miles", () => {
-    // derived: 122,405 ÷ 20,177 = 6.06656
-    expect(t.grossRate).toBeCloseTo(6.0666, 4);
+    // derived: 122,405 ÷ 20,742 = 5.90131 (trips earn nothing, so the gross rate per mile driven falls with them)
+    expect(t.grossRate).toBeCloseTo(5.9013, 4);
+  });
+
+  it("BASIS-07 · home and shop trips count in the basis: the book's one home trip adds its 565 mi once, and the cost per mile falls with it", () => {
+    const loadsOnly = targetsOf(book, []);
+    expect(loadsOnly.basis.totalMiles).toBe(20177);
+    expect(loadsOnly.basis.costPerTotalMile).toBeCloseTo(3.8797, 4); // the pre-4e basis, loads alone
+    expect(t.basis.totalMiles - loadsOnly.basis.totalMiles).toBe(565);
+    expect(t.basis.costPerTotalMile).toBeLessThan(loadsOnly.basis.costPerTotalMile as number);
+    expect(t.basis.trueMonthlyCost).toBeCloseTo(loadsOnly.basis.trueMonthlyCost as number, 6); // the dollars don't move
+    expect(t.keep).toBeCloseTo(loadsOnly.keep, 10); // nor the keep — trips earn nothing and bill nothing
+    // a trip inside a load's window adds nothing: the union, not a sum
+    const inside = { ...book.trips[0], odometer_start: book.loads[0].odometer_start as number, odometer_end: (book.loads[0].odometer_start as number) + 10, trip_date: book.loads[0].delivery_date as string };
+    expect(targetsOf(book, [inside]).basis.totalMiles).toBe(20177);
   });
 
   it("BASIS-08/09 · the Standard ladder: walk-away = cost per driven mile ÷ keep, rungs = walkAway × (1 + tier)", () => {
-    // derived: walkAway = 3.87967 ÷ 0.759036 = 5.11131; tiers .10 / .20 / .30
+    // derived: walkAway = 3.77399 ÷ 0.759036 = 4.97208; tiers .10 / .20 / .30
     const L = t.bookingLadder;
-    expect(L.walkAway).toBeCloseTo(5.1113, 4);
-    expect(L.minimum).toBeCloseTo(5.6224, 4); // derived: 5.11131 × 1.10
-    expect(L.target).toBeCloseTo(6.1336, 4); // derived: 5.11131 × 1.20
-    expect(L.strong).toBeCloseTo(6.6447, 4); // derived: 5.11131 × 1.30
+    expect(L.walkAway).toBeCloseTo(4.9721, 4);
+    expect(L.minimum).toBeCloseTo(5.4693, 4); // derived: 4.97208 × 1.10
+    expect(L.target).toBeCloseTo(5.9665, 4); // derived: 4.97208 × 1.20
+    expect(L.strong).toBeCloseTo(6.4637, 4); // derived: 4.97208 × 1.30
     expect(L.walkAway).toBeCloseTo((t.basis.costPerTotalMile as number) / t.keep, 10);
     expect(t.tiers).toEqual({ minimum: 0.1, target: 0.2, strong: 0.3 });
   });
 
   it("BASIS-09 · the Specialized ladder: same walk-away, tiers .35 / .45 / .60", () => {
     const S = t.specLadder;
-    expect(S.walkAway).toBeCloseTo(5.1113, 4);
-    expect(S.minimum).toBeCloseTo(6.9003, 4); // derived: 5.11131 × 1.35
-    expect(S.target).toBeCloseTo(7.4114, 4); // derived: 5.11131 × 1.45
-    expect(S.strong).toBeCloseTo(8.1781, 4); // derived: 5.11131 × 1.60
+    expect(S.walkAway).toBeCloseTo(4.9721, 4);
+    expect(S.minimum).toBeCloseTo(6.7123, 4); // derived: 4.97208 × 1.35
+    expect(S.target).toBeCloseTo(7.2095, 4); // derived: 4.97208 × 1.45
+    expect(S.strong).toBeCloseTo(7.9553, 4); // derived: 4.97208 × 1.60
     expect(t.specTiers).toEqual({ minimum: 0.35, target: 0.45, strong: 0.6 });
   });
 
@@ -141,8 +163,8 @@ describe("BASIS-05 · on_pl obligations never join break-even", () => {
     const book = syntheticBook();
     const note = book.obligations.find((o) => o.obligation_id === "obl-truck-note");
     if (note) note.amount = note.amount + 600;
-    // derived: +600/mo × 6 months ÷ 20,177 mi = +0.1784 per driven mile
-    expect(targetsOf(book).basis.costPerTotalMile).toBeCloseTo((base.basis.costPerTotalMile as number) + (600 * 6) / 20177, 4);
+    // derived: +600/mo × 6 months ÷ 20,742 mi (loads + the home trip) = +0.1736 per driven mile
+    expect(targetsOf(book).basis.costPerTotalMile).toBeCloseTo((base.basis.costPerTotalMile as number) + (600 * 6) / 20742, 4);
   });
 });
 
@@ -167,8 +189,8 @@ describe("BASIS-04 · a draw is never cost", () => {
     const book = syntheticBook();
     const old = book.obligations.find((o) => !o.active);
     if (old) old.active = true;
-    // derived: +300/mo × 6 ÷ 20,177 mi = +0.0892 per driven mile
-    expect(targetsOf(book).basis.costPerTotalMile).toBeCloseTo((base.basis.costPerTotalMile as number) + (300 * 6) / 20177, 4);
+    // derived: +300/mo × 6 ÷ 20,742 mi = +0.0868 per driven mile
+    expect(targetsOf(book).basis.costPerTotalMile).toBeCloseTo((base.basis.costPerTotalMile as number) + (300 * 6) / 20742, 4);
   });
 });
 
@@ -198,7 +220,8 @@ describe("BASIS-11 · every surface reads ONE basis", () => {
     expect(implicit).toEqual(explicit);
     expect(implicit.monthsWanted).toBe(6);
     expect(implicit.months).toBe(6);
-    expect(implicit.costPerTotalMile).toBeCloseTo(t.basis.costPerTotalMile as number, 10);
+    // the same basis the ladder stands on, loads alone here (no trips passed to either call)
+    expect(implicit.costPerTotalMile).toBeCloseTo(targetsOf(book, []).basis.costPerTotalMile as number, 10);
   });
 
   it("the grind meter's weekly target and floor are the ladder's, on the same window label", () => {
@@ -262,7 +285,7 @@ describe("SCORE-01 · DAY-03 · MKT-05/06 · the Scorer, the ledger grades and $
       { costPerDrivenMile: t.basis.costPerTotalMile, payTake: t.basis.payTake },
     );
     expect(score.breakevenRpm).toBeCloseTo(t.bookingLadder.walkAway as number, 10);
-    expect(score.breakevenRpm).toBeCloseTo(5.1113, 4);
+    expect(score.breakevenRpm).toBeCloseTo(4.9721, 4); // the trip-inclusive walk-away (BASIS-07)
   });
 
   it("gradeCostsOf(targets) carries the ladder's calendar-day bars and the same cost per driven mile", () => {

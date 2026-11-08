@@ -174,7 +174,7 @@ const DriverDetailPage = () => {
     // Dashboard, the Market and Score a Load stand on — six months, the keep
     // measured from the window's own loads. The card used to blend three
     // months of its own.
-    const t = computeRateTargets(driverLoads, periods, obligationsDebt, schedule, now);
+    const t = computeRateTargets(driverLoads, periods, obligationsDebt, schedule, now, driverTrips);
     const basis = t.basis;
     const season = getSeasonStats(periods, driverLoads, driverTrips, now, obligationsDebt);
     // The RATE lever grades what you BOOK — gross $/driven mile against the
@@ -225,7 +225,7 @@ const DriverDetailPage = () => {
       windowRpm: t.grossRate,
       medals: earnedMedals(medals),
       allMedals: medals,
-      coverage: monthCoverage(periods, obligationsDebt, driverLoads, now),
+      coverage: monthCoverage(periods, obligationsDebt, driverLoads, now, driverTrips),
       career: {
         hauls: del.length,
         miles: del.reduce((s2, l) => s2 + (Number(l.loaded_miles) || 0), 0),
