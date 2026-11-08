@@ -14,9 +14,6 @@ import { useRateTargets } from "@/hooks/useRateTargets";
 import { useIntegrity } from "@/hooks/useIntegrity";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
-import { useAwardPops } from "@/hooks/useAwardPops";
-import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
-import { DEMO_AWARDS } from "@/lib/metrics/awards";
 import { latestRecapWithData } from "@/lib/metrics/recap";
 import { MarketChip } from "@/components/dashboard/MarketChip";
 import { OpsStatusbar } from "@/components/dashboard/OpsStatusbar";
@@ -73,11 +70,9 @@ const OwnerDashboard = () => {
     const last = depositForWeek(boardInput, prev);
     return last.date >= todayKey ? last : depositForWeek(boardInput, cur);
   }, [boardInput, todayKey]);
-  const { pops, truckAvatarUrl } = useAwardPops(loads);
   // The latest FINISHED recap that actually has data — never the in-progress one.
   const latestRecap = latestRecapWithData(loads, now);
   // `?awarddemo` on the dashboard previews the celebration UI on demand.
-  const awardDemo = window.location.search.includes("awarddemo");
 
   const isLoading = loadsLoading || tripsLoading;
   const error = loadsError || tripsError;
@@ -110,7 +105,6 @@ const OwnerDashboard = () => {
   // trigger inside the statusbar, content in the 1180px operations column.
   return (
     <div className="min-h-screen text-ink font-body">
-      <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <OpsStatusbar targets={targets} integrityOpen={integrity.loading ? 0 : integrity.visible.length} />
         <div className="mt-4">

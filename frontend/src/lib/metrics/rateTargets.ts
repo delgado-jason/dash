@@ -13,7 +13,7 @@ import {
   BASIS_MONTHS,
 } from "@/lib/constants/targets";
 import { localToday } from "./today";
-import { isDelivered } from "./status";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // Rate & pace targets, all derived live from the P&L + loads. Pure functions
 // take `now` explicitly so they're testable without touching the clock.
@@ -360,14 +360,17 @@ export const payWeekRange = (
   return { start, end };
 };
 
-// Non-cancelled loads that fall in [start, end) — booked, in-transit, and
-// delivered all count, so mid-week reflects committed + earned freight. Date a
+// Loads that fall in [start, end) — booked, in-transit, and delivered all
+// count, so mid-week reflects committed + earned freight. Never-revenue loads
+// (a cancelled load, a TONU) are not freight and never count: a TONU is never a
+// booked load (Jason, Nov 5; the sweep's M1-02 — this filter kept only the
+// cancelled rule and priced TONU 4115417 into "this pay week" on Nov 8). Date a
 // load by its delivery day when there is one (planned or actual), else by its
 // pickup day — otherwise the in-transit load you're currently under (no delivery
 // date yet) drops out of the committed pipeline entirely.
 const loadsInWeek = (loads: Load[], start: Date, end: Date): Load[] =>
   loads.filter((l) => {
-    if (l.load_status === "cancelled") return false;
+    if (isNeverRevenue(l)) return false;
     const ref = l.delivery_date ?? l.pickup_date;
     if (!ref) return false;
     const rd = new Date(ref);

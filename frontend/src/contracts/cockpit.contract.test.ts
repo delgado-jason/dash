@@ -14,6 +14,8 @@ import { assembleCashBoardInput, type CashBoardParts } from "@/lib/metrics/cashB
 import { buildCashBoard } from "@/lib/metrics/cashBoard";
 import { cashAsOf } from "@/lib/metrics/cashToday";
 import { getDetentionOwed } from "@/lib/metrics/dashboard";
+import { computeRateTargets, getWeekGrossCommitted, getWeekGrossEarned } from "@/lib/metrics/rateTargets";
+import type { Load } from "@/types/load";
 
 const partsOf = (book: Book): CashBoardParts => ({
   today: TODAY,
@@ -186,5 +188,51 @@ describe("CASH ON HAND, TODAY · the number walked to today and no further", () 
       return s + sign * (l.amount ?? 0);
     }, 0);
     expect(t.amount! + laterSum).toBeCloseTo(col.ending!, 2);
+  });
+});
+
+describe("THIS PAY WEEK · a TONU is never a booked load (M1-02)", () => {
+  // Nov 8, 2026: the live card read $10,000 of $8,160 because the week filter
+  // kept only the cancelled rule and priced TONU 4115417 ($2,500) as booked
+  // freight. The rule is the house rule from lib/metrics/status: never-revenue
+  // loads (cancelled, TONU) are not freight and never count in the week.
+  const book = syntheticBook();
+  const notes = monthlyObligationCost(book.obligations);
+  const now = new Date(`${TODAY}T12:00:00Z`);
+  const base = computeRateTargets(book.loads, book.periods, notes, book.schedule, now, book.trips);
+  const start = base.weekStart!;
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 7);
+  const inWeek = new Date(start);
+  inWeek.setUTCDate(start.getUTCDate() + 1);
+  const day = inWeek.toISOString().slice(0, 10);
+  const tonu: Load = {
+    ...book.loads[0],
+    load_id: "tonu-in-week",
+    load_number: "4115417",
+    load_status: "tonu",
+    pickup_date: day,
+    delivery_date: day,
+    linehaul: "2200",
+    fuel_surcharge: "300",
+    total_accessorials: "0",
+    gross_revenue: "2500",
+    net_revenue: "1730",
+  } as unknown as Load;
+  const withTonu = computeRateTargets([...book.loads, tonu], book.periods, notes, book.schedule, now, book.trips);
+
+  it("the week's booked gross does not move when a TONU lands in the week", () => {
+    expect(withTonu.weekBooked).toBeCloseTo(base.weekBooked!, 2);
+    expect(getWeekGrossCommitted([...book.loads, tonu], start, end)).toBeCloseTo(getWeekGrossCommitted(book.loads, start, end), 2);
+  });
+
+  it("nor does the week's earned gross", () => {
+    expect(withTonu.weekEarned).toBeCloseTo(base.weekEarned!, 2);
+    expect(getWeekGrossEarned([...book.loads, tonu], start, end)).toBeCloseTo(getWeekGrossEarned(book.loads, start, end), 2);
+  });
+
+  it("a delivered load in the week DOES move it, by its gross", () => {
+    const real: Load = { ...tonu, load_id: "real-in-week", load_number: "9990001", load_status: "delivered" } as unknown as Load;
+    expect(getWeekGrossCommitted([...book.loads, real], start, end)).toBeCloseTo(getWeekGrossCommitted(book.loads, start, end) + 2500, 2);
   });
 });

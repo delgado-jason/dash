@@ -213,7 +213,7 @@ export const PulseTab = ({
 
       <Band label="THE BOTTOM LINE" first>
         {/* the hero plate: two figures side by side */}
-        <Panel variant="hero" className="md:col-span-6 p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <Panel className="md:col-span-6 p-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
           <CashPlate
             board={cash.board}
             floatLine={cash.floatLine}
