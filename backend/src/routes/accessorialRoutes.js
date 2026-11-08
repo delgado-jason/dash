@@ -2,6 +2,7 @@ import express from "express";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   getAccessorials,
+  getAllAccessorials,
   createAccessorial,
   patchAccessorial,
   deleteAccessorial,
@@ -10,7 +11,31 @@ import {
 const router = express.Router();
 router.use(requireAuth);
 
-// ---- GET ALL ACCESSORIALS ----
+// ---- GET EVERY ACCESSORIAL FOR THE ACCOUNT ----
+router.get("/", async (req, res) => {
+  try {
+    const user_id = req.user.user_id;
+
+    const accessorials = await getAllAccessorials(user_id);
+
+    return res.status(200).json({
+      message: "Accessorials retrieved successfully",
+      count: accessorials.length,
+      accessorials,
+    });
+  } catch (err) {
+    if (err.type === "validation") {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: err.message,
+    });
+  }
+});
+
+// ---- GET A LOAD'S ACCESSORIALS ----
 router.get("/load/:load_id", async (req, res) => {
   try {
     const user_id = req.user.user_id;

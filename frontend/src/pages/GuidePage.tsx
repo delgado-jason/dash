@@ -354,6 +354,7 @@ const NAV: { group: string; items: string[] }[] = [
       "OPS NOW — the number you type",
       "ASSUMPTIONS — the planning inputs behind the board",
       "What dash refuses — a blank is never zero",
+      "The Integrity page — what dash is working around",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -1663,6 +1664,42 @@ const GuidePage = () => {
               data fails to load, it says so in red — "Couldn't load the P&amp;L —
               the server didn't answer. Retry ›" — with dashes in the tiles,
               never the empty state that would claim you have no data.
+              Everything dash is working around is listed on the Integrity page;
+              the Dashboard shows the count while anything is open.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="The Integrity page — what dash is working around"
+            answers="Which inputs dash is standing on a fallback for, or skipping a record over, right now — and where to fix each one."
+            sources={[{ label: "Integrity", to: "/integrity" }]}
+          >
+            <p className="text-sm text-muted-text mb-2">
+              <span className="text-light">The page lists</span> every input a
+              number is quietly working around: a month with no P&amp;L, a
+              delivered load with no end odometer, a bill with no draft day, a
+              statement that says one thing while a load says another. Each row
+              names the record, says which figures read it and by how much, shows
+              the day the gap began, and links to the box that fixes it.{" "}
+              <span className="text-light">There are two severities.</span> Money
+              means a figure stands on a fallback or two sources disagree, so a
+              number you read is off. Data means a record is incomplete and the
+              numbers skip it. Money reads first, then data, newest first inside
+              each.{" "}
+              <span className="text-light">A dispatcher sees the data rows</span>
+              {" "}— the records she enters — and a count of just those; the money
+              rows are the owner's.{" "}
+              <span className="text-light">The chip</span> on the Dashboard's top
+              line, "INTEGRITY · 7 OPEN ›", opens the page, and it hides at
+              zero.
+            </p>
+            <Why>
+              A row leaves the moment its fix lands — dash re-reads the inputs
+              every time the page opens — and nothing is dismissed by hand. There
+              is no "ignore" button, because a number standing on a fallback is
+              still standing on it whether or not you looked away. The footer
+              line says what passed, so an empty list means every input was
+              checked and present, not that nothing was looked at.
             </Why>
           </Metric>
 

@@ -44,6 +44,31 @@ export async function getAccessorials(user_id, load_id) {
   return result.rows;
 }
 
+// ---- GET EVERY ACCESSORIAL FOR THE ACCOUNT ----
+// The Integrity page reads the whole set at once (one request, not one per load).
+// Same columns and the same user_id scoping as the per-load read.
+export async function getAllAccessorials(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+
+  const result = await db.query(
+    `
+        SELECT
+            accessorial_id,
+            load_id,
+            accessorial_type,
+            amount,
+            created_at,
+            updated_at
+        FROM accessorials
+        WHERE user_id = $1
+        ORDER BY created_at DESC, accessorial_id;
+    `,
+    [user_id],
+  );
+
+  return result.rows;
+}
+
 // ---- CREATE ACCESSORIAL SERVICE ----
 export async function createAccessorial(user_id, load_id, data) {
   // Reject missing user_id

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { careerRank } from "@/lib/metrics/playerCard";
 import { useGrind } from "@/hooks/useGrind";
@@ -20,8 +21,10 @@ const isoWeek = (d: Date): number => {
 
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const Chip = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[12.5px] tracking-[.08em] text-dim whitespace-nowrap">
+const Chip = ({ children, tone }: { children: React.ReactNode; tone?: "amber" }) => (
+  <span
+    className={`inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[12.5px] tracking-[.08em] whitespace-nowrap ${tone === "amber" ? "text-amber-hi" : "text-dim"}`}
+  >
     {children}
   </span>
 );
@@ -33,10 +36,13 @@ export const OpsStatusbar = ({
   loads,
   trips,
   targets,
+  integrityOpen = 0,
 }: {
   loads: Load[];
   trips: Trip[];
   targets: Targets;
+  // The viewer's open Integrity count; the chip hides at zero (and while loading).
+  integrityOpen?: number;
 }) => {
   // The local day as a LOCAL-noon Date — formatted local below (never an
   // anchored UTC midnight through local getters) — re-made when the day turns
@@ -98,6 +104,11 @@ export const OpsStatusbar = ({
         <Chip>
           Streak <b className="text-ink font-semibold">×{streak}</b>
         </Chip>
+      )}
+      {integrityOpen > 0 && (
+        <Link to="/integrity">
+          <Chip tone="amber">INTEGRITY · {integrityOpen} OPEN ›</Chip>
+        </Link>
       )}
     </div>
   );

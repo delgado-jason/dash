@@ -29,7 +29,7 @@ import type { Accessorial } from "@/types/accessorial";
 import type { SettlementSummary, SettlementLine } from "@/types/settlement";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { PlanRow, AccountRow, SnapshotRow, OpsCheckRow } from "@/services/planService";
-import type { CashAssumptionsRow } from "@/services/cashflowService";
+import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
 import { collectReadings, weekOdometerMiles } from "@/lib/metrics/odometer";
 import { payWeekOf } from "@/lib/metrics/payWeeks";
 
@@ -58,6 +58,10 @@ export type Book = {
   // its accessorials: the per-type rows the net-revenue rule and the integrity
   // checks read live here.
   accessorials: Accessorial[];
+  // The pasted QuickBooks archive, May–Oct: each month's expenses equal the
+  // filed P&L's cogs + expense totals (within a cent) and the cash chain is
+  // continuous (each month opens where the last closed).
+  financials: MonthlyFinancialRow[];
 };
 
 // ---------------------------------------------------------------- helpers
@@ -455,6 +459,41 @@ export const syntheticBook = (): Book => {
     };
   });
 
+  // ---- the pasted QuickBooks months, consistent with the filed P&L ----
+  const money2 = (n: number): string => n.toFixed(2);
+  let cash = 11000;
+  const financials: MonthlyFinancialRow[] = periods.map((p) => {
+    const income = p.income_total ?? 0;
+    const cogs = p.cogs_total ?? 0;
+    // QuickBooks' total_opex carries the whole expense section, interest included;
+    // interest_expense is reported beside it, not on top (prod, 2026-11-07).
+    const interest = p.lines?.find((l) => l.category === "Interest")?.amount ?? 0;
+    const opex = round2(p.expense_total ?? 0);
+    const ni = round2(income - cogs - opex);
+    const beginning = cash;
+    const depreciation = 1850;
+    const financing = -1200; // the truck note's principal
+    const ending = round2(beginning + ni + depreciation + financing);
+    cash = ending;
+    return {
+      month: p.period_month,
+      total_income: money2(income),
+      total_cogs: money2(cogs),
+      total_opex: money2(opex),
+      interest_expense: money2(interest),
+      net_income: money2(ni),
+      beginning_cash: money2(beginning),
+      operating_adjustments: money2(depreciation),
+      investing: "0.00",
+      financing: money2(financing),
+      ending_cash: money2(ending),
+      accounts_receivable: "0.00",
+      total_liabilities: "60000.00",
+      total_equity: "20000.00",
+      depreciation: money2(depreciation),
+    };
+  });
+
   // ---- obligations ----
   const obligations: Obligation[] = [
     {
@@ -756,6 +795,7 @@ export const syntheticBook = (): Book => {
     assumptions,
     opsChecks,
     accessorials,
+    financials,
   };
 };
 
