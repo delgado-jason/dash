@@ -1,4 +1,5 @@
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 // NET loadRevenue (post-carrier-cut) — the MTD estimate must be the money-kept
 // basis the P&L income line uses and the true-cost threshold is measured on.
@@ -38,6 +39,7 @@ export const monthCoverage = (
   obligationsMonthly: number,
   loads: Load[],
   now: Date,
+  trips: Trip[] = [],
 ): MonthCoverage => {
   const monthLabel = now.toLocaleDateString("en-US", {
     month: "long",
@@ -48,7 +50,7 @@ export const monthCoverage = (
   // The threshold — mean monthly true cost, notes included, from the cost
   // basis on the SAME six-month window every other surface prices on (call 12,
   // 2026-11-04; the three-month default had this $923/mo above the Market's).
-  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS);
+  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS, trips);
   const threshold = basis.trueMonthlyCost;
   const opEx = threshold != null ? threshold - obligationsMonthly : null;
 

@@ -111,6 +111,7 @@ export const useIntegrity = () => {
         monthlyObligationCost(data.obligations),
         data.schedule,
         anchorDay(today),
+        data.trips,
       ).basis;
       setInputs({ ...data, today, role: getRole(), basis });
       setLoaded(result);

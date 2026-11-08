@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
+import type { Trip } from "@/types/trip";
+import { getTrips } from "@/services/tripsService";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -22,6 +24,8 @@ export const useRateTargets = (loads: Load[]) => {
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+  // The trip log — home and shop miles join the basis's odometer union (BASIS-07).
+  const [trips, setTrips] = useState<Trip[]>([]);
   const now = useLocalToday();
 
   useEffect(() => {
@@ -30,11 +34,13 @@ export const useRateTargets = (loads: Load[]) => {
       getExpensePeriods().catch(() => [] as ExpensePeriod[]),
       getObligations().catch(() => [] as Obligation[]),
       getSettlementSchedule().catch(() => null),
-    ]).then(([ps, obs, sch]) => {
+      getTrips().catch(() => [] as Trip[]),
+    ]).then(([ps, obs, sch, ts]) => {
       if (!active) return;
       setPeriods(ps);
       setObligations(obs);
       setSchedule(sch);
+      setTrips(ts);
     });
     return () => {
       active = false;
@@ -47,7 +53,7 @@ export const useRateTargets = (loads: Load[]) => {
   );
 
   return useMemo(
-    () => computeRateTargets(loads, periods, obligationsMonthly, schedule, now),
-    [periods, obligationsMonthly, loads, schedule, now],
+    () => computeRateTargets(loads, periods, obligationsMonthly, schedule, now, trips),
+    [periods, obligationsMonthly, loads, schedule, now, trips],
   );
 };

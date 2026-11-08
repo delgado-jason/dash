@@ -1,4 +1,5 @@
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
@@ -83,7 +84,13 @@ export const completeMonthsBefore = (
 // used to count the shared miles twice and put the walk-away rate 6¢ low
 // (DB-04, 2026-11-04). A reversed, equal or zero reading is no span at all.
 // The Expenses page reads this same function for its month tiles.
-export const monthMiles = (loads: Load[], year: number, month: number) => {
+//
+// Every mile the truck drove (BASIS-07, Jason 2026-11-05): the home and shop
+// trips logged in the trip log join the union by their own odometer spans, so
+// the cost spreads over the miles that burned it — 1,806 mi May–Oct ’26 that
+// the Deadhead KPI already counted and the basis did not. A trip whose span
+// sits inside a load's window adds nothing, by the same union.
+export const monthMiles = (loads: Load[], year: number, month: number, trips: Trip[] = []) => {
   const inMonth = loads.filter(
     (l) =>
       isDelivered(l) &&
@@ -91,8 +98,16 @@ export const monthMiles = (loads: Load[], year: number, month: number) => {
       new Date(l.delivery_date).getUTCFullYear() === year &&
       new Date(l.delivery_date).getUTCMonth() === month,
   );
-  const spans = inMonth
-    .map((l) => ({ start: Number(l.odometer_start), end: Number(l.odometer_end) }))
+  const tripsInMonth = trips.filter(
+    (t) =>
+      t.trip_date &&
+      new Date(t.trip_date).getUTCFullYear() === year &&
+      new Date(t.trip_date).getUTCMonth() === month,
+  );
+  const spans = [
+    ...inMonth.map((l) => ({ start: Number(l.odometer_start), end: Number(l.odometer_end) })),
+    ...tripsInMonth.map((t) => ({ start: Number(t.odometer_start), end: Number(t.odometer_end) })),
+  ]
     .filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.start > 0 && s.end > s.start)
     .sort((a, b) => a.start - b.start);
   let total = 0;
@@ -170,6 +185,7 @@ export const getCostBasis = (
   loads: Load[],
   now: Date,
   monthsBack: number = BASIS_MONTHS,
+  trips: Trip[] = [],
 ): CostBasis => {
   const byKey = new Map<string, ExpensePeriod>();
   for (const p of periods) {
@@ -200,7 +216,7 @@ export const getCostBasis = (
     included.push({ year, month });
     const monthCost = (p.cogs_total ?? 0) + (p.expense_total ?? 0) + obligationsMonthly;
     cost += monthCost;
-    const m = monthMiles(loads, year, month);
+    const m = monthMiles(loads, year, month, trips);
     loaded += m.loaded;
     total += m.total;
     revenue += m.revenue;
@@ -441,7 +457,7 @@ export const getWindowRpm = (
   let revenue = 0;
   let loaded = 0;
   for (const { year, month } of completeMonthsBefore(now, monthsBack)) {
-    const m = monthMiles(loads, year, month);
+    const m = monthMiles(loads, year, month); // loaded miles only — trips carry none
     revenue += m.revenue;
     loaded += m.loaded;
   }
@@ -463,8 +479,9 @@ export const computeRateTargets = (
   obligationsMonthly: number,
   schedule: SettlementSchedule | null,
   now: Date = localToday(),
+  trips: Trip[] = [],
 ) => {
-  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS);
+  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS, trips);
   // Your linehaul take (linehaul % + trailer %). 1 = own authority / unconfigured.
   const linehaulTake = schedule
     ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)

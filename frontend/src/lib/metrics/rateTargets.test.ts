@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import {
   getBookedAheadGross,
@@ -221,6 +222,25 @@ describe("getCostBasis", () => {
     expect(b.months).toBe(0);
     expect(b.trueMonthlyCost).toBeNull();
     expect(b.breakEvenRpm).toBeNull();
+  });
+});
+
+describe("monthMiles — the trip log joins the odometer union (BASIS-07)", () => {
+  const load = (n: number, start: number, end: number, loaded: number): Load =>
+    ({ load_id: `l${n}`, load_number: `910000${n}`, load_status: "delivered", pickup_date: "2026-05-0" + n, delivery_date: "2026-05-0" + (n + 1), odometer_start: start, odometer_end: end, loaded_miles: loaded, linehaul: 1000, fuel_surcharge: 0, net_revenue: 730, gross_revenue: 1000 }) as unknown as Load;
+  const trip = (start: number, end: number, date: string) => ({ trip_id: "t1", trip_date: date, odometer_start: start, odometer_end: end, trip_purpose: "home", trip_type: "deadhead" }) as unknown as Trip;
+  const loads = [load(1, 1000, 1500, 450), load(2, 1800, 2200, 380)];
+
+  it("a home trip between two loads adds its miles once", () => {
+    expect(monthMiles(loads, 2026, 4).total).toBe(900); // 500 + 400, loads alone
+    expect(monthMiles(loads, 2026, 4, [trip(1500, 1800, "2026-05-02")]).total).toBe(1200); // + the 300-mile run home
+    expect(monthMiles(loads, 2026, 4, [trip(1500, 1800, "2026-05-02")]).loaded).toBe(830); // loaded miles never move
+  });
+
+  it("a trip inside a load's window, or in another month, adds nothing", () => {
+    expect(monthMiles(loads, 2026, 4, [trip(1100, 1200, "2026-05-02")]).total).toBe(900);
+    expect(monthMiles(loads, 2026, 4, [trip(1500, 1800, "2026-06-02")]).total).toBe(900);
+    expect(monthMiles(loads, 2026, 4, [trip(1800, 1800, "2026-05-02")]).total).toBe(900); // an equal reading is no span
   });
 });
 

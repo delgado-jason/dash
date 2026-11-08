@@ -898,8 +898,8 @@ const GuidePage = () => {
               true cost = P&amp;L operating cost + monthly obligations (truck
               note, etc.)
               <br />
-              cost per mile = true cost ÷ the miles the odometer chain shows across
-              your loads (loaded, and the empty miles between them)
+              cost per mile = true cost ÷ every mile the truck drove — the loads'
+              odometer windows and the home and shop trips you logged, as one union
             </Formula>
             <Eg>{live.eg}</Eg>
             <Why>
@@ -915,8 +915,9 @@ const GuidePage = () => {
               rate to book on the same window. It's over{" "}
               <span className="text-light">total</span> load miles —
               loaded, and the empty miles between loads — because every mile
-              costs you. Home and shop trips are not in the count yet; they
-              join it with the protection stage.
+              costs you. Home and shop trips count too (your call, Nov 5, 2026):
+              the dollars spread over every mile the truck drove, the way the
+              Deadhead KPI already counts them.
             </Why>
           </Metric>
 
