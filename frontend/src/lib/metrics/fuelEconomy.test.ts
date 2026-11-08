@@ -16,7 +16,7 @@ const e = (
   gallons: number,
   price_per_gallon: number,
   fuel_date: string,
-) => ({ odometer_reading, gallons, price_per_gallon, fuel_date });
+) => ({ odometer_reading, gallons, price_per_gallon, fuel_date, filled_to_top: gallons >= 120 }); // the migration-093 backfill rule
 
 // First four real fill-ups from the Fuelly export → one complete MPG window.
 const first4 = [
@@ -280,5 +280,20 @@ describe("latestTankRecap", () => {
     expect(
       latestTankRecap(stats, [{ month: "2020-01", value: 3 }])!.ppgVsNational,
     ).toBeNull();
+  });
+});
+
+describe("the fill-up tick decides a full tank, not the gallons (GL-154)", () => {
+  it("a ticked 90-gallon fill closes a window; an unticked 130-gallon fill does not", () => {
+    const fills = [
+      { ...e(500000, 125, 4.0, "2026-05-01"), filled_to_top: true }, // baseline
+      { ...e(500400, 130, 4.0, "2026-05-03"), filled_to_top: false }, // a big partial — rolls on
+      { ...e(500800, 90, 4.0, "2026-05-05"), filled_to_top: true }, // a small fill he says topped off
+    ];
+    const w = mpgWindows(fills);
+    expect(w).toHaveLength(1);
+    expect(w[0].toOdometer).toBe(500800);
+    expect(w[0].gallons).toBeCloseTo(220, 6); // the partial's 130 + this full's 90
+    expect(w[0].mpg).toBeCloseTo(800 / 220, 6);
   });
 });

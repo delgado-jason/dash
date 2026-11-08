@@ -30,7 +30,7 @@ import { MIN_LOADS_TO_CALL, PCTILE_EASY, PCTILE_HARD } from "@/lib/metrics/marke
 import { DIAL_MAX_MARGIN, DIAL_STEP } from "@/lib/metrics/rateDial";
 import { IN_MIN_LOADS, OUT_MIN_LOADS } from "@/lib/metrics/marketFactor";
 import { HOME_IDLE_DAYS } from "@/lib/metrics/marketLedger";
-import { FULL_THRESHOLD, FUEL_WINDOW_DAYS } from "@/lib/metrics/fuelEconomy";
+import { FUEL_WINDOW_DAYS } from "@/lib/metrics/fuelEconomy";
 import { BACKWARDS_TOLERANCE_MI, IMPLAUSIBLE_WEEK_MI } from "@/lib/metrics/odometer";
 import { FSC_BASE_MPG, FSC_PEG } from "@/lib/metrics/fuelRevenue";
 import { MARKET_RADIUS_MI as RADIUS_RECOMMENDER } from "@/lib/metrics/marketRecommender";
@@ -70,7 +70,6 @@ describe("CONST-01 · the pinned business constants", () => {
       // marketLedger.ts
       HOME_IDLE_DAYS,
       // fuelEconomy.ts
-      FULL_THRESHOLD,
       FUEL_WINDOW_DAYS,
       // odometer.ts
       BACKWARDS_TOLERANCE_MI,
@@ -107,7 +106,8 @@ describe("CONST-01 · the pinned business constants", () => {
       OUT_MIN_LOADS: 4,
       IN_MIN_LOADS: 4,
       HOME_IDLE_DAYS: 7,
-      FULL_THRESHOLD: 120,
+      // FULL_THRESHOLD (120 gal) retired 2026-11-08 — a full tank is the fill-up form's
+      // filled_to_top tick, not a gallon guess (GL-154; Rule change: GL-154).
       FUEL_WINDOW_DAYS: 30,
       BACKWARDS_TOLERANCE_MI: 1000,
       IMPLAUSIBLE_WEEK_MI: 5000,

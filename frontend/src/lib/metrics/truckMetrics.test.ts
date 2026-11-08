@@ -48,8 +48,8 @@ const tankWindow = (
   closeDate: string,
 ): FuelEntry[] =>
   [
-    { odometer_reading: openOdo, gallons: 120, price_per_gallon: 4, fuel_date: "2026-01-02" },
-    { odometer_reading: openOdo + miles, gallons: 120, price_per_gallon: cost / 120, fuel_date: closeDate },
+    { odometer_reading: openOdo, gallons: 120, price_per_gallon: 4, fuel_date: "2026-01-02", filled_to_top: true },
+    { odometer_reading: openOdo + miles, gallons: 120, price_per_gallon: cost / 120, fuel_date: closeDate, filled_to_top: true },
   ] as unknown as FuelEntry[];
 
 describe("computeTruckMetrics — days-based utilization", () => {

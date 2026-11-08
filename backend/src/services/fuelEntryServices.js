@@ -35,6 +35,7 @@ export async function getFuelEntries(user_id, truck_id) {
       price_per_gallon,
       odometer_reading,
       apu_hours,
+      filled_to_top,
       company_name,
       fuel_city,
       fuel_state,
@@ -79,6 +80,7 @@ export async function getFuelEntry(user_id, fuel_entry_id) {
       price_per_gallon,
       odometer_reading,
       apu_hours,
+      filled_to_top,
       company_name,
       fuel_city,
       fuel_state,
@@ -114,6 +116,9 @@ export async function createFuelEntry(user_id, truck_id, trip_id, data) {
     "company_name",
     "fuel_city",
     "fuel_state",
+    // GL-154 · ticked = the tank was filled to the top; only a ticked fill
+    // closes a tank window. Left out, the column default (TRUE) stands.
+    "filled_to_top",
   ];
 
   for (const field in data) {
@@ -214,6 +219,7 @@ export async function patchFuelEntry(user_id, fuel_entry_id, data) {
     "company_name",
     "fuel_city",
     "fuel_state",
+    "filled_to_top",
   ];
 
   // Throw error if data contains invalid field(s)

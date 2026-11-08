@@ -15,6 +15,7 @@ const fuel = (o: Partial<FuelEntry>): FuelEntry =>
     fuel_date: "2026-06-10",
     gallons: 100,
     price_per_gallon: 4,
+    filled_to_top: true,
     ...o,
   }) as FuelEntry;
 
@@ -181,5 +182,58 @@ describe("fuelVsRevenue — headline is the last COMPLETE month", () => {
     const r = fuelVsRevenue([], [], null, nov7);
     expect(r.headline).toBeNull();
     expect(r.soFar).toBeNull();
+  });
+});
+
+describe("par on Landstar's pasted table (GL-155)", () => {
+  const BANDS = [
+    { low: 4.0, high: 4.499, cpm: 0.6 },
+    { low: 4.5, high: 4.999, cpm: 0.7 },
+    { low: 5.0, high: null, cpm: 0.78 },
+  ];
+  const table = (effective_from: string) => ({ schedule_id: effective_from, effective_from, bands: BANDS, note: null, created_at: "" });
+  const now = new Date(2026, 10, 7); // Nov 7, 2026 — June is a past month
+  const entries = [fuel({ fuel_date: "2026-06-10", gallons: 1000, price_per_gallon: 4.5 })]; // $4,500 of fuel
+  const loads = [load({ delivery_date: "2026-06-15", loaded_miles: 5000, deadhead_miles: 1000, fuel_surcharge: "3000" })];
+
+  it("a table in force and the month's national price → loaded miles × the band, over the spend", () => {
+    const r = fuelVsRevenue(entries, loads, 6, now, {
+      schedules: [table("2026-04-01")],
+      dieselByMonth: new Map([["2026-06", 4.7]]),
+      latestDiesel: { price: 5.153, period: "2026-11-02" },
+    });
+    const m = r.months[0];
+    expect(m.par).toMatchObject({ kind: "table", effective_from: "2026-04-01", price: 4.7, priceIsThisWeek: false, cpm: 0.7 });
+    expect(m.par.kind === "table" && m.par.expectedFsc).toBeCloseTo(3500, 6); // 5,000 loaded × 70¢
+    expect(m.expectedCoverage).toBeCloseTo(3500 / 4500, 6);
+  });
+
+  it("the running month reads this week's price; a past month never does", () => {
+    const r = fuelVsRevenue(
+      [fuel({ fuel_date: "2026-11-03", gallons: 100, price_per_gallon: 5 })],
+      [load({ delivery_date: "2026-11-04", loaded_miles: 1000, deadhead_miles: 0, fuel_surcharge: "700" })],
+      6,
+      now,
+      { schedules: [table("2026-10-01")], dieselByMonth: new Map([["2026-11", 4.2]]), latestDiesel: { price: 5.153, period: "2026-11-02" } },
+    );
+    expect(r.months[0].par).toMatchObject({ kind: "table", price: 5.153, priceIsThisWeek: true, cpm: 0.78 });
+  });
+
+  it("a table but no national price for the month → unknown, named; never the estimate behind the table's name", () => {
+    const r = fuelVsRevenue(entries, loads, 6, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map(), latestDiesel: null });
+    expect(r.months[0].par).toEqual({ kind: "unknown", reason: "no national diesel price for Jun 2026" });
+    expect(r.months[0].expectedCoverage).toBeNull();
+  });
+
+  it("a price below the table's first band → unknown, named", () => {
+    const r = fuelVsRevenue(entries, loads, 6, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map([["2026-06", 3.5]]), latestDiesel: null });
+    expect(r.months[0].par).toEqual({ kind: "unknown", reason: "$3.500 is below the table's first band" });
+  });
+
+  it("no table in force for the month → the peg estimate, labelled", () => {
+    const r = fuelVsRevenue(entries, loads, 6, now, { schedules: [table("2026-07-01")], dieselByMonth: new Map([["2026-06", 4.7]]), latestDiesel: null });
+    expect(r.months[0].par).toEqual({ kind: "estimate" });
+    expect(r.months[0].expectedCoverage).toBeCloseTo(((4.5 - 1.25) / 4.5) * (5000 / 6000), 6);
+    expect(fuelVsRevenue(entries, loads, 6, now).months[0].par).toEqual({ kind: "estimate" }); // no inputs at all
   });
 });

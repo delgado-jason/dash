@@ -205,10 +205,10 @@ describe("getSeasonStats", () => {
 
 describe("personalBests", () => {
   const fuel = [
-    { odometer_reading: 570368, gallons: 131.91, price_per_gallon: 4.639, fuel_date: "2026-05-24" },
-    { odometer_reading: 570967, gallons: 79.78, price_per_gallon: 4.589, fuel_date: "2026-05-26" },
-    { odometer_reading: 571651, gallons: 114.425, price_per_gallon: 4.462, fuel_date: "2026-05-28" },
-    { odometer_reading: 572503, gallons: 135.1, price_per_gallon: 4.322, fuel_date: "2026-05-30" },
+    { odometer_reading: 570368, gallons: 131.91, price_per_gallon: 4.639, fuel_date: "2026-05-24", filled_to_top: true },
+    { odometer_reading: 570967, gallons: 79.78, price_per_gallon: 4.589, fuel_date: "2026-05-26", filled_to_top: false },
+    { odometer_reading: 571651, gallons: 114.425, price_per_gallon: 4.462, fuel_date: "2026-05-28", filled_to_top: false },
+    { odometer_reading: 572503, gallons: 135.1, price_per_gallon: 4.322, fuel_date: "2026-05-30", filled_to_top: true },
   ] as unknown as FuelEntry[];
 
   it("finds best week, biggest load, most loads/week", () => {

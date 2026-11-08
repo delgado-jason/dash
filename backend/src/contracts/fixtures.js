@@ -82,3 +82,13 @@ export const validPerDiemRate = () => ({
   rate: 86,
   note: "IRS FY2027",
 });
+
+export const validFscSchedule = () => ({
+  effective_from: "2026-11-01",
+  bands: [
+    { low: 4.0, high: 4.049, cpm: 0.58 },
+    { low: 4.05, high: 4.099, cpm: 0.59 },
+    { low: 4.1, high: null, cpm: 0.6 },
+  ],
+  note: "Landstar table",
+});

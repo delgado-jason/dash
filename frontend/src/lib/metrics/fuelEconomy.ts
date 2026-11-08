@@ -1,19 +1,25 @@
-// Fuel-page economy math. A fill-up of 120+ gallons is a FULL tank; anything
-// less is a PARTIAL that rolls into the next full. MPG is measured between
-// fulls: miles ÷ every gallon added since the previous full.
-export const FULL_THRESHOLD = 120;
+// Fuel-page economy math. A fill is FULL when Jason said so — filled_to_top,
+// ticked by default on the fill-up form (GL-154, 2026-11-05; General Items
+// mock 2, nodded 2026-11-07). Anything else is a PARTIAL that rolls into the
+// next full. MPG is measured between fulls: miles ÷ every gallon added since
+// the previous full. Before this the rule was a guess, 120 gallons or more;
+// migration 093 backfilled every older fill by that rule, so history reads
+// exactly as it did. LEGACY_FULL_GALLONS is that backfill rule, kept only so
+// the Guide and the migration agree — the math never reads it.
+export const LEGACY_FULL_GALLONS = 120;
 
 interface FuelLike {
   gallons: number | string; // Postgres numeric → string
   price_per_gallon: number | string;
   odometer_reading: number;
   fuel_date: string; // 'YYYY-MM-DD'
+  filled_to_top: boolean; // his word — the only thing that closes a window
 }
 
 const gal = (e: FuelLike) => Number(e.gallons);
 const ppg = (e: FuelLike) => Number(e.price_per_gallon);
 export const entryCost = (e: FuelLike): number => gal(e) * ppg(e);
-export const isFull = (e: FuelLike): boolean => gal(e) >= FULL_THRESHOLD;
+export const isFull = (e: FuelLike): boolean => e.filled_to_top === true;
 
 export interface MpgWindow {
   toOdometer: number;

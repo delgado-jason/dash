@@ -20,6 +20,9 @@ import {
   entryCost,
 } from "@/lib/metrics/fuelEconomy";
 import { fuelVsRevenue } from "@/lib/metrics/fuelRevenue";
+import { getFscSchedules } from "@/services/fscScheduleService";
+import type { FscSchedule } from "@/types/fscSchedule";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { useLoads } from "@/hooks/useLoads";
 import { FUEL_VENDORS, OTHER_VENDOR, US_STATES } from "@/lib/constants/fuel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -56,6 +59,9 @@ const FuelEntriesPage = () => {
   const [nationalSeries, setNationalSeries] = useState<NationalDieselMonth[]>(
     [],
   );
+  const [fscSchedules, setFscSchedules] = useState<FscSchedule[] | null>(null);
+  const [fscFailed, setFscFailed] = useState(false);
+  const [filledToTop, setFilledToTop] = useState(true); // filling up is the rule
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -113,6 +119,21 @@ const FuelEntriesPage = () => {
     load();
   }, []);
 
+  // Landstar's surcharge tables — the par the Fuel-vs-revenue card grades
+  // against. A failed fetch is named on the card, never an estimate in disguise.
+  useEffect(() => {
+    getFscSchedules()
+      .then(setFscSchedules)
+      .catch(() => setFscFailed(true));
+  }, []);
+
+  const retryFsc = () => {
+    setFscFailed(false);
+    getFscSchedules()
+      .then(setFscSchedules)
+      .catch(() => setFscFailed(true));
+  };
+
   // The clock is read INSIDE the memo: a `now` from the render body would be a
   // new Date every render, so listing it as a dependency would recompute the
   // tank windows on every keystroke. Same numbers, one less trap.
@@ -136,8 +157,21 @@ const FuelEntriesPage = () => {
     return parts.join(", ") || null;
   }, [recap, entries]);
   const fuelRev = useMemo(
-    () => fuelVsRevenue(entries, loads, stats.avgMpg),
-    [entries, loads, stats.avgMpg],
+    () =>
+      fuelVsRevenue(
+        entries,
+        loads,
+        stats.avgMpg,
+        new Date(),
+        fscFailed
+          ? null
+          : {
+              schedules: fscSchedules ?? [],
+              dieselByMonth: new Map(nationalSeries.map((m) => [m.month, m.value])),
+              latestDiesel: national ? { price: national.value, period: national.period } : null,
+            },
+      ),
+    [entries, loads, stats.avgMpg, fscSchedules, fscFailed, nationalSeries, national],
   );
   const dieselData = useMemo(
     () => dieselChartData(entries, nationalSeries),
@@ -182,6 +216,7 @@ const FuelEntriesPage = () => {
     setGallons("");
     setTotal("");
     setCity("");
+    setFilledToTop(true);
     setErrs({});
     setError(null);
   };
@@ -207,6 +242,7 @@ const FuelEntriesPage = () => {
     );
     setCity(e.fuel_city && e.fuel_city !== "--" ? e.fuel_city : "");
     setStateCode(e.fuel_state && e.fuel_state !== "--" ? e.fuel_state : "");
+    setFilledToTop(e.filled_to_top);
     setErrs({});
     setError(null);
     setShowForm(true);
@@ -271,6 +307,7 @@ const FuelEntriesPage = () => {
         company_name: company.trim() || null,
         fuel_city: city.trim() || null,
         fuel_state: stateCode.trim().toUpperCase(),
+        filled_to_top: filledToTop,
       };
       if (editingId) await updateFuelEntry(editingId, payload);
       else await createFuelEntry(payload);
@@ -379,7 +416,10 @@ const FuelEntriesPage = () => {
           yourCostPerGallon={stats.paidPerGallon30}
         />
 
-        <FuelVsRevenueCard data={fuelRev} />
+        {fscFailed && (
+          <FetchFailed what="the surcharge tables" onRetry={retryFsc} className="mt-4" />
+        )}
+        <FuelVsRevenueCard data={fuelRev} parUnavailable={fscFailed} />
 
         {/* fuel by state — the IFTA strip */}
         {(byState.states.length > 0 || byState.unassigned.fills > 0) && (
@@ -710,13 +750,17 @@ const FuelEntriesPage = () => {
               </SelectControl>
             </Field>
           </div>
-                <p className="font-condensed text-[11.5px] text-faint mt-3">
-                  {computedPpg != null && !ppgOver
-                    ? g >= 120
-                      ? "FULL — this clears your 120-gal line; the fill will close a tank."
-                      : "PARTIAL — under 120 gal; it rides into the next full's window."
-                    : "120+ gallons counts as a full tank; anything less is a partial."}
-                </p>
+                <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filledToTop}
+                    onChange={(ev) => setFilledToTop(ev.target.checked)}
+                  />
+                  <span className="font-condensed text-[13px] text-ink">Filled to the top</span>
+                  <span className="font-condensed text-[11.5px] text-faint">
+                    untick a partial — only a full fill closes a tank window
+                  </span>
+                </label>
                 {error && <p className="text-destructive text-sm mt-2">{error}</p>}
                 <div className="flex gap-2 justify-end mt-5">
                   <button

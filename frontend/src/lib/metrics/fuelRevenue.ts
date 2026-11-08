@@ -1,7 +1,9 @@
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
+import type { FscSchedule } from "@/types/fscSchedule";
 import { loadNetRevenue } from "./rateTargets";
 import { isDelivered } from "./status";
+import { bandFor, scheduleInForce, type FscPar } from "./fscTable";
 
 // THE FSC STANDARD (Jason, 2026-09-03). A fuel surcharge is NOT designed to
 // cover 100% of fuel — it pays the price ABOVE a contract peg, on LOADED
@@ -35,9 +37,21 @@ export interface FuelMonth {
   fsc: number; // Σ fuel surcharge delivered that month
   fuelPctNet: number | null; // null when no net that month
   fscCoverage: number | null; // null when no fuel that month (never shown then)
-  // The month's honest coverage bar (see FSC STANDARD above); null when the
-  // month lacks gallons or driven miles to compute it.
+  // The month's honest coverage bar; null when it cannot be computed.
+  // With a pasted Landstar table in force (GL-155): loaded miles × the band's
+  // ¢/mi at the month's national diesel price, over the fuel spend. Without
+  // one: the peg estimate above. `par` says which, and why when neither.
   expectedCoverage: number | null;
+  par: FscPar;
+}
+
+// What a month's par is read from when Landstar's table is on file (GL-155):
+// the pasted tables, the EIA national average per month ("YYYY-MM" → $/gal)
+// and this week's price for the month still running.
+export interface FscParInputs {
+  schedules: FscSchedule[];
+  dieselByMonth: Map<string, number>;
+  latestDiesel: { price: number; period: string } | null;
 }
 
 export interface FuelVsRevenue {
@@ -70,6 +84,59 @@ export const pickFscMonths = (
 
 const monthKey = (isoDate: string): string => isoDate.slice(0, 7); // "YYYY-MM"
 
+// "Sep 2026" from "2026-09" (UTC, never shifts).
+const monthWords = (k: string): string =>
+  new Date(`${k}-01T00:00:00Z`).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+
+// One month's par. A table in force that month (by its first day) beats the
+// peg estimate: expected FSC = loaded miles × the band's ¢/mi at the month's
+// national diesel price (this week's price for the running month), and the
+// coverage bar is that over the fuel spend. A table with no price for the
+// month, or a price below the table's first band, is UNKNOWN — the card says
+// why rather than falling back to the estimate behind the table's name.
+const monthPar = (a: {
+  month: string;
+  running: boolean;
+  fuelSpend: number;
+  loaded: number;
+  ppg: number | null;
+  loadedShare: number | null;
+  mpgBonus: number;
+  fsc: FscParInputs | null;
+}): { expectedCoverage: number | null; par: FscPar } => {
+  const table = a.fsc ? scheduleInForce(a.fsc.schedules, `${a.month}-01`) : null;
+  if (!table) {
+    const expectedCoverage =
+      a.ppg != null && a.ppg > FSC_PEG && a.loadedShare != null
+        ? ((a.ppg - FSC_PEG) / a.ppg) * a.loadedShare * a.mpgBonus
+        : null;
+    return { expectedCoverage, par: { kind: "estimate" } };
+  }
+  const weekly = a.running && a.fsc?.latestDiesel ? a.fsc.latestDiesel.price : null;
+  const monthly = a.fsc?.dieselByMonth.get(a.month) ?? null;
+  const price = weekly ?? monthly;
+  if (price == null)
+    return { expectedCoverage: null, par: { kind: "unknown", reason: `no national diesel price for ${monthWords(a.month)}` } };
+  const band = bandFor(table.bands, price);
+  if (!band)
+    return {
+      expectedCoverage: null,
+      par: { kind: "unknown", reason: `$${price.toFixed(3)} is below the table's first band` },
+    };
+  const expectedFsc = a.loaded * band.cpm;
+  return {
+    expectedCoverage: a.fuelSpend > 0 ? expectedFsc / a.fuelSpend : null,
+    par: {
+      kind: "table",
+      effective_from: table.effective_from,
+      price,
+      priceIsThisWeek: weekly != null,
+      cpm: band.cpm,
+      expectedFsc,
+    },
+  };
+};
+
 export const fuelVsRevenue = (
   entries: FuelEntry[],
   loads: Load[],
@@ -77,7 +144,9 @@ export const fuelVsRevenue = (
   // null → the term drops to 1 (no bonus claimed without data).
   avgMpg: number | null = null,
   now: Date = new Date(),
+  fscPar: FscParInputs | null = null,
 ): FuelVsRevenue => {
+  const cur = currentMonthKey(now);
   // Fuel spend + gallons per month.
   const spend = new Map<string, number>();
   const gallons = new Map<string, number>();
@@ -126,10 +195,16 @@ export const fuelVsRevenue = (
       const dr = driven.get(k) ?? 0;
       const loadedShare = dr > 0 ? ld / dr : null;
       const mpgBonus = avgMpg != null && avgMpg > 0 ? avgMpg / FSC_BASE_MPG : 1;
-      const expectedCoverage =
-        ppg != null && ppg > FSC_PEG && loadedShare != null
-          ? ((ppg - FSC_PEG) / ppg) * loadedShare * mpgBonus
-          : null;
+      const { expectedCoverage, par } = monthPar({
+        month: k,
+        running: k === cur,
+        fuelSpend,
+        loaded: ld,
+        ppg,
+        loadedShare,
+        mpgBonus,
+        fsc: fscPar,
+      });
       return {
         month: k,
         fuelSpend,
@@ -138,6 +213,7 @@ export const fuelVsRevenue = (
         fuelPctNet: n > 0 ? fuelSpend / n : null,
         fscCoverage: fuelSpend > 0 ? f / fuelSpend : null,
         expectedCoverage,
+        par,
       };
     });
 

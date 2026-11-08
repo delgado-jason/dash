@@ -403,6 +403,7 @@ export const syntheticBook = (): Book => {
       price_per_gallon: PRICES[(k - 1) % PRICES.length],
       odometer_reading: o,
       apu_hours: null,
+      filled_to_top: true, // the book's fills are full tanks (GL-154)
       company_name: "Fuel Network A",
       fuel_city: city,
       fuel_state: state,
