@@ -52,18 +52,15 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
 
   return useMemo(() => {
     const now = new Date();
-    // A "both" service covers this unit too; the trailer reads its hub, the
-    // truck its odometer. An APU service reads neither — it reads hours.
-    const svcOdo = (unit: "tractor" | "trailer"): number | null => {
-      const read = (s: (typeof services)[number]) =>
-        unit === "trailer" ? s.trailer_hub : s.odometer;
-      return services
-        .filter((s) => (s.unit === unit || s.unit === "both") && read(s) != null)
+    // The trailer reads the truck's odometer, by rule (GL-07). A "both"
+    // service covers the truck too; an APU service reads hours, not miles.
+    const svcOdo = (): number | null =>
+      services
+        .filter((s) => (s.unit === "tractor" || s.unit === "both") && s.odometer != null)
         .reduce<number | null>((m, s) => {
-          const v = read(s)!;
+          const v = s.odometer!;
           return m == null || v > m ? v : m;
         }, null);
-    };
     // The APU alerts off the same projection the Maintenance page draws — the
     // reading is softer than an odometer, the clock is not.
     const { apu, hoursPerRoadDay, roadDayShare } = apuDueOptions(
@@ -72,14 +69,15 @@ export const useMaintenanceAlerts = (loads: Load[]): Alert[] => {
       loads,
       now,
     );
+    const tractor = maxOdometer(
+      currentTractorMiles(loads),
+      svcOdo(),
+      maxFuelOdometer(fuelEntries),
+      maxTripOdometer(trips),
+    );
     const currentReading: CurrentReading = {
-      tractor: maxOdometer(
-        currentTractorMiles(loads),
-        svcOdo("tractor"),
-        maxFuelOdometer(fuelEntries),
-        maxTripOdometer(trips),
-      ),
-      trailer: maxOdometer(svcOdo("trailer")),
+      tractor,
+      trailer: tractor,
       apu: apu.hours,
       apuEstimated: apu.estimated,
     };

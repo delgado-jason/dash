@@ -1578,10 +1578,17 @@ const GuidePage = () => {
               <span className="text-light">latest</span> of an OPS NOW check and
               a Friday snapshot — on a day with both, the one typed later. A
               check typed in the morning still has the day's lines ahead of it
-              (payroll, a bill, a deposit), so they come off after it; a snapshot
-              holds its own day, including the accrual you moved before typing
-              it. Dash refuses a future date. A check replaces only the Ops
-              number — Maintenance, Tax and the Vault still read the snapshot.
+              (payroll, a bill), so they come off after it; a snapshot holds its
+              own day, including the accrual you moved before typing it. On a
+              day a deposit is dated, the form asks one more thing:{" "}
+              <span className="text-light">Today's deposit · it has landed</span>
+              , unticked because you usually type before the ACH posts.
+              Unticked, the board keeps that deposit{" "}
+              <span className="text-light">still to come</span> and adds it after
+              your number; ticked, it is already inside the balance you typed.
+              The field is not there on any other day. Dash refuses a future
+              date. A check replaces only the Ops number — Maintenance, Tax and
+              the Vault still read the snapshot.
             </Why>
           </Metric>
 
@@ -2584,9 +2591,15 @@ const GuidePage = () => {
               A clock belongs to one <span className="text-light">unit</span>,
               and every unit reads its own meter. The{" "}
               <span className="text-light">truck</span> counts miles off its
-              odometer. The <span className="text-light">trailer</span> counts
-              its hubodometer, which only moves when a service writes one down.
-              The <span className="text-light">APU</span> counts{" "}
+              odometer. The <span className="text-light">trailer</span> has no
+              hubodometer, so by your rule its meter{" "}
+              <span className="text-light">is the truck's odometer</span>: its
+              reading today is the truck's latest reading, named with its source
+              ("606,217 · truck 580991 · the Nov 7 fill"), and a trailer service
+              is pre-filled with the truck's last reading on or before the
+              service date — overtype it if you read the dash that day. The
+              old hub seed on the trailer record is gone. The{" "}
+              <span className="text-light">APU</span> counts{" "}
               <span className="text-light">engine hours</span> — it runs while
               the truck sits, so its odometer says nothing about its wear.
               Transmission work gets its own board but still rides the truck's
@@ -2697,9 +2710,12 @@ const GuidePage = () => {
               Pick the <span className="text-light">unit</span> first — it
               decides which meter the sheet asks for.{" "}
               <span className="text-light">Truck</span> wants an odometer,{" "}
-              <span className="text-light">Trailer</span> a hubodometer,{" "}
-              <span className="text-light">Both</span> reads both on one
-              invoice, and <span className="text-light">APU</span> reads hours.
+              <span className="text-light">Trailer</span> the truck's odometer
+              that day (pre-filled from the last reading on or before the date,
+              with its source named),{" "}
+              <span className="text-light">Both</span> reads the one odometer on
+              one invoice, and <span className="text-light">APU</span> reads
+              hours.
               The <span className="text-light">City</span> box is the same
               picker the load form uses: pick a suggestion and it fills the
               state for you, storing a clean "Carlisle, PA".

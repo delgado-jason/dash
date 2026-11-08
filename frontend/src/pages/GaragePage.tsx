@@ -16,6 +16,11 @@ import { careerRank } from "@/lib/metrics/playerCard";
 import { loadTypeMix } from "@/lib/metrics/loadMix";
 import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { maxOdometer } from "@/lib/metrics/maintenance";
+import { truckReadings, trailerReadingToday } from "@/lib/metrics/trailerMeter";
+import { getTrips } from "@/services/tripsService";
+import { getMaintenanceServices } from "@/services/maintenanceService";
+import type { Trip } from "@/types/trip";
+import type { MaintenanceService } from "@/types/maintenance";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RigCard, type RigCardProps } from "@/components/celebrations/RigCard";
 import { isDelivered } from "@/lib/metrics/status";
@@ -39,6 +44,8 @@ const GaragePage = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [trailers, setTrailers] = useState<Trailer[]>([]);
   const [fuel, setFuel] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [services, setServices] = useState<MaintenanceService[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const refs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -47,6 +54,8 @@ const GaragePage = () => {
     getDrivers().then(setDrivers).catch(() => {});
     getTrailers().then(setTrailers).catch(() => {});
     getFuelEntries().then(setFuel).catch(() => {});
+    getTrips().then(setTrips).catch(() => {});
+    getMaintenanceServices().then(setServices).catch(() => {});
   }, []);
 
   // Lifetime rig miles — the truck's odometer plus any fresher load/fuel reading.
@@ -55,6 +64,11 @@ const GaragePage = () => {
     maxFuelOdometer(fuel) ?? 0,
     ...loads.map((l) => Number(l.odometer_end) || 0),
   ) ?? 0;
+
+  // The trailer's meter is the truck's odometer, by rule (GL-07). Null until
+  // the truck has been read — the trailer card's rank then waits.
+  const trailerMeter =
+    trailerReadingToday(trucks[0] ?? null, truckReadings(fuel, loads, trips, services))?.reading ?? null;
 
   const cards: { id: string; filename: string; props: RigCardProps }[] = [];
 
@@ -115,8 +129,8 @@ const GaragePage = () => {
   for (const tr of trailers) {
     const trl = delivered(loads.filter((l) => l.trailer_id === tr.trailer_id));
     const heaviest = Math.max(0, ...trl.map((l) => Number(l.weight) || 0));
-    const hub = Math.max(Number(tr.current_hub) || 0, 0);
-    const rank = careerRank(hub);
+    const hub = trailerMeter;
+    const rank = hub != null ? careerRank(hub) : { name: "Awaiting a reading", index: 0 };
     cards.push({
       id: `trailer:${tr.trailer_id}`,
       filename: `trailer-${tr.unit_number}-card`,
@@ -128,7 +142,7 @@ const GaragePage = () => {
         rankIndex: rank.index,
         avatarUrl: tr.avatar_url ?? null,
         stats: [
-          { label: "HUB MILES", value: kMi(hub) },
+          { label: "METER MI", value: hub != null ? kMi(hub) : "—" },
           { label: "LOADS", value: num(trl.length) },
           { label: "HEAVIEST", value: heaviest > 0 ? `${kMi(heaviest)} lb` : "—" },
           { label: "TYPE", value: (tr.trailer_type ?? "Flat").slice(0, 8) },

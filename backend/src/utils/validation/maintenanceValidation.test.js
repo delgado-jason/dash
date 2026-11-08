@@ -8,6 +8,8 @@ import {
   READING_FIELD,
   MAX_APU_HOURS,
   apuHoursErrors,
+  reconcileBothReading,
+  BOTH_ONE_READING_ERROR,
 } from "./maintenanceValidation.js";
 import {
   validateFuelEntryCreate,
@@ -97,5 +99,27 @@ describe("fuel entries carry an optional apu_hours", () => {
     assert.deepEqual(validateFuelEntryPatch({ apu_hours: 12.5 }), [
       "apu_hours must be a whole number",
     ]);
+  });
+});
+
+describe("GL-07 — a both service carries one reading", () => {
+  test("an odometer alone fills the trailer's meter", () => {
+    const r = reconcileBothReading({ unit: "both", odometer: 600000 });
+    assert.equal(r.trailer_hub, 600000);
+    assert.deepEqual(r.errors, []);
+  });
+  test("two equal readings pass; two different ones are refused with the sentence", () => {
+    assert.deepEqual(reconcileBothReading({ unit: "both", odometer: 600000, trailer_hub: 600000 }).errors, []);
+    assert.deepEqual(reconcileBothReading({ unit: "both", odometer: 600000, trailer_hub: 456123 }).errors, [BOTH_ONE_READING_ERROR]);
+  });
+  test("no odometer stays blank — never a zero", () => {
+    const r = reconcileBothReading({ unit: "both" });
+    assert.equal(r.odometer, null);
+    assert.equal(r.trailer_hub, null);
+  });
+  test("a trailer service keeps its own trailer_hub; tractor and apu are untouched", () => {
+    assert.deepEqual(reconcileBothReading({ unit: "trailer", odometer: 5, trailer_hub: 9 }), { odometer: 5, trailer_hub: 9, errors: [] });
+    assert.deepEqual(reconcileBothReading({ unit: "tractor", odometer: 5 }), { odometer: 5, trailer_hub: null, errors: [] });
+    assert.deepEqual(reconcileBothReading({ unit: "apu", apu_hours: 3 }).errors, []);
   });
 });

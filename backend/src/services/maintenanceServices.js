@@ -9,6 +9,7 @@ import {
   READING_FIELD,
   UNIT_ERROR,
   SERVICE_UNIT_ERROR,
+  reconcileBothReading,
 } from "../utils/validation/maintenanceValidation.js";
 
 // Resolve the user's single active truck/trailer so maintenance auto-links to
@@ -203,6 +204,11 @@ export async function createMaintenanceService(user_id, data) {
   const hoursErrors = apuHoursErrors(data.apu_hours);
   if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
 
+  // GL-07: a "both" service carries ONE reading (the truck's odometer).
+  const one = reconcileBothReading(data);
+  if (one.errors.length) throw new ValidationError(one.errors[0]);
+  data = { ...data, trailer_hub: one.trailer_hub };
+
   const itemIds = Array.isArray(data.item_ids) ? data.item_ids : [];
   // Three meters, one per unit: `odometer` is the truck reading, `trailer_hub`
   // the trailer's hub, `apu_hours` the APU's hour meter. A combined ("both")
@@ -332,6 +338,32 @@ export async function patchMaintenanceService(user_id, service_id, data) {
     throw new ValidationError(SERVICE_UNIT_ERROR);
   const hoursErrors = apuHoursErrors(data.apu_hours);
   if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
+
+  // GL-07: the unit a patch lands on is the patch's, else the row's own. A
+  // "both" service carries one reading, so an odometer typed without a
+  // trailer_hub is copied to it, and two that differ are refused.
+  if (data.unit !== undefined || data.odometer !== undefined || data.trailer_hub !== undefined) {
+    const cur = await db.query(
+      `SELECT unit, odometer, trailer_hub FROM maintenance_services
+        WHERE service_id = $1 AND user_id = $2`,
+      [service_id, user_id],
+    );
+    if (cur.rowCount === 0) throw new NotFoundError("Service not found");
+    const row = cur.rows[0];
+    const unit = data.unit ?? row.unit;
+    if (unit === "both") {
+      const odometer = data.odometer !== undefined ? data.odometer : row.odometer;
+      const hub =
+        data.trailer_hub !== undefined
+          ? data.trailer_hub
+          : data.odometer !== undefined
+            ? data.odometer
+            : row.trailer_hub;
+      const one = reconcileBothReading({ unit, odometer, trailer_hub: hub });
+      if (one.errors.length) throw new ValidationError(one.errors[0]);
+      if (one.trailer_hub !== (row.trailer_hub ?? null)) data = { ...data, trailer_hub: one.trailer_hub };
+    }
+  }
 
   const updates = [];
   const values = [];

@@ -34,7 +34,7 @@ const cashInput = (book: Book): CashBoardInput => {
     Number(s.balances.find((b) => b.account_id === "acct-ops")?.balance);
   const checks: CashCheck[] = [
     ...book.snapshots.map((s) => ({ date: s.as_of, balance: opsBalance(s), kind: "snapshot" as const, note: s.note, createdAt: s.created_at })),
-    ...book.opsChecks.map((c) => ({ date: c.as_of, balance: Number(c.balance), kind: "check" as const, note: c.note, createdAt: c.created_at })),
+    ...book.opsChecks.map((c) => ({ date: c.as_of, balance: Number(c.balance), kind: "check" as const, note: c.note, createdAt: c.created_at, depositLanded: c.deposit_landed ?? null })),
   ];
   const readings = collectReadings(book.fuel, book.loads, book.trips);
   return {
@@ -456,5 +456,51 @@ describe("CASH-16 · a planning input that isn't set refuses its line — never 
     const noDed = buildCashBoard({ ...cashInput(book), deductionsFallback: null, buckets: { firstOfMonth: null, standard: null, samples: 0 } })!;
     expect(noDed.columns[0].deposit.amount).toBeNull();
     expect(noDed.columns[0].deposit.missing?.[0].label).toBe("the weekly settlement deductions");
+  });
+});
+
+// Q3 (Jason, 2026-11-05: "Ask on the form, deposit days only"; General Items
+// mock 3, call 3 lean A nodded 2026-11-07): on a day a deposit is dated, the
+// OPS NOW check says whether it had landed. Thu Nov 5 is the previous period's
+// deposit day (839.50 lands); a check typed that morning decides the line.
+describe("Q3 · the OPS NOW deposit-landed tick", () => {
+  const book = syntheticBook();
+  const onDepositDay = (landed: boolean | null, kind: "check" | "snapshot" = "check") => {
+    const input = cashInput(book);
+    const check: CashCheck = {
+      date: "2026-11-05",
+      balance: 10000,
+      kind,
+      note: null,
+      createdAt: "2026-11-05T05:27:00.000Z",
+      depositLanded: landed,
+    };
+    return buildCashBoard({ ...input, today: "2026-11-05", checks: [...input.checks, check] });
+  };
+
+  it("unticked (false): the day's deposit is still to come — it counts after the number", () => {
+    const b = onDepositDay(false);
+    expect(b?.columns[0].prevDeposit?.date).toBe("2026-11-05");
+    expect(b?.columns[0].prevDeposit?.counted).toBe(true);
+  });
+
+  it("ticked (true): the deposit is already inside the typed balance — not counted", () => {
+    expect(onDepositDay(true)?.columns[0].prevDeposit?.counted).toBe(false);
+  });
+
+  it("not asked (null — a check from before the tick): the old reading holds, inside the number", () => {
+    expect(onDepositDay(null)?.columns[0].prevDeposit?.counted).toBe(false);
+  });
+
+  it("a Friday-style snapshot dated the deposit day never asks — it already holds the deposit", () => {
+    expect(onDepositDay(false, "snapshot")?.columns[0].prevDeposit?.counted).toBe(false);
+  });
+
+  it("the tick moves the current ending by exactly the deposit: 839.50", () => {
+    const ahead = onDepositDay(false)?.columns[0].ending;
+    const inside = onDepositDay(true)?.columns[0].ending;
+    expect(ahead).not.toBeNull();
+    expect(inside).not.toBeNull();
+    expect((ahead as number) - (inside as number)).toBeCloseTo(839.5, 2);
   });
 });

@@ -18,6 +18,7 @@ import {
   type CurrentReading,
 } from "@/lib/metrics/maintenance";
 import { apuReadings, projectApuHours, roadDayShare } from "@/lib/metrics/apuHours";
+import { truckReadings } from "@/lib/metrics/trailerMeter";
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ScheduleTab } from "@/components/maintenance/ScheduleTab";
@@ -89,32 +90,36 @@ const MaintenancePage = () => {
   // from either loads or the service log (services often carry a fresher
   // odometer than entered loads); the APU reads projected hours.
   const currentReading: CurrentReading = useMemo(() => {
-    // A "both" service covers this unit too; the trailer reads its hub, the
-    // truck its odometer. An APU service reads neither.
-    const maxServiceOdo = (unit: "tractor" | "trailer"): number | null => {
-      const read = (s: (typeof services)[number]) =>
-        unit === "trailer" ? s.trailer_hub : s.odometer;
-      return services
-        .filter((s) => (s.unit === unit || s.unit === "both") && read(s) != null)
+    // A "both" service covers the truck too; an APU service reads neither.
+    const maxServiceOdo = (): number | null =>
+      services
+        .filter((s) => (s.unit === "tractor" || s.unit === "both") && s.odometer != null)
         .reduce<number | null>((max, s) => {
-          const v = read(s)!;
+          const v = s.odometer!;
           return max == null || v > max ? v : max;
         }, null);
-    };
     // The fuel log usually carries the freshest tractor odometer, so fold its
     // latest reading in alongside loads and services.
+    // The trailer reads the truck's odometer, by rule (GL-07): one number.
+    const tractor = maxOdometer(
+      currentTractorMiles(loads),
+      maxServiceOdo(),
+      maxFuelOdometer(fuelEntries),
+      maxTripOdometer(trips),
+    );
     return {
-      tractor: maxOdometer(
-        currentTractorMiles(loads),
-        maxServiceOdo("tractor"),
-        maxFuelOdometer(fuelEntries),
-        maxTripOdometer(trips),
-      ),
-      trailer: maxOdometer(maxServiceOdo("trailer")),
+      tractor,
+      trailer: tractor,
       apu: apu.hours,
       apuEstimated: apu.estimated,
     };
   }, [loads, services, fuelEntries, trips, apu]);
+
+  // Every dated reading of the truck's odometer — the trailer's meter, by rule.
+  const readings = useMemo(
+    () => truckReadings(fuelEntries, loads, trips, services),
+    [fuelEntries, loads, trips, services],
+  );
 
   const milesPerMonth = useMemo(() => recentMilesPerMonth(loads, new Date()), [loads]);
 
@@ -145,7 +150,7 @@ const MaintenancePage = () => {
       .reduce((sum, s) => sum + (s.cost ?? 0), 0);
   }, [services]);
 
-  // "truck 568,737 mi · trailer hub 456,123 · APU ~1,240 hrs · est. from road
+  // "truck 568,737 mi · trailer 568,737 (truck odometer) · APU ~1,240 hrs · est. from road
   // days since Sep 3". The ~ and the estimate clause appear only when the APU
   // number is projected; with no reading at all it says so outright.
   const subLine = useMemo(() => {
@@ -157,8 +162,8 @@ const MaintenancePage = () => {
     );
     parts.push(
       currentReading.trailer != null
-        ? `trailer hub ${num(currentReading.trailer)}`
-        : "trailer hub —",
+        ? `trailer ${num(currentReading.trailer)} (truck odometer)`
+        : "trailer — (truck odometer)",
     );
     if (apu.hours == null) parts.push("APU — hrs · needs a reading");
     else {
@@ -276,6 +281,7 @@ const MaintenancePage = () => {
           <ServicesTab
             items={items}
             services={services}
+            readings={readings}
             onChange={refresh}
             openSignal={serviceSignal}
           />

@@ -62,18 +62,23 @@ export const computeTrailerPatches = (trailerLoads: Load[]): Patch[] => {
 };
 
 export interface TrailerMedalData {
-  hubMiles: number;
+  // The trailer's own miles: the truck's odometer today less its reading the day
+  // the trailer went into service (GL-07 — the truck's odometer is the trailer's
+  // meter). null when either end is unknown: no Hub Club medal, never 0 miles.
+  hubMiles: number | null;
   earnings: number; // cumulative 8% share
   deliveredCount: number;
   loanPaidPct: number | null; // trailer payoff
 }
 
 export const computeTrailerMedals = (d: TrailerMedalData): Medal[] => {
-  const medals: Medal[] = [
-    tiered("hub-club", "Hub Club", "medal", [25_000, 50_000, 100_000, 250_000], d.hubMiles, (n) => `${Math.round(n / 1000)}k`),
+  const medals: Medal[] = [];
+  if (d.hubMiles != null)
+    medals.push(tiered("hub-club", "Hub Club", "medal", [25_000, 50_000, 100_000, 250_000], d.hubMiles, (n) => `${Math.round(n / 1000)}k`));
+  medals.push(
     tiered("trailer-earner", "Trailer Earner", "coins", [10_000, 25_000, 50_000], d.earnings, (n) => `$${Math.round(n / 1000)}k`),
     tiered("workhorse", "Workhorse", "stack-2", [100, 250, 500], d.deliveredCount, (n) => `${Math.round(n)}`),
-  ];
+  );
   if (d.loanPaidPct != null)
     medals.push(tiered("debt-crusher", "Debt Crusher", "lock-open", [0.25, 0.5, 0.75], d.loanPaidPct, (n) => `${Math.round(n * 100)}%`));
   return medals;

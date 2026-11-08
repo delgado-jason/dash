@@ -19,6 +19,8 @@ import { validateLoadCreate, validateLoadPatch, BOOKER_REQUIRED } from "../utils
 import { validatePerDiemRate } from "../utils/validation/perDiemRateValidation.js";
 import { validateFscSchedule } from "../utils/validation/fscScheduleValidation.js";
 import { validateFuelEntryCreate, validateFuelEntryPatch } from "../utils/validation/fuelValidation.js";
+import { normalizeOpsCheck, DEPOSIT_LANDED_ERROR } from "../utils/validation/opsCheckValidation.js";
+import { reconcileBothReading, BOTH_ONE_READING_ERROR } from "../utils/validation/maintenanceValidation.js";
 import { validateSnapshotBalances } from "../utils/validation/planSnapshotValidation.js";
 import {
   validSchedule,
@@ -311,4 +313,27 @@ describe("GL-155 · surcharge band tables", () => {
     assert.deepEqual(errors, []);
     assert.deepEqual(values, f);
   });
+});
+
+describe("Q3 · the OPS NOW deposit tick", () => {
+  const check = (over = {}) => ({ as_of: "2026-10-08", balance: 7309.08, ...over });
+  const refusal = (fn) => { try { fn(); } catch (e) { return e.message; } return null; };
+  test("true passes", () => assert.equal(normalizeOpsCheck(check({ deposit_landed: true })).deposit_landed, true));
+  test("false passes", () => assert.equal(normalizeOpsCheck(check({ deposit_landed: false })).deposit_landed, false));
+  test("absent is null — not asked, not a no", () => assert.equal(normalizeOpsCheck(check()).deposit_landed, null));
+  test('"yes" is refused with the sentence', () =>
+    assert.equal(refusal(() => normalizeOpsCheck(check({ deposit_landed: "yes" }))), DEPOSIT_LANDED_ERROR));
+  test("a valid check still needs its date and balance", () => {
+    assert.match(refusal(() => normalizeOpsCheck({ balance: 1, deposit_landed: true })), /YYYY-MM-DD/);
+    assert.match(refusal(() => normalizeOpsCheck({ as_of: "2026-10-08", deposit_landed: true })), /balance is required/);
+  });
+});
+
+describe("GL-07 · one reading for a both service", () => {
+  test("both equal passes", () =>
+    assert.deepEqual(reconcileBothReading({ unit: "both", odometer: 599431, trailer_hub: 599431 }).errors, []));
+  test("trailer_hub is filled from the odometer", () =>
+    assert.equal(reconcileBothReading({ unit: "both", odometer: 599431 }).trailer_hub, 599431));
+  test("both differing is refused with the sentence", () =>
+    refused(reconcileBothReading({ unit: "both", odometer: 599431, trailer_hub: 456123 }).errors, BOTH_ONE_READING_ERROR));
 });

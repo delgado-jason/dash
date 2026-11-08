@@ -8,11 +8,15 @@ import {
   getMaintenanceServices,
 } from "@/services/maintenanceService";
 import { useLoads } from "@/hooks/useLoads";
-import {
-  computeDue,
-  recentMilesPerMonth,
-  maxOdometer,
-} from "@/lib/metrics/maintenance";
+import { computeDue, recentMilesPerMonth } from "@/lib/metrics/maintenance";
+import { truckReadings, truckReadingOnOrBefore, trailerReadingToday, meterWords, shortDay } from "@/lib/metrics/trailerMeter";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
+import { getFuelEntries } from "@/services/fuelService";
+import { getTrips } from "@/services/tripsService";
+import { getTrucks } from "@/services/trucksService";
+import type { FuelEntry } from "@/types/fuelEntry";
+import type { Trip } from "@/types/trip";
+import type { Truck } from "@/types/truck";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { computeTrailerMetrics } from "@/lib/metrics/trailerMetrics";
 import {
@@ -62,6 +66,12 @@ const TrailerDetailPage = () => {
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [fuel, setFuel] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [truck, setTruck] = useState<Truck | null>(null);
+  // The truck's readings feed the meter; a failed fetch is named, never read as "no reading".
+  const [readingsFailed, setReadingsFailed] = useState(false);
+  const [readingsTick, setReadingsTick] = useState(0);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +91,18 @@ const TrailerDetailPage = () => {
       .then(setObligations)
       .catch(() => {});
   }, [id]);
+
+  // The meter's inputs, re-fetched on Retry (readingsTick bumps in the handler).
+  useEffect(() => {
+    if (!id) return;
+    Promise.all([getFuelEntries(), getTrips(), getTrucks()])
+      .then(([f, t, ts]) => {
+        setFuel(f);
+        setTrips(t);
+        setTruck(ts[0] ?? null);
+      })
+      .catch(() => setReadingsFailed(true));
+  }, [id, readingsTick]);
 
   // The loan tracked against this trailer, if any.
   const trailerLoan = obligations.find(
@@ -102,14 +124,21 @@ const TrailerDetailPage = () => {
     )
     .reduce((s, o) => s + (Number(o.amount) || 0), 0);
 
-  // Latest hub reading, derived from the app: stored + newest trailer service.
-  const hub = useMemo(() => {
-    if (!trailer) return 0;
-    const svcHubs = services
-      .filter((s) => s.unit === "trailer" || s.unit === "both")
-      .map((s) => s.trailer_hub);
-    return maxOdometer(trailer.current_hub, ...svcHubs) ?? trailer.current_hub;
-  }, [trailer, services]);
+  // The trailer's meter is the truck's odometer, by rule (GL-07): its reading
+  // today is the truck's latest reading, and it says which one it came from.
+  const reading = useMemo(
+    () => trailerReadingToday(truck, truckReadings(fuel, loads, trips, services)),
+    [truck, fuel, loads, trips, services],
+  );
+  const hub = reading?.reading ?? null; // null = nobody read the truck yet, never 0
+  // The trailer's own miles: today's reading less the truck's reading the day it
+  // went into service. null when either end is unknown — no medal, never 0.
+  const inServiceReading = useMemo(() => {
+    if (!trailer?.in_service_date) return null;
+    return truckReadingOnOrBefore(trailer.in_service_date.slice(0, 10), truckReadings(fuel, loads, trips, services));
+  }, [trailer, fuel, loads, trips, services]);
+  const trailerMiles =
+    hub != null && inServiceReading != null && hub >= inServiceReading.reading ? hub - inServiceReading.reading : null;
 
   // The operator's local day, anchored (call 13): every metric on this page
   // reads its clock through UTC getters or epoch math, so the asset page, the
@@ -138,7 +167,7 @@ const TrailerDetailPage = () => {
     () => trailerLoads.filter((l) => isDelivered(l)),
     [trailerLoads],
   );
-  // Every clock on this trailer, most urgent first — runs on the hub scale.
+  // Every clock on this trailer, most urgent first — runs on the truck's odometer.
   const clocks = useMemo(
     () =>
       items
@@ -148,10 +177,17 @@ const TrailerDetailPage = () => {
             i.unit === "trailer" &&
             (i.trailer_id === id || i.trailer_id == null),
         )
-        .map((it) => ({ it, d: computeDue(it, hub, new Date(), mpm) }))
+        .map((it) => {
+          // The last service that closed this clock — "done Aug 21 at 594,801".
+          const last = services
+            .filter((s) => s.item_ids.includes(it.item_id) && s.service_date)
+            .sort((a, b) => (a.service_date < b.service_date ? 1 : a.service_date > b.service_date ? -1 : 0))[0];
+          const lastReading = last ? (last.trailer_hub ?? last.odometer) : null;
+          return { it, d: computeDue(it, hub, new Date(), mpm), last: last ? { date: last.service_date, reading: lastReading } : null };
+        })
         .filter(({ d }) => d.progress != null)
         .sort((a, b) => (b.d.progress ?? 0) - (a.d.progress ?? 0)),
-    [items, id, hub, mpm],
+    [items, id, hub, mpm, services],
   );
 
   const saveEdit = async (data: Record<string, unknown>) => {
@@ -183,7 +219,7 @@ const TrailerDetailPage = () => {
 
   const metrics = computeTrailerMetrics(trailer, trailerLoads, services, now, trailerNote);
   const allTrailerMedals = computeTrailerMedals({
-    hubMiles: hub,
+    hubMiles: trailerMiles,
     earnings: revenue,
     deliveredCount: earnedLoads.length,
     loanPaidPct: assetLoanStatus(obligations, "trailer", now)?.ownedPct ?? null,
@@ -396,11 +432,46 @@ const TrailerDetailPage = () => {
             )}
           </div>
 
+          {/* the meter */}
+          <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
+            <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+              The meter
+            </span>
+            <p className="font-condensed text-[10.5px] text-faint mt-[3px]">
+              reads the truck&apos;s odometer · this trailer has no hubodometer
+            </p>
+            <div className="flex items-baseline gap-3 mt-[8px] flex-wrap">
+              <span className="font-condensed text-[11.5px] text-faint">Reading today</span>
+              <span className="font-condensed font-semibold text-[15px] text-dim tabular-nums">
+                {hub != null ? num(hub) : "—"}
+              </span>
+            </div>
+            <p className="font-condensed text-[10.5px] text-faint mt-[3px] tabular-nums">
+              {meterWords(reading, truck?.unit_number)}
+            </p>
+            {trailerMiles != null && inServiceReading && trailer?.in_service_date && (
+              <p className="font-condensed text-[10.5px] text-faint mt-[2px] tabular-nums">
+                with this trailer since {shortDay(trailer.in_service_date)} · {num(trailerMiles)} mi (the truck read{" "}
+                {num(inServiceReading.reading)} that day · {inServiceReading.source})
+              </p>
+            )}
+            {readingsFailed && (
+              <FetchFailed
+                what="the truck's readings"
+                className="mt-[6px]"
+                onRetry={() => {
+                  setReadingsFailed(false);
+                  setReadingsTick((t) => t + 1);
+                }}
+              />
+            )}
+          </div>
+
           {/* next service */}
           <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
               <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
-                Next service — the clocks · hub scale
+                Next service — the clocks · truck odometer
               </span>
               {nextClock && (
                 <span
@@ -440,6 +511,12 @@ const TrailerDetailPage = () => {
                     />
                   ))}
                 </div>
+                {nextClock.last && (
+                  <p className="font-condensed text-[10.5px] text-faint mt-[6px] tabular-nums">
+                    done {shortDay(nextClock.last.date)}
+                    {nextClock.last.reading != null ? ` at ${num(nextClock.last.reading)}` : " — no reading logged"}
+                  </p>
+                )}
                 <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
                   {clocks[1]
                     ? `${clocks[1].it.name.toLowerCase()}${

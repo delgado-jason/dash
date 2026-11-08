@@ -12,7 +12,14 @@ import {
 import { getObligations } from "@/services/obligationsService";
 import { useLoads } from "@/hooks/useLoads";
 import { useLocalToday } from "@/hooks/useLocalToday";
-import { computeDue, recentMilesPerMonth, maxOdometer } from "@/lib/metrics/maintenance";
+import { computeDue, recentMilesPerMonth } from "@/lib/metrics/maintenance";
+import { truckReadings, trailerReadingToday } from "@/lib/metrics/trailerMeter";
+import { getFuelEntries } from "@/services/fuelService";
+import { getTrips } from "@/services/tripsService";
+import { getTrucks } from "@/services/trucksService";
+import type { FuelEntry } from "@/types/fuelEntry";
+import type { Trip } from "@/types/trip";
+import type { Truck } from "@/types/truck";
 import { computePayoff, isPayoffTracked } from "@/lib/metrics/payoff";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { mileMilestone } from "@/lib/metrics/mileClub";
@@ -56,12 +63,6 @@ const FIELDS: FormField[] = [
   { name: "plate_number", label: "Plate", placeholder: "DTS780" },
   { name: "plate_state", label: "State", placeholder: "AL" },
   {
-    name: "current_hub",
-    label: "Hubodometer (seed — services keep it fresh)",
-    type: "number",
-    placeholder: "456123",
-  },
-  {
     name: "status",
     label: "Status",
     type: "select",
@@ -86,6 +87,9 @@ const TrailersPage = () => {
   const [items, setItems] = useState<MaintenanceItem[]>([]);
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [fuel, setFuel] = useState<FuelEntry[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [truck, setTruck] = useState<Truck | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -103,11 +107,20 @@ const TrailersPage = () => {
     getMaintenanceItems().then(setItems).catch(() => {});
     getMaintenanceServices().then(setServices).catch(() => {});
     getObligations().then(setObligations).catch(() => {});
+    getFuelEntries().then(setFuel).catch(() => {});
+    getTrips().then(setTrips).catch(() => {});
+    getTrucks().then((ts) => setTruck(ts[0] ?? null)).catch(() => {});
   }, []);
 
   // Per-trailer roster line: miles carried, hauls, its 8% share, note %, clocks.
   const now = useLocalToday(); // the local day, anchored (call 13)
   const mpm = useMemo(() => recentMilesPerMonth(loads, now), [loads, now]);
+  // The trailer's meter is the truck's odometer, by rule (GL-07): one reading
+  // for every trailer on the rig; null until somebody has read the truck.
+  const meter = useMemo(
+    () => trailerReadingToday(truck, truckReadings(fuel, loads, trips, services))?.reading ?? null,
+    [truck, fuel, loads, trips, services],
+  );
   const rows = useMemo(
     () =>
       trailers.map((t) => {
@@ -131,14 +144,8 @@ const TrailersPage = () => {
             isPayoffTracked(o),
         );
         const payoff = loan ? computePayoff(loan, now) : null;
-        // The trailer's clocks run on the hub scale — seed + service readings.
-        const hub =
-          maxOdometer(
-            t.current_hub,
-            ...services
-              .filter((s) => s.unit === "trailer" || s.unit === "both")
-              .map((s) => s.trailer_hub),
-          ) ?? t.current_hub;
+        // The trailer's clocks run on the meter (truck odometer).
+        const hub = meter;
         let overdue = 0;
         let soon = 0;
         for (const it of items.filter(
@@ -162,7 +169,7 @@ const TrailersPage = () => {
           m: mileMilestone(miles),
         };
       }),
-    [trailers, loads, obligations, items, services, mpm, now],
+    [trailers, loads, obligations, items, meter, mpm, now],
   );
 
   const save = async (data: Record<string, unknown>) => {

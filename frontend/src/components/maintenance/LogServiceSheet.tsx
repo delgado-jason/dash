@@ -5,6 +5,7 @@ import type { Vendor } from "@/types/vendor";
 import { Board } from "@/components/ui/Board";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import VendorAutocomplete from "@/components/vendors/VendorAutocomplete";
+import { truckReadingOnOrBefore, shortDay, type MeterReading } from "@/lib/metrics/trailerMeter";
 import { parseReading, parseCost } from "@/lib/maintenance/parseReading";
 import {
   FieldLabel,
@@ -18,7 +19,7 @@ import {
 // which clocks it reset, what it cost.
 //
 // The unit decides which meter the sheet asks for — Truck an odometer, Trailer
-// a hubodometer, Both reads both, APU reads HOURS (decision 4A). The city box
+// the TRUCK's odometer (the trailer has no hubodometer — GL-07), Both one odometer for both, APU reads HOURS (decision 4A). The city box
 // is the HERE picker the load form already uses; it writes "City, ST" into
 // `location` and nothing else (decision 7A). The vendor box is the rolodex
 // typeahead, which turns a merged spelling into the vendor's own name as he
@@ -44,11 +45,13 @@ const completableBy = (unit: ServiceUnit, items: MaintenanceItem[]) =>
 export const LogServiceSheet = ({
   items,
   vendors,
+  readings,
   onSave,
   onCancel,
   busy,
 }: {
   items: MaintenanceItem[];
+  readings: MeterReading[]; // every dated reading of the truck's odometer
   vendors: Vendor[];
   onSave: (data: ServiceInput) => void;
   onCancel: () => void;
@@ -57,7 +60,9 @@ export const LogServiceSheet = ({
   const [unit, setUnit] = useState<ServiceUnit>("tractor");
   const [date, setDate] = useState("");
   const [odometer, setOdometer] = useState(""); // truck reading
-  const [trailerHub, setTrailerHub] = useState(""); // trailer reading
+  // The trailer's reading: null until the owner types in the box, so the
+  // pre-fill from the truck's odometer can never overwrite his own number.
+  const [trailerTyped, setTrailerTyped] = useState<string | null>(null);
   const [apuHours, setApuHours] = useState(""); // the APU's hour meter
   const [vendor, setVendor] = useState("");
   const [location, setLocation] = useState(""); // "City, ST"
@@ -74,6 +79,11 @@ export const LogServiceSheet = ({
       return next;
     });
 
+  // The trailer reads the truck's odometer, by rule: the box opens on the
+  // truck's last reading on or before the service date, and says which one.
+  const prefill = date ? truckReadingOnOrBefore(date, readings) : null;
+  const trailerHub = trailerTyped ?? (prefill ? String(prefill.reading) : "");
+
   const unitItems = completableBy(unit, items);
   const ready = !!date && description.trim().length > 0;
 
@@ -86,8 +96,13 @@ export const LogServiceSheet = ({
       // reading nobody took — null, never 0 (parseReading, which keeps the
       // decimal point an odometer box can carry).
       odometer: unit === "tractor" || unit === "both" ? parseReading(odometer) : null,
+      // One odometer on a "both" visit: the trailer's meter is the truck's.
       trailer_hub:
-        unit === "trailer" || unit === "both" ? parseReading(trailerHub) : null,
+        unit === "both"
+          ? parseReading(odometer)
+          : unit === "trailer"
+            ? parseReading(trailerHub)
+            : null,
       apu_hours: unit === "apu" ? parseReading(apuHours) : null,
       vendor: vendor.trim() || null,
       location: location.trim() || null,
@@ -120,6 +135,7 @@ export const LogServiceSheet = ({
                 aria-pressed={unit === value}
                 onClick={() => {
                   setUnit(value);
+                  setTrailerTyped(null);
                   setCompleted(new Set()); // a different unit, different clocks
                 }}
                 className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] ${
@@ -140,7 +156,10 @@ export const LogServiceSheet = ({
               type="date"
               className="ds-input"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setTrailerTyped(null); // a new day, a new truck reading to pre-fill
+              }}
             />
           </div>
           {unit === "apu" ? (
@@ -156,11 +175,11 @@ export const LogServiceSheet = ({
               />
             </div>
           ) : (
-            <div className={unit === "both" ? "grid grid-cols-2 gap-3.5" : ""}>
-              {unit !== "trailer" && (
-                <div>
+            <div>
+              {unit !== "trailer" ? (
+                <>
                   <FieldLabel htmlFor="svc-odometer">
-                    {unit === "both" ? "Truck odometer" : "Odometer"}
+                    {unit === "both" ? "Odometer (truck and trailer)" : "Odometer"}
                   </FieldLabel>
                   <input
                     id="svc-odometer"
@@ -170,22 +189,28 @@ export const LogServiceSheet = ({
                     placeholder="568737"
                     inputMode="numeric"
                   />
-                </div>
-              )}
-              {unit !== "tractor" && (
-                <div>
-                  <FieldLabel htmlFor="svc-hub">
-                    {unit === "both" ? "Trailer hub" : "Hubodometer"}
-                  </FieldLabel>
+                </>
+              ) : (
+                <>
+                  <FieldLabel htmlFor="svc-hub">Trailer reading (truck odometer)</FieldLabel>
                   <input
                     id="svc-hub"
                     className="ds-input"
                     value={trailerHub}
-                    onChange={(e) => setTrailerHub(e.target.value)}
-                    placeholder="456123"
+                    onChange={(e) => setTrailerTyped(e.target.value)}
+                    placeholder="568737"
                     inputMode="numeric"
                   />
-                </div>
+                  <p className="font-condensed text-[11.5px] text-faint mt-1.5">
+                    {!date
+                      ? "pick the date and the truck's reading that day fills in"
+                      : prefill && trailerTyped == null
+                        ? `${prefill.reading.toLocaleString("en-US")} · ${prefill.source} — the truck's odometer is the trailer's meter; overtype if you read the dash that day`
+                        : prefill
+                          ? `typed by you — the truck read ${prefill.reading.toLocaleString("en-US")} · ${prefill.source}`
+                          : `no truck reading on or before ${shortDay(date)} — type the odometer`}
+                  </p>
+                </>
               )}
             </div>
           )}

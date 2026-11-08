@@ -784,7 +784,7 @@ export const syntheticBook = (): Book => {
     weekly_settlement_deductions: "175.00",
   };
   const opsChecks: OpsCheckRow[] = [
-    { check_id: "check-1", as_of: TODAY, created_at: stamp(TODAY, "14:05"), balance: "11240.15", note: "OPS NOW" },
+    { check_id: "check-1", as_of: TODAY, created_at: stamp(TODAY, "14:05"), balance: "11240.15", note: "OPS NOW", deposit_landed: null },
   ];
 
   return {

@@ -38,3 +38,22 @@ export const apuHoursErrors = (value, field = "apu_hours") => {
     return [`${field} cannot be more than ${MAX_APU_HOURS.toLocaleString("en-US")}`];
   return [];
 };
+
+// GL-07 (migration 097): the trailer has no hubodometer — its meter is the
+// truck's odometer, by rule. So a service on BOTH units carries ONE reading.
+// Given the service's unit and its two readings, fill the trailer's from the
+// truck's when only the odometer is there, and refuse when both are there and
+// differ (the CHECK maintenance_services_both_one_meter would refuse it too,
+// but the sentence has to reach the owner first). Any other unit passes
+// through untouched: a "trailer" service takes its own trailer_hub.
+export const BOTH_ONE_READING_ERROR =
+  "a service on both units carries one reading — the truck's odometer is the trailer's meter";
+
+export const reconcileBothReading = ({ unit, odometer, trailer_hub } = {}) => {
+  const out = { odometer: odometer ?? null, trailer_hub: trailer_hub ?? null, errors: [] };
+  if (unit !== "both") return out;
+  if (out.odometer !== null && out.trailer_hub === null) out.trailer_hub = out.odometer;
+  else if (out.odometer !== null && out.trailer_hub !== null && Number(out.odometer) !== Number(out.trailer_hub))
+    out.errors.push(BOTH_ONE_READING_ERROR);
+  return out;
+};

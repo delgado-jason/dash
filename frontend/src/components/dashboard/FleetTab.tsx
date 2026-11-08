@@ -223,7 +223,7 @@ export const FleetTab = ({
           interval != null && remaining != null ? Math.max(0, interval - remaining) : null;
         return (
           <ForgedPlate chamfer tilt className="p-5">
-            <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6">
               <div>
                 <p className="ds2-label">Truck {truck.unit_number} — the rig</p>
                 <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
@@ -354,7 +354,7 @@ export const FleetTab = ({
       </Board>
 
       {/* the rig + road-ready */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-3 items-start">
         <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">under-load · home · idle, {metrics?.windowDays ?? 0}d</span>}>How hard she runs</H3>
           <p className="text-[13px] font-bold">{rigName} <span className="text-muted-text font-normal text-[11.5px]">· #{truck.unit_number} · {Number(truck.current_odometer).toLocaleString()} mi</span></p>
@@ -433,7 +433,7 @@ export const FleetTab = ({
       </div>
 
       {/* shop spend + cost to run */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-3 items-start">
         <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">the shop log · last 12 months · the P&amp;L's Repairs line is the cost basis</span>}>Shop spend</H3>
           <div className="flex items-baseline gap-2.5 mb-1">
@@ -460,7 +460,7 @@ export const FleetTab = ({
               {shop.recent.map((s) => (
                 <div key={s.date + s.description} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
                   <span className="text-muted-text w-9 shrink-0">{new Date(s.date.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })}</span>
-                  <span className="truncate">{s.description}</span>
+                  <span className="truncate min-w-0 flex-1">{s.description}</span>
                   <span className="ml-auto font-bold whitespace-nowrap">{money(s.cost)}</span>
                 </div>
               ))}
