@@ -15,6 +15,7 @@ import type { FuelEntry } from "@/types/fuelEntry";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRateTargets } from "@/hooks/useRateTargets";
+import { useIntegrity } from "@/hooks/useIntegrity";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useAwardPops } from "@/hooks/useAwardPops";
@@ -53,6 +54,8 @@ const OwnerDashboard = () => {
     error: tripsError,
   } = useTrips(refreshKey);
   const targets = useRateTargets(loads);
+  // The chip in the statusbar: what is open for THIS viewer (none while loading).
+  const integrity = useIntegrity();
   // The operator's local day, anchored, rolling at midnight (call 13).
   const now = useLocalToday();
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
@@ -137,7 +140,7 @@ const OwnerDashboard = () => {
     <div className="min-h-screen text-ink font-body">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
-        <OpsStatusbar loads={loads} trips={trips} targets={targets} />
+        <OpsStatusbar loads={loads} trips={trips} targets={targets} integrityOpen={integrity.loading ? 0 : integrity.visible.length} />
         <div className="mt-4">
           <DashboardShell
         tabs={DASH_TABS}

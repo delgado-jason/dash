@@ -8,6 +8,7 @@ import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useDispatcherAwardPops } from "@/hooks/useDispatcherAwardPops";
 import { usePersonalGrind } from "@/hooks/useGrind";
+import { useIntegrity } from "@/hooks/useIntegrity";
 import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -54,6 +55,10 @@ const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // (which she books) is her chase surface. Detention is hours, not dollars.
 const DispatchDashboard = () => {
   const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(0);
+  // The viewer's open Integrity count — the data rows she can fix (call 2); the
+  // chip hides at zero and while loading (call 1).
+  const integrity = useIntegrity();
+  const integrityOpen = integrity.loading ? 0 : integrity.visible.length;
   const { trips, isLoading: tripsLoading, error: tripsError } = useTrips(0);
   const targets = useRateTargets(loads);
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
@@ -238,6 +243,14 @@ const DispatchDashboard = () => {
           </span>
           <span className="flex-1" />
           <DispatcherChip />
+          {integrityOpen > 0 && (
+            <Link
+              to="/integrity"
+              className="inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[12.5px] tracking-[.08em] whitespace-nowrap text-amber-hi hover:text-hot"
+            >
+              INTEGRITY · {integrityOpen} OPEN ›
+            </Link>
+          )}
           {rank && (
             <span className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow">
               <span

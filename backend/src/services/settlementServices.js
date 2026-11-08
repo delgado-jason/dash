@@ -296,6 +296,25 @@ export async function getLoadSettlement(user_id, load_id) {
   return result.rows;
 }
 
+// Every statement line for the account, in one read — the Integrity page and
+// the Dashboard's chip judge all 70+ statements at once (stage 4d, 2026-11-07);
+// fetching them per load was ~80 requests on every Dashboard visit.
+export async function getAllSettlementLines(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT sl.line_id, sl.settlement_id, sl.load_id, sl.load_number, sl.agent_code,
+            sl.kind, sl.line_class, sl.is_adjustment, sl.description,
+            sl.revenue, sl.refunds, sl.deductions, sl.net, sl.unit, sl.line_date,
+            to_char(s.period_ending,'YYYY-MM-DD') AS period_ending, s.server_url
+     FROM settlement_lines sl
+     JOIN settlements s ON s.settlement_id = sl.settlement_id
+     WHERE sl.user_id = $1
+     ORDER BY s.period_ending, sl.line_id`,
+    [user_id],
+  );
+  return result.rows;
+}
+
 // Per-load settlement rollup for the LOADS TABLE flags and the detail page's
 // open-last-statement link: settled gross (all lines, reversals included),
 // the last statement that touched the load, adjustment presence.

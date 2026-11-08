@@ -44,6 +44,7 @@ import DispatcherPage from "@/pages/DispatcherPage";
 import DispatchForgePage from "@/pages/DispatchForgePage";
 import DispatcherRecapPage from "@/pages/DispatcherRecapPage";
 import CompliancePage from "@/pages/CompliancePage";
+import IntegrityPage from "@/pages/IntegrityPage";
 import RecapPage from "@/pages/RecapPage";
 import TrophyHallPage from "@/pages/TrophyHallPage";
 import TrophyStudioPage from "@/pages/TrophyStudioPage";
@@ -90,6 +91,7 @@ const App = () => {
           />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/compliance" element={<CompliancePage />} />
+          <Route path="/integrity" element={<IntegrityPage />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/:agent_id" element={<AgentDetailPage />} />
           <Route
