@@ -16,7 +16,12 @@ import {
 } from "@/lib/perDiem";
 import type { PerDiemStatus } from "@/types/perDiem";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { money, moneyCents } from "@/lib/format";
+import { money } from "@/lib/format";
+import { getPerDiemRates } from "@/services/perDiemRateService";
+import type { PerDiemRate } from "@/types/perDiemRate";
+import { segmentWords, missingDaysWords, ratesWords } from "@/lib/perDiem/rates";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
+import { MissingInputLine } from "@/components/integrity/MissingInput";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -68,8 +73,10 @@ const PerDiemPage = () => {
 
   const [year, setYear] = useState(curYear);
   const [manual, setManual] = useState<Map<string, PerDiemStatus>>(new Map());
-  const [rate, setRate] = useState(69);
+  const [rates, setRates] = useState<PerDiemRate[] | null>(null); // null = not loaded yet
+  const [ratesFailed, setRatesFailed] = useState(false);
   const [deductPct, setDeductPct] = useState(0.8);
+  const [pctFailed, setPctFailed] = useState(false);
 
   useEffect(() => {
     getPerDiemDays(year)
@@ -78,13 +85,30 @@ const PerDiemPage = () => {
   }, [year]);
 
   useEffect(() => {
-    getSettlementSchedule()
-      .then((s) => {
-        setRate(s.per_diem_rate);
-        setDeductPct(s.per_diem_deduct_pct);
-      })
-      .catch(() => {});
+    getPerDiemRates()
+      .then(setRates)
+      .catch(() => setRatesFailed(true));
   }, []);
+
+  useEffect(() => {
+    getSettlementSchedule()
+      .then((s) => setDeductPct(s.per_diem_deduct_pct))
+      .catch(() => setPctFailed(true));
+  }, []);
+
+  // Retry handlers (event handlers — the flags reset here, never in an effect).
+  const retryRates = () => {
+    setRatesFailed(false);
+    getPerDiemRates()
+      .then(setRates)
+      .catch(() => setRatesFailed(true));
+  };
+  const retryPct = () => {
+    setPctFailed(false);
+    getSettlementSchedule()
+      .then((s) => setDeductPct(s.per_diem_deduct_pct))
+      .catch(() => setPctFailed(true));
+  };
 
   // Count/infer only through today (or the year's end for a past year).
   const cap = useMemo(() => {
@@ -101,9 +125,11 @@ const PerDiemPage = () => {
     [loads, year, cap],
   );
   const summary = useMemo(
-    () => computePerDiem(manual, inferred, rate, deductPct, year, cap),
-    [manual, inferred, rate, deductPct, year, cap],
+    () => (rates == null ? null : computePerDiem(manual, inferred, rates, deductPct, year, cap)),
+    [manual, inferred, rates, deductPct, year, cap],
   );
+  const pctWords = Math.round(deductPct * 100);
+  const deductibleText = summary && summary.deductible != null ? money(summary.deductible) : "—";
 
   const cycle = async (key: string) => {
     const prev = manual;
@@ -134,16 +160,15 @@ const PerDiemPage = () => {
         {/* the money first */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           <span className="font-display text-[21px] tracking-[.03em] tabular-nums" style={{ color: "#6fd08c" }}>
-            {money(summary.deductible)} DEDUCTIBLE
+            {deductibleText} DEDUCTIBLE
           </span>
           <span className="text-[13.5px] text-faint">
             {year === curYear ? "· year to date " : `· ${year} `}·{" "}
-            <b className="font-semibold text-ink">{summary.fullDays}</b> full ·{" "}
-            <b className="font-semibold text-ink">{summary.halfDays}</b> half ·{" "}
-            <b className="font-semibold text-ink">{money(rate)}</b>/day ·{" "}
-            <b className="font-semibold text-ink">{Math.round(deductPct * 100)}%</b>
+            <b className="font-semibold text-ink">{summary?.fullDays ?? "—"}</b> full ·{" "}
+            <b className="font-semibold text-ink">{summary?.halfDays ?? "—"}</b> half ·{" "}
+            <b className="font-semibold text-ink">{pctWords}%</b>
           </span>
-          {summary.inferredCount > 0 && (
+          {summary && summary.inferredCount > 0 && (
             <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.08)]">
               ⚠ {summary.inferredCount} DAY{summary.inferredCount === 1 ? "" : "S"} INFERRED
               FROM LOADS — TAP TO CONFIRM
@@ -191,32 +216,69 @@ const PerDiemPage = () => {
             </div>
             <div className="p-4">
               <p className="font-display text-[44px] tracking-[.02em] leading-none" style={{ color: "#6fd08c" }}>
-                {money(summary.deductible)}
+                {deductibleText}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
                 deductible per-diem{year === curYear ? " · year to date" : ""}
               </p>
               <div className="flex justify-between font-condensed text-[14px] text-dim mt-3">
                 <span>Full days</span>
-                <b className="text-ink tabular-nums">{summary.fullDays}</b>
+                <b className="text-ink tabular-nums">{summary?.fullDays ?? "—"}</b>
               </div>
               <div className="flex justify-between font-condensed text-[14px] text-dim mt-1">
                 <span>Half days</span>
-                <b className="text-ink tabular-nums">{summary.halfDays}</b>
+                <b className="text-ink tabular-nums">{summary?.halfDays ?? "—"}</b>
               </div>
-              <div
-                className="mt-3 rounded-[8px] px-3 py-2 font-condensed text-[12px] text-faint tabular-nums"
-                style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
-              >
-                ({summary.fullDays} × {money(rate)} + {summary.halfDays} ×{" "}
-                {moneyCents(rate * 0.75)}) × {Math.round(deductPct * 100)}%
-              </div>
+              {ratesFailed && (
+                <FetchFailed what="the per-diem rates" onRetry={retryRates} className="mt-3" />
+              )}
+              {pctFailed && (
+                <FetchFailed what="the deductible share" onRetry={retryPct} className="mt-3" />
+              )}
+              {summary && (
+                <div
+                  className="mt-3 rounded-[8px] px-3 py-2 font-condensed text-[12px] text-faint tabular-nums"
+                  style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                >
+                  {summary.missingDays.length > 0 && (
+                    <div className="mb-1">
+                      <MissingInputLine
+                        what={"price " + missingDaysWords(summary.missingDays)}
+                        missing={[
+                          {
+                            key: "per_diem_rate",
+                            label: "a per-diem rate for those days",
+                            fixAt: "SETTINGS",
+                            fixTo: "/settings",
+                          },
+                        ]}
+                      />
+                    </div>
+                  )}
+                  {summary.segments.map((seg) => (
+                    <div key={seg.rate_id}>{segmentWords(seg)}</div>
+                  ))}
+                  <div>× {pctWords}% deductible</div>
+                </div>
+              )}
               <p className="font-condensed text-[11.5px] text-faint mt-2.5">
-                rate <b className="text-ink">{money(rate)}/day</b> ·{" "}
-                <b className="text-ink">{Math.round(deductPct * 100)}%</b> deductible ·{" "}
-                <Link to="/settings" className="text-amber-hi hover:text-hot">
-                  edit on Settings →
-                </Link>
+                {rates == null ? (
+                  "loading rates…"
+                ) : rates.length === 0 ? (
+                  <>
+                    no per-diem rate on file ·{" "}
+                    <Link to="/settings" className="text-amber-hi hover:text-hot">
+                      add one on Settings →
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    rates: {ratesWords(rates)} · {pctWords}% deductible ·{" "}
+                    <Link to="/settings" className="text-amber-hi hover:text-hot">
+                      edit on Settings →
+                    </Link>
+                  </>
+                )}
               </p>
             </div>
           </div>

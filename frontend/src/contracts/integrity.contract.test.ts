@@ -26,6 +26,7 @@ const inputsOf = (book: Book): IntegrityInputs => ({
   accessorials: book.accessorials,
   payRates: book.payRates,
   schedule: book.schedule,
+  perDiemRates: book.perDiemRates,
   snapshots: book.snapshots,
   accounts: book.accounts,
   plan: book.plan,
@@ -38,7 +39,6 @@ const inputsOf = (book: Book): IntegrityInputs => ({
 const cleanBook = (): Book => {
   const b = syntheticBook();
   b.payRates.push({ accessorial_type: "Job-Site Delivery", pay_pct: 0.73 });
-  b.schedule.per_diem_rate = 80;
   return b;
 };
 const cleanInputs = (): IntegrityInputs => inputsOf(cleanBook());
@@ -280,7 +280,7 @@ describe("INT-01 · INT-SETTING", () => {
   it("per diem below the IRS rate", () => {
     const i = only(
       seed((b) => {
-        b.schedule.per_diem_rate = 69;
+        b.perDiemRates = b.perDiemRates.slice(0, 1);
       }),
       "INT-SETTING",
       "money",
@@ -288,6 +288,25 @@ describe("INT-01 · INT-SETTING", () => {
     );
     expect(i.since).toBeNull();
     expect(i.fixTo).toBe("/settings");
+  });
+
+  it("no rate covers today", () => {
+    const i = only(
+      seed((b) => {
+        b.perDiemRates = [];
+      }),
+      "INT-SETTING",
+      "money",
+      /^No per-diem rate covers today — every day out is unpriced until one does\.$/,
+    );
+    expect(i.fixTo).toBe("/settings");
+  });
+
+  it("a future row is not in force", () => {
+    const i = seed((b) => {
+      b.perDiemRates = [b.perDiemRates[1], { rate_id: "pdr-2027", effective_from: "2027-10-01", rate: 86, note: null }];
+    });
+    expect(i.filter((x) => x.id === "INT-SETTING")).toEqual([]);
   });
 });
 
@@ -341,7 +360,7 @@ describe("INT-01 · INT-LOAD-READINGS", () => {
 describe("INT-01 · order and audience", () => {
   const many = (): Issue[] =>
     seed((b) => {
-      b.schedule.per_diem_rate = 69;
+      b.perDiemRates = b.perDiemRates.slice(0, 1);
       b.periods[5] = brokenPeriod(b.periods[5]);
       const a = b.loads.find((x) => x.load_number === "9100003");
       const c = b.loads.find((x) => x.load_number === "9100020");

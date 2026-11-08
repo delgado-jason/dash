@@ -42,7 +42,6 @@ describe("validateSchedule — the lifted checks", () => {
     assert.match(validateSchedule({ settlement_day: 7 }).errors[0], /settlement_day must be a day of week/);
     assert.match(validateSchedule({ settlement_day: 2.5 }).errors[0], /settlement_day must be a day of week/);
     assert.match(validateSchedule({ deposit_lag_days: -1 }).errors[0], /deposit_lag_days/);
-    assert.match(validateSchedule({ per_diem_rate: 501 }).errors[0], /per_diem_rate must be between 0 and 500/);
     assert.match(validateSchedule({ per_diem_deduct_pct: 1.2 }).errors[0], /per_diem_deduct_pct/);
     assert.match(validateSchedule({ hometime_threshold_days: 0 }).errors[0], /hometime_threshold_days/);
     assert.match(validateSchedule({ margin_goal: 1 }).errors[0], /margin_goal must be a fraction between 0 and 1/);
@@ -51,7 +50,6 @@ describe("validateSchedule — the lifted checks", () => {
     assert.deepEqual(validateSchedule({ settlement_day: 3, deposit_lag_days: 1, margin_goal: 0.26, operation: "flatbed" }).errors, []);
   });
   test("a blank on a non-pct number is refused too", () => {
-    assert.match(validateSchedule({ per_diem_rate: null }).errors[0], /per_diem_rate needs a number/);
     assert.match(validateSchedule({ settlement_day: "" }).errors[0], /settlement_day needs a number/);
   });
   test("tier sets must ascend, judged on the merge", () => {

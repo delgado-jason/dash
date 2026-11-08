@@ -16,6 +16,7 @@ import { validateAssumptions } from "../utils/validation/assumptionsValidation.j
 import { validateObligation } from "../utils/validation/obligationValidation.js";
 import { validateExpensePeriod } from "../utils/validation/expensePeriodValidation.js";
 import { validateLoadCreate, validateLoadPatch, BOOKER_REQUIRED } from "../utils/validation/loadValidation.js";
+import { validatePerDiemRate } from "../utils/validation/perDiemRateValidation.js";
 import { validateSnapshotBalances } from "../utils/validation/planSnapshotValidation.js";
 import {
   validSchedule,
@@ -24,6 +25,7 @@ import {
   validExpensePeriod,
   validDeliveredLoad,
   validSnapshotAccounts,
+  validPerDiemRate,
   validSnapshotBalances,
 } from "./fixtures.js";
 
@@ -245,5 +247,29 @@ describe("PLAN-07 / PLAN-08 · snapshots — a balance for every active account,
     const accts = accounts.map((a) => (a.account_id === "acct-vault" ? { ...a, active: false } : a));
     const balances = validSnapshotBalances().filter((b) => b.account_id !== "acct-vault");
     assert.deepEqual(validateSnapshotBalances(balances, accts), []);
+  });
+});
+
+describe("GL-136 · per-diem rate rows", () => {
+  const refused = (patch, fragment) => {
+    const { errors } = validatePerDiemRate({ ...validPerDiemRate(), ...patch });
+    assert.ok(errors.length > 0, "expected a refusal");
+    assert.match(errors[0], fragment);
+  };
+  test("a blank date is refused", () => refused({ effective_from: "" }, /effective_from is required/));
+  test("2026-02-30 is refused", () => refused({ effective_from: "2026-02-30" }, /calendar day written YYYY-MM-DD/));
+  test("a blank rate is refused", () => refused({ rate: "" }, /rate is required/));
+  test("a rate of 0 is refused", () => refused({ rate: 0 }, /between \$1 and \$500/));
+  test("a rate of 501 is refused", () => refused({ rate: 501 }, /between \$1 and \$500/));
+  test("a 201-character note is refused", () => refused({ note: "x".repeat(201) }, /longer than 200/));
+  test("a valid row passes with coerced values", () => {
+    const { values, errors } = validatePerDiemRate({ effective_from: "2026-10-01", rate: "86", note: " IRS FY2027 " });
+    assert.deepEqual(errors, []);
+    assert.deepEqual(values, { effective_from: "2026-10-01", rate: 86, note: "IRS FY2027" });
+  });
+  test("a partial patch passes", () => {
+    const { values, errors } = validatePerDiemRate({ note: "typo fixed" }, { partial: true });
+    assert.deepEqual(errors, []);
+    assert.deepEqual(values, { note: "typo fixed" });
   });
 });

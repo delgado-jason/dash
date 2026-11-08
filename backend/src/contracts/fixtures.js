@@ -76,3 +76,9 @@ export const validSnapshotBalances = () => [
   { account_id: "acct-maint", balance: 950.5 },
   { account_id: "acct-vault", balance: 12000 },
 ];
+
+export const validPerDiemRate = () => ({
+  effective_from: "2026-10-01",
+  rate: 86,
+  note: "IRS FY2027",
+});

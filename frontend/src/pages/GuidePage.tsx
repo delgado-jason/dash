@@ -1684,7 +1684,9 @@ const GuidePage = () => {
               <span className="text-light">The page lists</span> every input a
               number is quietly working around: a month with no P&amp;L, a
               delivered load with no end odometer, a bill with no draft day, a
-              statement that says one thing while a load says another. Each row
+              statement that says one thing while a load says another, a per-diem
+              rate below the IRS number — or none whose start day has arrived, so
+              today is unpriced. Each row
               names the record, says which figures read it and by how much, shows
               the day the gap began, and links to the box that fixes it.{" "}
               <span className="text-light">There are two severities.</span> Money
@@ -1812,18 +1814,35 @@ const GuidePage = () => {
             sources={[{ label: "Per Diem", to: "/per-diem" }]}
           >
             <Formula>
-              (full days × rate + half days × 75% × rate) × 80% deductible
+              for each rate in force: (full days × rate + half days × 75% × rate)
+              · summed · × 80% deductible
             </Formula>
             <Eg>
               A week out = 5 full days + 2 half days (the days you left and got
               home). Each day away overnight counts; the departure and return
-              days are 75%.
+              days are 75%. The deduction card prints one line per rate:{" "}
+              <span className="text-light">
+                22 full + 3 half days × $80 (from Jan 1, 2026)
+              </span>
+              .
             </Eg>
             <Why>
               As a DOT hours-of-service driver you deduct{" "}
               <span className="text-light">80%</span> of the IRS special rate
-              (vs 50% for everyone else). The rate updates each October — set it
-              and the deductible on the Settings page. The default assumes the
+              (vs 50% for everyone else). The rate is a table of{" "}
+              <span className="text-light">dated rows</span> on the Settings page
+              — $69 before 2026, $80 from Jan 1, 2026 — and every day is priced by
+              the row in force that day, so a past year keeps the rate it was
+              filed at while the IRS's next number starts the day it changes. Add
+              a row when the IRS publishes (Oct 1 in a change year); a year with
+              no change needs no row. A day no row covers is never priced at $0
+              or at a guess: the card refuses in the line that needs it —{" "}
+              <span className="text-light">
+                Can't price 12 days (Jan 1, 2024 – Jan 12, 2024) — a per-diem rate
+                for those days isn't set. Set it in SETTINGS ›
+              </span>{" "}
+              — and the total waits. The 80% deductible share stays on Settings
+              beside the table. The default assumes the
               life: from <span className="text-light">Aug 18, 2026</span> on, an
               unmarked day counts as a <span className="text-light">full day
               out</span> automatically — tap a day only to mark it half
