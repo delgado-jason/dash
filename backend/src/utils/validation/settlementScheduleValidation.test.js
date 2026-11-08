@@ -2,33 +2,15 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { validateSchedule } from "./settlementScheduleValidation.js";
 
-const prod = { linehaul_pct: 0.65, trailer_pct: 0.08, fuel_surcharge_pct: 1, accessorial_pct: 0.73 };
 const stored = {
-  ...prod, rate_tier_std_min: 0.1, rate_tier_std_target: 0.2, rate_tier_std_strong: 0.3,
+  rate_tier_std_min: 0.1, rate_tier_std_target: 0.2, rate_tier_std_strong: 0.3,
   rate_tier_spec_min: 0.35, rate_tier_spec_target: 0.45, rate_tier_spec_strong: 0.6,
 };
 
-describe("validateSchedule — pcts", () => {
-  test("the prod schedule passes", () => {
-    assert.deepEqual(validateSchedule(prod), { values: prod, errors: [] });
-  });
-  test("null, '' and text are refused — never Number(null) = 0", () => {
-    for (const bad of [null, "", "  ", "abc", NaN]) {
-      const { errors, values } = validateSchedule({ linehaul_pct: bad });
-      assert.match(errors[0], /linehaul_pct needs a number — a blank would zero every load's net/, String(bad));
-      assert.equal("linehaul_pct" in values, false);
-    }
-  });
-  test("pcts are 0–1 (tightened from 0–2)", () => {
-    assert.match(validateSchedule({ fuel_surcharge_pct: 1.01 }).errors[0], /fraction between 0 and 1/);
-    assert.match(validateSchedule({ accessorial_pct: -0.01 }).errors[0], /fraction between 0 and 1/);
-    assert.deepEqual(validateSchedule({ fuel_surcharge_pct: 1, trailer_pct: 0 }).errors, []);
-  });
-  test("linehaul_pct + trailer_pct ≤ 1, on what arrives and on the merge", () => {
-    assert.match(validateSchedule({ linehaul_pct: 0.95, trailer_pct: 0.08 }).errors[0], /add to more than 1/);
-    assert.match(validateSchedule({ trailer_pct: 0.4 }, stored).errors[0], /add to more than 1/);
-    assert.deepEqual(validateSchedule({ linehaul_pct: 0.92, trailer_pct: 0.08 }).errors, []);
-    assert.deepEqual(validateSchedule({ trailer_pct: 0.4 }).errors, []); // other half unknown
+describe("validateSchedule — the pay split is gone (NET-01)", () => {
+  test("the four pcts are no longer read: they are not returned and not judged", () => {
+    const bad = { linehaul_pct: null, trailer_pct: 5, fuel_surcharge_pct: "abc", accessorial_pct: -1 };
+    assert.deepEqual(validateSchedule(bad), { values: {}, errors: [] });
   });
 });
 

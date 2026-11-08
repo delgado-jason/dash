@@ -11,6 +11,7 @@ import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getTrucks } from "@/services/trucksService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { useSplitToday } from "@/hooks/useSplitToday";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { useLocation } from "react-router-dom";
 import {
@@ -49,6 +50,7 @@ const RecapPage = () => {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+  const split = useSplitToday(); // the pay split in force today (NET-01)
   const location = useLocation();
   const navScope = (location.state as { scope?: RecapScope } | null)?.scope;
   const [scope, setScope] = useState<RecapScope>(navScope ?? "month");
@@ -93,9 +95,9 @@ const RecapPage = () => {
   const obligationsMonthly = monthlyObligationCost(obligations);
 
   const stats = useMemo(
-    () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now, schedule),
+    () => computeRecap(loads, fuel, periods, obligationsMonthly, range, scope, now, schedule, split),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loads, fuel, periods, obligationsMonthly, range.label, scope, schedule, now],
+    [loads, fuel, periods, obligationsMonthly, range.label, scope, schedule, split, now],
   );
 
   const truckAvatarUrl = trucks.find((t) => t.avatar_url)?.avatar_url ?? null;

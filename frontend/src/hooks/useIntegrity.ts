@@ -11,6 +11,8 @@ import { getAllAccessorials } from "@/services/accessorialService";
 import { getAccessorialRates } from "@/services/accessorialRateService";
 import { getPerDiemRates } from "@/services/perDiemRateService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getSettlementSplits } from "@/services/settlementSplitService";
+import { splitInForce } from "@/lib/metrics/splits";
 import { getSnapshots, getAccounts, getPlans } from "@/services/planService";
 import { getMaintenanceServices } from "@/services/maintenanceService";
 import { computeRateTargets, monthlyObligationCost } from "@/lib/metrics/rateTargets";
@@ -24,7 +26,7 @@ type Fetched = Omit<IntegrityInputs, "today" | "role" | "basis">;
 
 const EMPTY: Fetched = {
   loads: [], trips: [], fuel: [], settlements: [], settlementLines: [], periods: [],
-  financials: [], obligations: [], accessorials: [], payRates: [], schedule: null, perDiemRates: [],
+  financials: [], obligations: [], accessorials: [], payRates: [], schedule: null, perDiemRates: [], splits: [],
   snapshots: [], accounts: [], plan: null, assumptions: null, services: [],
 };
 
@@ -64,6 +66,7 @@ const loadAll = async (): Promise<Loaded> => {
     ["the planning assumptions", getCashAssumptions()],
     ["the service log", getMaintenanceServices()],
     ["the per-diem rates", getPerDiemRates()],
+    ["the settlement splits", getSettlementSplits()],
   ];
   const settled = await Promise.allSettled(jobs.map(([, p]) => p));
   const failed: string[] = [];
@@ -92,6 +95,7 @@ const loadAll = async (): Promise<Loaded> => {
     assumptions: v(14, null),
     services: v(15, EMPTY.services),
     perDiemRates: v(16, null), // unknown when the fetch failed — the check is skipped, not fed []
+    splits: v(17, null), // the dated pay splits; unknown when the fetch failed
   };
   return { data, failed };
 };
@@ -115,6 +119,7 @@ export const useIntegrity = () => {
         data.schedule,
         anchorDay(today),
         data.trips,
+        data.splits ? splitInForce(data.splits, today) : null,
       ).basis;
       setInputs({ ...data, today, role: getRole(), basis });
       setLoaded(result);

@@ -5,6 +5,7 @@ import type { IntegrityInputs } from "./issue";
 
 const empty = (over: Partial<IntegrityInputs> = {}): IntegrityInputs => ({
   today: TODAY,
+  splits: syntheticBook().splits,
   loads: [],
   trips: [],
   fuel: [],
@@ -77,9 +78,9 @@ describe("edge cases", () => {
     expect(runIntegrityChecks(empty({ settlementLines: b.settlementLines }))).toEqual([]);
   });
 
-  it("a null schedule skips the per-diem check and prints the fallback without a percent", () => {
+  it("no split in force prints the accessorial fallback without a percent (the pct lives on the dated split now)", () => {
     const b = syntheticBook();
-    const i = runIntegrityChecks(empty({ accessorials: b.accessorials, schedule: null }));
+    const i = runIntegrityChecks(empty({ accessorials: b.accessorials, schedule: null, splits: [] }));
     expect(i.filter((x) => x.id === "INT-ACC-UNRATED").length).toBeGreaterThan(0);
     expect(i.some((x) => x.id === "INT-SETTING")).toBe(false);
     expect(i.find((x) => x.id === "INT-ACC-UNRATED")?.title).toMatch(/paid at the fallback\.$/);
@@ -88,7 +89,7 @@ describe("edge cases", () => {
   it("a pay-rate match ignores case and spaces", () => {
     const b = syntheticBook();
     const i = runIntegrityChecks(
-      empty({ accessorials: b.accessorials, payRates: [...b.payRates, { accessorial_type: " job-site delivery ", pay_pct: 0.5 }] }),
+      empty({ accessorials: b.accessorials, payRates: [...b.payRates, { accessorial_type: " job-site delivery ", pay_pct: 0.5, pass_through: false }] }),
     );
     expect(i).toEqual([]);
   });

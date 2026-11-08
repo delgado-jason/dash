@@ -14,6 +14,7 @@ import type { Obligation } from "@/types/obligation";
 import type { Accessorial } from "@/types/accessorial";
 import type { AccessorialRate } from "@/types/accessorialRate";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import type { SettlementSplit } from "@/types/settlementSplit";
 import type { PerDiemRate } from "@/types/perDiemRate";
 import type { MaintenanceService } from "@/types/maintenance";
 import type { SnapshotRow, AccountRow, PlanRow } from "@/services/planService";
@@ -56,6 +57,7 @@ export interface IntegrityInputs {
   accessorials: Accessorial[];
   payRates: AccessorialRate[];
   schedule: SettlementSchedule | null;
+  splits: SettlementSplit[] | null; // the dated pay splits (NET-01); null = the fetch failed (unknown)
   perDiemRates: PerDiemRate[] | null; // the dated per-diem rates — the one in force today is read, never a guess; null = the fetch failed (unknown), so the check is skipped rather than reading "no rate"
   snapshots: SnapshotRow[];
   accounts: AccountRow[];

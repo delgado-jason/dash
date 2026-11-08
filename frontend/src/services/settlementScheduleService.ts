@@ -8,10 +8,6 @@ const dayInWeek = (v: unknown, fallback: number): number => {
 };
 
 const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
-  linehaul_pct: Number(s.linehaul_pct),
-  trailer_pct: Number(s.trailer_pct),
-  fuel_surcharge_pct: Number(s.fuel_surcharge_pct),
-  accessorial_pct: Number(s.accessorial_pct),
   carrier_name: (s.carrier_name as string | null) ?? null,
   detention_free_hours:
     s.detention_free_hours != null ? Number(s.detention_free_hours) : DEFAULT_DETENTION_FREE_HOURS,

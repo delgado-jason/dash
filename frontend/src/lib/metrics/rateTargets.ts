@@ -3,6 +3,7 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import type { Obligation } from "@/types/obligation";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import type { SplitLike } from "@/types/settlementSplit";
 import {
   tiersFrom,
   specTiersFrom,
@@ -59,6 +60,14 @@ export const loadNetRevenue = (l: Load): number => {
 export const loadTrailerNet = (l: Load): number => {
   const t = Number(l.trailer_net);
   return Number.isFinite(t) ? t : 0;
+};
+
+// What the statement PAYS for a load: the earned net plus the pass-through
+// reimbursements (tolls, NET-02). The deposit math and the settlement
+// verification read this; revenue, rates and the booking stats read the net.
+export const loadCashIn = (l: Load): number => {
+  const r = Number(l.reimbursements);
+  return loadNetRevenue(l) + (Number.isFinite(r) ? r : 0);
 };
 
 // The `count` COMPLETE calendar months before now's month (excludes the
@@ -480,11 +489,15 @@ export const computeRateTargets = (
   schedule: SettlementSchedule | null,
   now: Date = localToday(),
   trips: Trip[] = [],
+  // The pay split in force today (settlement_splits, NET-01) — the linehaul take
+  // the keep falls back to until the window has gross. null = own authority or
+  // not loaded; the schedule row no longer carries the split.
+  split: SplitLike | null = null,
 ) => {
   const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS, trips);
   // Your linehaul take (linehaul % + trailer %). 1 = own authority / unconfigured.
-  const linehaulTake = schedule
-    ? Number(schedule.linehaul_pct) + Number(schedule.trailer_pct)
+  const linehaulTake = split
+    ? Number(split.linehaul_pct) + Number(split.trailer_pct)
     : 1;
   // Your KEEP — the share of an all-in booked dollar that reaches you. The
   // blended keep measured from the window's own loads (net ÷ gross: 65 + 8%

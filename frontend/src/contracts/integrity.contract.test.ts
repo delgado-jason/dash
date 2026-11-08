@@ -15,6 +15,7 @@ const now = new Date(`${TODAY}T00:00:00Z`);
 const inputsOf = (book: Book): IntegrityInputs => ({
   today: TODAY,
   role: "owner",
+  splits: book.splits,
   loads: book.loads,
   trips: book.trips,
   fuel: book.fuel,
@@ -38,7 +39,7 @@ const inputsOf = (book: Book): IntegrityInputs => ({
 // The book has Job-Site Delivery unrated on purpose; the clean book rates it.
 const cleanBook = (): Book => {
   const b = syntheticBook();
-  b.payRates.push({ accessorial_type: "Job-Site Delivery", pay_pct: 0.73 });
+  b.payRates.push({ accessorial_type: "Job-Site Delivery", pay_pct: 0.73, pass_through: false });
   return b;
 };
 const cleanInputs = (): IntegrityInputs => inputsOf(cleanBook());

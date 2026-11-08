@@ -2,17 +2,14 @@ import { db } from "../../db/pool.js";
 import { ValidationError } from "../utils/error.js";
 import {
   validateSchedule,
-  PCT_FIELDS,
   TIER_FIELDS,
 } from "../utils/validation/settlementScheduleValidation.js";
 
-// The identity schedule — net = gross, no carrier. Returned when a user hasn't
+// The undated settings (the pay split lives in settlement_splits, dated — NET-01).
+// Returned when a user hasn't configured one.
+// (was: the identity schedule — net = gross, no carrier.) Returned when a user hasn't
 // configured one so the app (and the Settings form) always has values to work with.
 export const DEFAULTS = {
-  linehaul_pct: 1,
-  trailer_pct: 0,
-  fuel_surcharge_pct: 1,
-  accessorial_pct: 1,
   carrier_name: null,
   detention_free_hours: 3,
   settlement_day: 3, // Wednesday — day of week the weekly settlement lands
@@ -30,7 +27,6 @@ export const DEFAULTS = {
 };
 
 const COLUMNS = [
-  ...PCT_FIELDS,
   "carrier_name",
   "detention_free_hours",
   "settlement_day",
@@ -59,8 +55,8 @@ export async function upsertSettlementSchedule(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
 
   // NET-06: every refusal lives in the pure validator. The first pass judges
-  // what arrives (a blank pct is refused, never read as 0); the second, after
-  // the stored schedule is read, judges the merge (pct sum, tier order).
+  // what arrives (a blank is refused, never read as 0); the second, after
+  // the stored schedule is read, judges the merge (tier order).
   const first = validateSchedule(data);
   if (first.errors.length > 0) throw new ValidationError(first.errors[0], first.errors);
   const provided = first.values;

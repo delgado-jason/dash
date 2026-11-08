@@ -2,10 +2,9 @@
 // owner-op's net (their company gross). 0.65 = 65%. Coerced to numbers in the
 // service so the UI works in plain fractions.
 export interface SettlementSchedule {
-  linehaul_pct: number;
-  trailer_pct: number;
-  fuel_surcharge_pct: number;
-  accessorial_pct: number;
+  // The PAY SPLIT (linehaul, trailer, fuel-surcharge, accessorial %) lives in
+  // settlement_splits now, one row per start date — see types/settlementSplit.ts
+  // (Q10, 2026-11-05; NET-01). This row keeps the settings that are not dated.
   carrier_name: string | null; // e.g. "Landstar"; null on own authority
   detention_free_hours: number; // free time per stop before detention accrues
   settlement_day: number; // 0 (Sunday) … 6 (Saturday) — day the weekly settlement lands

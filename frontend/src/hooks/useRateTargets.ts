@@ -7,6 +7,10 @@ import { getTrips } from "@/services/tripsService";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { getSettlementSplits } from "@/services/settlementSplitService";
+import { splitInForce } from "@/lib/metrics/splits";
+import { localDayKey } from "@/lib/metrics/today";
+import type { SettlementSplit } from "@/types/settlementSplit";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { computeRateTargets, monthlyObligationCost, type RateTargets } from "@/lib/metrics/rateTargets";
 import { useLocalToday } from "./useLocalToday";
@@ -26,6 +30,8 @@ export const useRateTargets = (loads: Load[]) => {
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
   // The trip log — home and shop miles join the basis's odometer union (BASIS-07).
   const [trips, setTrips] = useState<Trip[]>([]);
+  // The dated pay splits — the one in force today hands the basis its linehaul take (NET-01).
+  const [splits, setSplits] = useState<SettlementSplit[]>([]);
   const now = useLocalToday();
 
   useEffect(() => {
@@ -35,12 +41,14 @@ export const useRateTargets = (loads: Load[]) => {
       getObligations().catch(() => [] as Obligation[]),
       getSettlementSchedule().catch(() => null),
       getTrips().catch(() => [] as Trip[]),
-    ]).then(([ps, obs, sch, ts]) => {
+      getSettlementSplits().catch(() => [] as SettlementSplit[]),
+    ]).then(([ps, obs, sch, ts, sp]) => {
       if (!active) return;
       setPeriods(ps);
       setObligations(obs);
       setSchedule(sch);
       setTrips(ts);
+      setSplits(sp);
     });
     return () => {
       active = false;
@@ -52,8 +60,10 @@ export const useRateTargets = (loads: Load[]) => {
     [obligations],
   );
 
+  const split = useMemo(() => splitInForce(splits, localDayKey(now)), [splits, now]);
+
   return useMemo(
-    () => computeRateTargets(loads, periods, obligationsMonthly, schedule, now, trips),
-    [periods, obligationsMonthly, loads, schedule, now, trips],
+    () => computeRateTargets(loads, periods, obligationsMonthly, schedule, now, trips, split),
+    [periods, obligationsMonthly, loads, schedule, now, trips, split],
   );
 };

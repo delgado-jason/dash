@@ -58,6 +58,12 @@ export interface Load {
   // The trailer's slice of net (its % of linehaul + its % of base-rate
   // accessorials). Server-side; numeric → string. Absent → 0 trailer share.
   trailer_net?: string;
+  // NET-02: the pass-through accessorials (tolls) at their pay rate — handed
+  // back by the statement, not revenue; absent on a fixture.
+  reimbursements?: string;
+  // NET-01: the start day of the split this load settled on ("YYYY-MM-DD"); the
+  // load page reads "settled on the Feb 3, 2026 schedule".
+  split_effective_from?: string | null;
   commodity: string | null;
   weight?: number | null;
   // The cargo's own dimensions in whole inches; null on a legal load.

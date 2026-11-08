@@ -55,7 +55,7 @@ import type { Obligation } from "@/types/obligation";
 import type { SettlementSummary } from "@/types/settlement";
 import { expectedPayDate, nextDraftDate } from "./cashflow";
 import { isFirstOfMonth, type DeductionBuckets } from "./settlements";
-import { loadNetRevenue } from "./rateTargets";
+import { loadCashIn } from "./rateTargets";
 import { payWeekOf, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
 import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type OdometerReading } from "./odometer";
 import { accrualFlagOf } from "./planStatus";
@@ -463,10 +463,10 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
     if (!delivered && planned < firstOpenStatement) planned = firstOpenStatement;
     if (planned !== statementDate) continue;
     if (delivered) {
-      loadsNet += loadNetRevenue(l);
+      loadsNet += loadCashIn(l); // what the statement pays: net + reimbursements (NET-02)
       count++;
     } else if (!closed) {
-      expectedNet += loadNetRevenue(l);
+      expectedNet += loadCashIn(l);
       if (l.load_status === "in_transit") inTransit++;
       else booked++;
     }

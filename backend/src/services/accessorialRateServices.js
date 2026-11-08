@@ -1,12 +1,13 @@
 import { db } from "../../db/pool.js";
 import { ValidationError, NotFoundError } from "../utils/error.js";
+import { validateAccessorialRate } from "../utils/validation/accessorialRateValidation.js";
 
 // ---- LIST ---- (the user's accessorial types + pay rates; drives the Settings
 // editor and the load-entry dropdown)
 export async function getAccessorialRates(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT accessorial_type, pay_pct
+    `SELECT accessorial_type, pay_pct, pass_through
        FROM accessorial_pay_rates
       WHERE user_id = $1
       ORDER BY accessorial_type`,
@@ -18,19 +19,19 @@ export async function getAccessorialRates(user_id) {
 // ---- UPSERT ---- (add a type or change its rate)
 export async function upsertAccessorialRate(user_id, data) {
   if (!user_id) throw new ValidationError("Missing user_id");
-  const accessorial_type = (data.accessorial_type ?? "").trim();
-  if (!accessorial_type) throw new ValidationError("accessorial_type is required");
-  const pct = Number(data.pay_pct);
-  if (!Number.isFinite(pct) || pct < 0 || pct > 2)
-    throw new ValidationError("pay_pct must be a fraction between 0 and 2");
+  // NET-02: every refusal lives in the pure validator.
+  const { values, errors } = validateAccessorialRate(data);
+  if (errors.length > 0) throw new ValidationError(errors[0], errors);
 
   const result = await db.query(
-    `INSERT INTO accessorial_pay_rates (user_id, accessorial_type, pay_pct)
-     VALUES ($1, $2, $3)
+    `INSERT INTO accessorial_pay_rates (user_id, accessorial_type, pay_pct, pass_through)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (user_id, accessorial_type)
-       DO UPDATE SET pay_pct = EXCLUDED.pay_pct, updated_at = NOW()
-     RETURNING accessorial_type, pay_pct`,
-    [user_id, accessorial_type, pct],
+       DO UPDATE SET pay_pct = EXCLUDED.pay_pct,
+                     pass_through = EXCLUDED.pass_through,
+                     updated_at = NOW()
+     RETURNING accessorial_type, pay_pct, pass_through`,
+    [user_id, values.accessorial_type, values.pay_pct, values.pass_through],
   );
   return result.rows[0];
 }

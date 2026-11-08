@@ -9,6 +9,7 @@ import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { computeGrind, computePersonalGrind, type Grind } from "@/lib/metrics/grind";
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { useLocalToday } from "./useLocalToday";
+import { useSplitToday } from "./useSplitToday";
 
 // Fetches the P&L + obligations + schedule the one basis needs, then grades
 // every pay-week into the grind streak against the hero's own gross target
@@ -18,6 +19,7 @@ export const useGrind = (loads: Load[]): Grind | null => {
   const [periods, setPeriods] = useState<ExpensePeriod[] | null>(null);
   const [obligations, setObligations] = useState<Obligation[] | null>(null);
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+  const split = useSplitToday();
   const now = useLocalToday();
 
   useEffect(() => {
@@ -29,8 +31,8 @@ export const useGrind = (loads: Load[]): Grind | null => {
   return useMemo(() => {
     if (!periods || !obligations || loads.length === 0) return null;
     const obligationsMonthly = monthlyObligationCost(obligations);
-    return computeGrind(loads, periods, obligationsMonthly, schedule, now);
-  }, [periods, obligations, loads, schedule, now]);
+    return computeGrind(loads, periods, obligationsMonthly, schedule, now, 14, split);
+  }, [periods, obligations, loads, schedule, now, split]);
 };
 
 // A dispatcher's personal-pace grind — graded against her own typical week, so no

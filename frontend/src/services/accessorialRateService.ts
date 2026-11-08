@@ -4,9 +4,11 @@ import type { AccessorialRate } from "@/types/accessorialRate";
 const coerce = (r: {
   accessorial_type: string;
   pay_pct: unknown;
+  pass_through?: unknown;
 }): AccessorialRate => ({
   accessorial_type: r.accessorial_type,
   pay_pct: Number(r.pay_pct),
+  pass_through: r.pass_through === true,
 });
 
 export const getAccessorialRates = async (): Promise<AccessorialRate[]> => {
@@ -17,8 +19,9 @@ export const getAccessorialRates = async (): Promise<AccessorialRate[]> => {
 export const upsertAccessorialRate = async (
   accessorial_type: string,
   pay_pct: number,
+  pass_through = false,
 ): Promise<AccessorialRate> => {
-  const res = await api.put("/accessorial-rates", { accessorial_type, pay_pct });
+  const res = await api.put("/accessorial-rates", { accessorial_type, pay_pct, pass_through });
   return coerce(res.data.rate);
 };
 

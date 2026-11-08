@@ -111,8 +111,9 @@ describe("CONST-01 · the pinned business constants", () => {
       FUEL_WINDOW_DAYS: 30,
       BACKWARDS_TOLERANCE_MI: 1000,
       IMPLAUSIBLE_WEEK_MI: 5000,
-      FSC_PEG: 1.25,
-      FSC_BASE_MPG: 6.0,
+      // FSC-01 (2026-11-08): fitted from Landstar's Nov 3–9 report — Rule change: FSC-01
+      FSC_PEG: 1.29,
+      FSC_BASE_MPG: 5.81,
       MARKET_RADIUS_MI: 75,
       CDL_WARN_LEAD_DAYS: 45,
       SOON_WITHIN_DAYS: 30,

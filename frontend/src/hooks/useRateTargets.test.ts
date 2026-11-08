@@ -57,8 +57,9 @@ describe("computeRateTargets — one basis for every page", () => {
     expect(t.obligationsMonthly).toBe(1200);
   });
 
-  it("falls back to the schedule's linehaul take until the window has gross", () => {
-    const t = computeRateTargets([], [period("2026-10-01", 2000, 6000)], 0, schedule, now);
+  it("falls back to the split's linehaul take until the window has gross (the split is dated, NET-01)", () => {
+    const split = { linehaul_pct: 0.65, trailer_pct: 0.08 }; // the row in force today
+    const t = computeRateTargets([], [period("2026-10-01", 2000, 6000)], 0, schedule, now, [], split);
     expect(t.keepSource).toBe("linehaul");
     expect(t.keep).toBeCloseTo(0.73, 6);
     expect(t.basis.costPerTotalMile).toBeNull(); // no miles → no $/mi

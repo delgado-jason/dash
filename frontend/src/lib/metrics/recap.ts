@@ -12,6 +12,7 @@ import { mpgWindows } from "./fuelEconomy";
 import { classify, bestStreakOf, type WeekStatus } from "./grind";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
+import type { SplitLike } from "@/types/settlementSplit";
 import { isDelivered } from "./status";
 
 const WEEK_MS = 7 * 86400000;
@@ -131,6 +132,8 @@ export const computeRecap = (
   // target stands on; null = the seeds (2026-11-04 — it was a bare margin goal
   // on a three-month net target of the recap's own).
   schedule: SettlementSchedule | null = null,
+  // The pay split in force today (NET-01) — the basis's linehaul take.
+  split: SplitLike | null = null,
 ): RecapStats => {
   const mine = loads.filter((l) => isDelivered(l) && inRange(l.delivery_date, range));
 
@@ -199,7 +202,7 @@ export const computeRecap = (
   // basis (2026-11-04, §5): the target is the hero's own — gross, six months,
   // divided by the keep — and the weeks are graded in gross; the best week is
   // the same completed-pay-week record the Pulse and the player card show.
-  const targets = computeRateTargets(loads, periods, obligationsMonthly, schedule, now).gross;
+  const targets = computeRateTargets(loads, periods, obligationsMonthly, schedule, now, [], split).gross;
   const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
   const bestWeek =
     bestPayWeek(loads, dayKey(now), { from: dayKey(range.start), before: dayKey(range.end) })?.gross ?? null;

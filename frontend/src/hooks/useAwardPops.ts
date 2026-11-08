@@ -15,6 +15,7 @@ import { getObligations } from "@/services/obligationsService";
 import { getDrivers } from "@/services/driversService";
 import { getTrophies } from "@/services/trophyService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { useSplitToday } from "@/hooks/useSplitToday";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { getMonthlyFinancials, type MonthlyFinancialRow } from "@/services/cashflowService";
 import { localToday } from "@/lib/metrics/today";
@@ -75,6 +76,7 @@ const write = (userId: string, s: Store) => {
 export const useAwardPops = (
   loads: Load[],
 ): { pops: Award[]; truckAvatarUrl: string | null } => {
+  const split = useSplitToday(); // the pay split in force today (NET-01)
   const [pops, setPops] = useState<Award[]>([]);
   const [data, setData] = useState<{
     periods: ExpensePeriod[];
@@ -123,7 +125,7 @@ export const useAwardPops = (
     // Break-even excludes owner draws AND on-P&L bills (those already sit in
     // operating cost) — same rule as monthlyObligationCost, kept in one place.
     const obligationsDebtMonthly = monthlyObligationCost(data.obligations);
-    const grind = computeGrind(loads, data.periods, obligationsDebtMonthly, data.schedule, now);
+    const grind = computeGrind(loads, data.periods, obligationsDebtMonthly, data.schedule, now, 14, split);
     const truckLoan = assetLoanStatus(data.obligations, "truck", now);
     const trailerLoan = assetLoanStatus(data.obligations, "trailer", now);
     const paidPcts = [truckLoan?.ownedPct, trailerLoan?.ownedPct].filter(
@@ -181,7 +183,7 @@ export const useAwardPops = (
       // inside the effect (the React Compiler lint, 2026-11-04).
       queueMicrotask(() => setPops(fresh));
     }
-  }, [data, loads]);
+  }, [data, loads, split]);
 
   const truckAvatarUrl = data?.trucks.find((t) => t.avatar_url)?.avatar_url ?? null;
   return { pops, truckAvatarUrl };

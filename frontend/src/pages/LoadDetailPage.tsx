@@ -1,5 +1,5 @@
 import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -64,6 +64,7 @@ import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/ui/Panel";
 
 import { loadRevenue, loadRpm, deadheadShare } from "@/lib/metrics/loads";
+import { settledOnWords } from "@/lib/metrics/splits";
 import { LoadSaveError } from "@/lib/loads/loadSaveError";
 import { deliveredNeeds } from "@/lib/loads/deliveredNeeds";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
@@ -205,6 +206,7 @@ export const LoadDetailPage = () => {
   const [newType, setNewType] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [accTypes, setAccTypes] = useState<string[]>([]);
+  const [passThroughTypes, setPassThroughTypes] = useState<string[]>([]);
   const [otherMode, setOtherMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -354,7 +356,10 @@ export const LoadDetailPage = () => {
 
   useEffect(() => {
     getAccessorialRates()
-      .then((rs) => setAccTypes(rs.map((r) => r.accessorial_type)))
+      .then((rs) => {
+        setAccTypes(rs.map((r) => r.accessorial_type));
+        setPassThroughTypes(rs.filter((r) => r.pass_through).map((r) => r.accessorial_type));
+      })
       .catch(() => noteFailed("the accessorial rates"));
   }, [auxKey]);
 
@@ -427,7 +432,14 @@ export const LoadDetailPage = () => {
   const usingRecentFuel = fs.mpg30 != null && fs.avgCostPerGallon30 != null;
   const usingRealFuel = usingRecentFuel || (fs.avgMpg != null && fs.avgCostPerGallon != null);
   const fuel = estimateLoadFuel(load, fuelMpg, fuelPrice);
-  const accTotal = accessorials.reduce((s, a) => s + Number(a.amount), 0);
+  // Pass-throughs (tolls) are reimbursements: paid back, not revenue — below the
+  // total, out of accTotal (Q8, NET-02).
+  const isPassThrough = (type: string) => passThroughTypes.includes(type);
+  const earnedAccessorials = accessorials.filter((a) => !isPassThrough(a.accessorial_type));
+  const reimbursementRows = accessorials.filter((a) => isPassThrough(a.accessorial_type));
+  const accTotal = earnedAccessorials.reduce((s, a) => s + Number(a.amount), 0);
+  const reimbursementsTotal = reimbursementRows.reduce((s, a) => s + Number(a.amount), 0);
+  const settledOn = settledOnWords(load.split_effective_from);
 
   // A delivered load needs its end odometer and delivery date (mock 4).
   const needsDelivered = deliveredNeeds(statusSel, load.odometer_end, load.delivery_date);
@@ -1162,6 +1174,7 @@ export const LoadDetailPage = () => {
               </p>
             </>
           )}
+          {settledOn && <p className="font-condensed text-[12px] text-dim mt-1">{settledOn}</p>}
         </Panel>
 
         <Panel className="p-4">
@@ -1312,10 +1325,27 @@ export const LoadDetailPage = () => {
               </tr>
             </thead>
             <tbody>
-              {accessorials.map((a) => {
+              {[...earnedAccessorials, ...reimbursementRows].map((a) => {
                 const editing = editingId === a.accessorial_id;
+                const passThrough = isPassThrough(a.accessorial_type);
                 return (
-                  <tr key={a.accessorial_id} className="border-t border-hairline-lo">
+                  <Fragment key={a.accessorial_id}>
+                  {reimbursementRows[0]?.accessorial_id === a.accessorial_id && (
+                    <tr className="border-t border-hairline">
+                      <td colSpan={3} className="py-2 font-condensed text-[12px] text-dim">
+                        reimbursements · {moneyCents(reimbursementsTotal)} · paid back, not revenue
+                        {load.reimbursements != null &&
+                          Number.isFinite(Number(load.reimbursements)) &&
+                          Math.abs(Number(load.reimbursements) - reimbursementsTotal) > 0.005 && (
+                            <span className="text-amber-hi">
+                              {" "}
+                              — the settlement figure says {moneyCents(Number(load.reimbursements))}
+                            </span>
+                          )}
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="border-t border-hairline-lo">
                     <td className="py-2">
                       {editing ? (
                         <input
@@ -1325,6 +1355,9 @@ export const LoadDetailPage = () => {
                         />
                       ) : (
                         a.accessorial_type
+                      )}
+                      {passThrough && !editing && (
+                        <span className="font-condensed text-[12px] text-dim"> · reimbursement</span>
                       )}
                       {a.warning && (
                         <p className="font-condensed text-[12px] text-amber-hi mt-0.5">{a.warning}</p>
@@ -1386,6 +1419,7 @@ export const LoadDetailPage = () => {
                       </div>
                     </td>
                   </tr>
+                  </Fragment>
                 );
               })}
             </tbody>

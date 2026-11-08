@@ -13,6 +13,7 @@ import { getTrucks } from "@/services/trucksService";
 import { getPerDiemDays } from "@/services/perDiemService";
 import type { PerDiemDay } from "@/types/perDiem";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
+import { useSplitToday } from "@/hooks/useSplitToday";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 import { getMonthlyFinancials } from "@/services/cashflowService";
 import type { MonthlyFinancialRow } from "@/services/cashflowService";
@@ -89,6 +90,7 @@ const DriverDetailPage = () => {
   // The schedule itself rides along: the one basis (computeRateTargets) reads
   // the tiers, the keep and the margin goal off it (2026-11-04).
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
+  const split = useSplitToday(); // the pay split in force today (NET-01)
   const [marginGoal, setMarginGoal] = useState(MARGIN_GOAL);
   // The operator's local day, anchored, rolling at midnight (call 13).
   const now = useLocalToday();
@@ -169,7 +171,7 @@ const DriverDetailPage = () => {
     // Dashboard, the Market and Score a Load stand on — six months, the keep
     // measured from the window's own loads. The card used to blend three
     // months of its own.
-    const t = computeRateTargets(driverLoads, periods, obligationsDebt, schedule, now, driverTrips);
+    const t = computeRateTargets(driverLoads, periods, obligationsDebt, schedule, now, driverTrips, split);
     const basis = t.basis;
     const season = getSeasonStats(periods, driverLoads, driverTrips, now, obligationsDebt);
     // The RATE lever grades what you BOOK — gross $/driven mile against the
@@ -188,7 +190,7 @@ const DriverDetailPage = () => {
     const nowKey = now.toISOString().slice(0, 10);
     const winStart = firstDeliveredPickup(driverLoads);
     const utilization = utilizationWindow(driverLoads, winStart, nowKey, marks.homeDays, marks.travelDays).utilization;
-    const grind = computeGrind(driverLoads, periods, obligationsDebt, schedule, now);
+    const grind = computeGrind(driverLoads, periods, obligationsDebt, schedule, now, 14, split);
     // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => isDelivered(l));
     const paidPcts = [
@@ -247,7 +249,7 @@ const DriverDetailPage = () => {
       oversize: loadTypeMix(driverLoads, "oversize"),
       heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, schedule, marginGoal, financials, now, marks]);
+  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, schedule, split, marginGoal, financials, now, marks]);
 
   // Hometime status for the (owner-op) driver — computed CLIENT-side with the
   // same flipped lastHomeDay the Fleet tab uses (post-2026-08-18 an unmarked
