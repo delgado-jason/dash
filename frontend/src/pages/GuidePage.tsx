@@ -329,7 +329,7 @@ const NAV: { group: string; items: string[] }[] = [
   {
     group: "The dashboard",
     items: [
-      "dash on your phone","The tabbed dashboard — five views of your operation"],
+      "dash on your phone","The tabbed dashboard — five views of your operation","The Pulse tab — four bands"],
   },
   {
     group: "The Foreman",
@@ -626,17 +626,14 @@ const GuidePage = () => {
               Central).
             </p>
             <div className="flex flex-col gap-2.5">
-              <TabLine name="Pulse" q="How's my day going?">
-                This pay week's earnings vs your target — with overdrive room past
-                the target and your best week marked on the chart. Your best week
-                is the best completed pay week you have ever hauled, at gross —
-                the one number the driver card's TOP WEEK and the recap show
-                too — and HEAT below grades every pay week, in gross, against
-                this same target and floor (six months of P&amp;L, divided by
-                your keep). Then your booking rate against your floor, and the
-                Next rail: your next delivery,
-                pickup, settlement day, and maintenance/compliance clocks in one
-                list. The two most urgent alerts show, the rest fold behind a tap.
+              <TabLine name="Pulse" q="Is the business OK, and what's next?">
+                Four bands, top to bottom: the bottom line (cash on hand, the
+                next deposit, this pay week, profit to date), whether you're
+                priced and running right (the rate ladder, deadhead, net $ per
+                loaded mile, on-time), what's on the clock (the Next rail and
+                detention owed), and the long game (the Plan's floors and the
+                stage you're on). Each figure comes from the same function as
+                the page it summarises; the card-by-card account is just below.
               </TabLine>
               <TabLine name="Money" q="Am I profitable?">
                 Year-to-date income and two margins — operating, and your
@@ -659,10 +656,12 @@ const GuidePage = () => {
                 of every market, with your repeat lanes underneath.
               </TabLine>
               <TabLine name="Agents" q="Who should I call?">
-                Your bench plotted by rate × volume, who you're running with lately
-                (by last worked), quarterly standings — this quarter live plus last
-                quarter's top earners — revenue concentration (so no one agent owns
-                too much of your book), and who's going cold.
+                The leaderboard — your desks ranked by what their freight pays
+                per mile driven over 12 months, graded on your own rate ladder —
+                then your bench plotted by rate × volume, who you're running with
+                lately (by last worked), revenue concentration (so no one agent
+                owns too much of your book), and who's going cold. It replaces
+                the quarterly race board on this tab.
               </TabLine>
               <TabLine name="Fleet" q="Is my rig ready to roll?">
                 Your rig at a glance — utilization (how hard the truck runs, the
@@ -677,6 +676,80 @@ const GuidePage = () => {
               </TabLine>
             </div>
           </Section>
+
+          <Metric
+            title="The Pulse tab — four bands"
+            answers="The owner's landing page: what you have, what's coming, whether you're priced right, and where the plan stands."
+            sources={[
+              { label: "Dashboard", to: "/dashboard" },
+              { label: "Cash Flow", to: "/cashflow" },
+              { label: "Plan", to: "/status" },
+            ]}
+          >
+            <Formula>
+              THE BOTTOM LINE · cash on hand = the cash board's current-period
+              ending, against the plan's Ops float line · next deposit = the
+              board's next landing · this pay week = gross booked against the
+              weekly target · profit = the P&amp;L year to date, true net =
+              operating profit − the monthly note × filed months
+              <br />
+              PRICED AND RUNNING RIGHT · the rate ladder with where you're
+              booking · deadhead · net $ per loaded mile · on-time
+              <br />
+              ON THE CLOCK · the Next rail · detention owed
+              <br />
+              THE LONG GAME · the three floors · the stage
+            </Formula>
+            <Why>
+              <span className="text-light">Cash on hand</span> is the Cash Flow
+              page's own number — the Ops balance you typed (OPS NOW or the
+              Friday snapshot) plus every line dated after it, through this
+              period's deposit — not a second calculation. The line under it
+              names the number it opened on, its day, and how many counted
+              lines the board has walked since. Under the float it reads
+              "under the float by $X" in red, over it "over the float by $X" in
+              green. When a planning input is blank (payroll, the fuel
+              advance…) the plate says what the board waits for instead of a
+              number, and with no Ops number typed it asks for one. The{" "}
+              <span className="text-light">next deposit</span> beside it is last
+              period's deposit if it still lands today or later, else this
+              period's, by the deposit rule on the cash board above.
+            </Why>
+            <Why>
+              <span className="text-light">This pay week</span> is gross booked
+              in the Wednesday–Tuesday week against the weekly target — the
+              line the pace bar draws, with the delivered and booked counts and
+              the days left. The projection counts each load once, by its
+              delivery day inside the week. It's a plain number: there is no
+              record tag or best-week banner here. <span className="text-light">
+              Profit</span> reads the filed P&amp;L months of the year — the
+              same arithmetic the Money tab uses — as the after-notes true net,
+              the after-notes margin graded against your margin goal, and the
+              last filed month's operating profit by name; the current month
+              says it posts when you file it.
+            </Why>
+            <Why>
+              The four instruments in the second band are the ones the rest of
+              the guide defines — the ladder is "The rate ladder", deadhead
+              and net $ per loaded mile come off the odometer-true basis. The{" "}
+              <span className="text-light">detention owed</span> card is the
+              dispatch board's figure: loads confirmed billable and not yet
+              collected, and the minutes each ran past the free hours set in
+              Settings; tap it to see the loads.
+            </Why>
+            <Why>
+              <span className="text-light">The floors</span> are the Plan page's
+              interlock in fill order — Ops, Maintenance, Vault — each as its
+              balance of its floor and the percent, with the tax set aside and
+              the date of the snapshot they read. <span className="text-light">
+              The stage</span> is the active rung of the plan's waterfall; for a
+              loan it shows the balance left, the monthly draft and the payoff
+              month — and when the balance has no as-of date it says the payoff
+              date is unknown rather than guessing. One line under it dates when
+              the truck is free and clear from the truck's own loan, or says why
+              it can't.
+            </Why>
+          </Metric>
 
           <h2
             id={slug("The Foreman")}
@@ -1112,8 +1185,8 @@ const GuidePage = () => {
               A total-dollars goal, not a per-mile one: cover your true monthly
               cost, spread over the pay week, then lift it to your{" "}
               <span className="text-light">margin goal</span> (profit ÷ revenue,
-              set in Settings). It's the line the grind meter and pace bar grade
-              you against, in gross booking dollars.
+              set in Settings). It's the line Pulse's pace bar grades you against,
+              in gross booking dollars.
             </Why>
             <Why>
               Two things it does <span className="text-light">not</span> ride.
@@ -3099,6 +3172,56 @@ const GuidePage = () => {
               under <span className="text-light">~65%</span>, so losing one wouldn't
               sink you.
             </p>
+          </Section>
+
+          <Section
+            title="The agents leaderboard — by desk"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
+            <Metric
+              title="Desk rate, grade and share"
+              answers="Which desks pay you best per mile, over the last 12 months?"
+            >
+              <Formula>
+                rate = Σ gross ÷ Σ (loaded + deadhead miles), delivered loads picked up in the last 12 months, per desk
+                <br />
+                graded = 3+ delivered loads, lifetime, across the desk's people
+                <br />
+                share = desk gross ÷ gross of every attributed load in the window
+              </Formula>
+              <Why>
+                It is the <span className="text-light">same rate as Tiers</span>{" "}
+                — all-in gross over every mile you drove for the load — read at
+                the desk instead of the person, so a desk and its people can
+                never disagree about the arithmetic. A load counts for the desk
+                it was booked under, and an agent with no agency becomes a desk
+                named by their posting code. No miles logged means no rate, never
+                $0.00.
+              </Why>
+              <Why>
+                A desk needs <span className="text-light">three delivered
+                loads</span> before it is graded; until then it sits under
+                "Not yet graded" and shows its rate without a verdict. The grade
+                is your booking ladder's: <span className="text-light">STRONG</span>{" "}
+                at the strong bar, <span className="text-light">TARGET</span> at
+                the target bar, <span className="text-light">ABOVE FLOOR</span>{" "}
+                between walk-away and target, and{" "}
+                <span className="text-light">UNDER WALK-AWAY</span> below your
+                break-even. It is a ranking of who pays, not a race — no medals.
+              </Why>
+              <Why>
+                Beside the rate: <span className="text-light">share</span> of the
+                year's attributed freight, <span className="text-light">$ / day</span>{" "}
+                (gross per calendar day the freight owned the truck),{" "}
+                <span className="text-light">loaded</span> (loaded miles as a
+                share of all miles driven), <span className="text-light">detention</span>{" "}
+                (paid of confirmed-billable), the last load, and{" "}
+                <span className="text-light">your rating</span> — the desk's if
+                you set one, otherwise its people's. Under the table, the best
+                graded desk per freight class (Standard or Specialized), judged
+                only on that class's loads and only with three of them.
+              </Why>
+            </Metric>
           </Section>
 
           <Section

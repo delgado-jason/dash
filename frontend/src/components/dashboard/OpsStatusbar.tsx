@@ -1,11 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { careerRank } from "@/lib/metrics/playerCard";
-import { useGrind } from "@/hooks/useGrind";
 import { useLocalTodayKey } from "@/hooks/useLocalToday";
-import type { Load } from "@/types/load";
-import type { Trip } from "@/types/trip";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Targets = any; // the useRateTargets shape (weekStart)
@@ -30,16 +26,13 @@ const Chip = ({ children, tone }: { children: React.ReactNode; tone?: "amber" })
 );
 
 // The approved A+C statusbar: page identity, the day/week/pay-week line, and
-// the quiet honors (rank + streak) on the right. Full-bleed — the sidebar
+// the Integrity chip on the right (the career rank and streak chips left in
+// the Cockpit rebuild). Full-bleed — the sidebar
 // trigger lives here now, not in a chrome bar above the page.
 export const OpsStatusbar = ({
-  loads,
-  trips,
   targets,
   integrityOpen = 0,
 }: {
-  loads: Load[];
-  trips: Trip[];
   targets: Targets;
   // The viewer's open Integrity count; the chip hides at zero (and while loading).
   integrityOpen?: number;
@@ -49,20 +42,6 @@ export const OpsStatusbar = ({
   // so a tab left open says the new day at midnight (call 13).
   const todayKey = useLocalTodayKey();
   const now = useMemo(() => new Date(`${todayKey}T12:00:00`), [todayKey]);
-  const grind = useGrind(loads);
-  const streak = grind?.currentStreak ?? 0;
-
-  // Rank rides the rig's odometer — same basis the Garage uses. Highest
-  // recorded reading across loads and trips is "lifetime miles".
-  const rank = useMemo(() => {
-    const odo = Math.max(
-      0,
-      ...loads.map((l) => l.odometer_end ?? 0),
-      ...trips.map((t) => t.odometer_end ?? 0),
-    );
-    return odo > 0 ? careerRank(odo) : null;
-  }, [loads, trips]);
-
   const dateLine = useMemo(() => {
     const parts = [
       now.toLocaleDateString("en-US", {
@@ -91,20 +70,6 @@ export const OpsStatusbar = ({
         {dateLine}
       </span>
       <span className="flex-1" />
-      {rank && (
-        <Chip>
-          <span
-            className="w-1.5 h-1.5 rounded-full bg-amber"
-            style={{ boxShadow: "0 0 6px rgba(232,148,10,.9)" }}
-          />
-          <b className="text-ink font-semibold">{rank.name}</b>
-        </Chip>
-      )}
-      {grind && (
-        <Chip>
-          Streak <b className="text-ink font-semibold">×{streak}</b>
-        </Chip>
-      )}
       {integrityOpen > 0 && (
         <Link to="/integrity">
           <Chip tone="amber">INTEGRITY · {integrityOpen} OPEN ›</Chip>

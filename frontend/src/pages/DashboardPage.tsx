@@ -1,17 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useTrips } from "@/hooks/useTrips";
-import { getSettlementSchedule } from "@/services/settlementScheduleService";
-import { getSettlements } from "@/services/settlementsService";
-import { getFuelEntries } from "@/services/fuelService";
-import { getCashAssumptions, type CashAssumptionsRow } from "@/services/cashflowService";
-import { depositForWeek, runningWeekPace, type CashBoardInput, type DepositLine } from "@/lib/metrics/cashBoard";
-import { deductionBuckets } from "@/lib/metrics/settlements";
+import { depositForWeek, type DepositLine } from "@/lib/metrics/cashBoard";
 import { payWeekOf } from "@/lib/metrics/payWeeks";
 import { addDays } from "@/lib/metrics/odometer";
 import { useLocalToday } from "@/hooks/useLocalToday";
-import type { SettlementSummary } from "@/types/settlement";
-import type { FuelEntry } from "@/types/fuelEntry";
+import { useOwnerFeeds } from "@/hooks/useOwnerFeeds";
+import { useCashBoard } from "@/hooks/useCashBoard";
+import { usePlanStatus } from "@/hooks/usePlanStatus";
 import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRateTargets } from "@/hooks/useRateTargets";
@@ -59,48 +55,24 @@ const OwnerDashboard = () => {
   // The operator's local day, anchored, rolling at midnight (call 13).
   const now = useLocalToday();
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
-  // Settlement day drives the "next settlement lands Wed…" beat on Pulse.
-  const [settlementDay, setSettlementDay] = useState<number | null>(null);
-  const [depositLag, setDepositLag] = useState<number>(1);
-  const [settlements, setSettlements] = useState<SettlementSummary[]>([]);
-  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
-  const [assumptions, setAssumptions] = useState<CashAssumptionsRow | null>(null);
-  useEffect(() => {
-    getSettlementSchedule()
-      .then((s) => {
-        setSettlementDay(s.settlement_day);
-        setDepositLag(s.deposit_lag_days ?? 1);
-      })
-      .catch(() => {});
-    getSettlements().then(setSettlements).catch(() => {});
-    getFuelEntries().then(setFuelEntries).catch(() => {});
-    getCashAssumptions().then(setAssumptions).catch(() => {});
-  }, []);
+  // The rows the landing page reads beyond the loads: one fetch, shared by the
+  // cash board (the Cash Flow page's own input, assembled by the same builder)
+  // and the plan's standing (the Plan page's own read).
+  const feeds = useOwnerFeeds();
+  const { board, input: boardInput, today: todayKey } = useCashBoard(feeds, loads);
+  const plan = usePlanStatus(feeds, loads);
   // The next deposit, by the cash board's own rule (2026-11-04, call 11): the
   // statement's actual when the vault has it, else delivered loads at net −
   // the advance − the bucket − what earlier statements carried, dated
-  // settlement + lag. The old tile summed unpaid loads at net and named the
-  // statement day — about $2,688 high and a day early on Nov 4.
+  // settlement + lag. Last period's deposit if it lands today or later, else
+  // this period's — on the FULL board input (the typed overrides count).
   const nextDeposit = useMemo<DepositLine | null>(() => {
-    if (settlementDay == null || !assumptions) return null;
-    const today = now.toISOString().slice(0, 10);
-    const cur = payWeekOf(today);
+    if (!boardInput) return null;
+    const cur = payWeekOf(todayKey);
     const prev = { start: addDays(cur.start, -7), end: addDays(cur.end, -7) };
-    // A blank planning input is unknown, never a default (stage 4c): the board
-    // then refuses the line that needs it and the tile says what is missing.
-    const num = (v: unknown): number | null =>
-      v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
-    const adv = num(assumptions.weekly_fuel_advance);
-    const input: CashBoardInput = {
-      today, settlementDay, depositLagDays: depositLag, floatLine: null, checks: [], loads, settlements, fuelEntries,
-      obligations: [], readings: [], weeklyPayroll: num(assumptions.weekly_payroll), perMile: null,
-      fuelPaceWeekly: runningWeekPace(fuelEntries, today), fuelFallback: adv, advanceDefault: adv,
-      buckets: deductionBuckets(settlements), deductionsFallback: num(assumptions.weekly_settlement_deductions),
-      weeklyRevenueFallback: num(assumptions.weekly_revenue), moneyDays: [], overrides: {},
-    };
-    const last = depositForWeek(input, prev);
-    return last.date >= today ? last : depositForWeek(input, cur);
-  }, [settlementDay, depositLag, assumptions, loads, settlements, fuelEntries, now]);
+    const last = depositForWeek(boardInput, prev);
+    return last.date >= todayKey ? last : depositForWeek(boardInput, cur);
+  }, [boardInput, todayKey]);
   const { pops, truckAvatarUrl } = useAwardPops(loads);
   // The latest FINISHED recap that actually has data — never the in-progress one.
   const latestRecap = latestRecapWithData(loads, now);
@@ -140,7 +112,7 @@ const OwnerDashboard = () => {
     <div className="min-h-screen text-ink font-body">
       <AwardPopHost pops={awardDemo ? DEMO_AWARDS : pops} truckAvatarUrl={truckAvatarUrl} />
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
-        <OpsStatusbar loads={loads} trips={trips} targets={targets} integrityOpen={integrity.loading ? 0 : integrity.visible.length} />
+        <OpsStatusbar targets={targets} integrityOpen={integrity.loading ? 0 : integrity.visible.length} />
         <div className="mt-4">
           <DashboardShell
         tabs={DASH_TABS}
@@ -158,13 +130,13 @@ const OwnerDashboard = () => {
       >
         {(active) =>
           active === "pulse" ? (
-            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} settlementDay={settlementDay} nextDeposit={nextDeposit} />
+            <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} feeds={feeds} cash={{ board, floatLine: boardInput?.floatLine ?? null }} plan={plan} nextDeposit={nextDeposit} />
           ) : active === "money" ? (
             <MoneyTab loads={loads} trips={trips} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
           ) : active === "lanes" ? (
             <LanesTab loads={loads} />
           ) : active === "agents" ? (
-            <AgentsTab loads={loads} />
+            <AgentsTab loads={loads} ladder={targets.bookingLadder} />
           ) : (
             <FleetTab loads={loads} pnlCostPerMile={targets.basis.costPerTotalMile} pnlWindow={targets.basis.windowLabel} />
           )

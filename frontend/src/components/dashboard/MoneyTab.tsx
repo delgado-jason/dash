@@ -10,6 +10,7 @@ import { Board, BoardCell } from "@/components/ui/Board";
 import { ForgedPlate } from "@/components/ui/ForgedPlate";
 import { PaceMeter, paceMarker, type PaceMarker } from "@/components/ui/PaceMeter";
 import { monthCoverage } from "@/lib/metrics/monthCoverage";
+import { profitRows, ytdRows, ytdSummary } from "@/lib/metrics/profitSummary";
 import { money, rpm } from "@/lib/format";
 
 // The month's story: P&L, the two margins, where it goes, and THE MONTH —
@@ -59,40 +60,15 @@ export const MoneyTab = ({
   const now = useLocalToday();
   const year = now.getUTCFullYear();
 
-  // Two margins per month: OPERATING (income − COGS − expenses; interest lives in
-  // those expense lines) and CASH / after-notes (operating minus the monthly note
-  // principal — the money that actually leaves the account). No interest double-
-  // count: the notes carry principal only, interest is already in the P&L.
-  const rows = useMemo(
-    () =>
-      [...periods]
-        .filter((p) => p.income_total != null)
-        .sort((a, b) => (a.period_month < b.period_month ? -1 : 1))
-        .map((p) => {
-          const income = p.income_total ?? 0;
-          const cost = (p.cogs_total ?? 0) + (p.expense_total ?? 0);
-          const profit = income - cost;
-          return {
-            month: p.period_month,
-            income,
-            cost,
-            profit,
-            margin: income > 0 ? profit / income : 0,
-            cashMargin: income > 0 ? (profit - obligationsMonthly) / income : 0,
-          };
-        }),
-    [periods, obligationsMonthly],
-  );
-  const ytd = useMemo(
-    () => rows.filter((r) => r.month.startsWith(String(year))),
-    [rows, year],
-  );
-  const ytdIncome = ytd.reduce((s, r) => s + r.income, 0);
-  const ytdProfit = ytd.reduce((s, r) => s + r.profit, 0);
-  const ytdMargin = ytdIncome > 0 ? ytdProfit / ytdIncome : null;
-  // After-notes: subtract the monthly note once per P&L month in the window.
-  const ytdCashMargin =
-    ytdIncome > 0 ? (ytdProfit - obligationsMonthly * ytd.length) / ytdIncome : null;
+  // The P&L arithmetic lives in lib/metrics/profitSummary.ts — one truth with
+  // Pulse's "Profit · year to date" card (Cockpit PR 1).
+  const rows = useMemo(() => profitRows(periods, obligationsMonthly), [periods, obligationsMonthly]);
+  const ytd = useMemo(() => ytdRows(rows, year), [rows, year]);
+  const summary = useMemo(() => ytdSummary(rows, year), [rows, year]);
+  const ytdIncome = summary.income;
+  const ytdProfit = summary.profit;
+  const ytdMargin = summary.margin;
+  const ytdCashMargin = summary.cashMargin;
   // ONE margin on this tab (2026-11-04, §5): after notes — the one the goal
   // grades. The best month, the bars and the tile all read it; the operating
   // margin stays beside it as a named figure, never graded.
@@ -118,7 +94,7 @@ export const MoneyTab = ({
   const revPerMi = miles > 0 && ytdIncome > 0 ? ytdIncome / miles : null;
   const costPerMi =
     miles > 0 && ytdIncome > 0
-      ? (ytdIncome - ytdProfit + obligationsMonthly * ytd.length) / miles
+      ? (ytdIncome - summary.trueNet) / miles
       : null;
   const profitPerMi =
     revPerMi != null && costPerMi != null ? revPerMi - costPerMi : null;

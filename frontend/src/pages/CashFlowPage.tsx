@@ -36,14 +36,16 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import { deductionBuckets, isFirstOfMonth } from "@/lib/metrics/settlements";
 import {
-  buildCashBoard, fuelForWeek, runningWeekPace, runningMilesPace,
-  type PeriodColumn, type CashCheck, type MoneyDayMove, type DepositLine,
+  buildCashBoard, fuelForWeek, runningWeekPace,
+  type PeriodColumn, type CashCheck, type DepositLine,
 } from "@/lib/metrics/cashBoard";
-import { collectReadings, addDays } from "@/lib/metrics/odometer";
+import { addDays } from "@/lib/metrics/odometer";
 import { payWeekOf, weekLabel, type PayWeek } from "@/lib/metrics/payWeeks";
-import { getMoneyDay, monthName, type PlanStageInput } from "@/lib/metrics/planStatus";
 import type { MissingInput } from "@/lib/integrity/require";
 import { MissingInputLine } from "@/components/integrity/MissingInput";
+import {
+  assembleCashBoardInput, pickPlan, readDepositOverrides, numOrNull, waitsFor, blankInputs, OVERRIDES_KEY,
+} from "@/lib/metrics/cashBoardInput";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
 const FIELD =
@@ -74,28 +76,6 @@ const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "F
 // A stored settlement day / lag is 0–6, but never index an array on trust.
 const wdLong = (n: number): string => WEEKDAY_LONG[((Math.trunc(n) % 7) + 7) % 7];
 const isDayKey = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v);
-const numOrNull = (v: string | number | null | undefined): number | null => {
-  if (v == null || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-};
-// What the board is waiting for, in the owner's words — "payroll", "payroll and
-// the fuel advance". A blank input is never $0: the line that needs it refuses,
-// the ending waits (Nod Sheet "The Protection Stage", call 5).
-const WAITS_FOR: Record<string, string> = {
-  weeklyPayroll: "payroll",
-  advanceDefault: "the fuel advance",
-  deductionsFallback: "the deductions",
-  weeklyRevenueFallback: "the revenue fallback",
-  fuelFallback: "the fuel fallback",
-  perMile: "the plan’s $ per mile",
-};
-const waitsFor = (missing: MissingInput[]): string => {
-  const names = missing.map((m) => WAITS_FOR[m.key] ?? m.label);
-  return names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-};
-const NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six"];
-const blankInputs = (n: number): string => `${NUMBER_WORDS[n] ?? n} blank input${n === 1 ? "" : "s"}`;
 const fills = (n: number): string => `${n} fill${n === 1 ? "" : "s"}`;
 const weekSpan = (w: PayWeek): string => `${dayFull(w.start)} – ${dayFull(w.end)}`;
 
@@ -120,15 +100,7 @@ const CashFlowPage = () => {
   // A typed deposit beats a projection but never the feed's actual; keyed by
   // the STATEMENT date. Kept on this browser (2026-11-04) — it used to vanish
   // on reload with nothing saying so.
-  const [netPayOverrides, setNetPayOverrides] = useState<Record<string, number>>(() => {
-    try {
-      const raw = window.localStorage.getItem(OVERRIDES_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : {};
-      return parsed && typeof parsed === "object" ? (parsed as Record<string, number>) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [netPayOverrides, setNetPayOverrides] = useState<Record<string, number>>(readDepositOverrides);
   useEffect(() => {
     try {
       window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(netPayOverrides));
@@ -185,7 +157,7 @@ const CashFlowPage = () => {
     load();
   }, []);
 
-  const plan = useMemo(() => plans.find((p) => p.active) ?? plans[0] ?? null, [plans]);
+  const plan = useMemo(() => pickPlan(plans), [plans]);
   const floatLine = plan ? Number(plan.float_line) : null;
 
   // The operator's LOCAL calendar day — a US evening is already tomorrow in
@@ -205,20 +177,6 @@ const CashFlowPage = () => {
   const setlDay = settlementDay ?? 3;
   const lag = depositLag ?? 1;
 
-  // Role resolution — the board reads ops (bills draft from it; the vault is
-  // protected by design) and maintenance ("already moved"); the money day
-  // needs the vault and tax balances too.
-  const activeAccounts = useMemo(() => accounts.filter((a) => a.active), [accounts]);
-  const opsAcct = activeAccounts.find((a) => a.role === "ops") ?? null;
-  const vaultAcct = activeAccounts.find((a) => a.role === "vault") ?? null;
-  const maintAcct = activeAccounts.find((a) => a.role === "maintenance") ?? null;
-  const taxAcct = activeAccounts.find((a) => a.role === "tax") ?? null;
-  const balanceOf = (sn: SnapshotRow, accountId: string | null | undefined): number | null => {
-    if (!accountId) return null;
-    const b = sn.balances.find((x) => x.account_id === accountId);
-    return b == null ? null : Number(b.balance);
-  };
-
   // Settlement-feed measurements: deductions = two ex-advance buckets over the
   // last 12 settlements, applied by each STATEMENT's own calendar position.
   // Fuel = the pace of the last four pay weeks that ran (idle weeks skipped —
@@ -226,35 +184,6 @@ const CashFlowPage = () => {
   // Hand-set assumptions remain the FALLBACK when a measurement has no data.
   const buckets = useMemo(() => deductionBuckets(settlements), [settlements]);
   const fuelPace = useMemo(() => runningWeekPace(fuelEntries, asOfKey), [fuelEntries, asOfKey]);
-
-  // Every balance the board can be measured against: a Friday snapshot (with
-  // the accrual it made and the Maintenance balance that proves whether the
-  // move was already taken) and every OPS NOW check.
-  const checks: CashCheck[] = useMemo(() => {
-    const out: CashCheck[] = [];
-    for (const s of snapshots) {
-      const bal = balanceOf(s, opsAcct?.account_id);
-      if (bal == null) continue; // a snapshot with no Ops balance can't base the board
-      out.push({
-        date: s.as_of.slice(0, 10),
-        balance: bal,
-        kind: "snapshot",
-        note: s.note,
-        createdAt: s.created_at ?? null,
-      });
-    }
-    for (const c of opsChecks) {
-      out.push({
-        date: c.as_of.slice(0, 10),
-        balance: Number(c.balance),
-        kind: "check",
-        note: c.note,
-        depositLanded: c.deposit_landed ?? null,
-        createdAt: c.created_at ?? null,
-      });
-    }
-    return out;
-  }, [snapshots, opsChecks, opsAcct]);
 
   // Every mile the truck rolls: a reading at every fill, every load's pickup
   // and delivery, and both ends of every trip log (rev 3, issue 8).
@@ -270,117 +199,20 @@ const CashFlowPage = () => {
   useEffect(() => {
     getMaintenanceServices().then(setServices).catch(() => setServicesFailed(true));
   }, []);
-  const readings = useMemo(
-    () => collectReadings(fuelEntries, loads ?? [], trips, services),
-    [fuelEntries, loads, trips, services],
-  );
-  // A normal week's miles, for projecting an open period's accrual the way
-  // its deposit is projected.
-  const milesPace = useMemo(() => runningMilesPace(readings, asOfKey), [readings, asOfKey]);
-
-  // null stays null — a plan with no $/mile makes the accrual refuse, never $0.
-  const perMile = plan ? numOrNull(plan.maintenance_per_mile) : null;
-
-  // A run money day's outflow: tax off the top plus the surplus that actually
-  // moved, on the day of the snapshot that ran it — recomputed by the same
-  // function the Plan page uses, never projected before it runs.
-  const moneyDays: MoneyDayMove[] = useMemo(() => {
-    if (!plan) return [];
-    const stages: PlanStageInput[] = plan.stages.map((s) => ({
-      stage_id: s.stage_id, position: s.position, label: s.label, kind: s.kind,
-      target_lo: s.target_lo, target_hi: s.target_hi, obligation: null,
-    }));
-    const planInput = {
-      float_line: plan.float_line, stages, tax_pct: plan.tax_pct,
-      maintenance_floor: plan.maintenance_floor, min_move: plan.min_move,
-      objective_pct: plan.objective_pct,
-    };
-    const out: MoneyDayMove[] = [];
-    for (const s of snapshots) {
-      const month = s.settles_month ? s.settles_month.slice(0, 10) : null;
-      if (!month) continue;
-      const period = periods.find((p) => p.period_month.slice(0, 10) === month);
-      if (!period || period.income_total == null || period.cogs_total == null || period.expense_total == null) continue;
-      const pretax = period.income_total - period.cogs_total - period.expense_total;
-      // The accrual the snapshot moved: its miles × the plan's $/mile — unknown,
-      // not $0, when the snapshot stored no miles or the plan has no $/mile.
-      const snapMiles = numOrNull(s.miles);
-      const accrualAmount = snapMiles == null || perMile == null ? null : snapMiles * perMile;
-      const md = getMoneyDay(
-        {
-          as_of: s.as_of.slice(0, 10),
-          ops: balanceOf(s, opsAcct?.account_id),
-          vault: balanceOf(s, vaultAcct?.account_id),
-          maintenance: balanceOf(s, maintAcct?.account_id),
-          tax: balanceOf(s, taxAcct?.account_id),
-        },
-        planInput,
-        { month, pretaxProfit: pretax },
-        accrualAmount,
-        null,
-      );
-      if (!md) continue;
-      // What the day actually moved, when the snapshot kept it (085) — never
-      // re-read off a P&L that may have been edited since. Older money days
-      // (before Nov 4, 2026) kept only the month tag and are recomputed.
-      const stored = s.tax_moved != null ? Number(s.tax_moved) + (numOrNull(s.surplus_moved) ?? 0) : null;
-      if (stored == null && accrualAmount == null) {
-        // Nothing kept what the day moved and its accrual is unknown — say so.
-        out.push({
-          date: s.as_of.slice(0, 10),
-          amount: null,
-          label: `Money day · ${monthName(month)}`,
-          missing: [
-            snapMiles == null
-              ? { key: `snapshotMiles-${s.as_of.slice(0, 10)}`, label: `the miles on the ${monthName(month)} snapshot`, fixAt: "PLAN", fixTo: "/status" }
-              : { key: "perMile", label: "the plan's $ per mile", fixAt: "EDIT PLAN", fixTo: "/status" },
-          ],
-        });
-        continue;
-      }
-      out.push({
-        date: s.as_of.slice(0, 10),
-        amount: stored ?? md.tax + (md.belowMin ? 0 : md.surplus),
-        label: `Money day · ${monthName(month)}`,
-      });
-    }
-    return out;
-  }, [plan, snapshots, periods, opsAcct, vaultAcct, maintAcct, taxAcct, perMile]);
-  // What each snapshot accrued, for the board's stored-miles rule and the catch-up (call 8).
-  const accruals = useMemo(
-    () => snapshots.map((s) => ({ as_of: s.as_of.slice(0, 10), miles: s.miles, pay_week_start: s.pay_week_start })),
-    [snapshots],
-  );
-
+  // The input is assembled by the ONE builder the landing page also calls
+  // (lib/metrics/cashBoardInput.ts), then handed to the board.
   const board = useMemo(() => {
     if (!assumptions) return null;
-    return buildCashBoard({
-      today: asOfKey,
-      settlementDay: setlDay,
-      depositLagDays: lag,
-      floatLine,
-      checks,
-      loads: loads ?? [],
-      settlements,
-      fuelEntries,
-      obligations,
-      readings,
-      weeklyPayroll: numOrNull(assumptions.weekly_payroll),
-      perMile,
-      fuelPaceWeekly: fuelPace,
-      milesPaceWeekly: milesPace,
-      fuelFallback: numOrNull(assumptions.weekly_fuel_advance),
-      advanceDefault: numOrNull(assumptions.weekly_fuel_advance),
-      buckets,
-      deductionsFallback: numOrNull(assumptions.weekly_settlement_deductions),
-      weeklyRevenueFallback: numOrNull(assumptions.weekly_revenue),
-      moneyDays,
-      overrides: netPayOverrides,
-      accruals,
-    });
+    return buildCashBoard(
+      assembleCashBoardInput({
+        today: asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks,
+        periods, loads: loads ?? [], settlements, fuelEntries, trips, services, obligations,
+        assumptions, overrides: netPayOverrides,
+      }),
+    );
   }, [
-    assumptions, asOfKey, setlDay, lag, floatLine, checks, loads, settlements,
-    fuelEntries, obligations, readings, perMile, fuelPace, milesPace, buckets, moneyDays, netPayOverrides, accruals,
+    assumptions, asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks, periods,
+    loads, settlements, fuelEntries, trips, services, obligations, netPayOverrides,
   ]);
 
   // The deposit the board holds dated exactly `day` (Q3, 2026-11-07): this
@@ -1167,7 +999,6 @@ const CashFlowPage = () => {
 
 // ---- the cash board's lines ----
 const negate = (n: number | null): number | null => (n == null ? null : -n);
-const OVERRIDES_KEY = "dash.cashboard.deposit-overrides";
 const WEEK_TITLE: Record<PeriodColumn["key"], string> = {
   current: "Current period",
   next: "Next period",

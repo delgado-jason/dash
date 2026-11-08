@@ -19,6 +19,9 @@ export interface WeekProjection {
   incoming: number;
   incomingCount: number;
   projected: number;
+  deliveredCount: number; // loads delivered inside the window
+  incomingFirst: string | null; // earliest / latest planned delivery day (YYYY-MM-DD) among the incoming loads
+  incomingLast: string | null;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -37,6 +40,9 @@ export const projectWeek = (
   let earned = 0;
   let incoming = 0;
   let incomingCount = 0;
+  let deliveredCount = 0;
+  let incomingFirst: string | null = null;
+  let incomingLast: string | null = null;
   for (const l of loads) {
     if (isNeverRevenue(l)) continue;
     if (!l.delivery_date) continue;
@@ -44,10 +50,14 @@ export const projectWeek = (
     if (t < start || t >= end) continue;
     if (isDelivered(l)) {
       earned += loadRevenue(l);
+      deliveredCount += 1;
     } else {
       incoming += loadRevenue(l);
       incomingCount += 1;
+      const dk = String(l.delivery_date).slice(0, 10);
+      if (incomingFirst == null || dk < incomingFirst) incomingFirst = dk;
+      if (incomingLast == null || dk > incomingLast) incomingLast = dk;
     }
   }
-  return { earned, incoming, incomingCount, projected: earned + incoming };
+  return { earned, incoming, incomingCount, projected: earned + incoming, deliveredCount, incomingFirst, incomingLast };
 };

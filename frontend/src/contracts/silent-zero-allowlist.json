@@ -42,7 +42,7 @@
       "why": "a count — a month with no weeks-off recorded has a true 0 weeks off"
     },
     {
-      "file": "src/pages/CashFlowPage.tsx",
+      "file": "src/lib/metrics/cashBoardInput.ts",
       "text": "const stored = s.tax_moved != null ? Number(s.tax_moved) + (numOrNull(s.surplus_moved) ?? 0) : null;",
       "why": "guarded by tax_moved != null — an older snapshot that kept tax_moved without surplus_moved adds a true 0 surplus"
     },
