@@ -9,6 +9,11 @@ export const RANK_TIERS = [
   { key: "highway-legend", name: "Highway Legend", min: 1_000_000 },
 ] as const;
 
+// The Mile Club's rungs ARE the rank ladder's rungs above Rookie (GL-151, Nod
+// Sheet 2026-11-05): 100K · 300K · 500K · 1M. The Club used to put its second
+// rung at 250K while Veteran sat at 300K, so one odometer read two ladders.
+export const MILE_CLUB_RUNGS: readonly number[] = RANK_TIERS.slice(1).map((t) => t.min);
+
 // Net operating-margin bands (P&L basis: (income − COGS − expenses) / income,
 // net of Landstar). Locked with Jason against his real 6-month data + the
 // owner-operator industry curve. Values are fractions of net revenue.

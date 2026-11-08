@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useMemo, useState } from "react";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
@@ -170,7 +171,7 @@ const DispatchForgePage = () => {
 
   const [member, setMember] = useState<TeamMember | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
 
   useEffect(() => {
     if (!selfId) return;

@@ -11,6 +11,7 @@ import {
   detentionCollectedMinutes,
   tonuOwed,
   loadFlag,
+  DEFAULT_DETENTION_FREE_HOURS,
 } from "./detention";
 
 const L = (o: Record<string, unknown>): Load => o as unknown as Load;
@@ -198,5 +199,31 @@ describe("loadFlag priority", () => {
       loadFlag(L({ load_status: "delivered", detention_billable: false, ...pastFree }), 3),
     ).toBeNull();
     expect(loadFlag(L({ load_status: "delivered" }), 3)).toBeNull();
+  });
+});
+
+describe("GL-150 — the free hours come from the settlement schedule", () => {
+  it("a 2-hour schedule bills from the third hour; a 3-hour one from the fourth", () => {
+    // appointment 08:00, released 11:30 → 3h30 past the clock
+    expect(stopDetentionMinutes("07:30", "11:30", "08:00", null, 2)).toBe(90);
+    expect(stopDetentionMinutes("07:30", "11:30", "08:00", null, 3)).toBe(30);
+    // released at exactly 10:00: nothing billed at 2 free hours, nothing at 3
+    expect(stopDetentionMinutes("07:30", "10:00", "08:00", null, 2)).toBe(0);
+    expect(stopDetentionMinutes("07:30", "10:01", "08:00", null, 2)).toBe(1);
+  });
+  it("the load-level totals follow the schedule's value", () => {
+    const l = L({
+      load_status: "delivered",
+      shipper_in: "07:30", shipper_out: "11:00", pickup_appt_start: "08:00", pickup_appt_end: null,
+      receiver_in: null, receiver_out: null, delivery_appt_start: null, delivery_appt_end: null,
+      detention_paid: false, detention_billable: null,
+    });
+    expect(detentionMinutes(l, 2)).toBe(60);
+    expect(detentionMinutes(l, 3)).toBe(0);
+    expect(detentionEligible(l, 2)).toBe(true);
+    expect(detentionEligible(l, 3)).toBe(false);
+  });
+  it("the fallback, used only when no schedule exists, is 3", () => {
+    expect(DEFAULT_DETENTION_FREE_HOURS).toBe(3);
   });
 });

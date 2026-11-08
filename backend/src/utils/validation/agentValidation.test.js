@@ -65,6 +65,12 @@ describe("posting_code — the agent's own code on the bill", () => {
     assert.deepEqual(validateAgentCreate(created), []);
   });
 
+  test("names are trimmed and single-spaced — 'Jane  Doe ' is stored 'Jane Doe'", () => {
+    const data = normalizeAgentText({ first_name: " Jane  ", last_name: " Van   Doe " });
+    assert.equal(data.first_name, "Jane");
+    assert.equal(data.last_name, "Van Doe");
+  });
+
   test("blank is not a code — it clears back to the agency's desk (null)", () => {
     const data = normalizeAgentText({ posting_code: "   " });
     assert.equal(data.posting_code, null);

@@ -10,6 +10,7 @@ import { computeStack } from "./adaptiveBar";
 import { tiered, type Medal } from "./medals";
 import type { Patch } from "./patches";
 import { isDelivered } from "@/lib/metrics/status";
+import { MILE_CLUB_RUNGS } from "@/lib/constants/playerCard";
 
 const loadMiles = (l: Load): number => {
   const odo =
@@ -78,7 +79,7 @@ export interface TruckMedalData {
 
 export const computeTruckMedals = (d: TruckMedalData): Medal[] => {
   const medals: Medal[] = [
-    tiered("mile-club", "Mile Club", "medal", [100_000, 250_000, 500_000, 1_000_000], d.odometer, (n) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(0)}M` : `${Math.round(n / 1000)}k`)),
+    tiered("mile-club", "Mile Club", "medal", [...MILE_CLUB_RUNGS], d.odometer, (n) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(0)}M` : `${Math.round(n / 1000)}k`)),
     tiered("workhorse", "Workhorse", "stack-2", [100, 250, 500], d.deliveredCount, (n) => `${Math.round(n)}`),
   ];
   if (d.avgMpg != null)

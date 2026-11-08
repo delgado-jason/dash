@@ -2,6 +2,7 @@ import { db } from "../../db/pool.js";
 import { ValidationError } from "../utils/error.js";
 import { parseSiteSubscriber } from "../utils/validation/siteSubscriberValidation.js";
 import { parseWindow } from "../utils/validation/siteTrafficValidation.js";
+import { TEST_ADDRESS_SQL_PATTERN } from "../utils/testSubscriber.js";
 import { kitStateToStatus, kitCreatePayload } from "../utils/kitState.js";
 
 // Kit's v4 API — the two calls a sync makes, in this order. Creating the
@@ -331,14 +332,22 @@ export async function getSiteSubscribers(user_id, windowKey) {
   // The window count compares on the CENTRAL day, like every other figure on
   // the page: a signup at 8pm Central on the window's first day belongs to
   // that day, not to the UTC tomorrow its timestamp falls in.
+  // The owner's own test addresses (+logbook-test before the @, see
+  // utils/testSubscriber.js) are not readers: both counts skip them, and
+  // `test_excluded` says how many were skipped so the page can say so.
   const counts = await db.query(
-    `SELECT count(*)::int AS total,
-            (count(*) FILTER (
+    `WITH real AS (
+       SELECT created_at
+       FROM site_subscribers
+       WHERE user_id = $1 AND email !~* $3
+     )
+     SELECT (SELECT count(*)::int FROM real) AS total,
+            (SELECT count(*)::int FROM real
               WHERE (created_at AT TIME ZONE 'America/Chicago')::date >= $2::date
-            ))::int AS window_count
-     FROM site_subscribers
-     WHERE user_id = $1`,
-    [user_id, from],
+            ) AS window_count,
+            (SELECT count(*)::int FROM site_subscribers
+              WHERE user_id = $1 AND email ~* $3) AS test_excluded`,
+    [user_id, from, TEST_ADDRESS_SQL_PATTERN],
   );
 
   // `ts` is a timestamptz — an instant, not a date — so its ISO string is
@@ -365,6 +374,7 @@ export async function getSiteSubscribers(user_id, windowKey) {
     from,
     total: counts.rows[0].total,
     window_count: counts.rows[0].window_count,
+    test_excluded: counts.rows[0].test_excluded,
     latest: latest.rows,
   };
 }

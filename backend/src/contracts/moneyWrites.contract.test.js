@@ -15,7 +15,7 @@ import { validateSchedule } from "../utils/validation/settlementScheduleValidati
 import { validateAssumptions } from "../utils/validation/assumptionsValidation.js";
 import { validateObligation } from "../utils/validation/obligationValidation.js";
 import { validateExpensePeriod } from "../utils/validation/expensePeriodValidation.js";
-import { validateLoadCreate } from "../utils/validation/loadValidation.js";
+import { validateLoadCreate, validateLoadPatch, BOOKER_REQUIRED } from "../utils/validation/loadValidation.js";
 import { validateSnapshotBalances } from "../utils/validation/planSnapshotValidation.js";
 import {
   validSchedule,
@@ -33,6 +33,7 @@ const fullLoad = (over = {}) => ({
   ...validDeliveredLoad(),
   agency_id: "3f6b2c1e-9c2b-4d0e-8a2f-1b2c3d4e5f60",
   agent_id: "4a7c3d2f-0d3c-4e1f-9b3a-2c3d4e5f6071",
+  booked_by: "7d0f6a52-3a6f-4142-8e6d-5f6071829304",
   origin_city: "Dallas",
   origin_state: "TX",
   destination_city: "Tulsa",
@@ -199,6 +200,21 @@ describe("ODO-05 / ODO-06 · loads — the odometer window and the delivered loa
       validateLoadCreate(fullLoad({ load_status: "booked", delivery_date: undefined, odometer_start: undefined, odometer_end: undefined })),
       [],
     );
+  });
+});
+
+describe("GL-106 · loads — the booker is required", () => {
+  test("GL-106 · a load create without booked_by is refused with the booker sentence", () => {
+    const { booked_by, ...noBooker } = fullLoad();
+    assert.ok(booked_by);
+    refused(validateLoadCreate(noBooker), BOOKER_REQUIRED);
+    refused(validateLoadCreate(fullLoad({ booked_by: null })), BOOKER_REQUIRED);
+  });
+
+  test("GL-106 · a patch that nulls or blanks booked_by is refused with the booker sentence", () => {
+    refused(validateLoadPatch({ booked_by: null }), BOOKER_REQUIRED);
+    refused(validateLoadPatch({ booked_by: "  " }), BOOKER_REQUIRED);
+    assert.deepEqual(validateLoadPatch({ load_number: "9100002" }), []); // untouched booker is fine
   });
 });
 

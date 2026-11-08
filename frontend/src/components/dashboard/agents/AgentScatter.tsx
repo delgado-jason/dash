@@ -4,6 +4,7 @@ import type { Agent } from "@/types/agent";
 import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { MIN_SCORE_LOADS } from "@/lib/metrics/agentScorecard";
 import { median } from "@/lib/metrics/stats";
+import { nameOf } from "@/lib/relationships/nameOf";
 
 export interface ScatterPoint {
   agent: Agent;
@@ -99,7 +100,7 @@ export const AgentScatter = ({ points }: { points: ScatterPoint[] }) => {
             onClick={() => navigate(`/agents/${agent.agent_id}`)}
           >
             <title>
-              {agent.first_name} {agent.last_name} · {card.loadCount} loads · $
+              {nameOf(agent)} · {card.loadCount} loads · $
               {(card.medianRpm as number).toFixed(2)}/mi · {Math.round(card.revenue / 100) / 10}k
             </title>
             <circle

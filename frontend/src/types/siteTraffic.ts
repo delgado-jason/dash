@@ -50,6 +50,8 @@ export interface SiteSubscribers {
   from: string; // 'YYYY-MM-DD'
   total: number;
   window_count: number;
+  // Owner test addresses (+logbook-test) left out of total and window_count.
+  test_excluded?: number;
   latest: SiteSubscriber[];
 }
 

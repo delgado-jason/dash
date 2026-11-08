@@ -11,6 +11,7 @@ import {
 } from "@/lib/metrics/agentLeaderboard";
 import { money } from "@/lib/format";
 import { ForgedPlate } from "@/components/ui/ForgedPlate";
+import { nameOf } from "@/lib/relationships/nameOf";
 
 // THE RACE — the quarter leaderboard plate, one component so the owner's
 // Agents tab and the dispatch board can never drift (Jason, 2026-08-15: the
@@ -54,7 +55,7 @@ export const RaceBoard = ({ loads }: { loads: Load[] }) => {
   );
   const name = (id: string) => {
     const a = byId.get(id);
-    return a ? `${a.first_name} ${a.last_name}` : "—";
+    return a ? `${nameOf(a)}` : "—";
   };
 
   return (

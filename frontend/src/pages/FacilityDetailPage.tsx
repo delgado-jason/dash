@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -53,7 +54,7 @@ const FacilityDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [facility, setFacility] = useState<Facility | null>(null);
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const { loads } = useLoads(0);
   const { facilities } = useFacilities(0);
   const [mergeTarget, setMergeTarget] = useState("");

@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
@@ -82,7 +83,7 @@ const DispatchDashboard = () => {
   const grind = usePersonalGrind(mine);
 
   // Free-time setting drives what counts as detention (same source as Loads).
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   useEffect(() => {
     getSettlementSchedule()
       .then((s) => setFreeHours(s.detention_free_hours))

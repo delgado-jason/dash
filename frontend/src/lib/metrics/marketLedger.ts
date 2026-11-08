@@ -20,6 +20,7 @@
 //     rates (the Guide's typical-vs-blended rule)
 //   • $/day is the weighted rule in perDay.ts (Σgross ÷ Σdays), never a mean
 //     of per-load rates
+import { DEFAULT_DETENTION_FREE_HOURS } from "../detention";
 import type { Load } from "@/types/load";
 import { getRegion, getStateName, UNKNOWN_REGION } from "@/lib/constants/states";
 import { DAY_MS, keyOf, localDayKey, daysBetweenKeys } from "@/lib/relationships/dayKeys";
@@ -538,7 +539,7 @@ export const marketDetail = (
   now: Date,
   state: string,
   grain: LedgerGrain = "state",
-  freeHours = 3,
+  freeHours = DEFAULT_DETENTION_FREE_HOURS,
 ): MarketDetail => {
   const scoped = windowLoads(loads, win, now);
   const seqById = new Map(seq.map((s) => [s.load.load_id, s]));

@@ -7,9 +7,11 @@ import { loadGross, type RateLadder } from "./rateTargets";
 import { agentStops, scoreStops } from "./stopScore";
 import { rangeFor, resolvePeriod, type RecapScope, type RecapRange } from "./recap";
 import type { Award } from "./awards";
-import { isDelivered } from "./status";
+import { isDelivered, isNeverRevenue } from "./status";
+import { grossPerDrivenMile, loadDrivenMiles } from "./drivenRate";
+import { cleanName } from "@/lib/relationships/nameOf";
 
-const isReal = (l: Load) => l.load_status !== "cancelled";
+const isReal = (l: Load) => !isNeverRevenue(l);
 
 const inRange = (iso: string | null | undefined, r: RecapRange): boolean => {
   if (!iso) return false;
@@ -24,15 +26,15 @@ export const loadsInPeriod = (loads: Load[], userId: string, r: RecapRange): Loa
     (l) => l.booked_by === userId && isReal(l) && inRange(l.pickup_date, r),
   );
 
-// Gross $/loaded-mile over a set (matches the dispatcher card's avgBookedRate).
-const grossPerMile = (loads: Load[]): number | null => {
-  const withMiles = loads.filter((l) => Number(l.loaded_miles) > 0);
-  const miles = withMiles.reduce((s, l) => s + Number(l.loaded_miles), 0);
-  return miles > 0 ? withMiles.reduce((s, l) => s + loadGross(l), 0) / miles : null;
-};
-const rpm = (l: Load): number => {
-  const m = Number(l.loaded_miles) || 0;
-  return m > 0 ? loadGross(l) / m : 0;
+// Gross $/DRIVEN-mile over a set — the one ladder (GL-146): the same rate the
+// dispatcher card's avgBookedRate and Review grade, so the Rate Champion
+// trophy and the card never disagree. Loads whose driven miles are unknown are
+// left out, never driven as 0.
+const grossPerMile = (loads: Load[]): number | null => grossPerDrivenMile(loads).rpm;
+// One load's gross per driven mile; null when its driven miles are unknown.
+const rpm = (l: Load): number | null => {
+  const m = loadDrivenMiles(l);
+  return m != null && m > 0 ? loadGross(l) / m : null;
 };
 
 // "Booking Champion" bar scales with the period length. Sized PER BOOKER at
@@ -103,13 +105,12 @@ const trophiesFor = (
   ladder: RateLadder,
 ): SeasonTrophy[] => {
   const target = ladder.target;
-  const withMiles = mine.filter((l) => Number(l.loaded_miles) > 0);
-  const underTarget =
-    target != null ? withMiles.filter((l) => rpm(l) < target).length : 0;
+  const rates = mine.map(rpm).filter((r): r is number => r != null);
+  const underTarget = target != null ? rates.filter((r) => r < target).length : 0;
   const bar = BOOKING_BAR[scope];
   const rateEarned = avgRpm != null && target != null && avgRpm >= target;
   const perfectEarned =
-    target != null && withMiles.length > 0 && underTarget === 0;
+    target != null && rates.length > 0 && underTarget === 0;
 
   return [
     {
@@ -130,8 +131,8 @@ const trophiesFor = (
         avgRpm == null || target == null
           ? "no rate yet"
           : avgRpm >= target
-            ? `$${avgRpm.toFixed(2)} avg rate`
-            : `$${avgRpm.toFixed(2)} vs $${target.toFixed(2)} target`,
+            ? `$${avgRpm.toFixed(2)} avg gross / driven mi`
+            : `$${avgRpm.toFixed(2)} vs $${target.toFixed(2)} target · gross / driven mi`,
       progress: rateEarned
         ? 1
         : avgRpm != null && target
@@ -145,16 +146,16 @@ const trophiesFor = (
       detail:
         target == null
           ? "no target set"
-          : withMiles.length === 0
+          : rates.length === 0
             ? "no loads yet"
             : underTarget === 0
               ? "every load at target"
               : `${underTarget} load${underTarget === 1 ? "" : "s"} under target`,
       progress: perfectEarned
         ? 1
-        : target == null || withMiles.length === 0
+        : target == null || rates.length === 0
           ? 0
-          : (withMiles.length - underTarget) / withMiles.length,
+          : (rates.length - underTarget) / rates.length,
     },
   ];
 };
@@ -181,7 +182,7 @@ export const dispatchSeason = (
     avgRpm,
     onTimePct,
     bestLoad: mine.length ? Math.max(...mine.map(loadGross)) : null,
-    topAgent: topBy(mine, (l) => l.agent),
+    topAgent: topBy(mine, (l) => cleanName(l.agent)),
     topLane: topBy(mine, (l) =>
       l.origin_market && l.delivery_market
         ? `${l.origin_market} → ${l.delivery_market}`

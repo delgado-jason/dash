@@ -8,6 +8,11 @@ import { median } from "./stats";
 // travels with its sample size so a 1-stop "median" can't masquerade as a
 // track record.
 
+// A cancelled booking never happened at the dock: it is not a visit, so it
+// feeds no dwell, no last-in and no count here. (The backend's per-facility
+// as_shipper / as_receiver counts skip cancelled loads the same way.)
+const happened = (l: Load): boolean => l.load_status !== "cancelled";
+
 export interface FacilityTimes {
   medianDwellMin: number | null;
   timed: number;
@@ -21,6 +26,7 @@ export const facilityTimes = (loads: Load[], facilityId: string): FacilityTimes 
     if (d && (last == null || d > last)) last = d;
   };
   for (const l of loads) {
+    if (!happened(l)) continue;
     if (l.shipper_facility_id === facilityId) {
       const m = dwellMinutes(l.shipper_in, l.shipper_out);
       if (m != null) dwells.push(m);
@@ -40,6 +46,7 @@ export const facilityTimes = (loads: Load[], facilityId: string): FacilityTimes 
 export const timedStopCount = (loads: Load[]): number => {
   let n = 0;
   for (const l of loads) {
+    if (!happened(l)) continue;
     if (l.shipper_facility_id && dwellMinutes(l.shipper_in, l.shipper_out) != null) n++;
     if (l.receiver_facility_id && dwellMinutes(l.receiver_in, l.receiver_out) != null) n++;
   }

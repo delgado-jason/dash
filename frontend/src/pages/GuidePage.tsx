@@ -1539,7 +1539,12 @@ const GuidePage = () => {
               carried forward: a home week’s statement nets under zero, lands
               nothing, and Landstar takes it out of the next one. A TONU is never
               counted until the statement pays it — the shipper decides what it
-              pays. The fuel and the miles of an open or future period run at
+              pays. A TONU is
+              also never a <span className="text-light">booked load</span>: it
+              shows as its own line and counts only as the cash the statement
+              paid. Load counts, gross and every rate per mile — the Loads page
+              header, Brandie's card and season, the truck's and trailer's
+              earnings — ignore it. The fuel and the miles of an open or future period run at
               the pace of the last four pay weeks that actually ran, so a home
               stint never dilutes them; the odometer takes over as readings
               land. The current column opens on your latest number — an{" "}
@@ -1993,7 +1998,13 @@ const GuidePage = () => {
               collected miles). Par moves with diesel: pricier fuel raises it,
               cheap fuel lowers it. Your MPG above the schedule’s 6.0 base is a
               real bonus you keep. Only months with logged fuel are counted, so
-              a month you haven't entered fills for never shows a false 0%.
+              a month you haven't entered fills for never shows a false 0%. The
+              card headlines the{" "}
+              <span className="text-light">last complete month</span> — a month
+              still running has fuel it hasn't bought yet and surcharge it hasn't
+              collected, so grading it would swing with the calendar. The running
+              month shows under the tiles as "so far", with its figures and no
+              grade.
             </Why>
           </Metric>
 
@@ -2210,7 +2221,9 @@ const GuidePage = () => {
               there ran into detention. It needs at least three timed stops
               before it shows, so it fills in over a few weeks — that's how you
               learn which docks eat your day and which agents' freight is worth
-              the rate.
+              the rate. A <span className="text-light">cancelled</span> load was
+              never a visit: it adds nothing to a facility's count, its last
+              visit or its dwell.
             </p>
           </Section>
 
@@ -2274,7 +2287,11 @@ const GuidePage = () => {
               Ahead of pace →{" "}
               <span style={{ color: "#4ade80" }}>on track to beat</span>; behind →{" "}
               <span style={{ color: "#f87171" }}>on track to finish under</span>.
-              It paces your{" "}
+              The pace keeps calendar days; beside the verdict the card prints
+              how many of those days you marked home —{" "}
+              <span className="text-light">18 home days in these 35</span> — so
+              a quarter that began with time off reads as time off, not as a
+              slump. It paces your{" "}
               <span className="text-light">net from delivered loads</span> (which
               updates in real time), not the P&amp;L profit (which lags a monthly
               upload) — and for the first couple weeks it reads{" "}
@@ -2320,18 +2337,25 @@ const GuidePage = () => {
             ]}
           >
             <Formula>
-              today − your last home day · flag when it crosses your threshold
+              today − your last home day (a Per Diem home mark, or a trip with
+              purpose Home — whichever is later) · flag when it crosses your
+              threshold
             </Formula>
             <Eg>
               Home June 27, today July 15 →{" "}
-              <span className="text-light">18 days out</span>. Under a 21-day
-              target it stays calm; cross 21 and it turns to a red flag.
+              <span className="text-light">18 days out</span>. Under a 42-day
+              target it stays calm; cross 42 and it turns to a red flag.
             </Eg>
             <Why>
-              It reads home days from the Per Diem calendar — mark them there to
-              keep it honest. Set the threshold on the Settings page (default{" "}
-              <span className="text-light">21 days</span>). No home marks yet?
-              The card nudges you to start rather than guess.
+              It reads home days from the Per Diem calendar and from any trip you
+              logged with purpose <span className="text-light">Home</span> — the
+              later of the two is your last home day. (The per-diem deduction
+              still reads the marks alone.) Set the threshold on the Settings
+              page (default{" "}
+              <span className="text-light">42 days</span> — six weeks, the stretch
+              you actually run). Until Settings has answered, the chip waits
+              rather than grading you against a guess. No home marks yet? The
+              card nudges you to start rather than guess.
             </Why>
           </Metric>
 
@@ -2339,7 +2363,7 @@ const GuidePage = () => {
 
           <Metric
             title="Utilization — how hard the truck runs"
-            answers="The share of days the truck was under a load — pickup to delivery — since your first logged load. Idle days pull it down."
+            answers="The share of days the truck was under a load — pickup to delivery — lifetime: since the later of the truck's in-service date and your first logged load, and the tile prints that date ('lifetime since Jan 6, 2026'). Idle days pull it down."
             sources={[{ label: "Garage", to: "/garage" }]}
           >
             <Formula>days under load ÷ days in window</Formula>
@@ -2371,7 +2395,10 @@ const GuidePage = () => {
               close to the industry's revenue-hours ÷ available-hours, so the
               benchmark is a fair read. It also powers the{" "}
               <span className="text-light">Road Warrior</span> medal (70 · 80 ·
-              85%).
+              85%). The <span className="text-light">Drivers</span> list shows
+              the rig's odometer — the same miles the driver card ranks on, not
+              loaded miles — and the Mile Club rungs are the rank ladder's:{" "}
+              <span className="text-light">100K · 300K · 500K · 1M</span>.
               <span className="block mt-1 text-xs text-muted-text">
                 Sources:{" "}
                 <a
@@ -2483,7 +2510,10 @@ const GuidePage = () => {
               comes prefilled at that many calendar months past the renewal day,
               clamped to the end of the month it lands in (Jan 31 + 1 mo is Feb
               28, never Mar 3); an item with no cadence leaves it blank and asks
-              you for the date. Saving writes down the cycle you just closed —
+              you for the date. A <span className="text-light">medical</span> card
+              never prefills more than 24 months out, whatever cadence the row
+              carries — the DOT card is good for two years at most, so a longer
+              cadence is a typo, not a plan. Saving writes down the cycle you just closed —
               what it was issued, what it was due, the number it carried — and
               keeps it as history under the row:{" "}
               <span className="text-light">
@@ -2525,6 +2555,14 @@ const GuidePage = () => {
               reads <span className="text-light">No baseline</span> and shows a
               dash, not a zero. Give it one by tapping the row, or just log the
               next service that completes it.
+            </Why>
+            <Why>
+              The <span className="text-light">pace</span> that turns miles left
+              into a date is the median of your last three{" "}
+              <span className="text-light">complete</span> months of driving. The
+              month you're in is left out — on the 3rd it would read as a crawl
+              and on the 28th as a sprint — so a due date never jumps because of
+              where the calendar happens to sit.
             </Why>
           </Metric>
 
@@ -2659,10 +2697,12 @@ const GuidePage = () => {
               <span className="text-light">window</span> — 7 days, 30 days, 90
               days or 12 months — and every figure, bar and list under it counts
               only that stretch. dash remembers the one you left it on. The bars
-              are one per day, except on 12 months, where they're one per week;
-              the last bar is the day (or week) you're in, so it's still filling
-              up. A day nobody came keeps its slot as a thin line rather than
-              closing the gap.
+              are one per day, except on 12 months, where they're one per week
+              — 52 bars, and the leftover days at the far end fold into the
+              oldest bar, so that one can cover eight to thirteen days and no
+              visitor falls off the chart; the last bar is the day (or week)
+              you're in, so it's still filling up. A day nobody came keeps its
+              slot as a thin line rather than closing the gap.
             </Why>
             <Why>
               <span className="text-light">Came from</span> is the site that
@@ -2701,7 +2741,11 @@ const GuidePage = () => {
               <span className="text-light">Latest signups</span> shows the
               newest 25, full addresses, newest first; the{" "}
               <span className="text-light">Subscribers</span> figure counts the
-              window you're on and the line under it counts the whole list.
+              window you're on and the line under it counts the whole list. Your
+              own test signups — any address with{" "}
+              <span className="text-light">+logbook-test</span> before the @ —
+              stay in the Latest list but never in the count, and the line under
+              it says how many it left out.
               <br />
               <br />
               The status on each row is where that address stands with Kit.{" "}
@@ -3265,7 +3309,7 @@ const GuidePage = () => {
               <span className="text-light">GONE QUIET</span>, every Tier 1 or 2
               with no two-way contact in thirty days; and the{" "}
               <span className="text-light">SCORECARD</span> — ninety days per
-              agent: loads, net, net per mile graded against the ladder,{" "}
+              agent: loads, net, gross per driven mile graded on the booking ladder (a load with no odometer window and no known deadhead is left out and counted),{" "}
               <span className="text-light">$/day</span> — the window's gross
               over the days their freight owned the truck, weighted and
               coloured against your own daily target from the rate ladder, per
@@ -3946,8 +3990,9 @@ const GuidePage = () => {
               Closer → Rate Hawk → Dispatch Legend), a season grade, and five
               booking stats: <span className="text-light">loads booked</span>,{" "}
               <span className="text-light">gross booked</span>, the{" "}
-              <span className="text-light">average booked rate</span> against
-              your break-even floor,{" "}
+              <span className="text-light">average booked rate</span> — gross
+              per driven mile, the same rate Review grades — against your
+              walk-away floor,{" "}
               <span className="text-light">detention collected</span>, and{" "}
               <span className="text-light">on-time %</span>. It sits at the top
               of the dispatch board and opens to a full page with the rank
@@ -3966,7 +4011,10 @@ const GuidePage = () => {
               >
                 Settings → Team
               </Link>
-              . Everything on the card is gross, never net.
+              . Everything on the card is gross per driven mile, on the booking
+              ladder — never net, never per loaded mile. A load whose driven
+              miles are unknown (no odometer window, no known deadhead) is left
+              out of the rate and counted beside it.
             </p>
           </Section>
 

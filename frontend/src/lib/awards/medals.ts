@@ -1,6 +1,7 @@
 // Medals: tiered, FIXED universal milestones (a million miles is a million miles for
 // everyone) — the aspirational career ladder, each line ending in a Trophy. Derived
 // from the driver's real totals, but the thresholds don't move. Pure.
+import { MILE_CLUB_RUNGS } from "@/lib/constants/playerCard";
 
 export interface Medal {
   key: string;
@@ -46,7 +47,7 @@ export const tiered = (
 
 export const computeMedals = (d: MedalData): Medal[] => {
   const medals: Medal[] = [
-    tiered("mile-club", "Mile Club", "medal", [100_000, 250_000, 500_000, 1_000_000], d.lifetimeMiles, kMi),
+    tiered("mile-club", "Mile Club", "medal", [...MILE_CLUB_RUNGS], d.lifetimeMiles, kMi),
     tiered("freight-hauler", "Freight Hauler", "stack-2", [100, 250, 500], d.deliveredCount, (n) => `${Math.round(n)}`),
     tiered("big-earner", "Big Earner", "coins", [250_000, 500_000, 750_000], d.cumulativeNet, kMoney),
     tiered("iron-streak", "Target Streak", "flame", [4, 8, 12], d.streak, (n) => `${Math.round(n)} wk`),

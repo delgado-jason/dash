@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mileMilestone, fmtMiles } from "./mileClub";
+import { MILE_CLUB_RUNGS, RANK_TIERS } from "@/lib/constants/playerCard";
 
 describe("fmtMiles", () => {
   it("formats K and M markers", () => {
@@ -33,7 +34,7 @@ describe("mileMilestone", () => {
   it("reads Road Warrior (silver) closing on the 500K club", () => {
     const m = mileMilestone(456123);
     expect(m.tier).toBe("silver");
-    expect(m.label).toBe("250K");
+    expect(m.label).toBe("300K"); // the rank ladder's Veteran rung (GL-151)
     expect(m.next).toBe(500000);
   });
 
@@ -43,5 +44,16 @@ describe("mileMilestone", () => {
     expect(m.title).toBe("Million-Miler");
     expect(m.label).toBe("1M");
     expect(m.next).toBe(1500000);
+  });
+});
+
+describe("the Mile Club ladder aligns with the rank ladder (GL-151)", () => {
+  it("its rungs are the rank ladder's rungs above Rookie", () => {
+    expect([...MILE_CLUB_RUNGS]).toEqual(RANK_TIERS.slice(1).map((t) => t.min));
+    expect([...MILE_CLUB_RUNGS]).toEqual([100_000, 300_000, 500_000, 1_000_000]);
+  });
+  it("299,999 is still Seasoned; 300,000 is Road Warrior, the same mile Veteran starts", () => {
+    expect(mileMilestone(299_999).title).toBe("Seasoned");
+    expect(mileMilestone(300_000).title).toBe("Road Warrior");
   });
 });

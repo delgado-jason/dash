@@ -118,6 +118,7 @@ export interface LeversBoardProps {
   marginBasis: string | null; // e.g. "QBO · May–Jul ’26" | "app est. · season"
   rateBasis?: string | null; // e.g. "cash · Jun–Aug" — the break-even window
   utilization: number | null;
+  utilBasis?: string | null; // e.g. "lifetime since Jan 6, 2026" — the window the % is over
   utilGrade: Grade | null;
   windowRpm: number | null;
   pace: QuarterPace | null;
@@ -132,6 +133,7 @@ export const LeversBoard = ({
   marginBasis,
   rateBasis,
   utilization,
+  utilBasis,
   utilGrade,
   windowRpm,
   pace,
@@ -158,7 +160,7 @@ export const LeversBoard = ({
 
       <div className="grid grid-cols-3 gap-2.5 mt-3">
         <LeverTile label="Rate" value={rateVal} grade={rpmGrade} sub={rateBasis ?? undefined} />
-        <LeverTile label="Utilization" value={utilVal} grade={utilGrade} />
+        <LeverTile label="Utilization" value={utilVal} grade={utilGrade} sub={utilBasis ?? undefined} />
         <LeverTile label={marginLabel} value={marginVal} grade={marginGrade} sub={marginBasis ?? undefined} />
       </div>
 

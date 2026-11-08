@@ -252,6 +252,11 @@ export const normalizeAgentText = (data) => {
   for (const field of TRIMMED_TEXT) {
     if (typeof data[field] === "string") data[field] = data[field].trim();
   }
+  // A name is one run of single-spaced words: "Jane  Doe " is stored "Jane Doe"
+  // (GL-220 — stray spaces split an agent into two keys on every join).
+  for (const field of ["first_name", "last_name"]) {
+    if (typeof data[field] === "string") data[field] = data[field].replace(/\s+/g, " ");
+  }
   if (typeof data.agent_state === "string") {
     data.agent_state = data.agent_state.trim().toUpperCase();
   }

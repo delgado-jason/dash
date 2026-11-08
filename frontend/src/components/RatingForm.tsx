@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { nameOf } from "@/lib/relationships/nameOf";
 
 interface RatingFormProps {
   agent: Agent;
@@ -77,7 +78,7 @@ const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
         <h2 className="text-xl font-semibold text-foreground">
           Edit Rating —{" "}
           <span className="font-normal text-muted-foreground">
-            {agent.first_name} {agent.last_name}
+            {nameOf(agent)}
           </span>
         </h2>
         <button

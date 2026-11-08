@@ -106,3 +106,14 @@ export const addMonths = (dayKey, months) => {
   const pad = (n) => String(n).padStart(2, "0");
   return `${year}-${pad(month)}-${pad(day)}`;
 };
+
+// A DOT medical examiner's certificate is valid at most 24 months, so a
+// medical item's cadence never exceeds that whatever was entered or
+// whatever the history suggests (a 48-month cadence was found in prod).
+// Mirrors frontend/src/lib/compliance/renewal.ts `cadenceMonths`.
+export const MEDICAL_MAX_MONTHS = 24;
+
+export const cappedRenewalMonths = (category, months) =>
+  category === "medical" && Number.isInteger(months) && months > MEDICAL_MAX_MONTHS
+    ? MEDICAL_MAX_MONTHS
+    : months;

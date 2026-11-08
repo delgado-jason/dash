@@ -9,7 +9,8 @@ import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
 import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { fmtPerDay, perDayTone, perDayToneWord, type DailyTargets } from "@/lib/metrics/perDay";
-import { perDayTextClass } from "@/components/lanes/rpmStyle";
+import { perDayTextClass, rpmTextClass } from "@/components/lanes/rpmStyle";
+import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { copyText } from "@/lib/clipboard";
 import { SYSTEM_START } from "@/lib/metrics/relationships";
 import { INBOUND_HEADLINE_MIN, inboundHeadline } from "@/lib/relationships/inboundHeadline";
@@ -245,7 +246,14 @@ const scoreFacts = (
 ): { label: string; value: string; sub?: string; tone?: string }[] => [
   { label: "Loads", value: String(r.loads) },
   { label: "Net", value: money(r.net) },
-  { label: "Net $/mi", value: fmtRpm(r.netRpm), sub: r.grade ?? "no ladder" },
+  // The graded rate: gross $/driven mile on the booking ladder (GL-146). A load
+  // with no odometer window and no known deadhead is left out, and said so.
+  {
+    label: "Gross $/driven mi",
+    value: fmtRpm(r.grossDrivenRpm),
+    sub: `${r.grade ?? "no ladder"}${r.drivenUnknown > 0 ? ` · ${r.drivenUnknown} load${r.drivenUnknown === 1 ? "" : "s"} unknown` : ""}`,
+  },
+  { label: "Net $/loaded mi", value: fmtRpm(r.netRpm), sub: "not graded" },
   { label: "$ / day", value: fmtPerDay(r.perDay), sub: perDayCell(r, daily).sub },
   { label: "Deadhead", value: pct0(r.deadheadPct) },
   { label: "Inbound", value: shareCell(r.inbound) },
@@ -288,12 +296,20 @@ const NAME_COL_PX = 150;
 const NAME_COL: CSSProperties = { width: NAME_COL_PX, maxWidth: NAME_COL_PX };
 const VERDICT_COL: CSSProperties = { left: NAME_COL_PX };
 
-const ScoreTable = ({ rows, daily }: { rows: ScoreRow<Agent>[]; daily: DailyTargets | null }) => (
+const ScoreTable = ({
+  rows,
+  daily,
+  ladder,
+}: {
+  rows: ScoreRow<Agent>[];
+  daily: DailyTargets | null;
+  ladder: RateLadder | null;
+}) => (
   <div className="hidden md:block overflow-x-auto">
     <table className="w-full text-[13px] tabular-nums font-condensed" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
       <thead>
         <tr className="text-[10.5px] tracking-[.1em] uppercase text-faint">
-          {["Agent", "Verdict", "Loads", "Net", "Net $/mi", "$ / day", "Deadhead", "Inbound", "Last load", "Touched / in"].map((h, i) => (
+          {["Agent", "Verdict", "Loads", "Net", "Gross $/driven mi", "$ / day", "Deadhead", "Inbound", "Last load", "Touched / in"].map((h, i) => (
             <th
               key={h}
               className={`${i < 2 ? "text-left" : "text-right"} px-3 py-2 border-b border-hairline whitespace-nowrap ${
@@ -338,7 +354,7 @@ const ScoreTable = ({ rows, daily }: { rows: ScoreRow<Agent>[]; daily: DailyTarg
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{r.loads}</td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{money(r.net)}</td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">
-                  {fmtRpm(r.netRpm)}
+                  <span className={rpmTextClass(r.grossDrivenRpm, ladder)}>{fmtRpm(r.grossDrivenRpm)}</span>
                   {r.grade && <span className="block text-[10.5px] text-faint">{r.grade}</span>}
                 </td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">
@@ -1124,7 +1140,7 @@ const ReviewView = () => {
                       // — "$0 gross · 0 days" would be a lie about an agent
                       // whose loads simply have no pickup dates.
                       context={
-                        `${plural(r.loads, "load")} · ${money(r.net)} · ${fmtRpm(r.netRpm)}${r.grade ? ` ${r.grade}` : ""}` +
+                        `${plural(r.loads, "load")} · ${money(r.net)} · ${fmtRpm(r.grossDrivenRpm)} gross/driven mi${r.grade ? ` ${r.grade}` : ""}` +
                         (r.perDayDays > 0
                           ? ` · ${money(r.perDayGross)} gross · ${plural(r.perDayDays, "day")} on the truck`
                           : "")
@@ -1138,7 +1154,7 @@ const ReviewView = () => {
                 );
               })}
             </div>
-            <ScoreTable rows={model.scores} daily={rateTargets.gross} />
+            <ScoreTable rows={model.scores} daily={rateTargets.gross} ladder={ladder} />
           </>
         )}
         <FootLine>

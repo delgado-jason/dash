@@ -4,10 +4,11 @@
 // passed in so it's testable.
 import type { Load } from "@/types/load";
 import { loadGross, type RateLadder } from "./rateTargets";
+import { grossPerDrivenMile, gradeGrossPerDrivenMile } from "./drivenRate";
 import { detentionCollectedMinutes } from "@/lib/detention";
 import { agentStops, scoreStops } from "./stopScore";
-import { rpmGrade, type Grade } from "./playerCard";
-import { isDelivered } from "./status";
+import type { Grade } from "./playerCard";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // Career ranks climb on lifetime loads booked — the dispatcher's analogue of the
 // driver's lifetime miles.
@@ -52,8 +53,9 @@ export interface DispatcherCard {
   loadsBookedLifetime: number;
   loadsBookedMonth: number;
   grossBooked: number;
-  avgBookedRate: number | null; // gross $/loaded-mile she books
-  breakEven: number | null; // the ladder floor (per loaded mile)
+  avgBookedRate: number | null; // gross $/DRIVEN mile she books (loads with unknown driven miles left out)
+  drivenUnknown: number; // loads left out of that rate — no odometer window, no known deadhead
+  breakEven: number | null; // the ladder floor (per driven mile)
   overBreakEven: number | null; // avgBookedRate − breakEven
   detentionCollectedMin: number; // detention hours she chased down and got paid
   onTimePct: number | null;
@@ -63,17 +65,9 @@ export interface DispatcherCard {
   seasonGrade: Grade | null;
 }
 
-// A "real" booking is any of her loads that didn't cancel — she still did the
-// work of booking a load that later fell through isn't counted against her, but
-// a cancelled load isn't freight, so it doesn't count for her either.
-const isReal = (l: Load) => l.load_status !== "cancelled";
-
-const grossPerMile = (loads: Load[]): number | null => {
-  const withMiles = loads.filter((l) => Number(l.loaded_miles) > 0);
-  const miles = withMiles.reduce((s, l) => s + Number(l.loaded_miles), 0);
-  if (miles <= 0) return null;
-  return withMiles.reduce((s, l) => s + loadGross(l), 0) / miles;
-};
+// A "real" booking is freight: a cancelled load isn't, and neither is a TONU
+// (GL-104) — that one shows as its own line and counts only as cash.
+const isReal = (l: Load) => !isNeverRevenue(l);
 
 export const getDispatcherCard = (
   loads: Load[],
@@ -91,7 +85,8 @@ export const getDispatcherCard = (
     new Date(iso).getUTCFullYear() === year &&
     new Date(iso).getUTCMonth() === month;
 
-  const avgBookedRate = grossPerMile(mine);
+  const driven = grossPerDrivenMile(mine);
+  const avgBookedRate = driven.rpm;
   const breakEven = ladder.walkAway;
   const overBreakEven =
     avgBookedRate != null && breakEven != null
@@ -114,13 +109,14 @@ export const getDispatcherCard = (
   const recent = mine.filter(
     (l) => l.pickup_date && new Date(l.pickup_date).getTime() >= cutoff,
   );
-  const seasonGrade = rpmGrade(grossPerMile(recent), ladder);
+  const seasonGrade = gradeGrossPerDrivenMile(recent, ladder);
 
   return {
     loadsBookedLifetime: mine.length,
     loadsBookedMonth: mine.filter((l) => inThisMonth(l.pickup_date)).length,
     grossBooked: mine.reduce((s, l) => s + loadGross(l), 0),
     avgBookedRate,
+    drivenUnknown: driven.unknown,
     breakEven,
     overBreakEven,
     detentionCollectedMin,

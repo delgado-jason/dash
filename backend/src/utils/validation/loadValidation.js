@@ -3,7 +3,25 @@ import { isValidType, isDateValid, isValidUUID } from "../helper.js";
 // Decision 5A (074): whose customer a load is. Mirrors the column's CHECK.
 export const CUSTOMER_ENDS = ["shipper", "receiver", "neither"];
 
+// GL-106 (Jason, 2026-11-06): every load has its booker. The scoreboard, the
+// dispatcher card and the Recap all split loads by who booked them, so a load
+// without one silently drops out of all three. The same sentence the load form
+// shows.
+export const BOOKER_REQUIRED =
+  "Every load needs its booker — the scoreboard, the card and the Recap all split loads by who booked them.";
+
 const rules = {
+  booked_by: (value, errors) => {
+    // undefined = not part of this patch (a create checks presence below).
+    if (value === undefined) return;
+    if (value === null || (typeof value === "string" && value.trim() === "")) {
+      errors.push(BOOKER_REQUIRED);
+      return;
+    }
+    if (!isValidType("string", value) || !isValidUUID(value)) {
+      errors.push("booked_by is not a valid UUID");
+    }
+  },
   load_number: (value, errors) => {
     if (!isValidType("string", value)) {
       errors.push("load_number must be a string");
@@ -438,6 +456,9 @@ export const validateLoadCreate = (data) => {
   if (data.agency_id === undefined || data.agency_id === null)
     errors.push("Missing agency_id");
   if (data.agent_id === undefined) errors.push("Missing agent_id");
+  // GL-106: the booker is required on a create (the rule above handles a
+  // present-but-blank value; this handles a missing one).
+  if (data.booked_by === undefined) errors.push(BOOKER_REQUIRED);
   if (data.origin_city === undefined) errors.push("Missing origin_city");
   if (data.origin_state === undefined) errors.push("Missing origin_state");
   if (data.destination_city === undefined)

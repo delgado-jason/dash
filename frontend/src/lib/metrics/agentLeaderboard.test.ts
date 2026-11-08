@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import type { Load } from "@/types/load";
+import type { Agent } from "@/types/agent";
 import {
   quarterKey,
   computeHonors,
@@ -27,7 +29,7 @@ const mk = (
     fuel_surcharge: "0",
     total_accessorials: "0",
     ...overrides,
-  }) as any;
+  }) as unknown as Load;
 
 describe("quarterKey", () => {
   it("maps months to calendar quarters", () => {
@@ -185,6 +187,15 @@ describe("perAgentStats", () => {
     expect(a?.revenue).toBe(15000);
     expect(a?.lastWorked).toBe("2026-03-10");
   });
+
+  it("a TONU is never a booked load: it adds no load count and no revenue (GL-104)", () => {
+    const s = perAgentStats([
+      mk("A", "2026-02-10", 10000),
+      mk("A", "2026-03-10", 2500, { load_status: "tonu" }),
+    ]);
+    expect(s.get("A")?.loadCount).toBe(1);
+    expect(s.get("A")?.revenue).toBe(10000);
+  });
 });
 
 describe("rosterKpis", () => {
@@ -193,7 +204,7 @@ describe("rosterKpis", () => {
     { agent_id: "A", rating: 5 },
     { agent_id: "B", rating: 2 },
     { agent_id: "C", rating: null },
-  ] as any;
+  ] as unknown as Agent[];
 
   it("counts roster, call-first, avoid, and the last-90d top earner", () => {
     const loads = [

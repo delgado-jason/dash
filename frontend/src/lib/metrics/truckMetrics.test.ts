@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeTruckMetrics, utilizationWindow, truckServiceSpend } from "./truckMetrics";
+import { computeTruckMetrics, utilizationWindow, truckServiceSpend, lifetimeSinceLabel } from "./truckMetrics";
 import type { Truck } from "@/types/truck";
 import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
@@ -254,6 +254,18 @@ describe("computeTruckMetrics — loads hauled vs earned", () => {
     expect(m.netRevenue).toBeCloseTo(2000, 2); // 2 × $1000, not 3
   });
 
+  it("a TONU is never a hauled load: loads, revenue, miles and utilization ignore it (GL-104)", () => {
+    const real = [load("2026-01-05", "2026-01-07")];
+    const tonu = { ...load("2026-01-10", "2026-01-10"), load_status: "tonu", linehaul: "2500" } as Load;
+    const a = run(truck, real, []);
+    const b = run(truck, [...real, tonu], []);
+    expect(b.loads).toBe(a.loads);
+    expect(b.netRevenue).toBe(a.netRevenue);
+    expect(b.totalMiles).toBe(a.totalMiles);
+    expect(b.underLoadDays).toBe(a.underLoadDays);
+    expect(b.revPerMile).toBe(a.revPerMile);
+  });
+
   it("excludes cancelled/booked/in-transit from loads hauled", () => {
     const loads = [
       load("2026-01-05", "2026-01-07"), // delivered
@@ -281,5 +293,21 @@ describe("utilizationWindow — one function for the Fleet tab and the driver ca
   });
   it("truckServiceSpend: tractor + APU in full, a shared visit at half, the trailer's not at all", () => {
     expect(truckServiceSpend([{ unit: "tractor", cost: 400 }, { unit: "apu", cost: 50 }, { unit: "both", cost: 100 }, { unit: "trailer", cost: 999 }] as unknown as MaintenanceService[])).toBe(500);
+  });
+});
+
+describe("lifetimeSinceLabel — the Utilization tile's window, from the data (GL-144)", () => {
+  it("reads 'lifetime since <date>'", () => {
+    expect(lifetimeSinceLabel("2026-01-06")).toBe("lifetime since Jan 6, 2026");
+    expect(lifetimeSinceLabel("2025-12-31")).toBe("lifetime since Dec 31, 2025");
+  });
+  it("no window → no label", () => {
+    expect(lifetimeSinceLabel(null)).toBeNull();
+  });
+  it("computeTruckMetrics reports the window start: the later of in-service and the first delivered pickup", () => {
+    const t = { in_service_date: "2026-01-01", current_odometer: 0 } as Truck;
+    const m = run(t, [load("2026-01-06", "2026-01-08")]);
+    expect(m.windowStart).toBe("2026-01-06");
+    expect(lifetimeSinceLabel(m.windowStart)).toBe("lifetime since Jan 6, 2026");
   });
 });

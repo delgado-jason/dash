@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import api from "./api";
 import type { SettlementSchedule } from "@/types/settlementSchedule";
 
@@ -13,14 +14,14 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   accessorial_pct: Number(s.accessorial_pct),
   carrier_name: (s.carrier_name as string | null) ?? null,
   detention_free_hours:
-    s.detention_free_hours != null ? Number(s.detention_free_hours) : 3,
+    s.detention_free_hours != null ? Number(s.detention_free_hours) : DEFAULT_DETENTION_FREE_HOURS,
   per_diem_rate: s.per_diem_rate != null ? Number(s.per_diem_rate) : 69,
   per_diem_deduct_pct:
     s.per_diem_deduct_pct != null ? Number(s.per_diem_deduct_pct) : 0.8,
   hometime_threshold_days:
     s.hometime_threshold_days != null
       ? Number(s.hometime_threshold_days)
-      : 21,
+      : 42,
   operation: (s.operation as string) ?? "flatbed",
   rate_tier_std_min:
     s.rate_tier_std_min != null ? Number(s.rate_tier_std_min) : 0.1,

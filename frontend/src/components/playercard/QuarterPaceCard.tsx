@@ -1,4 +1,4 @@
-import type { QuarterPace } from "@/lib/metrics/quarterPace";
+import { homeDaysWords, type QuarterPace } from "@/lib/metrics/quarterPace";
 
 const k = (n: number): string =>
   n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.round(n)}`;
@@ -57,6 +57,7 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
     "no-prior": { text: "No prior quarter to compare yet", color: "#9fb0c9" },
   };
   const meta = META[verdict];
+  const homeWords = homeDaysWords(pace);
   const arrow = verdict === "beat" ? "▲" : verdict === "behind" ? "▼" : "▪";
 
   const barMax = Math.max(projectedNet ?? 0, prevFinalNet, currentNet) * 1.08 || 1;
@@ -76,11 +77,14 @@ export const QuarterPaceCard = ({ pace }: { pace: QuarterPace }) => {
         <span className="text-xs text-faint">
           · {label} · day {daysElapsed} of {daysTotal}
         </span>
-        <span
-          className="ml-auto inline-flex items-center gap-1.5 font-forge font-bold text-sm rounded-md px-2.5 py-1 border-2"
-          style={{ color: meta.color, borderColor: meta.color }}
-        >
-          {hasProjection && <span aria-hidden>{arrow}</span>} {meta.text}
+        <span className="ml-auto inline-flex items-center gap-2 flex-wrap justify-end">
+          {homeWords && <span className="text-xs text-faint">{homeWords}</span>}
+          <span
+            className="inline-flex items-center gap-1.5 font-forge font-bold text-sm rounded-md px-2.5 py-1 border-2"
+            style={{ color: meta.color, borderColor: meta.color }}
+          >
+            {hasProjection && <span aria-hidden>{arrow}</span>} {meta.text}
+          </span>
         </span>
       </div>
 

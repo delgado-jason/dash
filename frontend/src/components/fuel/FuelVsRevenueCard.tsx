@@ -86,8 +86,9 @@ const CoverageTrend = ({ months }: { months: FuelMonth[] }) => {
 // whether the fuel surcharge is still covering it. Only months with logged fuel
 // are counted, so an un-logged month never shows a false 0%.
 export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
-  const m = data.latest;
+  const m = data.headline;
   if (!m) return null;
+  const sf = data.soFar;
 
   const grade = coverGrade(m.fscCoverage, m.expectedCoverage);
   const covered = grade === "par";
@@ -105,8 +106,8 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
             Fuel vs revenue
           </p>
           <p className="text-[11px] text-faint mt-0.5">
-            {monthLabel(m.month, { month: "long", year: "numeric" })} · months
-            with logged fuel only
+            {monthLabel(m.month, { month: "long", year: "numeric" })} · last
+            complete month · months with logged fuel only
           </p>
         </div>
         {m.fscCoverage != null &&
@@ -157,6 +158,15 @@ export const FuelVsRevenueCard = ({ data }: { data: FuelVsRevenue }) => {
           </p>
         </div>
       </div>
+
+      {sf && (
+        <p className="text-[11px] text-faint mt-3">
+          {monthLabel(sf.month, { month: "long" })} so far ·{" "}
+          {sf.fscCoverage == null ? "—" : pct0(sf.fscCoverage)}
+          {sf.expectedCoverage != null ? ` vs ~${pct0(sf.expectedCoverage)} par` : ""} ·{" "}
+          {money(sf.fsc)} FSC vs {money(sf.fuelSpend)} fuel — a partial month, not graded
+        </p>
+      )}
 
       <CoverageTrend months={data.months} />
     </div>

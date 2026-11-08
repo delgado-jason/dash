@@ -555,15 +555,28 @@ describe("THE SCORECARD — the verdict is the suggestion's own direction", () =
     expect(r.inboundTouches).toBe(1);
   });
 
-  it("the row's money: net, net per mile with its grade, deadhead share and the inbound fraction", () => {
+  it("the row's money: net, gross per DRIVEN mile with its grade (GL-146), deadhead share and the inbound fraction", () => {
     const a = agent("a", 1);
     const loads = threeGood("a").map((l) => ({ ...l, deadhead_miles: 250, booked_via: "agent_reached_out" }) as Load);
     const [r] = score([a], loads);
     expect(r.net).toBe(7200);
-    expect(r.netRpm).toBeCloseTo(2.4, 5);
+    expect(r.netRpm).toBeCloseTo(2.4, 5); // shown, never graded
+    expect(r.grossDrivenRpm).toBeCloseTo(9600 / 3750, 5); // gross ÷ (loaded + known deadhead)
     expect(r.grade).toBe("minimum");
     expect(r.deadheadPct).toBeCloseTo(250 / 1250, 5);
     expect(r.inbound).toMatchObject({ attributed: 3, inbound: 3 });
+  });
+
+  it("a load with unknown driven miles is left out of the graded rate, never driven as zero", () => {
+    const a = agent("a", 1);
+    const loads = [
+      ...threeGood("a"), // 3200 gross / 1000 loaded / 0 deadhead each → $3.20/driven mi
+      load({ agent_id: "a", delivery_date: "2026-08-04", pickup_date: "2026-08-04", deadhead_miles: null as unknown as number, gross_revenue: "9000" }),
+    ];
+    const [r] = score([a], loads);
+    expect(r.drivenUnknown).toBe(1);
+    expect(r.grossDrivenRpm).toBeCloseTo(3.2, 5);
+    expect(r.grade).toBe("target");
   });
 
   it("Tier 1 and 2 always answer for themselves; Tier 3 and Prospects only when the window has a story", () => {

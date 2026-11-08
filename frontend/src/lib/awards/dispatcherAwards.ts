@@ -18,7 +18,7 @@ import {
   SPEC_TIERS,
   type RateTiers,
 } from "@/lib/constants/targets";
-import { isDelivered } from "@/lib/metrics/status";
+import { isDelivered, isNeverRevenue } from "@/lib/metrics/status";
 
 export interface DispatcherAwardInput {
   loads: Load[];
@@ -103,7 +103,7 @@ const computeStats = (input: DispatcherAwardInput): Stats => {
     tiers = RATE_TIERS,
     specTiers = SPEC_TIERS,
   } = input;
-  const mine = loads.filter((l) => l.booked_by === userId && l.load_status !== "cancelled");
+  const mine = loads.filter((l) => l.booked_by === userId && !isNeverRevenue(l));
   const delivered = mine.filter((l) => isDelivered(l));
   const target = ladder.target ?? Infinity;
   const walkAway = ladder.walkAway ?? Infinity;

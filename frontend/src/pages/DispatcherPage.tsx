@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
@@ -27,7 +28,7 @@ const DispatcherPage = () => {
 
   const [member, setMember] = useState<TeamMember | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {

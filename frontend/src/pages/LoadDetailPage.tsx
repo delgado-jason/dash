@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -220,7 +221,7 @@ export const LoadDetailPage = () => {
   const { agents } = useAgents(0);
   const { markets } = useMarkets(0);
   const { facilities } = useFacilities(0);
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
 
   // What failed to load beside the load itself — named, with one Retry, never a

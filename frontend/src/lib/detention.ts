@@ -4,6 +4,12 @@
 import type { Load } from "@/types/load";
 import { fmtDuration } from "./stopTimes";
 
+// The fallback ONLY for when no settlement schedule exists (or while it is
+// still loading). The live number is settlement_schedules.detention_free_hours,
+// edited on Settings (GL-150) — every page reads it from the schedule and
+// passes it in; nothing computes detention against a bare 3.
+export const DEFAULT_DETENTION_FREE_HOURS = 3;
+
 export type OnTime = "on-time" | "late" | "waited";
 
 const toMin = (t: string): number => {

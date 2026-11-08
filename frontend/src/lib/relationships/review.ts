@@ -11,7 +11,8 @@
 import type { Load } from "@/types/load";
 import { bookedInWindow, shareOf, type InboundShare } from "@/lib/metrics/relationships";
 import { loadGross, loadNetRevenue, type RateLadder } from "@/lib/metrics/rateTargets";
-import { rpmGrade, type Grade } from "@/lib/metrics/playerCard";
+import type { Grade } from "@/lib/metrics/playerCard";
+import { grossPerDrivenMile, gradeGrossPerDrivenMile } from "@/lib/metrics/drivenRate";
 import { perDayOver } from "@/lib/metrics/perDay";
 import { reviewWindow, type ReviewWindow } from "@/lib/metrics/monthlyReview";
 import { MONTHS, rangeFor, resolvePeriod, type RecapRange } from "@/lib/metrics/recap";
@@ -618,7 +619,12 @@ export interface ScoreRow<A> {
   bucket: Bucket;
   loads: number;
   net: number;
-  netRpm: number | null; // Σ net ÷ Σ loaded miles
+  netRpm: number | null; // Σ net ÷ Σ loaded miles — shown, never graded
+  // THE graded rate (GL-146): gross $/DRIVEN mile on the booking ladder —
+  // odometer window, else loaded + known deadhead; loads with neither are
+  // left out (`drivenUnknown`), never driven as 0. See lib/metrics/drivenRate.
+  grossDrivenRpm: number | null;
+  drivenUnknown: number;
   // What the window's freight paid per DAY of the truck — WEIGHTED, Σgross ÷
   // Σdays over the same delivered loads this row already counts
   // (lib/metrics/perDay). Gross, because $/day answers "what does this
@@ -688,7 +694,9 @@ export const scorecardRows = <A extends ReviewAgentLike>(
     const dead = mine.reduce((s, l) => s + (Number(l.deadhead_miles) || 0), 0);
     const netRpm = loaded > 0 ? net / loaded : null;
     const perDayTotals = perDayOver(mine);
-    const grade = netRpm != null && ladder ? rpmGrade(netRpm, ladder) : null;
+    const driven = grossPerDrivenMile(mine);
+    const grossDrivenRpm = driven.rpm;
+    const grade = gradeGrossPerDrivenMile(mine, ladder);
     const lastLoad = lastLoadKey(loads, agent.agent_id);
 
     const suggestion = byAgent.get(agent.agent_id);
@@ -726,6 +734,8 @@ export const scorecardRows = <A extends ReviewAgentLike>(
       loads: mine.length,
       net,
       netRpm,
+      grossDrivenRpm,
+      drivenUnknown: driven.unknown,
       perDay: perDayTotals.perDay,
       perDayDays: perDayTotals.days,
       perDayGross: perDayTotals.gross,
@@ -1090,7 +1100,7 @@ export const reviewReportText = <A extends ReviewAgentLike>(m: ReviewModel<A>): 
   for (const r of m.scores) {
     L.push(
       `  ${nameOf(r.agent)} [${bucketWord(r.bucket)}]: ${r.verdict.toUpperCase()} · ${r.loads} loads · ${dollars(r.net)} · ` +
-        `${r.netRpm != null ? `$${r.netRpm.toFixed(2)}/mi` : "—"}${r.grade ? ` (${r.grade})` : ""} · ` +
+        `${r.grossDrivenRpm != null ? `$${r.grossDrivenRpm.toFixed(2)}/driven mi gross` : "—"}${r.grade ? ` (${r.grade})` : ""} · ` +
         // The copy report is the page — the $/day the scorecard shows has to
         // survive the paste into an email, or the two disagree.
         `${r.perDay != null ? `${dollars(r.perDay)}/day` : "—"} · deadhead ${pct(r.deadheadPct)} · ` +

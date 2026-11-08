@@ -1,7 +1,7 @@
 import type { Load } from "@/types/load";
 import type { Agent } from "@/types/agent";
 import { loadRevenue } from "./loads";
-import { isDelivered } from "./status";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // Agent achievements, tallied over calendar-quarter leaderboards derived from
 // delivered loads. The board (starburst) is more inclusive than the podium
@@ -258,7 +258,7 @@ export const perAgentStats = (loads: Load[]): Map<string, AgentStat> => {
       revenue: 0,
       lastWorked: null,
     };
-    if (l.load_status !== "cancelled") s.loadCount += 1;
+    if (!isNeverRevenue(l)) s.loadCount += 1;
     if (isDelivered(l)) {
       s.revenue += loadRevenue(l);
       if (l.delivery_date) {
@@ -296,7 +296,7 @@ export const rosterKpis = (
   for (const l of loads) {
     if (!l.agent_id) continue;
     const pd = l.pickup_date?.slice(0, 10);
-    if (pd && pd >= cutoffStr && l.load_status !== "cancelled")
+    if (pd && pd >= cutoffStr && !isNeverRevenue(l))
       active.add(l.agent_id);
     if (
       isDelivered(l) &&

@@ -50,14 +50,31 @@ export interface QuarterPace {
   projectedLoads: number | null;
   pacePct: number | null; // net vs prev same-point, e.g. +0.09 = 9% ahead
   verdict: PaceVerdict;
+  // Per-diem HOME marks inside the elapsed window (quarter start → today). The
+  // pace keeps CALENDAR days (GL-142: freight pace is judged on the calendar),
+  // but a quarter with 18 home days in its first 35 reads very differently from
+  // one with 1, so the count is printed beside the verdict. null = the marks
+  // were not supplied (never a fake 0).
+  homeDaysSoFar: number | null;
 }
+
+// "18 home days in these 35" — the words printed beside the verdict.
+export const homeDaysWords = (p: Pick<QuarterPace, "homeDaysSoFar" | "daysElapsed">): string | null =>
+  p.homeDaysSoFar == null
+    ? null
+    : `${p.homeDaysSoFar} home day${p.homeDaysSoFar === 1 ? "" : "s"} in these ${p.daysElapsed}`;
+
 
 // Below either floor, the projection is too noisy to call — one big load swings it.
 const CONFIDENCE_DAYS = 14;
 const CONFIDENCE_LOADS = 3;
 const EVEN_BAND = 0.02; // within ±2% of prior pace reads as "on pace"
 
-export const getQuarterPace = (loads: Load[], now: Date): QuarterPace => {
+export const getQuarterPace = (
+  loads: Load[],
+  now: Date,
+  homeDays: string[] | null = null, // per-diem home marks ("YYYY-MM-DD")
+): QuarterPace => {
   const cur = rangeFor(
     "quarter",
     now.getUTCFullYear(),
@@ -103,6 +120,13 @@ export const getQuarterPace = (loads: Load[], now: Date): QuarterPace => {
           : "even";
   }
 
+  const startKey = cur.start.toISOString().slice(0, 10);
+  const nowKey = now.toISOString().slice(0, 10);
+  const homeDaysSoFar =
+    homeDays == null
+      ? null
+      : new Set(homeDays.filter((d) => d >= startKey && d <= nowKey)).size;
+
   return {
     label: cur.label,
     prevLabel: prev.label,
@@ -117,5 +141,6 @@ export const getQuarterPace = (loads: Load[], now: Date): QuarterPace => {
     projectedLoads,
     pacePct,
     verdict,
+    homeDaysSoFar,
   };
 };

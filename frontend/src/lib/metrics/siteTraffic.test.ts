@@ -236,21 +236,39 @@ describe("visitorsByWeek", () => {
     expect(weeks[1].day).toBe("2026-09-17");
   });
 
-  it("cuts from the end — the OLDEST bucket is the short one", () => {
+  it("merges the leftover lead days into the oldest full week", () => {
     const weeks = visitorsByWeek(days("2026-09-08", 10, 1));
-    expect(weeks).toHaveLength(2);
+    expect(weeks).toHaveLength(1);
     expect(weeks[0]).toEqual({
       from: "2026-09-08",
-      day: "2026-09-10",
-      visitors: 3,
-      views: 6,
-    });
-    expect(weeks[1]).toEqual({
-      from: "2026-09-11",
       day: "2026-09-17",
-      visitors: 7,
-      views: 14,
+      visitors: 10,
+      views: 20,
     });
+  });
+
+  it("365 days is 52 bars (not 53); the oldest swallows the one-day stub", () => {
+    const weeks = visitorsByWeek(days("2025-11-05", 365, 1));
+    expect(weeks).toHaveLength(52);
+    expect(weeks[0].from).toBe("2025-11-05");
+    expect(weeks[0].day).toBe("2025-11-12"); // 8 days: the stub + one week
+    expect(weeks[0].visitors).toBe(8);
+    for (const w of weeks.slice(1)) {
+      expect(addDays(w.from, 6)).toBe(w.day); // every other bar is exactly 7 days
+      expect(w.visitors).toBe(7);
+    }
+    expect(weeks[51].day).toBe(addDays("2025-11-05", 364));
+    expect(weeks.reduce((n, w) => n + w.visitors, 0)).toBe(365); // nothing lost
+  });
+
+  it("364 days is 52 clean weeks, none merged", () => {
+    const weeks = visitorsByWeek(days("2025-11-06", 364, 1));
+    expect(weeks).toHaveLength(52);
+    expect(weeks[0].visitors).toBe(7);
+  });
+
+  it("fewer than 7 days is a single bucket", () => {
+    expect(visitorsByWeek(days("2026-09-14", 4, 1))).toHaveLength(1);
   });
 
   it("no days, no weeks", () => {

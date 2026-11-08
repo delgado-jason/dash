@@ -129,9 +129,11 @@ const AgentsPage = () => {
     ["cold", "Cold", counts.cold],
   ];
 
-  // The answering line — whatever the filters show, summed live. Story KPIs
+  // The answering line — whatever the filters show, summed live. The revenue
+  // figure is LIFETIME delivered gross (card.revenue has no date window), and
+  // the label says so. Story KPIs
   // (rate leader, concentration, going cold) live on the dashboard Agents tab.
-  const rev90 = rows.reduce((sum, r) => sum + (r.card.revenue || 0), 0);
+  const revLifetime = rows.reduce((sum, r) => sum + (r.card.revenue || 0), 0);
   const medians = rows
     .map((r) => r.card.medianRpm)
     .filter((v): v is number => v != null)
@@ -160,7 +162,7 @@ const AgentsPage = () => {
           {rows.length} agent{plural(rows.length)}
         </span>
         <span className="text-[12px] text-faint">in this view ·</span>
-        <b className="font-condensed font-semibold text-ink tabular-nums">{money(rev90)} through them · 90d</b>
+        <b className="font-condensed font-semibold text-ink tabular-nums">{money(revLifetime)} delivered through them · lifetime</b>
         {medOfMed != null && (
           <>
             <span className="text-[12px] text-faint">·</span>

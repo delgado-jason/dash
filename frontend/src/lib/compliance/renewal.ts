@@ -22,6 +22,19 @@ export const isDayKey = (v: string | null | undefined): v is string => {
   return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === v;
 };
 
+// A DOT medical examiner's certificate is valid at most 24 months, so a medical
+// item's cadence never exceeds that, whatever was entered or the history
+// suggests. Every other category keeps its own cadence untouched.
+export const MEDICAL_MAX_MONTHS = 24;
+
+export const cadenceMonths = (
+  category: string | null | undefined,
+  months: number | null | undefined,
+): number | null => {
+  if (months == null) return null;
+  return category === "medical" && months > MEDICAL_MAX_MONTHS ? MEDICAL_MAX_MONTHS : months;
+};
+
 /**
  * The expiry a cadence implies: calendar months from the renewal day, clamped
  * to the end of the month it lands in — Jan 31 + 1 mo is Feb 28 (Feb 29 in a

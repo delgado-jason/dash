@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
 import { Mail, Phone, StickyNote, Star, MessageSquare } from "lucide-react";
@@ -97,7 +98,7 @@ const AgentDetailPage = () => {
   const [noteError, setNoteError] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
 
   useEffect(() => {
     getSettlementSchedule()

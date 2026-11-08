@@ -1,3 +1,4 @@
+import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router";
 
@@ -14,7 +15,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import LoadForm from "../components/LoadForm";
 import { createLoad } from "@/services/createLoadService";
-import { loadRevenue } from "@/lib/metrics/loads";
+import { loadRevenue, loadsViewTotals } from "@/lib/metrics/loads";
 import { fmtRpm } from "@/components/lanes/rpmStyle";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -170,7 +171,7 @@ const LoadsPage = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
-  const [freeHours, setFreeHours] = useState(3);
+  const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
   const [setlMap, setSetlMap] = useState<Map<string, LoadSettlementSummary>>(new Map());
 
   useEffect(() => {
@@ -257,9 +258,8 @@ const LoadsPage = () => {
   // GROSS booked revenue — loadRevenue here is the loads.ts version (linehaul + FSC
   // + accessorials, the full customer rate), so this line is labeled "gross," and
   // the $/mi below is a gross rate per loaded mile.
-  const viewGross = view.reduce((sum, l) => sum + loadRevenue(l), 0);
-  const viewMiles = view.reduce((sum, l) => sum + (Number(l.loaded_miles) || 0), 0);
-  const viewRpm = viewMiles > 0 ? viewGross / viewMiles : null;
+  const { count: viewCount, gross: viewGross } = loadsViewTotals(view);
+  const viewRpm = loadsViewTotals(view).rpm;
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -308,7 +308,7 @@ const LoadsPage = () => {
       {/* the answering line — sums whatever the filters currently show */}
       <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
         <span className="font-display text-[22px] tracking-[.03em] tabular-nums">
-          {view.length} load{plural(view.length)}
+          {viewCount} load{plural(viewCount)}
         </span>
         <span className="text-[12px] text-faint">in this view ·</span>
         <b className="font-condensed font-semibold text-ink tabular-nums">{money(viewGross)} gross</b>

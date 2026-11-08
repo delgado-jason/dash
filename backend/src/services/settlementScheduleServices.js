@@ -19,7 +19,7 @@ export const DEFAULTS = {
   deposit_lag_days: 1, // the cash lands this many days after the settlement (#502)
   per_diem_rate: 69,
   per_diem_deduct_pct: 0.8,
-  hometime_threshold_days: 21,
+  hometime_threshold_days: 42, // GL-140 (Jason, 2026-11-05)
   operation: "flatbed",
   rate_tier_std_min: 0.1,
   rate_tier_std_target: 0.2,
