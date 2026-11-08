@@ -705,6 +705,7 @@ export const syntheticBook = (): Book => {
     maintenance_floor: "5000",
     min_move: "500",
     objective_pct: "70",
+    leave_weeks: 4, // migration 104 — the leave reserve horizon, weeks of a parked truck
     first_money_month: "2026-05-01",
     active: true,
     stages: [

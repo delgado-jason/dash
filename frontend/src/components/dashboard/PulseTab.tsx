@@ -23,7 +23,10 @@ import { CashPlate } from "@/components/dashboard/pulse/CashPlate";
 import { dayWords } from "@/components/dashboard/pulse/words";
 import { DepositFigure, WeekCard, ProfitCard } from "@/components/dashboard/pulse/WeekCards";
 import { DetentionCard } from "@/components/dashboard/pulse/DetentionCard";
-import { FloorsCard, StageCard } from "@/components/dashboard/pulse/LongGame";
+import { FloorsCard, LeaveCard, StageCard } from "@/components/dashboard/pulse/LongGame";
+import { useBasisWindow } from "@/hooks/useBasisWindow";
+import { burnFromPeriods } from "@/lib/metrics/sitCost";
+import { leaveReserve } from "@/lib/metrics/leaveReserve";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { isDelivered } from "@/lib/metrics/status";
 
@@ -51,6 +54,10 @@ const Band = ({ label, first = false, children }: { label: string; first?: boole
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3">{children}</div>
   </section>
 );
+
+// A planning input that is blank or not a number is unknown, never 0.
+const numberOrNull = (v: unknown): number | null =>
+  v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
 
 export const PulseTab = ({
   loads,
@@ -147,6 +154,23 @@ export const PulseTab = ({
 
   // The Next rail — every clock that matters, one list. Rows self-omit when
   // there's nothing on that clock; each row is a door.
+  // Band 4 · the leave reserve: the Vault in weeks of a parked truck. The sit
+  // cost blends the basis window's full periods — the function the Expenses
+  // page prints — plus the weekly payroll; the horizon is the plan's.
+  const basisWindow = useBasisWindow(feeds.periods, targets.basis.monthsDetail);
+  const obligationsTotal = useMemo(
+    () => feeds.obligations.filter((o) => o.active && !o.on_pl).reduce((s, o) => s + Number(o.amount), 0),
+    [feeds.obligations],
+  );
+  const sit = useMemo(() => burnFromPeriods(basisWindow.windowFull, obligationsTotal), [basisWindow.windowFull, obligationsTotal]);
+  const weeklyPayroll = numberOrNull(feeds.assumptions?.weekly_payroll);
+  const leaveWeeks = plan.plan?.leave_weeks ?? null;
+  const leave = leaveReserve({ vault: plan.vaultBalance, weeklyPayroll, sit, weeks: leaveWeeks });
+  const cushion = useMemo(() => {
+    const vaults = (plan.plan?.stages ?? []).filter((st) => st.kind === "vault" && st.position > 1).sort((a, b) => a.position - b.position);
+    return vaults.length > 0 ? vaults[vaults.length - 1] : null;
+  }, [plan.plan]);
+
   const nextRows = useMemo(() => {
     const rows: {
       kind: string;
@@ -419,7 +443,7 @@ export const PulseTab = ({
       </Band>
 
       <Band label="THE LONG GAME · THE PLAN">
-        <div className="md:col-span-6">
+        <div className="md:col-span-5">
           <FloorsCard
             status={plan.status}
             plan={plan.plan}
@@ -431,7 +455,7 @@ export const PulseTab = ({
             retry={plan.retry}
           />
         </div>
-        <div className="md:col-span-6">
+        <div className="md:col-span-4">
           <StageCard
             status={plan.status}
             plan={plan.plan}
@@ -441,6 +465,22 @@ export const PulseTab = ({
             loading={plan.loading}
             failed={plan.failed}
             retry={plan.retry}
+          />
+        </div>
+        <div className="md:col-span-3">
+          <LeaveCard
+            reserve={leave}
+            vault={plan.vaultBalance}
+            weeks={leaveWeeks}
+            sit={sit}
+            weeklyPayroll={weeklyPayroll}
+            cushion={cushion}
+            loading={plan.loading || basisWindow.loading}
+            failed={[...plan.failed, ...(basisWindow.failed ? ["the cost basis months"] : [])]}
+            retry={() => {
+              plan.retry();
+              basisWindow.retry();
+            }}
           />
         </div>
       </Band>

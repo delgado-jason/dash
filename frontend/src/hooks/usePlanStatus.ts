@@ -30,6 +30,7 @@ export const usePlanStatus = (
     // (null = not typed, never $0) and the Ops number's source when an OPS NOW
     // check is newer than the snapshot.
     taxBalance: read ? read.balanceOf(read.latest, read.taxAcct?.account_id) : null,
+    vaultBalance: read ? read.balanceOf(read.latest, read.vaultAcct?.account_id) : null,
     opsCheckDate: read?.opsFromCheck ? read.opsFromCheck.as_of.slice(0, 10) : null,
     loading,
     failed,

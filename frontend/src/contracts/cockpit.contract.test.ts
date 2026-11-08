@@ -16,6 +16,9 @@ import { cashAsOf } from "@/lib/metrics/cashToday";
 import { getDetentionOwed } from "@/lib/metrics/dashboard";
 import { computeRateTargets, getWeekGrossCommitted, getWeekGrossEarned } from "@/lib/metrics/rateTargets";
 import type { Load } from "@/types/load";
+import { leaveReserve } from "@/lib/metrics/leaveReserve";
+import { burnFromPeriods } from "@/lib/metrics/sitCost";
+import { WEEKS_PER_MONTH } from "@/lib/metrics/sitRun";
 
 const partsOf = (book: Book): CashBoardParts => ({
   today: TODAY,
@@ -234,5 +237,51 @@ describe("THIS PAY WEEK · a TONU is never a booked load (M1-02)", () => {
   it("a delivered load in the week DOES move it, by its gross", () => {
     const real: Load = { ...tonu, load_id: "real-in-week", load_number: "9990001", load_status: "delivered" } as unknown as Load;
     expect(getWeekGrossCommitted([...book.loads, real], start, end)).toBeCloseTo(getWeekGrossCommitted(book.loads, start, end) + 2500, 2);
+  });
+});
+
+describe("LEAVE RESERVE · the Vault in weeks of a parked truck (Cockpit, call 5 lean A)", () => {
+  const book = syntheticBook();
+  const obligationsTotal = book.obligations.filter((o) => o.active && !o.on_pl).reduce((s, o) => s + Number(o.amount), 0);
+  const sit = burnFromPeriods(book.periods, obligationsTotal);
+
+  it("the sit cost is the Expenses page's own: (fixed + notes) a month, ÷ 4.345 a week", () => {
+    expect(sit).not.toBeNull();
+    expect(sit!.sitWeekly).toBeCloseTo(sit!.sitMonthly / WEEKS_PER_MONTH, 6);
+    expect(sit!.sitMonthly).toBeGreaterThanOrEqual(obligationsTotal); // the notes are in it
+  });
+
+  it("burn = payroll + the sit week; weeks = vault ÷ burn; target = horizon × burn", () => {
+    const r = leaveReserve({ vault: 6000, weeklyPayroll: 1908, sit, weeks: 4 });
+    const burn = Math.round((1908 + sit!.sitWeekly) * 100) / 100;
+    expect(r.weeklyBurn).toBeCloseTo(burn, 2);
+    expect(r.target).toBeCloseTo(burn * 4, 1);
+    expect(r.weeksCovered).toBeCloseTo(Math.round((6000 / burn) * 10) / 10, 1);
+    expect(r.pct).toBeCloseTo(6000 / (burn * 4), 6);
+    expect(r.missing).toEqual([]);
+  });
+
+  it("a blank is never zero: every missing input is named with where to set it", () => {
+    const r = leaveReserve({ vault: null, weeklyPayroll: null, sit: null, weeks: null });
+    expect(r.weeklyBurn).toBeNull();
+    expect(r.weeksCovered).toBeNull();
+    expect(r.target).toBeNull();
+    expect(r.missing.map((m) => m.label)).toEqual([
+      "the weekly payroll",
+      "a filed P&L month for the cost basis",
+      "the Vault balance",
+      "the leave horizon",
+    ]);
+    const noVault = leaveReserve({ vault: null, weeklyPayroll: 1908, sit, weeks: 4 });
+    expect(noVault.weeklyBurn).not.toBeNull();
+    expect(noVault.weeksCovered).toBeNull();
+    expect(noVault.missing.map((m) => m.key)).toEqual(["balance_vault"]);
+  });
+
+  it("an empty Vault is zero weeks, not unknown", () => {
+    const r = leaveReserve({ vault: 0, weeklyPayroll: 1908, sit, weeks: 4 });
+    expect(r.weeksCovered).toBe(0);
+    expect(r.pct).toBe(0);
+    expect(r.missing).toEqual([]);
   });
 });

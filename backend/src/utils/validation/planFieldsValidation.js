@@ -14,6 +14,7 @@ const RANGES = {
   maintenance_floor: [0, 10_000_000],
   min_move: [0, 1_000_000],
   objective_pct: [0, 100],
+  leave_weeks: [1, 52], // the leave reserve horizon, whole weeks (migration 104)
 };
 const NULLABLE = new Set(["float_line_home_lo", "float_line_home_hi"]);
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -33,6 +34,8 @@ export const validatePlanFields = (fields = {}) => {
       throw new ValidationError(`${key} must be a number between ${lo} and ${hi}`);
     out[key] = n;
   }
+  if ("leave_weeks" in out && !Number.isInteger(out.leave_weeks))
+    throw new ValidationError("leave_weeks must be a whole number of weeks between 1 and 52");
   if ("year" in out) {
     const y = Number(out.year);
     if (!Number.isInteger(y) || y < 2000 || y > 2100)

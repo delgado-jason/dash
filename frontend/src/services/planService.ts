@@ -28,6 +28,7 @@ export interface PlanRow {
   maintenance_floor: string;
   min_move: string;
   objective_pct: string;
+  leave_weeks: number; // the leave reserve horizon, weeks of a parked truck (migration 104)
   first_money_month: string; // YYYY-MM-DD, the first of the first month under the rules
   active: boolean;
   stages: PlanStageRow[];

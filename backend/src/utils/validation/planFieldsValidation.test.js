@@ -34,3 +34,10 @@ test("the first money month is the first of a month", () => {
 test("fields that aren't sent are left alone", () => {
   assert.deepEqual(validatePlanFields({ label: "The 2027 Plan" }), { label: "The 2027 Plan" });
 });
+
+test("leave_weeks: whole weeks 1–52, refused otherwise", () => {
+  assert.equal(validatePlanFields({ leave_weeks: "4" }).leave_weeks, 4);
+  assert.throws(() => validatePlanFields({ leave_weeks: 0 }), /between 1 and 52/);
+  assert.throws(() => validatePlanFields({ leave_weeks: 2.5 }), /whole number of weeks/);
+  assert.throws(() => validatePlanFields({ leave_weeks: "" }), /needs a number/);
+});
