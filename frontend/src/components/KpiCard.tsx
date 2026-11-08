@@ -25,9 +25,9 @@ const statusColor: Record<Status, string> = {
 };
 
 const sparkColor: Record<Status, string> = {
-  good: "#4ade80",
-  bad: "#f87171",
-  neutral: "#60a5fa",
+  good: "var(--color-status-positive-text)",
+  bad: "var(--color-status-negative-text)",
+  neutral: "var(--color-status-info-text)",
 };
 
 export const KpiCard = ({
@@ -50,7 +50,7 @@ export const KpiCard = ({
       style={{
         padding: "3px 10px 3px 3px",
         background:
-          "radial-gradient(ellipse at 18% 55%, rgba(245,176,58,0.2), transparent 68%)",
+          "radial-gradient(ellipse at 18% 55%, color-mix(in srgb, var(--color-amber-hi) 20%, transparent), transparent 68%)",
       }}
     >
       <RollingValue text={value} />

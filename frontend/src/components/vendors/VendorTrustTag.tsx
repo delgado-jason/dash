@@ -3,6 +3,7 @@
 
 export type VendorTrust = "goto" | "steer" | "ghost" | null;
 
+// eslint-disable-next-line react-refresh/only-export-components -- pre-existing, untouched by the colour sweep; owed to this page's phase C restructure
 export const vendorTrust = (rating: number | null | undefined): VendorTrust => {
   if (rating == null) return "ghost";
   if (rating === 5) return "goto";
@@ -12,7 +13,7 @@ export const vendorTrust = (rating: number | null | undefined): VendorTrust => {
 
 const TAG_CLASS: Record<Exclude<VendorTrust, null>, string> = {
   goto: "text-canvas bg-amber-hi",
-  steer: "text-[#ffd9d9] bg-[rgba(224,82,82,.25)] border border-[rgba(224,82,82,.45)]",
+  steer: "text-status-negative-text bg-status-negative-text/25 border border-status-negative-text/45",
   ghost: "text-faint border border-dashed border-hairline",
 };
 

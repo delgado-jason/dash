@@ -9,7 +9,7 @@ interface Props {
 // nothing with fewer than two points, so callers can pass it unconditionally.
 export const Sparkline = ({
   data,
-  color = "#60a5fa",
+  color = "var(--color-status-info-text)",
   width = 64,
   height = 20,
 }: Props) => {

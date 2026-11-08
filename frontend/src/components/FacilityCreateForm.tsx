@@ -144,9 +144,9 @@ export const FacilityCreateForm = ({
       {dup ? (
         <div
           className="rounded-md p-2"
-          style={{ border: "1px solid #7a4718", background: "#241a0e" }}
+          style={{ border: "1px solid color-mix(in srgb, var(--color-amber) 40%, transparent)", background: "var(--color-status-aware-bg)" }}
         >
-          <p className="text-[11px]" style={{ color: "#f5c37a" }}>
+          <p className="text-[11px]" style={{ color: "var(--color-amber-hi)" }}>
             ⚠ Looks like{" "}
             <b>
               {facilityLabel(dup)} · {dup.city}, {dup.state}

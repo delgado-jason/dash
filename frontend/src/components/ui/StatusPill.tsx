@@ -7,7 +7,7 @@ export type PillTone = "good" | "info" | "amber" | "bad" | "neutral";
 
 const TONE: Record<PillTone, string> = {
   good: "bg-status-positive-text/10 text-status-positive-text",
-  info: "bg-status-info-text/10 text-[#7ab0e8]",
+  info: "bg-status-info-text/10 text-status-info-text",
   amber: "bg-amber/10 text-amber-hi",
   bad: "bg-status-negative-text/10 text-status-negative-text",
   neutral: "bg-white/5 text-dim",

@@ -41,7 +41,7 @@ const RateNote = ({ r }: { r: AgentRanking }) => {
   if (r.rateDelta == null || r.benchmark == null) return null;
   const up = r.rateDelta >= 0;
   return (
-    <span style={{ color: up ? "#5dcaa5" : "#8494ab" }}>
+    <span style={{ color: up ? "var(--color-cat2)" : "var(--color-dim)" }}>
       {up ? "+" : "−"}
       {money2(Math.abs(r.rateDelta)).slice(1)} vs your {TYPE_LABELS[r.loadType].toLowerCase()} avg
     </span>
@@ -134,8 +134,8 @@ const ClassChip = ({ r, size = "md" }: { r: AgentRanking; size?: "sm" | "md" }) 
     className={`font-condensed font-semibold rounded ${size === "sm" ? "text-[10px] px-1.5 py-px" : "text-[11px] px-2 py-0.5"}`}
     style={
       r.bucket === "direct"
-        ? { color: "#5dcaa5", background: "rgba(93,202,165,.13)" }
-        : { color: "#8494ab", background: "rgba(132,148,171,.10)" }
+        ? { color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 13%, transparent)" }
+        : { color: "var(--color-dim)", background: "color-mix(in srgb, var(--color-dim) 10%, transparent)" }
     }
   >
     {r.bucket === "direct" ? "DIRECT" : "SPOT"}
@@ -153,7 +153,7 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
         {TYPE_LABELS[r.loadType]}
       </span>
       {r.isNew && (
-        <span className="font-condensed text-[11px] font-semibold px-2 py-0.5 rounded" style={{ color: "#5dcaa5", background: "rgba(53,160,140,.13)" }}>
+        <span className="font-condensed text-[11px] font-semibold px-2 py-0.5 rounded" style={{ color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 13%, transparent)" }}>
           NEW
         </span>
       )}
@@ -244,7 +244,7 @@ const RankedRow = ({
       </div>
       <div className="text-[11.5px] truncate">
         {r.isNew ? (
-          <span className="font-condensed font-semibold uppercase tracking-wide" style={{ color: "#5dcaa5" }}>
+          <span className="font-condensed font-semibold uppercase tracking-wide" style={{ color: "var(--color-cat2)" }}>
             New {"·"} building
           </span>
         ) : (

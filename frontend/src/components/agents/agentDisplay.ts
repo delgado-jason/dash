@@ -10,19 +10,19 @@ export const TIER_META: Record<
   GoToTier,
   { label: string; fg: string; bg: string; border: string; rank: number }
 > = {
-  "call-first": { label: "Top pick", fg: "#4ade80", bg: "#123020", border: "#1f6e4a", rank: 4 },
-  solid: { label: "Solid", fg: "#6cc6e6", bg: "#12222e", border: "#245b70", rank: 3 },
-  watch: { label: "Watch", fg: "#f5a623", bg: "#241a06", border: "#85560b", rank: 2 },
-  cold: { label: "Cold", fg: "#9aa4b5", bg: "#171c26", border: "#2a3347", rank: 1 },
-  thin: { label: "Thin data", fg: "#6b7688", bg: "#0b111c", border: "#1a2130", rank: 0 },
+  "call-first": { label: "Top pick", fg: "var(--color-status-positive-text)", bg: "var(--color-status-positive-bg)", border: "color-mix(in srgb, var(--color-status-positive-text) 40%, transparent)", rank: 4 },
+  solid: { label: "Solid", fg: "var(--color-status-info-text)", bg: "var(--color-status-info-bg)", border: "color-mix(in srgb, var(--color-status-info-text) 40%, transparent)", rank: 3 },
+  watch: { label: "Watch", fg: "var(--color-amber-hi)", bg: "var(--color-status-aware-bg)", border: "color-mix(in srgb, var(--color-amber-hi) 45%, transparent)", rank: 2 },
+  cold: { label: "Cold", fg: "var(--color-dim)", bg: "var(--color-status-neutral-bg)", border: "var(--color-plate)", rank: 1 },
+  thin: { label: "Thin data", fg: "var(--color-faint)", bg: "var(--color-well)", border: "var(--color-hairline-lo)", rank: 0 },
 };
 
 export const SPECIALTY_META: Record<
   Exclude<SpecialtyTag, "standard">,
   { label: string; fg: string; bg: string; border: string }
 > = {
-  oversize: { label: "OVERSIZE", fg: "#f5b03a", bg: "#3a2408", border: "#85560b" },
-  specialty: { label: "SPECIALTY", fg: "#5fd0e0", bg: "#0f2c3a", border: "#1d5e70" },
+  oversize: { label: "OVERSIZE", fg: "var(--color-amber-hi)", bg: "var(--color-status-aware-bg)", border: "color-mix(in srgb, var(--color-amber-hi) 45%, transparent)" },
+  specialty: { label: "SPECIALTY", fg: "var(--color-cat2)", bg: "color-mix(in srgb, var(--color-cat2) 15%, transparent)", border: "color-mix(in srgb, var(--color-cat2) 40%, transparent)" },
 };
 
 export type DwellTone = "bad" | "good" | "none";
@@ -42,9 +42,9 @@ export const dwellStatus = (c: AgentScorecard): DwellStatus => {
 };
 
 export const DWELL_TONE: Record<DwellTone, string> = {
-  bad: "#f87171",
-  good: "#4ade80",
-  none: "#8b93a3",
+  bad: "var(--color-status-negative-text)",
+  good: "var(--color-status-positive-text)",
+  none: "var(--color-dim)",
 };
 
 // The single most useful nudge for a card/row: the gut-vs-data disagreement, or
@@ -58,7 +58,7 @@ export const flagText = (c: AgentScorecard): string | null => {
 };
 
 export const TREND_META = {
-  up: { glyph: "▲", fg: "#4ade80" },
-  down: { glyph: "▼", fg: "#f87171" },
-  flat: { glyph: "—", fg: "#8b93a3" },
+  up: { glyph: "▲", fg: "var(--color-status-positive-text)" },
+  down: { glyph: "▼", fg: "var(--color-status-negative-text)" },
+  flat: { glyph: "—", fg: "var(--color-dim)" },
 } as const;

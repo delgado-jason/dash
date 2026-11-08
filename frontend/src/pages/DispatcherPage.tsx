@@ -131,7 +131,7 @@ const DispatcherPage = () => {
               {name.toUpperCase()}
             </h2>
             <div className="flex gap-2 mt-2 flex-wrap">
-              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.07)]">
+              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-amber/40 bg-amber/7">
                 {card.rank.name.toUpperCase()}
               </span>
               <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">

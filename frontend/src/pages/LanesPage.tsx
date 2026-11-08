@@ -258,7 +258,7 @@ const LanesPage = () => {
                     type="checkbox"
                     checked={showLanes}
                     onChange={(e) => setShowLanes(e.target.checked)}
-                    className="accent-[#e8940a]"
+                    className="accent-amber"
                   />
                 </label>
               </span>

@@ -20,7 +20,7 @@ import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { nameOf } from "@/lib/relationships/nameOf";
 
 const FRESH = (d: number | null): string =>
-  d == null ? "#8b93a3" : d <= 14 ? "#4ade80" : d <= 45 ? "#f5b03a" : "#8b93a3";
+  d == null ? "var(--color-muted-text)" : d <= 14 ? "var(--color-status-positive-text)" : d <= 45 ? "var(--color-amber-hi)" : "var(--color-muted-text)";
 
 const Badge = ({ tag }: { tag: "oversize" | "specialty" }) => {
   const m = SPECIALTY_META[tag];
@@ -175,7 +175,7 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
         </div>
         <AgentScatter points={scatterPoints} />
         <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-1">
-          <span><span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]" style={{ background: "#e8940a" }} />Oversize</span>
+          <span><span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]" style={{ background: "var(--color-amber)" }} />Oversize</span>
           <span><span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]" style={{ background: "var(--color-cat2)" }} />Specialty</span>
           <span>◯ dashed = cold · ⚠ = gut≠data</span>
         </div>
@@ -196,7 +196,7 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
                 key={agent.agent_id}
                 to={`/agents/${agent.agent_id}`}
                 className="grid items-center gap-2 py-[5px] border-t first:border-t-0"
-                style={{ gridTemplateColumns: "1fr 62px 66px", borderColor: "#1a2233" }}
+                style={{ gridTemplateColumns: "1fr 62px 66px", borderColor: "var(--color-hairline-lo)" }}
               >
                 <span className="text-[12px] truncate flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: FRESH(card.daysSince) }} />
@@ -219,9 +219,9 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
           <h3 className="ds2-label mb-2.5">Revenue concentration · 90d</h3>
           {conc.total > 0 ? (
             <>
-              <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid #26304a" }}>
+              <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid var(--color-hairline)" }}>
                 {topShares.map((s, i) => (
-                  <div key={s.agentId} className="h-full flex items-center justify-center text-[9px] font-bold" style={{ width: `${s.share * 100}%`, background: ["#e8940a", "#f5b03a", "#c8890a"][i], color: "#0d1119" }}>
+                  <div key={s.agentId} className="h-full flex items-center justify-center text-[9px] font-bold" style={{ width: `${s.share * 100}%`, background: ["var(--color-amber)", "var(--color-amber-hi)", "var(--color-amber-dark)"][i], color: "var(--color-on-amber)" }}>
                     {Math.round(s.share * 100)}%
                   </div>
                 ))}
@@ -232,14 +232,14 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
               <div className="flex flex-wrap gap-x-3.5 gap-y-1 mb-2">
                 {topShares.map((s, i) => (
                   <Link key={s.agentId} to={`/agents/${s.agentId}`} className="text-[11.5px] flex items-center gap-1.5 hover:underline">
-                    <span className="inline-block w-2 h-2 rounded-sm flex-none" style={{ background: ["#e8940a", "#f5b03a", "#c8890a"][i] }} />
+                    <span className="inline-block w-2 h-2 rounded-sm flex-none" style={{ background: ["var(--color-amber)", "var(--color-amber-hi)", "var(--color-amber-dark)"][i] }} />
                     <span className="text-light">{name(s.agentId)}</span>
                     <span className="text-muted-text">{Math.round(s.share * 100)}%</span>
                   </Link>
                 ))}
               </div>
               <p className="text-[11px] text-muted-text">
-                Top 3 = <b style={{ color: conc.overSingleCap ? "#f5a623" : "#f5b03a" }}>{Math.round((conc.top3Pct ?? 0) * 100)}%</b> of your recent book.
+                Top 3 = <b style={{ color: "var(--color-amber-hi)" }}>{Math.round((conc.top3Pct ?? 0) * 100)}%</b> of your recent book.
                 Rule of thumb: no single agent over <span className="text-light">30%</span>, top 3 under <span className="text-light">65%</span>.
               </p>
             </>
@@ -269,8 +269,8 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
                         className="w-[11px] h-[13px] rounded-[3px]"
                         style={
                           i < warm
-                            ? { background: i === warm - 1 ? "#5a4218" : "linear-gradient(180deg,var(--color-hot),var(--color-amber))" }
-                            : { background: "var(--color-well)", boxShadow: "inset 0 1px 3px rgba(0,0,0,.6)" }
+                            ? { background: i === warm - 1 ? "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" : "linear-gradient(180deg,var(--color-hot),var(--color-amber))" }
+                            : { background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }
                         }
                       />
                     ))}
@@ -290,8 +290,8 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
             <p className="text-xs text-muted-text">Your star ratings track the numbers — nothing to flag.</p>
           ) : (
             flags.slice(0, 4).map(({ agent, card }) => (
-              <Link key={agent.agent_id} to={`/agents/${agent.agent_id}`} className="flex gap-2 items-start py-1.5 text-[11.5px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
-                <TriangleAlert size={13} style={{ color: "#f5a623", flexShrink: 0, marginTop: 1 }} />
+              <Link key={agent.agent_id} to={`/agents/${agent.agent_id}`} className="flex gap-2 items-start py-1.5 text-[11.5px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
+                <TriangleAlert size={13} style={{ color: "var(--color-amber-hi)", flexShrink: 0, marginTop: 1 }} />
                 <span>
                   <span className="font-semibold">{nameOf(agent)}</span> — {flagText(card)}
                 </span>

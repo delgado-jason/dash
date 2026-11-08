@@ -51,7 +51,7 @@ const CallButton = ({ phone, big = false }: { phone: string; big?: boolean }) =>
     className={`inline-flex items-center gap-[7px] rounded-[9px] font-condensed font-semibold text-amber-hi bg-well border border-amber/35 whitespace-nowrap ${
       big ? "h-10 px-[18px] text-[14.5px]" : "h-8 px-[13px] text-[13px]"
     }`}
-    style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+    style={{ boxShadow: "var(--shadow-inset)" }}
   >
     {CALL_ICON}
     {big ? "CALL" : phone}
@@ -98,7 +98,7 @@ const DoorButton = ({
       className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] tracking-[.05em] text-canvas whitespace-nowrap disabled:opacity-40"
       style={{
         background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-        boxShadow: "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+        boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
       }}
     >
       {children}
@@ -108,7 +108,7 @@ const DoorButton = ({
       onClick={onClick}
       disabled={disabled}
       className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline whitespace-nowrap disabled:opacity-40"
-      style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+      style={{ boxShadow: "var(--shadow-inset)" }}
     >
       {children}
     </button>
@@ -335,7 +335,7 @@ const VendorsPage = () => {
               style={{
                 background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
                 boxShadow:
-                  "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
               }}
             >
               + NEW VENDOR
@@ -354,7 +354,7 @@ const VendorsPage = () => {
             </span>
           )}
           {trust.steerClear > 0 && (
-            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[12px] text-[#e05252] border border-[rgba(224,82,82,.3)] bg-[rgba(224,82,82,.08)]">
+            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[12px] text-status-negative-text border border-status-negative-text/30 bg-status-negative-text/8">
               {trust.steerClear} steer clear
             </span>
           )}
@@ -365,7 +365,7 @@ const VendorsPage = () => {
           )}
           <input
             className="ml-auto h-[34px] px-3 rounded-[9px] bg-well font-condensed text-[13px] text-ink placeholder:text-faint min-w-[210px] outline-none"
-            style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+            style={{ boxShadow: "var(--shadow-inset)" }}
             placeholder="⌕  search name, city, contact…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -475,8 +475,8 @@ const VendorsPage = () => {
                   <span
                     className="ml-auto font-display text-[13px] tracking-[.14em] text-amber-hi rounded-[4px] px-2 pt-[2px] pb-[1px] rotate-[-1.2deg]"
                     style={{
-                      border: "1.5px solid rgba(245,176,58,.55)",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,.12), 0 1px 2px rgba(0,0,0,.5)",
+                      border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
+                      boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
                     }}
                   >
                     GO-TO <span className="text-dim tracking-[.1em]">· {g.champion.name.toUpperCase()}</span>
@@ -497,7 +497,7 @@ const VendorsPage = () => {
                     {trustLevel === "steer" && (
                       <span
                         className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-[3px] opacity-75"
-                        style={{ background: "#e05252" }}
+                        style={{ background: "var(--color-status-negative-text)" }}
                         aria-hidden
                       />
                     )}

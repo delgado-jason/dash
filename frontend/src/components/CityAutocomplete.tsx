@@ -38,6 +38,7 @@ const CityAutocomplete = ({
     }
     const q = value.trim();
     if (q.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing, untouched by the colour sweep; owed to this page's phase C restructure
       setSuggestions([]);
       setOpen(false);
       return;
@@ -112,12 +113,12 @@ const CityAutocomplete = ({
             margin: 0,
             padding: 4,
             listStyle: "none",
-            background: "#141b28",
-            border: "1px solid #2a3347",
+            background: "var(--color-panel)",
+            border: "1px solid var(--color-hairline)",
             borderRadius: 9,
             maxHeight: 220,
             overflowY: "auto",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            boxShadow: "var(--shadow-pop)",
           }}
         >
           {suggestions.map((s, i) => (
@@ -138,13 +139,13 @@ const CityAutocomplete = ({
                 borderRadius: 6,
                 cursor: "pointer",
                 fontSize: 14,
-                color: "#f4f7fb",
-                background: i === active ? "#20293a" : "transparent",
+                color: "var(--color-ink)",
+                background: i === active ? "var(--color-plate-b)" : "transparent",
               }}
             >
-              <span style={{ color: "#5f6b80", fontSize: 12 }}>◈</span>
+              <span style={{ color: "var(--color-faint)", fontSize: 12 }}>◈</span>
               <span>
-                {s.city}, <span style={{ color: "#9fb0c9" }}>{s.state}</span>
+                {s.city}, <span style={{ color: "var(--color-dim)" }}>{s.state}</span>
               </span>
             </li>
           ))}

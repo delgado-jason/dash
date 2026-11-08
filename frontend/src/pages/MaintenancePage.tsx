@@ -207,7 +207,7 @@ const MaintenancePage = () => {
 
         <span
           className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px] mt-4"
-          style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+          style={{ boxShadow: "var(--shadow-inset)" }}
           role="tablist"
         >
           <button
@@ -238,17 +238,17 @@ const MaintenancePage = () => {
             {items.length} CLOCK{items.length === 1 ? "" : "S"}
           </span>
           {counts.overdue > 0 && (
-            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-[#e05252] border border-[rgba(224,82,82,.35)] bg-[rgba(224,82,82,.08)]">
+            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-negative-text border border-status-negative-text/35 bg-status-negative-text/8">
               {counts.overdue} OVERDUE
             </span>
           )}
           {counts.soon > 0 && (
-            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-[rgba(232,148,10,.35)] bg-[rgba(232,148,10,.08)]">
+            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/35 bg-amber/8">
               {counts.soon} CLOSE
             </span>
           )}
           {counts.ok > 0 && (
-            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-[#6fd08c] border border-[rgba(111,208,140,.3)] bg-[rgba(111,208,140,.06)]">
+            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-positive-text border border-status-positive-text/30 bg-status-positive-text/6">
               {counts.ok} RUNNING
             </span>
           )}

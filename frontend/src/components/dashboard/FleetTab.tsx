@@ -21,9 +21,9 @@ import { mileMilestone, fmtMiles } from "@/lib/metrics/mileClub";
 const DAY_FILL: Record<DayStatus, string> = {
   underload: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
   home: "var(--color-plate-b)",
-  idle: "#5a4218",
+  idle: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))",
 };
-const DUE_DOT: Record<DueLevel, string> = { overdue: "#f87171", soon: "#f5a623", ok: "#2f7d55", unknown: "#5b6577" };
+const DUE_DOT: Record<DueLevel, string> = { overdue: "var(--color-status-negative-text)", soon: "var(--color-amber-hi)", ok: "var(--color-status-positive-text)", unknown: "var(--color-faint)" };
 const DUE_RANK: Record<DueLevel, number> = { overdue: 0, soon: 1, ok: 2, unknown: 3 };
 const COMP: Record<ComplianceLevel, { cls: string }> = {
   expired: { cls: "text-status-negative-text" }, expiring: { cls: "text-status-aware-text" },
@@ -360,24 +360,24 @@ export const FleetTab = ({
           <p className="text-[13px] font-bold">{rigName} <span className="text-muted-text font-normal text-[11.5px]">· #{truck.unit_number} · {Number(truck.current_odometer).toLocaleString()} mi</span></p>
           {trailerName && <p className="text-[11px] text-muted-text mt-0.5">pulling a {trailerName} {trailer?.trailer_type} · #{trailer?.unit_number}</p>}
 
-          <div className="flex h-[22px] rounded-md overflow-hidden my-2.5" style={{ border: "1px solid #26304a" }}>
+          <div className="flex h-[22px] rounded-md overflow-hidden my-2.5" style={{ border: "1px solid var(--color-hairline)" }}>
             {uUL > 0 && <div className="flex items-center justify-center text-[9.5px] font-bold" style={{ width: `${uUL}%`, background: "linear-gradient(180deg,var(--color-hot),var(--color-amber))", color: "var(--color-canvas)" }}>{util != null ? pct(util) : ""} rolling</div>}
             {uHome > 0 && <div style={{ width: `${uHome}%`, background: "var(--color-plate-b)" }} />}
-            {uIdle > 0 && <div style={{ width: `${uIdle}%`, background: "#5a4218" }} />}
+            {uIdle > 0 && <div style={{ width: `${uIdle}%`, background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />}
           </div>
           <div className="flex gap-3.5 text-[10px] text-muted-text">
             <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "var(--color-amber)" }} />{metrics?.underLoadDays ?? 0} under load</span>
             <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />{metrics?.homeDays ?? 0} home</span>
-            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "#5a4218" }} />{metrics?.idleDays ?? 0} idle</span>
+            <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />{metrics?.idleDays ?? 0} idle</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 my-3">
             {[
               { v: costPerMile != null ? rpm(costPerMile) : "—", l: "fuel + shop + note / mi" },
-              { v: metrics?.revPerMile != null ? rpm(metrics.revPerMile) : "—", l: "revenue / mi", c: "#4ade80" },
+              { v: metrics?.revPerMile != null ? rpm(metrics.revPerMile) : "—", l: "revenue / mi", c: "var(--color-status-positive-text)" },
               { v: metrics?.milesPerMonth != null ? Math.round(metrics.milesPerMonth).toLocaleString() : "—", l: "miles / month" },
             ].map((e) => (
-              <div key={e.l} className="rounded-lg px-2.5 py-1.5" style={{ background: "#121a27", border: "1px solid #22304a" }}>
+              <div key={e.l} className="rounded-lg px-2.5 py-1.5" style={{ background: "var(--color-well)", border: "1px solid var(--color-plate)" }}>
                 <p className="text-[15px] font-bold" style={{ color: e.c }}>{e.v}</p>
                 <p className="text-[9px] uppercase tracking-wide text-muted-text mt-0.5">{e.l}</p>
               </div>
@@ -401,15 +401,15 @@ export const FleetTab = ({
 
         {/* road-ready */}
         <div className="ds2-board p-4">
-          <H3 right={<span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full" style={{ color: health.color, background: "#1c1408", border: `1px solid ${health.color}55` }}>{health.label}</span>}>Road-ready</H3>
+          <H3 right={<span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full" style={{ color: health.color, background: "var(--color-status-aware-bg)", border: `1px solid color-mix(in srgb, ${health.color} 33%, transparent)` }}>{health.label}</span>}>Road-ready</H3>
           {dues.length === 0 ? (
             <p className="text-xs text-muted-text">No maintenance schedule yet.</p>
           ) : (
             dues.slice(0, 4).map((d, i) => (
-              <div key={`${d.name}-${i}`} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
+              <div key={`${d.name}-${i}`} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DUE_DOT[d.due.level] }} />
                 <span className="truncate">{d.name}</span>
-                <span className="ml-auto text-[11px] whitespace-nowrap" style={{ color: d.due.level === "overdue" ? "#f87171" : d.due.level === "soon" ? "#f5a623" : "#8b93a3" }}>
+                <span className="ml-auto text-[11px] whitespace-nowrap" style={{ color: d.due.level === "overdue" ? "var(--color-status-negative-text)" : d.due.level === "soon" ? "var(--color-amber-hi)" : "var(--color-muted-text)" }}>
                   {d.due.level === "ok" ? "ok" : remain(d.due)}
                 </span>
               </div>
@@ -417,11 +417,11 @@ export const FleetTab = ({
           )}
           <Link to="/maintenance" className="text-[11px] text-status-info-text hover:underline mt-2 inline-block">Maintenance →</Link>
           {chips.length > 0 && (
-            <div className="border-t mt-3 pt-2.5" style={{ borderColor: "#1a2233" }}>
+            <div className="border-t mt-3 pt-2.5" style={{ borderColor: "var(--color-hairline-lo)" }}>
               <p className="text-[10px] uppercase tracking-wide text-muted-text font-bold mb-1.5">Compliance</p>
               <div className="flex flex-wrap gap-1.5">
                 {chips.map((c, i) => (
-                  <span key={`${c.label}-${i}`} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${COMP[c.level].cls}`} style={{ background: "#0e1420", border: "1px solid #26304a" }}>
+                  <span key={`${c.label}-${i}`} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${COMP[c.level].cls}`} style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}>
                     {c.label} · {c.level === "expired" ? `expired ${Math.abs(c.daysRemaining ?? 0)}d` : c.level === "expiring" ? `${c.daysRemaining}d` : "ok"}
                   </span>
                 ))}
@@ -452,13 +452,13 @@ export const FleetTab = ({
                   return (
                     <g key={m.month}>
                       <rect x={x} y={76 - h} width={w} height={h} rx={2} fill={big ? "var(--color-amber-hi)" : m.spend > 0 ? "var(--color-chart-amber)" : "var(--color-plate-b)"} />
-                      <text x={x + w / 2} y={90} textAnchor="middle" fontSize={8} fill="#5b6577">{m.label.charAt(0)}</text>
+                      <text x={x + w / 2} y={90} textAnchor="middle" fontSize={8} fill="var(--color-faint)">{m.label.charAt(0)}</text>
                     </g>
                   );
                 })}
               </svg>
               {shop.recent.map((s) => (
-                <div key={s.date + s.description} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "#1a2233" }}>
+                <div key={s.date + s.description} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
                   <span className="text-muted-text w-9 shrink-0">{new Date(s.date.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })}</span>
                   <span className="truncate min-w-0 flex-1">{s.description}</span>
                   <span className="ml-auto font-bold whitespace-nowrap">{money(s.cost)}</span>
@@ -478,9 +478,9 @@ export const FleetTab = ({
             </p>
           ) : (
             <>
-              <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid #26304a" }}>
+              <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid var(--color-hairline)" }}>
                 {costParts.map((p) => (
-                  <div key={p.key} className="flex items-center justify-center text-[9px] font-bold" style={{ width: `${costPct(p.v)}%`, background: p.color, color: "#0d1119" }}>
+                  <div key={p.key} className="flex items-center justify-center text-[9px] font-bold" style={{ width: `${costPct(p.v)}%`, background: p.color, color: "var(--color-on-amber)" }}>
                     {costPct(p.v) >= 14 ? `${costPct(p.v)}%` : ""}
                   </div>
                 ))}
@@ -491,7 +491,7 @@ export const FleetTab = ({
                   <span className="text-muted-text">{costPct(p.v)}%</span>
                 </div>
               ))}
-              <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "#1a2233" }}>
+              <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "var(--color-hairline-lo)" }}>
                 <span className="font-bold">{rpm(costPerMile)} total / mi</span>
                 <span className="text-muted-text">
                   the rig's own running cost
@@ -501,9 +501,9 @@ export const FleetTab = ({
             </>
           )}
           {paidPerGal != null && (
-            <p className="text-[11.5px] text-muted-text border-t mt-2.5 pt-2.5" style={{ borderColor: "#1a2233" }}>
+            <p className="text-[11.5px] text-muted-text border-t mt-2.5 pt-2.5" style={{ borderColor: "var(--color-hairline-lo)" }}>
               Diesel you paid <b className="text-status-aware-text">{dieselPrice(paidPerGal)}</b>
-              {fleet.nationalDiesel != null && <> · national <b className="text-light">{dieselPrice(fleet.nationalDiesel)}</b>{dieselGap != null && Math.abs(dieselGap) >= 0.005 && <> · you run <b style={{ color: dieselGap > 0 ? "#f87171" : "#4ade80" }}>{Math.abs(dieselGap * 100).toFixed(0)}¢</b> {dieselGap > 0 ? "over" : "under"}</>}</>}
+              {fleet.nationalDiesel != null && <> · national <b className="text-light">{dieselPrice(fleet.nationalDiesel)}</b>{dieselGap != null && Math.abs(dieselGap) >= 0.005 && <> · you run <b style={{ color: dieselGap > 0 ? "var(--color-status-negative-text)" : "var(--color-status-positive-text)" }}>{Math.abs(dieselGap * 100).toFixed(0)}¢</b> {dieselGap > 0 ? "over" : "under"}</>}</>}
             </p>
           )}
         </div>
@@ -530,7 +530,7 @@ export const FleetTab = ({
         <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-2.5 flex-wrap">
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "linear-gradient(180deg,var(--color-hot),var(--color-amber))" }} />under a load (earning)</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />home</span>
-          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "#5a4218" }} />idle</span>
+          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />idle</span>
         </div>
       </div>
     </div>

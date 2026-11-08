@@ -33,18 +33,18 @@ import { CutPanel } from "@/components/market/CutPanel";
 import { getCutTierData, type CutTierRow } from "@/services/expensesService";
 import { rpm } from "@/lib/format";
 
-const MACRO = "#4f8cd6"; // FRED PPI overlay line — the house chart blue
+const MACRO = "var(--color-chart-blue)"; // FRED PPI overlay line — the house chart blue
 
 // The app's one load-type palette (hazmat moved to violet — it was too close
 // to standard's amber to tell apart).
 const COLOR: Record<RatePoint["bucket"], string> = {
-  standard: "#f5b03a",
-  hazmat: "#8f7ad0",
-  specialized: "#4f8cd6",
+  standard: "var(--color-amber-hi)",
+  hazmat: "var(--color-cat3)",
+  specialized: "var(--color-chart-blue)",
 };
-const BE = "#e05252";
-const GRID = "#141c2a";
-const MUTED = "#5a6880";
+const BE = "var(--color-status-negative-text)";
+const GRID = "var(--color-hairline-lo)";
+const MUTED = "var(--color-faint)";
 const monthTick = (ym: string) =>
   new Date(ym + "-01T00:00:00Z").toLocaleDateString("en-US", {
     month: "short",
@@ -118,13 +118,13 @@ const RateScatter = ({
         />
         <Tooltip
           cursor={{ stroke: GRID }}
-          contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--color-iron)", border: "1px solid var(--color-plate)", borderRadius: 8, fontSize: 12 }}
           formatter={(value, name) => [rpm(Number(value)), name === "y" ? "rate/mi" : String(name)]}
           labelFormatter={(v) => new Date(v as number).toLocaleDateString("en-US", { timeZone: "UTC" })}
         />
         {refLine(ladder.walkAway, BE, "break-even")}
-        {refLine(ladder.target, "#7fb2e6", "std target")}
-        {refLine(specLadder.target, "#e05a3a", "spec target")}
+        {refLine(ladder.target, "var(--color-status-info-text)", "std target")}
+        {refLine(specLadder.target, "var(--color-cat4)", "spec target")}
         <Scatter name="standard" data={series("standard")} fill={COLOR.standard} fillOpacity={0.8} />
         <Scatter name="hazmat" data={series("hazmat")} fill={COLOR.hazmat} fillOpacity={0.85} />
         <Scatter name="specialized" data={series("specialized")} fill={COLOR.specialized} fillOpacity={0.85} />
@@ -184,7 +184,7 @@ const Barometer = ({
         />
       )}
       <Tooltip
-        contentStyle={{ background: "#1c2333", border: "1px solid #2a3347", borderRadius: 8, fontSize: 12 }}
+        contentStyle={{ background: "var(--color-iron)", border: "1px solid var(--color-plate)", borderRadius: 8, fontSize: 12 }}
         labelFormatter={(m) => monthTick(m as string)}
         formatter={(v, name) =>
           name === "ppi" ? [`${Number(v).toFixed(1)} idx`, "FRED PPI"] : [rpm(Number(v)), "your median"]
@@ -217,9 +217,9 @@ const Barometer = ({
         yAxisId="rate"
         type="monotone"
         dataKey="median"
-        stroke="#f5b03a"
+        stroke="var(--color-amber-hi)"
         strokeWidth={2.5}
-        dot={{ fill: "#4ade80", r: 3 }}
+        dot={{ fill: "var(--color-status-positive-text)", r: 3 }}
         connectNulls
       />
     </LineChart>
@@ -344,7 +344,7 @@ const MarketPage = () => {
         ? `Your standard median moved ${pctLabel(ok.yourPct)} from ${ok.prior.label} to ${ok.recent.label} while the index moved ${pctLabel(ok.marketPct)} — ${gapPts} pts behind, on ${ok.recent.n} and ${ok.prior.n} loads. Money on the table: lanes, agents, negotiation.`
         : `Your standard median moved ${pctLabel(ok.yourPct)} and the index ${pctLabel(ok.marketPct)} from ${ok.prior.label} to ${ok.recent.label} — moving with the cycle, on ${ok.recent.n} and ${ok.prior.n} loads.`
     : null;
-  const yvmColor = ok?.verdict === "beating" ? "#4ade80" : ok?.verdict === "lagging" ? "#f0b86a" : "#c9d3e0";
+  const yvmColor = ok?.verdict === "beating" ? "var(--color-status-positive-text)" : ok?.verdict === "lagging" ? "var(--color-amber-hi)" : "var(--color-dim)";
 
   // The ladder as a distribution — where your RECENT loads landed, in the banded
   // ladder's zones. Windowed to the same trailing 90 days as the rate and gauge,
@@ -571,7 +571,7 @@ const MarketPage = () => {
                       />
                       <div className="flex gap-4 font-condensed text-[11px] text-faint mt-1 px-1">
                         <span>
-                          <span style={{ color: "#f5b03a" }}>▬</span> you (median $/mi)
+                          <span style={{ color: "var(--color-amber-hi)" }}>▬</span> you (median $/mi)
                         </span>
                         {hasPpi && (
                           <span>
@@ -593,7 +593,7 @@ const MarketPage = () => {
                             <span className="font-condensed text-[11px] text-faint w-14">you</span>
                             <div
                               className="flex-1 h-2 rounded-[3px] overflow-hidden"
-                              style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                              style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
                             >
                               <div
                                 className="h-2"
@@ -605,7 +605,7 @@ const MarketPage = () => {
                             </div>
                             <span
                               className="font-condensed text-xs w-14 text-right tabular-nums"
-                              style={{ color: ok.yourPct >= 0 ? "#6fd08c" : "#e05252" }}
+                              style={{ color: ok.yourPct >= 0 ? "var(--color-status-positive-text)" : "var(--color-status-negative-text)" }}
                             >
                               {pctLabel(ok.yourPct)}
                             </span>
@@ -614,7 +614,7 @@ const MarketPage = () => {
                             <span className="font-condensed text-[11px] text-faint w-14">market</span>
                             <div
                               className="flex-1 h-2 rounded-[3px] overflow-hidden"
-                              style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                              style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
                             >
                               <div className="h-2" style={{ width: `${yvmBar(ok.marketPct)}%`, background: MACRO }} />
                             </div>
@@ -672,7 +672,7 @@ const MarketPage = () => {
                             </div>
                             <div
                               className="mt-1 h-[7px] rounded-[3px] overflow-hidden"
-                              style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                              style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
                             >
                               <div
                                 className="h-full"
@@ -704,9 +704,9 @@ const MarketPage = () => {
                   </span>
                 </div>
                 {[
-                  { n: "Below break-even", c: "#e05252", bg: "rgba(224,82,82,.45)", v: zones.below },
-                  { n: "Break-even → floor", c: "var(--color-amber-hi)", bg: "rgba(232,148,10,.5)", v: zones.floor },
-                  { n: "Floor → target", c: "#6fd08c", bg: "rgba(111,208,140,.45)", v: zones.mid },
+                  { n: "Below break-even", c: "var(--color-status-negative-text)", bg: "color-mix(in srgb, var(--color-status-negative-text) 45%, transparent)", v: zones.below },
+                  { n: "Break-even → floor", c: "var(--color-amber-hi)", bg: "color-mix(in srgb, var(--color-amber) 50%, transparent)", v: zones.floor },
+                  { n: "Floor → target", c: "var(--color-status-positive-text)", bg: "color-mix(in srgb, var(--color-status-positive-text) 45%, transparent)", v: zones.mid },
                   {
                     n: "Target and past",
                     c: "var(--color-hot)",
@@ -723,7 +723,7 @@ const MarketPage = () => {
                     </span>
                     <span
                       className="flex-1 h-[10px] rounded-[3px] overflow-hidden"
-                      style={{ background: "var(--color-well)", boxShadow: "inset 0 2px 3px rgba(0,0,0,.5)" }}
+                      style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
                     >
                       <i className="block h-full" style={{ width: `${(z.v / zones.max) * 100}%`, background: z.bg }} />
                     </span>

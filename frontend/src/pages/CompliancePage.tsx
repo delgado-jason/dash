@@ -47,10 +47,10 @@ const fmtDate = (d: string) =>
   });
 
 const PILL: Record<ComplianceLevel, { label: string; fg: string }> = {
-  valid: { label: "Valid", fg: "#6fd08c" },
-  expiring: { label: "Expiring", fg: "#f5b03a" },
-  expired: { label: "Expired", fg: "#e05252" },
-  unknown: { label: "No date", fg: "#5a6880" },
+  valid: { label: "Valid", fg: "var(--color-status-positive-text)" },
+  expiring: { label: "Expiring", fg: "var(--color-amber-hi)" },
+  expired: { label: "Expired", fg: "var(--color-status-negative-text)" },
+  unknown: { label: "No date", fg: "var(--color-faint)" },
 };
 
 // The paper's clock fill — elapsed share of its window. Window = issued→expires
@@ -90,24 +90,24 @@ const ClockCells = ({ fill, level }: { fill: number; level: ComplianceLevel }) =
             on
               ? hot
                 ? {
-                    background: "linear-gradient(180deg, #ff8a8a, #e05252)",
-                    border: "1px solid rgba(224,82,82,.6)",
-                    boxShadow: "0 0 6px rgba(224,82,82,.35)",
+                    background: "var(--color-status-negative-text)",
+                    border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 60%, transparent)",
+                    boxShadow: "0 0 6px color-mix(in srgb, var(--color-status-negative-text) 35%, transparent)",
                   }
                 : warm
                   ? {
                       background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                      border: "1px solid rgba(245,176,58,.55)",
-                      boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                      border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
+                      boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                     }
                   : {
-                      background: "rgba(232,148,10,.4)",
-                      border: "1px solid rgba(232,148,10,.3)",
+                      background: "color-mix(in srgb, var(--color-amber) 40%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--color-amber) 30%, transparent)",
                     }
               : {
                   background: "var(--color-well)",
                   border: "1px solid var(--color-hairline-lo)",
-                  boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                  boxShadow: "var(--shadow-inset)",
                 }
           }
         />
@@ -407,7 +407,7 @@ const CompliancePage = () => {
             <button
               aria-label="Delete"
               onClick={() => remove(item.compliance_item_id)}
-              className="font-condensed text-[13px] text-faint hover:text-[#e05252]"
+              className="font-condensed text-[13px] text-faint hover:text-status-negative-text"
             >
               ✕
             </button>
@@ -600,19 +600,19 @@ const CompliancePage = () => {
             className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
             style={
               grounded
-                ? { color: "#e05252", borderColor: "#e05252", boxShadow: "inset 0 0 12px rgba(224,82,82,.12)" }
-                : { color: "#6fd08c", borderColor: "#6fd08c", boxShadow: "inset 0 0 12px rgba(111,208,140,.12)" }
+                ? { color: "var(--color-status-negative-text)", borderColor: "var(--color-status-negative-text)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-negative-text) 12%, transparent)" }
+                : { color: "var(--color-status-positive-text)", borderColor: "var(--color-status-positive-text)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-positive-text) 12%, transparent)" }
             }
           >
             {grounded ? "GROUNDED" : summary.expiring > 0 ? "CLEARED TO ROLL" : "ALL CLEAR"}
           </span>
           {summary.expired > 0 && (
-            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-[#e05252] border border-[rgba(224,82,82,.35)] bg-[rgba(224,82,82,.08)]">
+            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-negative-text border border-status-negative-text/35 bg-status-negative-text/8">
               {summary.expired} EXPIRED
             </span>
           )}
           {summary.expiring > 0 && (
-            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-[rgba(232,148,10,.35)] bg-[rgba(232,148,10,.08)]">
+            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/35 bg-amber/8">
               {summary.expiring} EXPIRING
             </span>
           )}
@@ -674,7 +674,7 @@ const CompliancePage = () => {
             <div className="relative w-full max-w-[560px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
               >
                 <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
                   {renewing

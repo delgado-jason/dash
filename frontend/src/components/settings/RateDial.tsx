@@ -67,15 +67,15 @@ export const RateDial = ({
   const zx = (m: number) => ((Math.min(HI, Math.max(TRACK_LO, m)) - TRACK_LO) / (HI - TRACK_LO)) * 100;
 
   return (
-    <div className="rounded-lg p-3.5" style={{ background: "#0d1119" }}>
+    <div className="rounded-lg p-3.5" style={{ background: "var(--color-well)" }}>
       <div className="flex items-center gap-2">
         <span className="inline-block rounded-full" style={{ width: 9, height: 9, background: dot }} />
         <span className="text-sm font-medium text-light">{label}</span>
-        <span className="text-sm tabular-nums" style={{ color: atFloor ? "#f87171" : "#ffcf7a", fontWeight: 600 }}>
+        <span className="text-sm tabular-nums" style={{ color: atFloor ? "var(--color-status-negative-text)" : "var(--color-hot)", fontWeight: 600 }}>
           · pricing for {pct1(margin)} margin
         </span>
         {!atFloor && !under && (
-          <span className="text-[11px]" style={{ color: "#4ade80" }}>
+          <span className="text-[11px]" style={{ color: "var(--color-status-positive-text)" }}>
             {Math.round((margin - goal) * 10) / 10} pts above your {goal}% goal — your padding
           </span>
         )}
@@ -83,18 +83,18 @@ export const RateDial = ({
 
       {/* the track */}
       <div className="relative mt-5" style={{ height: 56 }}>
-        <div className="absolute left-0 right-0 overflow-hidden rounded-md" style={{ top: 22, height: 12, border: "1px solid #26304a" }}>
-          <span className="absolute inset-y-0" style={{ left: 0, width: `${zx(0)}%`, background: "rgba(224,82,82,.45)" }} />
-          <span className="absolute inset-y-0" style={{ left: `${zx(0)}%`, width: `${zx(goal) - zx(0)}%`, background: "rgba(232,148,10,.28)" }} />
-          <span className="absolute inset-y-0" style={{ left: `${zx(goal)}%`, width: `${zx(goal + 5) - zx(goal)}%`, background: "rgba(111,208,140,.22)" }} />
-          <span className="absolute inset-y-0" style={{ left: `${zx(goal + 5)}%`, right: 0, background: "rgba(111,208,140,.42)" }} />
+        <div className="absolute left-0 right-0 overflow-hidden rounded-md" style={{ top: 22, height: 12, border: "1px solid var(--color-hairline)" }}>
+          <span className="absolute inset-y-0" style={{ left: 0, width: `${zx(0)}%`, background: "color-mix(in srgb, var(--color-status-negative-text) 45%, transparent)" }} />
+          <span className="absolute inset-y-0" style={{ left: `${zx(0)}%`, width: `${zx(goal) - zx(0)}%`, background: "color-mix(in srgb, var(--color-amber) 28%, transparent)" }} />
+          <span className="absolute inset-y-0" style={{ left: `${zx(goal)}%`, width: `${zx(goal + 5) - zx(goal)}%`, background: "color-mix(in srgb, var(--color-status-positive-text) 22%, transparent)" }} />
+          <span className="absolute inset-y-0" style={{ left: `${zx(goal + 5)}%`, right: 0, background: "color-mix(in srgb, var(--color-status-positive-text) 42%, transparent)" }} />
         </div>
         {/* fixed markers: break-even and the goal */}
-        <span className="absolute" style={{ left: posOf(0), top: 14, width: 2, height: 28, background: "#e8edf6", opacity: 0.85 }} />
+        <span className="absolute" style={{ left: posOf(0), top: 14, width: 2, height: 28, background: "var(--color-ink)", opacity: 0.85 }} />
         <span className="absolute text-[10px] text-muted-text" style={{ left: posOf(0), top: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
           break-even 0%
         </span>
-        <span className="absolute" style={{ left: posOf(goal), top: 14, width: 2, height: 28, background: "#e8edf6", opacity: 0.85 }} />
+        <span className="absolute" style={{ left: posOf(goal), top: 14, width: 2, height: 28, background: "var(--color-ink)", opacity: 0.85 }} />
         <span className="absolute text-[10px] text-muted-text" style={{ left: posOf(goal), top: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
           your goal {goal}%
         </span>
@@ -107,20 +107,20 @@ export const RateDial = ({
           aria-label={`${label} target margin`}
           onChange={(e) => slide(Number(e.target.value))}
           className="rate-dial-range absolute"
-          style={{ left: `${zx(0)}%`, right: 0, top: 16, height: 24, ["--dial-thumb" as string]: atFloor ? "#e05252" : "#f5b03a" }}
+          style={{ left: `${zx(0)}%`, right: 0, top: 16, height: 24, ["--dial-thumb" as string]: atFloor ? "var(--color-status-negative-text)" : "var(--color-amber-hi)" }}
         />
         <span className="absolute text-[10px] text-muted-text" style={{ left: 0, bottom: 0 }}>−10%</span>
         <span className="absolute text-[10px] text-muted-text" style={{ right: 0, bottom: 0 }}>45%</span>
       </div>
 
       {atFloor && (
-        <p className="text-[12px] mt-2 font-semibold" style={{ color: "#f87171" }}>
+        <p className="text-[12px] mt-2 font-semibold" style={{ color: "var(--color-status-negative-text)" }}>
           ⚠ AT BREAK-EVEN — the handle stops here. Everything left of the marker is
           the red zone: every mile there pays the agency.
         </p>
       )}
       {under && (
-        <p className="text-[12px] mt-2" style={{ color: "#e8940a" }}>
+        <p className="text-[12px] mt-2" style={{ color: "var(--color-amber)" }}>
           Pricing under your {goal}% goal — slippage lands below it. Down-market mode; watch the volume.
         </p>
       )}
@@ -141,11 +141,11 @@ export const RateDial = ({
       {/* rung cards */}
       <div className="grid grid-cols-3 gap-2 mt-2">
         {stored.map((r, i) => (
-          <div key={r.key} className="rounded px-2 py-1.5" style={{ background: "#111827", border: "1px solid #1e2636" }}>
+          <div key={r.key} className="rounded px-2 py-1.5" style={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline)" }}>
             <div className="text-[10px] uppercase tracking-wide text-muted-text">
               {["Minimum", "Target", "Strong"][i]}
             </div>
-            <div className="text-sm tabular-nums font-semibold" style={{ color: ["#93a1b8", "#e8940a", "#4ade80"][i] }}>
+            <div className="text-sm tabular-nums font-semibold" style={{ color: ["var(--color-muted-text)", "var(--color-amber)", "var(--color-status-positive-text)"][i] }}>
               {at(r.markup)}
             </div>
             <div className="text-[10px] text-muted-text tabular-nums">

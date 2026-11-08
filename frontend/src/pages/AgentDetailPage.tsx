@@ -454,7 +454,7 @@ const AgentDetailPage = () => {
         );
         if (!best) return null;
         return (
-          <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap" style={{ background: "linear-gradient(178deg,#2c3549,#1e2636)", borderTop: "1px solid rgba(255,255,255,.1)", borderBottom: "1.5px solid rgba(0,0,0,.5)" }}>
+          <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap" style={{ background: "linear-gradient(178deg, var(--color-plate-a), var(--color-plate-b))", borderTop: "1px solid color-mix(in srgb, var(--color-ink) 10%, transparent)", borderBottom: "1.5px solid color-mix(in srgb, var(--color-canvas) 50%, transparent)" }}>
             <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">BEST LOAD TOGETHER</span>
             <span className="font-condensed font-semibold text-[13.5px] text-ink tabular-nums">
               {money(loadRevenue(best))} · {best.origin_city}, {best.origin_state} → {best.destination_city}, {best.destination_state}
@@ -477,7 +477,7 @@ const AgentDetailPage = () => {
           <div className="mt-3 pt-3 border-t border-hairline flex items-baseline gap-2 flex-wrap">
             <span
               className="font-condensed text-lg"
-              style={{ color: "#f5c37a" }}
+              style={{ color: "var(--color-hot)" }}
             >
               {det.paid} / {det.claimable}
             </span>
@@ -486,7 +486,7 @@ const AgentDetailPage = () => {
               {det.claimable - det.paid > 0 && (
                 <>
                   {" · "}
-                  <span style={{ color: "#f2a6a3" }}>
+                  <span style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
                     {det.claimable - det.paid} held you up with no detention
                     paid
                   </span>
@@ -635,7 +635,7 @@ const AgentDetailPage = () => {
                     key={log.data.contact_id}
                     className="border-l-2 px-3 py-2 rounded-sm flex items-start gap-2"
                     style={{
-                      borderLeftColor: log.data.direction === "inbound" ? "#6fd08c" : "#4f8cd6",
+                      borderLeftColor: log.data.direction === "inbound" ? "var(--color-status-positive-text)" : "var(--color-chart-blue)",
                       background: "var(--color-well)",
                     }}
                   >
@@ -661,7 +661,7 @@ const AgentDetailPage = () => {
                 ) : (
                   <div
                     key={log.data.id}
-                    className="border-l-2 border-l-[#3b4660] bg-well/20 px-3 py-2 rounded-sm"
+                    className="border-l-2 border-l-plate bg-well/20 px-3 py-2 rounded-sm"
                   >
                     <p className="text-sm">
                       <StickyNote
@@ -678,7 +678,7 @@ const AgentDetailPage = () => {
               )}
               {logs.length > ACTIVITY_PREVIEW && (
                 <button
-                  className="w-full text-center text-sm font-semibold text-amber-light hover:text-amber border-t border-[#8494ab]/15 mt-1 pt-2.5"
+                  className="w-full text-center text-sm font-semibold text-amber-light hover:text-amber border-t border-dim/15 mt-1 pt-2.5"
                   onClick={() => setActivityExpanded((p) => !p)}
                 >
                   {activityExpanded ? "Show less" : `Show all ${logs.length}`}
@@ -754,7 +754,7 @@ const AgentDetailPage = () => {
               {agent.notes ? (
                 <p
                   className="text-sm text-dim leading-snug whitespace-pre-wrap rounded-sm px-2.5 py-2"
-                  style={{ background: "var(--color-well)", borderLeft: "2px solid #3b4660" }}
+                  style={{ background: "var(--color-well)", borderLeft: "2px solid var(--color-plate)" }}
                 >
                   {agent.notes}
                 </p>

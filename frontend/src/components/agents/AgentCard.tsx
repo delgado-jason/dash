@@ -134,8 +134,8 @@ export const AgentCard = ({
           className="text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0"
           style={
             direct
-              ? { color: "#5dcaa5", background: "rgba(93,202,165,.12)", border: "1px solid rgba(93,202,165,.40)" }
-              : { color: "#8494ab", background: "rgba(132,148,171,.08)", border: "1px solid rgba(132,148,171,.28)" }
+              ? { color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--color-cat2) 40%, transparent)" }
+              : { color: "var(--color-dim)", background: "color-mix(in srgb, var(--color-dim) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--color-dim) 28%, transparent)" }
           }
           title={cls.source === "pinned" ? "Pinned by you" : "Auto — from a repeat shipper or receiver"}
         >
@@ -161,8 +161,8 @@ export const AgentCard = ({
                     className="px-1.5 py-[3px] transition-colors"
                     style={
                       active
-                        ? { color: "#5dcaa5", background: "rgba(93,202,165,.13)" }
-                        : { color: "#5a6880" }
+                        ? { color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 13%, transparent)" }
+                        : { color: "var(--color-faint)" }
                     }
                   >
                     {lbl}
@@ -175,7 +175,7 @@ export const AgentCard = ({
       </div>
 
       {flag && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px]" style={{ color: "#f5a623" }}>
+        <div className="mt-2 flex items-center gap-1.5 text-[11px]" style={{ color: "var(--color-amber-hi)" }}>
           <TriangleAlert size={12} className="shrink-0" />
           <span>{flag}</span>
         </div>

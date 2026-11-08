@@ -30,10 +30,10 @@ const AMBER = "var(--color-amber)";
 const HALF_BG = `linear-gradient(135deg, ${AMBER} 0 50%, var(--color-well) 50% 100%)`;
 
 const AUTO_FULL_STYLE: CSSProperties = {
-  background: "rgba(245,176,58,.30)",
+  background: "color-mix(in srgb, var(--color-amber-hi) 30%, transparent)",
   color: "var(--color-amber-hi)",
   fontWeight: 600,
-  border: "1px solid rgba(245,176,58,.28)",
+  border: "1px solid color-mix(in srgb, var(--color-amber-hi) 28%, transparent)",
 };
 
 const cellStyle = (
@@ -43,15 +43,15 @@ const cellStyle = (
   future: boolean,
 ): CSSProperties => {
   if (future)
-    return { background: "transparent", border: "1px dashed var(--color-hairline-lo)", color: "#39445c" };
+    return { background: "transparent", border: "1px dashed var(--color-hairline-lo)", color: "var(--color-faint)" };
   // Post-flip unmarked: counts FULL automatically — subdued amber so the wall
   // of default days doesn't shout, while explicit marks stay solid.
   if (autoFull) return AUTO_FULL_STYLE;
   // The ghost rule, applied to data: visible, not yet confirmed, tap to claim.
   if (inferred)
     return { background: "transparent", border: "1.5px dashed var(--color-amber-hi)", color: "var(--color-amber-hi)", fontWeight: 600 };
-  if (eff === "full") return { background: AMBER, color: "#0d1117", fontWeight: 700 };
-  if (eff === "half") return { background: HALF_BG, color: "#0d1117", border: "1px solid var(--color-hairline-lo)" };
+  if (eff === "full") return { background: AMBER, color: "var(--color-on-amber)", fontWeight: 700 };
+  if (eff === "half") return { background: HALF_BG, color: "var(--color-on-amber)", border: "1px solid var(--color-hairline-lo)" };
   return { background: "var(--color-well)", color: "var(--color-dim)", border: "1px solid var(--color-hairline)" }; // home / unmarked
 };
 
@@ -159,7 +159,7 @@ const PerDiemPage = () => {
 
         {/* the money first */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums" style={{ color: "#6fd08c" }}>
+          <span className="font-display text-[21px] tracking-[.03em] tabular-nums" style={{ color: "var(--color-status-positive-text)" }}>
             {deductibleText} DEDUCTIBLE
           </span>
           <span className="text-[13.5px] text-faint">
@@ -169,7 +169,7 @@ const PerDiemPage = () => {
             <b className="font-semibold text-ink">{pctWords}%</b>
           </span>
           {summary && summary.inferredCount > 0 && (
-            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-[rgba(232,148,10,.4)] bg-[rgba(232,148,10,.08)]">
+            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/40 bg-amber/8">
               ⚠ {summary.inferredCount} DAY{summary.inferredCount === 1 ? "" : "S"} INFERRED
               FROM LOADS — TAP TO CONFIRM
             </span>
@@ -181,14 +181,14 @@ const PerDiemPage = () => {
           <div
             className="relative overflow-hidden rounded-[14px] border"
             style={{
-              background: "linear-gradient(180deg, #0e1420, #0b101a)",
+              background: "linear-gradient(180deg, var(--color-panel), var(--color-well))",
               borderColor: "var(--color-hairline)",
-              boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+              boxShadow: "var(--shadow-pop)",
             }}
           >
             <div
               className="flex items-center gap-3 px-4 py-3 border-b ds2-cell-rule"
-              style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+              style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
             >
               <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
                 THE DEDUCTION
@@ -215,7 +215,7 @@ const PerDiemPage = () => {
               </span>
             </div>
             <div className="p-4">
-              <p className="font-display text-[44px] tracking-[.02em] leading-none" style={{ color: "#6fd08c" }}>
+              <p className="font-display text-[44px] tracking-[.02em] leading-none" style={{ color: "var(--color-status-positive-text)" }}>
                 {deductibleText}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
@@ -238,7 +238,7 @@ const PerDiemPage = () => {
               {summary && (
                 <div
                   className="mt-3 rounded-[8px] px-3 py-2 font-condensed text-[12px] text-faint tabular-nums"
-                  style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+                  style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "var(--shadow-inset)" }}
                 >
                   {summary.missingDays.length > 0 && (
                     <div className="mb-1">
@@ -336,7 +336,7 @@ const PerDiemPage = () => {
                           style={{
                             aspectRatio: "1",
                             ...cellStyle(eff, isInferred, autoFull, future),
-                            boxShadow: today ? "0 0 0 2px #f5b03a" : undefined,
+                            boxShadow: today ? "0 0 0 2px var(--color-amber-hi)" : undefined,
                             cursor: future ? "default" : "pointer",
                           }}
                         >

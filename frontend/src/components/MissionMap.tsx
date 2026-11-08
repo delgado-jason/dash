@@ -89,7 +89,7 @@ const MissionMap = ({
 
       {/* Faint state borders, zoomed to the run. */}
       {statePaths.map((d, i) => (
-        <path key={i} d={d} fill="#10161f" stroke="var(--color-hairline-lo)" strokeWidth={1} strokeLinejoin="round" />
+        <path key={i} d={d} fill="var(--color-well)" stroke="var(--color-hairline-lo)" strokeWidth={1} strokeLinejoin="round" />
       ))}
 
       {/* Deadhead leg (empty) under the loaded haul. */}
@@ -127,7 +127,7 @@ const MissionMap = ({
       </g>
       <g fontFamily="system-ui" fontSize={11.5} fontWeight={600}>
         {loadedMiles != null && (
-          <text x={(pk.x + dl.x) / 2} y={clampY((pk.y + dl.y) / 2 - 8)} fill="#f5b03a" textAnchor="middle">
+          <text x={(pk.x + dl.x) / 2} y={clampY((pk.y + dl.y) / 2 - 8)} fill="var(--color-amber-hi)" textAnchor="middle">
             {Math.round(loadedMiles).toLocaleString("en-US")} mi loaded
           </text>
         )}

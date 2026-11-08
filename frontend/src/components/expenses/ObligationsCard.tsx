@@ -236,7 +236,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                     </>
                   )}
                   <button
-                    className="hover:text-[#e05252]"
+                    className="hover:text-status-negative-text"
                     aria-label="Delete"
                     onClick={() =>
                       !busy && run(() => deleteObligation(o.obligation_id))

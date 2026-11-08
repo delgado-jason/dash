@@ -10,9 +10,9 @@ import { marketSignal, indexSentence, type MarketSignal } from "@/lib/metrics/ma
 // reason in the title. Renders nothing when FRED isn't configured or there
 // isn't enough history, so it never shows a hollow state.
 const CFG = {
-  firming: { label: "firming", color: "#4ade80", bg: "#0f2018", border: "#1a5c3a", Icon: TrendingUp },
-  softening: { label: "softening", color: "#f87171", bg: "#241012", border: "#5a2424", Icon: TrendingDown },
-  flat: { label: "steady", color: "#9daabb", bg: "#161d2b", border: "#2a3347", Icon: Minus },
+  firming: { label: "firming", color: "var(--color-status-positive-text)", bg: "var(--color-status-positive-bg)", border: "color-mix(in srgb, var(--color-status-positive-text) 35%, transparent)", Icon: TrendingUp },
+  softening: { label: "softening", color: "var(--color-status-negative-text)", bg: "var(--color-status-negative-bg)", border: "color-mix(in srgb, var(--color-status-negative-text) 35%, transparent)", Icon: TrendingDown },
+  flat: { label: "steady", color: "var(--color-muted-text)", bg: "var(--color-status-neutral-bg)", border: "var(--color-hairline)", Icon: Minus },
 } as const;
 
 export const MarketChip = () => {

@@ -97,7 +97,7 @@ export const GaugeDial = ({
         stroke="var(--color-amber-hi)"
         strokeWidth={2}
         strokeLinecap="round"
-        style={{ filter: "drop-shadow(0 0 4px rgba(245,176,58,.7))" }}
+        style={{ filter: "drop-shadow(0 0 4px color-mix(in srgb, var(--color-amber-hi) 70%, transparent))" }}
       />
       <circle cx={cx} cy={cy} r={3.5} fill="var(--color-amber-hi)" />
       <text x={10} y={72} fontSize={9} fill="var(--color-faint)" fontFamily="Barlow Condensed">

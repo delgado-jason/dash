@@ -349,7 +349,7 @@ const DriverDetailPage = () => {
             </h2>
             <div className="flex gap-2 mt-2 flex-wrap">
               {driver.active ? (
-                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
+                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
                   ACTIVE
                 </span>
               ) : (
@@ -358,7 +358,7 @@ const DriverDetailPage = () => {
                 </span>
               )}
               {hometime?.state === "over" && (
-                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#e05252] border border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]">
+                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
                   OUT {hometime.daysOut} DAYS · PAST YOUR {hometime.threshold}-DAY LINE
                 </span>
               )}
@@ -369,7 +369,7 @@ const DriverDetailPage = () => {
                 </span>
               )}
               {hometime?.state === "home" && (
-                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
+                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
                   HOME
                 </span>
               )}
@@ -452,7 +452,7 @@ const DriverDetailPage = () => {
                 <button
                   onClick={() => setEditing(true)}
                   className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
-                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                  style={{ boxShadow: "var(--shadow-inset)" }}
                 >
                   EDIT
                 </button>
@@ -476,7 +476,7 @@ const DriverDetailPage = () => {
                     {formatDate(driver.cdl_expiration) ?? "—"}
                     {cdlDays != null &&
                       (cdlDays <= 60 ? (
-                        <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-[#e05252] border border-[rgba(224,82,82,.45)] bg-[rgba(224,82,82,.1)]">
+                        <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
                           {cdlDays <= 0 ? "EXPIRED" : `${cdlDays} DAYS`}
                         </span>
                       ) : (

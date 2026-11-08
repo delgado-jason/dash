@@ -30,16 +30,16 @@ export const DieselPriceChart = ({ data }: { data: DieselMonth[] }) => (
     ) : (
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={data} margin={{ top: 8, right: 14, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#141c2a" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hairline-lo)" vertical={false} />
           <XAxis
             dataKey="label"
-            stroke="#5a6880"
+            stroke="var(--color-faint)"
             fontSize={11}
             tickLine={false}
-            axisLine={{ stroke: "#1c2637" }}
+            axisLine={{ stroke: "var(--color-hairline)" }}
           />
           <YAxis
-            stroke="#5a6880"
+            stroke="var(--color-faint)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -49,10 +49,10 @@ export const DieselPriceChart = ({ data }: { data: DieselMonth[] }) => (
           />
           <Tooltip
             contentStyle={{
-              background: "#1c2333",
-              border: "1px solid #2a3347",
+              background: "var(--color-iron)",
+              border: "1px solid var(--color-hairline)",
               borderRadius: 8,
-              color: "#ebedf5",
+              color: "var(--color-ink)",
               fontSize: 12,
             }}
             formatter={(v, name) => [
@@ -64,7 +64,7 @@ export const DieselPriceChart = ({ data }: { data: DieselMonth[] }) => (
           <Line
             type="monotone"
             dataKey="national"
-            stroke="#8fb9ff"
+            stroke="var(--color-chart-blue)"
             strokeWidth={2.5}
             dot={{ r: 3 }}
             connectNulls
@@ -72,7 +72,7 @@ export const DieselPriceChart = ({ data }: { data: DieselMonth[] }) => (
           <Line
             type="monotone"
             dataKey="you"
-            stroke="#f5b03a"
+            stroke="var(--color-amber-hi)"
             strokeWidth={2.5}
             dot={{ r: 3 }}
           />

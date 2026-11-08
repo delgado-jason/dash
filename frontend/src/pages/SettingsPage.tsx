@@ -188,7 +188,7 @@ const SettingsPage = () => {
         >
           <span
             className="relative inline-block h-6 w-11 rounded-full transition-colors"
-            style={{ background: sfx ? "#e8940a" : "#3a4459" }}
+            style={{ background: sfx ? "var(--color-amber)" : "var(--color-plate)" }}
           >
             <span
               className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
@@ -330,7 +330,7 @@ const SettingsPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
           <RateDial
             label="Standard"
-            dot="#4a90d9"
+            dot="var(--color-chart-blue)"
             tiers={stdTiers}
             onChange={(t) => {
               setMsg(null);
@@ -342,7 +342,7 @@ const SettingsPage = () => {
           />
           <RateDial
             label="Specialized"
-            dot="#e05a3a"
+            dot="var(--color-cat4)"
             tiers={specTiers}
             onChange={(t) => {
               setMsg(null);

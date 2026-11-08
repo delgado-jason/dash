@@ -127,7 +127,7 @@ const DriversPage = () => {
               style={{
                 background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
                 boxShadow:
-                  "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
               }}
             >
               + ADD DRIVER
@@ -177,7 +177,7 @@ const DriversPage = () => {
                     <div className="font-condensed font-semibold text-[17px] flex items-center gap-[9px] flex-wrap">
                       {d.first_name} {d.last_name}
                       {d.active ? (
-                        <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
+                        <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
                           ACTIVE
                         </span>
                       ) : (
@@ -197,9 +197,9 @@ const DriversPage = () => {
                     <span
                       className="font-display text-[12.5px] tracking-[.12em] text-amber-hi rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
                       style={{
-                        border: "1.5px solid rgba(245,176,58,.55)",
+                        border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
                         boxShadow:
-                          "inset 0 1px 0 rgba(255,255,255,.12), 0 1px 2px rgba(0,0,0,.5)",
+                          "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
                       }}
                     >
                       {m.label} CLUB
@@ -210,7 +210,7 @@ const DriversPage = () => {
                       href={`tel:${d.phone.replace(/[^+\d]/g, "")}`}
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-[7px] h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-amber-hi bg-well border border-amber/35 whitespace-nowrap"
-                      style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                      style={{ boxShadow: "var(--shadow-inset)" }}
                     >
                       {CALL_ICON}
                       CALL

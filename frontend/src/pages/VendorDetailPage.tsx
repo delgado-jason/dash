@@ -37,7 +37,7 @@ const AliasChip = ({ alias, onDrop }: { alias: string; onDrop: () => void }) => 
     <button
       onClick={onDrop}
       aria-label={`Remove alias ${alias}`}
-      className="text-faint hover:text-[#e05252] leading-none"
+      className="text-faint hover:text-status-negative-text leading-none"
     >
       ×
     </button>
@@ -207,7 +207,7 @@ const VendorDetailPage = () => {
                 <a
                   href={`tel:${vendor.phone.replace(/[^+\d]/g, "")}`}
                   className="inline-flex items-center gap-[7px] h-10 px-[18px] rounded-[9px] font-condensed font-semibold text-[14.5px] text-amber-hi bg-well border border-amber/35"
-                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                  style={{ boxShadow: "var(--shadow-inset)" }}
                 >
                   {CALL_ICON}
                   CALL
@@ -216,7 +216,7 @@ const VendorDetailPage = () => {
               <button
                 onClick={() => setShowEdit(true)}
                 className="inline-flex items-center h-10 px-[18px] rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline"
-                style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                style={{ boxShadow: "var(--shadow-inset)" }}
               >
                 EDIT
               </button>
@@ -228,7 +228,7 @@ const VendorDetailPage = () => {
             {vendor.notes ? (
               <div
                 className="bg-well border border-hairline-lo rounded-[10px] px-[14px] py-[13px] mt-[10px]"
-                style={{ boxShadow: "inset 0 2px 6px rgba(0,0,0,.45)" }}
+                style={{ boxShadow: "var(--shadow-inset)" }}
               >
                 <p className="text-[14px] leading-[1.55] italic whitespace-pre-wrap">
                   "{vendor.notes}"
@@ -308,7 +308,7 @@ const VendorDetailPage = () => {
             className="mt-3 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] text-canvas"
             style={{
               background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow: "0 4px 10px rgba(232,148,10,.25)",
+              boxShadow: "0 4px 10px color-mix(in srgb, var(--color-amber) 25%, transparent)",
             }}
           >
             RE-RATE — SAY WHY
@@ -319,7 +319,7 @@ const VendorDetailPage = () => {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="font-condensed font-semibold text-[12.5px] tracking-[.08em] text-[#e05252]/80 hover:text-[#e05252] disabled:opacity-50"
+            className="font-condensed font-semibold text-[12.5px] tracking-[.08em] text-status-negative-text/80 hover:text-status-negative-text disabled:opacity-50"
           >
             {deleting ? "DELETING…" : "DELETE VENDOR"}
           </button>

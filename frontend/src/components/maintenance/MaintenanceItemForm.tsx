@@ -223,7 +223,7 @@ export const MaintenanceItemForm = ({
         </button>
         {onDelete && (
           <button
-            className="ml-auto text-faint hover:text-[#e05252] px-3 py-1 rounded text-sm disabled:opacity-50"
+            className="ml-auto text-faint hover:text-status-negative-text px-3 py-1 rounded text-sm disabled:opacity-50"
             onClick={onDelete}
             disabled={busy}
           >

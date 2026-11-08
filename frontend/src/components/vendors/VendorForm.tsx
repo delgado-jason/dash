@@ -276,7 +276,7 @@ const VendorForm = ({ vendor, prefill, onSuccess, onClose }: VendorFormProps) =>
         <button
           onClick={onClose}
           disabled={saving}
-          className="px-3 py-2 rounded text-sm border border-[#3b4660] text-light disabled:opacity-50"
+          className="px-3 py-2 rounded text-sm border border-plate text-light disabled:opacity-50"
         >
           Cancel
         </button>

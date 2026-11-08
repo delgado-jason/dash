@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components -- SortHead is declared inside the component (pre-existing, untouched by the colour sweep); owed to this table's phase C restructure */
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
@@ -17,6 +18,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
   const [sort, setSort] = useState<Sort>("gross");
   const [page, setPage] = useState(0);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing, untouched by the colour sweep; owed to this page's phase C restructure
   useEffect(() => setPage(0), [search, sort]);
 
   // Gross-ranked directory of every agent with a delivered load.
@@ -66,7 +68,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
         </span>
       </div>
 
-      <div className="flex items-center gap-2 bg-[#141a26] border border-[#2a3347] rounded-md px-2.5 py-1.5 mb-2.5">
+      <div className="flex items-center gap-2 bg-well border border-hairline rounded-md px-2.5 py-1.5 mb-2.5">
         <Search size={13} className="text-dim shrink-0" />
         <input
           value={search}
@@ -80,7 +82,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
         <Link
           to={`/agents/${leader.agentId}`}
           className="block rounded-lg px-2.5 py-1.5 mb-2.5 hover:opacity-90"
-          style={{ background: "#241a0d", border: "1px solid #7a4718" }}
+          style={{ background: "var(--color-status-aware-bg)", border: "1px solid color-mix(in srgb, var(--color-amber) 40%, transparent)" }}
         >
           <div className="flex items-center justify-between">
             <span
@@ -123,12 +125,12 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
           <Link
             key={a.agentId}
             to={`/agents/${a.agentId}`}
-            className="grid grid-cols-[22px_1fr_40px_52px] items-center text-[11px] py-1.5 px-1 border-b border-[#202838] last:border-b-0 hover:opacity-80"
+            className="grid grid-cols-[22px_1fr_40px_52px] items-center text-[11px] py-1.5 px-1 border-b border-hairline-lo last:border-b-0 hover:opacity-80"
           >
             <span>{rankMark(start + i)}</span>
             <span className="text-ink truncate underline">{a.agent}</span>
             <span className="text-right text-dim">{a.loadCount}</span>
-            <span className="text-right" style={{ color: "#cdd8e8" }}>
+            <span className="text-right" style={{ color: "var(--color-ink)" }}>
               {fmtK(a.revenue)}
             </span>
           </Link>
@@ -146,7 +148,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
             onClick={() => setPage(clamped - 1)}
             disabled={clamped === 0}
             className="w-6 h-5 rounded flex items-center justify-center disabled:opacity-30"
-            style={{ background: "#232c3f", color: "#cdd8e8" }}
+            style={{ background: "var(--color-plate)", color: "var(--color-ink)" }}
             aria-label="Previous page"
           >
             <ChevronLeft size={13} />
@@ -155,7 +157,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
             onClick={() => setPage(clamped + 1)}
             disabled={clamped >= pages - 1}
             className="w-6 h-5 rounded flex items-center justify-center disabled:opacity-30"
-            style={{ background: "#232c3f", color: "#cdd8e8" }}
+            style={{ background: "var(--color-plate)", color: "var(--color-ink)" }}
             aria-label="Next page"
           >
             <ChevronRight size={13} />

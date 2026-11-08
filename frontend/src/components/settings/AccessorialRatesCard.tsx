@@ -112,7 +112,7 @@ export const AccessorialRatesCard = () => {
               <div
                 key={r.accessorial_type}
                 className="flex items-center gap-3 rounded px-3 py-2"
-                style={{ background: "#0d1119" }}
+                style={{ background: "var(--color-well)" }}
               >
                 <span className="text-sm text-light flex-1">
                   {r.accessorial_type}

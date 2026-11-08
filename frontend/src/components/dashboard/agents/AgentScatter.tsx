@@ -12,9 +12,9 @@ export interface ScatterPoint {
 }
 
 const SPEC_FILL: Record<string, { fill: string; stroke: string; text: string }> = {
-  oversize: { fill: "rgba(232,148,10,0.32)", stroke: "#f5b03a", text: "#ffe6bf" },
-  specialty: { fill: "rgba(95,208,224,0.26)", stroke: "#5fd0e0", text: "#cfe8ee" },
-  standard: { fill: "rgba(125,139,163,0.22)", stroke: "#8b93a3", text: "#cdd4e0" },
+  oversize: { fill: "color-mix(in srgb, var(--color-amber) 32%, transparent)", stroke: "var(--color-amber-hi)", text: "var(--color-hot)" },
+  specialty: { fill: "color-mix(in srgb, var(--color-cat2) 26%, transparent)", stroke: "var(--color-cat2)", text: "var(--color-ink)" },
+  standard: { fill: "color-mix(in srgb, var(--color-muted-text) 22%, transparent)", stroke: "var(--color-muted-text)", text: "var(--color-ink)" },
 };
 
 const W = 1000;
@@ -68,22 +68,22 @@ export const AgentScatter = ({ points }: { points: ScatterPoint[] }) => {
       {/* gridlines */}
       {geom.yTicks.map((t, i) => (
         <g key={i}>
-          <line x1={PAD.l} y1={geom.ys(t)} x2={W - PAD.r} y2={geom.ys(t)} stroke="#1c2536" strokeWidth={1} />
-          <text x={PAD.l - 8} y={geom.ys(t) + 3} textAnchor="end" fontSize={10} fill="#8b93a3">
+          <line x1={PAD.l} y1={geom.ys(t)} x2={W - PAD.r} y2={geom.ys(t)} stroke="var(--color-hairline-lo)" strokeWidth={1} />
+          <text x={PAD.l - 8} y={geom.ys(t) + 3} textAnchor="end" fontSize={10} fill="var(--color-muted-text)">
             ${t < 10 ? t.toFixed(1) : Math.round(t)}
           </text>
         </g>
       ))}
-      <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} stroke="#1c2536" strokeWidth={1} />
-      <text x={PAD.l - 40} y={PAD.t + 4} fontSize={10} fill="#8b93a3">$/mi</text>
+      <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} stroke="var(--color-hairline-lo)" strokeWidth={1} />
+      <text x={PAD.l - 40} y={PAD.t + 4} fontSize={10} fill="var(--color-muted-text)">$/mi</text>
 
       {/* median quadrant split + sweet-spot */}
-      <line x1={geom.xMed} y1={PAD.t} x2={geom.xMed} y2={H - PAD.b} stroke="#2f3b52" strokeWidth={1} strokeDasharray="4 4" />
-      <line x1={PAD.l} y1={geom.yMed} x2={W - PAD.r} y2={geom.yMed} stroke="#2f3b52" strokeWidth={1} strokeDasharray="4 4" />
-      <text x={W - PAD.r} y={PAD.t + 12} textAnchor="end" fontSize={11} fill="#4ade80" fontWeight={700}>
+      <line x1={geom.xMed} y1={PAD.t} x2={geom.xMed} y2={H - PAD.b} stroke="var(--color-hairline)" strokeWidth={1} strokeDasharray="4 4" />
+      <line x1={PAD.l} y1={geom.yMed} x2={W - PAD.r} y2={geom.yMed} stroke="var(--color-hairline)" strokeWidth={1} strokeDasharray="4 4" />
+      <text x={W - PAD.r} y={PAD.t + 12} textAnchor="end" fontSize={11} fill="var(--color-status-positive-text)" fontWeight={700}>
         money agents ↗
       </text>
-      <text x={W - PAD.r} y={H - PAD.b - 6} textAnchor="end" fontSize={10} fill="#5b6577">volume →</text>
+      <text x={W - PAD.r} y={H - PAD.b - 6} textAnchor="end" fontSize={10} fill="var(--color-faint)">volume →</text>
 
       {/* bubbles */}
       {scored.map(({ agent, card }) => {
@@ -107,15 +107,15 @@ export const AgentScatter = ({ points }: { points: ScatterPoint[] }) => {
               cx={cx}
               cy={cy}
               r={r}
-              fill={cold ? "rgba(160,106,30,0.14)" : spec.fill}
-              stroke={cold ? "#a06a1e" : spec.stroke}
+              fill={cold ? "color-mix(in srgb, var(--color-amber-dark) 14%, transparent)" : spec.fill}
+              stroke={cold ? "var(--color-amber-dark)" : spec.stroke}
               strokeWidth={1.6}
               strokeDasharray={cold ? "3 3" : undefined}
             />
-            <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={r >= 13 ? 10 : 8.5} fill={cold ? "#d9c19a" : spec.text} fontWeight={700}>
+            <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={r >= 13 ? 10 : 8.5} fill={cold ? "var(--color-amber-hi)" : spec.text} fontWeight={700}>
               {initials}
             </text>
-            <text x={cx} y={cy - r - 4} textAnchor="middle" fontSize={9.5} fill="#9aa4b5">
+            <text x={cx} y={cy - r - 4} textAnchor="middle" fontSize={9.5} fill="var(--color-muted-text)">
               {agent.first_name}
               {card.ratingFlag ? " ⚠" : ""}
             </text>

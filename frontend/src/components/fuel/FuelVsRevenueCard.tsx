@@ -23,7 +23,7 @@ const coverGrade = (c: number | null, exp: number | null): "par" | "close" | "sh
   if (c >= exp - 0.05) return "close";
   return "short";
 };
-const gradeColor = { par: "#4ade80", close: "#e8940a", short: "#f87171", unknown: "#9daabb" } as const;
+const gradeColor = { par: "var(--color-status-positive-text)", close: "var(--color-amber)", short: "var(--color-status-negative-text)", unknown: "var(--color-dim)" } as const;
 
 const CoverageTrend = ({ months, parUnavailable }: { months: FuelMonth[]; parUnavailable: boolean }) => {
   const recent = months.slice(-6).filter((m) => m.fscCoverage != null);
@@ -58,7 +58,7 @@ const CoverageTrend = ({ months, parUnavailable }: { months: FuelMonth[]; parUna
                     style={{
                       bottom: `${Math.min(48, (exp / max) * 48)}px`,
                       height: 2,
-                      background: "#e8edf6",
+                      background: "var(--color-ink)",
                       opacity: 0.5,
                     }}
                     title={`par ~${pct0(exp)}`}
@@ -115,11 +115,11 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
         </div>
         {m.fscCoverage != null &&
           (covered ? (
-            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#6fd08c] border-2 border-[#6fd08c] rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE ON PAR</span>
+            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-status-positive-text border-2 border-status-positive-text rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE ON PAR</span>
           ) : grade === "close" ? (
-            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#e8940a] border-2 border-[#e8940a] rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE NEAR PAR</span>
+            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-amber border-2 border-amber rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE NEAR PAR</span>
           ) : (
-            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-[#e05252] border-2 border-[#e05252] rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE SHORT</span>
+            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-status-negative-text border-2 border-status-negative-text rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE SHORT</span>
           ))}
       </div>
 
@@ -138,11 +138,11 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
         <div
           className="rounded-md p-3"
           style={{
-            background: grade === "short" ? "#2a1618" : "#141a26",
-            border: grade === "short" ? "1px solid #7a2f2e" : "1px solid #22304a",
+            background: grade === "short" ? "var(--color-status-negative-bg)" : "var(--color-well)",
+            border: grade === "short" ? "1px solid color-mix(in srgb, var(--color-status-negative-text) 40%, transparent)" : "1px solid var(--color-hairline)",
           }}
         >
-          <p className="text-xs" style={{ color: grade === "short" ? "#f2a6a3" : "#9daabb" }}>
+          <p className="text-xs" style={{ color: grade === "short" ? "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" : "var(--color-dim)" }}>
             Surcharge covers
           </p>
           <p className="text-2xl font-condensed mt-1" style={{ color: gradeColor[grade] }}>
@@ -151,7 +151,7 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
               <span className="text-[13px] text-faint"> vs ~{pct0(expected)} par</span>
             )}
           </p>
-          <p className="text-[11px] mt-0.5" style={{ color: grade === "short" ? "#f2a6a3" : "#9daabb" }}>
+          <p className="text-[11px] mt-0.5" style={{ color: grade === "short" ? "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" : "var(--color-dim)" }}>
             {money(m.fsc)} FSC vs {money(m.fuelSpend)} fuel
             {gap != null && gap < -1 ? ` · ${money(Math.abs(gap))} under par` : ""}
           </p>

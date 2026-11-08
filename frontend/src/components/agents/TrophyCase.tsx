@@ -37,9 +37,9 @@ const Pip = ({ size = 10 }: { size?: number }) => (
     style={{
       width: size,
       height: size,
-      background: "radial-gradient(circle at 40% 35%, #0a0e15 40%, #05070b)",
+      background: "radial-gradient(circle at 40% 35%, var(--color-well) 40%, var(--color-canvas))",
       boxShadow:
-        "inset 0 2px 3px rgba(0,0,0,1), inset 0 -1px 1px rgba(245,176,58,.35)",
+        "var(--shadow-inset), inset 0 -1px 1px color-mix(in srgb, var(--color-amber-hi) 35%, transparent)",
     }}
   />
 );
@@ -47,7 +47,7 @@ const Pip = ({ size = 10 }: { size?: number }) => (
 // Not yet struck — the ghost slot (provisional standings, empty quarters).
 const GhostSlot = ({ size = 20 }: { size?: number }) => (
   <span
-    className="inline-block rounded-full shrink-0 border-2 border-dashed border-[#39445e]"
+    className="inline-block rounded-full shrink-0 border-2 border-dashed border-plate"
     style={{ width: size, height: size }}
   />
 );

@@ -21,10 +21,10 @@ import {
   TRAILER_MEDAL_GUIDE,
 } from "@/lib/awards/trailerAwards";
 
-const AMBER = "#e8940a";
-const AMBER_HI = "#f5b03a";
-const GREEN = "#1d9e75";
-const TRACK = "#232c3f";
+const AMBER = "var(--color-amber)";
+const AMBER_HI = "var(--color-amber-hi)";
+const GREEN = "var(--color-cat2)";
+const TRACK = "var(--color-plate)";
 
 // A stable anchor id from a heading's text. The table of contents and the
 // section headings both run their text through this, so a TOC link always
@@ -53,7 +53,7 @@ const SourceChips = ({ sources }: { sources: Source[] }) => (
         key={s.to + s.label}
         to={s.to}
         className="text-[11px] px-2 py-0.5 rounded-full border transition-colors hover:bg-plate"
-        style={{ borderColor: "#39435a", color: AMBER_HI }}
+        style={{ borderColor: "var(--color-hairline)", color: AMBER_HI }}
       >
         {s.label}
       </Link>
@@ -106,7 +106,7 @@ const TabLine = ({
   q: string;
   children: ReactNode;
 }) => (
-  <div className="rounded-md p-3" style={{ background: "#0d1119", border: "1px solid #22304a" }}>
+  <div className="rounded-md p-3" style={{ background: "var(--color-canvas)", border: "1px solid var(--color-hairline)" }}>
     <p className="text-sm">
       <span className="font-condensed font-bold" style={{ color: AMBER_HI }}>{name}</span>
       <span className="text-muted-text"> — {q}</span>
@@ -128,7 +128,7 @@ const AwardLine = ({
   <div className="flex items-center gap-3 py-1.5">
     <span
       className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-      style={{ background: "#3a2a0a", color: AMBER_HI }}
+      style={{ background: "var(--color-status-aware-bg)", color: AMBER_HI }}
     >
       {/* awardIcon returns a static lucide component from a lookup, not a new
           one — createElement keeps the linter from reading it as one created
@@ -174,9 +174,9 @@ const Formula = ({ children }: { children: ReactNode }) => (
   <div
     className="rounded-md px-3 py-2.5 text-sm font-condensed leading-relaxed"
     style={{
-      background: "#0d1119",
-      border: "1px solid #22304a",
-      color: "#f5e6c8",
+      background: "var(--color-canvas)",
+      border: "1px solid var(--color-hairline)",
+      color: "var(--color-ink)",
     }}
   >
     {children}
@@ -200,7 +200,7 @@ const Caveat = ({
 }) => (
   <div
     className="px-3 py-2 mt-3"
-    style={{ background: "#2f2616", borderLeft: `2px solid ${AMBER}` }}
+    style={{ background: "var(--color-status-aware-bg)", borderLeft: `2px solid ${AMBER}` }}
   >
     <p className="text-xs mb-1" style={{ color: AMBER_HI }}>
       {title}
@@ -241,7 +241,7 @@ const KeepBar = ({
 const ChainBox = ({ top, bottom }: { top: string; bottom: string }) => (
   <div
     className="rounded-md px-3 py-2 text-center min-w-[120px]"
-    style={{ background: "#0d1119", border: "1px solid #22304a" }}
+    style={{ background: "var(--color-canvas)", border: "1px solid var(--color-hairline)" }}
   >
     <div className="font-condensed text-base" style={{ color: AMBER_HI }}>
       {top}
@@ -293,19 +293,19 @@ const MiniLadder = ({ ladder, spec }: { ladder?: RateLadder | null; spec?: RateL
     </div>
     <div
       className="flex items-center gap-2 flex-wrap mt-2 pt-2 text-xs"
-      style={{ borderTop: "0.5px solid rgba(255,255,255,0.07)" }}
+      style={{ borderTop: "0.5px solid color-mix(in srgb, var(--color-ink) 7%, transparent)" }}
     >
       <span className="inline-flex items-center gap-1.5">
         <span
           className="inline-block rounded-full shrink-0"
-          style={{ width: 8, height: 8, background: "#e05a3a" }}
+          style={{ width: 8, height: 8, background: "var(--color-status-negative-text)" }}
         />
         <span className="text-light">Specialized</span>
       </span>
       <span className="text-[11px] text-muted-text">oversize · hazmat · heavy</span>
       <span className="ml-auto text-muted-text">
         target <span style={{ color: AMBER }}>{rpm(spec?.target)}</span> · strong{" "}
-        <span style={{ color: "#4ade80" }}>{rpm(spec?.strong)}</span>
+        <span style={{ color: "var(--color-status-positive-text)" }}>{rpm(spec?.strong)}</span>
       </span>
     </div>
   </div>
@@ -900,7 +900,7 @@ const GuidePage = () => {
 
             <p className="text-sm text-muted-text mt-3">
               An agent you've run once shows as{" "}
-              <span style={{ color: "#5dcaa5" }}>New · building</span> — not a
+              <span style={{ color: "var(--color-cat2)" }}>New · building</span> — not a
               low-confidence reject, but a relationship worth deepening. Distances are
               straight-line estimates (shown with a ~) and sharpen to real miles as the
               app geocodes each city quietly in the background; a city it can't place
@@ -1121,10 +1121,10 @@ const GuidePage = () => {
               Dashboard's <span className="text-light">net break-even</span> is
               a different number on purpose: cost per loaded mile, in net
               dollars, beside your net $/mi. The verdict maps to whichever tier set fits the load:{" "}
-              <span style={{ color: "#e24b4a" }}>SCRAP</span> below break-even,{" "}
-              <span style={{ color: "#f5b03a" }}>THIN</span> under target,{" "}
-              <span style={{ color: "#5dcaa5" }}>SOLID</span> at target,{" "}
-              <span style={{ color: "#ffcf7a" }}>PRIME</span> at strong. A legal
+              <span style={{ color: "var(--color-status-negative-text)" }}>SCRAP</span> below break-even,{" "}
+              <span style={{ color: "var(--color-amber-hi)" }}>THIN</span> under target,{" "}
+              <span style={{ color: "var(--color-cat2)" }}>SOLID</span> at target,{" "}
+              <span style={{ color: "var(--color-hot)" }}>PRIME</span> at strong. A legal
               load hits those at your Standard tiers (target / strong — whatever your dial derives); an
               oversize, hazmat, or heavy load has to reach the Specialized ones
               (the Specialized dial’s). A line under the verdict names which set graded it.
@@ -1146,9 +1146,9 @@ const GuidePage = () => {
               the load leaves you — off your own outbound history: what a day of the
               freight OUT of that market earns you, how much of it there's been, and
               how many agents source it, graded{" "}
-              <span style={{ color: "#5dcaa5" }}>STRONG</span> /{" "}
+              <span style={{ color: "var(--color-cat2)" }}>STRONG</span> /{" "}
               <span className="text-light">FAIR</span> /{" "}
-              <span style={{ color: "#e8940a" }}>SOFT</span> / thin against your own
+              <span style={{ color: "var(--color-amber)" }}>SOFT</span> / thin against your own
               daily bars — strong clears your margin goal's day, soft doesn't cover
               the day's break-even, thin under four loads. So a fair-paying load that drops you somewhere you can't reload reads
               as a <span className="text-light">reposition cost</span>, with your strong
@@ -2053,7 +2053,7 @@ const GuidePage = () => {
               <span className="text-light">average</span> rather than just the
               last tank on purpose, so one heavy oversize run doesn't read as a
               slump. Beat your best MPG and it stamps a{" "}
-              <span style={{ color: "#f5a623" }}>NEW BEST</span> (with a sound);
+              <span style={{ color: "var(--color-amber-hi)" }}>NEW BEST</span> (with a sound);
               string together tanks at or above your average and it tallies the
               streak.
             </Why>
@@ -2071,11 +2071,11 @@ const GuidePage = () => {
             </Formula>
             <Why>
               The Fuel page charts two monthly lines: your{" "}
-              <span style={{ color: "#f5b03a" }}>
+              <span style={{ color: "var(--color-amber-hi)" }}>
                 gallon-weighted average $/gal
               </span>{" "}
               from the fuel log, against the{" "}
-              <span style={{ color: "#8fb9ff" }}>
+              <span style={{ color: "var(--color-status-info-text)" }}>
                 national retail diesel price
               </span>{" "}
               (the U.S. EIA weekly number, rolled up to monthly). Buying under
@@ -2317,16 +2317,16 @@ const GuidePage = () => {
             </p>
             <div className="text-sm flex flex-col gap-1.5">
               <p>
-                <span style={{ color: "#3fb950" }}>● Green</span> — in transit.
+                <span style={{ color: "var(--color-status-positive-text)" }}>● Green</span> — in transit.
                 These lift into an "On the road" group up top, so what's rolling
                 is always in view.
               </p>
               <p>
-                <span style={{ color: "#e8940a" }}>● Amber</span> — detention
+                <span style={{ color: "var(--color-amber)" }}>● Amber</span> — detention
                 owed &amp; unpaid (with a "DET" chip).
               </p>
               <p>
-                <span style={{ color: "#e24b4a" }}>● Red</span> — a TONU fee
+                <span style={{ color: "var(--color-status-negative-text)" }}>● Red</span> — a TONU fee
                 owed &amp; unpaid.
               </p>
             </div>
@@ -2414,7 +2414,7 @@ const GuidePage = () => {
               great rate with the truck sitting still nets mediocre — so the
               card names whichever is lagging and what to do about it. When all
               three reach Target, it reads{" "}
-              <span style={{ color: "#4ade80" }}>Firing on all cylinders</span>.
+              <span style={{ color: "var(--color-status-positive-text)" }}>Firing on all cylinders</span>.
             </Why>
           </Metric>
 
@@ -2436,8 +2436,8 @@ const GuidePage = () => {
               <span className="text-light">same day of last quarter</span> and
               projects the finish by scaling last quarter's final by that ratio.
               Ahead of pace →{" "}
-              <span style={{ color: "#4ade80" }}>on track to beat</span>; behind →{" "}
-              <span style={{ color: "#f87171" }}>on track to finish under</span>.
+              <span style={{ color: "var(--color-status-positive-text)" }}>on track to beat</span>; behind →{" "}
+              <span style={{ color: "var(--color-status-negative-text)" }}>on track to finish under</span>.
               The pace keeps calendar days; beside the verdict the card prints
               how many of those days you marked home —{" "}
               <span className="text-light">18 home days in these 35</span> — so
@@ -2524,9 +2524,9 @@ const GuidePage = () => {
             <Eg>
               Under a load 138 of 190 days →{" "}
               <span className="text-light">73%</span>. The day breakdown splits
-              the rest: <span style={{ color: "#60a5fa" }}>home</span> days (you
+              the rest: <span style={{ color: "var(--color-status-info-text)" }}>home</span> days (you
               marked home and ran nothing) vs{" "}
-              <span style={{ color: "#f87171" }}>idle</span> days (no load, not
+              <span style={{ color: "var(--color-status-negative-text)" }}>idle</span> days (no load, not
               home) — so a low number tells you whether it was time off or
               missing freight. Unmarked days follow the per-diem default: home
               before <span className="text-light">Aug 18, 2026</span>, out
@@ -3020,11 +3020,11 @@ const GuidePage = () => {
             sources={[{ label: "Driver card", to: "/drivers" }]}
           >
             <p className="text-sm text-muted-text mb-3">
-              Patches earned in <span style={{ color: "#60a5fa" }}>blue</span>{" "}
+              Patches earned in <span style={{ color: "var(--color-status-info-text)" }}>blue</span>{" "}
               are your <span className="text-light">operation-specific</span>{" "}
               feats — the oversize/flatbed set (Wide, Long, Super Load, Mountain
               Mover) tied to your Operation setting. The rest are{" "}
-              <span style={{ color: "#f5b03a" }}>amber</span> universal feats
+              <span style={{ color: "var(--color-amber-hi)" }}>amber</span> universal feats
               every operation can earn. Set your operation on the{" "}
               <Link
                 to="/settings"
@@ -3104,7 +3104,7 @@ const GuidePage = () => {
 
           <div
             className="my-6 border-t"
-            style={{ borderColor: "#22304a" }}
+            style={{ borderColor: "var(--color-hairline)" }}
             aria-hidden="true"
           />
           <GroupHeading>Agents</GroupHeading>
@@ -3165,7 +3165,7 @@ const GuidePage = () => {
               <span className="text-light">OVERSIZE</span>, other non-standard
               (hazmat) earns <span className="text-light">SPECIALTY</span> — so you
               can filter straight to your oversize bench. And a{" "}
-              <span style={{ color: "#f5a623" }}>⚠ flag</span> marks where your
+              <span style={{ color: "var(--color-amber-hi)" }}>⚠ flag</span> marks where your
               stars and the data disagree: a low-rated agent the numbers like, or a
               high-rated one they don't.
             </p>
@@ -3294,7 +3294,7 @@ const GuidePage = () => {
               <div className="flex items-center gap-4">
                 <span
                   className="w-24 shrink-0 flex items-center gap-1.5 font-medium"
-                  style={{ color: "#c3cad6" }}
+                  style={{ color: "var(--color-muted-text)" }}
                 >
                   <Trophy size={18} /> Silver
                 </span>
@@ -3345,7 +3345,7 @@ const GuidePage = () => {
 
           <div
             className="my-6 border-t"
-            style={{ borderColor: "#22304a" }}
+            style={{ borderColor: "var(--color-hairline)" }}
             aria-hidden="true"
           />
           <Metric
@@ -4021,7 +4021,7 @@ const GuidePage = () => {
 
           <div
             className="my-6 border-t"
-            style={{ borderColor: "#22304a" }}
+            style={{ borderColor: "var(--color-hairline)" }}
             aria-hidden="true"
           />
           <GroupHeading>Team &amp; roles</GroupHeading>

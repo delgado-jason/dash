@@ -240,7 +240,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
     <div>
       {justLogged && (
         <div className="ds2-board flex items-center gap-3 px-4 py-3 mt-4">
-          <span className="font-forge font-bold text-[13px] tracking-[.12em] text-[#6fd08c]">
+          <span className="font-forge font-bold text-[13px] tracking-[.12em] text-status-positive-text">
             SERVICE LOGGED ✓
           </span>
           <span className="font-condensed text-[13px] text-dim">
@@ -266,7 +266,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
 
       {/* range + summary */}
       <div className="flex items-center gap-3 flex-wrap mt-4">
-        <span className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px]" style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
+        <span className="inline-flex h-[30px] p-[3px] rounded-[9px] bg-well gap-[2px]" style={{ boxShadow: "var(--shadow-inset)" }}>
           {PRESETS.map(([key, label]) => (
             <button
               key={key}
@@ -417,7 +417,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
                     onClick={() =>
                       !busy && run(() => deleteMaintenanceService(sv.service_id))
                     }
-                    className="text-right text-faint hover:text-[#e05252] text-[13px]"
+                    className="text-right text-faint hover:text-status-negative-text text-[13px]"
                   >
                     ✕
                   </button>

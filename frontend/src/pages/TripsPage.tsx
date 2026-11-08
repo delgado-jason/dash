@@ -18,8 +18,8 @@ import type { Trip } from "@/types/trip";
 type Purpose = Trip["trip_purpose"];
 const PURPOSE: Record<Purpose, { label: string; color: string }> = {
   repositioning: { label: "Repositioning", color: "var(--color-amber-hi)" },
-  home: { label: "Home", color: "#7ab0e8" },
-  shop: { label: "Shop", color: "#c9a86a" },
+  home: { label: "Home", color: "var(--color-status-info-text)" },
+  shop: { label: "Shop", color: "var(--color-cat1)" },
   personal: { label: "Personal", color: "var(--color-dim)" },
 };
 const PURPOSES = Object.keys(PURPOSE) as Purpose[];
@@ -148,7 +148,7 @@ const TripsPage = () => {
               style={{
                 background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
                 boxShadow:
-                  "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
               }}
             >
               + LOG TRIP
@@ -211,7 +211,7 @@ const TripsPage = () => {
           )}
           <div
             className="ml-auto inline-flex h-8 p-[3px] rounded-[9px] bg-well gap-[2px]"
-            style={{ boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}
+            style={{ boxShadow: "var(--shadow-inset)" }}
           >
             {(["all", ...PURPOSES] as const).map((f) => (
               <button
@@ -302,7 +302,7 @@ const TripsPage = () => {
                       <tr
                         key={item.trip.trip_id}
                         onClick={() => openEdit(item.trip)}
-                        className="cursor-pointer transition-colors hover:bg-[#0e1420] group"
+                        className="cursor-pointer transition-colors hover:bg-well group"
                       >
                         <td className="px-4 py-2.5 border-b ds2-cell-rule font-condensed font-semibold text-amber-hi text-[14px] whitespace-nowrap group-hover:shadow-[inset_3px_0_0_var(--color-amber)]">
                           {item.trip.trip_number}

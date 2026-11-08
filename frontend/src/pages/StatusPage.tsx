@@ -110,15 +110,15 @@ const Cells = ({
             on
               ? {
                   background: hot
-                    ? "linear-gradient(180deg, #ff8a8a, #e05252)"
+                    ? "linear-gradient(180deg, color-mix(in srgb, var(--color-status-negative-text) 70%, transparent), var(--color-status-negative-text))"
                     : "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                  border: "1px solid rgba(245,176,58,.5)",
+                  border: "1px solid color-mix(in srgb, var(--color-amber-hi) 50%, transparent)",
                   opacity: dim ? 0.35 : 1,
                 }
               : {
                   background: "var(--color-well)",
                   border: "1px solid var(--color-hairline-lo)",
-                  boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                  boxShadow: "var(--shadow-inset)",
                 }
           }
         />
@@ -135,7 +135,7 @@ const Stamp = ({ tone, children }: { tone: "amber" | "dim" | "pos"; children: st
       tone === "amber"
         ? { color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }
         : tone === "pos"
-          ? { color: "#6fd08c", border: "1.5px solid #6fd08c" }
+          ? { color: "var(--color-status-positive-text)", border: "1.5px solid var(--color-status-positive-text)" }
           : { color: "var(--color-faint)", border: "1.5px dashed var(--color-hairline)" }
     }
   >
@@ -641,7 +641,7 @@ const StatusPage = () => {
           </span>
           {plan && (
             <span className="font-display text-[14px] tracking-[.12em] text-amber-hi rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg]"
-              style={{ border: "1.5px solid rgba(245,176,58,.55)" }}>
+              style={{ border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)" }}>
               {plan.label.toUpperCase()}
             </span>
           )}
@@ -656,7 +656,7 @@ const StatusPage = () => {
             <button
               onClick={() => openSnapshot(true)}
               className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13px] tracking-[.05em] text-amber-hi bg-well border"
-              style={{ borderColor: "rgba(232,148,10,.35)", boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+              style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)", boxShadow: "var(--shadow-inset)" }}
             >
               MONEY DAY · {pendingLabel.split(" ")[0].toUpperCase()} ▸
             </button>
@@ -666,7 +666,7 @@ const StatusPage = () => {
             className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
             style={{
               background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow: "0 5px 14px rgba(232,148,10,.3), inset 0 1px 0 rgba(255,255,255,.5)",
+              boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
             }}
           >
             + FRIDAY SNAPSHOT
@@ -681,8 +681,8 @@ const StatusPage = () => {
                 className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
                 style={
                   view.verdict === "on-plan"
-                    ? { color: "#6fd08c", borderColor: "#6fd08c", boxShadow: "inset 0 0 12px rgba(111,208,140,.12)" }
-                    : { color: "#f5b03a", borderColor: "#f5b03a", boxShadow: "inset 0 0 12px rgba(232,148,10,.12)" }
+                    ? { color: "var(--color-status-positive-text)", borderColor: "var(--color-status-positive-text)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-positive-text) 12%, transparent)" }
+                    : { color: "var(--color-amber-hi)", borderColor: "var(--color-amber-hi)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-amber) 12%, transparent)" }
                 }
               >
                 {view.verdict === "on-plan" ? "ON PLAN" : view.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
@@ -806,9 +806,9 @@ const StatusPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div
             className="rounded-[14px] border overflow-hidden"
-            style={{ background: "linear-gradient(180deg, #0e1420, #0b101a)", borderColor: "var(--color-hairline)", boxShadow: "0 14px 34px rgba(0,0,0,.45)" }}
+            style={{ background: "linear-gradient(180deg, var(--color-well), var(--color-panel))", borderColor: "var(--color-hairline)", boxShadow: "var(--shadow-pop)" }}
           >
-            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
               <span className="font-forge font-bold text-[17px]" style={{ letterSpacing: "1.5px" }}>OPS — THE FLOAT</span>
               <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 1 · {floatLine != null ? money(floatLine) : "—"}</span>
             </div>
@@ -846,9 +846,9 @@ const StatusPage = () => {
 
           <div
             className="rounded-[14px] border overflow-hidden"
-            style={{ background: "linear-gradient(180deg, #0e1420, #0b101a)", borderColor: "var(--color-hairline)", boxShadow: "0 14px 34px rgba(0,0,0,.45)" }}
+            style={{ background: "linear-gradient(180deg, var(--color-well), var(--color-panel))", borderColor: "var(--color-hairline)", boxShadow: "var(--shadow-pop)" }}
           >
-            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
               <span className="font-forge font-bold text-[17px]" style={{ letterSpacing: "1.5px" }}>THE VAULT — GENERAL RESERVE</span>
               <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 3 · {floorsBoard[2]?.floor != null ? money(floorsBoard[2].floor) : "unset"}</span>
             </div>
@@ -1053,7 +1053,7 @@ const StatusPage = () => {
                   </p>
                 )}
               </div>
-              <span className={`font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap ${owedToday.weeks.length ? "text-[#4ade80] bg-[rgba(74,222,128,.10)]" : "text-dim bg-[rgba(132,148,171,.12)]"}`}>
+              <span className={`font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap ${owedToday.weeks.length ? "text-status-positive-text bg-status-positive-text/10" : "text-dim bg-dim/12"}`}>
                 {owedToday.weeks.length ? "this Friday" : "accrued"}
               </span>
             </div>
@@ -1089,7 +1089,7 @@ const StatusPage = () => {
                   {opensNext && <> · {opensNext.split(" ")[0]} waits for its P&amp;L</>}
                 </p>
               </div>
-              <span className="font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap text-[#60a5fa] bg-[rgba(96,165,250,.12)]">
+              <span className="font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap text-status-info-text bg-status-info-text/12">
                 money day
               </span>
             </div>
@@ -1119,15 +1119,15 @@ const StatusPage = () => {
             {trend.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trend} margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
-                  <CartesianGrid stroke="#141c2a" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="week" stroke="#5a6880" fontSize={10.5} tickLine={false} axisLine={{ stroke: "#1c2637" }} />
-                  <YAxis stroke="#5a6880" fontSize={10.5} tickLine={false} axisLine={false} tickFormatter={(v) => `$${Number(v) >= 1000 ? `${Math.round(Number(v) / 1000)}k` : v}`} />
+                  <CartesianGrid stroke="var(--color-hairline-lo)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="week" stroke="var(--color-faint)" fontSize={10.5} tickLine={false} axisLine={{ stroke: "var(--color-hairline)" }} />
+                  <YAxis stroke="var(--color-faint)" fontSize={10.5} tickLine={false} axisLine={false} tickFormatter={(v) => `$${Number(v) >= 1000 ? `${Math.round(Number(v) / 1000)}k` : v}`} />
                   <Tooltip
                     contentStyle={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline)", borderRadius: 8, fontSize: 12 }}
                     formatter={(v, name) => [money(Number(v)), name === "ops" ? "ops" : "vault"]}
                   />
-                  <Line type="monotone" dataKey="ops" stroke="#f5b03a" strokeWidth={2.5} dot={false} />
-                  <Line type="monotone" dataKey="vault" stroke="#4f8cd6" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="ops" stroke="var(--color-amber-hi)" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="vault" stroke="var(--color-chart-blue)" strokeWidth={2.5} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -1137,8 +1137,8 @@ const StatusPage = () => {
             )}
           </div>
           <div className="flex gap-4 font-condensed text-[11px] text-faint px-4 pb-2">
-            <span><i className="inline-block w-3.5 h-[3px] rounded align-middle mr-1" style={{ background: "#f5b03a" }} />ops</span>
-            <span><i className="inline-block w-3.5 h-[3px] rounded align-middle mr-1" style={{ background: "#4f8cd6" }} />vault</span>
+            <span><i className="inline-block w-3.5 h-[3px] rounded align-middle mr-1" style={{ background: "var(--color-amber-hi)" }} />ops</span>
+            <span><i className="inline-block w-3.5 h-[3px] rounded align-middle mr-1" style={{ background: "var(--color-chart-blue)" }} />vault</span>
           </div>
         </div>
 
@@ -1148,7 +1148,7 @@ const StatusPage = () => {
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowSnap(false)} />
             <div className="relative w-full max-w-[560px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
                 <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
                   {formMoneyDay && pendingLabel ? `MONEY DAY · ${pendingLabel.toUpperCase()}` : "FRIDAY SNAPSHOT"}
                 </span>
@@ -1227,7 +1227,7 @@ const StatusPage = () => {
                   )}
                 </div>
                 {pending && pendingLabel && (
-                  <div className="col-span-2 rounded-[9px] px-3 py-[10px]" style={{ border: "1px solid rgba(232,148,10,.35)", background: "rgba(232,148,10,.05)" }}>
+                  <div className="col-span-2 rounded-[9px] px-3 py-[10px]" style={{ border: "1px solid color-mix(in srgb, var(--color-amber) 35%, transparent)", background: "color-mix(in srgb, var(--color-amber) 5%, transparent)" }}>
                     <label className="flex items-center gap-[10px] font-condensed text-[14px] cursor-pointer">
                       <input type="checkbox" className="accent-amber w-4 h-4" checked={formMoneyDay} disabled={firstFriday} onChange={(e) => setFMoneyDay(e.target.checked)} />
                       <span className={firstFriday ? "text-faint" : undefined}>Money day · <b className="font-semibold">{pendingLabel}</b> — tax, the interlock and the split on this snapshot</span>
@@ -1262,7 +1262,7 @@ const StatusPage = () => {
               <div className="flex gap-2 justify-end px-5 pb-5">
                 <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={() => setShowSnap(false)}>CANCEL</button>
                 {formMoneyDay && draftStatus?.moneyDay && (
-                  <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-amber-hi bg-well border" style={{ borderColor: "rgba(232,148,10,.35)" }} onClick={copyEntry}>
+                  <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-amber-hi bg-well border" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)" }} onClick={copyEntry}>
                     {copied ? "COPIED" : "COPY THE ENTRY"}
                   </button>
                 )}
@@ -1292,7 +1292,7 @@ const StatusPage = () => {
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowPlan(false)} />
             <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
                 <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>{plan.label.toUpperCase()}</span>
                 {plan.active && <span className="font-condensed text-[11px] text-faint tracking-[.08em]">· ACTIVE</span>}
                 <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={() => setShowPlan(false)}>✕</button>
@@ -1345,7 +1345,7 @@ const StatusPage = () => {
                       <option value="reserve">reserve · watched</option>
                     </select>
                     <button
-                      className="shrink-0 text-faint hover:text-[#e05252] px-1"
+                      className="shrink-0 text-faint hover:text-status-negative-text px-1"
                       aria-label="Remove account"
                       onClick={() => setPAccounts((rows) => rows.filter((_, k) => k !== i))}
                     >
@@ -1384,7 +1384,7 @@ const StatusPage = () => {
                       <div className="col-span-2 flex gap-2">
                         <input className={FIELD} value={s.label} onChange={(e) => editStage(i, { label: e.target.value })} />
                         <button
-                          className="shrink-0 text-faint hover:text-[#e05252] px-1"
+                          className="shrink-0 text-faint hover:text-status-negative-text px-1"
                           aria-label="Remove stage"
                           onClick={() => setPStages((rows) => rows.filter((_, k) => k !== i))}
                         >

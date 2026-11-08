@@ -28,18 +28,18 @@ export const VendorPips = ({ rating, caption = true, align = "end" }: VendorPips
                 on
                   ? bad
                     ? {
-                        background: "linear-gradient(180deg, #ff8a8a, #e05252)",
-                        border: "1px solid rgba(224,82,82,.6)",
+                        background: "linear-gradient(180deg, color-mix(in srgb, var(--color-status-negative-text) 70%, transparent), var(--color-status-negative-text))",
+                        border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 60%, transparent)",
                       }
                     : {
                         background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                        border: "1px solid rgba(245,176,58,.6)",
-                        boxShadow: "0 0 8px rgba(232,148,10,.35), inset 0 1px 0 rgba(255,255,255,.4)",
+                        border: "1px solid color-mix(in srgb, var(--color-amber-hi) 60%, transparent)",
+                        boxShadow: "0 0 8px color-mix(in srgb, var(--color-amber) 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 40%, transparent)",
                       }
                   : {
                       background: "var(--color-well)",
                       border: "1px solid var(--color-hairline)",
-                      boxShadow: "inset 0 2px 3px rgba(0,0,0,.6)",
+                      boxShadow: "var(--shadow-inset)",
                     }
               }
             />

@@ -36,9 +36,9 @@ interface Props {
 }
 
 const META: Record<DueLevel, { label: string; color: string }> = {
-  overdue: { label: "Overdue", color: "#e05252" },
+  overdue: { label: "Overdue", color: "var(--color-status-negative-text)" },
   soon: { label: "Soon", color: "var(--color-amber-hi)" },
-  ok: { label: "Running", color: "#6fd08c" },
+  ok: { label: "Running", color: "var(--color-status-positive-text)" },
   unknown: { label: "No baseline", color: "var(--color-faint)" },
 };
 
@@ -460,7 +460,7 @@ export const ScheduleTab = ({
               {/* The APU board is lit info-blue — the one unit that reads a
                   different meter, so the eye finds it. Colour goes on this
                   span, not the head's class, so it beats the inherited faint. */}
-              <span className={section === "APU" ? "text-[#7ab0e8]" : ""}>
+              <span className={section === "APU" ? "text-status-info-text" : ""}>
                 {section} · {group.length}
               </span>
             </SectionHead>

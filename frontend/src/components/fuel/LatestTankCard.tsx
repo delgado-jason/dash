@@ -3,8 +3,8 @@ import type { TankRecap } from "@/lib/metrics/fuelEconomy";
 import { money, dieselPrice, formatDate } from "@/lib/format";
 import { playSfx } from "@/lib/sfx";
 
-const GOOD = "#4ade80";
-const BAD = "#f87171";
+const GOOD = "var(--color-status-positive-text)";
+const BAD = "var(--color-status-negative-text)";
 
 const signed = (n: number, d = 2) =>
   `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(d)}`;
@@ -62,14 +62,14 @@ export const LatestTankCard = ({
     <div
       className="relative overflow-hidden rounded-[14px] border mt-4"
       style={{
-        background: "linear-gradient(180deg, #0e1420, #0b101a)",
-        borderColor: isRecord ? "rgba(245,166,35,.5)" : "var(--color-hairline)",
-        boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+        background: "linear-gradient(180deg, var(--color-well), var(--color-panel))",
+        borderColor: isRecord ? "color-mix(in srgb, var(--color-amber-hi) 50%, transparent)" : "var(--color-hairline)",
+        boxShadow: "var(--shadow-pop)",
       }}
     >
       <div
         className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule flex-wrap"
-        style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+        style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
       >
         <div className="min-w-0">
           <div className="font-forge font-bold text-[20px] leading-none" style={{ letterSpacing: "1.5px" }}>
@@ -84,8 +84,8 @@ export const LatestTankCard = ({
           <span
             className="ml-auto font-forge font-bold uppercase text-sm"
             style={{
-              border: "3px solid #f5a623",
-              color: "#f5a623",
+              border: "3px solid var(--color-amber-hi)",
+              color: "var(--color-amber-hi)",
               borderRadius: 8,
               padding: "2px 10px",
               letterSpacing: 2,
@@ -96,7 +96,7 @@ export const LatestTankCard = ({
             NEW BEST
           </span>
         ) : mpgVsAvg != null && mpgVsAvg >= 0 ? (
-          <span className="ml-auto font-condensed font-bold text-[10.5px] tracking-[.12em] px-[8px] py-[3px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)]">
+          <span className="ml-auto font-condensed font-bold text-[10.5px] tracking-[.12em] px-[8px] py-[3px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
             ABOVE YOUR AVERAGE
           </span>
         ) : null}
@@ -106,7 +106,7 @@ export const LatestTankCard = ({
       <div className="flex items-end gap-2 flex-wrap">
         <span
           className="text-[52px] font-display tracking-[.02em] leading-none"
-          style={isRecord ? { color: "#f5a623" } : undefined}
+          style={isRecord ? { color: "var(--color-amber-hi)" } : undefined}
         >
           {tank.mpg.toFixed(2)}
         </span>

@@ -125,7 +125,7 @@ export const TeamCard = () => {
         onClick={add}
         disabled={busy || !email || !password}
         className="mt-3 flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-lg disabled:opacity-50"
-        style={{ background: "#e8940a", color: "#10151f" }}
+        style={{ background: "var(--color-amber)", color: "var(--color-on-amber)" }}
       >
         <UserPlus size={14} /> {busy ? "Creating…" : "Add dispatcher"}
       </button>

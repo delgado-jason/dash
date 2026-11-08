@@ -261,7 +261,7 @@ export const LogTouchForm = ({
           {cls === "spot" && (
             <div className="mt-2">
               <label className="flex items-start gap-2 cursor-pointer text-[13px] text-dim leading-snug">
-                <input type="checkbox" checked={parkNow} onChange={(e) => setParkNow(e.target.checked)} className="mt-[3px] accent-[#e8940a]" />
+                <input type="checkbox" checked={parkNow} onChange={(e) => setParkNow(e.target.checked)} className="mt-[3px] accent-amber" />
                 <span>
                   <b className="text-ink">Park them now</b> — leaves every list, keeps every record.
                 </span>
@@ -308,7 +308,7 @@ export const LogTouchForm = ({
 
       {isProspect && (
         <label className="flex items-center gap-2 mt-3 cursor-pointer font-condensed text-[13px] text-dim">
-          <input type="checkbox" checked={footprint} onChange={(e) => setFootprint(e.target.checked)} className="accent-[#e8940a]" />
+          <input type="checkbox" checked={footprint} onChange={(e) => setFootprint(e.target.checked)} className="accent-amber" />
           <span>
             <b className="text-ink">Footprint captured</b> — markets, freight, best time on file
           </span>

@@ -140,7 +140,7 @@ const ShapeLayerInner = ({
           key={s.name}
           d={s.d}
           fill={thin ? `url(#${HATCH_ID})` : colorForRow(row, metric, scale)}
-          stroke={isSel ? "#f4f7fb" : isHot ? "#f5b03a" : "rgba(255,255,255,0.12)"}
+          stroke={isSel ? "var(--color-ink)" : isHot ? "var(--color-amber-hi)" : "color-mix(in srgb, var(--color-ink) 12%, transparent)"}
           strokeWidth={isSel ? 2 : isHot ? 1.6 : 0.5}
           style={{ cursor: row ? "pointer" : "default" }}
           onClick={() => row && onPick(row)}
@@ -158,7 +158,7 @@ const ShapeLayerInner = ({
         y1={l.a[1]}
         x2={l.b[0]}
         y2={l.b[1]}
-        stroke="#e8940a"
+        stroke="var(--color-amber)"
         strokeOpacity={0.55}
         strokeWidth={1 + l.loads}
         strokeLinecap="round"
@@ -181,9 +181,9 @@ const ShapeLayerInner = ({
           y={pinAt[1] + 4}
           style={{
             font: "600 11px sans-serif",
-            fill: "#cdd8e8",
+            fill: "var(--color-ink)",
             paintOrder: "stroke",
-            stroke: "#0b0f16",
+            stroke: "var(--color-canvas)",
             strokeWidth: 3,
           }}
         >

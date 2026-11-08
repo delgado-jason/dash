@@ -807,7 +807,7 @@ export const CallScreen = ({
                   {cls === "spot" && (
                     <div className="mt-2">
                       <label className="flex items-start gap-2 cursor-pointer text-[13px] text-dim leading-snug">
-                        <input type="checkbox" checked={parkNow} onChange={(e) => setParkNow(e.target.checked)} className="mt-[3px] accent-[#e8940a]" />
+                        <input type="checkbox" checked={parkNow} onChange={(e) => setParkNow(e.target.checked)} className="mt-[3px] accent-amber" />
                         <span>
                           <b className="text-ink">Park them now</b> — leaves every list, keeps every record.
                         </span>
@@ -865,12 +865,12 @@ export const CallScreen = ({
               type="button"
               onClick={() => setDivertOpen(true)}
               className="inline-flex items-center gap-1.5 font-condensed text-[12.5px] border-b border-dotted hover:text-ink"
-              style={{ color: "var(--color-chart-blue)", borderColor: "rgba(79,140,214,.4)" }}
+              style={{ color: "var(--color-chart-blue)", borderColor: "color-mix(in srgb, var(--color-chart-blue) 40%, transparent)" }}
             >
               <CornerDownRight size={14} /> Someone else answered — file this call under them
             </button>
           ) : (
-            <div className="rounded-[9px] p-3" style={{ background: "rgba(79,140,214,.06)", border: "1px solid rgba(79,140,214,.35)" }}>
+            <div className="rounded-[9px] p-3" style={{ background: "color-mix(in srgb, var(--color-chart-blue) 6%, transparent)", border: "1px solid color-mix(in srgb, var(--color-chart-blue) 35%, transparent)" }}>
               <div className="flex items-center gap-2 mb-2">
                 <CornerDownRight size={14} style={{ color: "var(--color-chart-blue)" }} />
                 <p className="font-condensed text-[12px] text-dim">Who actually answered — any agent, any code; the person is the anchor.</p>

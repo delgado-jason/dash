@@ -27,14 +27,14 @@ export const BandedLadder = ({
   const CELLS = 14;
   const zone = (v: number): React.CSSProperties => {
     if (v < ladder.walkAway!)
-      return { background: "rgba(224,82,82,.25)", border: "1px solid rgba(224,82,82,.4)" };
+      return { background: "color-mix(in srgb, var(--color-status-negative-text) 25%, transparent)", border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 40%, transparent)" };
     if (v < ladder.minimum!)
-      return { background: "rgba(232,148,10,.28)", border: "1px solid rgba(232,148,10,.4)" };
+      return { background: "color-mix(in srgb, var(--color-amber) 28%, transparent)", border: "1px solid color-mix(in srgb, var(--color-amber) 40%, transparent)" };
     if (v < ladder.target!)
-      return { background: "rgba(111,208,140,.25)", border: "1px solid rgba(111,208,140,.4)" };
+      return { background: "color-mix(in srgb, var(--color-status-positive-text) 25%, transparent)", border: "1px solid color-mix(in srgb, var(--color-status-positive-text) 40%, transparent)" };
     return {
       background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-      border: "1px solid rgba(245,176,58,.55)",
+      border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
     };
   };
   return (

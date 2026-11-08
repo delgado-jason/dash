@@ -326,7 +326,7 @@ const CashFlowPage = () => {
           : "UNDER THE FLOAT — HOLD";
   const badgeTone =
     board?.clears == null
-      ? "var(--color-faint, #5a6880)"
+      ? "var(--color-faint)"
       : board.clears
         ? "var(--color-ok)"
         : "var(--color-warn)";
@@ -478,7 +478,7 @@ const CashFlowPage = () => {
           <span className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setShowPaste(true)}
-              className="font-condensed font-bold text-[11.5px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-3.5 py-[7px] hover:bg-amber-hi"
+              className="font-condensed font-bold text-[11.5px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3.5 py-[7px] hover:bg-amber-hi"
             >
               Paste months
             </button>
@@ -532,7 +532,7 @@ const CashFlowPage = () => {
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap"
-            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
             <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
               THE CASH BOARD
@@ -542,7 +542,7 @@ const CashFlowPage = () => {
               style={{
                 color: badgeTone,
                 borderColor: badgeTone,
-                background: "rgba(0,0,0,.18)",
+                background: "color-mix(in srgb, var(--color-well) 50%, transparent)",
                 transform: "rotate(-1.2deg)",
               }}
             >
@@ -566,7 +566,7 @@ const CashFlowPage = () => {
             <span className="ml-auto flex items-center gap-3">
               <button
                 onClick={() => setShowOpsNow(true)}
-                className="font-condensed font-bold text-[11px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-3 py-[6px] hover:bg-amber-hi"
+                className="font-condensed font-bold text-[11px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3 py-[6px] hover:bg-amber-hi"
               >
                 Ops now ▸
               </button>
@@ -635,7 +635,7 @@ const CashFlowPage = () => {
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
             <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
               THE SETTLEMENTS
@@ -712,7 +712,7 @@ const CashFlowPage = () => {
                 </table>
               </div>
               {settlements[0]?.adjustments.length > 0 && (
-                <div className="mx-4 my-3 px-3 py-2 rounded-[9px] border font-condensed text-[12.5px]" style={{ borderColor: "rgba(232,148,10,.35)", background: "var(--color-well, #090d15)" }}>
+                <div className="mx-4 my-3 px-3 py-2 rounded-[9px] border font-condensed text-[12.5px]" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)", background: "var(--color-well)" }}>
                   <span className="text-amber-hi font-semibold uppercase text-[10.5px] tracking-[.08em]">
                     Adjustments · week of {settlements[0].period_ending.slice(5)}
                   </span>{" "}
@@ -765,7 +765,7 @@ const CashFlowPage = () => {
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
                   <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Escrow balances</p>
-                  <p className="font-display text-[24px] mt-1" style={{ color: "#4f8cd6" }}>
+                  <p className="font-display text-[24px] mt-1" style={{ color: "var(--color-chart-blue)" }}>
                     {settlements[0]?.escrow_tractor == null && settlements[0]?.escrow_trailer == null
                       ? "—"
                       : moneyCents(Number(settlements[0]?.escrow_tractor ?? 0) + Number(settlements[0]?.escrow_trailer ?? 0))}
@@ -783,7 +783,7 @@ const CashFlowPage = () => {
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
             <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
               THE SIX-MONTH ROAD
@@ -825,18 +825,18 @@ const CashFlowPage = () => {
               <div className="px-2 pt-3" style={{ height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 8, right: 18, bottom: 0, left: 8 }}>
-                    <CartesianGrid stroke="#141c2a" vertical={false} />
-                    <XAxis dataKey="m" tick={{ fill: "#5a6880", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#1e2636" }} />
+                    <CartesianGrid stroke="var(--color-hairline-lo)" vertical={false} />
+                    <XAxis dataKey="m" tick={{ fill: "var(--color-faint)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--color-hairline)" }} />
                     <YAxis
-                      tick={{ fill: "#5a6880", fontSize: 11 }}
+                      tick={{ fill: "var(--color-faint)", fontSize: 11 }}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
                       width={44}
                     />
                     <Tooltip
-                      contentStyle={{ background: "#0e1420", border: "1px solid #1e2636", borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: "#93a1b8" }}
+                      contentStyle={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline)", borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: "var(--color-dim)" }}
                       // Match the library's wide signature; coerce inside.
                       formatter={(v, name) => {
                         const n = Number(v);
@@ -852,8 +852,8 @@ const CashFlowPage = () => {
                         label={{ value: `float ${money(floatLine)}`, position: "insideBottomRight", fill: "var(--color-warn)", fontSize: 10.5 }}
                       />
                     )}
-                    <Line type="monotone" dataKey="actual" stroke="#f5b03a" strokeWidth={2} dot={{ r: 3, fill: "#f5b03a" }} connectNulls={false} />
-                    <Line type="monotone" dataKey="forecast" stroke="#f5b03a" strokeWidth={2} strokeDasharray="6 5" strokeOpacity={0.85} dot={{ r: 3, fill: "#f5b03a", fillOpacity: 0.85 }} connectNulls={false} />
+                    <Line type="monotone" dataKey="actual" stroke="var(--color-amber-hi)" strokeWidth={2} dot={{ r: 3, fill: "var(--color-amber-hi)" }} connectNulls={false} />
+                    <Line type="monotone" dataKey="forecast" stroke="var(--color-amber-hi)" strokeWidth={2} strokeDasharray="6 5" strokeOpacity={0.85} dot={{ r: 3, fill: "var(--color-amber-hi)", fillOpacity: 0.85 }} connectNulls={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -890,7 +890,7 @@ const CashFlowPage = () => {
                         <td className="text-left px-3.5 py-1.5 border-b border-hairline-lo">
                           {monthLabel(fm.month)} <span className="text-faint">◦</span>
                           {fm.weeksOff > 0 && (
-                            <span className="ml-2 font-condensed text-[10px] font-semibold tracking-[.06em] px-[7px] rounded-full border" style={{ color: "var(--color-blue)", borderColor: "rgba(79,140,214,.45)" }}>
+                            <span className="ml-2 font-condensed text-[10px] font-semibold tracking-[.06em] px-[7px] rounded-full border" style={{ color: "var(--color-chart-blue)", borderColor: "color-mix(in srgb, var(--color-chart-blue) 45%, transparent)" }}>
                               {fm.weeksOff} wk home
                             </span>
                           )}
@@ -937,7 +937,7 @@ const CashFlowPage = () => {
               </div>
 
               {lastForecastEnd != null && (
-                <div className="mx-4 my-3 rounded-[8px] px-3.5 py-2.5 font-condensed text-[12.5px] text-dim" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "inset 0 2px 4px rgba(0,0,0,.5)" }}>
+                <div className="mx-4 my-3 rounded-[8px] px-3.5 py-2.5 font-condensed text-[12.5px] text-dim" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "var(--shadow-inset)" }}>
                   💰 <b className="text-ink tabular-nums">true spendable ≈ {money(lastForecastEnd - catchup)}</b>
                   {" — "}{monthLabel(forecast.months.at(-1)!.month)} ending {money(lastForecastEnd)} −{" "}
                   <b className="text-ink">{money(catchup)}</b> tax catch-up earmark · forecast = 6-actual average
@@ -1253,7 +1253,7 @@ const BillsPopup = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
           <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>THE BILLS</span>
           <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">what drafts, and when</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
@@ -1374,13 +1374,13 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[680px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
           <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>PASTE MONTHS</span>
           <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">one row per month, straight from the QBO worksheet</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
-          <div className="font-mono text-[10.5px] rounded-[6px] px-2.5 py-2 overflow-x-auto whitespace-nowrap" style={{ color: "var(--color-amber-hi)", background: "var(--color-well)", border: "1px dashed rgba(232,148,10,.35)" }}>
+          <div className="font-mono text-[10.5px] rounded-[6px] px-2.5 py-2 overflow-x-auto whitespace-nowrap" style={{ color: "var(--color-amber-hi)", background: "var(--color-well)", border: "1px dashed color-mix(in srgb, var(--color-amber) 35%, transparent)" }}>
             {FINANCIAL_COLUMNS.join(" · ")}
           </div>
           <textarea
@@ -1418,7 +1418,7 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
             <button
               disabled={busy || good.length === 0 || bad.length > 0}
               onClick={commit}
-              className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40"
+              className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40"
             >
               {busy ? "Committing…" : `Commit ${good.length} month${good.length === 1 ? "" : "s"}`}
             </button>
@@ -1510,7 +1510,7 @@ const AssumptionsPopup = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
           <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>ASSUMPTIONS</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
@@ -1529,7 +1529,7 @@ const AssumptionsPopup = ({
             day, and full draft amount; loan rows keep a separate break-even (principal) amount so nothing double-counts.
           </p>
           <div className="flex items-center gap-2 mt-4">
-            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-[#0d1117] bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
+            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
               {busy ? "Saving…" : "Save"}
             </button>
             <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
@@ -1597,7 +1597,7 @@ const OpsNowPopup = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
           <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>OPS NOW</span>
           <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
             the bank’s ops balance this morning

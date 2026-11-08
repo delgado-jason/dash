@@ -101,7 +101,7 @@ const Editor = ({ onDone, onCancel }: EditorProps) => {
   };
 
   return (
-    <div className="rounded px-3 py-3" style={{ background: "#0d1119" }}>
+    <div className="rounded px-3 py-3" style={{ background: "var(--color-well)" }}>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -262,7 +262,7 @@ const PointEditor = ({ onDone, onCancel }: EditorProps) => {
   };
 
   return (
-    <div className="rounded px-3 py-3" style={{ background: "#0d1119" }}>
+    <div className="rounded px-3 py-3" style={{ background: "var(--color-well)" }}>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -406,7 +406,7 @@ const ScaleSection = ({
       ) : (
         <div className="mt-3 flex flex-col gap-2">
           {ordered.length > 0 && (
-            <div className="rounded py-2" style={{ background: "#0d1119" }}>
+            <div className="rounded py-2" style={{ background: "var(--color-well)" }}>
               {ordered.map((p) => (
                 <div key={p.point_id} className="px-3 py-1">
                   <div className="flex items-baseline gap-3 text-sm text-light">
@@ -672,7 +672,7 @@ export const FscScheduleBox = () => {
               estimate until you paste Landstar's.
             </p>
           ) : (
-            <div className="rounded py-2" style={{ background: "#0d1119" }}>
+            <div className="rounded py-2" style={{ background: "var(--color-well)" }}>
               {shown.map((i, k) => (
                 <div key={i}>
                   {row(i)}

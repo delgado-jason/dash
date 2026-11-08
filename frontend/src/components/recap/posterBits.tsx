@@ -5,13 +5,13 @@
 export const Tile = ({
   value,
   label,
-  color = "#f5e6c8",
+  color = "var(--color-ink)",
 }: {
   value: string;
   label: string;
   color?: string;
 }) => (
-  <div className="flex-1 rounded-[9px] px-1 py-2 text-center" style={{ background: "#1c2333" }}>
+  <div className="flex-1 rounded-[9px] px-1 py-2 text-center" style={{ background: "var(--color-iron)" }}>
     <div className="font-forge font-bold text-[19px] leading-none" style={{ color }}>
       {value}
     </div>
@@ -30,7 +30,7 @@ export const Hero = ({
   color: string;
   big: boolean;
 }) => (
-  <div className="flex-1 rounded-xl text-center" style={{ background: "#0a0d13", padding: big ? "11px 4px" : "9px 4px" }}>
+  <div className="flex-1 rounded-xl text-center" style={{ background: "var(--color-canvas)", padding: big ? "11px 4px" : "9px 4px" }}>
     <div className="font-forge font-bold leading-none" style={{ color, fontSize: big ? 30 : 26 }}>
       {value}
     </div>

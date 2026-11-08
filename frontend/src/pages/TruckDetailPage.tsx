@@ -240,10 +240,10 @@ const TruckDetailPage = () => {
   const patches = computeTruckPatches(truckLoads, truckFuel);
   const recs = truckRecords(truckLoads, truckFuel);
   const recordChips: RecordChip[] = [
-    { icon: "flame", color: "#e8940a", value: recs.bestTank != null ? recs.bestTank.toFixed(1) : "—", label: "BEST TANK" },
-    { icon: "road", color: "#f5b03a", value: recs.bigMonthMiles != null ? num(recs.bigMonthMiles) : "—", label: "BIG MONTH (MI)" },
-    { icon: "cash", color: "#4ade80", value: recs.bestRevPerMile != null ? `$${recs.bestRevPerMile.toFixed(2)}` : "—", label: "BEST REV/MI" },
-    { icon: "arrows-horizontal", color: "#60a5fa", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
+    { icon: "flame", color: "var(--color-amber)", value: recs.bestTank != null ? recs.bestTank.toFixed(1) : "—", label: "BEST TANK" },
+    { icon: "road", color: "var(--color-amber-hi)", value: recs.bigMonthMiles != null ? num(recs.bigMonthMiles) : "—", label: "BIG MONTH (MI)" },
+    { icon: "cash", color: "var(--color-status-positive-text)", value: recs.bestRevPerMile != null ? `$${recs.bestRevPerMile.toFixed(2)}` : "—", label: "BEST REV/MI" },
+    { icon: "arrows-horizontal", color: "var(--color-status-info-text)", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
   ];
 
   const clockFill = (progress: number | null) =>
@@ -281,7 +281,7 @@ const TruckDetailPage = () => {
                   {[truck.year, truck.make, truck.model].filter(Boolean).join(" ")}
                 </span>
               )}
-              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-[#6fd08c] border border-[rgba(111,208,140,.35)] bg-[rgba(111,208,140,.08)] uppercase">
+              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8 uppercase">
                 {truck.status.replace(/_/g, " ")}
               </span>
             </div>
@@ -296,7 +296,7 @@ const TruckDetailPage = () => {
           <div className="ml-auto text-right">
             <span
               className="inline-block font-display text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
-              style={{ boxShadow: "inset 0 3px 8px rgba(0,0,0,.6)" }}
+              style={{ boxShadow: "var(--shadow-inset)" }}
             >
               <RollingNumber value={odometer} />
             </span>
@@ -310,14 +310,14 @@ const TruckDetailPage = () => {
         <div
           className="relative overflow-hidden rounded-[14px] border mt-4"
           style={{
-            background: "linear-gradient(180deg, #0e1420, #0b101a)",
+            background: "linear-gradient(180deg, var(--color-well), var(--color-panel))",
             borderColor: "var(--color-hairline)",
-            boxShadow: "0 14px 34px rgba(0,0,0,.45)",
+            boxShadow: "var(--shadow-pop)",
           }}
         >
           <div
             className="flex items-center gap-[14px] px-[18px] py-[14px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, rgba(232,148,10,.08), transparent 55%)" }}
+            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
             <div className="min-w-0">
               <div className="font-forge font-bold text-[22px] leading-none" style={{ letterSpacing: "1.5px" }}>
@@ -331,9 +331,9 @@ const TruckDetailPage = () => {
               <span
                 className="ml-auto font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
                 style={{
-                  color: "#f0c24a",
-                  border: "1.5px solid rgba(240,194,74,.55)",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,.15), 0 1px 2px rgba(0,0,0,.5)",
+                  color: "var(--color-amber-hi)",
+                  border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
+                  boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 15%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
                 }}
               >
                 {m.label} CLUB
@@ -390,13 +390,13 @@ const TruckDetailPage = () => {
                           ? {
                               background:
                                 "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                              border: "1px solid rgba(245,176,58,.55)",
-                              boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                              border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
+                              boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                             }
                           : {
                               background: "var(--color-well)",
                               border: "1px solid var(--color-hairline-lo)",
-                              boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                              boxShadow: "var(--shadow-inset)",
                             }
                       }
                     />
@@ -435,7 +435,7 @@ const TruckDetailPage = () => {
                 <span
                   className={`font-condensed font-semibold text-[12.5px] tabular-nums ${
                     nextClock.d.level === "overdue"
-                      ? "text-[#e05252]"
+                      ? "text-status-negative-text"
                       : nextClock.d.level === "soon"
                         ? "text-amber-hi"
                         : "text-dim"
@@ -468,20 +468,20 @@ const TruckDetailPage = () => {
                           on
                             ? hot
                               ? {
-                                  background: "linear-gradient(180deg, #ff8a8a, #e05252)",
-                                  border: "1px solid rgba(224,82,82,.6)",
-                                  boxShadow: "0 0 7px rgba(224,82,82,.4)",
+                                  background: "linear-gradient(180deg, color-mix(in srgb, var(--color-status-negative-text) 70%, transparent), var(--color-status-negative-text))",
+                                  border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 60%, transparent)",
+                                  boxShadow: "0 0 7px color-mix(in srgb, var(--color-status-negative-text) 40%, transparent)",
                                 }
                               : {
                                   background:
                                     "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                                  border: "1px solid rgba(245,176,58,.55)",
-                                  boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                                  border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
+                                  boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                                 }
                             : {
                                 background: "var(--color-well)",
                                 border: "1px solid var(--color-hairline-lo)",
-                                boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                                boxShadow: "var(--shadow-inset)",
                               }
                         }
                       />
@@ -531,13 +531,13 @@ const TruckDetailPage = () => {
                       ? {
                           background:
                             "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                          border: "1px solid rgba(245,176,58,.55)",
-                          boxShadow: "0 0 6px rgba(232,148,10,.3)",
+                          border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
+                          boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                         }
                       : {
                           background: "var(--color-well)",
                           border: "1px solid var(--color-hairline-lo)",
-                          boxShadow: "inset 0 2px 3px rgba(0,0,0,.55)",
+                          boxShadow: "var(--shadow-inset)",
                         }
                   }
                 />
@@ -599,7 +599,7 @@ const TruckDetailPage = () => {
               >
                 <p
                   className="font-condensed font-semibold text-[19px] tabular-nums"
-                  style={k.pos ? { color: "#4ade80" } : undefined}
+                  style={k.pos ? { color: "var(--color-status-positive-text)" } : undefined}
                 >
                   {k.v}
                 </p>
@@ -612,9 +612,9 @@ const TruckDetailPage = () => {
           {metrics.windowDays > 0 && (
             <p className="font-condensed text-[11.5px] text-faint mt-2">
               {metrics.windowDays.toLocaleString("en-US")} days ·{" "}
-              <span style={{ color: "#4ade80" }}>{metrics.underLoadDays} under load</span> ·{" "}
-              <span style={{ color: "#7ab0e8" }}>{metrics.homeDays} home</span> ·{" "}
-              <span style={{ color: "#e05252" }}>{metrics.idleDays} idle</span>
+              <span style={{ color: "var(--color-status-positive-text)" }}>{metrics.underLoadDays} under load</span> ·{" "}
+              <span style={{ color: "var(--color-status-info-text)" }}>{metrics.homeDays} home</span> ·{" "}
+              <span style={{ color: "var(--color-status-negative-text)" }}>{metrics.idleDays} idle</span>
             </p>
           )}
         </div>
@@ -643,7 +643,7 @@ const TruckDetailPage = () => {
                 <button
                   onClick={() => setEditing(true)}
                   className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
-                  style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,.5)" }}
+                  style={{ boxShadow: "var(--shadow-inset)" }}
                 >
                   EDIT
                 </button>

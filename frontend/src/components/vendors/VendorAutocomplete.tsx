@@ -108,12 +108,12 @@ const VendorAutocomplete = ({
             margin: 0,
             padding: 4,
             listStyle: "none",
-            background: "#141b28",
-            border: "1px solid #2a3347",
+            background: "var(--color-panel)",
+            border: "1px solid var(--color-hairline)",
             borderRadius: 9,
             maxHeight: 220,
             overflowY: "auto",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+            boxShadow: "var(--shadow-pop)",
           }}
         >
           {matches.map((m, i) => (
@@ -134,15 +134,15 @@ const VendorAutocomplete = ({
                 borderRadius: 6,
                 cursor: "pointer",
                 fontSize: 14,
-                color: "#f4f7fb",
-                background: i === active ? "#20293a" : "transparent",
+                color: "var(--color-ink)",
+                background: i === active ? "var(--color-plate-b)" : "transparent",
               }}
             >
-              <span style={{ color: "#5f6b80", fontSize: 12 }}>◈</span>
+              <span style={{ color: "var(--color-faint)", fontSize: 12 }}>◈</span>
               <span>
                 {m.vendor.name}
                 {m.alias && (
-                  <span style={{ color: "#9fb0c9" }}> · also "{m.alias}"</span>
+                  <span style={{ color: "var(--color-dim)" }}> · also "{m.alias}"</span>
                 )}
               </span>
             </li>
