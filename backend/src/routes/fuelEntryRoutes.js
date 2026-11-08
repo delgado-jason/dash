@@ -17,6 +17,11 @@ import {
   createFscSchedule,
   deleteFscSchedule,
 } from "../services/fscScheduleServices.js";
+import {
+  listFscScalePoints,
+  createFscScalePoint,
+  deleteFscScalePoint,
+} from "../services/fscScalePointServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
@@ -76,6 +81,34 @@ router.post("/fsc-schedules", async (req, res) => {
 router.delete("/fsc-schedules/:schedule_id", async (req, res) => {
   try {
     await deleteFscSchedule(req.user.user_id, req.params.schedule_id);
+    return res.status(204).end();
+  } catch (err) {
+    return fscError(res, err);
+  }
+});
+
+// ---- General items 5b-v · Landstar's weekly scale points (before "/:fuel_entry_id") ----
+router.get("/fsc-points", async (req, res) => {
+  try {
+    const points = await listFscScalePoints(req.user.user_id);
+    return res.status(200).json({ points });
+  } catch (err) {
+    return fscError(res, err);
+  }
+});
+
+router.post("/fsc-points", async (req, res) => {
+  try {
+    const point = await createFscScalePoint(req.user.user_id, req.body);
+    return res.status(201).json({ point });
+  } catch (err) {
+    return fscError(res, err);
+  }
+});
+
+router.delete("/fsc-points/:point_id", async (req, res) => {
+  try {
+    await deleteFscScalePoint(req.user.user_id, req.params.point_id);
     return res.status(204).end();
   } catch (err) {
     return fscError(res, err);

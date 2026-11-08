@@ -102,3 +102,15 @@ export const validFscSchedule = () => ({
   ],
   note: "Landstar table",
 });
+
+export const validFscScalePoint = () => ({
+  week_of: "2026-11-03",
+  national_avg: 6.292,
+  cents_per_mile: 0.86,
+  pct_of_linehaul: 0.52,
+  regions: [
+    { region: "PADD 1A", price: 6.416, cpm: 0.88 },
+    { region: "PADD 4", price: 6.445, cpm: 0.89 },
+    { region: "PADD 5", price: 7.272, cpm: 1.03 },
+  ],
+});

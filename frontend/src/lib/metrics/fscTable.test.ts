@@ -111,6 +111,12 @@ describe("scheduleInForce and the words", () => {
       fscParWords({ kind: "table", effective_from: "2026-10-01", price: 5.02, priceIsThisWeek: false, cpm: 0.74, expectedFsc: 1 }),
     ).toBe("par on Landstar's table (eff. Oct 1) at $5.020: 74¢ a loaded mile");
     expect(fscParWords({ kind: "estimate" })).toMatch(/^par · estimate/);
+    expect(
+      fscParWords({ kind: "scale", price: 6.292, priceIsThisWeek: true, cpm: 0.86, reports: 1, pairs: 4, published: true }),
+    ).toBe("par on Landstar's scale at this week's $6.292: 86¢ a loaded mile · the week's printed rate");
+    expect(
+      fscParWords({ kind: "scale", price: 5.02, priceIsThisWeek: false, cpm: 0.64, reports: 7, pairs: 28, published: false }),
+    ).toBe("par on Landstar's scale at $5.020: 64¢ a loaded mile · fitted from 7 reports, 28 points");
     expect(fscParWords({ kind: "unknown", reason: "no national diesel price for Sep 2026" })).toBe(
       "par unknown — no national diesel price for Sep 2026",
     );

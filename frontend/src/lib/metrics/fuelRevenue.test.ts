@@ -198,7 +198,7 @@ describe("par on Landstar's pasted table (GL-155)", () => {
 
   it("a table in force and the month's national price → loaded miles × the band, over the spend", () => {
     const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, {
-      schedules: [table("2026-04-01")],
+      points: [], schedules: [table("2026-04-01")],
       dieselByMonth: new Map([["2026-06", 4.7]]),
       latestDiesel: { price: 5.153, period: "2026-11-02" },
     });
@@ -214,26 +214,79 @@ describe("par on Landstar's pasted table (GL-155)", () => {
       [load({ delivery_date: "2026-11-04", loaded_miles: 1000, deadhead_miles: 0, fuel_surcharge: "700" })],
       6,
       now,
-      { schedules: [table("2026-10-01")], dieselByMonth: new Map([["2026-11", 4.2]]), latestDiesel: { price: 5.153, period: "2026-11-02" } },
+      { points: [], schedules: [table("2026-10-01")], dieselByMonth: new Map([["2026-11", 4.2]]), latestDiesel: { price: 5.153, period: "2026-11-02" } },
     );
     expect(r.months[0].par).toMatchObject({ kind: "table", price: 5.153, priceIsThisWeek: true, cpm: 0.78 });
   });
 
   it("a table but no national price for the month → unknown, named; never the estimate behind the table's name", () => {
-    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map(), latestDiesel: null });
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { points: [], schedules: [table("2026-04-01")], dieselByMonth: new Map(), latestDiesel: null });
     expect(r.months[0].par).toEqual({ kind: "unknown", reason: "no national diesel price for Jun 2026" });
     expect(r.months[0].expectedCoverage).toBeNull();
   });
 
   it("a price below the table's first band → unknown, named", () => {
-    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table("2026-04-01")], dieselByMonth: new Map([["2026-06", 3.5]]), latestDiesel: null });
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { points: [], schedules: [table("2026-04-01")], dieselByMonth: new Map([["2026-06", 3.5]]), latestDiesel: null });
     expect(r.months[0].par).toEqual({ kind: "unknown", reason: "$3.500 is below the table's first band" });
   });
 
   it("no table in force for the month → the peg estimate, labelled", () => {
-    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table("2026-07-01")], dieselByMonth: new Map([["2026-06", 4.7]]), latestDiesel: null });
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { points: [], schedules: [table("2026-07-01")], dieselByMonth: new Map([["2026-06", 4.7]]), latestDiesel: null });
     expect(r.months[0].par).toEqual({ kind: "estimate" });
     expect(r.months[0].expectedCoverage).toBeCloseTo(((4.5 - 1.29) / 4.5) * (5000 / 6000), 6);
     expect(fuelVsRevenue(entries, loads, FSC_BASE_MPG, now).months[0].par).toEqual({ kind: "estimate" }); // no inputs at all
+  });
+});
+
+describe("par on Landstar's weekly scale (mock 8): a pasted table first, then the fitted scale, then the estimate", () => {
+  const NOV3 = {
+    point_id: "p1",
+    week_of: "2026-11-03",
+    national_avg: 6.292,
+    cents_per_mile: 0.86,
+    pct_of_linehaul: 0.52,
+    regions: [
+      { region: "PADD 1A", price: 6.416, cpm: 0.88 },
+      { region: "PADD 4", price: 6.445, cpm: 0.89 },
+      { region: "PADD 5", price: 7.272, cpm: 1.03 },
+    ],
+    note: null,
+  };
+  const now = new Date(2026, 10, 7);
+  const entries = [fuel({ fuel_date: "2026-11-03", gallons: 100, price_per_gallon: 6.3 })];
+  const loads = [load({ delivery_date: "2026-11-04", loaded_miles: 1000, deadhead_miles: 0, fuel_surcharge: "860" })];
+
+  it("this week's price is the report's own national average → the printed cent, named as such", () => {
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, {
+      schedules: [],
+      points: [NOV3],
+      dieselByMonth: new Map(),
+      latestDiesel: { price: 6.292, period: "2026-11-03" },
+    });
+    expect(r.months[0].par).toMatchObject({ kind: "scale", price: 6.292, priceIsThisWeek: true, cpm: 0.86, reports: 1, pairs: 4, published: true });
+    expect(r.months[0].expectedCoverage).toBeCloseTo((1000 * 0.86) / 630, 6);
+  });
+
+  it("another price reads the fitted scale, rounded to the cent", () => {
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, {
+      schedules: [],
+      points: [NOV3],
+      dieselByMonth: new Map(),
+      latestDiesel: { price: 6.416, period: "2026-11-03" },
+    });
+    expect(r.months[0].par).toMatchObject({ kind: "scale", cpm: 0.88, published: false });
+  });
+
+  it("a pasted table in force still wins over the scale; no price → unknown, named", () => {
+    const table = { schedule_id: "t", effective_from: "2026-11-01", bands: [{ low: 6.0, high: 6.499, cpm: 0.7 }, { low: 6.5, high: null, cpm: 0.8 }], note: null, created_at: "" };
+    const withTable = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [table], points: [NOV3], dieselByMonth: new Map(), latestDiesel: { price: 6.292, period: "2026-11-03" } });
+    expect(withTable.months[0].par).toMatchObject({ kind: "table", cpm: 0.7 });
+    const noPrice = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [], points: [NOV3], dieselByMonth: new Map(), latestDiesel: null });
+    expect(noPrice.months[0].par).toEqual({ kind: "unknown", reason: "no national diesel price for Nov 2026" });
+  });
+
+  it("a national-only point cannot fit a scale → the estimate, labelled", () => {
+    const r = fuelVsRevenue(entries, loads, FSC_BASE_MPG, now, { schedules: [], points: [{ ...NOV3, regions: [] }], dieselByMonth: new Map(), latestDiesel: { price: 6.292, period: "2026-11-03" } });
+    expect(r.months[0].par).toEqual({ kind: "estimate" });
   });
 });
