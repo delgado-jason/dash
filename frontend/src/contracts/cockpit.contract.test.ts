@@ -12,6 +12,7 @@ import { profitRows, ytdSummary, lastFiledMonth } from "@/lib/metrics/profitSumm
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { assembleCashBoardInput, type CashBoardParts } from "@/lib/metrics/cashBoardInput";
 import { buildCashBoard } from "@/lib/metrics/cashBoard";
+import { cashAsOf } from "@/lib/metrics/cashToday";
 import { getDetentionOwed } from "@/lib/metrics/dashboard";
 
 const partsOf = (book: Book): CashBoardParts => ({
@@ -133,5 +134,57 @@ describe("DETENTION OWED · the dispatch board's own function", () => {
   it("the book itself owes nothing", () => {
     const book = syntheticBook();
     expect(getDetentionOwed(book.loads, book.schedule.detention_free_hours).loadCount).toBe(0);
+  });
+});
+
+describe("CASH ON HAND, TODAY · the number walked to today and no further", () => {
+  const book = syntheticBook();
+  const board = buildCashBoard(assembleCashBoardInput(partsOf(book)));
+
+  it("the book's board has a current column with an opening and an ending", () => {
+    expect(board).not.toBeNull();
+    expect(board!.columns[0].opening).not.toBeNull();
+    expect(board!.columns[0].ending).not.toBeNull();
+  });
+
+  it("once every counted line has landed (the deposit lands AFTER the period closes), today's figure IS the column's ending", () => {
+    const col = board!.columns[0];
+    const dated = [col.deposit, col.payroll, col.accrual, col.prevDeposit, col.catchUp, col.fuel.leftover, ...col.bills, ...col.moneyDays]
+      .filter((l): l is NonNullable<typeof l> => !!l && l.counted)
+      .map((l) => l.date);
+    const lastDay = dated.reduce((m, d) => (d > m ? d : m), col.week.end);
+    expect(lastDay > col.week.end).toBe(true); // the deposit's landing day is outside the week
+    expect(cashAsOf(board!, lastDay).amount).toBeCloseTo(col.ending!, 2);
+    // and at the period's own last day the deposit is still ahead, so the figure is lower by exactly it
+    const atEnd = cashAsOf(board!, col.week.end).amount!;
+    const ahead = [col.deposit, col.prevDeposit].filter((l): l is NonNullable<typeof l> => !!l && l.counted && l.date > col.week.end)
+      .reduce((s, l) => s + (l.amount ?? 0), 0);
+    const outAhead = [col.payroll, col.accrual, col.catchUp, ...col.bills, ...col.moneyDays]
+      .filter((l): l is NonNullable<typeof l> => !!l && l.counted && l.date > col.week.end)
+      .reduce((s, l) => s + (l.amount ?? 0), 0);
+    const leftoverAhead = col.fuel.leftover.counted && col.fuel.leftover.date > col.week.end ? (col.fuel.leftover.amount ?? 0) : 0;
+    expect(atEnd + ahead + leftoverAhead - outAhead).toBeCloseTo(col.ending!, 2);
+  });
+
+  it("before the period's first dated line, it is the opening plus the prior periods' totals", () => {
+    const col = board!.columns[0];
+    const dayBefore = new Date(`${col.week.start}T00:00:00Z`);
+    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+    const key = dayBefore.toISOString().slice(0, 10);
+    const prior = col.since.reduce((s, p) => s + (p.total ?? 0), 0);
+    expect(cashAsOf(board!, key).amount).toBeCloseTo(col.opening! + prior, 2);
+  });
+
+  it("on TODAY it never counts a line dated after today", () => {
+    const col = board!.columns[0];
+    const t = cashAsOf(board!, TODAY);
+    expect(t.amount).not.toBeNull();
+    const later = [col.deposit, col.payroll, col.accrual, col.prevDeposit, col.catchUp, col.fuel.leftover, ...col.bills, ...col.moneyDays]
+      .filter((l): l is NonNullable<typeof l> => !!l && l.counted && l.date > TODAY);
+    const laterSum = later.reduce((s, l) => {
+      const sign = l === col.deposit || l === col.prevDeposit || l === col.fuel.leftover ? 1 : -1;
+      return s + sign * (l.amount ?? 0);
+    }, 0);
+    expect(t.amount! + laterSum).toBeCloseTo(col.ending!, 2);
   });
 });

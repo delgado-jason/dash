@@ -134,11 +134,11 @@ export const StageCard = ({
                 {v.left != null ? (
                   <><b className="text-ink tabular-nums">{money(v.left)}</b> left{v.asOf ? ` · balance as of ${dayWords(v.asOf)}` : ""}</>
                 ) : (
-                  <span className="text-hot">no balance is bound to this stage — bind an obligation on the Plan page</span>
+                  <span className="text-hot">no obligation is bound to this stage — bind one on the Plan page</span>
                 )}
                 {v.draft != null && <> · {money(v.draft)} a month</>}
               </p>
-              <p>
+              {v.left != null && <p>
                 {v.payoff == null ? (
                   <span className="text-hot">payoff date unknown: no obligation is bound to this stage — bind one on the Plan page</span>
                 ) : v.payoff.ok ? (
@@ -146,7 +146,7 @@ export const StageCard = ({
                 ) : (
                   <span className="text-hot">payoff date unknown: {v.payoff.reason}</span>
                 )}
-              </p>
+              </p>}
             </div>
           ) : (
             <p className="text-[12px] text-faint mt-1.5">

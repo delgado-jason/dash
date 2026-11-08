@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
 import type { CashBoard } from "@/lib/metrics/cashBoard";
 import { waitsFor, blankInputs, sinceLineCount } from "@/lib/metrics/cashBoardInput";
+import { cashAsOf } from "@/lib/metrics/cashToday";
+import { useLocalToday } from "@/hooks/useLocalToday";
 import { money } from "@/lib/format";
 import { dayWords } from "./words";
 
@@ -59,27 +61,35 @@ export const CashPlate = ({
 
 const PlateBody = ({ board, ending, floatLine }: { board: CashBoard; ending: number | null; floatLine: number | null }) => {
   const col = board.columns[0];
-  const since = sinceLineCount(board);
-  const why = col.missing.length > 0 ? col.missing : board.missing;
-  const gap = ending != null && floatLine != null ? ending - floatLine : null;
+  // This morning's money: the number walked by every counted line dated up to
+  // today, and no further. The column's ending (after the deposit that lands
+  // once the period closes) is Tuesday's money and prints beneath it.
+  const now = useLocalToday();
+  const today = cashAsOf(board, now.toISOString().slice(0, 10));
+  const since = today.amount != null ? today.linesSince : sinceLineCount(board);
+  const why = today.missing.length > 0 ? today.missing : col.missing.length > 0 ? col.missing : board.missing;
+  const gap = today.amount != null && floatLine != null ? today.amount - floatLine : null;
   return (
     <>
-      {ending != null ? (
+      {today.amount != null ? (
         <p className="font-display text-[36px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
-          {money(ending)}
-          <span className="text-[15px] text-dim font-condensed tracking-normal"> after this period’s deposit lands</span>
+          {money(today.amount)}
+          <span className="text-[15px] text-dim font-condensed tracking-normal"> today</span>
         </p>
       ) : (
         <p className="text-[13px] text-amber-hi mt-2">
           {why.length > 0
-            ? `waits for ${waitsFor(why)} — ${blankInputs(why.length)}, no ending`
-            : "waits for the current period’s ending"}
+            ? `waits for ${waitsFor(why)} — ${blankInputs(why.length)}, no figure`
+            : "waits for the current period’s lines"}
           {" "}
           <Link to="/cashflow" className={LINK}>Set it on Cash Flow ›</Link>
         </p>
       )}
       <p className="text-[11.5px] text-faint mt-2">
         {board.base.kind === "check" ? "OPS NOW" : "Snapshot"} {money(board.base.balance)} · {dayWords(board.base.date)} · since your number: {since} line{since === 1 ? "" : "s"}
+        {ending != null && (
+          <> · ending {dayWords(col.week.end)} after the deposit lands: <b className="text-dim tabular-nums">{money(ending)}</b></>
+        )}
       </p>
       {gap != null && floatLine != null ? (
         <p className={`text-[12.5px] font-semibold mt-1.5 ${gap < 0 ? "text-status-negative-text" : "text-status-positive-text"}`}>

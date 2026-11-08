@@ -265,7 +265,7 @@ export const PulseTab = ({
               </span>
             )}
           </h3>
-          <div className="relative h-[64px] mt-4">
+          <div className="relative h-[48px] mt-3">
             <div className="absolute left-0 right-0 top-[30px] h-[2px] bg-hairline" />
             {ladder.walkAway != null && (
               <div
@@ -281,24 +281,12 @@ export const PulseTab = ({
               ] as const
             ).map(([k, name]) =>
               ladder[k] != null ? (
-                <div key={k}>
-                  <div
-                    className="absolute top-[24px] w-px h-[14px] bg-dim"
-                    style={{ left: `${pos(ladder[k])}%` }}
-                  />
-                  <span
-                    className="absolute top-0 -translate-x-1/2 text-[9px] font-semibold tracking-[.1em] uppercase text-faint whitespace-nowrap"
-                    style={{ left: `${pos(ladder[k])}%` }}
-                  >
-                    {name}
-                  </span>
-                  <span
-                    className="absolute top-[44px] -translate-x-1/2 font-condensed font-semibold text-[12px] text-dim tabular-nums"
-                    style={{ left: `${pos(ladder[k])}%` }}
-                  >
-                    {fmtRpm(ladder[k])}
-                  </span>
-                </div>
+                <div
+                  key={k}
+                  title={`${name} ${fmtRpm(ladder[k])}`}
+                  className="absolute top-[24px] w-px h-[14px] bg-dim"
+                  style={{ left: `${pos(ladder[k])}%` }}
+                />
               ) : null,
             )}
             {cur != null && (
@@ -311,7 +299,23 @@ export const PulseTab = ({
               />
             )}
           </div>
-          <p className="text-[11px] text-dim mt-3">
+          <p className="text-[10.5px] text-faint mt-1.5 font-condensed tracking-[.04em] tabular-nums">
+            {(
+              [
+                ["walkAway", "walk-away"],
+                ["target", "target"],
+                ["strong", "strong"],
+              ] as const
+            )
+              .filter(([k]) => ladder[k] != null)
+              .map(([k, name], i) => (
+                <span key={k}>
+                  {i > 0 ? " · " : ""}
+                  {name} <b className="text-dim">{fmtRpm(ladder[k])}</b>
+                </span>
+              ))}
+          </p>
+          <p className="text-[11px] text-dim mt-2">
             {overFloor != null ? (
               overFloor >= 0 ? (
                 <>
