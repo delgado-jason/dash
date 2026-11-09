@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { usePersonalGrind } from "@/hooks/useGrind";
 import { getUser } from "@/services/teamService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { resolvePeriod, type RecapScope, type RecapRange } from "@/lib/metrics/recap";
@@ -35,7 +34,6 @@ const DispatcherRecapPage = () => {
     () => (selfId ? loads.filter((l) => l.booked_by === selfId) : []),
     [loads, selfId],
   );
-  const grind = usePersonalGrind(mine);
 
   const [who, setWho] = useState("you");
   const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
@@ -107,7 +105,6 @@ const DispatcherRecapPage = () => {
       ) : (
         <DispatcherRecapPoster
           stats={stats}
-          bestStreak={grind?.bestStreak ?? 0}
           who={who}
           inProgress={ago === 0}
         />

@@ -461,8 +461,8 @@ const AgentDetailPage = () => {
         );
         if (!best) return null;
         return (
-          <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap" style={{ background: "linear-gradient(178deg, var(--color-plate-a), var(--color-plate-b))", borderTop: "1px solid color-mix(in srgb, var(--color-ink) 10%, transparent)", borderBottom: "1.5px solid color-mix(in srgb, var(--color-canvas) 50%, transparent)" }}>
-            <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">BEST LOAD TOGETHER</span>
+          <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap bg-well border border-hairline">
+            <span className="ds2-label text-amber-hi">BEST LOAD TOGETHER</span>
             <span className="font-condensed font-semibold text-[13.5px] text-ink tabular-nums">
               {money(loadRevenue(best))} · {best.origin_city}, {best.origin_state} → {best.destination_city}, {best.destination_state}
             </span>

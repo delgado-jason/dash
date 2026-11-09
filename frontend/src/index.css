@@ -354,56 +354,6 @@
   border: 1px solid var(--color-hairline);
   border-radius: 12px;
 }
-.ds-panel--steel {
-  background: linear-gradient(160deg, #37415a 0%, #2a3347 45%, #242c3e 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.11);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-}
-.ds-panel--hero {
-  background: #2a3347;
-  border: 2px solid #e8940a;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.42);
-}
-.ds-panel--hero::before {
-  content: "";
-  position: absolute; top: 0; right: 0;
-  width: 72px; height: 72px;
-  background-image: radial-gradient(#e8940a 1.3px, transparent 1.4px);
-  background-size: 7px 7px;
-  opacity: 0.13; pointer-events: none;
-  border-top-right-radius: inherit;
-}
-/* Noir treatment — opt-in via <Panel noir>. Extends the hero halftone motif to
-   any analytical surface: a printed-ink frame (near-black border + inner top
-   light) and a Ben-Day dot corner. Film-noir grit without touching the data. */
-.ds-panel--noir {
-  border: 1.5px solid #0a0e16;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 28px rgba(0, 0, 0, 0.55);
-}
-.ds-panel--noir::after {
-  content: "";
-  position: absolute; top: 0; right: 0;
-  width: 104px; height: 104px;
-  background-image: radial-gradient(#e8940a 1.3px, transparent 1.4px);
-  background-size: 7px 7px;
-  opacity: 0.14; pointer-events: none;
-  -webkit-mask-image: radial-gradient(circle at 100% 0, #000, transparent 70%);
-  mask-image: radial-gradient(circle at 100% 0, #000, transparent 70%);
-  border-top-right-radius: inherit;
-}
-/* Verdict-word lettering — slanted, ink-shadowed (the forge stencil since S13).
-   Pair with a tone color inline. */
-.ds-sfx {
-  display: inline-block;
-  font-family: var(--font-forge);
-  font-weight: 400;
-  letter-spacing: 0.045em;
-  line-height: 1;
-  transform: skewX(-8deg);
-  text-shadow: 2px 2px 0 #0a0e16;
-  -webkit-text-stroke: 0.4px #0a0e16;
-}
 .ds-panel--interactive { transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .ds-panel--interactive:hover {
   transform: translateY(-2px);
@@ -536,8 +486,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 /* ===== Design System v2 — primitive styles (gate-3 spec §04) =====
-   Consumed by ui/Board, ui/ForgedPlate, and the app shell. Motion always
-   plays — no reduced-motion gates, by owner's decision (2026-08-08). */
+   Consumed by ui/Board, ui/Well, and the app shell. */
 .ds2-board {
   background: var(--color-panel);
   border: 1px solid var(--color-hairline);
@@ -553,49 +502,10 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   text-transform: uppercase;
   color: var(--color-dim);
 }
-.ds2-forged {
-  position: relative;
-  border-radius: 14px;
-  background: linear-gradient(
-    178deg,
-    var(--color-plate-a),
-    var(--color-plate-b) 55%,
-    var(--color-plate-lo)
-  );
-  border-top: 1px solid rgba(255, 255, 255, 0.09);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.55);
-  box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.55),
-    0 2px 6px rgba(0, 0, 0, 0.35);
-  will-change: transform;
-}
-.ds2-forged::before {
-  /* brushed texture */
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    93deg,
-    rgba(255, 255, 255, 0.015) 0 1px,
-    transparent 1px 3px
-  );
-}
-.ds2-forged--amber {
-  border-left: 1px solid rgba(232, 148, 10, 0.5);
-  border-right: 1px solid rgba(232, 148, 10, 0.5);
-}
-.ds2-forged--chamfer {
-  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%);
-  border-radius: 14px 0 14px 14px;
-}
 .ds2-well {
   background: var(--color-well);
+  border: 1px solid var(--color-hairline);
   border-radius: 10px;
-  box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.6),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
 /* Active nav destination — amber glow rail off the link's left edge. */
 .ds2-nav-active {
@@ -613,7 +523,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   height: 14px;
   border-radius: 2px;
   background: var(--color-amber);
-  box-shadow: 0 0 8px rgba(232, 148, 10, 0.8);
 }
 
 /* The Rate Dial's slider: transparent track (the zone bar behind it paints
@@ -646,31 +555,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   box-shadow: 0 0 0 2px var(--dial-thumb, #f5b03a), 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 
-/* ===== Day Cab overrides — the forged, steel and noir surfaces read as flat
-   panels in daylight until phase B retires them; glows and ink shadows off. ===== */
-:root:not(.dark) .ds-panel--steel,
-:root:not(.dark) .ds-panel--hero,
-:root:not(.dark) .ds-panel--noir,
-:root:not(.dark) .ds2-forged {
-  background: var(--color-panel);
-  border: 1px solid var(--color-hairline);
-  box-shadow: 0 1px 2px rgba(15, 26, 43, 0.06);
-}
-:root:not(.dark) .ds-panel--hero::before,
-:root:not(.dark) .ds-panel--noir::after,
-:root:not(.dark) .ds2-forged::before {
-  display: none;
-}
-:root:not(.dark) .ds2-well {
-  box-shadow: inset 0 1px 2px rgba(15, 26, 43, 0.08);
-}
-:root:not(.dark) .ds2-nav-active::before {
-  box-shadow: none;
-}
-:root:not(.dark) .ds-sfx {
-  text-shadow: none;
-  -webkit-text-stroke: 0;
-}
+/* ===== Day Cab overrides — the skeleton shimmer and the hover lift read
+   softer by day. (The forged, steel and noir surfaces retired in phase B3.) ===== */
 :root:not(.dark) .ds-skeleton {
   background: linear-gradient(90deg, #e1e6ee 25%, #eef1f6 50%, #e1e6ee 75%);
   background-size: 200% 100%;

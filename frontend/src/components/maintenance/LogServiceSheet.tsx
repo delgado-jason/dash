@@ -115,7 +115,7 @@ export const LogServiceSheet = ({
 
   return (
     <Board className="p-4 sm:p-5 mb-4">
-      <p className="font-forge font-bold text-[15px] tracking-[.1em] uppercase mb-4">
+      <p className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase mb-4">
         Log service
       </p>
 

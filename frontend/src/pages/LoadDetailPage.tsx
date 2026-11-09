@@ -31,8 +31,8 @@ import { getAccessorialRates } from "@/services/accessorialRateService";
 
 import LoadForm from "@/components/LoadForm";
 import { StatusBadge } from "@/components/StatusBadge";
-import { loadStamp } from "@/components/celebrations/RubberStamp";
-import { DieStamp } from "@/components/ui/DieStamp";
+import { loadStatusWord } from "@/lib/loads/loadStatusWord";
+import { StatusWord } from "@/components/ui/StatusWord";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Kpi } from "@/components/Kpi";
 import { fmtTime, dwell } from "@/lib/stopTimes";
@@ -91,7 +91,7 @@ import { getFuelEntries } from "@/services/fuelService";
 import type { FuelEntry } from "@/types/fuelEntry";
 import { fmtRpm, rpmTextClass } from "@/components/lanes/rpmStyle";
 import { money, moneyCents } from "@/lib/format";
-import { Well } from "@/components/ui/ForgedPlate";
+import { Well } from "@/components/ui/Well";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   CUSTOMER_ENDS,
@@ -639,8 +639,8 @@ export const LoadDetailPage = () => {
               if (!g?.verdict) return null;
               const meta = VERDICT_META[g.verdict as keyof typeof VERDICT_META];
               return (
-                <span className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10">
-                  <span className="font-forge font-bold text-[11px] tracking-[.14em]" style={{ color: meta.fg }}>
+                <span className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-well border border-hairline">
+                  <span className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase" style={{ color: meta.fg }}>
                     {meta.label}
                   </span>
                   <span className="font-condensed font-semibold text-[10.5px] text-faint">booked grade</span>
@@ -661,12 +661,12 @@ export const LoadDetailPage = () => {
               const fg = tone ? PER_DAY_TONE_VAR[tone] : "var(--color-ink)";
               return (
                 <span
-                  className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10"
+                  className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-well border border-hairline"
                   title={`${fmtPerDay(perDay)} a day over ${days} day${days === 1 ? "" : "s"} on the truck${
                     isDelivered(load) ? "" : " — planned, this load has not delivered yet"
                   }${word ? ` · ${word}` : ""}`}
                 >
-                  <span className="font-forge font-bold text-[11px] tracking-[.14em]" style={{ color: fg }}>
+                  <span className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase" style={{ color: fg }}>
                     {fmtPerDay(perDay)} /DAY
                   </span>
                   <span className="font-condensed font-semibold text-[10.5px] text-faint">
@@ -675,8 +675,8 @@ export const LoadDetailPage = () => {
                 </span>
               );
             })()}
-            {loadStamp(load.load_status, load.payment_status) ? (
-              <DieStamp value={loadStamp(load.load_status, load.payment_status)} />
+            {loadStatusWord(load.load_status, load.payment_status) ? (
+              <StatusWord value={loadStatusWord(load.load_status, load.payment_status)} />
             ) : (
               <>
                 <StatusBadge value={load.load_status} />
@@ -1146,7 +1146,7 @@ export const LoadDetailPage = () => {
 
         <Panel className="p-4">
           <p className="font-display text-[15px] tracking-[.08em] text-dim">SETTLEMENT · MANIFEST</p>
-          <div className="mt-2 [&>div]:border-b [&>div]:border-dotted [&>div]:border-white/10 [&>div]:pb-1.5 [&>div]:mb-1.5">
+          <div className="mt-2 [&>div]:border-b [&>div]:border-dotted [&>div]:border-hairline [&>div]:pb-1.5 [&>div]:mb-1.5">
           <Row label="Linehaul" value={moneyCents(Number(load.linehaul))} />
           <Row
             label="Fuel surcharge"

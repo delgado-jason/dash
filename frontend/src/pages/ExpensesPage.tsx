@@ -457,19 +457,13 @@ const ExpensesPage = () => {
             {/* rate to book — the crown jewel */}
             {targets.bookingLadder.walkAway != null && !basisUnsure && (
               <div
-                className="relative overflow-hidden rounded-[14px] border mt-4"
-                style={{
-                  background: "linear-gradient(180deg, var(--color-panel), var(--color-well))",
-                  borderColor: "var(--color-hairline)",
-                  boxShadow: "var(--shadow-pop)",
-                }}
+                className="ds2-board relative overflow-hidden mt-4"
               >
                 <div
                   className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule"
-                  style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
                 >
                   <div>
-                    <div className="font-forge font-bold text-[20px] leading-none" style={{ letterSpacing: "1.5px" }}>
+                    <div className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase leading-none">
                       RATE TO BOOK
                     </div>
                     <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
@@ -583,16 +577,15 @@ const ExpensesPage = () => {
           <FetchFailed className="mt-4" what="this month's P&L" onRetry={refresh} />
         ) : null}
 
-        {/* upload — the forged popup */}
+        {/* upload — the popup */}
         {showUpload && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowUpload(false)} />
             <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
               >
-                <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
+                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
                   UPLOAD P&L
                 </span>
                 <button

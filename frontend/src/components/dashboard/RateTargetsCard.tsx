@@ -89,37 +89,10 @@ const LegendItem = ({
   </span>
 );
 
-const BURST =
-  "57,30 47.39,34.66 53.38,43.5 42.73,42.73 43.5,53.38 34.66,47.39 30,57 " +
-  "25.34,47.39 16.5,53.38 17.27,42.73 6.62,43.5 12.61,34.66 3,30 12.61,25.34 " +
-  "6.62,16.5 17.27,17.27 16.5,6.62 25.34,12.61 30,3 34.66,12.61 43.5,6.62 " +
-  "42.73,17.27 53.38,16.5 47.39,25.34";
-
-// Pops when this week's booked gross clears the weekly target — a genuine win.
-const TargetBurst = () => (
-  <span
-    style={{ position: "relative", width: 52, height: 52, flexShrink: 0 }}
-    aria-hidden="true"
-  >
-    <svg
-      viewBox="0 0 60 60"
-      width={52}
-      height={52}
-      style={{ transform: "rotate(-8deg)" }}
-    >
-      <polygon points={BURST} fill={GREEN} stroke="var(--color-canvas)" strokeWidth={1.5} />
-      <text
-        x={30}
-        y={34}
-        textAnchor="middle"
-        className="font-condensed"
-        fontWeight={600}
-        fontSize={11}
-        fill="var(--color-on-amber)"
-      >
-        TARGET!
-      </text>
-    </svg>
+// When this week's booked gross clears the weekly target — the plain word.
+const TargetWord = () => (
+  <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-positive-text">
+    Target!
   </span>
 );
 
@@ -142,7 +115,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
     weekEarned >= gross.weeklyTarget;
 
   return (
-    <Panel noir className="p-4">
+    <Panel className="p-4">
       <div className="flex justify-between items-baseline mb-3">
         <p className="text-sm font-medium text-light">Rate &amp; pace targets</p>
         <p className="text-xs text-muted-text">
@@ -176,7 +149,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
             <p className="text-xs text-muted-text">This week · earned (gross)</p>
             <div className="flex items-center gap-2">
               <p className="text-xl font-condensed mt-1">{money(weekEarned)}</p>
-              {beatTarget && <TargetBurst />}
+              {beatTarget && <TargetWord />}
             </div>
             <PaceBar
               earned={weekEarned}

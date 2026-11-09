@@ -11,10 +11,7 @@ import type { Issue } from "@/lib/integrity/issue";
 // two groups; a dispatcher reads the data rows only.
 
 const Stamp = ({ children }: { children: string }) => (
-  <span
-    className="font-forge text-[11px] tracking-[.12em] rounded-[4px] px-[6px] py-[1px] inline-block rotate-[-2deg] align-middle"
-    style={{ color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }}
-  >
+  <span className="font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-amber-hi inline-block align-middle">
     {children}
   </span>
 );

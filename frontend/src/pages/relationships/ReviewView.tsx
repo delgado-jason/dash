@@ -6,7 +6,8 @@ import type { Agent } from "@/types/agent";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { BoardCell } from "@/components/ui/Board";
 import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
-import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
+import { Panel as PlainPanel } from "@/components/ui/Panel";
+import { Well } from "@/components/ui/Well";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { fmtPerDay, perDayTone, perDayToneWord, type DailyTargets } from "@/lib/metrics/perDay";
 import { perDayTextClass, rpmTextClass } from "@/components/lanes/rpmStyle";
@@ -842,7 +843,7 @@ const ReviewView = () => {
       <ErrorLine>{errFor("board")}</ErrorLine>
 
       {/* ---- 1. IS IT WORKING — the view's one forged plate ---- */}
-      <ForgedPlate chamfer className="mt-3 px-4 py-4 sm:px-5">
+      <PlainPanel className="mt-3 px-4 py-4 sm:px-5">
         <div className="flex items-center gap-2 flex-wrap">
           <Chip tone="job">The one number</Chip>
           <Chip tone="day">since {shortDate(SYSTEM_START)}</Chip>
@@ -877,7 +878,7 @@ const ReviewView = () => {
             no attribution and sit outside the math. The percent appears at {INBOUND_HEADLINE_MIN} attributed loads.
           </p>
         </Well>
-      </ForgedPlate>
+      </PlainPanel>
       <MonthTable model={model} />
       {model.chartEarned && <InboundChart data={chartData} />}
 

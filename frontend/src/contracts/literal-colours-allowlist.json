@@ -5,8 +5,6 @@
     "components/celebrations/",
     "components/awards/",
     "components/playercard/",
-    "components/dashboard/GrindMeter.tsx",
-    "components/dashboard/agents/RaceBoard.tsx",
     "pages/TrophyHallPage.tsx",
     "pages/TrophyStudioPage.tsx",
     "pages/GaragePage.tsx",
@@ -19,17 +17,13 @@
     "hooks/useAwardPops.ts",
     "hooks/useDispatcherAwardPops.ts",
     "components/fleet/AvatarFallback.tsx",
-    "lib/theme.ts",
-    "lib/constants/recapTiers.ts",
-    "components/recap/RecapPoster.tsx"
+    "lib/theme.ts"
   ],
   "reasons": {
     "components/forge/": "the game layer — deleted in phase B2 (the Cockpit's PR 4)",
     "components/celebrations/": "the game layer — deleted in phase B2",
     "components/awards/": "the game layer — deleted in phase B2",
     "components/playercard/": "the game layer — deleted in phase B2 after its numbers are rescued (B1)",
-    "components/dashboard/GrindMeter.tsx": "the game layer — deleted in phase B2",
-    "components/dashboard/agents/RaceBoard.tsx": "the game layer — deleted in phase B2",
     "pages/TrophyHallPage.tsx": "the game layer — deleted in phase B2",
     "pages/TrophyStudioPage.tsx": "the game layer — deleted in phase B2",
     "pages/GaragePage.tsx": "the game layer — deleted in phase B2",
@@ -42,8 +36,6 @@
     "hooks/useAwardPops.ts": "the game layer — deleted in phase B2",
     "hooks/useDispatcherAwardPops.ts": "the game layer — deleted in phase B2",
     "components/fleet/AvatarFallback.tsx": "a generated avatar palette: saturated grounds with white initials, data not theme, reads in both looks",
-    "lib/theme.ts": "the browser chrome colour per look (THEME_COLOR): two literals by design, one for each canvas",
-    "lib/constants/recapTiers.ts": "the recap posters’ metal identity colours (bronze, silver); restyled plain in phase B1",
-    "components/recap/RecapPoster.tsx": "one bronze compare against recapTiers; goes with the poster restyle in phase B1"
+    "lib/theme.ts": "the browser chrome colour per look (THEME_COLOR): two literals by design, one for each canvas"
   }
 }

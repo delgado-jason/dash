@@ -596,14 +596,7 @@ const CompliancePage = () => {
           <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
             {summary.valid + summary.expiring + summary.expired} PAPERS
           </span>
-          <span
-            className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
-            style={
-              grounded
-                ? { color: "var(--color-status-negative-text)", borderColor: "var(--color-status-negative-text)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-negative-text) 12%, transparent)" }
-                : { color: "var(--color-status-positive-text)", borderColor: "var(--color-status-positive-text)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-positive-text) 12%, transparent)" }
-            }
-          >
+          <span className={`font-condensed font-semibold text-[12px] tracking-[.1em] uppercase ${grounded ? "text-status-negative-text" : "text-status-positive-text"}`}>
             {grounded ? "GROUNDED" : summary.expiring > 0 ? "CLEARED TO ROLL" : "ALL CLEAR"}
           </span>
           {summary.expired > 0 && (
@@ -667,16 +660,15 @@ const CompliancePage = () => {
           </>
         )}
 
-        {/* the popup — add, edit, and the CDL editor, one forged modal */}
+        {/* the popup — add, edit, and the CDL editor, one modal */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60" onClick={closeForms} />
             <div className="relative w-full max-w-[560px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
               >
-                <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
+                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
                   {renewing
                     ? "MARK RENEWED"
                     : cdlDriver

@@ -23,8 +23,6 @@ import {
 } from "@/lib/metrics/recap";
 import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
 import { useLocalToday } from "@/hooks/useLocalToday";
-import { careerRank } from "@/lib/metrics/playerCard";
-import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { RecapPoster } from "@/components/recap/RecapPoster";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
@@ -101,13 +99,6 @@ const RecapPage = () => {
   );
 
   const truckAvatarUrl = trucks.find((t) => t.avatar_url)?.avatar_url ?? null;
-  const lifetimeMiles = Math.max(
-    0,
-    ...trucks.map((t) => Number(t.current_odometer) || 0),
-    maxFuelOdometer(fuel) ?? 0,
-    ...loads.map((l) => Number(l.odometer_end) || 0),
-  );
-  const rank = careerRank(lifetimeMiles).name;
   const canNext = ago > 0;
   const canPrev = hasData(loads, resolvePeriod(scope, ago + 1, now));
 
@@ -161,7 +152,6 @@ const RecapPage = () => {
       ) : (
         <RecapPoster
           stats={stats}
-          rank={rank}
           truckAvatarUrl={scope === "year" ? truckAvatarUrl : null}
         />
       )}

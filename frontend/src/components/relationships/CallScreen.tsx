@@ -6,8 +6,7 @@ import type { Agency } from "@/types/agency";
 import type { Load } from "@/types/load";
 import type { AgentPatchPayload } from "@/types/agentPatchPayload";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { Well } from "@/components/ui/ForgedPlate";
-import { MeterCells } from "@/components/awards/HardwareBoard";
+import { Well } from "@/components/ui/Well";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import {
   createAgentContact,
@@ -703,9 +702,6 @@ export const CallScreen = ({
         >
           <span className="inline-flex items-center gap-3">
             The footprint · {score} of {FOOTPRINT_QUESTIONS}
-            <span className="inline-flex w-[84px]">
-              <MeterCells pct={score / FOOTPRINT_QUESTIONS} cells={FOOTPRINT_QUESTIONS} />
-            </span>
           </span>
         </SectionHead>
         <ul className="px-4 md:px-5 pb-2">
@@ -921,7 +917,7 @@ export const CallScreen = ({
                           <button
                             type="button"
                             onClick={() => setDivertPick(a)}
-                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] font-condensed text-[14px] text-ink hover:bg-white/5 text-left"
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] font-condensed text-[14px] text-ink hover:bg-well text-left"
                           >
                             {nameOf(a)} <AgentCodeChip agent={a} />
                             {a.agent_city && <span className="text-faint text-[12px]">{a.agent_city}{a.agent_state ? `, ${a.agent_state}` : ""}</span>}

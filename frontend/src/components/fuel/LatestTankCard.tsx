@@ -1,7 +1,6 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { TankRecap } from "@/lib/metrics/fuelEconomy";
 import { money, dieselPrice, formatDate } from "@/lib/format";
-import { playSfx } from "@/lib/sfx";
 
 const GOOD = "var(--color-status-positive-text)";
 const BAD = "var(--color-status-negative-text)";
@@ -37,42 +36,19 @@ export const LatestTankCard = ({
   recap: TankRecap | null;
   place?: string | null;
 }) => {
-  // Fire the record cue ONLY when a new record-setting tank first appears (a
-  // fresh fill-up) — never on a passive re-render or a reload of the same tank.
-  const lastTank = useRef<number | null>(null);
-  const primed = useRef(false);
-  useEffect(() => {
-    if (!recap) return;
-    const key = recap.tank.toOdometer;
-    if (!primed.current) {
-      primed.current = true;
-      lastTank.current = key;
-      return;
-    }
-    if (key !== lastTank.current) {
-      lastTank.current = key;
-      if (recap.isRecord) playSfx("pow");
-    }
-  }, [recap]);
-
   if (!recap) return null;
   const { tank, isRecord, mpgVsAvg, mpgVsLast, cpmVsAvg, ppgVsNational } = recap;
 
   return (
     <div
-      className="relative overflow-hidden rounded-[14px] border mt-4"
+      className="relative overflow-hidden rounded-[14px] border mt-4 bg-panel"
       style={{
-        background: "linear-gradient(180deg, var(--color-well), var(--color-panel))",
         borderColor: isRecord ? "color-mix(in srgb, var(--color-amber-hi) 50%, transparent)" : "var(--color-hairline)",
-        boxShadow: "var(--shadow-pop)",
       }}
     >
-      <div
-        className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule flex-wrap"
-        style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
-      >
+      <div className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule flex-wrap">
         <div className="min-w-0">
-          <div className="font-forge font-bold text-[20px] leading-none" style={{ letterSpacing: "1.5px" }}>
+          <div className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase leading-none">
             THE LAST TANK
           </div>
           <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
@@ -81,18 +57,7 @@ export const LatestTankCard = ({
           </div>
         </div>
         {isRecord ? (
-          <span
-            className="ml-auto font-forge font-bold uppercase text-sm"
-            style={{
-              border: "3px solid var(--color-amber-hi)",
-              color: "var(--color-amber-hi)",
-              borderRadius: 8,
-              padding: "2px 10px",
-              letterSpacing: 2,
-              transform: "rotate(-6deg)",
-              animation: "stampSlam 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) both",
-            }}
-          >
+          <span className="ml-auto font-condensed font-bold text-sm uppercase tracking-[.04em] text-amber-hi">
             NEW BEST
           </span>
         ) : mpgVsAvg != null && mpgVsAvg >= 0 ? (

@@ -6,7 +6,6 @@ import type { Load } from "@/types/load";
 import { getDrivers, createDriver } from "@/services/driversService";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
-import { mileMilestone } from "@/lib/metrics/mileClub";
 import { useLoads } from "@/hooks/useLoads";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
@@ -156,7 +155,6 @@ const DriversPage = () => {
           <div className="ds2-board overflow-hidden mt-4">
             {drivers.map((d) => {
               const stats = statsByDriver.get(d.driver_id) ?? { miles: driverLifetimeMiles(trucks, fuel, []), hauls: 0 };
-              const m = mileMilestone(stats.miles);
               const cdl = d.cdl_expiration
                 ? `CDL thru ${formatDate(d.cdl_expiration)}`
                 : null;
@@ -193,18 +191,6 @@ const DriversPage = () => {
                       {d.endorsements ? ` · ${d.endorsements}` : ""}
                     </div>
                   </div>
-                  {m.crossed != null && (
-                    <span
-                      className="font-display text-[12.5px] tracking-[.12em] text-amber-hi rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
-                      style={{
-                        border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                        boxShadow:
-                          "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
-                      }}
-                    >
-                      {m.label} CLUB
-                    </span>
-                  )}
                   {d.phone && (
                     <a
                       href={`tel:${d.phone.replace(/[^+\d]/g, "")}`}
