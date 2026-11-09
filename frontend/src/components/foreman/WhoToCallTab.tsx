@@ -6,7 +6,8 @@ import { useAgents } from "@/hooks/useAgents";
 import { useCityCoords } from "@/hooks/useCityCoords";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
-import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
+import { Well } from "@/components/ui/Well";
 import { AlertLamp } from "@/components/ui/StatusPill";
 import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
 import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
@@ -142,13 +143,11 @@ const ClassChip = ({ r, size = "md" }: { r: AgentRanking; size?: "sm" | "md" }) 
   </span>
 );
 
-// ---- the one forged plate: the top call ----
+// ---- the top call ----
 const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) => (
-  <ForgedPlate chamfer tilt className="p-4 sm:p-5">
+  <Panel className="p-4 sm:p-5">
     <div className="flex items-center gap-2 mb-2">
-      <span className="font-forge text-[12px] tracking-wider px-2.5 py-1 rounded-md bg-amber text-canvas font-bold">
-        {"★"} TOP CALL
-      </span>
+      <span className="ds2-label">Top call</span>
       <span className="font-condensed text-[12px] font-semibold px-2 py-0.5 rounded-md bg-well text-hot">
         {TYPE_LABELS[r.loadType]}
       </span>
@@ -208,7 +207,7 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
       <span className="text-[11px] uppercase tracking-widest text-amber font-condensed shrink-0">Why</span>
       <span className="text-[13.5px] text-ink/90">{r.why}</span>
     </Well>
-  </ForgedPlate>
+  </Panel>
 );
 
 // ---- flat reading rows: #2..N ----
@@ -370,7 +369,7 @@ const MODE_TABS: { value: ForemanMode; label: string }[] = [
 const Loading = () => (
   <div className="space-y-3">
     <div className="ds2-board h-14 animate-pulse" />
-    <div className="ds2-forged h-40 animate-pulse" />
+    <div className="ds2-board h-40 animate-pulse" />
     <div className="ds2-board h-52 animate-pulse" />
   </div>
 );

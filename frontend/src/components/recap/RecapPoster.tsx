@@ -1,26 +1,15 @@
-import { Truck, MapPin, Star, Crown, Leaf } from "lucide-react";
+import { Truck, MapPin, User } from "lucide-react";
 import type { RecapStats } from "@/lib/metrics/recap";
-import { RECAP_TIERS } from "@/lib/constants/recapTiers";
+import { RECAP_KICKER } from "@/lib/constants/recapTiers";
+import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 import { Hero, Tile } from "./posterBits";
 import { kMoney, num } from "./posterFormat";
 
-const Pips = ({ n, color }: { n: number; color: string }) => (
-  <span className="font-forge font-bold tracking-[3px]" style={{ color }}>
-    {"★ ".repeat(n).trim()}
-  </span>
-);
-
-const MonthStrip = ({
-  data,
-  color,
-}: {
-  data: { label: string; gross: number }[];
-  color: string;
-}) => {
+const MonthStrip = ({ data }: { data: { label: string; gross: number }[] }) => {
   const max = Math.max(1, ...data.map((d) => d.gross));
   return (
-    <div className="rounded-[10px] px-3 py-2.5" style={{ background: "var(--color-canvas)" }}>
+    <div className="rounded-[10px] px-3 py-2.5 bg-canvas">
       <div className="text-[10px] text-muted-text tracking-wide mb-1.5">
         MONTHLY HAUL · {data[0].label} → {data[data.length - 1].label}
       </div>
@@ -29,7 +18,7 @@ const MonthStrip = ({
           <div
             key={i}
             className="flex-1 rounded-t-[2px]"
-            style={{ height: `${Math.max(6, (d.gross / max) * 100)}%`, minWidth: 5, background: color }}
+            style={{ height: `${Math.max(6, (d.gross / max) * 100)}%`, minWidth: 5, background: "var(--color-amber)" }}
             title={`${d.label}: ${kMoney(d.gross)}`}
           />
         ))}
@@ -38,82 +27,50 @@ const MonthStrip = ({
   );
 };
 
-const RankChip = ({ rank, t }: { rank: string; t: (typeof RECAP_TIERS)[keyof typeof RECAP_TIERS] }) => (
-  <div
-    className="inline-flex items-center gap-1.5 mt-2 rounded-full px-3 py-0.5"
-    style={{ background: t.chipBg, border: `1px solid ${t.chipBorder}` }}
-  >
-    <Truck size={13} style={{ color: t.chipInk }} />
-    <span className="font-forge font-bold tracking-wide text-[13px] uppercase" style={{ color: t.chipInk }}>
-      {rank}
-    </span>
+const TopBox = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null }) => (
+  <div className="flex-1 min-w-[130px] rounded-[10px] px-3 py-2.5 bg-well">
+    <div className="text-[10px] text-muted-text tracking-wide">
+      {icon} {label}
+    </div>
+    <div className="font-condensed font-semibold text-[16px] text-ink mt-0.5">{value ?? "—"}</div>
   </div>
 );
 
 export const RecapPoster = ({
   stats,
-  rank,
   truckAvatarUrl,
 }: {
   stats: RecapStats;
-  rank: string;
   truckAvatarUrl?: string | null;
 }) => {
-  const t = RECAP_TIERS[stats.scope];
   const rich = stats.scope !== "month"; // quarter + year carry the extra data
-  const titleSize = stats.scope === "year" ? 44 : stats.scope === "quarter" ? 38 : 30;
+  const big = stats.scope === "year";
+  const titleSize = stats.scope === "year" ? 40 : stats.scope === "quarter" ? 36 : 30;
 
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl max-w-[600px] mx-auto"
-      style={{
-        background: t.cardBg,
-        border: `${t.border}px solid ${t.metal}`,
-        boxShadow: t.inner ? `inset 0 0 0 ${stats.scope === "year" ? 2 : 1}px ${t.inner}` : undefined,
-      }}
-    >
-      <div
-        className="absolute top-0 right-0 w-40 h-40 pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(${t.metal} 1.3px, transparent 1.4px)`,
-          backgroundSize: "8px 8px",
-          opacity: 0.14,
-        }}
-      />
-
-      {t.banner && (
-        <div
-          className="relative h-44 sm:h-52 flex items-center justify-center overflow-hidden"
-          style={{ borderBottom: `${t.border}px solid ${t.metal}`, background: "var(--color-canvas)" }}
-        >
+    <Panel className="max-w-[600px] mx-auto overflow-hidden">
+      {stats.scope === "year" && (
+        <div className="relative h-44 sm:h-52 flex items-center justify-center overflow-hidden bg-canvas border-b border-hairline">
           {truckAvatarUrl ? (
             <img src={truckAvatarUrl} alt="Your truck" className="w-full h-full object-cover" />
           ) : (
-            <Truck size={72} style={{ color: "var(--color-plate)" }} />
+            <Truck size={72} className="text-faint" />
           )}
         </div>
       )}
 
       <div className="relative p-5 sm:p-6">
         <div className="text-center mb-5">
-          <div className="font-forge font-bold tracking-[3px] text-[11px] flex items-center justify-center gap-1.5" style={{ color: "var(--color-dim)" }}>
-            {t.crown && <Crown size={14} style={{ color: t.metal }} />}
-            DELGADO TRUCKING · {t.kicker} · <Pips n={t.stars} color={t.title} />
+          <div className="ds2-label">DELGADO TRUCKING · {RECAP_KICKER[stats.scope]}</div>
+          <div className="font-condensed font-semibold leading-none text-ink mt-1" style={{ fontSize: titleSize }}>
+            {stats.label}
           </div>
-          <div className="flex items-center justify-center gap-2.5 mt-0.5">
-            {t.laurels && <Leaf size={titleSize * 0.5} style={{ color: t.metal, transform: "scaleX(-1)" }} />}
-            <div className="font-forge font-bold leading-none" style={{ color: t.title, fontSize: titleSize }}>
-              {stats.label}
-            </div>
-            {t.laurels && <Leaf size={titleSize * 0.5} style={{ color: t.metal }} />}
-          </div>
-          <RankChip rank={rank} t={t} />
         </div>
 
         <div className="flex gap-2 mb-2">
-          <Hero value={kMoney(stats.gross)} label="HAULED" color="var(--color-status-positive-text)" big={stats.scope === "year"} />
-          <Hero value={num(stats.totalMiles)} label="MILES" color={t.metal === "#b3763f" ? "var(--color-amber-hi)" : t.metal} big={stats.scope === "year"} />
-          <Hero value={String(stats.states)} label="STATES" color="var(--color-status-info-text)" big={stats.scope === "year"} />
+          <Hero value={kMoney(stats.gross)} label="HAULED" big={big} />
+          <Hero value={num(stats.totalMiles)} label="MILES" big={big} />
+          <Hero value={String(stats.states)} label="STATES" big={big} />
         </div>
 
         <div className="flex gap-2 mb-2">
@@ -127,7 +84,11 @@ export const RecapPoster = ({
 
         {rich && stats.netProfit != null && (
           <div className="flex gap-2 mb-2">
-            <Tile value={money(stats.netProfit)} label="NET PROFIT" color="var(--color-status-positive-text)" />
+            <Tile
+              value={money(stats.netProfit)}
+              label="NET PROFIT"
+              color={stats.netProfit < 0 ? "var(--color-status-negative-text)" : "var(--color-status-positive-text)"}
+            />
             {stats.bestMonth && <Tile value={stats.bestMonth.label.split(" ")[0]} label="BEST MONTH" color="var(--color-status-positive-text)" />}
             {stats.hardestMonth && <Tile value={stats.hardestMonth.label.split(" ")[0]} label="HARDEST" color="var(--color-status-negative-text)" />}
           </div>
@@ -135,37 +96,19 @@ export const RecapPoster = ({
 
         {rich && stats.monthlyGross.length > 1 && (
           <div className="mb-2">
-            <MonthStrip data={stats.monthlyGross} color={t.metal} />
+            <MonthStrip data={stats.monthlyGross} />
           </div>
         )}
 
         {rich && (
           <div className="flex gap-2">
-            <div className="flex-1 min-w-[150px] rounded-[10px] px-3 py-2.5" style={{ background: "var(--color-iron)" }}>
-              <div className="text-[10px] text-muted-text tracking-wide">
-                <MapPin size={12} className="inline -mt-0.5" style={{ color: "var(--color-amber)" }} /> TOP LANE
-              </div>
-              <div className="font-forge font-bold text-[16px] mt-0.5" style={{ color: "var(--color-amber-hi)" }}>
-                {stats.topLane ?? "—"}
-              </div>
-            </div>
-            <div className="flex-1 min-w-[130px] rounded-[10px] px-3 py-2.5" style={{ background: "var(--color-iron)" }}>
-              <div className="text-[10px] text-muted-text tracking-wide">
-                <Star size={12} className="inline -mt-0.5" style={{ color: "var(--color-amber)" }} /> TOP AGENT
-              </div>
-              <div className="font-forge font-bold text-[16px] mt-0.5" style={{ color: "var(--color-amber-hi)" }}>
-                {stats.topAgent ?? "—"}
-              </div>
-            </div>
+            <TopBox icon={<MapPin size={12} className="inline -mt-0.5 text-dim" />} label="TOP LANE" value={stats.topLane} />
+            <TopBox icon={<User size={12} className="inline -mt-0.5 text-dim" />} label="TOP AGENT" value={stats.topAgent} />
           </div>
         )}
 
-        <div className="text-center mt-4 border-t pt-3" style={{ borderColor: stats.scope === "year" ? "var(--color-hairline-lo)" : "var(--color-iron)" }}>
-          <span className="font-forge font-bold tracking-[2px] text-[12px]" style={{ color: "var(--color-dim)" }}>
-            {rich ? `${stats.states} OF 48 STATES · ` : ""}BEST STREAK {stats.bestStreak} WK · KEEP ROLLING
-          </span>
-        </div>
+        {rich && <div className="text-center mt-4 text-[12px] text-dim">{stats.states} of 48 states</div>}
       </div>
-    </div>
+    </Panel>
   );
 };

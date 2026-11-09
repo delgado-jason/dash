@@ -2,14 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import type { Driver } from "@/types/driver";
 import type { ExpensePeriod } from "@/types/expense";
-import type { FuelEntry } from "@/types/fuelEntry";
-import type { Truck } from "@/types/truck";
 import type { Obligation } from "@/types/obligation";
 import { getDriver, patchDriver } from "@/services/driversService";
 import { getExpensePeriods } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
-import { getFuelEntries } from "@/services/fuelService";
-import { getTrucks } from "@/services/trucksService";
 import { getPerDiemDays } from "@/services/perDiemService";
 import type { PerDiemDay } from "@/types/perDiem";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -26,7 +22,8 @@ import { useTrips } from "@/hooks/useTrips";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";
-import { HardwareBoard } from "@/components/awards/HardwareBoard";
+import { Panel } from "@/components/ui/Panel";
+import { GRADE_META } from "@/components/agents/gradeMeta";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { DRIVER_FIELDS, toFormValues } from "@/lib/fleetFields";
@@ -37,28 +34,18 @@ import {
   monthlyObligationCost,
 } from "@/lib/metrics/rateTargets";
 import { MARGIN_GOAL, marginGoalFrom } from "@/lib/constants/targets";
-import { driverLifetimeMiles } from "@/lib/metrics/driverLifetimeMiles";
 import {
-  careerRank,
   getSeasonStats,
   gradedMargin,
   rpmGrade,
   utilizationGrade,
-  personalBests,
+  bottleneckLevers,
+  allLeversOnTarget,
+  type Grade,
+  type Lever,
 } from "@/lib/metrics/playerCard";
-import { getQuarterPace } from "@/lib/metrics/quarterPace";
-import { computeGrind } from "@/lib/metrics/grind";
-import { loadTypeMix } from "@/lib/metrics/loadMix";
 import { firstDeliveredPickup } from "@/lib/metrics/underLoad";
 import { utilizationWindow, lifetimeSinceLabel } from "@/lib/metrics/truckMetrics";
-import { computePatches } from "@/lib/awards/patches";
-import { computeMedals, earnedMedals } from "@/lib/awards/medals";
-import { assetLoanStatus } from "@/lib/metrics/payoff";
-import { PlayerCard } from "@/components/playercard/PlayerCard";
-import { driverRecordChips } from "@/components/awards/RecordBook";
-import { LeversBoard } from "@/components/playercard/LeversBoard";
-import { MedalBadge } from "@/components/awards/MedalBadge";
-import { monthCoverage } from "@/lib/metrics/monthCoverage";
 import { isDelivered } from "@/lib/metrics/status";
 
 const Spec = ({
@@ -74,6 +61,45 @@ const Spec = ({
   </div>
 );
 
+// The grade word as a small chip — GRADE_META's colours, one place.
+const GradeChip = ({ grade }: { grade: Grade | null }) =>
+  grade ? (
+    <span
+      className="inline-flex items-center font-condensed font-bold text-[9.5px] tracking-[.06em] px-[5px] h-[17px] rounded"
+      style={{ color: GRADE_META[grade].fg, background: GRADE_META[grade].bg }}
+    >
+      {GRADE_META[grade].label}
+    </span>
+  ) : null;
+
+// A plain nudge for whichever lever is the bottleneck.
+const LEVER_HINTS: Record<string, string> = {
+  rate: "booking below target — hold out for better-paying freight.",
+  util: "the truck sitting is what's capping the season — keep it rolling.",
+  margin: "costs are eating the margin — watch deadhead and fuel.",
+};
+
+const LeverFigure = ({
+  label,
+  value,
+  grade,
+  basis,
+}: {
+  label: string;
+  value: string;
+  grade: Grade | null;
+  basis: string | null;
+}) => (
+  <div className="min-w-0">
+    <p className="ds2-label">{label}</p>
+    <div className="flex items-center gap-2 mt-1">
+      <span className="font-condensed font-semibold text-[24px] tabular-nums leading-none">{value}</span>
+      <GradeChip grade={grade} />
+    </div>
+    {basis && <p className="text-[11px] text-faint mt-1">{basis}</p>}
+  </div>
+);
+
 const DriverDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { loads } = useLoads(0);
@@ -81,12 +107,9 @@ const DriverDetailPage = () => {
   const [driver, setDriver] = useState<Driver | null>(null);
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
-  const [fuel, setFuel] = useState<FuelEntry[]>([]);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [perDiemDays, setPerDiemDays] = useState<PerDiemDay[]>([]);
   const [financials, setFinancials] = useState<MonthlyFinancialRow[]>([]);
   const [hometimeThreshold, setHometimeThreshold] = useState<number | null>(null); // null until Settings loads — the chip waits (GL-140)
-  const [operation, setOperation] = useState("flatbed");
   // The schedule itself rides along: the one basis (computeRateTargets) reads
   // the tiers, the keep and the margin goal off it (2026-11-04).
   const [schedule, setSchedule] = useState<SettlementSchedule | null>(null);
@@ -105,12 +128,10 @@ const DriverDetailPage = () => {
       .catch(() => {});
   }, [id]);
 
-  // Business-level inputs for the card (P&L, obligations, fuel, odometer).
+  // Business-level inputs for the card (P&L, obligations, schedule).
   useEffect(() => {
     getExpensePeriods().then(setPeriods).catch(() => {});
     getObligations().then(setObligations).catch(() => {});
-    getFuelEntries().then(setFuel).catch(() => {});
-    getTrucks().then(setTrucks).catch(() => {});
     // The QBO archive drives the margin lever; empty on failure → labeled app fallback.
     getMonthlyFinancials().then(setFinancials).catch(() => {});
     // This + last year of marks — same window the Fleet tab reads, so both
@@ -122,7 +143,6 @@ const DriverDetailPage = () => {
     getSettlementSchedule()
       .then((s) => {
         setHometimeThreshold(s.hometime_threshold_days);
-        setOperation(s.operation);
         setSchedule(s);
         setMarginGoal(marginGoalFrom(s));
       })
@@ -159,14 +179,13 @@ const DriverDetailPage = () => {
     [perDiemDays],
   );
 
-  // The player card only makes sense for a driver who actually hauls; a
+  // The career and levers panels only make sense for a driver who actually hauls; a
   // dispatch-only driver (e.g. Brandie) keeps the plain page.
   const card = useMemo(() => {
     if (driverLoads.length === 0) return null;
     // Active DEBT obligations (owner draws and on-P&L bills excluded) drive
     // break-even/rate and subtract from True Net — one rule, one helper.
     const obligationsDebt = monthlyObligationCost(obligations);
-    const lifetimeMiles = driverLifetimeMiles(trucks, fuel, driverLoads);
     // ONE basis (2026-11-04, §5 / call 12): the same computeRateTargets the
     // Dashboard, the Market and Score a Load stand on — six months, the keep
     // measured from the window's own loads. The card used to blend three
@@ -179,7 +198,7 @@ const DriverDetailPage = () => {
     // your floor" (gross $/driven mile for pricing; net $/loaded only where
     // labelled). It used to grade net $/loaded against a net ladder.
     const rpmG = rpmGrade(t.grossRate, t.bookingLadder);
-    // ONE margin on this page: the lever and the Strong Season medal read the
+    // ONE margin on this page: the margin lever reads the
     // same graded margin (QBO pretax when the archive has closed months, else
     // the app's season estimate, labelled).
     const margin = gradedMargin(financials, season, now, marginGoal);
@@ -190,27 +209,9 @@ const DriverDetailPage = () => {
     const nowKey = now.toISOString().slice(0, 10);
     const winStart = firstDeliveredPickup(driverLoads);
     const utilization = utilizationWindow(driverLoads, winStart, nowKey, marks.homeDays, marks.travelDays).utilization;
-    const grind = computeGrind(driverLoads, periods, obligationsDebt, schedule, now, 14, split);
-    // Medals (fixed tiers), records (improving bests), patches (hard stackable feats).
     const del = driverLoads.filter((l) => isDelivered(l));
-    const paidPcts = [
-      assetLoanStatus(obligations, "truck", now),
-      assetLoanStatus(obligations, "trailer", now),
-    ]
-      .map((s) => s?.ownedPct)
-      .filter((x): x is number => x != null);
-    const medals = computeMedals({
-      lifetimeMiles,
-      deliveredCount: del.length,
-      cumulativeNet: del.reduce((s, l) => s + loadNetRevenue(l), 0),
-      streak: grind.currentStreak,
-      loanPaidPct: paidPcts.length ? Math.max(...paidPcts) : null,
-      seasonStrong: margin.grade === "strong", // the lever's own margin — one definition
-    });
     return {
-      rank: careerRank(lifetimeMiles),
       season,
-      pace: getQuarterPace(driverLoads, now, marks.homeDays),
       rpmGrade: rpmG,
       marginGrade: margin.grade,
       marginValue: margin.value,
@@ -221,35 +222,13 @@ const DriverDetailPage = () => {
       utilBasis: lifetimeSinceLabel(winStart),
       utilGrade: utilizationGrade(utilization),
       windowRpm: t.grossRate,
-      medals: earnedMedals(medals),
-      allMedals: medals,
-      coverage: monthCoverage(periods, obligationsDebt, driverLoads, now, driverTrips),
       career: {
         hauls: del.length,
         miles: del.reduce((s2, l) => s2 + (Number(l.loaded_miles) || 0), 0),
         linehaul: del.reduce((s2, l) => s2 + (Number(l.linehaul) || 0), 0),
       },
-      mixRows: [
-        ...del
-          .reduce((m, l) => {
-            m.set(l.load_type, (m.get(l.load_type) ?? 0) + 1);
-            return m;
-          }, new Map<string, number>())
-          .entries(),
-      ]
-        .map(([label, count]) => ({
-          label,
-          count,
-          pct: del.length > 0 ? count / del.length : 0,
-        }))
-        .sort((a, b) => b.count - a.count),
-      bests: personalBests(driverLoads, fuel, now),
-      patches: computePatches(driverLoads, fuel, operation),
-      // Equipment identity — oversize and heavy haul kept as separate disciplines.
-      oversize: loadTypeMix(driverLoads, "oversize"),
-      heavyHaul: loadTypeMix(driverLoads, "heavy haul"),
     };
-  }, [driverLoads, driverTrips, periods, obligations, fuel, trucks, operation, schedule, split, marginGoal, financials, now, marks]);
+  }, [driverLoads, driverTrips, periods, obligations, schedule, split, marginGoal, financials, now, marks]);
 
   // Hometime status for the (owner-op) driver — computed CLIENT-side with the
   // same flipped lastHomeDay the Fleet tab uses (post-2026-08-18 an unmarked
@@ -375,48 +354,81 @@ const DriverDetailPage = () => {
               )}
             </div>
           </div>
-          {card && card.medals.length > 0 && (
-            <span className="ml-auto flex gap-1.5 flex-wrap justify-end">
-              {card.medals.map((m) => (
-                <MedalBadge key={m.key} medal={m} />
-              ))}
-            </span>
-          )}
         </div>
 
         {card && (
           <>
-            <div className="mt-4">
-              <PlayerCard
-                rank={card.rank}
-                seasonLabel={card.season.label}
-                career={card.career}
-                coverage={card.coverage}
-                pace={card.pace}
-                mix={card.mixRows}
-                oversize={card.oversize}
-                heavyHaul={card.heavyHaul}
-              />
-            </div>
-            <HardwareBoard
-              medals={card.allMedals}
-              patches={card.patches}
-              records={driverRecordChips(card.bests)}
-            />
-            <LeversBoard
-              season={card.season}
-              rpmGrade={card.rpmGrade}
-              marginGrade={card.marginGrade}
-              marginValue={card.marginValue}
-              marginLabel={card.marginLabel}
-              marginBasis={card.marginBasis}
-              rateBasis={card.rateBasis}
-              utilization={card.utilization}
-              utilBasis={card.utilBasis}
-              utilGrade={card.utilGrade}
-              windowRpm={card.windowRpm}
-              pace={card.pace}
-            />
+            <Panel className="p-4 mt-4">
+              <p className="ds2-label">Career · delivered loads</p>
+              <div className="grid grid-cols-3 gap-4 mt-2">
+                <div>
+                  <p className="font-condensed font-semibold text-[24px] tabular-nums leading-none">
+                    {card.career.hauls.toLocaleString("en-US")}
+                  </p>
+                  <p className="text-[11px] text-faint mt-1">Hauls delivered</p>
+                </div>
+                <div>
+                  <p className="font-condensed font-semibold text-[24px] tabular-nums leading-none">
+                    {Math.round(card.career.miles).toLocaleString("en-US")}
+                  </p>
+                  <p className="text-[11px] text-faint mt-1">Loaded miles</p>
+                </div>
+                <div>
+                  <p className="font-condensed font-semibold text-[24px] tabular-nums leading-none">
+                    {money(card.career.linehaul)}
+                  </p>
+                  <p className="text-[11px] text-faint mt-1">Linehaul · gross</p>
+                </div>
+              </div>
+            </Panel>
+            <Panel className="p-4 mt-4">
+              <p className="ds2-label">The levers · season {card.season.label}</p>
+              <div className="grid grid-cols-3 gap-4 mt-3">
+                <LeverFigure
+                  label="Rate"
+                  value={card.windowRpm != null ? `$${card.windowRpm.toFixed(2)}/mi` : "—"}
+                  grade={card.rpmGrade}
+                  basis={card.rateBasis}
+                />
+                <LeverFigure
+                  label="Utilization"
+                  value={card.utilization != null ? `${Math.round(card.utilization * 100)}%` : "—"}
+                  grade={card.utilGrade}
+                  basis={card.utilBasis}
+                />
+                <LeverFigure
+                  label={card.marginLabel}
+                  value={card.marginValue != null ? `${(card.marginValue * 100).toFixed(1)}%` : "—"}
+                  grade={card.marginGrade}
+                  basis={card.marginBasis}
+                />
+              </div>
+              {(() => {
+                const levers: Lever[] = [
+                  { key: "rate", label: "Rate", grade: card.rpmGrade },
+                  { key: "util", label: "Utilization", grade: card.utilGrade },
+                  { key: "margin", label: card.marginLabel, grade: card.marginGrade },
+                ];
+                const bottleneck = bottleneckLevers(levers);
+                if (bottleneck.length > 0)
+                  return (
+                    <p className="text-[12px] text-dim mt-3">
+                      <span className="text-amber-hi">Bottleneck</span> ·{" "}
+                      {bottleneck.map((l) => l.label).join(" & ")}:{" "}
+                      {bottleneck.length === 1
+                        ? LEVER_HINTS[bottleneck[0].key]
+                        : "two levers are lagging — tackle the weakest first."}
+                    </p>
+                  );
+                return (
+                  <p className="text-[12px] text-dim mt-3">
+                    {allLeversOnTarget(levers)
+                      ? "Every lever at target or better."
+                      : "Grades build over a full month of data."}
+                  </p>
+                );
+              })()}
+            </Panel>
             <div className="flex gap-4 mt-3">
               <Link
                 to="/recap"

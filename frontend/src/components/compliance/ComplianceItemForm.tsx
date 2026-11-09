@@ -9,6 +9,7 @@ import { Panel } from "@/components/ui/Panel";
 const inputCls = "bg-well rounded px-2 py-1.5 text-sm w-full text-ink";
 const lbl = "text-xs text-faint mb-1 block";
 
+// eslint-disable-next-line react-refresh/only-export-components -- pre-existing, untouched by the B3 skin pass; owed to this page's phase C restructure
 export const CATEGORIES = [
   "license",
   "medical",
@@ -33,6 +34,7 @@ type Preset = {
 
 // Common owner-operator docs per section, so adding one is mostly entering a
 // date rather than typing labels from scratch.
+// eslint-disable-next-line react-refresh/only-export-components -- pre-existing, untouched by the B3 skin pass; owed to this page's phase C restructure
 export const PRESETS: Record<ComplianceScope, Preset[]> = {
   business: [
     { label: "LLC annual report", category: "authority", renewal_months: 12 },
@@ -157,7 +159,7 @@ export const ComplianceItemForm = ({
   };
 
   return (
-    <Panel variant="panel" className="p-3 mt-2">
+    <Panel className="p-3 mt-2">
       {!initial && (
         <div className="mb-3">
           <label className={lbl}>

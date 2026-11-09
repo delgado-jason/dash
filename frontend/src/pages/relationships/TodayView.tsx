@@ -5,7 +5,8 @@ import { Check, Copy, Lock, Phone } from "lucide-react";
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
+import { Well } from "@/components/ui/Well";
 import { createAgentContact, deleteAgentContact, type AgentContact, type ContactMethod, type CreateAgentContactInput } from "@/services/agentContactsService";
 import { createAgentNote } from "@/services/createAgentNoteService";
 import { copyText } from "@/lib/clipboard";
@@ -502,7 +503,7 @@ const FivePlate = ({ today, plate, onCopied }: PlateProps & { plate: Extract<Pla
         <CopyButton text={fiveText(five)} label="Copy the five" onCopied={() => onCopied("the five")} />
         <span className="font-condensed text-[12.5px] text-faint">plain text — paste it to the owner</span>
       </div>
-      <div className="mt-3.5 border-t border-white/10 pt-3">
+      <div className="mt-3.5 border-t border-hairline pt-3">
         <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">Hygiene</p>
         {hygiene.length === 0 ? (
           <p className="font-condensed text-[13px] text-dim mt-1">every active agent has a phone, a preferred channel and a footprint</p>
@@ -722,9 +723,9 @@ const TodayView = () => {
   return (
     <div className={`mt-4 ${mobile ? "pb-16" : ""}`}>
       {/* the plate — the day's one job */}
-      <ForgedPlate chamfer className="px-4 py-4 sm:px-5">
+      <Panel className="px-4 py-4 sm:px-5">
         <PlateBody today={today} plate={today.plate} loads={loads} signer={signer} mobile={mobile} busy={busy} error={error} onOpen={open} onLog={logDirect} onSkip={skipFlag} onCopied={copied} />
-      </ForgedPlate>
+      </Panel>
 
       {/* the queue */}
       <div className="ds2-board mt-3 overflow-hidden">

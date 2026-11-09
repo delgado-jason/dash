@@ -127,7 +127,7 @@ export const DispatchLoadsTable = ({
   return (
     <Panel className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-forge font-bold text-lg" style={{ color: "var(--color-amber-hi)" }}>
+        <span className="font-condensed font-semibold text-[15px] tracking-[.06em] text-amber-hi">
           LOADS
         </span>
       </div>

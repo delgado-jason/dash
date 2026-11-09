@@ -564,7 +564,7 @@ const FuelEntriesPage = () => {
           )}
         </div>
 
-        {/* the popup — create and edit, one forged modal */}
+        {/* the popup — create and edit, one modal */}
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div
@@ -579,9 +579,8 @@ const FuelEntriesPage = () => {
             <div className="relative w-full max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
               >
-                <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
+                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
                   {editingId ? "EDIT FILL-UP" : "LOG FILL-UP"}
                 </span>
                 <span className="font-condensed text-[11px] text-faint tracking-[.08em] uppercase">

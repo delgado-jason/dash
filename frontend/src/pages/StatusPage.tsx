@@ -127,17 +127,12 @@ const Cells = ({
   </div>
 );
 
-// The little rotated stamps: FLOOR 3 · CURRENT OBJECTIVE · HELD · MET · NEXT.
+// The little tags: FLOOR 3 · CURRENT OBJECTIVE · HELD · MET · NEXT.
 const Stamp = ({ tone, children }: { tone: "amber" | "dim" | "pos"; children: string }) => (
   <span
-    className="font-forge text-[10.5px] tracking-[.12em] rounded-[4px] px-[6px] py-[1px] ml-2 inline-block rotate-[-2deg] align-middle"
-    style={
-      tone === "amber"
-        ? { color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }
-        : tone === "pos"
-          ? { color: "var(--color-status-positive-text)", border: "1.5px solid var(--color-status-positive-text)" }
-          : { color: "var(--color-faint)", border: "1.5px dashed var(--color-hairline)" }
-    }
+    className={`font-condensed font-semibold text-[11px] tracking-[.1em] uppercase ml-2 inline-block align-middle ${
+      tone === "amber" ? "text-amber-hi" : tone === "pos" ? "text-status-positive-text" : "text-faint"
+    }`}
   >
     {children}
   </span>
@@ -640,8 +635,7 @@ const StatusPage = () => {
             where the money stands
           </span>
           {plan && (
-            <span className="font-display text-[14px] tracking-[.12em] text-amber-hi rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg]"
-              style={{ border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)" }}>
+            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-amber-hi">
               {plan.label.toUpperCase()}
             </span>
           )}
@@ -677,14 +671,7 @@ const StatusPage = () => {
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           {view?.verdict ? (
             <>
-              <span
-                className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] rotate-[-2deg] border-2"
-                style={
-                  view.verdict === "on-plan"
-                    ? { color: "var(--color-status-positive-text)", borderColor: "var(--color-status-positive-text)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-positive-text) 12%, transparent)" }
-                    : { color: "var(--color-amber-hi)", borderColor: "var(--color-amber-hi)", boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-amber) 12%, transparent)" }
-                }
-              >
+              <span className={`font-condensed font-semibold text-[12px] tracking-[.1em] uppercase ${view.verdict === "on-plan" ? "text-status-positive-text" : "text-amber-hi"}`}>
                 {view.verdict === "on-plan" ? "ON PLAN" : view.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
               </span>
               {/* the stamp names its basis (PL-04): the Ops number it read and the moves it took off */}
@@ -701,13 +688,13 @@ const StatusPage = () => {
             </>
           ) : view && view.waitingOn.length > 0 ? (
             <>
-              <span className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] border-2 border-dashed border-hairline text-faint">
+              <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-faint">
                 VERDICT WAITS
               </span>
               <span>{refusalLines("give the verdict", view.waitingOn)}</span>
             </>
           ) : (
-            <span className="font-forge font-bold text-[14px] tracking-[.14em] rounded-[8px] px-3 py-[2px] border-2 border-dashed border-hairline text-faint">
+            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-faint">
               NO SNAPSHOT YET
             </span>
           )}
@@ -805,11 +792,10 @@ const StatusPage = () => {
         {/* ops + vault */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div
-            className="rounded-[14px] border overflow-hidden"
-            style={{ background: "linear-gradient(180deg, var(--color-well), var(--color-panel))", borderColor: "var(--color-hairline)", boxShadow: "var(--shadow-pop)" }}
+            className="ds2-board overflow-hidden"
           >
-            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-              <span className="font-forge font-bold text-[17px]" style={{ letterSpacing: "1.5px" }}>OPS — THE FLOAT</span>
+            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3">
+              <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">OPS — THE FLOAT</span>
               <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 1 · {floatLine != null ? money(floatLine) : "—"}</span>
             </div>
             <div className="p-4">
@@ -845,11 +831,10 @@ const StatusPage = () => {
           </div>
 
           <div
-            className="rounded-[14px] border overflow-hidden"
-            style={{ background: "linear-gradient(180deg, var(--color-well), var(--color-panel))", borderColor: "var(--color-hairline)", boxShadow: "var(--shadow-pop)" }}
+            className="ds2-board overflow-hidden"
           >
-            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-              <span className="font-forge font-bold text-[17px]" style={{ letterSpacing: "1.5px" }}>THE VAULT — GENERAL RESERVE</span>
+            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3">
+              <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">THE VAULT — GENERAL RESERVE</span>
               <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 3 · {floorsBoard[2]?.floor != null ? money(floorsBoard[2].floor) : "unset"}</span>
             </div>
             <div className="p-4">
@@ -1147,9 +1132,8 @@ const StatusPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowSnap(false)} />
             <div className="relative w-full max-w-[560px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-              <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-                <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>
+              <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
+                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
                   {formMoneyDay && pendingLabel ? `MONEY DAY · ${pendingLabel.toUpperCase()}` : "FRIDAY SNAPSHOT"}
                 </span>
                 <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
@@ -1291,9 +1275,8 @@ const StatusPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowPlan(false)} />
             <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-              <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
-                style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-                <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>{plan.label.toUpperCase()}</span>
+              <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
+                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">{plan.label.toUpperCase()}</span>
                 {plan.active && <span className="font-condensed text-[11px] text-faint tracking-[.08em]">· ACTIVE</span>}
                 <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={() => setShowPlan(false)}>✕</button>
               </div>

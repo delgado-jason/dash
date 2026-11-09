@@ -532,19 +532,13 @@ const CashFlowPage = () => {
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap"
-            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
-            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+            <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
               THE CASH BOARD
             </span>
             <span
-              className="font-display text-[15px] tracking-[.04em] rounded-[7px] px-2.5 pt-[3px] pb-[1px] border-2 whitespace-nowrap"
-              style={{
-                color: badgeTone,
-                borderColor: badgeTone,
-                background: "color-mix(in srgb, var(--color-well) 50%, transparent)",
-                transform: "rotate(-1.2deg)",
-              }}
+              className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase whitespace-nowrap"
+              style={{ color: badgeTone }}
             >
               {badgeWord}
             </span>
@@ -635,9 +629,8 @@ const CashFlowPage = () => {
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
-            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+            <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
               THE SETTLEMENTS
             </span>
             <span className="ml-auto font-condensed text-[12px] text-faint">
@@ -783,9 +776,8 @@ const CashFlowPage = () => {
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
           >
-            <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+            <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
               THE SIX-MONTH ROAD
             </span>
             <span className="ml-auto font-condensed text-[12px] text-faint">
@@ -815,7 +807,7 @@ const CashFlowPage = () => {
                   )}
                 </>
               ) : (
-                "forges after your first PASTE MONTHS import"
+                "fills in after your first PASTE MONTHS import"
               )}
             </span>
           </div>
@@ -947,7 +939,7 @@ const CashFlowPage = () => {
             </>
           ) : (
             <p className="text-xs text-muted-text px-4 py-6">
-              Forges after your first import — PASTE MONTHS up top takes rows straight from your QBO
+              Fills in after your first import — PASTE MONTHS up top takes rows straight from your QBO
               worksheet and previews every month before anything commits.
             </p>
           )}
@@ -1020,12 +1012,9 @@ export interface LedgerLine {
   kind: "ops" | "deposit" | "payroll" | "accrual" | "leftover" | "bill" | "money" | "ending";
 }
 
-// The little rotated stamps: OPEN · ACTUAL · EXPECTED · PROJECTED · YOU SAID · AT PACE.
+// The little tags: OPEN · ACTUAL · EXPECTED · PROJECTED · YOU SAID · AT PACE.
 const BoardStamp = ({ children }: { children: string }) => (
-  <span
-    className="ml-1.5 font-forge text-[9.5px] tracking-[.12em] rounded-[4px] px-[5px] py-[1px] inline-block rotate-[-2deg] align-middle"
-    style={{ color: "var(--color-amber-hi)", border: "1.5px solid var(--color-amber-hi)" }}
-  >
+  <span className="ml-1.5 font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-amber-hi inline-block align-middle">
     {children}
   </span>
 );
@@ -1253,8 +1242,8 @@ const BillsPopup = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>THE BILLS</span>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
+          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">THE BILLS</span>
           <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">what drafts, and when</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
@@ -1374,8 +1363,8 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[680px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>PASTE MONTHS</span>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
+          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">PASTE MONTHS</span>
           <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">one row per month, straight from the QBO worksheet</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
@@ -1510,8 +1499,8 @@ const AssumptionsPopup = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>ASSUMPTIONS</span>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
+          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">ASSUMPTIONS</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
@@ -1597,8 +1586,8 @@ const OpsNowPopup = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
-        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}>
-          <span className="font-forge font-bold text-[19px]" style={{ letterSpacing: "1.5px" }}>OPS NOW</span>
+        <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
+          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">OPS NOW</span>
           <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
             the bank’s ops balance this morning
           </span>

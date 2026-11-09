@@ -40,7 +40,7 @@ export const DieselCompareCard = ({
             U.S. retail avg · week of {fmtWeek(national.period)} · EIA
           </p>
         </div>
-        {under && <span className="font-forge font-bold text-[12px] tracking-[.12em] text-status-positive-text border-2 border-status-positive-text rounded-[6px] px-[10px] py-[2px] -rotate-3">UNDER THE NATIONAL</span>}
+        {under && <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-positive-text">UNDER THE NATIONAL</span>}
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-4">

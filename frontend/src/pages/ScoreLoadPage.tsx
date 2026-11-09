@@ -13,14 +13,14 @@ import {
   destinationFactor,
   theCall,
   type MarketGrade, gradeCostsOf } from "@/lib/metrics/marketFactor";
-import { playSfx } from "@/lib/sfx";
 import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
 import { toInches, classifyOversize } from "@/lib/dimensions";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ForgedPlate, Well } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
+import { Well } from "@/components/ui/Well";
 import { matchAgents, agentLabel, agentCode, agentFullName } from "@/lib/agentMatch";
 import type { Agent } from "@/types/agent";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -40,7 +40,7 @@ const markerPct = (
   return 75 + Math.min(1, (pct - tiers.strong) / 0.4) * 25; // PRIME
 };
 
-// Destination market grade → forge stencil badge.
+// Destination market grade → the grade word.
 const GRADE_META: Record<MarketGrade, { label: string; color: string }> = {
   strong: { label: "STRONG", color: "var(--color-cat2)" },
   fair: { label: "FAIR", color: "var(--color-dim)" },
@@ -48,7 +48,7 @@ const GRADE_META: Record<MarketGrade, { label: string; color: string }> = {
   thin: { label: "THIN", color: "var(--color-faint)" },
 };
 
-// ---- forge inputs ----
+// ---- inputs ----
 const Lbl = ({ children, accent }: { children: ReactNode; accent?: boolean }) => (
   <div
     className={`font-condensed uppercase tracking-widest text-[10px] mb-1 ${accent ? "text-amber" : "text-faint"}`}
@@ -376,11 +376,6 @@ const ScoreLoadPage = () => {
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
   const canScore = targets.ready && entered && !!meta;
 
-  // Ka-ching when the result reveals a PRIME.
-  useEffect(() => {
-    if (scored && score.verdict === "steal") playSfx("kaching");
-  }, [scored, score.verdict]);
-
   const belowTarget = score.verdict === "pass" || score.verdict === "meh";
   const counter =
     belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
@@ -446,7 +441,7 @@ const ScoreLoadPage = () => {
             <div className="ml-auto flex items-baseline gap-3 flex-wrap">
               <span className="font-condensed text-dim text-[13px]">${Number(rate).toLocaleString("en-US")}</span>
               {agent && <span className="font-condensed text-dim text-[13px]">{agentLabel(agent)}</span>}
-              {isNewAgent && <span className="font-forge text-[11px] tracking-wider" style={{ color: "var(--color-cat2)" }}>NEW AGENT</span>}
+              {isNewAgent && <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>NEW AGENT</span>}
               <span className="font-condensed text-[12px] px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--color-cat2) 14%, transparent)", color: "var(--color-cat2)" }}>
                 {specialized ? "Specialized" : "Flatbed"}
               </span>
@@ -467,11 +462,11 @@ const ScoreLoadPage = () => {
           )}
 
           {/* verdict hero */}
-          <ForgedPlate chamfer className="p-4 sm:p-5">
+          <Panel className="p-4 sm:p-5">
             <div className="flex items-center gap-5 flex-wrap">
               <div className="flex-shrink-0">
                 <Lbl accent>Verdict</Lbl>
-                <div className="font-forge leading-none" style={{ fontSize: 50, color: meta.fg }}>{meta.label}</div>
+                <div className="font-condensed font-bold uppercase leading-none tracking-[.04em]" style={{ fontSize: 50, color: meta.fg }}>{meta.label}</div>
               </div>
               <div className="pl-5" style={{ borderLeft: "1px solid color-mix(in srgb, var(--color-ink) 8%, transparent)" }}>
                 <div className="flex items-baseline gap-2">
@@ -525,7 +520,7 @@ const ScoreLoadPage = () => {
                 </div>
               </div>
             </div>
-          </ForgedPlate>
+          </Panel>
 
           {/* factor grid — full width */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
@@ -564,7 +559,7 @@ const ScoreLoadPage = () => {
               <div className="flex items-center justify-between gap-2">
                 <Lbl>Destination · where it leaves you</Lbl>
                 <span
-                  className="font-forge text-[16px] tracking-wide"
+                  className="font-condensed font-bold text-[16px] uppercase tracking-[.04em]"
                   style={{ color: destFactor.market ? GRADE_META[destFactor.market.grade].color : "var(--color-faint)" }}
                 >
                   {destFactor.market ? GRADE_META[destFactor.market.grade].label : "UNPROVEN"}
@@ -633,7 +628,7 @@ const ScoreLoadPage = () => {
                 </>
               ) : isNewAgent ? (
                 <div className="text-[12.5px] text-dim mt-1">
-                  <span className="font-forge text-[12px] tracking-wider mr-1.5" style={{ color: "var(--color-cat2)" }}>NEW</span>
+                  <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase mr-1.5" style={{ color: "var(--color-cat2)" }}>NEW</span>
                   No history yet — the rate scores on its own; the relationship builds once you book.
                 </div>
               ) : (
@@ -685,7 +680,7 @@ const ScoreLoadPage = () => {
             <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
             {isNewAgent && (
               <div className="mt-1.5 flex items-center gap-2">
-                <span className="font-forge text-[11px] tracking-wider px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--color-cat2) 15%, transparent)", color: "var(--color-cat2)" }}>
+                <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>
                   NEW AGENT
                 </span>
                 <span className="text-[11px] text-dim">no history yet · not saved until you book</span>
@@ -716,12 +711,12 @@ const ScoreLoadPage = () => {
           {anyDim &&
             (oversize.oversize ? (
               <div className="flex items-start gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "var(--color-status-aware-bg)", border: "1px solid color-mix(in srgb, var(--color-amber) 50%, transparent)" }}>
-                <span className="font-forge text-[15px] tracking-wide text-amber">OVERSIZE</span>
+                <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase text-amber">OVERSIZE</span>
                 <span className="text-[11px] mt-0.5 text-dim">{oversize.reasons.join(" · ")} → specialized tiers</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "var(--color-status-positive-bg)", border: "1px solid color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
-                <span className="font-forge text-[15px] tracking-wide" style={{ color: "var(--color-cat2)" }}>LEGAL</span>
+                <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>LEGAL</span>
                 <span className="text-[11px] text-dim">standard flatbed → standard tiers</span>
               </div>
             ))}
@@ -748,8 +743,8 @@ const ScoreLoadPage = () => {
                 type="button"
                 onClick={() => setScored(true)}
                 disabled={!canScore}
-                className={`w-full mt-5 py-3 rounded-lg font-forge text-[18px] tracking-widest transition-colors ${
-                  canScore ? "bg-amber text-canvas hover:brightness-110" : "bg-well text-faint border border-hairline cursor-not-allowed"
+                className={`w-full mt-5 py-3 rounded-lg font-condensed font-semibold text-[17px] tracking-[.08em] transition-colors ${
+                  canScore ? "bg-amber text-on-amber hover:brightness-110" : "bg-well text-faint border border-hairline cursor-not-allowed"
                 }`}
               >
                 SCORE IT ▸

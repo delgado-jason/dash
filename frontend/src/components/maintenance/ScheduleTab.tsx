@@ -16,7 +16,7 @@ import {
 import type { ApuProjection } from "@/lib/metrics/apuHours";
 import { MaintenanceItemForm } from "./MaintenanceItemForm";
 import { MaintenanceRow, MaintenanceRowHead } from "./MaintenanceRow";
-import { ForgedPlate } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
 import { Board } from "@/components/ui/Board";
 import { SectionHead, GhostButton } from "@/components/relationships/primitives";
 import type { PillTone } from "@/components/ui/StatusPill";
@@ -410,7 +410,7 @@ export const ScheduleTab = ({
   return (
     <div>
       {/* Due next — the one plate on the page */}
-      <ForgedPlate className="mt-4 overflow-hidden">
+      <Panel className="mt-4 overflow-hidden">
         <div className="flex items-center gap-2 flex-wrap px-[18px] pt-3.5">
           <Chip tone="job">Due next</Chip>
           <Chip>{flagged} flagged</Chip>
@@ -425,7 +425,7 @@ export const ScheduleTab = ({
             <DueNextCell key={slot} slot={slot} row={slotRow(ranked, slot)} now={now} />
           ))}
         </div>
-      </ForgedPlate>
+      </Panel>
 
       {error && <p className="text-destructive text-sm mt-3">{error}</p>}
 

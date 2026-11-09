@@ -115,11 +115,11 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
         </div>
         {m.fscCoverage != null &&
           (covered ? (
-            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-status-positive-text border-2 border-status-positive-text rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE ON PAR</span>
+            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-positive-text">SURCHARGE ON PAR</span>
           ) : grade === "close" ? (
-            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-amber border-2 border-amber rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE NEAR PAR</span>
+            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-amber">SURCHARGE NEAR PAR</span>
           ) : (
-            <span className="font-forge font-bold text-[12px] tracking-[.12em] text-status-negative-text border-2 border-status-negative-text rounded-[6px] px-[10px] py-[2px] -rotate-3">SURCHARGE SHORT</span>
+            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-negative-text">SURCHARGE SHORT</span>
           ))}
       </div>
 

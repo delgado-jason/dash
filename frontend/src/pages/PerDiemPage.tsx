@@ -179,18 +179,12 @@ const PerDiemPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_2.2fr] gap-4 items-start mt-4">
           {/* THE DEDUCTION */}
           <div
-            className="relative overflow-hidden rounded-[14px] border"
-            style={{
-              background: "linear-gradient(180deg, var(--color-panel), var(--color-well))",
-              borderColor: "var(--color-hairline)",
-              boxShadow: "var(--shadow-pop)",
-            }}
+            className="ds2-board relative overflow-hidden"
           >
             <div
               className="flex items-center gap-3 px-4 py-3 border-b ds2-cell-rule"
-              style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
             >
-              <span className="font-forge font-bold text-[18px]" style={{ letterSpacing: "1.5px" }}>
+              <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
                 THE DEDUCTION
               </span>
               <span className="ml-auto flex items-center gap-2 font-condensed">

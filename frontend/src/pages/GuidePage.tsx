@@ -1,4 +1,4 @@
-import { createElement, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
@@ -7,14 +7,6 @@ import { money, rpm } from "@/lib/format";
 import { ArrowRight } from "lucide-react";
 import { RatingLabel } from "@/components/agents/RatingLabel";
 import { VendorPips } from "@/components/vendors/VendorPips";
-import { awardIcon } from "@/components/awards/awardIcons";
-import { PATCH_GUIDE } from "@/lib/awards/patches";
-import { MEDAL_GUIDE } from "@/lib/awards/medals";
-import { TRUCK_PATCH_GUIDE, TRUCK_MEDAL_GUIDE } from "@/lib/awards/truckAwards";
-import {
-  TRAILER_PATCH_GUIDE,
-  TRAILER_MEDAL_GUIDE,
-} from "@/lib/awards/trailerAwards";
 
 const AMBER = "var(--color-amber)";
 const AMBER_HI = "var(--color-amber-hi)";
@@ -100,33 +92,6 @@ const TabLine = ({
       <span className="text-muted-text"> — {q}</span>
     </p>
     <p className="text-xs text-muted-text mt-1">{children}</p>
-  </div>
-);
-
-// One row in the award catalog: emblem + name + how to earn it.
-const AwardLine = ({
-  icon,
-  name,
-  sub,
-}: {
-  icon: string;
-  name: string;
-  sub: string;
-}) => (
-  <div className="flex items-center gap-3 py-1.5">
-    <span
-      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-      style={{ background: "var(--color-status-aware-bg)", color: AMBER_HI }}
-    >
-      {/* awardIcon returns a static lucide component from a lookup, not a new
-          one — createElement keeps the linter from reading it as one created
-          in render */}
-      {createElement(awardIcon(icon), { size: 16 })}
-    </span>
-    <div className="min-w-0">
-      <p className="text-sm font-medium">{name}</p>
-      <p className="text-xs text-muted-text">{sub}</p>
-    </div>
   </div>
 );
 
@@ -368,11 +333,9 @@ const NAV: { group: string; items: string[] }[] = [
     ],
   },
   {
-    group: "The driver card",
+    group: "The driver page",
     items: [
       "Bottleneck — your three profit levers",
-      "This quarter — on track to beat last?",
-      "Equipment mix — oversize and heavy haul",
       "Hometime — days since you were home",
     ],
   },
@@ -401,16 +364,6 @@ const NAV: { group: string; items: string[] }[] = [
   {
     group: "The website",
     items: ["The website — who's looking"],
-  },
-  {
-    group: "The award system",
-    items: [
-      "Four ways to win",
-      "Driver medals — climb the tiers",
-      "Driver patches — hard, and they stack",
-      "Truck medals & patches — its own set",
-      "Trailer medals & patches — its own set",
-    ],
   },
   {
     group: "Agents",
@@ -602,7 +555,7 @@ const GuidePage = () => {
               The dashboard is split into tabs, each answering one question at a
               glance. Pick a tab and it stays put — dash remembers where you left
               off next time you open it. Every day boundary here and on the
-              driver card is <span className="text-light">your local day</span>,
+              driver page is <span className="text-light">your local day</span>,
               and it rolls at midnight — a tab left open overnight shows the new
               day without a reload (it used to flip to tomorrow at 6 pm
               Central).
@@ -663,7 +616,7 @@ const GuidePage = () => {
                 note, with its parts), the odometer, the next service with its
                 meter, service, compliance and miles per month, and two gauges:
                 fuel economy and utilization (how hard the truck runs, the same
-                function the driver card grades) — each a plain instrument, one
+                function the driver page grades) — each a plain instrument, one
                 needle on a hairline arc. Home time (days out) sits beside them.
                 Plus the shop log across the year — averaged over the months you
                 have actually logged, a visit on both units counted half to each —
@@ -942,7 +895,7 @@ const GuidePage = () => {
 
           <Metric
             title="Net and gross — two revenues, each named"
-            answers="Net — what you keep after the carrier's cut — on the Dashboard's income, the Loads totals and the driver card. Gross — the full customer rate — wherever a rate per mile is graded: the ladder, Score a Load, the Market page, the card's Rate lever. Every figure says which it is."
+            answers="Net — what you keep after the carrier's cut — on the Dashboard's income, the Loads totals and the driver page. Gross — the full customer rate — wherever a rate per mile is graded: the ladder, Score a Load, the Market page, the driver page's Rate lever. Every figure says which it is."
             sources={[
               { label: "Dashboard", to: "/dashboard" },
               { label: "Loads", to: "/loads" },
@@ -1901,7 +1854,7 @@ const GuidePage = () => {
               ran fat by the truck’s wear. The Cash Flow table shows it per
               month and the answering line carries the YTD figure — these come
               from your accountant-grade QBO numbers, not the app’s load math,
-              so they’re the ones to quote. The driver card’s{" "}
+              so they’re the ones to quote. The driver page’s{" "}
               <span className="text-light">margin lever</span> grades this same
               number pooled over the last three closed months when the archive
               has them, and says so; with fewer it falls back to the app's
@@ -2050,8 +2003,8 @@ const GuidePage = () => {
               Green is better, red is worse. It leans on your{" "}
               <span className="text-light">average</span> rather than just the
               last tank on purpose, so one heavy oversize run doesn't read as a
-              slump. Beat your best MPG and it stamps a{" "}
-              <span style={{ color: "var(--color-amber-hi)" }}>NEW BEST</span> (with a sound);
+              slump. Beat your best MPG and it marks a{" "}
+              <span style={{ color: "var(--color-amber-hi)" }}>NEW BEST</span>;
               string together tanks at or above your average and it tallies the
               streak.
             </Why>
@@ -2376,22 +2329,23 @@ const GuidePage = () => {
             </p>
           </Section>
 
-          <GroupHeading>The driver card</GroupHeading>
+          <GroupHeading>The driver page</GroupHeading>
 
           <Metric
             title="Bottleneck — your three profit levers"
-            answers="Your season net breaks into Rate × Utilization × Margin. The card grades all three and names the weakest — the one holding you back."
-            sources={[{ label: "Driver card", to: "/drivers" }]}
+            answers="Your season net breaks into Rate × Utilization × Margin. The driver page's levers row shows all three, grades each, and names the weakest — the one holding you back."
+            sources={[{ label: "Driver page", to: "/drivers" }]}
           >
             <Formula>
               net ≈ Rate × Utilization × Margin · bottleneck = the weakest lever
             </Formula>
             <Why>
-              Each lever grades{" "}
+              The row is three figures, each with its grade word —{" "}
               <span className="text-light">
-                Below → Minimum → Target → Strong
-              </span>
-              : <span className="text-light">Rate</span> — your gross rate per
+                BELOW · MINIMUM · TARGET · STRONG
+              </span>{" "}
+              — and the basis it stands on printed under it:{" "}
+              <span className="text-light">Rate</span> — your gross rate per
               driven mile — against the booking ladder, the same number and the
               same ladder as the Dashboard's "Rate vs your floor" (six months of
               P&amp;L, divided by your keep), <span className="text-light">Utilization</span> against
@@ -2406,74 +2360,16 @@ const GuidePage = () => {
               closed months on the Cash Flow archive, depreciation included),
               because the accountant-grade number is the one to trust. The tile
               names its basis; until the archive has months it falls back to
-              the app's season estimate, labeled. The Strong Season medal and
-              the Trophy Hall read this same graded margin, so a medal can never
-              say strong while the lever says below. They mask each other — a
-              great rate with the truck sitting still nets mediocre — so the
-              card names whichever is lagging and what to do about it. When all
-              three reach Target, it reads{" "}
-              <span style={{ color: "var(--color-status-positive-text)" }}>Firing on all cylinders</span>.
-            </Why>
-          </Metric>
-
-          <Metric
-            title="This quarter — on track to beat last?"
-            answers="Whether the quarter you're in is pacing ahead of or behind the last one — projected, not just the raw running total."
-            sources={[{ label: "Driver card", to: "/drivers" }]}
-          >
-            <Formula>
-              projected finish = last quarter's final × (this quarter so far ÷
-              last quarter by the same day)
-            </Formula>
-            <Why>
-              A season is a calendar quarter (Q1 Jan–Mar … Q4 Oct–Dec). The{" "}
-              <span className="text-light">This Quarter</span> card paces the one
-              you're in against the last complete one — but not by flat day-math,
-              because freight isn't earned evenly. It compares where you sit now
-              to where you sat by the{" "}
-              <span className="text-light">same day of last quarter</span> and
-              projects the finish by scaling last quarter's final by that ratio.
-              Ahead of pace →{" "}
-              <span style={{ color: "var(--color-status-positive-text)" }}>on track to beat</span>; behind →{" "}
-              <span style={{ color: "var(--color-status-negative-text)" }}>on track to finish under</span>.
-              The pace keeps calendar days; beside the verdict the card prints
-              how many of those days you marked home —{" "}
-              <span className="text-light">18 home days in these 35</span> — so
-              a quarter that began with time off reads as time off, not as a
-              slump. It paces your{" "}
-              <span className="text-light">net from delivered loads</span> (which
-              updates in real time), not the P&amp;L profit (which lags a monthly
-              upload) — and for the first couple weeks it reads{" "}
-              <span className="text-light">"too early to call"</span> rather than
-              swing on a single big load. Because it's summed straight from your
-              loads, these figures won't always match the{" "}
-              <span className="text-light">Net revenue</span> in{" "}
-              <span className="text-light">Last Season</span> — that number is
-              your monthly P&amp;L income, so any month you haven't entered yet
-              (or income booked under a different month than the load delivered)
-              will move the two apart.
-            </Why>
-          </Metric>
-
-          <Metric
-            title="Equipment mix — oversize and heavy haul"
-            answers="How much of your delivered work is oversize, and separately, heavy haul. Clear a high bar in either and the card names you a specialist."
-            sources={[{ label: "Driver card", to: "/drivers" }]}
-          >
-            <Formula>loads of that type ÷ your delivered loads</Formula>
-            <Eg>
-              12 oversize of 48 delivered →{" "}
-              <span className="text-light">25%</span>. The specialist badge
-              lights at{" "}
-              <span className="text-light">40% and at least 5 loads</span>.
-            </Eg>
-            <Why>
-              Oversize and heavy haul are different disciplines — different
-              equipment, permits, and skill — so each gets its own strip and its
-              own badge. A strip appears once you've delivered{" "}
-              <span className="text-light">10+ loads</span> of that type, so a
-              one-off doesn't earn a card. Standard and hazmat loads aren't
-              counted toward either.
+              the app's season estimate, labeled as the op margin. The three
+              mask each other — a great rate with the truck sitting still nets
+              mediocre — so one plain sentence under the row names whichever
+              is lagging and what to do about it (two lagging → tackle the
+              weakest first). When all three reach Target it reads{" "}
+              <span className="text-light">Every lever at target or better</span>;
+              before a full month of data it says the grades are still
+              building. The quarter's own figures — net revenue, profit, loads,
+              miles, average rate — are the Money tab's{" "}
+              <span className="text-light">Last quarter</span> row.
             </Why>
           </Metric>
 
@@ -2482,7 +2378,7 @@ const GuidePage = () => {
             answers="Days since your most recent home day. Past your threshold, the card flags it so a long stretch out doesn't sneak up on you."
             sources={[
               { label: "Dashboard", to: "/dashboard" },
-              { label: "Driver card", to: "/drivers" },
+              { label: "Driver page", to: "/drivers" },
             ]}
           >
             <Formula>
@@ -2542,12 +2438,10 @@ const GuidePage = () => {
               <span className="text-light">70%</span> signals real idle time or
               weak load planning. Measuring days-under-load (not hours) keeps it
               close to the industry's revenue-hours ÷ available-hours, so the
-              benchmark is a fair read. It also powers the{" "}
-              <span className="text-light">Road Warrior</span> medal (70 · 80 ·
-              85%). The <span className="text-light">Drivers</span> list shows
-              the rig's odometer — the same miles the driver card ranks on, not
-              loaded miles — and the Mile Club rungs are the rank ladder's:{" "}
-              <span className="text-light">100K · 300K · 500K · 1M</span>.
+              benchmark is a fair read. It is also the driver page's
+              Utilization lever, graded on the same 70 · 80 · 85% bars. The{" "}
+              <span className="text-light">Drivers</span> list shows the rig's
+              odometer — driven miles, not loaded miles.
               <span className="block mt-1 text-xs text-muted-text">
                 Sources:{" "}
                 <a
@@ -2583,8 +2477,8 @@ const GuidePage = () => {
             <Formula>miles between full tanks ÷ gallons burned</Formula>
             <Eg>
               1,400 mi on 200 gal = <span className="text-light">7.0 mpg</span>.
-              Best tank is your record; the rolling average is what the Fuel
-              Miser medal climbs.
+              Best tank is your best MPG; the rolling average is the number
+              each new tank is judged against.
             </Eg>
           </Metric>
 
@@ -2945,161 +2839,6 @@ const GuidePage = () => {
             </Why>
           </Section>
 
-          <GroupHeading>The award system</GroupHeading>
-
-          <Section title="Four ways to win">
-            <p className="text-sm text-muted-text">
-              Everything you earn stacks into four tiers, smallest to grandest:
-            </p>
-            <ul className="text-sm text-muted-text mt-2 space-y-1.5 list-none">
-              <li>
-                <span className="text-light">Records</span> — your personal
-                bests. They climb every time you beat your own number.
-              </li>
-              <li>
-                <span className="text-light">Patches</span> — hard feats that{" "}
-                <span className="text-light">stack a ×count</span> each time you
-                re-earn them. The "impressive" ones set their bar from your own
-                top-5 history — it ratchets up as you improve and never eases in
-                a downturn.
-              </li>
-              <li>
-                <span className="text-light">Medals</span> — fixed milestone
-                ladders you climb I → II → III, worn on your card.
-              </li>
-              <li>
-                <span className="text-light">Trophies</span> — once-in-a-career
-                monuments in the Trophy Room.
-              </li>
-            </ul>
-            <p className="text-sm text-muted-text mt-4 mb-1">
-              The two that compute a threshold work like this:
-            </p>
-            <Formula>
-              patch bar = your 5th-best result so far, ratcheting up (never
-              down)
-              <br />
-              medal tier = highest fixed rung your lifetime total has passed (I
-              · II · III)
-            </Formula>
-            <Why>
-              A <span className="text-light">patch</span> bar is personal and
-              adaptive: it's set from your own top-5 history for that feat, so
-              it stays hard-but-fair and only ever climbs — a slow month can't
-              lower it. You stack a <span className="text-light">×count</span>{" "}
-              every time an event clears the bar that was in effect at that
-              moment, and earns lock in for good. A{" "}
-              <span className="text-light">medal</span> is the opposite — its
-              rungs are <span className="text-light">fixed for everyone</span>{" "}
-              (a million miles is a million miles), so it measures you against
-              the whole trade, not yourself. The same two engines drive the
-              truck, trailer, and dispatcher awards below.
-            </Why>
-          </Section>
-
-          <Section
-            title="Driver medals — climb the tiers"
-            sources={[{ label: "Driver card", to: "/drivers" }]}
-          >
-            <div className="grid sm:grid-cols-2 gap-x-6">
-              {MEDAL_GUIDE.map((m) => (
-                <AwardLine
-                  key={m.name}
-                  icon={m.icon}
-                  name={m.name}
-                  sub={m.tiers}
-                />
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title="Driver patches — hard, and they stack"
-            sources={[{ label: "Driver card", to: "/drivers" }]}
-          >
-            <p className="text-sm text-muted-text mb-3">
-              Patches earned in <span style={{ color: "var(--color-status-info-text)" }}>blue</span>{" "}
-              are your <span className="text-light">operation-specific</span>{" "}
-              feats — the oversize/flatbed set (Wide, Long, Super Load, Mountain
-              Mover) tied to your Operation setting. The rest are{" "}
-              <span style={{ color: "var(--color-amber-hi)" }}>amber</span> universal feats
-              every operation can earn. Set your operation on the{" "}
-              <Link
-                to="/settings"
-                className="text-status-info-text hover:underline"
-              >
-                Settings page
-              </Link>
-              .
-            </p>
-            <div className="grid sm:grid-cols-2 gap-x-6">
-              {PATCH_GUIDE.map((p) => (
-                <AwardLine
-                  key={p.name}
-                  icon={p.icon}
-                  name={p.name}
-                  sub={p.how}
-                />
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title="Truck medals & patches — its own set"
-            sources={[{ label: "Garage", to: "/garage" }]}
-          >
-            <p className="text-sm text-muted-text mb-3">
-              Each asset earns its own awards, on its own stats. The truck runs
-              on fuel economy and mileage.
-            </p>
-            <div className="grid sm:grid-cols-2 gap-x-6">
-              {TRUCK_MEDAL_GUIDE.map((m) => (
-                <AwardLine
-                  key={m.name}
-                  icon={m.icon}
-                  name={m.name}
-                  sub={m.tiers}
-                />
-              ))}
-              {TRUCK_PATCH_GUIDE.map((p) => (
-                <AwardLine
-                  key={p.name}
-                  icon={p.icon}
-                  name={p.name}
-                  sub={p.how}
-                />
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title="Trailer medals & patches — its own set"
-            sources={[{ label: "Garage", to: "/garage" }]}
-          >
-            <p className="text-sm text-muted-text mb-3">
-              The trailer has no engine, so it earns on the loads it carried:
-              its 8% slice of net, the weight it hauled, and hub miles.
-            </p>
-            <div className="grid sm:grid-cols-2 gap-x-6">
-              {TRAILER_MEDAL_GUIDE.map((m) => (
-                <AwardLine
-                  key={m.name}
-                  icon={m.icon}
-                  name={m.name}
-                  sub={m.tiers}
-                />
-              ))}
-              {TRAILER_PATCH_GUIDE.map((p) => (
-                <AwardLine
-                  key={p.name}
-                  icon={p.icon}
-                  name={p.name}
-                  sub={p.how}
-                />
-              ))}
-            </div>
-          </Section>
-
           <div
             className="my-6 border-t"
             style={{ borderColor: "var(--color-hairline)" }}
@@ -3230,7 +2969,7 @@ const GuidePage = () => {
                 the target bar, <span className="text-light">ABOVE FLOOR</span>{" "}
                 between walk-away and target, and{" "}
                 <span className="text-light">UNDER WALK-AWAY</span> below your
-                break-even. It is a ranking of who pays, not a race — no medals.
+                break-even. It is a ranking of who pays, not a race.
               </Why>
               <Why>
                 Beside the rate: <span className="text-light">share</span> of the

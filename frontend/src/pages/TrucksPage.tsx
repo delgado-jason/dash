@@ -14,7 +14,6 @@ import { useLocalToday } from "@/hooks/useLocalToday";
 import { computeDue, recentMilesPerMonth } from "@/lib/metrics/maintenance";
 import { fuelStats } from "@/lib/metrics/fuelEconomy";
 import { computePayoff, isPayoffTracked } from "@/lib/metrics/payoff";
-import { mileMilestone } from "@/lib/metrics/mileClub";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,7 +111,7 @@ const TrucksPage = () => {
           if (d.level === "overdue") overdue++;
           else if (d.level === "soon") soon++;
         }
-        return { t, odo, hauls, mpg, payoff, overdue, soon, m: mileMilestone(odo) };
+        return { t, odo, hauls, mpg, payoff, overdue, soon };
       }),
     [trucks, loads, fuel, obligations, items, mpm, now],
   );
@@ -186,7 +185,7 @@ const TrucksPage = () => {
           </p>
         ) : (
           <div className="ds2-board overflow-hidden mt-4">
-            {rows.map(({ t, odo, hauls, mpg, payoff, overdue, soon, m }) => (
+            {rows.map(({ t, odo, hauls, mpg, payoff, overdue, soon }) => (
               <div
                 key={t.truck_id}
                 onClick={() => navigate(`/trucks/${t.truck_id}`)}
@@ -233,19 +232,6 @@ const TrucksPage = () => {
                       : ""}
                   </div>
                 </div>
-                {m.crossed != null && (
-                  <span
-                    className="font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
-                    style={{
-                      color: "var(--color-amber-hi)",
-                      border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                      boxShadow:
-                        "inset 0 1px 0 var(--color-highlight), var(--shadow-card)",
-                    }}
-                  >
-                    {m.label} CLUB
-                  </span>
-                )}
               </div>
             ))}
           </div>

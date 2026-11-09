@@ -63,7 +63,7 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
   return (
     <Panel className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-forge font-bold text-lg" style={{ color: "var(--color-amber-hi)" }}>
+        <span className="font-condensed font-semibold text-[15px] tracking-[.06em] text-amber-hi">
           AGENTS
         </span>
       </div>
@@ -97,12 +97,12 @@ export const DispatchAgentsTable = ({ loads }: { loads: Load[] }) => {
           </div>
           <div className="flex items-center justify-between">
             <span
-              className="font-forge font-bold text-base truncate"
+              className="font-condensed font-semibold text-base truncate"
               style={{ color: "var(--color-amber-hi)" }}
             >
               {leader.agent}
             </span>
-            <span className="font-forge font-bold text-base" style={{ color: "var(--color-amber-hi)" }}>
+            <span className="font-condensed font-semibold text-base tabular-nums" style={{ color: "var(--color-amber-hi)" }}>
               {fmtK(leader.revenue)}
             </span>
           </div>

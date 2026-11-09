@@ -23,25 +23,14 @@ import { getObligations } from "@/services/obligationsService";
 import { getTrips } from "@/services/tripsService";
 import type { Trip } from "@/types/trip";
 import type { Obligation } from "@/types/obligation";
-import { isPayoffTracked, assetLoanStatus, computePayoff } from "@/lib/metrics/payoff";
+import { isPayoffTracked, computePayoff } from "@/lib/metrics/payoff";
 import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
-import { RollingNumber } from "@/components/celebrations/RollingNumber";
-import {
-  computeTruckPatches,
-  computeTruckMedals,
-  truckRecords,
-} from "@/lib/awards/truckAwards";
-import { earnedMedals } from "@/lib/awards/medals";
-import { MedalBadge } from "@/components/awards/MedalBadge";
-import { type RecordChip } from "@/components/awards/RecordBook";
-import { HardwareBoard } from "@/components/awards/HardwareBoard";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { TRUCK_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate, money } from "@/lib/format";
 import { useLocalToday } from "@/hooks/useLocalToday";
-import { mileMilestone } from "@/lib/metrics/mileClub";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { isDelivered } from "@/lib/metrics/status";
@@ -212,14 +201,6 @@ const TruckDetailPage = () => {
   const revenue = earnedLoads.reduce((s, l) => s + loadNetRevenue(l), 0);
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
   const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote);
-  const allTruckMedals = computeTruckMedals({
-    odometer,
-    avgMpg: metrics.avgMpg,
-    deliveredCount: earnedLoads.length,
-    loanPaidPct: assetLoanStatus(obligations, "truck", now)?.ownedPct ?? null,
-    utilization: metrics.utilization,
-  });
-  const truckMedals = earnedMedals(allTruckMedals);
   const payoff = truckLoan ? computePayoff(truckLoan, now) : null;
   // Every clock on this tractor, most urgent first — the card's service row.
   const clocks = items
@@ -236,15 +217,6 @@ const TruckDetailPage = () => {
   const closeCount = clocks.filter(
     ({ d }) => d.level === "soon" || d.level === "overdue",
   ).length;
-  const m = mileMilestone(odometer);
-  const patches = computeTruckPatches(truckLoads, truckFuel);
-  const recs = truckRecords(truckLoads, truckFuel);
-  const recordChips: RecordChip[] = [
-    { icon: "flame", color: "var(--color-amber)", value: recs.bestTank != null ? recs.bestTank.toFixed(1) : "—", label: "BEST TANK" },
-    { icon: "road", color: "var(--color-amber-hi)", value: recs.bigMonthMiles != null ? num(recs.bigMonthMiles) : "—", label: "BIG MONTH (MI)" },
-    { icon: "cash", color: "var(--color-status-positive-text)", value: recs.bestRevPerMile != null ? `$${recs.bestRevPerMile.toFixed(2)}` : "—", label: "BEST REV/MI" },
-    { icon: "arrows-horizontal", color: "var(--color-status-info-text)", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
-  ];
 
   const clockFill = (progress: number | null) =>
     Math.min(1, Math.max(0, progress ?? 0));
@@ -285,20 +257,13 @@ const TruckDetailPage = () => {
                 {truck.status.replace(/_/g, " ")}
               </span>
             </div>
-            {truckMedals.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap mt-2">
-                {truckMedals.map((md) => (
-                  <MedalBadge key={md.key} medal={md} />
-                ))}
-              </div>
-            )}
           </div>
           <div className="ml-auto text-right">
             <span
               className="inline-block font-display text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
               style={{ boxShadow: "var(--shadow-inset)" }}
             >
-              <RollingNumber value={odometer} />
+              {odometer.toLocaleString("en-US")}
             </span>
             <p className="font-condensed text-[10.5px] tracking-[.14em] text-faint uppercase mt-1">
               odometer · one constant
@@ -306,39 +271,10 @@ const TruckDetailPage = () => {
           </div>
         </div>
 
-        {/* the rig card */}
-        <div
-          className="relative overflow-hidden rounded-[14px] border mt-4"
-          style={{
-            background: "linear-gradient(180deg, var(--color-well), var(--color-panel))",
-            borderColor: "var(--color-hairline)",
-            boxShadow: "var(--shadow-pop)",
-          }}
-        >
-          <div
-            className="flex items-center gap-[14px] px-[18px] py-[14px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
-          >
-            <div className="min-w-0">
-              <div className="font-forge font-bold text-[22px] leading-none" style={{ letterSpacing: "1.5px" }}>
-                {(m.title ?? "THE RIG").toUpperCase()}
-              </div>
-              <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
-                the rig card · forged
-              </div>
-            </div>
-            {m.label && (
-              <span
-                className="ml-auto font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
-                style={{
-                  color: "var(--color-amber-hi)",
-                  border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                  boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 15%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
-                }}
-              >
-                {m.label} CLUB
-              </span>
-            )}
+        {/* the truck card */}
+        <div className="ds2-board relative overflow-hidden rounded-[14px] mt-4">
+          <div className="px-[18px] py-[14px] border-b ds2-cell-rule">
+            <p className="ds2-label">Truck {truck.unit_number} · the numbers</p>
           </div>
           <div className="grid grid-cols-3 border-b ds2-cell-rule">
             <div className="px-[18px] py-3 border-r ds2-cell-rule">
@@ -426,7 +362,7 @@ const TruckDetailPage = () => {
           </div>
 
           {/* next service */}
-          <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
+          <div className="px-[18px] py-[13px]">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
               <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
                 Next service — the clocks
@@ -510,49 +446,7 @@ const TruckDetailPage = () => {
               </p>
             )}
           </div>
-
-          {/* mile club */}
-          <div className="px-[18px] py-[13px]">
-            <div className="flex justify-between items-baseline gap-3 mb-[8px]">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
-                Mile club — next plate at {m.next.toLocaleString("en-US")}
-              </span>
-              <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums">
-                {odometer.toLocaleString("en-US")} / {m.next.toLocaleString("en-US")}
-              </span>
-            </div>
-            <div className="flex gap-[3px]">
-              {Array.from({ length: 10 }, (_, ci) => (
-                <i
-                  key={ci}
-                  className="flex-1 h-[11px] rounded-[2.5px]"
-                  style={
-                    (ci + 1) / 10 <= m.pct + 1e-6
-                      ? {
-                          background:
-                            "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
-                          border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                          boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
-                        }
-                      : {
-                          background: "var(--color-well)",
-                          border: "1px solid var(--color-hairline-lo)",
-                          boxShadow: "var(--shadow-inset)",
-                        }
-                  }
-                />
-              ))}
-            </div>
-            {m.label && (
-              <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
-                {m.label} plate punched · the million-mile coin is the platinum strike
-              </p>
-            )}
-          </div>
         </div>
-
-        {/* the hardware */}
-        <HardwareBoard medals={allTruckMedals} patches={patches} records={recordChips} />
 
         {/* the numbers — the full running-cost strip, relocated deliberately */}
         <div className="ds2-board p-4 mt-4">

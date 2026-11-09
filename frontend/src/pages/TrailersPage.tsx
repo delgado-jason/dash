@@ -22,7 +22,6 @@ import type { Trip } from "@/types/trip";
 import type { Truck } from "@/types/truck";
 import { computePayoff, isPayoffTracked } from "@/lib/metrics/payoff";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
-import { mileMilestone } from "@/lib/metrics/mileClub";
 import { AvatarFallback } from "@/components/fleet/AvatarFallback";
 import { EntityForm, type FormField } from "@/components/fleet/EntityForm";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -166,7 +165,6 @@ const TrailersPage = () => {
           payoff,
           overdue,
           soon,
-          m: mileMilestone(miles),
         };
       }),
     [trailers, loads, obligations, items, meter, mpm, now],
@@ -241,7 +239,7 @@ const TrailersPage = () => {
           </p>
         ) : (
           <div className="ds2-board overflow-hidden mt-4">
-            {rows.map(({ t, miles, hauls, share, payoff, overdue, soon, m }) => (
+            {rows.map(({ t, miles, hauls, share, payoff, overdue, soon }) => (
               <div
                 key={t.trailer_id}
                 onClick={() => navigate(`/trailers/${t.trailer_id}`)}
@@ -289,26 +287,6 @@ const TrailersPage = () => {
                       : ""}
                   </div>
                 </div>
-                {m.crossed != null ? (
-                  <span
-                    className="font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
-                    style={{
-                      color: "var(--color-amber-hi)",
-                      border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                      boxShadow:
-                        "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 15%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
-                    }}
-                  >
-                    {m.label} CLUB
-                  </span>
-                ) : (
-                  <span className="font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] text-faint border border-dashed border-hairline whitespace-nowrap">
-                    {m.next >= 1_000_000
-                      ? `${m.next / 1_000_000}M`
-                      : `${Math.round(m.next / 1000)}K`}{" "}
-                    AT {Math.round((1 - m.pct) * 100)}% OUT
-                  </span>
-                )}
               </div>
             ))}
           </div>

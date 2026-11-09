@@ -2,7 +2,6 @@ import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Phone } from "lucide-react";
 import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
-import { MeterCells } from "@/components/awards/HardwareBoard";
 import { nameOf } from "@/lib/relationships/nameOf";
 import { AgentCodeChip, ParkedChip } from "./primitives";
 
@@ -18,7 +17,7 @@ import { AgentCodeChip, ParkedChip } from "./primitives";
 // "Mon promised") and a ghosted state for rows not offered a second touch.
 //
 // Call-list mode: the same row with a `meter` (the footprint six as
-// MeterCells on md+), the right cell captioned "quiet", and a `pill` chip for
+// a plain 'n of m' footprint count on md+), the right cell captioned "quiet", and a `pill` chip for
 // the class / stage / BAD # / Touched {Day} words. The Foreman's parked group
 // (the nod sheet's .row.wide) fills the two md+ cells with "{mi} mi" and
 // "{n} · ${gross}" — a bold number each, so they are ReactNodes — and hands a
@@ -184,7 +183,7 @@ export const AgentRow = ({
           title={`footprint ${meter.on} of ${meter.cells}`}
           aria-label={`footprint ${meter.on} of ${meter.cells}`}
         >
-          <MeterCells pct={meter.cells > 0 ? meter.on / meter.cells : 0} cells={meter.cells} />
+          <span className="font-condensed text-[13px] text-dim tabular-nums">{meter.on} of {meter.cells}</span>
         </span>
       )}
       <span className="text-right">

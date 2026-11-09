@@ -19,25 +19,15 @@ import type { Trip } from "@/types/trip";
 import type { Truck } from "@/types/truck";
 import { loadTrailerNet } from "@/lib/metrics/rateTargets";
 import { computeTrailerMetrics } from "@/lib/metrics/trailerMetrics";
-import {
-  computeTrailerPatches,
-  computeTrailerMedals,
-  trailerRecords,
-} from "@/lib/awards/trailerAwards";
-import { earnedMedals } from "@/lib/awards/medals";
-import { MedalBadge } from "@/components/awards/MedalBadge";
-import { type RecordChip } from "@/components/awards/RecordBook";
-import { HardwareBoard } from "@/components/awards/HardwareBoard";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getObligations } from "@/services/obligationsService";
 import type { Obligation } from "@/types/obligation";
-import { isPayoffTracked, assetLoanStatus, computePayoff } from "@/lib/metrics/payoff";
+import { isPayoffTracked, computePayoff } from "@/lib/metrics/payoff";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { EntityForm } from "@/components/fleet/EntityForm";
 import { TRAILER_FIELDS, toFormValues } from "@/lib/fleetFields";
 import { formatDate, money } from "@/lib/format";
 import { useLocalToday } from "@/hooks/useLocalToday";
-import { mileMilestone } from "@/lib/metrics/mileClub";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { isDelivered } from "@/lib/metrics/status";
@@ -218,27 +208,11 @@ const TrailerDetailPage = () => {
     );
 
   const metrics = computeTrailerMetrics(trailer, trailerLoads, services, now, trailerNote);
-  const allTrailerMedals = computeTrailerMedals({
-    hubMiles: trailerMiles,
-    earnings: revenue,
-    deliveredCount: earnedLoads.length,
-    loanPaidPct: assetLoanStatus(obligations, "trailer", now)?.ownedPct ?? null,
-  });
-  const trailerMedals = earnedMedals(allTrailerMedals);
   const payoff = trailerLoan ? computePayoff(trailerLoan, now) : null;
   const nextClock = clocks[0] ?? null;
   const closeCount = clocks.filter(
     ({ d }) => d.level === "soon" || d.level === "overdue",
   ).length;
-  const m = mileMilestone(metrics.totalMiles);
-  const patches = computeTrailerPatches(trailerLoads);
-  const recs = trailerRecords(trailerLoads);
-  const recordChips: RecordChip[] = [
-    { icon: "cash", color: "var(--color-status-positive-text)", value: recs.bestPayday != null ? money(recs.bestPayday) : "—", label: "BEST PAYDAY (MO)" },
-    { icon: "flag", color: "var(--color-amber-hi)", value: recs.longestHaul != null ? num(recs.longestHaul) : "—", label: "LONGEST HAUL" },
-    { icon: "weight", color: "var(--color-status-info-text)", value: recs.heaviestLoad != null ? num(recs.heaviestLoad) : "—", label: "HEAVIEST LOAD (LB)" },
-    { icon: "road", color: "var(--color-amber-hi)", value: recs.bigMonthMiles != null ? num(recs.bigMonthMiles) : "—", label: "BIG MONTH (MI)" },
-  ];
 
   const meterCell = (
     on: boolean,
@@ -299,13 +273,6 @@ const TrailerDetailPage = () => {
                 {trailer.status.replace(/_/g, " ")}
               </span>
             </div>
-            {trailerMedals.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap mt-2">
-                {trailerMedals.map((md) => (
-                  <MedalBadge key={md.key} medal={md} />
-                ))}
-              </div>
-            )}
           </div>
           <div className="ml-auto text-right">
             <span
@@ -321,42 +288,9 @@ const TrailerDetailPage = () => {
         </div>
 
         {/* the trailer card */}
-        <div
-          className="relative overflow-hidden rounded-[14px] border mt-4"
-          style={{
-            background: "linear-gradient(180deg, var(--color-well), var(--color-panel))",
-            borderColor: "var(--color-hairline)",
-            boxShadow: "var(--shadow-pop)",
-          }}
-        >
-          <div
-            className="flex items-center gap-[14px] px-[18px] py-[14px] border-b ds2-cell-rule"
-            style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--color-amber) 8%, transparent), transparent 55%)" }}
-          >
-            <div className="min-w-0">
-              <div className="font-forge font-bold text-[22px] leading-none" style={{ letterSpacing: "1.5px" }}>
-                {(m.title ?? "THE FLATBED").toUpperCase()}
-              </div>
-              <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
-                the trailer card · forged
-              </div>
-            </div>
-            {m.crossed != null ? (
-              <span
-                className="ml-auto font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] rotate-[-1.2deg] whitespace-nowrap"
-                style={{
-                  color: "var(--color-amber-hi)",
-                  border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                  boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 15%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
-                }}
-              >
-                {m.label} CLUB
-              </span>
-            ) : (
-              <span className="ml-auto font-display text-[12.5px] tracking-[.12em] rounded-[4px] px-[9px] pt-[3px] pb-[2px] text-faint border border-dashed border-hairline whitespace-nowrap">
-                EARNING ITS KEEP
-              </span>
-            )}
+        <div className="ds2-board relative overflow-hidden rounded-[14px] mt-4">
+          <div className="px-[18px] py-[14px] border-b ds2-cell-rule">
+            <p className="ds2-label">Trailer {trailer.unit_number} · the numbers</p>
           </div>
           <div className="grid grid-cols-3 border-b ds2-cell-rule">
             <div className="px-[18px] py-3 border-r ds2-cell-rule">
@@ -468,7 +402,7 @@ const TrailerDetailPage = () => {
           </div>
 
           {/* next service */}
-          <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
+          <div className="px-[18px] py-[13px]">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
               <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
                 Next service — the clocks · truck odometer
@@ -541,35 +475,7 @@ const TrailerDetailPage = () => {
               </p>
             )}
           </div>
-
-          {/* mile club */}
-          <div className="px-[18px] py-[13px]">
-            <div className="flex justify-between items-baseline gap-3 mb-[8px]">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
-                Mile club — first plate at {m.next.toLocaleString("en-US")}
-              </span>
-              <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums">
-                {Math.round(metrics.totalMiles).toLocaleString("en-US")} /{" "}
-                {m.next.toLocaleString("en-US")}
-              </span>
-            </div>
-            <div className="flex gap-[3px]">
-              {Array.from({ length: 10 }, (_, ci) => (
-                <i
-                  key={ci}
-                  className="flex-1 h-[11px] rounded-[2.5px]"
-                  style={meterCell((ci + 1) / 10 <= m.pct + 1e-6)}
-                />
-              ))}
-            </div>
-            <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
-              every mile it carries counts — the 100K bronze punches first
-            </p>
-          </div>
         </div>
-
-        {/* the hardware */}
-        <HardwareBoard medals={allTrailerMedals} patches={patches} records={recordChips} />
 
         {/* the numbers */}
         <div className="ds2-board p-4 mt-4">

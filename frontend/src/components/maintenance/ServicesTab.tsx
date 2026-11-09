@@ -240,7 +240,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
     <div>
       {justLogged && (
         <div className="ds2-board flex items-center gap-3 px-4 py-3 mt-4">
-          <span className="font-forge font-bold text-[13px] tracking-[.12em] text-status-positive-text">
+          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase text-status-positive-text">
             SERVICE LOGGED ✓
           </span>
           <span className="font-condensed text-[13px] text-dim">
