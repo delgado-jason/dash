@@ -265,7 +265,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
     <Panel className="p-4">
       <h3 className="ds2-label">The leaderboard</h3>
       <p className="text-[11px] text-faint mb-2.5">
-        by desk · 12 months to {formatDate(utcDayKey(now))} · tap a column to sort · ladder: {ladderText}
+        by desk · {board.rangeLabel.toLowerCase()} to {formatDate(utcDayKey(now))} · tap a column to sort · ladder: {ladderText}
       </p>
 
       {failed ? (

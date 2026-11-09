@@ -1,305 +1,357 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { TriangleAlert } from "lucide-react";
 import type { Load } from "@/types/load";
-import { useAgents } from "@/hooks/useAgents";
+import { useDeskBoard } from "@/hooks/useDeskBoard";
 import {
-  buildAgentScorecards,
-  agentRosterAnalytics,
-  concentrationAnalytics,
-} from "@/lib/metrics/agentScorecard";
-import { SPECIALTY_META, flagText } from "@/components/agents/agentDisplay";
-import { money } from "@/lib/format";
-import { Board, BoardCell } from "@/components/ui/Board";
-import { AgentScatter, type ScatterPoint } from "./AgentScatter";
-import { Leaderboard } from "./Leaderboard";
-import { useAgencies } from "@/hooks/useAgencies";
-import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
-import { buildLeaderboard } from "@/lib/metrics/leaderboard";
+  agentBook,
+  bookShape,
+  goneQuiet,
+  workingWith,
+  QUIET_DAYS,
+  type AgentBookRow,
+} from "@/lib/metrics/agentBook";
+import {
+  AGENCY_WINDOWS,
+  WINDOW_LABEL,
+  agencyRange,
+  type AgencyWindow,
+} from "@/lib/agencies/agencyMetrics";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { nameOf } from "@/lib/relationships/nameOf";
+import { Leaderboard } from "./Leaderboard";
+import { Panel } from "@/components/ui/Panel";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { money, rpm as fmtRpm } from "@/lib/format";
 
-const FRESH = (d: number | null): string =>
-  d == null ? "var(--color-muted-text)" : d <= 14 ? "var(--color-status-positive-text)" : d <= 45 ? "var(--color-amber-hi)" : "var(--color-muted-text)";
+// WHO SHOULD I CALL? (the Redesign, phase C, 3 of 4.) The Agents PAGE is the
+// roster you search and filter; this tab is where the story lives, and the
+// story on a spot book is not the one it used to tell. It warned about a
+// concentration risk that does not exist here — one desk at 11.8% against a 30%
+// cap — while the real shape of the book went unsaid: forty-four of fifty-five
+// desks gave exactly one load, over half the money. So concentration became
+// fragmentation, "going cold" became the desks that actually came back and then
+// stopped, and the rate×volume scatter and gut-vs-data card came off (the first
+// drew lifetime axes under a twelve-month tab, the second needs star ratings
+// that are still at their default on 57 of 71 agents).
+//
+// Everything here reads the LEADERBOARD'S window and the leaderboard's date
+// basis, so the tab can no longer answer "how much did this desk pay" three
+// different ways on one screen.
+const QUIET_SHOWN = 5;
+const RECENT_SHOWN = 6;
 
-const Badge = ({ tag }: { tag: "oversize" | "specialty" }) => {
-  const m = SPECIALTY_META[tag];
-  return (
-    <span
-      className="text-[8px] font-bold tracking-wide px-1.5 py-0.5 rounded"
-      style={{ color: m.fg, background: m.bg, border: `1px solid ${m.border}` }}
-    >
-      {tag === "oversize" ? "OVR" : "SPEC"}
-    </span>
+const TH = "ds2-label pb-1.5 font-normal";
+const TD_NUM = "py-[6px] font-condensed font-semibold tabular-nums text-right";
+
+const plural = (n: number, word: string): string =>
+  `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// A quiet desk warms from amber to negative as the weeks pass. Under the band
+// it is simply ink — a desk you worked last month is not a warning.
+const quietTone = (days: number | null): string =>
+  days == null
+    ? "text-faint"
+    : days >= QUIET_DAYS * 2
+      ? "text-status-negative-text"
+      : days >= QUIET_DAYS
+        ? "text-amber-hi"
+        : "text-ink";
+
+export const AgentsTab = ({
+  loads,
+  ladder,
+}: {
+  loads: Load[];
+  ladder: RateLadder | null;
+}) => {
+  const [now] = useState(() => new Date());
+  const [win, setWin] = useState<AgencyWindow>("12m");
+  const { board, agents, contactsFailed, failed } = useDeskBoard(
+    loads,
+    ladder,
+    now,
+    win,
   );
-};
 
-export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder | null }) => {
-  const [retryKey, setRetryKey] = useState(0);
-  const { agents, error: agentsError } = useAgents(retryKey);
-  const { agencies, error: agenciesError } = useAgencies(retryKey);
-  const now = useMemo(() => new Date(), []);
-
-  // The contact log only feeds "last contact" in an expanded desk. A failed
-  // read is shown there, never read as "never contacted".
-  const [contactsState, setContactsState] = useState<{ contacts: AgentContact[]; failed: boolean }>({
-    contacts: [],
-    failed: false,
-  });
-  useEffect(() => {
-    let active = true;
-    getAgentContacts()
-      .then((contacts) => active && setContactsState({ contacts, failed: false }))
-      .catch(() => active && setContactsState({ contacts: [], failed: true }));
-    return () => {
-      active = false;
-    };
-  }, [retryKey]);
-
-  const board = useMemo(
-    () => buildLeaderboard({ agencies, agents, loads, contacts: contactsState.contacts, ladder, now }),
-    [agencies, agents, loads, contactsState.contacts, ladder, now],
+  // The same range the board just used, so every panel below describes the
+  // same loads the board ranked.
+  const range = useMemo(() => agencyRange(win, now), [win, now]);
+  const bookRows = useMemo(() => agentBook(loads, range, now), [loads, range, now]);
+  const shape = useMemo(() => bookShape(bookRows), [bookRows]);
+  const quiet = useMemo(() => goneQuiet(bookRows), [bookRows]);
+  const recent = useMemo(
+    () => workingWith(bookRows).slice(0, RECENT_SHOWN),
+    [bookRows],
   );
 
-  const scorecards = useMemo(
-    () => buildAgentScorecards(agents ?? [], loads, now),
-    [agents, loads, now],
-  );
-  const roster = useMemo(() => agentRosterAnalytics(scorecards), [scorecards]);
-  const conc = useMemo(() => concentrationAnalytics(loads, now), [loads, now]);
   const byId = useMemo(
     () => new Map((agents ?? []).map((a) => [a.agent_id, a])),
     [agents],
   );
-
-  const rows = useMemo(
-    () =>
-      (agents ?? [])
-        .map((a) => ({ agent: a, card: scorecards.get(a.agent_id)! }))
-        .filter((r) => r.card),
-    [agents, scorecards],
-  );
-  const scatterPoints: ScatterPoint[] = rows;
-
-  const name = (id: string) => {
-    const a = byId.get(id);
-    return a ? `${nameOf(a)}` : "—";
+  const name = (r: AgentBookRow): string => {
+    const a = byId.get(r.agentId);
+    return a ? nameOf(a) : "—";
   };
+  const code = (r: AgentBookRow): string | null =>
+    byId.get(r.agentId)?.posting_code?.trim() || null;
 
-  // "Running with lately" — recent 90-day gross per agent (from the concentration
-  // window), joined to their days-since-last-load. Sorted by recency: who you're
-  // actually working with now, newest at the top. The quiet ones are the "going
-  // cold" card's job, so this stays the active bench.
-  const rev90 = useMemo(
-    () => new Map(conc.shares.map((s) => [s.agentId, s.revenue])),
-    [conc],
-  );
-  const recentRows = useMemo(
-    () =>
-      rows
-        // Within the 90-day window this card is scoped to (matches the "90d $"
-        // header, and guarantees a real recent-$). Quieter agents are the "going
-        // cold" card's job, so they don't show here as a stale $0 row.
-        .filter((r) => r.card.daysSince != null && r.card.daysSince <= 90)
-        .sort((a, b) => (a.card.daysSince ?? 0) - (b.card.daysSince ?? 0))
-        .slice(0, 6),
-    [rows],
-  );
+  // The best rate among desks that came back — a single load at a freak rate
+  // is a story, not a relationship, so it never leads the sentence.
+  const bestRate = useMemo(() => {
+    const eligible = bookRows.filter((r) => r.loads >= 2 && r.medianRpm != null);
+    return eligible.length
+      ? eligible.reduce((b, r) =>
+          (r.medianRpm as number) > (b.medianRpm as number) ? r : b,
+        )
+      : null;
+  }, [bookRows]);
 
-  const cold = useMemo(
-    () =>
-      rows
-        .filter((r) => r.card.tier === "cold")
-        .sort((a, b) => b.card.revenue - a.card.revenue)
-        .slice(0, 4),
-    [rows],
-  );
-
-  const flags = useMemo(() => rows.filter((r) => r.card.ratingFlag), [rows]);
-
-  const coldTop = roster.goingCold ? byId.get(roster.goingCold.agentId) : null;
-  const topShares = conc.shares.slice(0, 3);
-  const elseShare = Math.max(0, 1 - topShares.reduce((s, x) => s + x.share, 0));
+  const noBook = shape.desks === 0;
+  const BAR = [
+    { k: "once", b: shape.once, fill: "var(--color-plate-a)" },
+    { k: "twice", b: shape.twice, fill: "var(--color-amber)" },
+    { k: "repeat", b: shape.repeat, fill: "var(--color-status-positive-text)" },
+  ] as const;
 
   return (
     <div className="flex flex-col gap-3">
-      {/* the glance — two doors (the rate and the bench jobs live in the leaderboard) */}
-      <Board className="grid grid-cols-2">
-        <BoardCell
-          className="border-r ds2-cell-rule"
-          label="Concentration"
-          value={conc.top3Pct != null ? `${Math.round(conc.top3Pct * 100)}%` : "—"}
-          valueClassName={`text-[22px] ${conc.overSingleCap ? "text-amber-light" : ""}`}
-          sub={
-            conc.overSingleCap && conc.singleMax
-              ? `⚠ ${byId.get(conc.singleMax.agentId)?.last_name ?? "one"} ${Math.round(conc.singleMax.share * 100)}% — over 30%`
-              : "top 3 · last 90 days"
-          }
-          tone={conc.overSingleCap ? "amb" : "none"}
-          to="/agents"
-          go="agents"
+      {/* the board's own window — one clock for the whole tab */}
+      <div className="flex items-center justify-end" data-testid="agents-window">
+        <SegmentedTabs
+          size="sm"
+          ariaLabel="Agents window"
+          tabs={AGENCY_WINDOWS.map((w) => ({ value: w, label: WINDOW_LABEL[w] }))}
+          value={win}
+          onChange={setWin}
         />
-        <BoardCell
-          label="Going cold"
-          value={coldTop ? `${coldTop.first_name.charAt(0)}. ${coldTop.last_name}` : "—"}
-          valueClassName={`text-[22px] ${coldTop ? "text-amber-light" : ""}`}
-          sub={
-            roster.goingCold
-              ? `${money(roster.goingCold.revenue)} · ${roster.goingCold.daysSince}d quiet`
-              : "all recently active"
-          }
-          tone={coldTop ? "amb" : "none"}
-          to={roster.goingCold ? `/agents/${roster.goingCold.agentId}` : "/agents"}
-          go="agent"
-        />
-      </Board>
+      </div>
 
-      {/* the leaderboard — by desk, graded on the booking ladder */}
+      {/* the answering line */}
+      <Panel className="p-4" data-testid="answering-line">
+        <div className="flex items-baseline gap-3 flex-wrap font-condensed text-[14px] text-dim">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums text-ink">
+            {shape.desks} DESK{shape.desks === 1 ? "" : "S"}
+          </span>
+          <span>
+            {shape.repeatDesks > 0 && (
+              <>
+                ·{" "}
+                <b className="font-semibold text-ink">{shape.repeatDesks}</b> gave
+                you repeat freight
+              </>
+            )}
+            {shape.gross > 0 && (
+              <>
+                {" "}
+                · <b className="font-semibold text-ink">{money(shape.gross)}</b>{" "}
+                booked through them
+              </>
+            )}
+            {bestRate && (
+              <>
+                {" "}
+                · best rate{" "}
+                <b className="font-semibold text-status-positive-text">
+                  {name(bestRate)} {fmtRpm(bestRate.medianRpm)}/mi
+                </b>{" "}
+                ({plural(bestRate.loads, "load")}
+                {bestRate.daysSince != null && bestRate.daysSince >= QUIET_DAYS
+                  ? `, quiet ${bestRate.daysSince} days`
+                  : ""}
+                )
+              </>
+            )}
+            {shape.once.desks > 0 && (
+              <>
+                {" "}
+                ·{" "}
+                <b className="font-semibold text-amber-hi">
+                  {shape.once.desks} ran once
+                </b>
+              </>
+            )}
+          </span>
+        </div>
+      </Panel>
+
+      {/* the leaderboard — the spine, unchanged but for its window */}
       <Leaderboard
         board={board}
         ladder={ladder}
         now={now}
-        contactsFailed={contactsState.failed}
-        failed={
-          agentsError || agenciesError
-            ? { onRetry: () => setRetryKey((k) => k + 1) }
-            : null
-        }
+        contactsFailed={contactsFailed}
+        failed={failed}
       />
 
-      {/* hero scatter */}
-      <div className="ds2-board p-4">
-        <div className="flex items-center justify-between mb-1">
-          <span className="ds2-label">The bench — rate × volume</span>
-          <span className="text-[11px] text-faint">bubble = revenue · click to open an agent</span>
-        </div>
-        <AgentScatter points={scatterPoints} />
-        <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-1">
-          <span><span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]" style={{ background: "var(--color-amber)" }} />Oversize</span>
-          <span><span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]" style={{ background: "var(--color-cat2)" }} />Specialty</span>
-          <span>◯ dashed = cold · ⚠ = gut≠data</span>
-        </div>
-      </div>
-
-      {/* running-lately */}
-      <div className="grid grid-cols-1 gap-3">
-        <div className="ds2-board p-4">
-          <h3 className="ds2-label mb-2.5 flex justify-between items-center">
-            Running with lately
-            <span className="normal-case tracking-normal font-normal text-muted-text">last worked · 90d $</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* ------------------------------- where the book comes from */}
+        <Panel className="p-4 min-w-0" data-testid="book-shape">
+          <h3 className="ds2-label flex justify-between">
+            Where the book actually comes from
+            <span className="normal-case tracking-normal font-normal text-faint">
+              {plural(shape.desks, "desk")} · {board.rangeLabel.toLowerCase()}
+            </span>
           </h3>
-          {recentRows.length === 0 ? (
-            <p className="text-xs text-muted-text">No delivered loads in the last 90 days.</p>
+          {noBook ? (
+            <p className="text-xs text-faint py-4">
+              No delivered loads in this window.
+            </p>
           ) : (
-            recentRows.map(({ agent, card }) => (
-              <Link
-                key={agent.agent_id}
-                to={`/agents/${agent.agent_id}`}
-                className="grid items-center gap-2 py-[5px] border-t first:border-t-0"
-                style={{ gridTemplateColumns: "1fr 62px 66px", borderColor: "var(--color-hairline-lo)" }}
-              >
-                <span className="text-[12px] truncate flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: FRESH(card.daysSince) }} />
-                  {nameOf(agent)}
-                  {card.specialty.tag !== "standard" && <Badge tag={card.specialty.tag} />}
-                </span>
-                <span className="text-[11px] text-right" style={{ color: FRESH(card.daysSince) }}>
-                  {card.daysSince}d ago
-                </span>
-                <span className="text-[11.5px] font-semibold text-right">{money(rev90.get(agent.agent_id) ?? 0)}</span>
-              </Link>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* concentration + going cold + gut-vs-data */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="ds2-board p-4">
-          <h3 className="ds2-label mb-2.5">Revenue concentration · 90d</h3>
-          {conc.total > 0 ? (
             <>
-              <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid var(--color-hairline)" }}>
-                {topShares.map((s, i) => (
-                  <div key={s.agentId} className="h-full flex items-center justify-center text-[9px] font-bold" style={{ width: `${s.share * 100}%`, background: ["var(--color-amber)", "var(--color-amber-hi)", "var(--color-amber-dark)"][i], color: "var(--color-on-amber)" }}>
-                    {Math.round(s.share * 100)}%
-                  </div>
-                ))}
-                <div className="h-full flex items-center justify-center text-[9px]" style={{ width: `${elseShare * 100}%`, background: "var(--color-plate-a)", color: "var(--color-dim)" }}>
-                  rest
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-x-3.5 gap-y-1 mb-2">
-                {topShares.map((s, i) => (
-                  <Link key={s.agentId} to={`/agents/${s.agentId}`} className="text-[11.5px] flex items-center gap-1.5 hover:underline">
-                    <span className="inline-block w-2 h-2 rounded-sm flex-none" style={{ background: ["var(--color-amber)", "var(--color-amber-hi)", "var(--color-amber-dark)"][i] }} />
-                    <span className="text-light">{name(s.agentId)}</span>
-                    <span className="text-muted-text">{Math.round(s.share * 100)}%</span>
-                  </Link>
+              <div className="flex gap-[2px] h-6 rounded-md overflow-hidden my-2.5 bg-canvas">
+                {BAR.filter((s) => s.b.gross > 0).map((s) => (
+                  <div
+                    key={s.k}
+                    style={{ width: `${s.b.share * 100}%`, background: s.fill }}
+                    title={`${plural(s.b.desks, "desk")} · ${money(s.b.gross)}`}
+                  />
                 ))}
               </div>
-              <p className="text-[11px] text-muted-text">
-                Top 3 = <b style={{ color: "var(--color-amber-hi)" }}>{Math.round((conc.top3Pct ?? 0) * 100)}%</b> of your recent book.
-                Rule of thumb: no single agent over <span className="text-light">30%</span>, top 3 under <span className="text-light">65%</span>.
+              <table className="w-full text-[12px]">
+                <tbody>
+                  {BAR.map((s) => (
+                    <tr key={s.k} className="border-b ds2-cell-rule last:border-b-0">
+                      <td className="py-[6px] text-ink">
+                        <span
+                          className="inline-block w-2 h-2 rounded-sm mr-1.5 align-[0px]"
+                          style={{ background: s.fill }}
+                        />
+                        {s.k === "once"
+                          ? "ran once"
+                          : s.k === "twice"
+                            ? "ran twice"
+                            : "three or more"}
+                      </td>
+                      <td className={TD_NUM}>{plural(s.b.desks, "desk")}</td>
+                      <td className={TD_NUM}>{money(s.b.gross)}</td>
+                      <td
+                        className={`${TD_NUM} ${
+                          s.k === "once"
+                            ? "text-status-negative-text"
+                            : s.k === "repeat"
+                              ? "text-status-positive-text"
+                              : "text-ink"
+                        }`}
+                      >
+                        {Math.round(s.b.share * 100)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-[11.5px] text-faint mt-2">
+                {shape.once.desks > 0 ? (
+                  <>
+                    {Math.round(shape.once.share * 100)}% of the money came from
+                    desks you used exactly once.{" "}
+                  </>
+                ) : null}
+                {plural(shape.repeatDesks, "desk")} gave you repeat freight — the
+                relationships worth keeping warm ·{" "}
+                <Link to="/agents" className="text-amber-hi">
+                  the roster on Agents ›
+                </Link>
               </p>
             </>
-          ) : (
-            <p className="text-xs text-muted-text">No delivered revenue in the last 90 days.</p>
           )}
-        </div>
+        </Panel>
 
-        <div className="ds2-board p-4">
-          <h3 className="ds2-label mb-2.5">Going cold — worth a call</h3>
-          {cold.length === 0 ? (
-            <p className="text-xs text-faint">Everyone's been active lately.</p>
+        {/* ------------------------------------- gone quiet */}
+        <Panel className="p-4 min-w-0" data-testid="gone-quiet">
+          <h3 className="ds2-label flex justify-between">
+            Gone quiet — worth a call
+            <span className="normal-case tracking-normal font-normal text-faint">
+              repeat desks only · by money at risk
+            </span>
+          </h3>
+          {quiet.length === 0 ? (
+            <p className="text-xs text-faint py-4">
+              {shape.repeatDesks === 0
+                ? "No desk has given you more than one load in this window yet."
+                : `Every desk that came back has run inside ${QUIET_DAYS} days.`}
+            </p>
           ) : (
-            cold.map(({ agent, card }) => {
-              // The heat language, inverted: warmth drains as the weeks pass.
-              const warm = Math.max(0, Math.min(5, 5 - Math.floor((card.daysSince ?? 0) / 21)));
-              return (
-                <Link key={agent.agent_id} to={`/agents/${agent.agent_id}`} className="flex items-center gap-2 py-[7px] text-[12px] border-t ds2-cell-rule first:border-t-0">
-                  <span className="truncate text-ink font-semibold">
-                    {nameOf(agent)}
-                    {card.specialty.tag !== "standard" && <> <Badge tag={card.specialty.tag} /></>}
-                  </span>
-                  <span className="flex gap-[3px] flex-none ml-auto">
-                    {Array.from({ length: 5 }, (_, i) => (
-                      <span
-                        key={i}
-                        className="w-[11px] h-[13px] rounded-[3px]"
-                        style={
-                          i < warm
-                            ? { background: i === warm - 1 ? "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" : "var(--color-amber)" }
-                            : { background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }
-                        }
-                      />
-                    ))}
-                  </span>
-                  <span className="text-amber-light whitespace-nowrap text-[11px]">
-                    {card.daysSince}d · {money(card.revenue)}
+            <>
+              <table className="w-full text-[12px] mt-2">
+                <thead>
+                  <tr className="border-b ds2-cell-rule">
+                    <th className={`${TH} text-left`}>Agent</th>
+                    <th className={`${TH} text-right`}>Loads</th>
+                    <th className={`${TH} text-right`}>$/mi</th>
+                    <th className={`${TH} text-right`}>Booked</th>
+                    <th className={`${TH} text-right`}>Quiet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quiet.slice(0, QUIET_SHOWN).map((r) => (
+                    <tr key={r.agentId} className="border-b ds2-cell-rule last:border-b-0">
+                      <td className="py-[6px] text-ink truncate">
+                        <Link to={`/agents/${r.agentId}`} className="hover:underline">
+                          {name(r)}
+                        </Link>
+                        {code(r) && (
+                          <span className="text-faint font-normal"> {code(r)}</span>
+                        )}
+                      </td>
+                      <td className={TD_NUM}>{r.loads}</td>
+                      <td className={TD_NUM}>{fmtRpm(r.medianRpm)}</td>
+                      <td className={TD_NUM}>{money(r.gross)}</td>
+                      <td className={`${TD_NUM} ${quietTone(r.daysSince)}`}>
+                        {r.daysSince == null ? "—" : `${r.daysSince} d`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-[11.5px] text-faint mt-2">
+                Repeat desks with no freight in {QUIET_DAYS} days. A one-load desk
+                is a stranger, not a lapsed relationship, so it is not listed ·
+                who to call from where you drop →{" "}
+                <Link to="/foreman" className="text-amber-hi">
+                  the Foreman ›
+                </Link>
+              </p>
+            </>
+          )}
+        </Panel>
+      </div>
+
+      {/* --------------------------------------- running with lately */}
+      <Panel className="p-4" data-testid="working-with">
+        <h3 className="ds2-label flex justify-between">
+          Running with lately
+          <span className="normal-case tracking-normal font-normal text-faint">
+            {board.rangeLabel.toLowerCase()} · newest first
+          </span>
+        </h3>
+        {recent.length === 0 ? (
+          <p className="text-xs text-faint py-4">No delivered loads in this window.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-0.5 mt-1.5">
+              {recent.map((r) => (
+                <Link
+                  key={r.agentId}
+                  to={`/agents/${r.agentId}`}
+                  className="flex items-center justify-between gap-2 py-[5px] text-[12px] border-b ds2-cell-rule"
+                >
+                  <span className="truncate text-ink">{name(r)}</span>
+                  <span className="whitespace-nowrap font-condensed font-semibold tabular-nums text-dim">
+                    <span className={quietTone(r.daysSince)}>
+                      {r.daysSince == null ? "—" : `${r.daysSince} d`}
+                    </span>{" "}
+                    · <b className="text-ink">{money(r.gross)}</b>
                   </span>
                 </Link>
-              );
-            })
-          )}
-        </div>
-
-        <div className="ds2-board p-4">
-          <h3 className="ds2-label mb-2.5">Gut vs. data ⚠</h3>
-          {flags.length === 0 ? (
-            <p className="text-xs text-muted-text">Your star ratings track the numbers — nothing to flag.</p>
-          ) : (
-            flags.slice(0, 4).map(({ agent, card }) => (
-              <Link key={agent.agent_id} to={`/agents/${agent.agent_id}`} className="flex gap-2 items-start py-1.5 text-[11.5px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
-                <TriangleAlert size={13} style={{ color: "var(--color-amber-hi)", flexShrink: 0, marginTop: 1 }} />
-                <span>
-                  <span className="font-semibold">{nameOf(agent)}</span> — {flagText(card)}
-                </span>
-              </Link>
-            ))
-          )}
-        </div>
-      </div>
+              ))}
+            </div>
+            <p className="text-[11.5px] text-faint mt-2">
+              {plural(shape.desks, "desk")} worked in the window ·{" "}
+              {money(shape.gross)} between them
+            </p>
+          </>
+        )}
+      </Panel>
     </div>
   );
 };

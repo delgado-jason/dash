@@ -5,7 +5,6 @@ import {
   classifySpecialty,
   buildAgentScorecards,
   effectiveAgentClass,
-  agentRosterAnalytics,
   concentrationAnalytics,
   agentMomentum,
 } from "./agentScorecard";
@@ -206,35 +205,9 @@ describe("buildAgentScorecards", () => {
   });
 });
 
-describe("agentRosterAnalytics", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-06T12:00:00Z"));
-  });
-  afterEach(() => vi.useRealTimers());
-
-  it("summarizes rate leader, oversize bench, concentration, and the best cold agent", () => {
-    const agents = [agent("a", 4), agent("b", 3), agent("c", 3)];
-    const loads = [
-      // a: oversize specialist, biggest earner, but cold (worked in March)
-      ...Array.from({ length: 3 }, () =>
-        load({ agent_id: "a", load_type: "oversize", linehaul: "9000", delivery_date: "2026-03-10" }),
-      ),
-      // b: oversize, recent, rate leader
-      ...Array.from({ length: 2 }, () =>
-        load({ agent_id: "b", load_type: "oversize", linehaul: "12000", delivery_date: "2026-07-30" }),
-      ),
-      // c: standard, small
-      ...Array.from({ length: 2 }, () => load({ agent_id: "c", linehaul: "2000", delivery_date: "2026-07-30" })),
-    ];
-    const r = agentRosterAnalytics(buildAgentScorecards(agents, loads));
-    expect(r.rateLeader?.agentId).toBe("b");
-    expect(r.rateLeader?.medianRpm).toBeCloseTo(12, 5);
-    expect(r.oversizeBench).toBe(2); // a and b
-    expect(r.goingCold?.agentId).toBe("a"); // the cold, high-value one
-    expect(r.concentrationPct).toBeGreaterThan(0.5);
-  });
-});
+// agentRosterAnalytics went with the Agents tab's KPI row (v1.266.0): its
+// rate leader, oversize bench, lifetime top-3 concentration and best-cold-agent
+// were read by nothing once the two doors and the concentration card came off.
 
 describe("concentrationAnalytics (windowed + per-agent)", () => {
   const NOW = new Date("2026-08-06T12:00:00Z");
