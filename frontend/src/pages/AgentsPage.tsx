@@ -10,11 +10,7 @@ import { TIER_META } from "@/components/agents/agentDisplay";
 import { useCarrierName } from "@/hooks/useCarrierName";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  computeHonors,
-  perAgentStats,
-  currentQuarterStandings,
-} from "@/lib/metrics/agentLeaderboard";
+import { perAgentStats } from "@/lib/metrics/agentLeaderboard";
 import {
   buildAgentScorecards,
   concentrationAnalytics,
@@ -48,9 +44,7 @@ const AgentsPage = () => {
   const carrierName = useCarrierName();
   const now = useMemo(() => new Date(), []);
 
-  const honors = useMemo(() => computeHonors(loads ?? [], now), [loads, now]);
   const stats = useMemo(() => perAgentStats(loads ?? []), [loads]);
-  const standings = useMemo(() => currentQuarterStandings(loads ?? [], now), [loads, now]);
   const scorecards = useMemo(
     () => buildAgentScorecards(agents ?? [], loads ?? [], now),
     [agents, loads, now],
@@ -227,8 +221,6 @@ const AgentsPage = () => {
               key={agent.agent_id}
               agent={agent}
               stats={stats.get(agent.agent_id)}
-              honors={honors.get(agent.agent_id)}
-              live={standings.get(agent.agent_id)}
               card={card}
               carrierName={carrierName}
               onSetClass={(value) => setAgentClass(agent.agent_id, value)}

@@ -14,7 +14,7 @@ import { formatDate, money, rpm } from "@/lib/format";
 import { shortDate, utcDayKey } from "@/lib/relationships/dayKeys";
 import { Panel } from "@/components/ui/Panel";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
-import { GRADE_META } from "@/components/playercard/gradeMeta";
+import { GRADE_META } from "@/components/agents/gradeMeta";
 import { nameOf } from "@/lib/relationships/nameOf";
 
 // THE LEADERBOARD — the book ranked by desk, one rate (the Tiers rate over 12

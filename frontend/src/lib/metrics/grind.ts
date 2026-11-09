@@ -22,6 +22,7 @@ import {
   computeRateTargets,
   type GrossTargets,
 } from "./rateTargets";
+import { quarterOf } from "./quarterOf";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
 import { isDelivered } from "./status";
 
@@ -228,4 +229,55 @@ export const computePersonalGrind = (
     activeWeeks: active.length,
     weeksNeeded: MIN_ACTIVE_WEEKS,
   };
+};
+
+// ---- the quarter's weeks as one plain count (the Cockpit, call 11; the
+// Redesign, B1) ----
+// Of the COMPLETED pay weeks that started inside the current calendar quarter
+// and delivered freight: how many earned gross at or above the weekly
+// break-even floor, and how many reached the weekly target. A week that
+// delivered nothing is a home week — counted in neither figure, but named. The
+// week in progress never counts. The bars are the pace meter's own
+// (computeRateTargets' gross weekly target and floor), so "over break-even" here
+// and "target" on the meter are the same two numbers.
+export interface QuarterWeeks {
+  label: string; // "Q4 2026"
+  counted: number; // completed weeks in the quarter that delivered freight
+  overFloor: number; // of those, at or above the weekly break-even
+  atTarget: number; // of those, at or above the weekly target
+  home: number; // completed weeks in the quarter with nothing delivered
+  hasBars: boolean; // false with no floor/target (no P&L yet): nothing is graded
+}
+
+export const quarterWeekVerdicts = (
+  loads: Load[],
+  targets: GrossTargets,
+  now: Date,
+): QuarterWeeks => {
+  const q = quarterOf(now);
+  const current = payWeekRange(now, PAY_WEEK_START_DOW);
+  const hasBars = targets.weeklyBreakEven != null && targets.weeklyTarget != null;
+  // The first pay week that STARTS inside the quarter; a week straddling the
+  // quarter line belongs to the quarter it started in.
+  let t = payWeekRange(q.start, PAY_WEEK_START_DOW).start.getTime();
+  if (t < q.start.getTime()) t += WEEK_MS;
+  let counted = 0;
+  let overFloor = 0;
+  let atTarget = 0;
+  let home = 0;
+  for (; t < current.start.getTime(); t += WEEK_MS) {
+    const gross = getWeekGrossEarned(loads, new Date(t), new Date(t + WEEK_MS));
+    if (gross <= 0) {
+      home++;
+      continue;
+    }
+    counted++;
+    if (!hasBars) continue;
+    const status = classify(gross, targets);
+    if (status === "target") {
+      atTarget++;
+      overFloor++;
+    } else if (status === "breakeven") overFloor++;
+  }
+  return { label: q.label, counted, overFloor, atTarget, home, hasBars };
 };

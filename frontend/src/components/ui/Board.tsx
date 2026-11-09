@@ -63,7 +63,7 @@ export const BoardCell = ({
   return to ? (
     <Link
       to={to}
-      className={`group block relative px-[18px] py-4 hover:bg-white/[.02] transition-colors ${className}`}
+      className={`group block relative px-[18px] py-4 hover:bg-ink/[.03] transition-colors ${className}`}
     >
       {body}
     </Link>

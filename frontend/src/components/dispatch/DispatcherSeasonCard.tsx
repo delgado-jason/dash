@@ -2,16 +2,10 @@ import { useMemo, useState } from "react";
 import type { Load } from "@/types/load";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import type { RecapScope } from "@/lib/metrics/recap";
-import {
-  currentSeason,
-  dispatchSeasonLog,
-  type SeasonTrophy,
-} from "@/lib/metrics/dispatcherSeason";
+import { currentSeason, dispatchSeasonLog } from "@/lib/metrics/dispatcherSeason";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
-import { MeterCells } from "@/components/awards/HardwareBoard";
+import { Panel } from "@/components/ui/Panel";
 import { money, rpm as fmtRpm } from "@/lib/format";
-
-const GOLD = "var(--color-hot)";
 
 const Stat = ({
   label,
@@ -22,43 +16,10 @@ const Stat = ({
   value: string;
   sub?: React.ReactNode;
 }) => (
-  <div>
-    <p className="text-[10.5px] uppercase tracking-wide text-faint">
-      {label}
-    </p>
-    <p className="text-lg font-semibold mt-0.5">{value}</p>
-    {sub && <p className="text-[11px] mt-0.5">{sub}</p>}
-  </div>
-);
-
-const TrophyTile = ({ t }: { t: SeasonTrophy }) => (
-  <div
-    className="rounded-xl p-3 text-center border"
-    style={
-      t.earned
-        ? { background: "var(--color-status-aware-bg)", borderColor: "var(--color-amber-hi)" }
-        : { background: "var(--color-well)", borderColor: "var(--color-hairline)", opacity: 0.75 }
-    }
-  >
-    <div className="flex justify-center" style={{ color: t.earned ? GOLD : "var(--color-faint)" }}>
-      <span
-        aria-hidden
-        className={`font-forge font-bold ${t.earned ? "text-amber-hi" : "text-faint"}`}
-        style={{ fontSize: t.earned ? 15 : 13, letterSpacing: "1px" }}
-      >
-        {t.earned ? "WON" : "—"}
-      </span>
-    </div>
-    <p className="text-[12.5px] font-semibold mt-1.5">{t.name}</p>
-    <p
-      className="text-[11px] mt-0.5"
-      style={{ color: t.earned ? GOLD : "var(--color-muted-text)" }}
-    >
-      {t.detail}
-    </p>
-    <div className="mt-2">
-      <MeterCells pct={t.progress} cells={8} />
-    </div>
+  <div className="min-w-0">
+    <p className="ds2-label">{label}</p>
+    <p className="font-condensed font-semibold text-[22px] leading-none mt-1.5 tabular-nums">{value}</p>
+    {sub && <p className="text-[11px] text-faint mt-1">{sub}</p>}
   </div>
 );
 
@@ -68,8 +29,10 @@ const SCOPE_TABS = [
   { value: "year" as RecapScope, label: "Year" },
 ];
 
-// A dispatcher's month/quarter/year season: this period's booked-load recap plus
-// the three earnable period trophies, and a strip of recent finished periods.
+// A dispatcher's month / quarter / year: this period's booked-load figures and
+// a strip of recent completed periods with their load counts. Plain since the
+// Redesign's phase B1 — the three period trophies and their meters were the
+// game's; the engine (dispatcherSeason) still computes them, nothing reads them.
 export const DispatcherSeasonCard = ({
   loads,
   userId,
@@ -101,22 +64,17 @@ export const DispatcherSeasonCard = ({
   );
 
   const target = ladder.target;
-  const rateColor =
+  const rateTone =
     season.avgRpm != null && target != null
       ? season.avgRpm >= target
-        ? "var(--color-status-positive-text)"
-        : "var(--color-amber-hi)"
-      : undefined;
+        ? "text-status-positive-text"
+        : "text-status-aware-text"
+      : "";
 
   return (
-    <section
-      className="rounded-2xl border p-4 mt-4"
-      style={{ background: "var(--color-well)", borderColor: "var(--color-hairline-lo)" }}
-    >
+    <Panel className="p-4" data-testid="dispatcher-season">
       <div className="flex items-center gap-2 flex-wrap mb-3">
-        <span className="text-[11px] tracking-[1.5px] text-faint uppercase">
-          Season
-        </span>
+        <span className="ds2-label">Season</span>
         <span className="text-xs text-faint">· {season.label}</span>
         <div className="ml-auto">
           <SegmentedTabs
@@ -134,71 +92,44 @@ export const DispatcherSeasonCard = ({
           No loads booked this {scope} yet — they'll show up here as you book.
         </p>
       ) : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4">
-            <Stat label="Loads booked" value={String(season.loadsBooked)} />
-            <Stat label="Gross booked" value={money(season.grossBooked)} />
-            <Stat
-              label="Avg rate"
-              value={fmtRpm(season.avgRpm)}
-              sub={
-                season.avgRpm != null && target != null ? (
-                  <span style={{ color: rateColor }}>
-                    {season.avgRpm >= target ? "over" : "under"} {fmtRpm(target)}{" "}
-                    target
-                  </span>
-                ) : undefined
-              }
-            />
-            <Stat
-              label="On-time"
-              value={
-                season.onTimePct == null
-                  ? "—"
-                  : `${Math.round(season.onTimePct * 100)}%`
-              }
-            />
-            <Stat
-              label="Best load"
-              value={season.bestLoad == null ? "—" : money(season.bestLoad)}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2.5">
-            {season.trophies.map((t) => (
-              <TrophyTile key={t.key} t={t} />
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-5 gap-y-4">
+          <Stat label="Loads booked" value={String(season.loadsBooked)} />
+          <Stat label="Gross booked" value={money(season.grossBooked)} />
+          <Stat
+            label="Avg rate"
+            value={fmtRpm(season.avgRpm)}
+            sub={
+              season.avgRpm != null && target != null ? (
+                <span className={rateTone}>
+                  {season.avgRpm >= target ? "over" : "under"} the {fmtRpm(target)} target
+                </span>
+              ) : (
+                "gross per mile"
+              )
+            }
+          />
+          <Stat
+            label="On-time"
+            value={season.onTimePct == null ? "—" : `${Math.round(season.onTimePct * 100)}%`}
+          />
+          <Stat label="Best load" value={season.bestLoad == null ? "—" : money(season.bestLoad)} />
+        </div>
       )}
 
       {log.some((e) => e.loads > 0) && (
-        <div className="flex items-center gap-2 flex-wrap mt-4">
-          <span className="text-[11px] tracking-wide text-faint uppercase mr-1">
-            Season log
-          </span>
+        <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t ds2-cell-rule">
+          <span className="ds2-label mr-1">Completed periods</span>
           {log.map((e) => (
             <span
               key={e.label}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px]"
-              style={{
-                background: "var(--color-well)",
-                borderColor: "var(--color-hairline-lo)",
-                color: "var(--color-dim)",
-              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-hairline-lo px-2.5 py-1 text-[11px] text-dim tabular-nums"
             >
               {e.label}
-              {e.trophies > 0 && (
-                <span style={{ color: GOLD }} className="inline-flex gap-0.5">
-                  {Array.from({ length: e.trophies }, (_, i) => (
-                    <span key={i} aria-hidden className="text-amber-hi" style={{ fontSize: 11 }}>★</span>
-                  ))}
-                </span>
-              )}
+              <span className="text-faint">· {e.loads} load{e.loads === 1 ? "" : "s"}</span>
             </span>
           ))}
         </div>
       )}
-    </section>
+    </Panel>
   );
 };

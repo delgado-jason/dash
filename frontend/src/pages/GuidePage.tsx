@@ -4,14 +4,9 @@ import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { money, rpm } from "@/lib/format";
-import { Trophy, ArrowRight } from "lucide-react";
-import { RatingMedallion } from "@/components/agents/RatingMedallion";
+import { ArrowRight } from "lucide-react";
+import { RatingLabel } from "@/components/agents/RatingLabel";
 import { VendorPips } from "@/components/vendors/VendorPips";
-import {
-  PRESTIGE_META,
-} from "@/components/agents/PrestigeBadge";
-import { Coin, type CoinMetal } from "@/components/forge/Coin";
-import type { PrestigeTier } from "@/lib/metrics/agentLeaderboard";
 import { awardIcon } from "@/components/awards/awardIcons";
 import { PATCH_GUIDE } from "@/lib/awards/patches";
 import { MEDAL_GUIDE } from "@/lib/awards/medals";
@@ -67,13 +62,6 @@ const RATINGS: [number, string][] = [
   [3, "Neutral baseline. No strong feelings either way."],
   [2, "Steer clear unless the load is worth it."],
   [1, "Don't run their freight."],
-];
-
-const TIERS: [PrestigeTier, string][] = [
-  ["contender", "Made a quarterly top 5 (2+ loads that quarter)."],
-  ["all-star", "Won a gold or silver trophy."],
-  ["champion", "Took gold in 3 or more quarters."],
-  ["legend", "Took gold in 8 or more quarters."],
 ];
 
 const Section = ({
@@ -436,9 +424,6 @@ const NAV: { group: string; items: string[] }[] = [
       "The call list — reactivation, prospects, the one question",
       "Agent ratings",
       "Reading the roster — the Go-to score",
-      "The quarterly leaderboard",
-      "Trophies",
-      "Career rank",
     ],
   },
   {
@@ -457,10 +442,7 @@ const NAV: { group: string; items: string[] }[] = [
       "What a dispatcher sees",
       "The Dispatch board",
       "Agents and lanes are graded on gross",
-      "The Dispatcher Card",
-      "Dispatcher achievements — patches and medals",
-      "Dispatcher season and trophies",
-      "The Dispatch Forge",
+      "The dispatcher page",
     ],
   },
 ];
@@ -639,15 +621,29 @@ const GuidePage = () => {
                 Year-to-date income and two margins — operating, and your
                 after-notes (owner's take) margin, which is the one graded
                 against your goal since it's what's actually left after the truck,
-                trailer, and loan notes; the monthly bars and the best month read
-                that same after-notes margin. Covering the month measures income
-                against the mean of the same six P&amp;L months the Market and
-                Expenses price on. Plus the monthly P&amp;L, the margin
-                trend, where the money goes by category, your realized profit per
-                mile, and the notes tracker — how much of this month's notes are
-                covered and the day you're on pace to clear them. (Delivered-but-
-                unsettled money shows on Pulse as your next settlement — it clears
-                every week.)
+                trailer, and loan notes; the monthly bars read that same
+                after-notes margin. Covering the month measures income against
+                the mean of the same six P&amp;L months the Market and Expenses
+                price on. Then the month-by-month P&amp;L and the margin trend,
+                with one sentence under it — "7 of 10 months at or above the
+                goal" — a count of this year's filed months whose after-notes
+                margin met the goal, not a streak, so a miss in the middle does
+                not reset it. The <span className="text-light">Last
+                quarter</span> row reads the last complete calendar quarter: net
+                revenue (P&amp;L income), operating profit, true net (operating
+                profit minus the debt obligations for those months), loads,
+                miles, deadhead %, average rate (gross per loaded mile) and the
+                best lane. The <span className="text-light">Weekly
+                earnings</span> chart shows the last 8 pay weeks (Wednesday to
+                Tuesday), gross earned on delivered loads, with the weekly target
+                as a dashed line and your best completed pay week ever as a plain
+                reference line labelled with its figure and dates; under it, how
+                many completed pay weeks this quarter earned at or above
+                break-even. Plus where the money goes by category, your realized
+                profit per mile, and the notes tracker — how much of this month's
+                notes are covered and the day you're on pace to clear them.
+                (Delivered-but-unsettled money shows on Pulse as your next
+                settlement — it clears every week.)
               </TabLine>
               <TabLine name="Lanes" q="Where does my freight run?">
                 The U.S. map shaded by one metric at a time — what a market pays
@@ -660,16 +656,18 @@ const GuidePage = () => {
                 per mile driven over 12 months, graded on your own rate ladder —
                 then your bench plotted by rate × volume, who you're running with
                 lately (by last worked), revenue concentration (so no one agent
-                owns too much of your book), and who's going cold. It replaces
-                the quarterly race board on this tab.
+                owns too much of your book), and who's going cold.
               </TabLine>
-              <TabLine name="Fleet" q="Is my rig ready to roll?">
-                Your rig at a glance — utilization (how hard the truck runs, the
-                same function the driver card grades), home time (days out), fuel
-                economy, and what's due for service or compliance. Plus the shop
-                log across the year — averaged over the months you have actually
-                logged, a visit on both units counted half to each — the rig's
-                fuel + shop + note per mile (the P&amp;L's all-in cost per mile
+              <TabLine name="Fleet" q="Is the truck ready to roll?">
+                The truck at a glance — its cost to run per mile (fuel + shop +
+                note, with its parts), the odometer, the next service with its
+                meter, service, compliance and miles per month, and two gauges:
+                fuel economy and utilization (how hard the truck runs, the same
+                function the driver card grades) — each a plain instrument, one
+                needle on a hairline arc. Home time (days out) sits beside them.
+                Plus the shop log across the year — averaged over the months you
+                have actually logged, a visit on both units counted half to each —
+                the truck's fuel + shop + note per mile (the P&amp;L's all-in cost per mile
                 stays on Expenses, and the rate to book stands on that one), the
                 payoff trackers (the statement balance less the drafts since it
                 was read), and a day-by-day heatmap of earning vs. home vs. idle.
@@ -3114,19 +3112,32 @@ const GuidePage = () => {
             sources={[{ label: "Agents", to: "/agents" }]}
           >
             <p className="text-sm text-muted-text mb-4">
-              You set these by hand — your call on who to work with. They show
-              as a medallion on every agent, highest first.
+              You set these by hand — your call on who to work with. Each shows
+              as a plain label on every agent card ("GOOD · 4 / 5") and on the
+              agent's page, where it also carries the day you last changed it
+              ("GOOD · 4 / 5 · set Jun 3, 2026"). The colour means only good,
+              caution or bad.
             </p>
             <div className="flex flex-col gap-3">
               {RATINGS.map(([r, desc]) => (
                 <div key={r} className="flex items-center gap-4">
-                  <div className="w-32 shrink-0">
-                    <RatingMedallion rating={r} />
+                  <div className="w-36 shrink-0">
+                    <RatingLabel rating={r} />
                   </div>
                   <p className="text-sm text-muted-text">{desc}</p>
                 </div>
               ))}
             </div>
+            <p className="text-sm text-muted-text mt-4">
+              Beside the rating on the agent's page sits their{" "}
+              <span className="text-light">12-month all-in rate</span> and its
+              grade word, from the same engine as the agents leaderboard: all-in
+              gross ÷ every mile driven, for their delivered loads picked up in
+              the last 12 months, graded on your booking ladder —{" "}
+              <span className="text-light">STRONG · TARGET · ABOVE FLOOR ·
+              UNDER WALK-AWAY</span>. The grade waits for three delivered loads
+              lifetime; until then it reads "not yet graded · 2 of 3 loads".
+            </p>
           </Section>
 
           <Section
@@ -3234,113 +3245,6 @@ const GuidePage = () => {
                 only on that class's loads and only with three of them.
               </Why>
             </Metric>
-          </Section>
-
-          <Section
-            title="The quarterly leaderboard"
-            sources={[{ label: "Agents", to: "/agents" }]}
-          >
-            <p className="text-sm text-muted-text">
-              Ratings are your opinion; this is the scoreboard. Every calendar
-              quarter, your agents are ranked by the revenue on the loads they
-              actually delivered. Two things fall out of it — trophies, and a
-              career rank — and both stick with the agent for good.
-            </p>
-            <Formula>
-              rank = Σ GROSS revenue on delivered loads, per calendar quarter
-              <br />
-              board = top 5 (2+ loads) · podium = #1 &amp; #2 (3+ loads)
-            </Formula>
-            <Why>
-              The number is <span className="text-light">gross</span> — the full
-              customer rate the agent booked, not your net after the carrier's
-              cut — because that's the market value they delivered (see{" "}
-              <a
-                href="#agents-and-lanes-are-graded-on-gross"
-                className="text-status-info-text hover:underline"
-              >
-                graded on gross
-              </a>
-              ). Only <span className="text-light">delivered</span> loads count,
-              and only <span className="text-light">completed</span> quarters —
-              the one you're in stays live until it closes. Making the{" "}
-              <span className="text-light">board</span> takes just 2 loads and a
-              top-5 finish; a <span className="text-light">trophy</span> needs 3
-              and a podium, so you reach the board more easily than you win the
-              quarter.
-            </Why>
-          </Section>
-
-          <Section
-            title="Trophies"
-            sources={[{ label: "Agents", to: "/agents" }]}
-          >
-            <p className="text-sm text-muted-text mb-4">
-              Awarded each quarter to the agents who ran at least 3 loads, by
-              gross delivered revenue.
-            </p>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-4">
-                <span
-                  className="w-24 shrink-0 flex items-center gap-1.5 font-medium"
-                  style={{ color: AMBER_HI }}
-                >
-                  <Trophy size={18} /> Gold
-                </span>
-                <p className="text-sm text-muted-text">
-                  Finished #1 in delivered revenue that quarter.
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <span
-                  className="w-24 shrink-0 flex items-center gap-1.5 font-medium"
-                  style={{ color: "var(--color-muted-text)" }}
-                >
-                  <Trophy size={18} /> Silver
-                </span>
-                <p className="text-sm text-muted-text">
-                  Finished #2 that quarter.
-                </p>
-              </div>
-            </div>
-          </Section>
-
-          <Section
-            title="Career rank"
-            sources={[{ label: "Agents", to: "/agents" }]}
-          >
-            <p className="text-sm text-muted-text mb-4">
-              Boards and trophies roll up into a single rank — the struck coin
-              in the corner of the agent's card. It never clutters and only ever
-              levels up, climbing Bronze → Silver → Gold →{" "}
-              <span className="text-light">Platinum</span>, the foil-finish coin
-              at the very top.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {TIERS.map(([tier, desc]) => (
-                <div key={tier} className="flex items-center gap-3">
-                  <Coin
-                    metal={({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"}
-                    size={44}
-                  >
-                    {PRESTIGE_META[tier].label.charAt(0)}
-                  </Coin>
-                  <div>
-                    <p
-                      className="font-forge font-bold text-lg"
-                      style={{ color: PRESTIGE_META[tier].fill }}
-                    >
-                      {PRESTIGE_META[tier].label}
-                    </p>
-                    <p className="text-sm text-muted-text">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-muted-text mt-4">
-              The full record — every board, gold, and silver by quarter — lives
-              on each agent's own page.
-            </p>
           </Section>
 
           <div
@@ -4152,9 +4056,9 @@ const GuidePage = () => {
               board, Score a Load, The Foreman, Loads, Trips, Lanes, Agents,
               Vendors, Facilities, the fleet (Trucks, Trailers, Drivers),
               Maintenance, Relationships, her own{" "}
-              <span className="text-light">Recap</span>, Compliance, The Forge,
-              and this Guide. The money pages — Expenses, Plan, Cash Flow,
-              Market, Per&nbsp;Diem, Fuel, Garage, Trophy Room, and Settings —
+              <span className="text-light">Recap</span>, Compliance, and this
+              Guide. The money pages — Expenses, Plan, Cash Flow, Market,
+              Per&nbsp;Diem, Fuel, and Settings —
               are kept off a dispatcher's menu and pages — a boundary the app
               keeps, not the server; dash is its own only client — so the
               P&amp;L stays out of her day-to-day. Her Recap covers
@@ -4166,8 +4070,8 @@ const GuidePage = () => {
           <Section title="The Dispatch board">
             <p className="text-sm text-muted-text">
               A dispatcher's dashboard leads with the operational picture
-              instead of the money: how many loads are{" "}
-              <span className="text-light">booked</span> and{" "}
+              instead of the money. Five doors across the top:{" "}
+              <span className="text-light">booked</span>,{" "}
               <span className="text-light">in transit</span>, loads delivered
               this month, <span className="text-light">detention owed</span>,
               and <span className="text-light">deadhead</span> this month
@@ -4175,211 +4079,140 @@ const GuidePage = () => {
               <span className="text-light">hours</span>, not dollars — the rate
               per hour isn't settled until it lands on your statement, so the
               board tracks the wait you're owed and lets you mark it paid once
-              collected. Your rank rides the top bar — it climbs on lifetime
-              loads booked, and the next tier is always shown. The booking
-              floor and week pace share the same meter as the owner's board,
-              and the <span className="text-light">same numbers</span>: the
-              week's earned, committed, and booked-ahead gross count every load
-              landing this pay week, whoever booked it, so your pace and the
-              owner's pace agree to the dollar. The board's counts — booked,
-              in transit, loads this month, detention — are the whole
-              business's too. What stays{" "}
-              <span className="text-light">yours alone</span> is the HEAT
-              streak, your rank, and your awards: those are computed only from
-              loads with you as "Booked by". Your goals are the business's
-              goals; your trophies are your own. The target sits at about
-              three-quarters of the track with overdrive room past it for the
-              weeks you beat it. Below the pace plate and the heat streak sit two
-              searchable, paginated tables —{" "}
+              collected. These counts are the whole business's.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              The <span className="text-light">Booking floor &amp; your week
+              pace · gross</span> card carries the booking ladder with its
+              needle and the pace meter: earned, committed, projected, booked
+              ahead and the daily target. It is account-wide — every load
+              landing this pay week counts, whoever booked it — and it uses the
+              same numbers as the owner's board, so your pace and the owner's
+              pace agree to the dollar.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              Beside it, <span className="text-light">Your bookings</span> —
+              scored only on loads with you as "Booked by" (cancelled loads and
+              TONUs never count):
+            </p>
+            <ul className="text-sm text-muted-text space-y-2 mt-2 list-disc pl-5">
+              <li>
+                <span className="text-light">Booked over the floor</span> — your
+                average booked rate, gross per driven mile, against the
+                walk-away floor of the booking ladder ("$4.62/mi · $0.45 over
+                the $4.17 floor"). Loads with unknown driven miles are left out
+                and counted beside it.
+              </li>
+              <li>
+                <span className="text-light">Detention collected</span> — hours
+                of detention on your loads that were confirmed billable and
+                paid.
+              </li>
+              <li>
+                <span className="text-light">On-time</span> — on-time stops as a
+                share of graded stops (an appointment and an arrival) on your
+                delivered loads.
+              </li>
+              <li>
+                <span className="text-light">Loads this week</span> — the loads
+                you booked that land in this pay week.
+              </li>
+            </ul>
+            <p className="text-sm text-muted-text mt-3">
+              One more account-wide figure:{" "}
+              <span className="text-light">weeks over break-even this
+              quarter</span>, read as "7 of 9". Of the completed pay weeks in
+              the current calendar quarter that delivered freight, it counts how
+              many earned gross at or above the weekly break-even floor, and
+              beside it how many reached the weekly target. Weeks with no
+              delivered freight (home weeks) are not counted either way. The
+              floor and target are the same weekly gross figures the pace meter
+              uses.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              Below sit two searchable, paginated tables —{" "}
               <span className="text-light">Loads</span> (with the load on the
               road pulled out on top, and filters for booked / in&#8209;transit
               / delivered / detention) and{" "}
-              <span className="text-light">Agents</span> — then the
-              Top&nbsp;Agents leaderboard. Net revenue, RPM, and profit never
-              appear.
+              <span className="text-light">Agents</span>. Net revenue, RPM, and
+              profit never appear.
             </p>
           </Section>
 
           <Section title="Agents and lanes are graded on gross">
             <p className="text-sm text-muted-text">
               Everywhere an <span className="text-light">agent</span> or a{" "}
-              <span className="text-light">lane</span> is ranked — the
-              Top&nbsp;Agents leaderboard on either dashboard, the Agents table
-              — the number is <span className="text-light">gross</span> revenue
+              <span className="text-light">lane</span> is ranked on the
+              dispatcher's side — the Agents table on her board and the agent
+              pages — the number is <span className="text-light">gross</span> revenue
               (the full customer rate), not net. An agent who books a strong
               load did their job; they shouldn't be marked down because a
               deadhead leg or a cost of yours thinned the net. Net is your
               operational result and lives on the owner side; gross is what the
-              agent and the lane actually delivered.
-            </p>
-          </Section>
-
-          <Section title="The Dispatcher Card">
-            <p className="text-sm text-muted-text">
-              Every dispatcher has their own card — an avatar, a{" "}
-              <span className="text-light">career rank</span> that climbs on
-              lifetime loads booked (Rookie Dispatcher → Load Wrangler → Freight
-              Closer → Rate Hawk → Dispatch Legend), a season grade, and five
-              booking stats: <span className="text-light">loads booked</span>,{" "}
-              <span className="text-light">gross booked</span>, the{" "}
-              <span className="text-light">average booked rate</span> — gross
-              per driven mile, the same rate Review grades — against your
-              walk-away floor,{" "}
-              <span className="text-light">detention collected</span>, and{" "}
-              <span className="text-light">on-time %</span>. It sits at the top
-              of the dispatch board and opens to a full page with the rank
-              ladder.
-            </p>
-            <p className="text-sm text-muted-text mt-3">
-              The card counts only the loads a person actually booked. Every
-              load records a <span className="text-light">"Booked by"</span> —
-              it defaults to whoever enters it, so a dispatcher's own loads
-              credit to them automatically. As the owner you'll see a Booked-by
-              picker on the load form to hand credit to a dispatcher for a load
-              you entered, and you can open any teammate's card from{" "}
-              <Link
-                to="/settings"
-                className="text-status-info-text hover:underline"
-              >
-                Settings → Team
-              </Link>
-              . Everything on the card is gross per driven mile, on the booking
-              ladder — never net, never per loaded mile. A load whose driven
-              miles are unknown (no odometer window, no known deadhead) is left
-              out of the rate and counted beside it.
-            </p>
-          </Section>
-
-          <Section
-            title="Dispatcher achievements — patches and medals"
-            sources={[{ label: "Dispatch board", to: "/dashboard" }]}
-          >
-            <p className="text-sm text-muted-text">
-              Her page carries two kinds of earned awards, and they pop the same
-              way the driver's do. <span className="text-light">Patches</span>{" "}
-              are the everyday grind — Deal Closer, Big Month, Rate Hawk,
-              Clockwork (on-time), Quick Turn, Oversize Ace, Lean Machine,
-              Bounty Hunter, Right Hand, Iron Booker, and Backhaul&nbsp;Boss
-              (loads booked out of the market where the last one delivered) —
-              each climbs a ×count and celebrates at milestones as she books.{" "}
-              <span className="text-light">Medals</span> are the rare, hard
-              feats you can't just grind out — Steal (a load the scorer rates a
-              steal), Double-Up (2× break-even), Superload, Whale (a huge single
-              load), Perfect Week, Grand&nbsp;Slam (a steal that's on-time with
-              under 10% deadhead), and Big Week. All of it is scored off her own
-              bookings, on gross.
-            </p>
-            <Formula>
-              patches use the same adaptive bar · medals are the rare fixed
-              feats
-              <br />
-              every stat is scored on her bookings only (booked_by = her), on
-              gross
-            </Formula>
-            <Why>
-              Same two engines as the driver's awards, pointed at booking
-              instead of driving: a patch bar ratchets up off her own top-5
-              history, and a medal fires on a one-off hard feat. The deadhead a
-              Lean Machine or Grand Slam reads is the load's{" "}
-              <span className="text-light">actual odometer deadhead</span> once
-              it has run — the planning field is never counted (see{" "}
+              agent and the lane actually delivered. The owner's leaderboard on
+              the Agents tab grades desks by their all-in rate (see{" "}
               <a
-                href="#deadhead"
+                href="#the-agents-leaderboard-by-desk"
                 className="text-status-info-text hover:underline"
               >
-                Deadhead
+                The agents leaderboard — by desk
               </a>
               ).
-            </Why>
+            </p>
           </Section>
 
           <Section
-            title="Dispatcher season and trophies"
+            title="The dispatcher page"
             sources={[
               { label: "Dispatch board", to: "/dashboard" },
               { label: "Recap", to: "/my-recap" },
             ]}
           >
             <p className="text-sm text-muted-text">
-              Her page also carries a{" "}
-              <span className="text-light">season card</span> — a month, quarter,
-              or year recap of the loads she booked (gross, on her bookings
-              only): loads, gross, average rate against target, on-time, and her
-              best load. Three <span className="text-light">period trophies</span>{" "}
-              sit under it, each tracked against a personal bar with a{" "}
-              <span className="text-light">progress meter</span> underneath, so a
-              locked trophy shows how close it is:
+              Every dispatcher has their own page, reached from her avatar chip
+              on the dispatch board (or, for the owner, from Settings → Team).
+              It is a plain page: the avatar and name, then her booking
+              figures — <span className="text-light">loads booked</span>{" "}
+              (lifetime and this month),{" "}
+              <span className="text-light">gross booked</span>,{" "}
+              <span className="text-light">booked over the floor</span> (her
+              average booked rate, gross per driven mile, against your
+              walk-away floor),{" "}
+              <span className="text-light">detention collected</span>, and{" "}
+              <span className="text-light">on-time</span>. Under them, a{" "}
+              <span className="text-light">Season</span> card with Month,
+              Quarter and Year tabs: loads booked, gross booked, average rate
+              against the target rung, on-time, best load, and a strip of recent
+              completed periods with their load counts.
             </p>
-            <div className="flex flex-col gap-1.5 mt-3">
-              <p className="text-sm text-muted-text">
-                <span className="text-light">Booking Champion</span> — a
-                big-volume period: 4 loads a month, 12 a quarter, 40 a year. The
-                bars are sized per booker to the shop's real volume (roughly half
-                of what the whole operation runs), so one person can actually
-                reach them.
-              </p>
-              <p className="text-sm text-muted-text">
-                <span className="text-light">Rate Champion</span> — the period
-                averaged at or above your target rate.
-              </p>
-              <p className="text-sm text-muted-text">
-                <span className="text-light">Perfect Period</span> — every load
-                in the period at or above target. The hard one.
-              </p>
-            </div>
             <p className="text-sm text-muted-text mt-3">
-              Her <span className="text-light">Recap</span> page is the poster
-              version: pick Month, Quarter, or Year, and step to earlier periods
-              with the arrows. It leads with booked gross, loads, and average
+              The page counts only the loads a person actually booked. Every
+              load records a <span className="text-light">"Booked by"</span> —
+              it defaults to whoever enters it, so a dispatcher's own loads
+              credit to them automatically. As the owner you'll see a Booked-by
+              picker on the load form to hand credit to a dispatcher for a load
+              you entered, and you can open any teammate's page from{" "}
+              <Link
+                to="/settings"
+                className="text-status-info-text hover:underline"
+              >
+                Settings → Team
+              </Link>
+              . Everything on the page is gross per driven mile, on the booking
+              ladder — never net, never per loaded mile. A load whose driven
+              miles are unknown (no odometer window, no known deadhead) is left
+              out of the rate and counted beside it.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              Her <span className="text-light">Recap</span> page reads the same
+              loads by period: pick Month, Quarter, or Year, and step to earlier
+              periods with the arrows. It shows booked gross, loads, and average
               gross $/mile, then best load, on-time %, detention collected (in
-              hours), and her best pay-week, then top agent and top lane, then
-              the three trophies with their meters. The footer's best streak is
-              her career best from her own HEAT streak. Older periods read empty
-              on purpose: every load booked before dispatcher logins existed is
+              hours), and her best pay week, then top agent and top lane — all
+              on the loads she booked, in gross. Older periods read empty on
+              purpose: every load booked before dispatcher logins existed is
               credited to the owner.
             </p>
-            <Why>
-              A locked trophy shows what's still missing ("3 / 4 loads"), so it
-              reads as a goal, not a scold. They're personal on purpose: with one
-              person booking most of the freight, a head-to-head "champion" would
-              just be the same name every period — these reward your own best
-              month instead. Earn one and it pops like a patch does.
-            </Why>
-          </Section>
-
-          <Section
-            title="The Dispatch Forge"
-            sources={[{ label: "The Forge", to: "/forge" }]}
-          >
-            <p className="text-sm text-muted-text">
-              Everything a dispatcher earns lives in one place —{" "}
-              <span className="text-light">The Dispatch Forge</span>, her own room
-              reached from the <span className="text-light">Forge</span> entry in
-              the menu. It gathers her rank and progress to the next tier, her{" "}
-              <span className="text-light">coins</span> (medals) and{" "}
-              <span className="text-light">tags</span> (patches), and this
-              quarter's <span className="text-light">season crowns</span> — all
-              scored on the loads she booked.
-            </p>
-            <p className="text-sm text-muted-text mt-3">
-              It leads with{" "}
-              <span className="text-light">Next up — within reach</span>: the
-              handful of achievements she's closest to, most-progressed first, so
-              there's always a concrete next thing to chase. Every award — earned
-              or locked — carries a short line on exactly{" "}
-              <span className="text-light">how to earn it</span>, and booking a
-              steal, running a clean week, or extending her streak fires the same
-              celebration the owner gets.
-            </p>
-            <Why>
-              Her <span className="text-light">HEAT</span> streak is graded
-              against her own typical week — the median of her recent weekly
-              booked gross over the trailing quarter — not the shop's cost
-              target. A week at three-quarters of her usual keeps it hot. That
-              keeps the streak winnable and seasonal: the bar tracks the market
-              she's actually booking in, and it's hers, not the whole
-              operation's.
-            </Why>
           </Section>
         </main>
       </div>

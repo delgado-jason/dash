@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { profitRows, ytdRows, ytdSummary, lastFiledMonth, monthIsFiled } from "./profitSummary";
+import { profitRows, ytdRows, ytdSummary, lastFiledMonth, monthIsFiled, monthsAtGoal } from "./profitSummary";
 import type { ExpensePeriod } from "@/types/expense";
 
 const p = (month: string, income: number | null, cogs: number | null, exp: number | null): ExpensePeriod => ({
@@ -50,5 +50,23 @@ describe("lastFiledMonth / monthIsFiled", () => {
   it("says whether the month holding a day is filed", () => {
     expect(monthIsFiled(rows, "2026-02-14")).toBe(true);
     expect(monthIsFiled(rows, "2026-03-02")).toBe(false);
+  });
+});
+
+describe("monthsAtGoal — a count, not a streak (B1)", () => {
+  // notes 100 → after-notes margins: Jan 45%, Feb 10%, Mar 40%, Apr 50%
+  const rows = profitRows(
+    [p("2026-01-01", 2000, 500, 500), p("2026-02-01", 1000, 400, 400), p("2026-03-01", 1000, 300, 200), p("2026-04-01", 2000, 400, 500)],
+    100,
+  );
+
+  it("counts every month at or above the goal — a miss in the middle erases nothing", () => {
+    expect(monthsAtGoal(rows, 0.2)).toEqual({ at: 3, of: 4 });
+    expect(monthsAtGoal(rows, 0.45)).toEqual({ at: 2, of: 4 }); // Jan at exactly 45% counts
+  });
+
+  it("no goal or no filed month → null, never 0 of 0", () => {
+    expect(monthsAtGoal(rows, null)).toBeNull();
+    expect(monthsAtGoal([], 0.2)).toBeNull();
   });
 });

@@ -11,15 +11,15 @@ import { itemToCheckable, cdlToCheckable, computeComplianceDue, type ComplianceL
 import { mpgWindows, monthlyFuelPrice } from "@/lib/metrics/fuelEconomy";
 import { money, rpm, dieselPrice } from "@/lib/format";
 import { Board, BoardCell } from "@/components/ui/Board";
-import { ForgedPlate } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
 import { PaceMeter } from "@/components/ui/PaceMeter";
 import { GaugeDial } from "@/components/ui/GaugeDial";
-import { CountUp } from "@/components/ui/CountUp";
-import { mileMilestone, fmtMiles } from "@/lib/metrics/mileClub";
 
+// Plain since the Redesign's phase B1: "THE RIG" plate, the mile-club badge and
+// the count-up were the game's; the figures stay, on the Panel every page uses.
 
 const DAY_FILL: Record<DayStatus, string> = {
-  underload: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+  underload: "var(--color-amber)",
   home: "var(--color-plate-b)",
   idle: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))",
 };
@@ -167,7 +167,7 @@ export const FleetTab = ({
   const dieselGap = paidPerGal != null && fleet.nationalDiesel != null ? paidPerGal - fleet.nationalDiesel : null;
 
   if (fleet.loading)
-    return <div className="text-sm text-muted-text py-12 text-center">Loading your rig…</div>;
+    return <div className="text-sm text-muted-text py-12 text-center">Loading your truck…</div>;
   if (!truck)
     return (
       <div className="text-sm text-muted-text py-12 text-center">
@@ -210,28 +210,21 @@ export const FleetTab = ({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* THE RIG — the forged surface: what she costs to run, and the next
-          service she's rolling toward. (Mile clubs demoted to a badge — a
-          506-week chase is no chase; clubs stay as trophies.) */}
+      {/* the truck's cost to run, and the next service she's rolling toward */}
       {(() => {
         const odo = Number(truck.current_odometer) || 0;
-        const club = mileMilestone(odo);
         const svc = nextSoon ?? dues.find((d) => d.due.level === "overdue") ?? null;
         const interval = svc?.item?.interval_miles != null ? Number(svc.item.interval_miles) : null;
         const remaining = svc?.due.milesRemaining ?? null;
         const consumed =
           interval != null && remaining != null ? Math.max(0, interval - remaining) : null;
         return (
-          <ForgedPlate chamfer tilt className="p-5">
+          <Panel className="p-5" data-testid="truck-card">
             <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6">
               <div>
-                <p className="ds2-label">Truck {truck.unit_number} — the rig</p>
-                <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
-                  {costPerMile != null ? (
-                    <CountUp value={costPerMile} format={(n) => rpm(n)} />
-                  ) : (
-                    "—"
-                  )}{" "}
+                <p className="ds2-label">Truck {truck.unit_number} · cost to run</p>
+                <p className="font-condensed font-semibold text-[34px] leading-none mt-1.5 tabular-nums">
+                  {costPerMile != null ? rpm(costPerMile) : "—"}{" "}
                   <span className="text-[15px] text-dim font-condensed tracking-normal">
                     fuel + shop + note, per mile
                   </span>
@@ -239,7 +232,7 @@ export const FleetTab = ({
                 <p className="text-[11.5px] text-faint mt-1">
                   {costPerMile != null
                     ? costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")
-                    : "forges after a full-tank fuel window in the last 30 days"}
+                    : "needs a full-tank fuel window in the last 30 days"}
                   {pnlCostPerMile != null && (
                     <>
                       {" "}· the P&amp;L's all-in <span className="text-dim tabular-nums">{rpm(pnlCostPerMile)}/mi</span>
@@ -247,10 +240,7 @@ export const FleetTab = ({
                     </>
                   )}
                   {" · "}
-                  <span className="text-dim tabular-nums">{odo.toLocaleString("en-US")} on the clock</span>
-                  {club.next ? (
-                    <span className="text-faint"> · {fmtMiles(club.next)} club is {club.toNext.toLocaleString("en-US")} mi out</span>
-                  ) : null}
+                  <span className="text-dim tabular-nums">{odo.toLocaleString("en-US")} mi on the odometer</span>
                 </p>
                 {svc && consumed != null && interval != null ? (
                   <>
@@ -272,7 +262,7 @@ export const FleetTab = ({
                   </p>
                 )}
               </div>
-              <div className="md:border-l md:border-white/10 md:pl-6 flex flex-col justify-center gap-3">
+              <div className="md:border-l md:border-hairline md:pl-6 flex flex-col justify-center gap-3">
                 <div>
                   <p className="ds2-label">Service</p>
                   <p className={`font-condensed font-semibold text-[17px] mt-1 ${counts.overdue > 0 ? "text-status-negative-text" : nextSoon ? "text-amber-light" : "text-ink"}`}>
@@ -295,7 +285,7 @@ export const FleetTab = ({
                 </div>
               </div>
             </div>
-          </ForgedPlate>
+          </Panel>
         );
       })()}
 
@@ -361,7 +351,7 @@ export const FleetTab = ({
           {trailerName && <p className="text-[11px] text-muted-text mt-0.5">pulling a {trailerName} {trailer?.trailer_type} · #{trailer?.unit_number}</p>}
 
           <div className="flex h-[22px] rounded-md overflow-hidden my-2.5" style={{ border: "1px solid var(--color-hairline)" }}>
-            {uUL > 0 && <div className="flex items-center justify-center text-[9.5px] font-bold" style={{ width: `${uUL}%`, background: "linear-gradient(180deg,var(--color-hot),var(--color-amber))", color: "var(--color-canvas)" }}>{util != null ? pct(util) : ""} rolling</div>}
+            {uUL > 0 && <div className="flex items-center justify-center text-[9.5px] font-bold" style={{ width: `${uUL}%`, background: "var(--color-amber)", color: "var(--color-on-amber)" }}>{util != null ? pct(util) : ""} rolling</div>}
             {uHome > 0 && <div style={{ width: `${uHome}%`, background: "var(--color-plate-b)" }} />}
             {uIdle > 0 && <div style={{ width: `${uIdle}%`, background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />}
           </div>
@@ -470,7 +460,7 @@ export const FleetTab = ({
         </div>
 
         <div className="ds2-board p-4">
-          <H3 right={<span className="normal-case tracking-normal font-normal">per mile · the rig's own running cost</span>}>Fuel + shop + note</H3>
+          <H3 right={<span className="normal-case tracking-normal font-normal">per mile · the truck's own running cost</span>}>Fuel + shop + note</H3>
           {costPerMile == null ? (
             <p className="text-xs text-muted-text">
               Needs a full-tank fuel window closed in the last 30 days — fuel is
@@ -494,7 +484,7 @@ export const FleetTab = ({
               <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "var(--color-hairline-lo)" }}>
                 <span className="font-bold">{rpm(costPerMile)} total / mi</span>
                 <span className="text-muted-text">
-                  the rig's own running cost
+                  the truck's own running cost
                   {pnlCostPerMile != null ? ` · the P&L's all-in is ${rpm(pnlCostPerMile)}` : " · not the P&L's all-in"}
                 </span>
               </div>
@@ -528,7 +518,7 @@ export const FleetTab = ({
           </div>
         </div>
         <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-2.5 flex-wrap">
-          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "linear-gradient(180deg,var(--color-hot),var(--color-amber))" }} />under a load (earning)</span>
+          <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "var(--color-amber)" }} />under a load (earning)</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />home</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />idle</span>
         </div>
