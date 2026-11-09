@@ -191,7 +191,7 @@ const Question = ({
   children: ReactNode;
 }) => (
   <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-2 py-3 border-t border-hairline-lo">
-    <span className="font-display text-[20px] text-amber-hi leading-none pt-0.5">{n}</span>
+    <span className="font-condensed font-semibold tabular-nums text-[20px] text-amber-hi leading-none pt-0.5">{n}</span>
     <div className="min-w-0">
       <p className="font-condensed text-[14px] text-ink flex items-center gap-2 mb-2">
         {text}
@@ -205,7 +205,7 @@ const Question = ({
 const Stat = ({ label, value, sub }: { label: string; value: string; sub: string | null }) => (
   <div className="min-w-0">
     <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">{label}</p>
-    <p className="font-display text-[24px] text-ink leading-none mt-1 truncate tabular-nums">{value}</p>
+    <p className="font-condensed font-semibold text-[24px] text-ink leading-none mt-1 truncate tabular-nums">{value}</p>
     {sub && <p className="text-[12px] text-dim mt-1 truncate">{sub}</p>}
   </div>
 );

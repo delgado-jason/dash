@@ -218,18 +218,20 @@
   --t-cat6: #8a8f28;
 }
 
-/* Design System v2 — motion tokens, mirrored in src/theme/motion.ts for
-   GSAP. Motion always plays: the app deliberately does not honor
-   prefers-reduced-motion (owner's decision, 2026-08-08). */
-:root {
-  --t-fast: 120ms;
-  --t-quick: 240ms;
-  --t-base: 500ms;
-  --t-slow: 900ms;
-  --ease-mech: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-settle: cubic-bezier(0.22, 1.4, 0.36, 1);
-  --ease-strike-in: cubic-bezier(0.55, 0, 1, 0.45);
-  --ease-slam: cubic-bezier(0.2, 1.6, 0.4, 1);
+/* Motion (the Redesign, call B3, nodded 2026-11-08): state changes are short
+   — Tailwind's transition utilities and the 120–150 ms rules below — and the
+   device's reduced-motion setting is honoured. This reverses the Aug 8 2026
+   decision that motion always plays; the count-ups, pops and ceremonies that
+   needed GSAP left with the game layer. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* --------------------------------------------------------

@@ -374,10 +374,7 @@ export const ScheduleTab = ({
         {error && <p className="text-destructive text-sm mb-3">{error}</p>}
         <div className="flex gap-2 justify-center">
           <button
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-            style={{
-              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-            }}
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
             disabled={busy}
             onClick={() => run(async () => void (await seedMaintenanceItems()))}
           >

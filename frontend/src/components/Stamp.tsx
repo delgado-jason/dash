@@ -10,7 +10,7 @@ export const Stamp = ({
   size?: "sm" | "md";
 }) => (
   <span
-    className={`inline-block rotate-[-6deg] font-condensed font-semibold uppercase rounded ${
+    className={`inline-block font-condensed font-semibold uppercase rounded ${
       size === "sm" ? "text-[11px] px-2 py-0" : "text-sm px-2.5 py-0.5"
     }`}
     style={{ border: `3px double ${color}`, color, letterSpacing: "2px" }}

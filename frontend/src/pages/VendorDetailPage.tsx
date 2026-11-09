@@ -305,11 +305,7 @@ const VendorDetailPage = () => {
           )}
           <button
             onClick={() => setShowRating(true)}
-            className="mt-3 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] text-canvas"
-            style={{
-              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow: "0 4px 10px color-mix(in srgb, var(--color-amber) 25%, transparent)",
-            }}
+            className="mt-3 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] bg-amber text-on-amber"
           >
             RE-RATE — SAY WHY
           </button>

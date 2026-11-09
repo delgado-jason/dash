@@ -1165,7 +1165,7 @@ export const LoadDetailPage = () => {
             <>
               <div className="ds2-well mt-2.5 px-3.5 py-2.5 flex justify-between items-baseline">
                 <span className="text-[10.5px] font-semibold tracking-[.14em] uppercase text-amber-hi">Your net</span>
-                <span className="font-display text-[24px] text-amber-hi tabular-nums">
+                <span className="font-condensed font-semibold text-[24px] text-amber-hi tabular-nums">
                   {moneyCents(net)}
                 </span>
               </div>

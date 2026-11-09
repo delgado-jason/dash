@@ -96,7 +96,7 @@ const ClockCells = ({ fill, level }: { fill: number; level: ComplianceLevel }) =
                   }
                 : warm
                   ? {
-                      background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                      background: "var(--color-amber)",
                       border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
                       boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                     }
@@ -593,7 +593,7 @@ const CompliancePage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums">
             {summary.valid + summary.expiring + summary.expired} PAPERS
           </span>
           <span className={`font-condensed font-semibold text-[12px] tracking-[.1em] uppercase ${grounded ? "text-status-negative-text" : "text-status-positive-text"}`}>
@@ -802,8 +802,7 @@ const CdlForm = ({
           CANCEL
         </button>
         <button
-          className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-          style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
+          className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
           disabled={busy}
           onClick={() =>
             onSave(driver, {

@@ -234,7 +234,7 @@ const MaintenancePage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-3">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums">
             {items.length} CLOCK{items.length === 1 ? "" : "S"}
           </span>
           {counts.overdue > 0 && (

@@ -299,8 +299,7 @@ const LoadsPage = () => {
         <h1 className="font-display text-[26px] tracking-[.06em] leading-none">LOADS</h1>
         <span className="flex-1" />
         <button
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] text-canvas hover:brightness-105"
-          style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))", boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)" }}
+          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] bg-amber text-on-amber hover:brightness-105"
           onClick={() => setShowCreateForm(true)}
         >
           + CREATE LOAD
@@ -309,7 +308,7 @@ const LoadsPage = () => {
 
       {/* the answering line — sums whatever the filters currently show */}
       <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
-        <span className="font-display text-[22px] tracking-[.03em] tabular-nums">
+        <span className="font-condensed font-semibold text-[22px] tabular-nums">
           {viewCount} load{plural(viewCount)}
         </span>
         <span className="text-[12px] text-faint">in this view ·</span>

@@ -729,7 +729,7 @@ const CashFlowPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 pb-4 pt-1">
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
                   <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel · pace of the last four running weeks</p>
-                  <p className="font-display text-[24px] text-amber-hi mt-1">
+                  <p className="font-condensed font-semibold tabular-nums text-[24px] text-amber-hi mt-1">
                     {fuelPace != null ? `${money(fuelPace)}/wk` : "no running week on the log"}
                   </p>
                   <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
@@ -746,7 +746,7 @@ const CashFlowPage = () => {
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
                   <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Deductions · two buckets · ex-advances</p>
-                  <p className="font-display text-[24px] text-amber-hi mt-1">
+                  <p className="font-condensed font-semibold tabular-nums text-[24px] text-amber-hi mt-1">
                     {buckets.standard != null ? money(buckets.standard) : "—"}
                     <span className="text-[15px] text-faint"> · </span>
                     {buckets.firstOfMonth != null ? money(buckets.firstOfMonth) : "—"}
@@ -758,7 +758,7 @@ const CashFlowPage = () => {
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
                   <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Escrow balances</p>
-                  <p className="font-display text-[24px] mt-1" style={{ color: "var(--color-chart-blue)" }}>
+                  <p className="font-condensed font-semibold tabular-nums text-[24px] mt-1" style={{ color: "var(--color-chart-blue)" }}>
                     {settlements[0]?.escrow_tractor == null && settlements[0]?.escrow_trailer == null
                       ? "—"
                       : moneyCents(Number(settlements[0]?.escrow_tractor ?? 0) + Number(settlements[0]?.escrow_trailer ?? 0))}
@@ -1064,7 +1064,7 @@ const LedgerRow = ({
             )}
           </>
         ) : (
-          <span className={line.kind === "ending" ? "font-display text-[22px] tracking-[.03em]" : "font-semibold"} style={tone ? { color: tone } : undefined}>
+          <span className={line.kind === "ending" ? "font-condensed font-semibold tabular-nums text-[22px]" : "font-semibold"} style={tone ? { color: tone } : undefined}>
             {figure}
           </span>
         )}
@@ -1637,8 +1637,7 @@ const OpsNowPopup = ({
         <div className="flex gap-2 justify-end px-5 pb-5">
           <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={onClose}>CANCEL</button>
           <button
-            className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-            style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
+            className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
             disabled={busy || future}
             onClick={save}
           >

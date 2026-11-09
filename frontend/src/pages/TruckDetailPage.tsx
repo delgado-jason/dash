@@ -260,7 +260,7 @@ const TruckDetailPage = () => {
           </div>
           <div className="ml-auto text-right">
             <span
-              className="inline-block font-display text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
+              className="inline-block font-condensed font-semibold text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
               style={{ boxShadow: "var(--shadow-inset)" }}
             >
               {odometer.toLocaleString("en-US")}
@@ -325,7 +325,7 @@ const TruckDetailPage = () => {
                         payoff.paidPct != null && (ci + 1) / 14 <= payoff.paidPct + 1e-6
                           ? {
                               background:
-                                "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                "var(--color-amber)",
                               border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
                               boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                             }
@@ -410,7 +410,7 @@ const TruckDetailPage = () => {
                                 }
                               : {
                                   background:
-                                    "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                    "var(--color-amber)",
                                   border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
                                   boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                                 }

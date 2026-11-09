@@ -307,7 +307,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
           </span>
         )}
         <span className="ml-auto font-condensed text-[13px] text-faint">
-          <b className="font-display text-[19px] tracking-[.03em] text-ink font-normal tabular-nums">
+          <b className="font-condensed font-semibold text-[19px] text-ink tabular-nums">
             {filtered.length}
           </b>{" "}
           service{filtered.length !== 1 ? "s" : ""} ·{" "}

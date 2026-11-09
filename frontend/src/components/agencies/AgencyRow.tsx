@@ -110,7 +110,7 @@ export const AgencyRow = ({
       {cells[1]}
       {cells[2]}
       <span className="text-right">
-        <span className="block font-display text-[17px] text-ink tabular-nums leading-none">{right.value}</span>
+        <span className="block font-condensed font-semibold text-[17px] text-ink tabular-nums leading-none">{right.value}</span>
         <span className="block font-condensed text-[10px] tracking-[.08em] uppercase text-faint mt-0.5">
           {right.caption}
         </span>

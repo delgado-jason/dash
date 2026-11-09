@@ -33,7 +33,7 @@ export const BandedLadder = ({
     if (v < ladder.target!)
       return { background: "color-mix(in srgb, var(--color-status-positive-text) 25%, transparent)", border: "1px solid color-mix(in srgb, var(--color-status-positive-text) 40%, transparent)" };
     return {
-      background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+      background: "var(--color-amber)",
       border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
     };
   };

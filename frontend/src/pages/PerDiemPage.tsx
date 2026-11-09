@@ -159,7 +159,7 @@ const PerDiemPage = () => {
 
         {/* the money first */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums" style={{ color: "var(--color-status-positive-text)" }}>
+          <span className="font-condensed font-semibold text-[21px] tabular-nums" style={{ color: "var(--color-status-positive-text)" }}>
             {deductibleText} DEDUCTIBLE
           </span>
           <span className="text-[13.5px] text-faint">
@@ -195,7 +195,7 @@ const PerDiemPage = () => {
                 >
                   ‹
                 </button>
-                <span className="font-display text-[18px] tracking-[.04em] w-12 text-center">
+                <span className="font-condensed font-semibold tabular-nums text-[18px] w-12 text-center">
                   {year}
                 </span>
                 <button
@@ -209,7 +209,7 @@ const PerDiemPage = () => {
               </span>
             </div>
             <div className="p-4">
-              <p className="font-display text-[44px] tracking-[.02em] leading-none" style={{ color: "var(--color-status-positive-text)" }}>
+              <p className="font-condensed font-semibold tabular-nums text-[44px] leading-none" style={{ color: "var(--color-status-positive-text)" }}>
                 {deductibleText}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
@@ -376,7 +376,7 @@ const PerDiemPage = () => {
               departure/return halves. Days before that kept the old rules (home unless a
               load covered them or you marked them), so your earlier history and its
               deduction didn't rewrite itself. Home marks here drive the hometime chip on
-              your driver card and the rig card's home/idle split — the days-out warning
+              the driver page and the truck page's home/idle split — the days-out warning
               reads this calendar.
             </div>
           </div>

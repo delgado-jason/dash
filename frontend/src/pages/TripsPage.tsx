@@ -144,12 +144,7 @@ const TripsPage = () => {
           {!showForm && (
             <button
               onClick={() => openCreate()}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-              style={{
-                background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                boxShadow:
-                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
-              }}
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
             >
               + LOG TRIP
             </button>
@@ -159,7 +154,7 @@ const TripsPage = () => {
         {/* the year ledger, by purpose */}
         <div className="ds2-board overflow-hidden mt-4">
           <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-            <span className="font-display text-[17px] tracking-[.08em] text-amber-hi">{YEAR}</span>
+            <span className="font-condensed font-semibold tabular-nums text-[17px] text-amber-hi">{YEAR}</span>
             <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
               trip miles by purpose
             </span>
@@ -198,7 +193,7 @@ const TripsPage = () => {
         {/* answering line + filters */}
         <div className="flex items-center gap-3 flex-wrap mt-4">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+            <span className="font-condensed font-semibold text-[21px] tabular-nums">
               {visible.length} trip{visible.length === 1 ? "" : "s"}
             </span>
             <span className="text-[12px] text-faint">in this view ·</span>

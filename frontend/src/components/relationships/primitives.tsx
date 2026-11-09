@@ -24,12 +24,8 @@ export const PrimaryButton = ({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { size?: Size }) => (
   <button
     type="button"
-    className={`inline-flex items-center justify-center gap-1.5 ${HEIGHT[size]} rounded-[10px] font-condensed font-semibold tracking-[.05em] text-canvas whitespace-nowrap hover:brightness-105 disabled:opacity-40 disabled:hover:brightness-100 ${className}`}
-    style={{
-      background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-      boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
-      ...style,
-    }}
+    className={`inline-flex items-center justify-center gap-1.5 ${HEIGHT[size]} rounded-[10px] font-condensed font-semibold tracking-[.05em] bg-amber text-on-amber whitespace-nowrap hover:brightness-105 disabled:opacity-40 disabled:hover:brightness-100 ${className}`}
+    style={style}
     {...rest}
   >
     {children}
@@ -46,12 +42,8 @@ export const PrimaryLink = ({
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { size?: Size }) => (
   <a
-    className={`inline-flex items-center justify-center gap-1.5 ${HEIGHT[size]} rounded-[10px] font-condensed font-semibold tracking-[.05em] text-canvas whitespace-nowrap hover:brightness-105 ${className}`}
-    style={{
-      background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-      boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
-      ...style,
-    }}
+    className={`inline-flex items-center justify-center gap-1.5 ${HEIGHT[size]} rounded-[10px] font-condensed font-semibold tracking-[.05em] bg-amber text-on-amber whitespace-nowrap hover:brightness-105 ${className}`}
+    style={style}
     {...rest}
   >
     {children}

@@ -344,7 +344,7 @@ const NAV: { group: string; items: string[] }[] = [
     items: [
       "Utilization — how hard the truck runs",
       "Fuel economy — miles per gallon",
-      "Fuel + shop + note per mile — what the rig itself costs you",
+      "Fuel + shop + note per mile — what the truck itself costs you",
       "Revenue per mile — what each mile earns",
     ],
   },
@@ -1902,7 +1902,7 @@ const GuidePage = () => {
               out</span> automatically — tap a day only to mark it half
               (departure/return), home, or back to automatic. Marking home time
               matters twice: it keeps the deduction honest AND it drives the
-              hometime warning and the rig card's home/idle split. Days before
+              hometime warning and the truck page's home/idle split. Days before
               the flip kept the old rules — home unless a delivered load covered
               them (shown hollow to confirm) or you marked them — so the history
               you entered under those rules didn't silently rewrite itself.
@@ -2439,7 +2439,7 @@ const GuidePage = () => {
               close to the industry's revenue-hours ÷ available-hours, so the
               benchmark is a fair read. It is also the driver page's
               Utilization lever, graded on the same 70 · 80 · 85% bars. The{" "}
-              <span className="text-light">Drivers</span> list shows the rig's
+              <span className="text-light">Drivers</span> list shows the truck's
               odometer — driven miles, not loaded miles.
               <span className="block mt-1 text-xs text-muted-text">
                 Sources:{" "}
@@ -2481,8 +2481,8 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
-            title="Fuel + shop + note per mile — what the rig itself costs you"
-            answers="What the rig itself costs per mile: fuel, the shop log, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into the whole rig. It is NOT the P&L's all-in cost per mile — insurance, plates, the office and everything else — which lives on Expenses and is what the rate to book stands on."
+            title="Fuel + shop + note per mile — what the truck itself costs you"
+            answers="What the truck itself costs per mile: fuel, the shop log, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into one figure for the truck and its trailer. It is NOT the P&L's all-in cost per mile — insurance, plates, the office and everything else — which lives on Expenses and is what the rate to book stands on."
           >
             {/* Illustrative round numbers — the app computes yours live. */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
@@ -2499,7 +2499,7 @@ const GuidePage = () => {
               miles per month
             </Formula>
             <Why>
-              The real cost of keeping the rig rolling — the note included, so the
+              The real cost of keeping the truck rolling — the note included, so the
               number reflects what actually leaves your pocket each mile. Fuel is
               the <span className="text-light">30-day tank-window rate</span> —
               the same number the Fuel page answers with — because diesel prices
@@ -2520,7 +2520,7 @@ const GuidePage = () => {
               tracker names the statement, its day and the drafts it counted
               beneath the meter. The Fleet tab prints
               the P&amp;L's all-in cost per mile beside this one so the two are
-              never confused: this is the rig's own running cost; the P&amp;L
+              never confused: this is the truck's own running cost; the P&amp;L
               figure is the cost basis.
             </Why>
           </Metric>
@@ -2654,7 +2654,7 @@ const GuidePage = () => {
 
           <Metric
             title="Due next and the unit boards"
-            answers="Overdue, Soon and Then across the whole rig, then every clock shelved by the unit it belongs to."
+            answers="Overdue, Soon and Then across the whole truck, then every clock shelved by the unit it belongs to."
             sources={[{ label: "Maintenance", to: "/maintenance" }]}
           >
             <Why>

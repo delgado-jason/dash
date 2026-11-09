@@ -107,7 +107,7 @@ export const MaintenanceRow = ({
       <Fact fact={lastDone} className="hidden md:block" />
       <span className="text-right">
         <span
-          className="block font-display text-[17px] tabular-nums leading-none"
+          className="block font-condensed font-semibold text-[17px] tabular-nums leading-none"
           style={{ color: left.color ?? "var(--color-ink)" }}
         >
           {left.value}
