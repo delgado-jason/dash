@@ -192,19 +192,55 @@ describe("loadsViewTotals — the Loads page header (GL-104)", () => {
   const ld = (o: Record<string, unknown>) =>
     ({ load_status: "delivered", linehaul: "5000", fuel_surcharge: "0", total_accessorials: "0", loaded_miles: 1000, ...o }) as unknown as Load;
 
-  it("a TONU in the view changes nothing: count, gross and $/loaded mi ignore it", () => {
+  it("a TONU earns nothing: gross and $/loaded mi ignore it", () => {
     const booked = [ld({}), ld({ linehaul: "4000" })];
     const tonu = ld({ load_status: "tonu", linehaul: "2500", loaded_miles: 301 });
     const t = loadsViewTotals([...booked, tonu]);
-    expect(t).toEqual(loadsViewTotals(booked));
-    expect(t.count).toBe(2);
+    expect(t.earning).toBe(2);
     expect(t.gross).toBe(9000);
+    expect(t.miles).toBe(2000);
     expect(t.rpm).toBeCloseTo(4.5, 5);
   });
 
-  it("a view of only TONUs is zero loads and no rate, not $8.31/mi", () => {
+  it("...but it is still ON THE SCREEN, so the row count counts it", () => {
+    // The header used to say "84 loads" above 85 rows, because a revenue rule
+    // was doing double duty as a row filter.
+    const booked = [ld({}), ld({ linehaul: "4000" })];
+    const tonu = ld({ load_status: "tonu", linehaul: "2500", loaded_miles: 301 });
+    expect(loadsViewTotals([...booked, tonu]).rows).toBe(3);
+    expect(loadsViewTotals(booked).rows).toBe(2);
+  });
+
+  it("a view of only TONUs has its rows, no earnings and no rate", () => {
     const t = loadsViewTotals([ld({ load_status: "tonu", linehaul: "2500", loaded_miles: 301 })]);
-    expect(t.count).toBe(0);
+    expect(t.rows).toBe(1); // never "0 loads in this view" above a visible row
+    expect(t.earning).toBe(0);
+    expect(t.gross).toBe(0);
     expect(t.rpm).toBeNull();
+  });
+
+  it("CANCELLED freight is never revenue either — it never moved", () => {
+    // The old hand-rolled `!== "tonu"` let cancelled loads into the gross:
+    // eight of them, $27,530, on Jason's book (2026-11-09).
+    const t = loadsViewTotals([
+      ld({}),
+      ld({ load_status: "cancelled", linehaul: "9000", loaded_miles: 800 }),
+    ]);
+    expect(t.rows).toBe(2);
+    expect(t.earning).toBe(1);
+    expect(t.gross).toBe(5000); // not 14,000
+    expect(t.miles).toBe(1000); // not 1,800
+    expect(t.rpm).toBeCloseTo(5, 5);
+  });
+
+  it("holds the ONE never-revenue definition — not its own copy of it", () => {
+    // status.ts owns cancelled+tonu; this used to spell its own, narrower set.
+    const both = loadsViewTotals([
+      ld({ load_status: "cancelled" }),
+      ld({ load_status: "tonu" }),
+    ]);
+    expect(both.rows).toBe(2);
+    expect(both.earning).toBe(0);
+    expect(both.gross).toBe(0);
   });
 });

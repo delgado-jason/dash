@@ -48,6 +48,7 @@ import { Input, inputClass } from "@/components/ui/input";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { Label } from "@/components/ui/label";
 import { formatPhone } from "@/lib/phone";
+import { numberFieldValue } from "@/lib/loads/numberField";
 import { nameOf } from "@/lib/relationships/nameOf";
 import {
   Select,
@@ -547,8 +548,14 @@ const LoadForm = ({
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // An emptied number box is NULL, not 0 — see lib/loads/numberField.ts.
+    // `Number("")` is 0, and 0 is a real answer to several of these questions
+    // (a 0 deadhead means the truck was already at the shipper), so saving an
+    // erasure as 0 made the app assert a measurement the user had deleted.
     const value =
-      e.target.type === "number" ? Number(e.target.value) : e.target.value;
+      e.target.type === "number"
+        ? numberFieldValue(e.target.value)
+        : e.target.value;
     setFormData({
       ...formData,
       [e.target.name]: value,

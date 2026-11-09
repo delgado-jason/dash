@@ -3,7 +3,7 @@ import type { Load } from "@/types/load";
 // Aliased so the money KPIs below report what the company actually keeps.
 import { loadNetRevenue as loadNet } from "./rateTargets";
 import { loadDeadheadPct } from "./deadhead";
-import { isDelivered } from "./status";
+import { isDelivered, isNeverRevenue } from "./status";
 
 // Total revenue for a load = linehaul + fuel surcharge + accessorials.
 // Postgres numerics arrive as strings, so coerce before adding.
@@ -12,16 +12,37 @@ export const loadRevenue = (load: Load): number =>
   Number(load.fuel_surcharge) +
   Number(load.total_accessorials);
 
-// The Loads page header: count, gross and gross $/loaded mile of what is in
-// view. A TONU is never a booked load (it shows as its own row and counts only
-// as the cash the statement paid), so it is out of all three.
-export const loadsViewTotals = (
-  view: Array<Load>,
-): { count: number; gross: number; miles: number; rpm: number | null } => {
-  const booked = view.filter((l) => l.load_status !== "tonu");
-  const gross = booked.reduce((s, l) => s + loadRevenue(l), 0);
-  const miles = booked.reduce((s, l) => s + (Number(l.loaded_miles) || 0), 0);
-  return { count: booked.length, gross, miles, rpm: miles > 0 ? gross / miles : null };
+export interface LoadsViewTotals {
+  rows: number; // every load the filters matched — what is on the screen
+  earning: number; // of those, the ones that can earn (never-revenue held out)
+  gross: number; // GROSS over the earning loads only
+  miles: number; // loaded miles over the earning loads only
+  rpm: number | null;
+}
+
+// The Loads page header: what is in view, and what of it earned.
+//
+// TWO figures, deliberately, because they answer two questions. The ROW COUNT
+// counts what you are looking at; the money counts the freight that can pay.
+// Conflating them made the header contradict the table beneath it — the All
+// view read "84 loads" above 85 rows, and the TONU filter read "0 loads in
+// this view" above a visible TONU row.
+//
+// Never-revenue is `isNeverRevenue` — status.ts owns the ONE definition
+// (cancelled AND tonu) and a contract greps to keep it that way. This used to
+// hand-roll `load_status !== "tonu"`, which let CANCELLED freight into the
+// gross: eight loads and $27,530 of it on Jason's book (2026-11-09).
+export const loadsViewTotals = (view: Array<Load>): LoadsViewTotals => {
+  const earning = view.filter((l) => !isNeverRevenue(l));
+  const gross = earning.reduce((s, l) => s + loadRevenue(l), 0);
+  const miles = earning.reduce((s, l) => s + (Number(l.loaded_miles) || 0), 0);
+  return {
+    rows: view.length,
+    earning: earning.length,
+    gross,
+    miles,
+    rpm: miles > 0 ? gross / miles : null,
+  };
 };
 
 export const getBookedCount = (loads: Array<Load>): number =>
