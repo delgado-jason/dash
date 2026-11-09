@@ -22,6 +22,10 @@ const FILES = [
   "src/lib/metrics/cashflow.ts",
   "src/lib/metrics/settlements.ts",
   "src/lib/metrics/loadScore.ts",
+  // Added v1.267.1 (C1a): estimateLoadFuel coalesced a missing deadhead to
+  // zero empty miles and undercounted a load's fuel, while the KPI beside it
+  // refused the same input. It is a money file and belongs under the ratchet.
+  "src/lib/metrics/fuel.ts",
   "src/lib/metrics/payWeeks.ts",
   "src/lib/pnl/parsePnl.ts",
   "src/hooks/useRateTargets.ts",

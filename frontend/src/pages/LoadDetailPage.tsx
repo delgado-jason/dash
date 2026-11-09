@@ -224,6 +224,11 @@ export const LoadDetailPage = () => {
   const { markets } = useMarkets(0);
   const { facilities } = useFacilities(0);
   const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
+  // Whether that number is YOURS or dash's fallback. The banner says "your
+  // {n}h free" — until the settlement schedule answers, the 3 it is holding is
+  // dash's default, and calling it the user's setting is a small lie about
+  // their own account.
+  const [freeHoursKnown, setFreeHoursKnown] = useState(false);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
 
   // What failed to load beside the load itself — named, with one Retry, never a
@@ -235,7 +240,10 @@ export const LoadDetailPage = () => {
   useEffect(() => {
     setAuxFailed([]);
     getSettlementSchedule()
-      .then((s) => setFreeHours(s.detention_free_hours))
+      .then((s) => {
+        setFreeHours(s.detention_free_hours);
+        setFreeHoursKnown(true);
+      })
       .catch(() => noteFailed("the settlement schedule"));
     getFuelEntries()
       .then(setFuelEntries)
@@ -257,6 +265,9 @@ export const LoadDetailPage = () => {
   // One checkbox, owner and dispatcher alike; it breaks the agent's on-time,
   // claim-free streak in Relationships. The error shows by name, in place.
   const [claimError, setClaimError] = useState<string | null>(null);
+  // The accessorial panel's own in-place error — add, edit and delete all
+  // report here rather than failing silently.
+  const [accError, setAccError] = useState<string | null>(null);
   const setClaimFiled = async (value: boolean) => {
     if (!load) return;
     setClaimError(null);
@@ -432,6 +443,11 @@ export const LoadDetailPage = () => {
   const usingRecentFuel = fs.mpg30 != null && fs.avgCostPerGallon30 != null;
   const usingRealFuel = usingRecentFuel || (fs.avgMpg != null && fs.avgCostPerGallon != null);
   const fuel = estimateLoadFuel(load, fuelMpg, fuelPrice);
+  // "actual" only when EVERY input was measured: the miles off the odometer
+  // AND the price and mpg off your own tanks. `basis` describes the MILES
+  // alone, so the chip used to show a green "actual" sitting on top of
+  // ASSUMED_MPG and ASSUMED_FUEL_PRICE.
+  const fuelAllMeasured = fuel?.basis === "actual" && usingRecentFuel;
   // Pass-throughs (tolls) are reimbursements: paid back, not revenue — below the
   // total, out of accTotal (Q8, NET-02).
   const isPassThrough = (type: string) => passThroughTypes.includes(type);
@@ -464,26 +480,44 @@ export const LoadDetailPage = () => {
     }
   };
 
+  // These three used to be try/finally with NO catch (and the delete had no
+  // try at all): a failed POST, PATCH or DELETE still cleared the editing
+  // state and refreshed, so the row simply looked like it had not taken. They
+  // now report the way setClaimFiled already does on this same page.
   const handleAddAccessorial = async () => {
     if (!newType.trim() || newAmount.trim() === "") return;
+    // The box only guarded the empty string, so letters POSTed NaN.
+    const amount = Number(newAmount);
+    if (!Number.isFinite(amount)) {
+      setAccError("That amount isn't a number.");
+      return;
+    }
+    setAccError(null);
     try {
       await createAccessorial(load.load_id, {
         accessorial_type: capitalize(newType.trim()),
-        amount: Number(newAmount),
+        amount,
       });
       setAccRefreshKey((p) => p + 1);
       setRefreshKey((p) => p + 1);
-    } finally {
       setNewType("");
       setNewAmount("");
       setOtherMode(false);
+    } catch (e) {
+      // The typed values stay in the boxes so the retry costs nothing.
+      setAccError(e instanceof Error ? e.message : "Couldn't add that accessorial");
     }
   };
 
   const handleDeleteAccessorial = async (id: string) => {
-    await deleteAccessorial(id);
-    setAccRefreshKey((p) => p + 1);
-    setRefreshKey((p) => p + 1);
+    setAccError(null);
+    try {
+      await deleteAccessorial(id);
+      setAccRefreshKey((p) => p + 1);
+      setRefreshKey((p) => p + 1);
+    } catch (e) {
+      setAccError(e instanceof Error ? e.message : "Couldn't delete that accessorial");
+    }
   };
 
   const startEdit = (id: string, type: string, amount: number) => {
@@ -493,6 +527,11 @@ export const LoadDetailPage = () => {
   };
 
   const handleSaveEdit = async () => {
+    if (!Number.isFinite(editingAmount)) {
+      setAccError("That amount isn't a number.");
+      return;
+    }
+    setAccError(null);
     try {
       await patchAccessorial(editingId, {
         accessorial_type: editingType,
@@ -500,8 +539,9 @@ export const LoadDetailPage = () => {
       });
       setAccRefreshKey((p) => p + 1);
       setRefreshKey((p) => p + 1);
-    } finally {
-      setEditingId("");
+      setEditingId(""); // only leave edit mode once the save actually landed
+    } catch (e) {
+      setAccError(e instanceof Error ? e.message : "Couldn't save that accessorial");
     }
   };
 
@@ -821,9 +861,12 @@ export const LoadDetailPage = () => {
               Possible detention · {detentionLabel(load, freeHours)}
             </p>
             <p className="text-[11px] text-dim">
-              Released past your {freeHours}h free (measured from the
-              appointment / window). Whether it pays is the shipper's call —
-              clear it with {load.agent || "the agent"} before you count on it.
+              {freeHoursKnown
+                ? `Released past your ${freeHours}h free`
+                : `Released past ${freeHours}h free — dash's default, not your setting; the settlement schedule hasn't loaded`}{" "}
+              (measured from the appointment / window). Whether it pays is the
+              shipper's call — clear it with {load.agent || "the agent"} before
+              you count on it.
             </p>
           </div>
           <div className="flex gap-2">
@@ -1183,17 +1226,15 @@ export const LoadDetailPage = () => {
             <span
               className="text-[11px] px-2 py-0.5 rounded"
               style={{
-                backgroundColor:
-                  fuel?.basis === "actual"
-                    ? "var(--color-status-positive-bg)"
-                    : "var(--color-status-aware-bg)",
-                color:
-                  fuel?.basis === "actual"
-                    ? "var(--color-status-positive-text)"
-                    : "var(--color-status-aware-text)",
+                backgroundColor: fuelAllMeasured
+                  ? "var(--color-status-positive-bg)"
+                  : "var(--color-status-aware-bg)",
+                color: fuelAllMeasured
+                  ? "var(--color-status-positive-text)"
+                  : "var(--color-status-aware-text)",
               }}
             >
-              {fuel?.basis === "actual" ? "actual" : "est."}
+              {fuelAllMeasured ? "actual" : "est."}
             </span>
           </div>
           {fuel ? (
@@ -1312,6 +1353,10 @@ export const LoadDetailPage = () => {
             Total {moneyCents(accTotal)}
           </span>
         </div>
+
+        {accError && (
+          <p className="text-xs text-status-negative-text mb-2">{accError}</p>
+        )}
 
         {accessorials.length === 0 ? (
           <p className="text-sm text-dim">No accessorials logged.</p>
@@ -1542,8 +1587,8 @@ export const LoadDetailPage = () => {
                 )}
               </div>
               <p className="text-dim mt-1.5">
-                Landstar paid <span className="text-ink font-semibold">{fmt(roll.grossSettled)}</span>
-                {" "}gross · advances &amp; fees −{fmt(roll.advancesAndFees)}
+                Landstar paid <span className="text-ink font-semibold">{fmt(roll.settledNet)}</span>
+                {" "}net · advances &amp; fees −{fmt(roll.advancesAndFees)}
                 {roll.adjustments.length > 0 && (
                   <> · later adjustments {fmt(roll.adjustments.reduce((s, a) => s + a.amount, 0))}</>
                 )}

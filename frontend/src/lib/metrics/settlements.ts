@@ -79,10 +79,16 @@ export const weeklyFuelCost30 = (
 
 export interface LoadSettlementRollup {
   status: "none" | "verified" | "adjusted" | "unexplained";
-  grossSettled: number; // Σ revenue across ALL lines (reversals included)
+  // Σ revenue across ALL lines (reversals included) — what Landstar actually
+  // PAID, i.e. your NET after the carrier's cut. It was called `grossSettled`
+  // until v1.267.1 and printed as "gross", which contradicted the value and
+  // the house convention both (MONEY_MATH_AUDIT Part 2: settlement = NET). The
+  // number never moved; it is differenced against `expectedNet` below, which
+  // was only ever correct because this side was net all along.
+  settledNet: number;
   advancesAndFees: number; // deductions on non-adjustment trip lines
   netToDate: number;
-  delta: number; // grossSettled - expectedNet
+  delta: number; // settledNet - expectedNet
   settledPeriods: string[];
   adjustments: {
     period_ending: string;
@@ -108,13 +114,13 @@ export const loadSettlementRollup = (
   expectedNet: number | null,
 ): LoadSettlementRollup | null => {
   if (lines.length === 0) return null;
-  let grossSettled = 0;
+  let settledNet = 0;
   let advancesAndFees = 0;
   let netToDate = 0;
   const settledPeriods = new Set<string>();
   const adjustments: LoadSettlementRollup["adjustments"] = [];
   for (const l of lines) {
-    grossSettled += num(l.revenue);
+    settledNet += num(l.revenue);
     netToDate += lineValue(l);
     settledPeriods.add(l.period_ending);
     if (l.is_adjustment) {
@@ -128,7 +134,7 @@ export const loadSettlementRollup = (
       advancesAndFees += num(l.deductions);
     }
   }
-  const delta = expectedNet == null ? 0 : grossSettled - expectedNet;
+  const delta = expectedNet == null ? 0 : settledNet - expectedNet;
   const status: LoadSettlementRollup["status"] =
     expectedNet == null
       ? "none" // no expectation -> no verification claim, ever
@@ -139,7 +145,7 @@ export const loadSettlementRollup = (
           : "verified";
   return {
     status,
-    grossSettled,
+    settledNet,
     advancesAndFees,
     netToDate,
     delta,
@@ -148,14 +154,14 @@ export const loadSettlementRollup = (
   };
 };
 
-// The loads-table flag: Landstar's settled gross vs dash's expected net.
+// The loads-table flag: what Landstar settled (net) vs dash's expected net.
 // Null = in agreement (or nothing to compare) — only a real mismatch flags.
 export const settlementDelta = (
-  grossSettled: string | number,
+  settledNet: string | number,
   expectedNet: number | null,
 ): number | null => {
   if (expectedNet == null) return null;
   // round to cents first — float noise must never flag a penny-equal load
-  const delta = Math.round((num(grossSettled) - expectedNet) * 100) / 100;
+  const delta = Math.round((num(settledNet) - expectedNet) * 100) / 100;
   return Math.abs(delta) > 0.01 ? delta : null;
 };

@@ -260,8 +260,10 @@ const LoadsPage = () => {
   // GROSS booked revenue — loadRevenue here is the loads.ts version (linehaul + FSC
   // + accessorials, the full customer rate), so this line is labeled "gross," and
   // the $/mi below is a gross rate per loaded mile.
-  const { count: viewCount, gross: viewGross } = loadsViewTotals(view);
-  const viewRpm = loadsViewTotals(view).rpm;
+  // One call, two questions: `rows` is what you are looking at, `earning` is
+  // what of it can pay. They used to be the same number, which made this line
+  // contradict the table beneath it.
+  const totals = loadsViewTotals(view);
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -309,14 +311,25 @@ const LoadsPage = () => {
       {/* the answering line — sums whatever the filters currently show */}
       <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
         <span className="font-condensed font-semibold text-[22px] tabular-nums">
-          {viewCount} load{plural(viewCount)}
+          {totals.rows} load{plural(totals.rows)}
         </span>
         <span className="text-[12px] text-faint">in this view ·</span>
-        <b className="font-condensed font-semibold text-ink tabular-nums">{money(viewGross)} gross</b>
-        {viewRpm != null && (
+        {/* Said only when it differs: cancelled and TONU freight is on the
+            screen but out of the money, and you should be able to see that
+            rather than wonder why the gross looks light. */}
+        {totals.earning !== totals.rows && (
+          <>
+            <b className="font-condensed font-semibold text-ink tabular-nums">
+              {totals.earning} earning
+            </b>
+            <span className="text-[12px] text-faint">·</span>
+          </>
+        )}
+        <b className="font-condensed font-semibold text-ink tabular-nums">{money(totals.gross)} gross</b>
+        {totals.rpm != null && (
           <>
             <span className="text-[12px] text-faint">·</span>
-            <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(viewRpm)}/loaded mi · gross</b>
+            <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(totals.rpm)}/loaded mi · gross</b>
           </>
         )}
       </div>

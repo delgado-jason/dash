@@ -103,7 +103,7 @@ describe("loadSettlementRollup", () => {
       2873.02,
     )!;
     expect(r.status).toBe("verified");
-    expect(r.grossSettled).toBeCloseTo(2873.02, 2);
+    expect(r.settledNet).toBeCloseTo(2873.02, 2);
     expect(r.advancesAndFees).toBeCloseTo(1469.75, 2);
     // the printed per-line Net is the whole load's aggregate — netToDate must
     // come from the columns, or multi-line loads double-count ($713.58 bug)
@@ -156,7 +156,7 @@ describe("loadSettlementRollup", () => {
       479.74,
     )!;
     expect(r.status).toBe("adjusted");
-    expect(r.grossSettled).toBeCloseTo(479.74, 2);
+    expect(r.settledNet).toBeCloseTo(479.74, 2);
     expect(r.settledPeriods).toEqual(["2026-03-04", "2026-03-25"]);
   });
 
