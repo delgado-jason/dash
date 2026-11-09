@@ -16,6 +16,7 @@ export interface ExpensePeriod {
   income_total: number | null;
   cogs_total: number | null;
   expense_total: number | null;
+  filed_at?: string | null; // when the month was first filed (the row's created_at) — the Money tab's filing line
   lines?: ExpenseLine[];
 }
 

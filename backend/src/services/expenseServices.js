@@ -143,7 +143,7 @@ export async function saveExpensePeriod(user_id, data) {
 export async function getExpensePeriods(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
-    `SELECT period_id, period_month, period_label, income_total, cogs_total, expense_total
+    `SELECT period_id, period_month, period_label, income_total, cogs_total, expense_total, created_at AS filed_at
      FROM expense_periods
      WHERE user_id = $1
      ORDER BY period_month DESC`,
@@ -158,7 +158,7 @@ export async function getExpensePeriod(user_id, period_id) {
   if (!period_id) throw new ValidationError("Missing period_id");
 
   const periodRes = await db.query(
-    `SELECT period_id, period_month, period_label, income_total, cogs_total, expense_total
+    `SELECT period_id, period_month, period_label, income_total, cogs_total, expense_total, created_at AS filed_at
      FROM expense_periods
      WHERE user_id = $1 AND period_id = $2`,
     [user_id, period_id],

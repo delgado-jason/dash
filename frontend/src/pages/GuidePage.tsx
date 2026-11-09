@@ -571,32 +571,30 @@ const GuidePage = () => {
                 the page it summarises; the card-by-card account is just below.
               </TabLine>
               <TabLine name="Money" q="Am I profitable?">
-                Year-to-date income and two margins — operating, and your
-                after-notes (owner's take) margin, which is the one graded
-                against your goal since it's what's actually left after the truck,
-                trailer, and loan notes; the monthly bars read that same
-                after-notes margin. Covering the month measures income against
-                the mean of the same six P&amp;L months the Market and Expenses
-                price on. Then the month-by-month P&amp;L and the margin trend,
-                with one sentence under it — "7 of 10 months at or above the
-                goal" — a count of this year's filed months whose after-notes
-                margin met the goal, not a streak, so a miss in the middle does
-                not reset it. The <span className="text-light">Last
-                quarter</span> row reads the last complete calendar quarter: net
-                revenue (P&amp;L income), operating profit, true net (operating
-                profit minus the debt obligations for those months), loads,
-                miles, deadhead %, average rate (gross per loaded mile) and the
-                best lane. The <span className="text-light">Weekly
-                earnings</span> chart shows the last 8 pay weeks (Wednesday to
-                Tuesday), gross earned on delivered loads, with the weekly target
-                as a dashed line and your best completed pay week ever as a plain
-                reference line labelled with its figure and dates; under it, how
-                many completed pay weeks this quarter earned at or above
-                break-even. Plus where the money goes by category, your realized
-                profit per mile, and the notes tracker — how much of this month's
-                notes are covered and the day you're on pace to clear them.
+                The months of the year in one table — income net of the carrier
+                cut, operating profit, the after-notes figure (operating minus
+                the truck, trailer and loan notes) and the after-notes margin
+                graded against your goal on every row — with a subtotal row for
+                each closed quarter and the year's total, which also counts the
+                months at or above the goal (a count, not a streak). Above it,
+                the month in progress: income so far from delivered loads at net
+                against the month's cost threshold (the mean of the same six
+                P&amp;L months the Market and Expenses price on), the shortfall or
+                the margin over, the days left and the day you are on pace to
+                cover it, with the caveat that the real P&amp;L takes over when the
+                month posts; beside it the latest filed month, the day it was
+                filed, and a reminder that the current month posts when you file
+                it. Under the table, your realized per-mile line — the net
+                P&amp;L over the odometer miles you drove: income, all-in and kept
+                per mile — which is not the gross rate to book on Expenses and
+                Market. Then the month-by-month P&amp;L bars and the margin trend
+                against the goal, the weekly earnings chart (the last eight pay
+                weeks in gross, the target and floor dashed, your best completed
+                pay week as a plain line, and how many of this quarter's
+                completed weeks earned at or above break-even), and where the
+                money goes by category as a share of income.
                 (Delivered-but-unsettled money shows on Pulse as your next
-                settlement — it clears every week.)
+                deposit — it clears every week.)
               </TabLine>
               <TabLine name="Lanes" q="Where does my freight run?">
                 The U.S. map shaded by one metric at a time — what a market pays
@@ -2367,9 +2365,9 @@ const GuidePage = () => {
               weakest first). When all three reach Target it reads{" "}
               <span className="text-light">Every lever at target or better</span>;
               before a full month of data it says the grades are still
-              building. The quarter's own figures — net revenue, profit, loads,
-              miles, average rate — are the Money tab's{" "}
-              <span className="text-light">Last quarter</span> row.
+              building. The quarter's P&amp;L figures — income, operating profit, after
+              notes — are the quarter rows of the Money tab's{" "}
+              <span className="text-light">months table</span>.
             </Why>
           </Metric>
 
