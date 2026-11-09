@@ -33,7 +33,7 @@ export const CashPlate = ({
     <div data-testid="cash-plate">
       <p className="ds2-label">Cash on hand</p>
       {loading ? (
-        <p className="font-display text-[36px] leading-none mt-1.5 tabular-nums text-faint">…</p>
+        <p className="font-condensed font-semibold text-[36px] leading-none mt-1.5 tabular-nums text-faint">…</p>
       ) : failed.length > 0 && !board ? (
         <FetchFailed what={failed.join(", ")} onRetry={retry} className="mt-2" />
       ) : assumptionsMissing ? (
@@ -72,7 +72,7 @@ const PlateBody = ({ board, ending, floatLine }: { board: CashBoard; ending: num
   return (
     <>
       {today.amount != null ? (
-        <p className="font-display text-[36px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
+        <p className="font-condensed font-semibold text-[36px] leading-none mt-1.5 tabular-nums">
           {money(today.amount)}
           <span className="text-[15px] text-dim font-condensed tracking-normal"> today</span>
         </p>

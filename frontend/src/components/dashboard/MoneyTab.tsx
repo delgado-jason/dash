@@ -297,7 +297,7 @@ export const MoneyTab = ({
                 {cov.monthLabel} — covering the month
                 {cov.estimated ? " · estimated" : ""}
               </p>
-              <p className="font-display text-[34px] tracking-[.02em] leading-none mt-1.5 tabular-nums">
+              <p className="font-condensed font-semibold text-[34px] leading-none mt-1.5 tabular-nums">
                 {money(cov.income)}{" "}
                 <span className="text-[15px] text-dim font-condensed tracking-normal">
                   income so far{cov.estimated ? " · est." : ""}
@@ -680,11 +680,11 @@ export const MoneyTab = ({
             <div className="flex gap-[2px] h-7 rounded-md overflow-hidden mb-2.5 bg-canvas">
               {catProfit > 0 && (
                 <div
-                  className="h-full flex items-center justify-center text-[9px] font-bold text-canvas"
+                  className="h-full flex items-center justify-center text-[9px] font-bold text-on-amber"
                   style={{
                     width: `${pctOf(catProfit)}%`,
                     background:
-                      "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                      "var(--color-amber)",
                   }}
                 >
                   {pctOf(catProfit) >= 9 ? "profit kept" : ""}

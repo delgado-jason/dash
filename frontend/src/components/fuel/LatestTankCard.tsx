@@ -70,7 +70,7 @@ export const LatestTankCard = ({
 
       <div className="flex items-end gap-2 flex-wrap">
         <span
-          className="text-[52px] font-display tracking-[.02em] leading-none"
+          className="text-[52px] font-condensed font-semibold tabular-nums leading-none"
           style={isRecord ? { color: "var(--color-amber-hi)" } : undefined}
         >
           {tank.mpg.toFixed(2)}

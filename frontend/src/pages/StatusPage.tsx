@@ -111,7 +111,7 @@ const Cells = ({
               ? {
                   background: hot
                     ? "linear-gradient(180deg, color-mix(in srgb, var(--color-status-negative-text) 70%, transparent), var(--color-status-negative-text))"
-                    : "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                    : "var(--color-amber)",
                   border: "1px solid color-mix(in srgb, var(--color-amber-hi) 50%, transparent)",
                   opacity: dim ? 0.35 : 1,
                 }
@@ -140,10 +140,10 @@ const Stamp = ({ tone, children }: { tone: "amber" | "dim" | "pos"; children: st
 
 const Ring = ({ state, children }: { state: "done" | "act" | "pend"; children: number }) => (
   <span
-    className="w-[30px] h-[30px] rounded-full flex items-center justify-center font-display text-[15px] shrink-0"
+    className="w-[30px] h-[30px] rounded-full flex items-center justify-center font-condensed font-semibold tabular-nums text-[15px] shrink-0"
     style={
       state === "done"
-        ? { background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))", color: "var(--color-canvas)" }
+        ? { background: "var(--color-amber)", color: "var(--color-on-amber)" }
         : state === "act"
           ? { border: "2px solid var(--color-amber-hi)", color: "var(--color-amber-hi)" }
           : { border: "2px dashed var(--color-hairline)", color: "var(--color-faint)" }
@@ -657,11 +657,7 @@ const StatusPage = () => {
           )}
           <button
             onClick={() => openSnapshot(false)}
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-            style={{
-              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
-            }}
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
           >
             + FRIDAY SNAPSHOT
           </button>
@@ -738,7 +734,7 @@ const StatusPage = () => {
           const fills = il.floors.filter((f) => f.fill > 0);
           const step = (k: number, what: string, value: string, dim = false) => (
             <div className="grid grid-cols-[34px_1fr_auto] gap-3 items-baseline px-4 py-[10px] border-t ds2-cell-rule first:border-t-0">
-              <span className="font-display text-[20px] text-amber tracking-[.04em]">{k}</span>
+              <span className="font-condensed font-semibold tabular-nums text-[20px] text-amber">{k}</span>
               <span className="font-condensed text-[14px] text-dim">{what}</span>
               <span className={`font-condensed font-semibold text-[15px] text-right whitespace-nowrap ${dim ? "text-faint" : "text-hot"}`}>{value}</span>
             </div>
@@ -799,7 +795,7 @@ const StatusPage = () => {
               <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 1 · {floatLine != null ? money(floatLine) : "—"}</span>
             </div>
             <div className="p-4">
-              <p className="font-display text-[40px] leading-none tabular-nums">
+              <p className="font-condensed font-semibold text-[40px] leading-none tabular-nums">
                 {opsBal != null ? money(opsBal) : <span className="font-condensed text-[18px] text-faint">no balance typed</span>}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
@@ -838,7 +834,7 @@ const StatusPage = () => {
               <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 3 · {floorsBoard[2]?.floor != null ? money(floorsBoard[2].floor) : "unset"}</span>
             </div>
             <div className="p-4">
-              <p className="font-display text-[40px] leading-none tabular-nums">
+              <p className="font-condensed font-semibold text-[40px] leading-none tabular-nums">
                 {vaultBal != null ? money(vaultBal) : <span className="font-condensed text-[18px] text-faint">no balance typed</span>}
               </p>
               <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
@@ -1251,8 +1247,7 @@ const StatusPage = () => {
                   </button>
                 )}
                 <button
-                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-                  style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
+                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
                   disabled={
                     busy ||
                     asOfFuture ||
@@ -1360,7 +1355,7 @@ const StatusPage = () => {
                   <div key={s.stage_id} className="col-span-2 rounded-[10px] border border-hairline-lo bg-well/50 p-3 grid grid-cols-[auto_1fr] gap-2">
                     <div className="flex flex-col gap-1">
                       <button className="text-faint hover:text-ink text-[12px]" aria-label="Move up" onClick={() => moveStage(i, -1)}>▲</button>
-                      <span className="font-display text-[14px] text-center text-dim">{i + 1}</span>
+                      <span className="font-condensed font-semibold tabular-nums text-[14px] text-center text-dim">{i + 1}</span>
                       <button className="text-faint hover:text-ink text-[12px]" aria-label="Move down" onClick={() => moveStage(i, 1)}>▼</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 min-w-0">
@@ -1420,8 +1415,7 @@ const StatusPage = () => {
               <div className="flex gap-2 justify-end px-5 pb-5">
                 <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={() => setShowPlan(false)}>CANCEL</button>
                 <button
-                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-                  style={{ background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))" }}
+                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
                   disabled={busy}
                   onClick={savePlan}
                 >

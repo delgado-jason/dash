@@ -126,12 +126,7 @@ const FacilitiesPage = () => {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-              style={{
-                background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                boxShadow:
-                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
-              }}
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
             >
               + ADD FACILITY
             </button>
@@ -140,7 +135,7 @@ const FacilitiesPage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums">
             {facilities.length} FACILIT{facilities.length === 1 ? "Y" : "IES"}
           </span>
           <span className="font-condensed text-[13px] text-faint">
@@ -262,7 +257,7 @@ const FacilitiesPage = () => {
                   }`}
                 >
                   <span className="w-[52px] text-right shrink-0">
-                    <span className="font-display text-[19px] tracking-[.04em] tabular-nums block leading-none">
+                    <span className="font-condensed font-semibold text-[19px] tabular-nums block leading-none">
                       {visits}
                     </span>
                     <span className="font-condensed text-[10.5px] text-faint tracking-[.08em]">
@@ -353,10 +348,7 @@ const FacilitiesPage = () => {
                     <button
                       onClick={runMerge}
                       disabled={merging}
-                      className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-                      style={{
-                        background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                      }}
+                      className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
                     >
                       {merging ? "MERGING…" : "MERGE"}
                     </button>

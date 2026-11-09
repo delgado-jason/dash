@@ -84,7 +84,7 @@ const NumField = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="0"
-        className="w-24 bg-transparent text-right text-lg outline-none font-display text-ink"
+        className="w-24 bg-transparent text-right text-lg outline-none font-condensed font-semibold tabular-nums text-ink"
       />
       {suffix && <span className="text-[11px] text-faint">{suffix}</span>}
     </span>
@@ -470,7 +470,7 @@ const ScoreLoadPage = () => {
               </div>
               <div className="pl-5" style={{ borderLeft: "1px solid color-mix(in srgb, var(--color-ink) 8%, transparent)" }}>
                 <div className="flex items-baseline gap-2">
-                  <span className="font-display text-[34px] text-ink">{fmtRpm(score.allInRpm)}</span>
+                  <span className="font-condensed font-semibold tabular-nums text-[34px] text-ink">{fmtRpm(score.allInRpm)}</span>
                   <span className="font-condensed text-[13px] text-dim">/ driven mi (all-in)</span>
                 </div>
                 <div className="font-condensed text-[13px] text-dim mt-0.5">
@@ -529,13 +529,13 @@ const ScoreLoadPage = () => {
               <div className="grid grid-cols-2 gap-2.5 mt-2 mb-2.5">
                 <Well className="px-3 py-2">
                   <div className="font-condensed text-[11px]" style={{ color: "var(--color-cat2)" }}>FREIGHT</div>
-                  <div className="font-display text-[20px] text-ink">
+                  <div className="font-condensed font-semibold tabular-nums text-[20px] text-ink">
                     {fmtRpm(score.loadedRpm)}<span className="font-condensed text-[11px] text-faint"> /loaded</span>
                   </div>
                 </Well>
                 <Well className="px-3 py-2">
                   <div className="font-condensed text-[11px] text-amber">DEADHEAD</div>
-                  <div className="font-display text-[20px] text-ink">
+                  <div className="font-condensed font-semibold tabular-nums text-[20px] text-ink">
                     {deadMi == null ? "—" : deadMi.toLocaleString("en-US")}<span className="font-condensed text-[11px] text-faint">{deadMi == null || deadShare == null ? " needs the odometer" : ` mi · ${Math.round(deadShare * 100)}%`}</span>
                   </div>
                 </Well>
@@ -642,15 +642,15 @@ const ScoreLoadPage = () => {
                 <div className="mt-2 flex flex-col gap-2">
                   <Well className="flex items-baseline justify-between px-3 py-1.5">
                     <span className="font-condensed text-[11px]" style={{ color: "var(--color-status-negative-text)" }}>FLOOR</span>
-                    <span className="font-display text-[18px] text-ink">{money(counter.floor)}</span>
+                    <span className="font-condensed font-semibold tabular-nums text-[18px] text-ink">{money(counter.floor)}</span>
                   </Well>
                   <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
                     <span className="font-condensed text-[11px]" style={{ color: "var(--color-cat2)" }}>SOLID</span>
-                    <span className="font-display text-[18px]" style={{ color: "var(--color-cat2)" }}>{money(counter.take)}</span>
+                    <span className="font-condensed font-semibold tabular-nums text-[18px]" style={{ color: "var(--color-cat2)" }}>{money(counter.take)}</span>
                   </Well>
                   <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-hot) 45%, transparent)" }}>
                     <span className="font-condensed text-[11px]" style={{ color: "var(--color-hot)" }}>PRIME</span>
-                    <span className="font-display text-[18px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
+                    <span className="font-condensed font-semibold tabular-nums text-[18px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
                   </Well>
                 </div>
               </div>

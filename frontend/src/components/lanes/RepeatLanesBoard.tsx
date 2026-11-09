@@ -63,7 +63,7 @@ export const RepeatLanesBoard = ({
             <i className="not-italic block text-[11px] text-faint">typical</i>
           </span>
           <span
-            className={`font-display text-[17px] text-right tabular-nums ${perDayTextClass(
+            className={`font-condensed font-semibold text-[17px] text-right tabular-nums ${perDayTextClass(
               perDayTone(l.perDay.perDay, daily),
             )}`}
           >

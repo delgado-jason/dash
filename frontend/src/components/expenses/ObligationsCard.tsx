@@ -108,7 +108,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                                       (ci + 1) / 10 <= (pay.paidPct ?? 0) + 1e-6
                                         ? {
                                             background:
-                                              "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                              "var(--color-amber)",
                                           }
                                         : {
                                             background: "var(--color-well)",
@@ -293,7 +293,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                   </div>
                   <p className="text-[10px] text-faint mt-1.5">
                     Fill these to show a payoff tracker on the asset's page. Leave the
-                    date blank to estimate at your payment pace; $0 auto-earns the trophy.
+                    date blank to estimate at your payment pace; a $0 balance counts as paid off.
                   </p>
                 </td>
               </tr>

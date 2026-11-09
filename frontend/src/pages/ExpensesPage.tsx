@@ -277,12 +277,7 @@ const ExpensesPage = () => {
           )}
           <button
             onClick={() => setShowUpload(true)}
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-            style={{
-              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow:
-                "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
-            }}
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
           >
             UPLOAD P&L
           </button>
@@ -417,7 +412,7 @@ const ExpensesPage = () => {
                     <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase" style={{ color: "var(--color-chart-blue)" }}>
                       Cost to sit
                     </p>
-                    <p className="font-display text-[34px] tracking-[.02em] mt-1 tabular-nums">
+                    <p className="font-condensed font-semibold text-[34px] mt-1 tabular-nums">
                       {money(burn.sitDaily)}
                       <span className="font-condensed text-[14px] text-faint"> / day</span>
                     </p>
@@ -433,7 +428,7 @@ const ExpensesPage = () => {
                     <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase text-amber-hi">
                       Cost to run
                     </p>
-                    <p className="font-display text-[34px] tracking-[.02em] mt-1 tabular-nums">
+                    <p className="font-condensed font-semibold text-[34px] mt-1 tabular-nums">
                       {money(burn.runDaily)}
                       <span className="font-condensed text-[14px] text-faint"> / day</span>
                     </p>
@@ -493,7 +488,7 @@ const ExpensesPage = () => {
                     className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
                     style={{ background: "var(--color-well)", border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)", boxShadow: "var(--shadow-inset)" }}
                   >
-                    <b className="font-display text-[22px] tracking-[.04em] text-amber-hi tabular-nums">
+                    <b className="font-condensed font-semibold text-[22px] text-amber-hi tabular-nums">
                       ${targets.bookingLadder.walkAway?.toFixed(2)}
                     </b>{" "}
                     walk-away

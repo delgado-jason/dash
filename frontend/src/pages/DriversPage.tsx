@@ -122,12 +122,7 @@ const DriversPage = () => {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-              style={{
-                background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                boxShadow:
-                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
-              }}
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
             >
               + ADD DRIVER
             </button>

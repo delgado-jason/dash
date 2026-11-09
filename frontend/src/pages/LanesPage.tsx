@@ -186,7 +186,7 @@ const LanesPage = () => {
 
         {/* the answering line — every clause drops out when its figure is null */}
         <div className="flex items-baseline gap-3 flex-wrap mt-4 font-condensed text-[14px] text-dim">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums text-ink">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums text-ink">
             {head.loads} LOAD{head.loads === 1 ? "" : "S"}
           </span>
           <span>

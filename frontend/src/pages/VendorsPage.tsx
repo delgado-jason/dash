@@ -95,11 +95,7 @@ const DoorButton = ({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] tracking-[.05em] text-canvas whitespace-nowrap disabled:opacity-40"
-      style={{
-        background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-        boxShadow: "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
-      }}
+      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] tracking-[.05em] bg-amber text-on-amber whitespace-nowrap disabled:opacity-40"
     >
       {children}
     </button>
@@ -331,12 +327,7 @@ const VendorsPage = () => {
           {!showNew && (
             <button
               onClick={() => openCreate()}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-              style={{
-                background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                boxShadow:
-                  "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
-              }}
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
             >
               + NEW VENDOR
             </button>
@@ -345,7 +336,7 @@ const VendorsPage = () => {
 
         {/* answering line — the trust ledger */}
         <div className="flex items-center gap-3 flex-wrap mt-4">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums">
             {vendors.length} VENDOR{vendors.length === 1 ? "" : "S"}
           </span>
           {trust.goTo > 0 && (
@@ -473,12 +464,7 @@ const VendorsPage = () => {
                 <span className="font-condensed text-[12px] text-faint">· {g.vendors.length}</span>
                 {g.champion && (
                   <span
-                    className="ml-auto font-display text-[13px] tracking-[.14em] text-amber-hi rounded-[4px] px-2 pt-[2px] pb-[1px] rotate-[-1.2deg]"
-                    style={{
-                      border: "1.5px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
-                      boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-ink) 12%, transparent), 0 1px 2px color-mix(in srgb, var(--color-canvas) 50%, transparent)",
-                    }}
-                  >
+                    className="ml-auto font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-amber-hi">
                     GO-TO <span className="text-dim tracking-[.1em]">· {g.champion.name.toUpperCase()}</span>
                   </span>
                 )}

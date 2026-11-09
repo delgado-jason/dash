@@ -193,7 +193,7 @@ const FacilityDetailPage = () => {
           </span>
           <KindChip kind={facility.kind} />
           <span className="ml-auto text-right">
-            <span className="font-display text-[19px] tracking-[.04em] tabular-nums block leading-none">
+            <span className="font-condensed font-semibold text-[19px] tabular-nums block leading-none">
               {rows.length}
             </span>
             <span className="font-condensed text-[10.5px] text-faint tracking-[.08em]">
@@ -255,7 +255,7 @@ const FacilityDetailPage = () => {
               {!score.hasData && (
                 <div className="mt-[10px]">
                   <span className="font-condensed text-[13px] text-faint">
-                    Full scorecard forges at {MIN_STOPS} timed stops —{" "}
+                    Full scorecard opens at {MIN_STOPS} timed stops —{" "}
                     {MIN_STOPS - score.timedStops} more visit
                     {MIN_STOPS - score.timedStops === 1 ? "" : "s"} with in/out logged and
                     this dock gets graded.
@@ -269,7 +269,7 @@ const FacilityDetailPage = () => {
                           i < score.timedStops
                             ? {
                                 background:
-                                  "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                  "var(--color-amber)",
                                 boxShadow: "0 0 8px color-mix(in srgb, var(--color-amber) 30%, transparent)",
                               }
                             : { border: "1px dashed var(--color-hairline)" }
@@ -283,7 +283,7 @@ const FacilityDetailPage = () => {
           ) : (
             <GhostLine>
               No timed stops yet. Log in and out times on a load here and the clock
-              starts — the scorecard forges at {MIN_STOPS} timed stops.
+              starts — the scorecard opens at {MIN_STOPS} timed stops.
             </GhostLine>
           )}
         </div>
@@ -349,11 +349,7 @@ const FacilityDetailPage = () => {
             <button
               onClick={saveNotes}
               disabled={savingNotes}
-              className="mt-2 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] text-canvas disabled:opacity-50"
-              style={{
-                background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                boxShadow: "0 4px 10px color-mix(in srgb, var(--color-amber) 25%, transparent)",
-              }}
+              className="mt-2 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] bg-amber text-on-amber disabled:opacity-50"
             >
               {savingNotes ? "SAVING…" : "SAVE NOTES"}
             </button>

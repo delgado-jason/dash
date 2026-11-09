@@ -86,7 +86,7 @@ const Fig = ({
 }) => (
   <div className={`p-4 ${rule}`}>
     <span className="ds2-label">{label}</span>
-    <div className="font-display text-[36px] leading-none text-hot tabular-nums tracking-[.02em] mt-1.5">
+    <div className="font-condensed font-semibold text-[36px] leading-none text-hot tabular-nums mt-1.5">
       {value == null ? "—" : value}
     </div>
     {note && (

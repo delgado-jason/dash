@@ -269,7 +269,7 @@ export const AgentsTab = ({ loads, ladder }: { loads: Load[]; ladder: RateLadder
                         className="w-[11px] h-[13px] rounded-[3px]"
                         style={
                           i < warm
-                            ? { background: i === warm - 1 ? "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" : "linear-gradient(180deg,var(--color-hot),var(--color-amber))" }
+                            ? { background: i === warm - 1 ? "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" : "var(--color-amber)" }
                             : { background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }
                         }
                       />

@@ -172,14 +172,14 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
     <div className="grid grid-cols-3 gap-3 mt-4 mb-3">
       <div>
         <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">Proximity</p>
-        <p className="font-display text-[24px] text-ink leading-none mt-1">
+        <p className="font-condensed font-semibold tabular-nums text-[24px] text-ink leading-none mt-1">
           {distanceLabel(r)} <ProofWord r={r} className="ml-1" />
         </p>
         <p className="text-[12px] text-dim mt-1">{originSub(r)}</p>
       </div>
       <div>
         <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">Rate</p>
-        <p className="font-display text-[24px] text-ink leading-none mt-1">
+        <p className="font-condensed font-semibold tabular-nums text-[24px] text-ink leading-none mt-1">
           {r.rpm != null ? money2(r.rpm) : "—"}
           {r.rpm != null && <span className="font-condensed text-[13px] text-dim"> /mi gross</span>}
         </p>
@@ -196,7 +196,7 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
       </div>
       <div>
         <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">History</p>
-        <p className="font-display text-[24px] text-ink leading-none mt-1">
+        <p className="font-condensed font-semibold tabular-nums text-[24px] text-ink leading-none mt-1">
           {r.loadCount} load{r.loadCount === 1 ? "" : "s"}
         </p>
         <p className="text-[12px] text-dim mt-1">{historySub(r)}</p>
@@ -232,7 +232,7 @@ const RankedRow = ({
   daily: DailyTargets | null;
 }) => (
   <div className={`grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo ${ROW_GRID}`}>
-    <span className="hidden md:block font-display text-[17px] text-faint">{rank}</span>
+    <span className="hidden md:block font-condensed font-semibold tabular-nums text-[17px] text-faint">{rank}</span>
     <div className="min-w-0">
       <div className="flex items-baseline gap-2 flex-wrap">
         <Link to={`/agents/${r.agentId}`} className="font-condensed text-[15px] text-amber hover:text-hot transition-colors">
@@ -252,7 +252,7 @@ const RankedRow = ({
       </div>
     </div>
     <span className="text-right leading-tight">
-      <span className="font-display text-[17px] text-ink block">{distanceLabel(r)}</span>
+      <span className="font-condensed font-semibold tabular-nums text-[17px] text-ink block">{distanceLabel(r)}</span>
       <ProofWord r={r} />
     </span>
     {/* The mock's pair: $5.01 /mi over $1,360 /day, coloured by the ladder.
@@ -260,7 +260,7 @@ const RankedRow = ({
         "/mi", so a "/mi gross" caption under it would only repeat the unit
         the reader just read. */}
     <span className="hidden md:block text-right leading-tight">
-      <span className="font-display text-[17px] block">
+      <span className="font-condensed font-semibold tabular-nums text-[17px] block">
         {r.rpm != null ? money2(r.rpm) : <span className="text-faint">{"—"}</span>}
         {r.rpm != null && <span className="font-condensed text-[11px] text-dim"> /mi</span>}
       </span>

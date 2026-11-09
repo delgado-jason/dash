@@ -187,7 +187,7 @@ export const AgentRow = ({
         </span>
       )}
       <span className="text-right">
-        <span className="block font-display text-[17px] text-ink tabular-nums leading-none">
+        <span className="block font-condensed font-semibold text-[17px] text-ink tabular-nums leading-none">
           {right ? right.value : daysSince === undefined ? "—" : daysSince === null ? "never" : `${daysSince}d`}
         </span>
         <span className="block font-condensed text-[10px] tracking-[.08em] uppercase text-faint mt-0.5">

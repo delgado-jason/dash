@@ -378,12 +378,7 @@ const FuelEntriesPage = () => {
           <span className="flex-1" />
           <button
             onClick={openCreate}
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-canvas"
-            style={{
-              background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow:
-                "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 50%, transparent)",
-            }}
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
           >
             + LOG FILL-UP
           </button>
@@ -391,7 +386,7 @@ const FuelEntriesPage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-display text-[21px] tracking-[.03em] tabular-nums">
+          <span className="font-condensed font-semibold text-[21px] tabular-nums">
             {entries.length} FILL{entries.length === 1 ? "" : "S"}
           </span>
           <span className="text-[13.5px] text-faint">
@@ -522,7 +517,7 @@ const FuelEntriesPage = () => {
                         {e.company_name || "—"}
                         {pl ? ` · ${pl}` : ""}
                         {full && mpg != null && (
-                          <span className="ml-2 font-display text-[11px] tracking-[.1em] text-status-positive-text border border-status-positive-text/40 rounded-[4px] px-[6px] py-[1px] whitespace-nowrap">
+                          <span className="ml-2 font-condensed font-semibold tabular-nums text-[11px] tracking-[.1em] text-status-positive-text border border-status-positive-text/40 rounded-[4px] px-[6px] py-[1px] whitespace-nowrap">
                             CLOSED THE TANK · {mpg.toFixed(1)} MPG
                           </span>
                         )}
@@ -792,10 +787,7 @@ const FuelEntriesPage = () => {
                     CANCEL
                   </button>
                   <button
-                    className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-canvas disabled:opacity-50"
-                    style={{
-                      background: "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-                    }}
+                    className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
                     onClick={save}
                     disabled={busy}
                   >

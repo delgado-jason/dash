@@ -32,7 +32,7 @@ export const VendorPips = ({ rating, caption = true, align = "end" }: VendorPips
                         border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 60%, transparent)",
                       }
                     : {
-                        background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                        background: "var(--color-amber)",
                         border: "1px solid color-mix(in srgb, var(--color-amber-hi) 60%, transparent)",
                         boxShadow: "0 0 8px color-mix(in srgb, var(--color-amber) 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-ink) 40%, transparent)",
                       }

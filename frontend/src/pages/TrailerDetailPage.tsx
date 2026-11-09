@@ -226,7 +226,7 @@ const TrailerDetailPage = () => {
             boxShadow: "0 0 7px color-mix(in srgb, var(--color-status-negative-text) 40%, transparent)",
           }
         : {
-            background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+            background: "var(--color-amber)",
             border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)",
             boxShadow: "0 0 6px color-mix(in srgb, var(--color-amber) 30%, transparent)",
           }
@@ -276,7 +276,7 @@ const TrailerDetailPage = () => {
           </div>
           <div className="ml-auto text-right">
             <span
-              className="inline-block font-display text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
+              className="inline-block font-condensed font-semibold text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
               style={{ boxShadow: "var(--shadow-inset)" }}
             >
               {Math.round(metrics.totalMiles).toLocaleString("en-US")}
@@ -345,8 +345,7 @@ const TrailerDetailPage = () => {
                 </div>
                 <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
                   {payoff.original != null ? `${money(payoff.original)} note · ` : ""}
-                  {money(payoff.monthlyPayment)}/mo — the TRAILER PAID OFF trophy waits at
-                  the end of this road
+                  {money(payoff.monthlyPayment)}/mo until paid off
                   {payoff.payoffDate
                     ? ` · ${payoff.exact ? "payoff" : "on pace for"} ${formatDate(payoff.payoffDate)}`
                     : ""}

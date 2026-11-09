@@ -152,7 +152,7 @@ const AgentsPage = () => {
       </div>
 
       <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
-        <span className="font-display text-[22px] tracking-[.03em] tabular-nums">
+        <span className="font-condensed font-semibold text-[22px] tabular-nums">
           {rows.length} agent{plural(rows.length)}
         </span>
         <span className="text-[12px] text-faint">in this view ·</span>

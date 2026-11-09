@@ -84,7 +84,7 @@ const Chip = ({ tone, children }: { tone: "day" | "job" | "dim"; children: React
 const Cell = ({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) => (
   <div className="min-w-0">
     <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">{label}</p>
-    <p className="font-display text-[24px] leading-none mt-1 tabular-nums text-ink">{value}</p>
+    <p className="font-condensed font-semibold text-[24px] leading-none mt-1 tabular-nums text-ink">{value}</p>
     {sub && <p className="text-[12px] text-dim mt-1 leading-snug">{sub}</p>}
   </div>
 );
@@ -849,7 +849,7 @@ const ReviewView = () => {
           <Chip tone="day">since {shortDate(SYSTEM_START)}</Chip>
           <Chip tone="dim">90d</Chip>
         </div>
-        <p className="font-display text-[26px] text-amber leading-none mt-3">
+        <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber leading-none mt-3">
           {model.inbound.all.attributed === 0
             ? "nothing attributed yet"
             : model.inbound.all.attributed < INBOUND_HEADLINE_MIN

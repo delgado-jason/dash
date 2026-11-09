@@ -440,8 +440,8 @@ const MarketPage = () => {
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           {ok ? (
             <span
-              className="font-display text-[20px] tracking-[.06em] rounded-[8px] px-3 py-[3px] rotate-[-1deg] border-2"
-              style={{ color: yvmColor, borderColor: yvmColor }}
+              className="font-condensed font-bold text-[18px] uppercase tracking-[.04em]"
+              style={{ color: yvmColor }}
             >
               {ok.verdict === "beating"
                 ? "▲ BEATING THE MARKET"
@@ -450,7 +450,7 @@ const MarketPage = () => {
                   : "▪ MOVING WITH THE MARKET"}
             </span>
           ) : (
-            <span className="font-display text-[20px] tracking-[.06em] text-faint">
+            <span className="font-condensed font-bold text-[18px] uppercase tracking-[.04em] text-faint">
               THE MARKET
             </span>
           )}
@@ -599,7 +599,7 @@ const MarketPage = () => {
                                 className="h-2"
                                 style={{
                                   width: `${yvmBar(ok.yourPct)}%`,
-                                  background: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                                  background: "var(--color-amber)",
                                 }}
                               />
                             </div>
@@ -710,7 +710,7 @@ const MarketPage = () => {
                   {
                     n: "Target and past",
                     c: "var(--color-hot)",
-                    bg: "linear-gradient(180deg, var(--color-hot), var(--color-amber))",
+                    bg: "var(--color-amber)",
                     v: zones.past,
                   },
                 ].map((z) => (
