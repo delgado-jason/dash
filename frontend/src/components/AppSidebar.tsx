@@ -11,13 +11,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   Globe,
-  Trophy,
-  Flame,
   BookOpen,
-  Volume2,
   Sun,
   Moon,
-  VolumeX,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -36,7 +32,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "react-router-dom";
 import { isDispatcher } from "@/lib/roles";
-import { sfxEnabled, setSfxEnabled, playSfx } from "@/lib/sfx";
 import { useTheme } from "@/hooks/useTheme";
 
 // `adminOnly` items are owner-only; a dispatcher's nav filters them out (and the
@@ -91,19 +86,16 @@ const nav: Entry[] = [
       { to: "/per-diem", label: "Per Diem", adminOnly: true },
       { to: "/recap", label: "Recap", adminOnly: true },
       { to: "/my-recap", label: "Recap", dispatcherOnly: true }, // her own bookings, gross
-      { to: "/garage", label: "Garage", adminOnly: true },
     ],
   },
   { to: "/compliance", label: "Compliance", icon: ShieldCheck },
   { to: "/integrity", label: "Integrity", icon: ShieldAlert },
   { to: "/website", label: "Website", icon: Globe, adminOnly: true },
-  { to: "/trophy-room", label: "Trophy Room", icon: Trophy, adminOnly: true },
-  { to: "/forge", label: "The Forge", icon: Flame, dispatcherOnly: true },
   { to: "/guide", label: "Guide", icon: BookOpen },
 ];
 
 // A dispatcher sees only the non-adminOnly items; the owner sees everything except
-// the dispatcher-only ones (e.g. The Forge, which is each dispatcher's own room).
+// the dispatcher-only ones.
 // Empty groups drop out.
 const navFor = (dispatcher: boolean): Entry[] => {
   const drop = (c: Child) => (dispatcher ? c.adminOnly : c.dispatcherOnly);
@@ -115,7 +107,6 @@ const navFor = (dispatcher: boolean): Entry[] => {
 const AppSidebar = () => {
   const { pathname } = useLocation();
   const dispatcher = isDispatcher();
-  const [sfxOn, setSfxOn] = useState(sfxEnabled());
   const { resolved: resolvedTheme, toggle: toggleTheme } = useTheme();
   const navItems = navFor(dispatcher);
   const active = (to: string) =>
@@ -233,23 +224,6 @@ const AppSidebar = () => {
             </Link>
           </div>
         )}
-        <div className="px-4 pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              const next = !sfxOn;
-              setSfxOn(next);
-              setSfxEnabled(next);
-              if (next) playSfx("pow"); // hear it come on
-            }}
-            className="flex items-center gap-2 text-sm text-faint transition-colors hover:text-ink"
-            aria-label={sfxOn ? "Turn sound effects off" : "Turn sound effects on"}
-            title={sfxOn ? "Sound on" : "Sound off"}
-          >
-            {sfxOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            <span>Sound {sfxOn ? "on" : "off"}</span>
-          </button>
-        </div>
         <div className="px-4 pt-2">
           <button
             type="button"

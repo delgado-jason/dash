@@ -1,14 +1,13 @@
 // Per-dispatcher SEASON — a month/quarter/year recap of one person's booked
-// loads, plus three earnable period trophies. Scoped by booked_by, all GROSS
+// loads. Scoped by booked_by, all GROSS
 // (see agents/lanes principle), reusing the recap RecapScope/range machinery.
 // Pure; `now`/ranges are passed in so it's testable.
 import type { Load } from "@/types/load";
-import { loadGross, type RateLadder } from "./rateTargets";
+import { loadGross } from "./rateTargets";
 import { agentStops, scoreStops } from "./stopScore";
 import { rangeFor, resolvePeriod, type RecapScope, type RecapRange } from "./recap";
-import type { Award } from "./awards";
 import { isDelivered, isNeverRevenue } from "./status";
-import { grossPerDrivenMile, loadDrivenMiles } from "./drivenRate";
+import { grossPerDrivenMile } from "./drivenRate";
 import { cleanName } from "@/lib/relationships/nameOf";
 
 const isReal = (l: Load) => !isNeverRevenue(l);
@@ -27,37 +26,10 @@ export const loadsInPeriod = (loads: Load[], userId: string, r: RecapRange): Loa
   );
 
 // Gross $/DRIVEN-mile over a set — the one ladder (GL-146): the same rate the
-// dispatcher card's avgBookedRate and Review grade, so the Rate Champion
-// trophy and the card never disagree. Loads whose driven miles are unknown are
+// dispatcher card's avgBookedRate and Review grade, so the season and the
+// card never disagree. Loads whose driven miles are unknown are
 // left out, never driven as 0.
 const grossPerMile = (loads: Load[]): number | null => grossPerDrivenMile(loads).rpm;
-// One load's gross per driven mile; null when its driven miles are unknown.
-const rpm = (l: Load): number | null => {
-  const m = loadDrivenMiles(l);
-  return m != null && m > 0 ? loadGross(l) / m : null;
-};
-
-// "Booking Champion" bar scales with the period length. Sized PER BOOKER at
-// roughly half the shop's real throughput (18 loads in Q3 2026, 64 YTD) — the
-// old 8 / 24 / 90 were account-level bars applied to one person and were never
-// reachable (2026-09-11).
-export const BOOKING_BAR: Record<RecapScope, number> = {
-  month: 4,
-  quarter: 12,
-  year: 40,
-};
-
-const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
-
-export type SeasonTrophyKey = "booking" | "rate" | "perfect";
-export interface SeasonTrophy {
-  key: SeasonTrophyKey;
-  name: string;
-  earned: boolean;
-  detail: string; // earned blurb, or what's still missing
-  progress: number; // 0..1 toward the bar; 1 once earned
-}
-
 export interface DispatchSeason {
   scope: RecapScope;
   label: string;
@@ -68,7 +40,6 @@ export interface DispatchSeason {
   bestLoad: number | null;
   topAgent: string | null;
   topLane: string | null;
-  trophies: SeasonTrophy[];
   hasData: boolean;
 }
 
@@ -98,74 +69,11 @@ const topBy = (loads: Load[], keyOf: (l: Load) => string): string | null => {
   return best;
 };
 
-const trophiesFor = (
-  scope: RecapScope,
-  mine: Load[],
-  avgRpm: number | null,
-  ladder: RateLadder,
-): SeasonTrophy[] => {
-  const target = ladder.target;
-  const rates = mine.map(rpm).filter((r): r is number => r != null);
-  const underTarget = target != null ? rates.filter((r) => r < target).length : 0;
-  const bar = BOOKING_BAR[scope];
-  const rateEarned = avgRpm != null && target != null && avgRpm >= target;
-  const perfectEarned =
-    target != null && rates.length > 0 && underTarget === 0;
-
-  return [
-    {
-      key: "booking",
-      name: "Booking Champion",
-      earned: mine.length >= bar,
-      detail:
-        mine.length >= bar
-          ? `${mine.length} loads booked`
-          : `${mine.length} / ${bar} loads`,
-      progress: Math.min(1, mine.length / bar),
-    },
-    {
-      key: "rate",
-      name: "Rate Champion",
-      earned: rateEarned,
-      detail:
-        avgRpm == null || target == null
-          ? "no rate yet"
-          : avgRpm >= target
-            ? `$${avgRpm.toFixed(2)} avg gross / driven mi`
-            : `$${avgRpm.toFixed(2)} vs $${target.toFixed(2)} target · gross / driven mi`,
-      progress: rateEarned
-        ? 1
-        : avgRpm != null && target
-          ? clamp01(avgRpm / target)
-          : 0,
-    },
-    {
-      key: "perfect",
-      name: "Perfect Period",
-      earned: perfectEarned,
-      detail:
-        target == null
-          ? "no target set"
-          : rates.length === 0
-            ? "no loads yet"
-            : underTarget === 0
-              ? "every load at target"
-              : `${underTarget} load${underTarget === 1 ? "" : "s"} under target`,
-      progress: perfectEarned
-        ? 1
-        : target == null || rates.length === 0
-          ? 0
-          : (rates.length - underTarget) / rates.length,
-    },
-  ];
-};
-
 export const dispatchSeason = (
   loads: Load[],
   userId: string,
   scope: RecapScope,
   range: RecapRange,
-  ladder: RateLadder,
   freeHours: number,
 ): DispatchSeason => {
   const mine = loadsInPeriod(loads, userId, range);
@@ -188,7 +96,6 @@ export const dispatchSeason = (
         ? `${l.origin_market} → ${l.delivery_market}`
         : "",
     ),
-    trophies: trophiesFor(scope, mine, avgRpm, ladder),
     hasData: mine.length > 0,
   };
 };
@@ -198,23 +105,20 @@ export const currentSeason = (
   loads: Load[],
   userId: string,
   scope: RecapScope,
-  ladder: RateLadder,
   freeHours: number,
   now: Date,
 ): DispatchSeason =>
-  dispatchSeason(loads, userId, scope, currentRange(scope, now), ladder, freeHours);
+  dispatchSeason(loads, userId, scope, currentRange(scope, now), freeHours);
 
-// Recent COMPLETED periods for the history strip: label + trophies won + loads.
+// Recent COMPLETED periods for the history strip: label + loads.
 export interface SeasonLogEntry {
   label: string;
-  trophies: number;
   loads: number;
 }
 export const dispatchSeasonLog = (
   loads: Load[],
   userId: string,
   scope: RecapScope,
-  ladder: RateLadder,
   freeHours: number,
   now: Date,
   count = 4,
@@ -222,43 +126,11 @@ export const dispatchSeasonLog = (
   const out: SeasonLogEntry[] = [];
   for (let ago = count - 1; ago >= 0; ago--) {
     const r = resolvePeriod(scope, ago, now);
-    const s = dispatchSeason(loads, userId, scope, r, ladder, freeHours);
+    const s = dispatchSeason(loads, userId, scope, r, freeHours);
     out.push({
       label: r.label,
-      trophies: s.trophies.filter((t) => t.earned).length,
       loads: s.loadsBooked,
     });
-  }
-  return out;
-};
-
-// Award pops for newly-earned CURRENT-period trophies (month/quarter/year). Each
-// fires once per period via its label-keyed id; tier "record" = a corner
-// slide-in, not the owner's full-screen takeover.
-export const dispatcherSeasonAwards = (
-  loads: Load[],
-  userId: string,
-  ladder: RateLadder,
-  freeHours: number,
-  now: Date,
-): Award[] => {
-  const out: Award[] = [];
-  const ICON: Record<SeasonTrophyKey, string> = {
-    booking: "trophy",
-    rate: "trophy",
-    perfect: "medal",
-  };
-  for (const scope of ["month", "quarter", "year"] as RecapScope[]) {
-    const s = currentSeason(loads, userId, scope, ladder, freeHours, now);
-    for (const t of s.trophies)
-      if (t.earned)
-        out.push({
-          id: `trophy:disp-${t.key}:${scope}:${s.label}`,
-          tier: "record",
-          name: `${t.name} · ${s.label}`,
-          detail: t.detail,
-          icon: ICON[t.key],
-        });
   }
   return out;
 };

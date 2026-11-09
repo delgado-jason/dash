@@ -1,11 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
-import type { RateLadder } from "./rateTargets";
 import { rangeFor } from "./recap";
-import { BOOKING_BAR } from "./dispatcherSeason";
 import { dispatcherRecap } from "./dispatcherRecap";
 
-const ladder: RateLadder = { walkAway: 4, minimum: 4.5, target: 5, strong: 6 };
 const FREE_HOURS = 2;
 
 // A delivered load she booked: 1000 loaded miles at $5/mi unless overridden.
@@ -33,7 +30,7 @@ const AUG = rangeFor("month", 2026, 7);
 
 describe("dispatcherRecap", () => {
   it("returns nulls (not zeros) and 0 detention for an empty period", () => {
-    const r = dispatcherRecap([], "me", "month", AUG, ladder, FREE_HOURS);
+    const r = dispatcherRecap([], "me", "month", AUG, FREE_HOURS);
     expect(r.hasData).toBe(false);
     expect(r.loadsBooked).toBe(0);
     expect(r.avgRpm).toBeNull();
@@ -53,7 +50,7 @@ describe("dispatcherRecap", () => {
       L({ load_id: "july", pickup_date: "2026-07-30T04:00:00.000Z", linehaul: "9000" }),
       L({ load_id: "sept", pickup_date: "2026-09-01T04:00:00.000Z", linehaul: "9000" }),
     ];
-    const r = dispatcherRecap(loads, "me", "month", AUG, ladder, FREE_HOURS);
+    const r = dispatcherRecap(loads, "me", "month", AUG, FREE_HOURS);
     expect(r.loadsBooked).toBe(1);
     expect(r.grossBooked).toBe(5000);
     expect(r.bestWeekGross).toBe(5000);
@@ -72,7 +69,7 @@ describe("dispatcherRecap", () => {
       L({ load_id: "undecided", ...dwell, detention_billable: null, detention_paid: true }),
       L({ load_id: "dismissed", ...dwell, detention_billable: false, detention_paid: true }),
     ];
-    const r = dispatcherRecap(loads, "me", "month", AUG, ladder, FREE_HOURS);
+    const r = dispatcherRecap(loads, "me", "month", AUG, FREE_HOURS);
     expect(r.detentionCollectedMin).toBe(120);
   });
 
@@ -83,7 +80,7 @@ describe("dispatcherRecap", () => {
       L({ load_id: "c", pickup_date: "2026-08-31T04:00:00.000Z", linehaul: "4000" }), // Mon → same week
       L({ load_id: "d", pickup_date: "2026-09-01T04:00:00.000Z", linehaul: "9000" }), // Sep — outside the range
     ];
-    const r = dispatcherRecap(loads, "me", "month", AUG, ladder, FREE_HOURS);
+    const r = dispatcherRecap(loads, "me", "month", AUG, FREE_HOURS);
     expect(r.loadsBooked).toBe(3);
     expect(r.bestWeekGross).toBe(7000); // b + c, not a alone, not d
   });
@@ -94,7 +91,7 @@ describe("dispatcherRecap", () => {
     const loads = [
       L({ load_id: "lead", pickup_date: "2026-08-03T04:00:00.000Z", linehaul: "8000" }),
     ];
-    const r = dispatcherRecap(loads, "me", "month", AUG, ladder, FREE_HOURS);
+    const r = dispatcherRecap(loads, "me", "month", AUG, FREE_HOURS);
     expect(r.loadsBooked).toBe(1);
     expect(r.bestWeekGross).toBe(8000);
   });
@@ -106,26 +103,8 @@ describe("dispatcherRecap", () => {
       L({ load_id: "full-a", pickup_date: "2026-08-12T04:00:00.000Z", linehaul: "3000" }), // Aug 12–18 week
       L({ load_id: "full-b", pickup_date: "2026-08-18T04:00:00.000Z", linehaul: "3000" }), // same week
     ];
-    const r = dispatcherRecap(loads, "me", "month", AUG, ladder, FREE_HOURS);
+    const r = dispatcherRecap(loads, "me", "month", AUG, FREE_HOURS);
     expect(r.loadsBooked).toBe(3);
     expect(r.bestWeekGross).toBe(6000); // full-a + full-b; the July load never leaks in
-  });
-
-  it("carries Booking Champion progress at the per-booker bars", () => {
-    const Q3 = rangeFor("quarter", 2026, 2);
-    const half = BOOKING_BAR.quarter / 2;
-    const some = Array.from({ length: half }, (_, i) => L({ load_id: `q${i}` }));
-    const booking = dispatcherRecap(some, "me", "quarter", Q3, ladder, FREE_HOURS)
-      .trophies.find((t) => t.key === "booking")!;
-    expect(booking.earned).toBe(false);
-    expect(booking.detail).toBe(`${half} / ${BOOKING_BAR.quarter} loads`);
-    expect(booking.progress).toBeCloseTo(0.5, 6);
-
-    const Y = rangeFor("year", 2026, 0);
-    const plenty = Array.from({ length: BOOKING_BAR.year }, (_, i) => L({ load_id: `y${i}` }));
-    const won = dispatcherRecap(plenty, "me", "year", Y, ladder, FREE_HOURS)
-      .trophies.find((t) => t.key === "booking")!;
-    expect(won.earned).toBe(true);
-    expect(won.progress).toBe(1);
   });
 });

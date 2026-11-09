@@ -1,15 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  classify,
-  currentStreakOf,
-  bestStreakOf,
-  computeGrind,
-  computePersonalGrind,
-  quarterWeekVerdicts,
-  type WeekStatus,
-} from "./grind";
+import { classify, bestStreakOf, quarterWeekVerdicts } from "./grind";
 import type { Load } from "@/types/load";
-import type { ExpensePeriod } from "@/types/expense";
 
 // A delivered load worth `gross`, keyed to a delivery week.
 const deliv = (date: string, gross: number, extra: Record<string, unknown> = {}) =>
@@ -42,122 +33,11 @@ describe("classify", () => {
   });
 });
 
-describe("currentStreakOf", () => {
-  const S = (a: WeekStatus[]) => currentStreakOf(a);
-  it("counts trailing target weeks", () => {
-    expect(S(["below", "target", "target", "target"])).toBe(3);
-  });
-  it("skips home weeks without breaking", () => {
-    expect(S(["target", "target", "home", "target"])).toBe(3);
-    expect(S(["target", "target", "home", "home"])).toBe(2);
-  });
-  it("breaks on a below or break-even week", () => {
-    expect(S(["target", "breakeven", "target", "target"])).toBe(2);
-    expect(S(["target", "below"])).toBe(0);
-  });
-});
-
 describe("bestStreakOf", () => {
   it("finds the longest target run, home weeks neutral", () => {
     expect(bestStreakOf(["target", "target", "below", "target", "target", "target"])).toBe(3);
     expect(bestStreakOf(["target", "home", "target"])).toBe(2);
     expect(bestStreakOf(["below", "breakeven", "home"])).toBe(0);
-  });
-});
-
-describe("computePersonalGrind — graded against her own typical week", () => {
-  it("streaks the weeks at/above 75% of her typical, a slow week breaks it", () => {
-    // typical (median of active) = 9000 → bar 6750, floor 3600.
-    const loads = [
-      deliv("2026-01-01", 10000),
-      deliv("2026-01-08", 10000),
-      deliv("2026-01-15", 10000),
-      deliv("2026-01-22", 2000), // below floor → breaks the streak
-      deliv("2026-01-29", 9000),
-      deliv("2026-02-05", 9000),
-      deliv("2026-02-12", 9000),
-      deliv("2026-02-19", 8000),
-    ];
-    const g = computePersonalGrind(loads, new Date("2026-03-04T12:00:00Z"));
-    expect(g.hasLadder).toBe(true);
-    expect(g.currentStreak).toBe(4); // the four weeks after the slow one
-    expect(g.bestStreak).toBe(4);
-    expect(g.thisWeek).toBe("home"); // nothing delivered in the current week
-  });
-
-  it("needs a few active weeks before a bar is meaningful", () => {
-    const g = computePersonalGrind(
-      [deliv("2026-02-05", 9000), deliv("2026-02-12", 9000)],
-      new Date("2026-03-04T12:00:00Z"),
-    );
-    expect(g.hasLadder).toBe(false); // < 3 active weeks
-    expect(g.currentStreak).toBe(0);
-  });
-
-  it("degrades cleanly with no delivered freight", () => {
-    const g = computePersonalGrind([], new Date("2026-03-04T12:00:00Z"));
-    expect(g.hasLadder).toBe(false);
-    expect(g.weeks).toEqual([]);
-  });
-
-  it("reads 'typical' from the trailing quarter, not all-time (seasonal)", () => {
-    // Old huge weeks (outside the 13-week window) must NOT set the bar. If they
-    // did, the bar would be ~15000 and her recent $6k weeks would read 'below'
-    // (streak 0). Windowed, the bar is 4500 and the recent weeks streak.
-    const loads = [
-      deliv("2025-12-03", 20000),
-      deliv("2025-12-10", 20000),
-      deliv("2025-12-17", 20000),
-      deliv("2025-12-24", 20000),
-      deliv("2026-05-13", 6000),
-      deliv("2026-05-20", 6000),
-      deliv("2026-05-27", 6000),
-    ];
-    const g = computePersonalGrind(loads, new Date("2026-06-03T12:00:00Z"));
-    expect(g.hasLadder).toBe(true);
-    expect(g.currentStreak).toBeGreaterThanOrEqual(3); // recent weeks count as target
-  });
-});
-
-describe("personal grind baseline progress (the ghost meter's fuel)", () => {
-  it("exposes activeWeeks/weeksNeeded while the ladder is still forging", () => {
-    const grind = computePersonalGrind([], new Date("2026-08-15T12:00:00Z"));
-    expect(grind.hasLadder).toBe(false);
-    expect(grind.activeWeeks).toBe(0);
-    expect(grind.weeksNeeded).toBeGreaterThan(0);
-  });
-});
-
-describe("computeGrind — HEAT grades the hero's own number: GROSS weeks against the gross target (2026-11-04)", () => {
-  // Thu Jul 9, 2026: the running pay week is Jul 8–14; June is the one filed month.
-  const now = new Date("2026-07-09T00:00:00Z");
-  const june = { period_month: "2026-06-01", income_total: 10000, cogs_total: 5000, expense_total: 5000 } as unknown as ExpensePeriod;
-  // Every load keeps 80% of its gross (net_revenue), so the keep is 0.8 and the
-  // weekly target = 10,000 / 0.8 / (52/12) / (1 − 0.26) ≈ $3,898; the floor ≈ $2,885.
-  const paid = (date: string, gross: number) => deliv(date, gross, { net_revenue: gross * 0.8 });
-  const loads = [
-    paid("2026-06-10", 10000), // builds the basis
-    paid("2026-06-24", 4000), // Wed Jun 24 → the week Jun 24–30: gross 4,000 beats the target; its net 3,200 would not
-    paid("2026-06-17", 3000), // Wed Jun 17 → the week Jun 17–23: gross 3,000 clears the floor only
-  ];
-
-  it("grades weeks in gross against the gross target, and says what the bar was", () => {
-    const g = computeGrind(loads, [june], 0, null, now);
-    expect(g.hasLadder).toBe(true);
-    expect(g.weeklyTarget).toBeCloseTo(10000 / 0.8 / (52 / 12) / 0.74, 0);
-    expect(g.weeklyFloor).toBeCloseTo(10000 / 0.8 / (52 / 12), 0);
-    expect(g.basisLabel).toBe("Jun ’26");
-    const byStart = Object.fromEntries(g.weeks.map((w) => [w.start, w.status]));
-    expect(byStart["2026-06-24"]).toBe("target"); // graded in NET it would have read "breakeven"
-    expect(byStart["2026-06-17"]).toBe("breakeven");
-    expect(g.weeks.find((w) => w.start === "2026-06-24")!.gross).toBe(4000);
-  });
-
-  it("no P&L → no ladder, every week neutral", () => {
-    const g = computeGrind(loads, [], 0, null, now);
-    expect(g.hasLadder).toBe(false);
-    expect(g.weeks).toEqual([]);
-    expect(g.weeklyTarget).toBeNull();
   });
 });
 

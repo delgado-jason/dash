@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Load } from "@/types/load";
 import type { RateLadder } from "./rateTargets";
-import { getDispatcherCard, dispatchRank } from "./dispatcherCard";
+import { getDispatcherCard } from "./dispatcherCard";
 
 const baseLoad: Load = {
   load_id: "L",
@@ -120,28 +120,5 @@ describe("getDispatcherCard", () => {
     expect(card.grossBooked).toBe(0);
     expect(card.avgBookedRate).toBeNull();
     expect(card.overBreakEven).toBeNull();
-    expect(card.rank.name).toBe("Rookie Dispatcher");
-  });
-});
-
-describe("dispatchRank", () => {
-  it("climbs tiers on lifetime loads booked", () => {
-    expect(dispatchRank(0).name).toBe("Rookie Dispatcher");
-    expect(dispatchRank(24).name).toBe("Rookie Dispatcher");
-    expect(dispatchRank(25).name).toBe("Load Wrangler");
-    expect(dispatchRank(80).name).toBe("Freight Closer");
-    expect(dispatchRank(500).name).toBe("Dispatch Legend");
-  });
-
-  it("reports progress toward the next tier; tops out at Legend", () => {
-    const r = dispatchRank(50); // Load Wrangler [25, 75)
-    expect(r.next?.name).toBe("Freight Closer");
-    expect(r.toNext).toBe(25); // 75 − 50
-    expect(r.pct).toBeCloseTo(0.5, 5); // (50−25)/(75−25)
-
-    const top = dispatchRank(600);
-    expect(top.next).toBeNull();
-    expect(top.toNext).toBe(0);
-    expect(top.pct).toBe(1);
   });
 });

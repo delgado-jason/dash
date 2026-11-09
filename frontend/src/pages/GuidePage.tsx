@@ -2409,7 +2409,6 @@ const GuidePage = () => {
           <Metric
             title="Utilization — how hard the truck runs"
             answers="The share of days the truck was under a load — pickup to delivery — lifetime: since the later of the truck's in-service date and your first logged load, and the tile prints that date ('lifetime since Jan 6, 2026'). Idle days pull it down."
-            sources={[{ label: "Garage", to: "/garage" }]}
           >
             <Formula>days under load ÷ days in window</Formula>
             <div className="mt-3">
@@ -2470,7 +2469,6 @@ const GuidePage = () => {
             title="Fuel economy — miles per gallon"
             answers="Computed the honest way — only across full tank-to-full-tank windows, so a partial fill never skews a tank's rate."
             sources={[
-              { label: "Garage", to: "/garage" },
               { label: "Fuel", to: "/fuel-entries" },
             ]}
           >
@@ -2485,7 +2483,6 @@ const GuidePage = () => {
           <Metric
             title="Fuel + shop + note per mile — what the rig itself costs you"
             answers="What the rig itself costs per mile: fuel, the shop log, and its note. The truck page carries the truck note, the trailer page the trailer note, and the Fleet dashboard rolls both into the whole rig. It is NOT the P&L's all-in cost per mile — insurance, plates, the office and everything else — which lives on Expenses and is what the rate to book stands on."
-            sources={[{ label: "Garage", to: "/garage" }]}
           >
             {/* Illustrative round numbers — the app computes yours live. */}
             <div className="flex items-center gap-2 flex-wrap mb-3">
@@ -2531,7 +2528,6 @@ const GuidePage = () => {
           <Metric
             title="Revenue per mile — what each mile earns"
             answers="The truck's net revenue spread over every mile it drove — its earning efficiency."
-            sources={[{ label: "Garage", to: "/garage" }]}
           >
             <Formula>truck net revenue ÷ total miles driven</Formula>
             <Eg>

@@ -49,18 +49,18 @@ export const DispatcherSeasonCard = ({
   // Land on the grandest current period that has data (year → quarter → month).
   const defaultScope = useMemo<RecapScope>(() => {
     for (const s of ["year", "quarter", "month"] as RecapScope[])
-      if (currentSeason(loads, userId, s, ladder, freeHours, now).hasData) return s;
+      if (currentSeason(loads, userId, s, freeHours, now).hasData) return s;
     return "month";
-  }, [loads, userId, ladder, freeHours, now]);
+  }, [loads, userId, freeHours, now]);
 
   const [scope, setScope] = useState<RecapScope>(defaultScope);
   const season = useMemo(
-    () => currentSeason(loads, userId, scope, ladder, freeHours, now),
-    [loads, userId, scope, ladder, freeHours, now],
+    () => currentSeason(loads, userId, scope, freeHours, now),
+    [loads, userId, scope, freeHours, now],
   );
   const log = useMemo(
-    () => dispatchSeasonLog(loads, userId, scope, ladder, freeHours, now),
-    [loads, userId, scope, ladder, freeHours, now],
+    () => dispatchSeasonLog(loads, userId, scope, freeHours, now),
+    [loads, userId, scope, freeHours, now],
   );
 
   const target = ladder.target;

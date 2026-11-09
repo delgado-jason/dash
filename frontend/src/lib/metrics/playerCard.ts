@@ -1,11 +1,11 @@
-// Player-card math for the owner-operator. Composes the engines we already
-// trust — rate ladder, P&L margin, fuel, mile clubs — into a career rank, a
-// current-season grade, personal-best records, and earned trophies. Pure; take
+// The driver page's grading math — the season grades (rate, utilization,
+// margin on the one margin goal), the profit-lever bottleneck, and the last
+// complete quarter's stat line. The career rank, personal bests and trophies
+// that rode these left with the game layer (the Redesign, phase B). Pure; take
 // `now` explicitly so it's testable.
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
-import type { FuelEntry } from "@/types/fuelEntry";
 import { deadheadPctOver } from "./deadhead";
 // GROSS revenue — avgRpm (booking rate), bestLane, and the best-week/biggest-load
 // records are market value (Jason's ruling). The net figures (netRevenue, netProfit,
@@ -13,11 +13,7 @@ import { deadheadPctOver } from "./deadhead";
 import { loadRevenue } from "./loads";
 import { type RateLadder } from "./rateTargets";
 import { resolvePeriod } from "./recap";
-import { mileMilestone } from "./mileClub";
-import { fuelStats } from "./fuelEconomy";
-import { completedPayWeekTotals } from "./payWeeks";
 import { qboPretaxMargin, type FinancialMonth } from "./cashflow";
-import { RANK_TIERS } from "@/lib/constants/playerCard";
 import { MARGIN_GOAL } from "@/lib/constants/targets";
 import { isDelivered } from "./status";
 
@@ -31,40 +27,6 @@ export const worseGrade = (a: Grade | null, b: Grade | null): Grade | null => {
   if (a == null) return b;
   if (b == null) return a;
   return ORDER.indexOf(a) <= ORDER.indexOf(b) ? a : b;
-};
-
-// ---------- career rank ----------
-export interface CareerRank {
-  key: string;
-  name: string;
-  index: number;
-  next: { name: string; min: number } | null;
-  toNext: number; // miles to the next tier
-  pct: number; // 0..1 progress within the current tier
-  miles: number;
-}
-
-export const careerRank = (lifetimeMiles: number): CareerRank => {
-  const miles = Math.max(0, lifetimeMiles || 0);
-  let i = 0;
-  for (let k = RANK_TIERS.length - 1; k >= 0; k--) {
-    if (miles >= RANK_TIERS[k].min) {
-      i = k;
-      break;
-    }
-  }
-  const cur = RANK_TIERS[i];
-  const next = i < RANK_TIERS.length - 1 ? RANK_TIERS[i + 1] : null;
-  const span = next ? next.min - cur.min : 0;
-  return {
-    key: cur.key,
-    name: cur.name,
-    index: i,
-    next: next ? { name: next.name, min: next.min } : null,
-    toNext: next ? Math.max(0, next.min - miles) : 0,
-    pct: next && span > 0 ? Math.min(1, (miles - cur.min) / span) : 1,
-    miles,
-  };
 };
 
 // ---------- season grades ----------
@@ -294,95 +256,4 @@ export const getSeasonStats = (
     bestLane,
     months: n,
   };
-};
-
-// ---------- personal bests (records) ----------
-export interface PersonalBests {
-  bestWeekRevenue: number | null;
-  bestMpg: number | null;
-  biggestLoad: number | null;
-  mostLoadsInWeek: number | null;
-}
-
-// The week records read PAY weeks (Wednesday → Tuesday), the same grouping
-// as the Pulse record line and the recap — one best week (2026-11-04, §5).
-// They used to read Monday weeks, so the card's TOP WEEK and the Dashboard's
-// best week were two different numbers for the same truck.
-export const personalBests = (
-  loads: Load[],
-  fuel: FuelEntry[],
-  now: Date,
-): PersonalBests => {
-  const delivered = loads.filter(
-    (l) => isDelivered(l) && l.delivery_date,
-  );
-
-  // `now` arrives anchored (a UTC-midnight local day), so its ISO day is the
-  // operator's day.
-  const weeks = completedPayWeekTotals(loads, now.toISOString().slice(0, 10));
-  let bestWeekRevenue: number | null = null;
-  let mostLoadsInWeek: number | null = null;
-  for (const w of weeks) {
-    if (bestWeekRevenue == null || w.gross > bestWeekRevenue) bestWeekRevenue = w.gross;
-    if (mostLoadsInWeek == null || w.loads > mostLoadsInWeek) mostLoadsInWeek = w.loads;
-  }
-
-  const biggestLoad = delivered.reduce<number | null>((m, l) => {
-    const r = loadRevenue(l);
-    return m == null || r > m ? r : m;
-  }, null);
-
-  return {
-    bestWeekRevenue,
-    bestMpg: fuelStats(fuel, now).bestMpg,
-    biggestLoad,
-    mostLoadsInWeek,
-  };
-};
-
-// ---------- earned trophies (phase-1 set) ----------
-export interface Trophy {
-  key: string;
-  name: string;
-  icon: string; // lucide/tabler-ish name the UI maps to
-  detail: string;
-}
-
-export const earnedTrophies = (opts: {
-  lifetimeMiles: number;
-  loads: Load[];
-  bestMpg: number | null;
-  seasonMargin: Grade | null;
-}): Trophy[] => {
-  const out: Trophy[] = [];
-
-  const mm = mileMilestone(opts.lifetimeMiles);
-  if (mm.crossed != null && mm.label)
-    out.push({ key: "mileclub", name: `${mm.label} Club`, icon: "medal", detail: mm.title ?? "Lifetime" });
-
-  const byAgent = new Map<string, { name: string; count: number }>();
-  for (const l of opts.loads)
-    if (isDelivered(l) && l.agent_id) {
-      const a = byAgent.get(l.agent_id) ?? { name: l.agent, count: 0 };
-      a.count += 1;
-      byAgent.set(l.agent_id, a);
-    }
-  let topAgent: { name: string; count: number } | null = null;
-  for (const a of byAgent.values())
-    if (!topAgent || a.count > topAgent.count) topAgent = a;
-  if (topAgent && topAgent.count >= 5)
-    out.push({ key: "relationship", name: "Relationship Builder", icon: "users", detail: `${topAgent.name} ×${topAgent.count}` });
-
-  const delivered = opts.loads.filter((l) => isDelivered(l)).length;
-  const century = [500, 250, 100].find((m) => delivered >= m);
-  if (century)
-    out.push({ key: "century", name: `${century} Loads`, icon: "stack", detail: "Career" });
-
-  if (opts.seasonMargin === "strong")
-    out.push({ key: "strong-season", name: "Strong Season", icon: "trophy", detail: "Margin at the strong band (goal +5pts)" });
-
-  if (opts.bestMpg != null)
-    out.push({ key: "feather-foot", name: "High-MPG Tank", icon: "flame", detail: `${opts.bestMpg.toFixed(1)} mpg best` });
-
-  return out;
 };
