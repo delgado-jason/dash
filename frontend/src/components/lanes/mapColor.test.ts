@@ -15,6 +15,7 @@ const row = (
   over: { loads?: number; typicalRpm?: number | null; deliveries?: number; reload?: number | null },
 ): LedgerRow => ({
   state,
+  abbr: state, // state grain: the key IS the code
   name: state,
   markets: [],
   out: {
@@ -36,6 +37,8 @@ const row = (
     shareMedian: null,
     nextRpmMedian: null,
     reloadedInState: 0,
+    reloads: 0,
+    within: 0,
     grade: "thin",
   },
 });

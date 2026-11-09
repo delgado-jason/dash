@@ -16,6 +16,7 @@ import {
   ledgerFolded,
   ledgerHeadline,
   marketDetail,
+  reloadSummary,
   repeatLanes,
   sequenceLoads,
   stripMarket,
@@ -756,5 +757,198 @@ describe("ledgerHeadline", () => {
   it("says once how many delivered loads carry no pickup date", () => {
     expect(odd.undated).toBe(1);
     expect(head.undated).toBe(0);
+  });
+});
+
+// ------------------------------------------------------------ market grain
+
+// A four-load sequence that exercises both halves at market grain:
+//   A  Charlotte NC  → Dallas TX    06-01 → 06-03
+//   B  Dallas TX     → Houston TX   06-05 → 06-07   (reloaded 40 mi)
+//   C  Greenville SC → Dallas TX    06-10 → 06-12   (reloaded 200 mi)
+//   D  Charlotte NC  → Atlanta GA   06-15 → 06-17   (reloaded 300 mi)
+// Atlanta is a market seen ONLY as a destination. Dallas and Houston are both
+// in TX, so a state-grain run folds them together — at market grain they must
+// stand apart, which is the whole point of the grain.
+const GRAIN_NOW = new Date("2026-08-01T12:00:00Z");
+const GRAIN_BOOK: Load[] = [
+  makeLoad({
+    load_id: "A", pickup_date: "2026-06-01", delivery_date: "2026-06-03",
+    origin_market: "Charlotte Market", origin_state: "NC",
+    delivery_market: "Dallas Market", destination_state: "TX",
+    loaded_miles: 1000, linehaul: "3000",
+  }),
+  makeLoad({
+    load_id: "B", pickup_date: "2026-06-05", delivery_date: "2026-06-07",
+    origin_market: "Dallas Market", origin_state: "TX",
+    delivery_market: "Houston Market", destination_state: "TX",
+    loaded_miles: 1000, linehaul: "4000", deadhead_miles: 40,
+  }),
+  makeLoad({
+    load_id: "C", pickup_date: "2026-06-10", delivery_date: "2026-06-12",
+    origin_market: "Greenville Market", origin_state: "SC",
+    delivery_market: "Dallas Market", destination_state: "TX",
+    loaded_miles: 1000, linehaul: "6000", deadhead_miles: 200,
+  }),
+  makeLoad({
+    load_id: "D", pickup_date: "2026-06-15", delivery_date: "2026-06-17",
+    origin_market: "Charlotte Market", origin_state: "NC",
+    delivery_market: "Atlanta Market", destination_state: "GA",
+    loaded_miles: 1000, linehaul: "5000", deadhead_miles: 300,
+  }),
+];
+
+describe("buildLedger — market grain", () => {
+  const rows = buildLedger(GRAIN_BOOK, "all", GRAIN_NOW, "market", [], COSTS);
+  const row = (key: string) => rows.find((r) => r.state === key)!;
+
+  it("keys every row on the STRIPPED market name, not on the state", () => {
+    expect(rows.map((r) => r.state).sort()).toEqual([
+      "Atlanta", "Charlotte", "Dallas", "Greenville", "Houston",
+    ]);
+  });
+
+  it("keeps two markets in the same state apart", () => {
+    // Dallas and Houston are both TX; a state grain would have one row.
+    expect(row("Dallas").in.deliveries).toBe(2); // A and C
+    expect(row("Houston").in.deliveries).toBe(1); // B
+  });
+
+  it("rolls a market's OUT half up over its own loads", () => {
+    expect(row("Charlotte").out.loads).toBe(2); // A and D
+    // median of $3.00 and $5.00 a loaded mile
+    expect(row("Charlotte").out.typicalRpm).toBeCloseTo(4, 5);
+  });
+
+  it("gives a destination-only market an IN half and an empty OUT half — never a zero rate", () => {
+    const atlanta = row("Atlanta");
+    expect(atlanta.in.deliveries).toBe(1);
+    expect(atlanta.out.loads).toBe(0);
+    expect(atlanta.out.typicalRpm).toBeNull(); // null, NOT 0
+    expect(atlanta.out.blendedRpm).toBeNull();
+    expect(atlanta.out.grade).toBe("thin");
+  });
+
+  it("prints the modal state code beside the market, falling back to the delivery side", () => {
+    expect(row("Charlotte").abbr).toBe("NC");
+    expect(row("Greenville").abbr).toBe("SC");
+    // Atlanta has no OUT loads, so its code comes off its deliveries.
+    expect(row("Atlanta").abbr).toBe("GA");
+  });
+
+  it("counts a reload into the SAME MARKET, not merely the same state", () => {
+    // A delivers into Dallas and its next load loads in Dallas → 1.
+    // C also delivers into Dallas but reloads in Charlotte → not counted.
+    expect(row("Dallas").in.reloadedInState).toBe(1);
+  });
+
+  it("carries the reload SAMPLE beside the median, so the list reads 'within of reloads'", () => {
+    const dallas = row("Dallas");
+    expect(dallas.in.reloads).toBe(2); // A→40 and C→300, both logged
+    expect(dallas.in.reloadMilesMedian).toBeCloseTo(170, 5); // median of 40, 300
+    expect(dallas.in.within).toBe(1); // only the 40 is next door
+    // Atlanta's one delivery is the last load — no next, so no sample at all.
+    expect(row("Atlanta").in.reloads).toBe(0);
+    expect(row("Atlanta").in.reloadMilesMedian).toBeNull();
+  });
+});
+
+describe("ledgerHeadline — market grain", () => {
+  const rows = buildLedger(GRAIN_BOOK, "all", GRAIN_NOW, "market", [], COSTS);
+  const head = ledgerHeadline(
+    rows,
+    windowLoads(GRAIN_BOOK, "all", GRAIN_NOW),
+    "market",
+  );
+
+  it("counts DISTINCT MARKETS on each side", () => {
+    expect(head.originStates).toBe(3); // Charlotte, Dallas, Greenville
+    expect(head.deliveryStates).toBe(3); // Dallas, Houston, Atlanta
+  });
+});
+
+// ------------------------------------------------------------ getting empty
+
+describe("reloadSummary", () => {
+  const NOW = new Date("2026-08-01T12:00:00Z");
+
+  it("bands the reloads and medians them over the away legs", () => {
+    const s = reloadSummary(GRAIN_BOOK, "all", NOW);
+    expect(s.legs).toBe(3); // A, B, C have a next; D is the last load
+    expect(s.home).toBe(0);
+    expect(s.unlogged).toBe(0);
+    expect(s.reloads).toBe(3);
+    expect(s.medianMiles).toBeCloseTo(200, 5); // median of 40, 200, 300
+    expect(s.within).toBe(1); // 40
+    expect(s.between).toBe(0); // nothing lands in 86–125
+    expect(s.beyond).toBe(2); // 200 and 300
+    expect(s.emptyMiles).toBeCloseTo(540, 5);
+  });
+
+  it("names a home stint and keeps it out of the sample and every band", () => {
+    const book = [
+      makeLoad({ load_id: "P", pickup_date: "2026-06-01", delivery_date: "2026-06-03" }),
+      makeLoad({ load_id: "Q", pickup_date: "2026-06-25", delivery_date: "2026-06-27", deadhead_miles: 50 }),
+    ];
+    const s = reloadSummary(book, "all", NOW);
+    expect(s.legs).toBe(1);
+    expect(s.home).toBe(1);
+    // 50 miles would have been "within 85", but the truck was parked on
+    // purpose — a home gap is not a market's reload.
+    expect(s.reloads).toBe(0);
+    expect(s.within).toBe(0);
+    expect(s.between).toBe(0);
+    expect(s.beyond).toBe(0);
+    expect(s.medianMiles).toBeNull();
+    expect(s.emptyMiles).toBe(0);
+  });
+
+  it("calls a 0 deadhead UNLOGGED, never a free reload next door", () => {
+    const book = [
+      makeLoad({ load_id: "R", pickup_date: "2026-06-01", delivery_date: "2026-06-03" }),
+      makeLoad({ load_id: "S", pickup_date: "2026-06-05", delivery_date: "2026-06-07", deadhead_miles: 0 }),
+    ];
+    const s = reloadSummary(book, "all", NOW);
+    expect(s.legs).toBe(1);
+    expect(s.unlogged).toBe(1);
+    expect(s.reloads).toBe(0);
+    expect(s.within).toBe(0); // a 0 is not "within 85 mi"
+    expect(s.medianMiles).toBeNull();
+  });
+
+  it("is all zeroes with a null median on an empty window", () => {
+    expect(reloadSummary([], "all", NOW)).toEqual({
+      legs: 0,
+      home: 0,
+      unlogged: 0,
+      reloads: 0,
+      medianMiles: null,
+      within: 0,
+      between: 0,
+      beyond: 0,
+      emptyMiles: 0,
+    });
+  });
+
+  it("agrees with the ledger row's own sample on a one-market book", () => {
+    const into = (over: Partial<Load>) =>
+      makeLoad({ delivery_market: "Dallas Market", destination_state: "TX", ...over });
+    const book = [
+      into({ load_id: "X", pickup_date: "2026-06-01", delivery_date: "2026-06-03",
+             origin_market: "Charlotte Market", origin_state: "NC" }),
+      into({ load_id: "Y", pickup_date: "2026-06-05", delivery_date: "2026-06-07",
+             origin_market: "Greenville Market", origin_state: "SC", deadhead_miles: 40 }),
+      into({ load_id: "Z", pickup_date: "2026-06-10", delivery_date: "2026-06-12",
+             origin_market: "Atlanta Market", origin_state: "GA", deadhead_miles: 200 }),
+    ];
+    const s = reloadSummary(book, "all", NOW);
+    const dallas = buildLedger(book, "all", NOW, "market", [], COSTS).find(
+      (r) => r.state === "Dallas",
+    )!;
+    // Every delivery lands in the one market, so the row's sample IS the book's.
+    expect(dallas.in.reloads).toBe(s.reloads);
+    expect(dallas.in.within).toBe(s.within);
+    expect(s.reloads).toBe(2);
+    expect(s.within).toBe(1);
   });
 });

@@ -597,10 +597,31 @@ const GuidePage = () => {
                 deposit — it clears every week.)
               </TabLine>
               <TabLine name="Lanes" q="Where does my freight run?">
-                The U.S. map shaded by one metric at a time — what a market pays
-                when you load there, what it costs you to get empty there, or
-                plain volume — beside the market ledger that carries both halves
-                of every market, with your repeat lanes underneath.
+                The glance before the board, on the board's own window — the
+                trailing twelve months, this year or all time. Your freight
+                repeats by MARKET rather than by lane (seventy-five loads over
+                sixty-nine distinct lanes, four of them run twice, but Charlotte
+                loaded seven times), so every row here is a market. Where you
+                load lists the markets you have loaded in three or more times,
+                each with its typical dollars a loaded mile, its gross and the
+                ledger's OUT grade; where you deliver lists the markets you have
+                delivered into three or more times, each with the median empty
+                miles to your next pickup, how many of those reloads were within
+                eighty-five miles, and the ledger's IN grade — the reload read as
+                a share of the load it led to. The "within" count is always out
+                of the reloads that were logged, never out of the deliveries,
+                because a delivery nobody logged a reload for is not a free
+                reload. Then one line on getting empty: how many reloads, the
+                median empty miles, how many fell within eighty-five and within
+                a hundred and twenty-five, how many ran beyond, the empty share
+                of the miles you drove, and the gaps of a week or more that were
+                home time — named, then kept out of every average, because a
+                truck parked on purpose is not a market's fault. Underneath, the
+                map thumbnail as the one door to the situation board, your repeat
+                lanes with the count of lanes that ran only once, and the
+                load-type mix now carrying each type's typical rate, not just its
+                share. Every figure is the Lanes page's own engine read at market
+                grain, so the board one click away always agrees with it.
               </TabLine>
               <TabLine name="Agents" q="Who should I call?">
                 The leaderboard — your desks ranked by what their freight pays

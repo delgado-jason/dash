@@ -21,6 +21,7 @@ import {
   type LedgerGrain,
   type LedgerWindow,
 } from "@/lib/metrics/marketLedger";
+import { AnsweringLine } from "@/components/lanes/AnsweringLine";
 import { LanesMap, type MapPin } from "@/components/lanes/LanesMap";
 import { MarketLedger } from "@/components/lanes/MarketLedger";
 import { RepeatLanesBoard } from "@/components/lanes/RepeatLanesBoard";
@@ -30,14 +31,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SegControl as Seg } from "@/components/ui/SegControl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
-import { rpm as fmtRpm } from "@/lib/format";
 
 const LANES_KEY = "dash.lanes.showLanes";
-
-// The answering line never prints a figure it doesn't have.
-const days1 = (n: number | null): string => (n == null ? "—" : n.toFixed(1));
-const miles0 = (n: number | null): string =>
-  n == null ? "—" : String(Math.round(n));
 
 const METRICS: { value: MapMetric; label: string }[] = [
   { value: "out", label: "OUT · $/mi" },
@@ -143,8 +138,6 @@ const LanesPage = () => {
     );
 
   const areaWord = grain === "state" ? "state" : "region";
-  const emptyPct =
-    head.emptyShare == null ? null : Math.round(head.emptyShare * 100);
 
   return (
     <div className="min-h-screen text-ink font-body">
@@ -184,62 +177,10 @@ const LanesPage = () => {
           />
         </div>
 
-        {/* the answering line — every clause drops out when its figure is null */}
-        <div className="flex items-baseline gap-3 flex-wrap mt-4 font-condensed text-[14px] text-dim">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums text-ink">
-            {head.loads} LOAD{head.loads === 1 ? "" : "S"}
-          </span>
-          <span>
-            · {head.originStates} origin {areaWord}
-            {head.originStates === 1 ? "" : "s"} · {head.deliveryStates} delivery{" "}
-            {areaWord}
-            {head.deliveryStates === 1 ? "" : "s"}
-            {emptyPct != null && (
-              <>
-                {" "}
-                · <b className="font-semibold text-ink">{emptyPct}%</b> of your miles
-                empty
-              </>
-            )}
-            {head.bestOut && (
-              <>
-                {" "}
-                · best market to load{" "}
-                <b className="font-semibold text-status-positive-text">
-                  {head.bestOut.state} {fmtRpm(head.bestOut.out.typicalRpm)}/mi
-                </b>{" "}
-                ({head.bestOut.out.loads})
-              </>
-            )}
-            {head.easiestIn && (
-              <>
-                {" "}
-                · easiest place to get empty{" "}
-                <b className="font-semibold text-status-positive-text">
-                  {head.easiestIn.state}
-                </b>{" "}
-                ({head.easiestIn.in.shareMedian != null
-                  ? `${Math.round(head.easiestIn.in.shareMedian * 100)}% of the next load`
-                  : `${miles0(head.easiestIn.in.reloadMilesMedian)} mi, ${days1(head.easiestIn.in.idleDaysAvg)} days`})
-              </>
-            )}
-            {head.costliestIn && (
-              <>
-                {" "}
-                · costliest{" "}
-                <b className="font-semibold text-status-negative-text">
-                  {head.costliestIn.state}
-                </b>{" "}
-                ({head.costliestIn.in.shareMedian != null
-                  ? `${Math.round(head.costliestIn.in.shareMedian * 100)}% of the next load`
-                  : `${miles0(head.costliestIn.in.reloadMilesMedian)} mi, ${days1(head.costliestIn.in.idleDaysAvg)} days`})
-              </>
-            )}
-            {/* said once, here: a delivered load with no pickup date can't be
-                sequenced, so it is out of every IN figure on the page */}
-            {head.undated > 0 && <> · {head.undated} undated</>}
-          </span>
-        </div>
+        {/* the answering line — ONE component, shared with the dashboard's
+            Lanes tab (which reads it at market grain) so the two can never
+            drift apart. Every clause still drops when its figure is null. */}
+        <AnsweringLine head={head} areaWord={areaWord} className="mt-4" />
 
         {/* One row, two boards of ONE height: the map sets it (its SVG keeps
             its aspect), the ledger is absolutely placed inside its cell so it

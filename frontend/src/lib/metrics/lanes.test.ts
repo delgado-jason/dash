@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Load } from "@/types/load";
 import { getRegion, getStateName } from "@/lib/constants/states";
 import {
+  areaMapDataOf,
   getRegionRollup,
   getLanesSummary,
+  getLoadTypeMix,
   getRecentLoads,
   getAreaMapData,
   levelForWindow,
@@ -313,5 +315,58 @@ describe("perDay on the region / market / lane rollup", () => {
     const [bare] = getRegionRollup([makeLoad({ delivery_date: null })]);
     expect(bare.perDay.perDay).toBeNull();
     expect(bare.perDay.loads).toBe(0);
+  });
+});
+
+// ------------------------------------------------- the mix that PAYS
+
+describe("getLoadTypeMix — typical $/loaded mile", () => {
+  it("carries each type's MEDIAN per-load rate beside its share", () => {
+    const mix = getLoadTypeMix([
+      makeLoad({ load_id: "a", load_type: "oversize", loaded_miles: 1000, linehaul: "9000" }),
+      makeLoad({ load_id: "b", load_type: "oversize", loaded_miles: 1000, linehaul: "11000" }),
+      makeLoad({ load_id: "c", load_type: "standard flatbed", loaded_miles: 1000, linehaul: "5000" }),
+    ]);
+    const over = mix.find((m) => m.type === "oversize")!;
+    const flat = mix.find((m) => m.type === "standard flatbed")!;
+    expect(over.loadCount).toBe(2);
+    expect(over.typicalRpm).toBeCloseTo(10, 5); // median of $9 and $11, not the blend
+    expect(flat.typicalRpm).toBeCloseTo(5, 5);
+  });
+
+  it("is null, never 0, when no load of the type has miles", () => {
+    const mix = getLoadTypeMix([
+      makeLoad({ load_id: "a", load_type: "hazmat", loaded_miles: 0, linehaul: "4000" }),
+    ]);
+    expect(mix[0].loadCount).toBe(1);
+    expect(mix[0].gross).toBeCloseTo(4000, 5);
+    expect(mix[0].typicalRpm).toBeNull(); // a rate nobody can compute isn't $0
+  });
+});
+
+// -------------------------- the map rollup, split off its own day window
+
+describe("areaMapDataOf", () => {
+  const NOW = new Date("2026-07-08T12:00:00Z").getTime();
+
+  it("is exactly what getAreaMapData rolls up over the same window", () => {
+    const book = [
+      makeLoad({ load_id: "a", origin_state: "GA", delivery_date: "2026-07-01" }),
+      makeLoad({ load_id: "b", origin_state: "TX", delivery_date: "2026-05-20" }),
+      makeLoad({ load_id: "c", origin_state: "GA", delivery_date: "2026-07-05" }),
+    ];
+    const viaSplit = areaMapDataOf(getRecentLoads(book, 30, NOW), "state");
+    expect(viaSplit).toEqual(getAreaMapData(book, 30, "state", NOW));
+    // ...and the day window still bites: TX fell outside 30 days.
+    expect(Object.keys(viaSplit)).toEqual(["Georgia"]);
+  });
+
+  it("applies NO window of its own — it rolls up whatever it is handed", () => {
+    // This is why the split exists: the dashboard's Lanes tab hands it the
+    // market ledger's window, which reaches back further than any day count
+    // the map used to own.
+    const old = makeLoad({ load_id: "old", origin_state: "OH", delivery_date: "2024-01-01" });
+    expect(Object.keys(getAreaMapData([old], 30, "state", NOW))).toEqual([]);
+    expect(Object.keys(areaMapDataOf([old], "state"))).toEqual(["Ohio"]);
   });
 });

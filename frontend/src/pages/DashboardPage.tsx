@@ -128,7 +128,7 @@ const OwnerDashboard = () => {
           ) : active === "money" ? (
             <MoneyTab loads={loads} trips={trips} targets={targets} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
           ) : active === "lanes" ? (
-            <LanesTab loads={loads} />
+            <LanesTab loads={loads} trips={trips} targets={targets} />
           ) : active === "agents" ? (
             <AgentsTab loads={loads} ladder={targets.bookingLadder} />
           ) : (
