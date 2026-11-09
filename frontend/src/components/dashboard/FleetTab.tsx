@@ -1,8 +1,13 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { Load } from "@/types/load";
+import type { Trip } from "@/types/trip";
+import type { ExpensePeriod } from "@/types/expense";
+import type { RateTargets } from "@/lib/metrics/rateTargets";
 import { useFleetData } from "@/hooks/useFleetData";
-import { computeTruckMetrics, lifetimeSinceLabel } from "@/lib/metrics/truckMetrics";
+import { milesHistory } from "@/lib/metrics/milesHistory";
+import { MilesChart } from "@/components/dashboard/fleet/MilesChart";
+import { computeTruckMetrics } from "@/lib/metrics/truckMetrics";
 import { computeDue, fleetHealth, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import { apuDueOptions } from "@/lib/metrics/apuHours";
 import { shopSpend, fleetHeatmap, lastHomeDay, type DayStatus } from "@/lib/metrics/fleet";
@@ -13,7 +18,6 @@ import { money, rpm, dieselPrice } from "@/lib/format";
 import { Board, BoardCell } from "@/components/ui/Board";
 import { Panel } from "@/components/ui/Panel";
 import { PaceMeter } from "@/components/ui/PaceMeter";
-import { GaugeDial } from "@/components/ui/GaugeDial";
 
 // Plain since the Redesign's phase B1: "THE RIG" plate, the mile-club badge and
 // the count-up were the game's; the figures stay, on the Panel every page uses.
@@ -56,16 +60,39 @@ const remain = (d: Due): string => {
 // pnlCostPerMile / pnlWindow: the P&L's all-in cost per driven mile from the
 // one basis (computeRateTargets), printed beside the rig's own figure so the
 // two are never mistaken for each other (2026-11-04, §5 "Cost per mile").
+// Twelve months on the miles chart (call 2): long enough to hold a season.
+// Six would only ever show one of Jason's two thin stretches.
+const MILES_MONTHS = 12;
+
 export const FleetTab = ({
   loads,
-  pnlCostPerMile = null,
-  pnlWindow = null,
+  trips,
+  periods,
+  targets,
 }: {
   loads: Load[];
-  pnlCostPerMile?: number | null;
-  pnlWindow?: string | null;
+  trips: Trip[];
+  periods: ExpensePeriod[];
+  targets: RateTargets; // the one basis — the chart's floor is the ladder's own
 }) => {
   const now = useMemo(() => new Date(), []);
+  const pnlCostPerMile = targets.basis.costPerTotalMile;
+  const pnlWindow = targets.basis.windowLabel;
+  // The rate you actually book to — the chart's one dashed reference rule.
+  const bookingFloor = targets.bookingLadder?.walkAway ?? null;
+  const mileRows = useMemo(
+    () =>
+      milesHistory(
+        loads,
+        trips,
+        periods,
+        targets.obligationsMonthly,
+        targets.keep,
+        now,
+        MILES_MONTHS,
+      ),
+    [loads, trips, periods, targets.obligationsMonthly, targets.keep, now],
+  );
   const fleet = useFleetData();
   const truck = fleet.trucks[0] ?? null;
   const trailer = fleet.trailers[0] ?? null;
@@ -210,6 +237,32 @@ export const FleetTab = ({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* THE CHART LEADS (the Redesign, phase C, call 1). Jason, Nov 9: "if my
+          miles are low, it drives my rate up." It is the one panel on this tab
+          that changes what he books tomorrow, so it sits above the truck's own
+          business rather than under it. */}
+      <Panel className="p-4" data-testid="miles-chart">
+        <h3 className="ds2-label flex justify-between">
+          Miles a month — and the floor they forced
+          <span className="normal-case tracking-normal font-normal text-faint">
+            loaded + empty · {MILES_MONTHS} months · the figure above each bar is
+            that month&rsquo;s break-even
+          </span>
+        </h3>
+        <div className="mt-3">
+          <MilesChart rows={mileRows} bookingFloor={bookingFloor} />
+        </div>
+        <p className="text-[11.5px] text-faint mt-2.5">
+          A thin month does not cost less — the notes, the insurance and the
+          permits do not care how far you drove, so the same dollars land on
+          fewer miles and every one has to carry more. A month with no P&amp;L
+          filed keeps its bars and shows no floor ·{" "}
+          <Link to="/market" className="text-amber-hi">
+            the rate to book on Market ›
+          </Link>
+        </p>
+      </Panel>
+
       {/* the truck's cost to run, and the next service she's rolling toward */}
       {(() => {
         const odo = Number(truck.current_odometer) || 0;
@@ -289,41 +342,26 @@ export const FleetTab = ({
         );
       })()}
 
-      {/* the cluster — two speedometers + two doors */}
-      <Board className="grid grid-cols-2 md:grid-cols-4">
-        <div className="relative px-[18px] py-4 border-b md:border-b-0 md:border-r ds2-cell-rule">
+      {/* The cluster. Both speedometer dials retired here (the Redesign, phase
+          C, call 5) — they were the last of the game's instruments, and each
+          spent a hundred pixels square restating the figure beside it. The
+          Utilization cell went with them (call 4): the stacked bar below shows
+          what that percentage is actually made of. */}
+      <Board className="grid grid-cols-1 sm:grid-cols-3">
+        <div className="relative px-[18px] py-4 border-b sm:border-b-0 sm:border-r ds2-cell-rule">
           <p className="ds2-label">Fuel economy</p>
-          <div className="flex items-center gap-3 mt-1">
-            <GaugeDial value={metrics?.avgMpg ?? 0} min={4} max={9} size={104} />
-            <div>
-              <p className="font-condensed font-semibold text-[26px] leading-none tabular-nums">
-                {metrics?.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"}
-                <span className="text-[13px] text-dim"> mpg</span>
-              </p>
-              <p className="text-[10.5px] text-faint mt-1">
-                {metrics?.bestTank != null ? `best tank ${metrics.bestTank.toFixed(1)}` : "log a full tank"}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="relative px-[18px] py-4 border-b md:border-b-0 md:border-r ds2-cell-rule">
-          <p className="ds2-label">Utilization</p>
-          <div className="flex items-center gap-3 mt-1">
-            <GaugeDial value={util != null ? util * 100 : 0} min={0} max={100} size={104} />
-            <div>
-              <p className={`font-condensed font-semibold text-[26px] leading-none tabular-nums ${util != null && util >= 0.8 ? "text-status-positive-text" : ""}`}>
-                {util != null ? pct(util) : "—"}
-              </p>
-              <p className="text-[10.5px] text-faint mt-1">
-                {metrics
-                  ? `${lifetimeSinceLabel(metrics.windowStart) ?? "no window yet"} · ${metrics.idleDays} idle days`
-                  : "no loads yet"}
-              </p>
-            </div>
-          </div>
+          <p className="font-condensed font-semibold text-[26px] leading-none tabular-nums mt-2">
+            {metrics?.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"}
+            <span className="text-[13px] text-dim"> mpg</span>
+          </p>
+          <p className="text-[10.5px] text-faint mt-1.5">
+            {metrics?.bestTank != null
+              ? `best tank ${metrics.bestTank.toFixed(1)} · lifetime, full tanks only`
+              : "log a full tank"}
+          </p>
         </div>
         <BoardCell
-          className="md:border-r ds2-cell-rule"
+          className="sm:border-r ds2-cell-rule"
           label="Home time"
           value={!home ? "—" : home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut} days out`}
           valueClassName={`text-[22px] ${home?.state === "over" ? "text-amber-light" : ""}`}
@@ -460,7 +498,7 @@ export const FleetTab = ({
         </div>
 
         <div className="ds2-board p-4">
-          <H3 right={<span className="normal-case tracking-normal font-normal">per mile · the truck's own running cost</span>}>Fuel + shop + note</H3>
+          <H3 right={<span className="normal-case tracking-normal font-normal">per mile · her own running cost · fuel on the last 30 days</span>}>Fuel + shop + note</H3>
           {costPerMile == null ? (
             <p className="text-xs text-muted-text">
               Needs a full-tank fuel window closed in the last 30 days — fuel is

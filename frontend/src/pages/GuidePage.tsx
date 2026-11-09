@@ -648,18 +648,31 @@ const GuidePage = () => {
                 what the freight is worth before your settlement cut.
               </TabLine>
               <TabLine name="Fleet" q="Is the truck ready to roll?">
-                The truck at a glance — its cost to run per mile (fuel + shop +
-                note, with its parts), the odometer, the next service with its
-                meter, service, compliance and miles per month, and two gauges:
-                fuel economy and utilization (how hard the truck runs, the same
-                function the driver page grades) — each a plain instrument, one
-                needle on a hairline arc. Home time (days out) sits beside them.
-                Plus the shop log across the year — averaged over the months you
-                have actually logged, a visit on both units counted half to each —
-                the truck's fuel + shop + note per mile (the P&amp;L's all-in cost per mile
-                stays on Expenses, and the rate to book stands on that one), the
-                payoff trackers (the statement balance less the drafts since it
-                was read), and a day-by-day heatmap of earning vs. home vs. idle.
+                The chart leads: the miles you drove each month for a year,
+                split into loaded and empty, with the rate that month's miles
+                forced written above each bar and the miles themselves written
+                below. This is the one on the tab worth reading first, because
+                your floor is <b>(what the month cost) ÷ (the miles you drove) ÷
+                your keep</b> — the miles are the denominator. A thin month does
+                not cost less: the notes, the insurance and the permits do not
+                care how far you went, so the same dollars land on fewer miles
+                and every one has to carry more. In 2026 that moved the floor
+                from $2.68 a mile in a six-thousand-mile month to $8.21 in a
+                two-thousand-mile one. The empty miles are stacked in because
+                the floor is per mile <i>driven</i> — an empty mile costs you
+                and pays nothing, so it raises the bar on the loaded ones. The
+                bars come off the odometer and are there every month; the rate
+                above them needs a filed P&amp;L, so a month you have not filed
+                shows bars and no figure, which is the nudge to file it. Below
+                the chart the truck's own business: her cost to run per mile
+                (fuel + shop + note, fuel on the last 30 days — the P&amp;L's
+                all-in cost per mile stays on Expenses, and the rate to book
+                stands on that one), the odometer, the next service with its
+                meter, service and compliance, fuel economy, home time (days
+                out), how hard she runs — under load against home and idle,
+                with the day counts — the shop log across the year, the payoff
+                trackers, and a day-by-day heatmap of earning vs. home vs. idle.
+                Every panel says the window it is reading.
               </TabLine>
             </div>
           </Section>
