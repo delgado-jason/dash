@@ -24,8 +24,10 @@ import {
   agencyRange,
   agencyRollup,
   deliveredInWindow,
+  WINDOW_LABEL,
   type AgencyAgentRow,
   type AgencyRow,
+  type AgencyWindow,
 } from "@/lib/agencies/agencyMetrics";
 import { codeOf } from "@/lib/agencies/codeOf";
 import { otherCodes } from "@/lib/agencies/otherCodes";
@@ -83,6 +85,11 @@ export interface BestOfClass {
 
 export interface Leaderboard {
   rows: DeskRow[]; // default order: graded by rate, then ungraded by rate
+  // The window these rows were read over. The dashboard's Agents tab drives it
+  // and every panel beside the board reads the same one, so the tab can no
+  // longer print three different answers to "how much did this desk pay".
+  window: AgencyWindow;
+  rangeLabel: string; // "12 months" / "90 days" / "All time"
   unattributed: { loads: number; gross: number };
   totals: {
     loads: number;
@@ -103,6 +110,7 @@ export interface LeaderboardInput {
   contacts: MeaningfulContactLike[];
   ladder: RateLadder | null | undefined;
   now: Date;
+  window?: AgencyWindow; // default "12m" — the board's long-standing window
 }
 
 const clean = (v: string | null | undefined): string | null => {
@@ -192,7 +200,8 @@ export const bestByClass = (
 
 export const buildLeaderboard = (input: LeaderboardInput): Leaderboard => {
   const { agencies, agents, contacts, ladder, now } = input;
-  const range = agencyRange("12m", now);
+  const window = input.window ?? "12m";
+  const range = agencyRange(window, now);
 
   const realIds = new Set(agencies.map((a) => a.agency_id));
   const agentById = new Map(agents.map((a) => [a.agent_id, a]));
@@ -332,6 +341,8 @@ export const buildLeaderboard = (input: LeaderboardInput): Leaderboard => {
 
   return {
     rows: ordered,
+    window,
+    rangeLabel: WINDOW_LABEL[window],
     unattributed,
     totals: {
       loads: rows.reduce((s, r) => s + r.loads, 0),

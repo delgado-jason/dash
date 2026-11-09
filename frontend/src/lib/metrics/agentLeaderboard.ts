@@ -1,247 +1,19 @@
 import type { Load } from "@/types/load";
-import type { Agent } from "@/types/agent";
 import { loadRevenue } from "./loads";
 import { isDelivered, isNeverRevenue } from "./status";
 
-// Agent achievements, tallied over calendar-quarter leaderboards derived from
-// delivered loads. The board (starburst) is more inclusive than the podium
-// (trophies): you make the board more easily than you win the quarter.
-export interface AgentHonors {
-  board: number; // quarters finished top-5 (2+ loads)
-  gold: number; // quarters finished #1 (3+ loads)
-  silver: number; // quarters finished #2 (3+ loads)
-}
-
-// Calendar-quarter key for a delivered load's date, e.g. "2026-Q3".
-export const quarterKey = (dateStr: string): string => {
-  const d = new Date(String(dateStr).slice(0, 10) + "T00:00:00Z");
-  const q = Math.floor(d.getUTCMonth() / 3) + 1;
-  return `${d.getUTCFullYear()}-Q${q}`;
-};
-
-interface QAgg {
-  revenue: number;
-  loads: number;
-  lastWorked: string; // latest delivery day this quarter ('YYYY-MM-DD')
-}
-
-// Delivered loads → quarter → agent → { revenue, loads, lastWorked }.
-const byQuarterAgent = (loads: Load[]): Map<string, Map<string, QAgg>> => {
-  const out = new Map<string, Map<string, QAgg>>();
-  for (const l of loads) {
-    if (!isDelivered(l) || !l.delivery_date || !l.agent_id) continue;
-    const q = quarterKey(l.delivery_date);
-    let agents = out.get(q);
-    if (!agents) {
-      agents = new Map();
-      out.set(q, agents);
-    }
-    const cur = agents.get(l.agent_id) ?? { revenue: 0, loads: 0, lastWorked: "" };
-    cur.revenue += loadRevenue(l);
-    cur.loads += 1;
-    const dd = l.delivery_date.slice(0, 10);
-    if (dd > cur.lastWorked) cur.lastWorked = dd;
-    agents.set(l.agent_id, cur);
-  }
-  return out;
-};
-
-// Rank by gross revenue, then a stated tie-break cascade (never a coin-flip on id):
-// 1) gross revenue  2) revenue per load — same money in fewer loads = richer freight
-// 3) most recent load — the still-active agent  4) agent_id, only so it's deterministic.
-const revPerLoad = (a: QAgg) => (a.loads > 0 ? a.revenue / a.loads : 0);
-const rankAgents = (entries: [string, QAgg][]): [string, QAgg][] =>
-  [...entries].sort(
-    (a, b) =>
-      b[1].revenue - a[1].revenue ||
-      revPerLoad(b[1]) - revPerLoad(a[1]) ||
-      b[1].lastWorked.localeCompare(a[1].lastWorked) ||
-      a[0].localeCompare(b[0]),
-  );
-
-export const computeHonors = (
-  loads: Load[],
-  now: Date,
-): Map<string, AgentHonors> => {
-  const honors = new Map<string, AgentHonors>();
-  const currentQ = quarterKey(now.toISOString());
-  const bump = (agentId: string, key: keyof AgentHonors) => {
-    const h = honors.get(agentId) ?? { board: 0, gold: 0, silver: 0 };
-    h[key] += 1;
-    honors.set(agentId, h);
-  };
-
-  for (const [quarter, agents] of byQuarterAgent(loads)) {
-    // A quarter is only official once it has ended — the in-progress quarter
-    // (and any future-dated data) doesn't count toward awards.
-    if (quarter >= currentQ) continue;
-    const entries = [...agents.entries()];
-    // Board: 2+ loads, top 5 by revenue.
-    const board = rankAgents(entries.filter(([, a]) => a.loads >= 2)).slice(
-      0,
-      5,
-    );
-    for (const [agentId] of board) bump(agentId, "board");
-    // Podium: 3+ loads, #1 gold, #2 silver.
-    const podium = rankAgents(entries.filter(([, a]) => a.loads >= 3));
-    if (podium[0]) bump(podium[0][0], "gold");
-    if (podium[1]) bump(podium[1][0], "silver");
-  }
-  return honors;
-};
-
-// Career rank from the honors record. This replaces the raw ×counts on the
-// card; the full board/gold/silver breakdown lives in the detail trophy case.
-export type PrestigeTier =
-  | "rookie"
-  | "contender"
-  | "all-star"
-  | "champion"
-  | "legend";
-
-export const agentPrestige = (h?: AgentHonors): PrestigeTier => {
-  if (!h || h.board === 0) return "rookie";
-  if (h.gold >= 8) return "legend";
-  if (h.gold >= 3) return "champion";
-  if (h.gold >= 1 || h.silver >= 1) return "all-star";
-  return "contender";
-};
-
-// One agent's quarter-by-quarter leaderboard record (oldest first) for the
-// detail-page trophy case. `result` is their finish that quarter.
-export interface SeasonEntry {
-  quarter: string; // "2026-Q3"
-  result: "gold" | "silver" | "board" | "ran";
-  revenue: number;
-  loads: number;
-}
-
-export const agentSeasonLog = (
-  loads: Load[],
-  agentId: string,
-  now: Date,
-): SeasonEntry[] => {
-  const out: SeasonEntry[] = [];
-  const currentQ = quarterKey(now.toISOString());
-  for (const [quarter, agents] of byQuarterAgent(loads)) {
-    if (quarter >= currentQ) continue; // completed quarters only
-    const mine = agents.get(agentId);
-    if (!mine) continue;
-    const entries = [...agents.entries()];
-    const podium = rankAgents(entries.filter(([, a]) => a.loads >= 3));
-    const board = rankAgents(entries.filter(([, a]) => a.loads >= 2))
-      .slice(0, 5)
-      .map(([id]) => id);
-    let result: SeasonEntry["result"] = "ran";
-    if (podium[0]?.[0] === agentId) result = "gold";
-    else if (podium[1]?.[0] === agentId) result = "silver";
-    else if (board.includes(agentId)) result = "board";
-    out.push({ quarter, result, revenue: mine.revenue, loads: mine.loads });
-  }
-  out.sort((a, b) => a.quarter.localeCompare(b.quarter));
-  return out;
-};
-
-// The agent's provisional standing in the CURRENT (in-progress) quarter — shown
-// as a live, not-yet-official figure. null when they've run nothing this
-// quarter. `boardRank` is their position in the 2+-load board race.
-export interface LiveStanding {
-  quarter: string;
-  result: "gold" | "silver" | "board" | "ran";
-  boardRank: number | null;
-  loads: number;
-  revenue: number;
-}
-
-// Every agent's provisional standing this quarter, in one pass (for the roster).
-export const currentQuarterStandings = (
-  loads: Load[],
-  now: Date,
-): Map<string, LiveStanding> => {
-  const currentQ = quarterKey(now.toISOString());
-  const out = new Map<string, LiveStanding>();
-  const agents = byQuarterAgent(loads).get(currentQ);
-  if (!agents) return out;
-
-  const entries = [...agents.entries()];
-  const boardRanked = rankAgents(entries.filter(([, a]) => a.loads >= 2));
-  const podium = rankAgents(entries.filter(([, a]) => a.loads >= 3));
-
-  for (const [agentId, agg] of entries) {
-    const idx = boardRanked.findIndex(([id]) => id === agentId);
-    let result: LiveStanding["result"] = "ran";
-    if (podium[0]?.[0] === agentId) result = "gold";
-    else if (podium[1]?.[0] === agentId) result = "silver";
-    else if (idx >= 0 && idx < 5) result = "board";
-    out.set(agentId, {
-      quarter: currentQ,
-      result,
-      boardRank: idx >= 0 ? idx + 1 : null,
-      loads: agg.loads,
-      revenue: agg.revenue,
-    });
-  }
-  return out;
-};
-
-export const currentQuarterStanding = (
-  loads: Load[],
-  agentId: string,
-  now: Date,
-): LiveStanding | null =>
-  currentQuarterStandings(loads, now).get(agentId) ?? null;
-
-// ---- dashboard quarterly board (live current quarter + last complete quarter) ----
-
-// One agent's finish in a given quarter's board race. Podium = top 3 (the
-// dashboard shows gold/silver/bronze by position), board = top 5. Only 2+-load
-// agents qualify, so a one-off single load doesn't land a medal position.
-export interface BoardStanding {
-  agentId: string;
-  rank: number; // 1-based among 2+-load agents
-  revenue: number;
-  loads: number;
-  podium: boolean; // top 3
-  onBoard: boolean; // top 5
-}
-
-export const quarterStandings = (loads: Load[], quarter: string): BoardStanding[] => {
-  const agents = byQuarterAgent(loads).get(quarter);
-  if (!agents) return [];
-  return rankAgents([...agents.entries()].filter(([, a]) => a.loads >= 2)).map(
-    ([agentId, a], i) => ({
-      agentId,
-      rank: i + 1,
-      revenue: a.revenue,
-      loads: a.loads,
-      podium: i < 3,
-      onBoard: i < 5,
-    }),
-  );
-};
-
-// Agents who ran this quarter but are short of the 2-load board minimum — the
-// "one more load to qualify" contenders, ranked by gross.
-export const quarterContenders = (loads: Load[], quarter: string): BoardStanding[] => {
-  const agents = byQuarterAgent(loads).get(quarter);
-  if (!agents) return [];
-  return rankAgents([...agents.entries()].filter(([, a]) => a.loads < 2)).map(
-    ([agentId, a], i) => ({ agentId, rank: i + 1, revenue: a.revenue, loads: a.loads, podium: false, onBoard: false }),
-  );
-};
-
-export const currentQuarterKey = (now: Date): string => quarterKey(now.toISOString());
-
-// The last COMPLETE calendar quarter — the app's "season" convention, never the
-// in-progress one. Today (2026-08-08, Q3) → "2026-Q2".
-export const lastCompleteQuarterKey = (now: Date): string => {
-  const qStartMonth = Math.floor(now.getUTCMonth() / 3) * 3;
-  // Day 0 of the current quarter's first month = the last day of the prior quarter.
-  const prevQEnd = new Date(Date.UTC(now.getUTCFullYear(), qStartMonth, 0));
-  return quarterKey(prevQEnd.toISOString());
-};
-
-// ---- per-agent card stats ----
+// Per-agent card stats — the totals an agent's card prints beside their name.
+//
+// This file used to carry a whole quarterly-honours apparatus as well: medals
+// per calendar quarter, a rookie → contender → all-star → champion → legend
+// prestige ladder, season logs and podium standings. The Redesign's phase B
+// (v1.262.0) deleted the components that drew them, but the engine survived the
+// deletion and sat here computing nothing for anyone — about 90% of the file,
+// reachable from no screen, carrying two contradictory podium rules that could
+// never disagree because neither one ran. It came out with the Agents tab
+// (v1.266.0). The desk ranking that replaced it lives in metrics/leaderboard.ts.
+//
+// GROSS, like every agent surface: agents are a market-value lens.
 
 export interface AgentStat {
   loadCount: number; // non-cancelled loads
@@ -249,6 +21,8 @@ export interface AgentStat {
   lastWorked: string | null; // 'YYYY-MM-DD' of the latest delivery
 }
 
+// LIFETIME — no window. The agent card shows a career total beside the name;
+// the windowed figures all come off the leaderboard and the scorecard.
 export const perAgentStats = (loads: Load[]): Map<string, AgentStat> => {
   const out = new Map<string, AgentStat>();
   for (const l of loads) {
@@ -269,56 +43,4 @@ export const perAgentStats = (loads: Load[]): Map<string, AgentStat> => {
     out.set(l.agent_id, s);
   }
   return out;
-};
-
-// ---- page KPIs ----
-
-export interface RosterKpis {
-  total: number;
-  rated: number;
-  callFirst: number; // rating 5
-  avoid: number; // rating 1 or 2
-  topEarner: { agentId: string; revenue: number } | null; // last 90 days
-  activeCount: number; // agents with a non-cancelled load picked up in last 90d
-}
-
-export const rosterKpis = (
-  agents: Agent[],
-  loads: Load[],
-  now: Date,
-): RosterKpis => {
-  const cutoff = new Date(now);
-  cutoff.setUTCDate(cutoff.getUTCDate() - 90);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-  const rev90 = new Map<string, number>();
-  const active = new Set<string>();
-  for (const l of loads) {
-    if (!l.agent_id) continue;
-    const pd = l.pickup_date?.slice(0, 10);
-    if (pd && pd >= cutoffStr && !isNeverRevenue(l))
-      active.add(l.agent_id);
-    if (
-      isDelivered(l) &&
-      l.delivery_date &&
-      l.delivery_date.slice(0, 10) >= cutoffStr
-    ) {
-      rev90.set(l.agent_id, (rev90.get(l.agent_id) ?? 0) + loadRevenue(l));
-    }
-  }
-
-  let topEarner: RosterKpis["topEarner"] = null;
-  for (const [agentId, revenue] of rev90) {
-    if (!topEarner || revenue > topEarner.revenue)
-      topEarner = { agentId, revenue };
-  }
-
-  return {
-    total: agents.length,
-    rated: agents.filter((a) => a.rating != null).length,
-    callFirst: agents.filter((a) => a.rating === 5).length,
-    avoid: agents.filter((a) => a.rating === 1 || a.rating === 2).length,
-    topEarner,
-    activeCount: active.size,
-  };
 };

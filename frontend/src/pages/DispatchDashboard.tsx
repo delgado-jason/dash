@@ -13,6 +13,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
+import { DeskLeaderboardPanel } from "@/components/dashboard/agents/DeskLeaderboardPanel";
 import { DispatcherChip } from "@/components/dashboard/DispatcherChip";
 import { DispatcherKpis, Figure } from "@/components/dispatch/DispatcherKpis";
 import { weeksWords } from "@/components/dashboard/weeksWords";
@@ -450,6 +451,12 @@ const DispatchDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
             <DispatchLoadsTable loads={loads} freeHours={freeHours} />
             <DispatchAgentsTable loads={loads} />
+          </div>
+
+          {/* Which desks actually pay — the same board the owner sees. She
+              books the freight; she should be able to see the rates. */}
+          <div className="mt-3">
+            <DeskLeaderboardPanel loads={loads} ladder={targets.bookingLadder} />
           </div>
         </div>
       </div>

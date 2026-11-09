@@ -289,50 +289,12 @@ export const effectiveAgentClass = (
   return { bucket: card?.autoClass ?? "spot", source: "auto" };
 };
 
-// ---- roster-level analytics for the KPI row ----
-export interface RosterAnalytics {
-  rateLeader: { agentId: string; medianRpm: number } | null;
-  oversizeBench: number; // agents labeled oversize
-  specCapable: number; // agents with any oversize/heavy-haul load
-  concentrationPct: number | null; // top-3 revenue ÷ total delivered revenue
-  goingCold: { agentId: string; revenue: number; daysSince: number } | null; // best cold agent
-  moneyLostAgents: number; // agents with any confirmed-unpaid detention
-}
-
-export const agentRosterAnalytics = (
-  cards: Map<string, AgentScorecard>,
-): RosterAnalytics => {
-  const list = [...cards.values()];
-  const scored = list.filter((c) => c.loadCount >= MIN_SCORE_LOADS);
-
-  let rateLeader: RosterAnalytics["rateLeader"] = null;
-  for (const c of scored) {
-    if (c.medianRpm == null) continue;
-    if (!rateLeader || c.medianRpm > rateLeader.medianRpm)
-      rateLeader = { agentId: c.agentId, medianRpm: c.medianRpm };
-  }
-
-  const totalRev = list.reduce((s, c) => s + c.revenue, 0);
-  const top3 = [...list].sort((a, b) => b.revenue - a.revenue).slice(0, 3);
-  const top3Rev = top3.reduce((s, c) => s + c.revenue, 0);
-
-  // The most valuable agent who's gone quiet — worth a call.
-  let goingCold: RosterAnalytics["goingCold"] = null;
-  for (const c of list) {
-    if (c.tier !== "cold") continue;
-    if (!goingCold || c.revenue > goingCold.revenue)
-      goingCold = { agentId: c.agentId, revenue: c.revenue, daysSince: c.daysSince ?? 0 };
-  }
-
-  return {
-    rateLeader,
-    oversizeBench: list.filter((c) => c.specialty.tag === "oversize").length,
-    specCapable: list.filter((c) => c.specialty.oversizeCount > 0).length,
-    concentrationPct: totalRev > 0 ? top3Rev / totalRev : null,
-    goingCold,
-    moneyLostAgents: list.filter((c) => c.moneyLostLoads > 0).length,
-  };
-};
+// agentRosterAnalytics lived here until v1.266.0. It summarised the Agents
+// tab's KPI row — rate leader, oversize bench, a LIFETIME top-3 concentration
+// and the best cold agent — and nothing read it once that row and the
+// concentration card came off the tab. The windowed per-agent book that
+// replaced it is in metrics/agentBook.ts; concentrationAnalytics below stays,
+// because the Agents page's table still prints a "% book" column from it.
 
 // ---- revenue concentration (WINDOWED — current dependency, not lifetime) ----
 // Healthy guideline for a one-truck bench: no single agent over ~30% of your

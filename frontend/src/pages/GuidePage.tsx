@@ -624,11 +624,28 @@ const GuidePage = () => {
                 grain, so the board one click away always agrees with it.
               </TabLine>
               <TabLine name="Agents" q="Who should I call?">
-                The leaderboard — your desks ranked by what their freight pays
-                per mile driven over 12 months, graded on your own rate ladder —
-                then your bench plotted by rate × volume, who you're running with
-                lately (by last worked), revenue concentration (so no one agent
-                owns too much of your book), and who's going cold.
+                The leaderboard is the spine — your desks ranked by what their
+                freight pays per mile driven, graded on your own rate ladder —
+                and the whole tab now reads the board's own window, so every
+                figure beside it describes the same loads the board ranked
+                (twelve months, ninety days or all time; a load counts from the
+                day the desk gave it to you, its pickup). Beneath it, two
+                questions a spot book actually has to answer. Where the book
+                comes from splits your money by how often a desk came back: the
+                ones you used once, twice, and three or more times. On this book
+                most of the money comes from desks that never came back, which
+                is why the old concentration card — asking whether one agent
+                owned too much of you — was watching the wrong door. And Gone
+                quiet lists only the desks that DID come back and have since
+                gone silent for sixty days, richest first, because a desk you
+                used once is a stranger rather than a lapsed relationship. Then
+                who you have been running with lately, most recent first. The
+                rate × volume scatter and the gut-vs-data flag came off: the
+                first drew lifetime figures under a windowed tab, and the second
+                compares your star rating against the numbers, which only says
+                anything once you have actually rated your desks on the Agents
+                page. Dollars here are gross — agents are a market-value lens,
+                what the freight is worth before your settlement cut.
               </TabLine>
               <TabLine name="Fleet" q="Is the truck ready to roll?">
                 The truck at a glance — its cost to run per mile (fuel + shop +
