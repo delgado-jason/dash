@@ -8,7 +8,7 @@ import { describe, it, expect } from "vitest";
 import { syntheticBook, TODAY, type Book } from "@/test/fixtures/book";
 import { BASIS_MONTHS } from "@/lib/constants/targets";
 import { computeRateTargets, getCostBasis, monthlyObligationCost } from "@/lib/metrics/rateTargets";
-import { computeGrind } from "@/lib/metrics/grind";
+import { classify, quarterWeekVerdicts } from "@/lib/metrics/grind";
 import { computeRecap, rangeFor } from "@/lib/metrics/recap";
 import { monthCoverage } from "@/lib/metrics/monthCoverage";
 import { scoreLoad } from "@/lib/metrics/loadScore";
@@ -224,11 +224,37 @@ describe("BASIS-11 · every surface reads ONE basis", () => {
     expect(implicit.costPerTotalMile).toBeCloseTo(targetsOf(book, []).basis.costPerTotalMile as number, 10);
   });
 
-  it("the grind meter's weekly target and floor are the ladder's, on the same window label", () => {
-    const grind = computeGrind(book.loads, book.periods, obl, book.schedule, now);
-    expect(grind.weeklyTarget).toBeCloseTo(t.gross.weeklyTarget as number, 8);
-    expect(grind.weeklyFloor).toBeCloseTo(t.gross.weeklyBreakEven as number, 8);
-    expect(grind.basisLabel).toBe(t.basis.windowLabel);
+  it("the weeks-over-break-even stat grades the quarter's completed weeks against the ladder's own floor and target", () => {
+    // Re-derive by hand: every completed pay week (Wednesday start) that began
+    // inside TODAY's calendar quarter, its delivered gross, graded against
+    // t.gross — the engine must agree on every count.
+    const q = quarterWeekVerdicts(book.loads, t.gross, now);
+    const WEEK_MS = 7 * 86400000;
+    const qStart = Date.UTC(now.getUTCFullYear(), Math.floor(now.getUTCMonth() / 3) * 3, 1);
+    const wed = (ms: number): number => {
+      const x = new Date(ms);
+      return x.getTime() - ((x.getUTCDay() - 3 + 7) % 7) * 86400000;
+    };
+    const thisWeek = wed(now.getTime());
+    let counted = 0, overFloor = 0, atTarget = 0, home = 0;
+    for (let ms = wed(qStart); ms < thisWeek; ms += WEEK_MS) {
+      if (ms < qStart) continue;
+      const lo = new Date(ms).toISOString().slice(0, 10);
+      const hi = new Date(ms + WEEK_MS).toISOString().slice(0, 10);
+      const earned = book.loads
+        .filter((l) => l.load_status === "delivered" && String(l.delivery_date) >= lo && String(l.delivery_date) < hi)
+        .reduce((s, l) => s + Number(l.gross_revenue), 0);
+      if (earned <= 0) { home++; continue; }
+      counted++;
+      const v = classify(earned, t.gross);
+      if (v === "target") { atTarget++; overFloor++; } else if (v === "breakeven") overFloor++;
+    }
+    expect(q.hasBars).toBe(true);
+    expect(q).toMatchObject({ counted, overFloor, atTarget, home });
+    // and the bars ARE the ladder's: the target grades as a target week, the floor as break-even, a dollar under as below
+    expect(classify(t.gross.weeklyTarget as number, t.gross)).toBe("target");
+    expect(classify(t.gross.weeklyBreakEven as number, t.gross)).toBe("breakeven");
+    expect(classify((t.gross.weeklyBreakEven as number) - 1, t.gross)).toBe("below");
   });
 
   it("the month-coverage plate stands on the same window and the same monthly cost", () => {

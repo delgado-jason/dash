@@ -1,60 +1,19 @@
-// The grind meter — a week-over-week motivation layer. Each pay-week is graded
-// on your WEEKLY GROSS PACE from freight actually HAULED (delivered/earned): did
-// it beat your weekly target (green), clear the break-even floor (amber), or fall
-// short (red)? A week you delivered no freight is a home/neutral week (grey) — it
-// doesn't count, but it doesn't break your streak either. The streak is
-// consecutive target-beating weeks. Booked-but-unhauled freight is committed
-// pipeline (shown on the rate-targets card), not a win here until it's delivered.
-//
-// ONE target (Nod Sheet 2026-11-04, §5): HEAT grades the SAME number the hero
-// plate shows — gross weeks against the gross weekly target and floor from
-// computeRateTargets (six months, divided by the keep). It used to grade NET
-// weeks against a three-month net target of its own, $250 above the hero's
-// net-equivalent, on the same tab.
+// Weekly verdicts — each pay week graded on its GROSS from freight actually
+// HAULED (delivered): at or above the weekly target, above the break-even
+// floor, or short of it; a week with nothing delivered is a home week. The
+// target and floor are the hero's own (computeRateTargets: six months, divided
+// by the keep), so every surface grades the same number (2026-11-04, §5).
+// The heat meter and the streaks that rode these verdicts left with the game
+// layer (the Redesign, phase B); what remains is the grading and the quarter's
+// plain count. `bestStreakOf` stays for the recap engine's record line.
 import type { Load } from "@/types/load";
-import type { ExpensePeriod } from "@/types/expense";
-import type { SettlementSchedule } from "@/types/settlementSchedule";
-import type { SplitLike } from "@/types/settlementSplit";
-import {
-  payWeekRange,
-  getWeekEarnedGross,
-  getWeekGrossEarned,
-  computeRateTargets,
-  type GrossTargets,
-} from "./rateTargets";
-import { quarterOf } from "./quarterOf";
+import { payWeekRange, getWeekGrossEarned, type GrossTargets } from "./rateTargets";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
-import { isDelivered } from "./status";
+import { quarterOf } from "./quarterOf";
 
 const WEEK_MS = 7 * 86400000;
 
 export type WeekStatus = "target" | "breakeven" | "below" | "home";
-
-export interface GrindWeek {
-  start: string; // 'YYYY-MM-DD'
-  status: WeekStatus;
-  gross: number;
-}
-
-export interface Grind {
-  weeks: GrindWeek[]; // last N complete weeks, oldest → newest (the strip)
-  currentStreak: number; // consecutive target weeks (home skips, else breaks)
-  bestStreak: number;
-  thisWeek: WeekStatus; // the in-progress week
-  thisWeekGross: number;
-  hasLadder: boolean; // false when there's no P&L to build gross targets from
-  // The bar the weeks were graded against — the hero's own target and floor
-  // (gross, per pay week) and the basis window they stand on — so the meter
-  // can SAY what a target week is.
-  weeklyTarget?: number | null;
-  weeklyFloor?: number | null;
-  basisLabel?: string | null; // "May–Oct ’26"
-  // Personal mode only: how far the baseline has forged. The view renders a
-  // ghost meter from these instead of vanishing (the ghost rule — hardware you
-  // haven't earned shows dashed with its criterion, it doesn't disappear).
-  activeWeeks?: number;
-  weeksNeeded?: number;
-}
 
 // Grade a week's gross against the weekly pace targets. Zero freight = home.
 export const classify = (gross: number, targets: GrossTargets): WeekStatus => {
@@ -62,18 +21,6 @@ export const classify = (gross: number, targets: GrossTargets): WeekStatus => {
   if (targets.weeklyTarget != null && gross >= targets.weeklyTarget) return "target";
   if (targets.weeklyBreakEven != null && gross >= targets.weeklyBreakEven) return "breakeven";
   return "below";
-};
-
-// Consecutive target weeks from the most recent backward; home weeks skip
-// (neither extend nor break), anything else stops the run.
-export const currentStreakOf = (statuses: WeekStatus[]): number => {
-  let s = 0;
-  for (let i = statuses.length - 1; i >= 0; i--) {
-    if (statuses[i] === "home") continue;
-    if (statuses[i] === "target") s++;
-    else break;
-  }
-  return s;
 };
 
 // Longest target run across all weeks; home weeks are neutral (don't reset).
@@ -88,147 +35,6 @@ export const bestStreakOf = (statuses: WeekStatus[]): number => {
     } else run = 0;
   }
   return best;
-};
-
-const medianOf = (xs: number[]): number | null => {
-  if (xs.length === 0) return null;
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-};
-
-// The shared core: grade every pay-week from the earliest delivery to now against
-// a target set, and roll up the streaks. Both grinds — the owner's cost target and
-// a dispatcher's personal pace — flow through here so they render identically.
-// `weekGross` reads a week in the same dollars its targets are in: the owner's
-// in GROSS (the hero's number), the dispatcher's in the net her typical week
-// was measured in.
-const grindFrom = (
-  loads: Load[],
-  targets: GrossTargets,
-  now: Date,
-  weeksToShow: number,
-  hasLadder: boolean,
-  weekGross: (loads: Load[], start: Date, end: Date) => number,
-): Grind => {
-  const current = payWeekRange(now, PAY_WEEK_START_DOW);
-  const thisWeekGross = weekGross(loads, current.start, current.end);
-  const thisWeek: WeekStatus = hasLadder ? classify(thisWeekGross, targets) : "home";
-
-  const delivered = loads.filter(
-    (l) => isDelivered(l) && l.delivery_date,
-  );
-  if (!hasLadder || delivered.length === 0)
-    return { weeks: [], currentStreak: 0, bestStreak: 0, thisWeek, thisWeekGross, hasLadder };
-
-  let earliest = delivered[0].delivery_date!;
-  for (const l of delivered)
-    if (l.delivery_date! < earliest) earliest = l.delivery_date!;
-  const firstStart = payWeekRange(
-    new Date(earliest.slice(0, 10) + "T00:00:00Z"),
-    PAY_WEEK_START_DOW,
-  ).start;
-
-  const weeks: GrindWeek[] = [];
-  for (let t = firstStart.getTime(); t < current.start.getTime(); t += WEEK_MS) {
-    const ws = new Date(t);
-    const gross = weekGross(loads, ws, new Date(t + WEEK_MS));
-    weeks.push({ start: ws.toISOString().slice(0, 10), status: classify(gross, targets), gross });
-    if (weeks.length > 200) break; // safety cap
-  }
-
-  const statuses = weeks.map((w) => w.status);
-  const currentStreak = currentStreakOf(statuses);
-
-  return {
-    weeks: weeks.slice(-weeksToShow),
-    currentStreak,
-    bestStreak: Math.max(bestStreakOf(statuses), currentStreak),
-    thisWeek,
-    thisWeekGross,
-    hasLadder,
-  };
-};
-
-// The owner's grind: GROSS weeks against the hero's own gross target and
-// floor — one function, one basis (computeRateTargets: six months, divided by
-// the keep; the margin goal comes off the schedule inside it).
-export const computeGrind = (
-  loads: Load[],
-  periods: ExpensePeriod[],
-  obligationsMonthly: number,
-  schedule: SettlementSchedule | null,
-  now: Date,
-  weeksToShow = 14,
-  // The pay split in force today (NET-01) — the basis's linehaul take.
-  split: SplitLike | null = null,
-): Grind => {
-  const t = computeRateTargets(loads, periods, obligationsMonthly, schedule, now, [], split);
-  return {
-    ...grindFrom(loads, t.gross, now, weeksToShow, t.gross.weeklyTarget != null, getWeekGrossEarned),
-    weeklyTarget: t.gross.weeklyTarget,
-    weeklyFloor: t.gross.weeklyBreakEven,
-    basisLabel: t.basis.windowLabel,
-  };
-};
-
-// A dispatcher's grind, graded against HER OWN typical week instead of the shop's
-// cost target — so the streak is winnable and genuinely hers. "Typical" is the
-// median of her active (non-zero) weekly booked gross over the trailing quarter,
-// so the bar tracks the current season, not an all-time average. A week at ≥ 75%
-// of that keeps the streak hot; an off week (nothing delivered) stays neutral.
-export const PERSONAL_SOLID = 0.75; // ≥ this share of a typical week = a "target" week
-export const PERSONAL_FLOOR = 0.4; // below this share = a "below" week
-const TYPICAL_WINDOW_WEEKS = 13; // ~ a quarter — the seasonal window for "typical"
-const MIN_ACTIVE_WEEKS = 3; // need a few weeks before a personal bar is meaningful
-
-export const computePersonalGrind = (
-  mine: Load[],
-  now: Date,
-  weeksToShow = 14,
-): Grind => {
-  const empty: Grind = {
-    weeks: [], currentStreak: 0, bestStreak: 0, thisWeek: "home", thisWeekGross: 0, hasLadder: false,
-    activeWeeks: 0, weeksNeeded: MIN_ACTIVE_WEEKS,
-  };
-  const delivered = mine.filter((l) => isDelivered(l) && l.delivery_date);
-  if (delivered.length === 0) return empty;
-
-  let earliest = delivered[0].delivery_date!;
-  for (const l of delivered)
-    if (l.delivery_date! < earliest) earliest = l.delivery_date!;
-  const firstStart = payWeekRange(
-    new Date(earliest.slice(0, 10) + "T00:00:00Z"),
-    PAY_WEEK_START_DOW,
-  ).start;
-  const current = payWeekRange(now, PAY_WEEK_START_DOW);
-
-  // Her active weekly grosses over the trailing quarter → the seasonal "typical".
-  const windowStart = current.start.getTime() - TYPICAL_WINDOW_WEEKS * WEEK_MS;
-  const active: number[] = [];
-  for (let t = firstStart.getTime(); t < current.start.getTime(); t += WEEK_MS) {
-    if (t < windowStart) continue;
-    const g = getWeekEarnedGross(mine, new Date(t), new Date(t + WEEK_MS));
-    if (g > 0) active.push(g);
-  }
-  const typical = medianOf(active);
-  const hasLadder = typical != null && typical > 0 && active.length >= MIN_ACTIVE_WEEKS;
-  const targets: GrossTargets = {
-    weeklyBreakEven: typical != null ? typical * PERSONAL_FLOOR : null,
-    weeklyTarget: typical != null ? typical * PERSONAL_SOLID : null,
-    // The dispatcher's personal ladder is built from their own typical week,
-    // not from a cost basis — there is no daily bar to hand out, working-day
-    // or calendar.
-    dailyBreakEven: null,
-    dailyTarget: null,
-    dailyBreakEvenCalendar: null,
-    dailyTargetCalendar: null,
-  };
-  return {
-    ...grindFrom(mine, targets, now, weeksToShow, hasLadder, getWeekEarnedGross),
-    activeWeeks: active.length,
-    weeksNeeded: MIN_ACTIVE_WEEKS,
-  };
 };
 
 // ---- the quarter's weeks as one plain count (the Cockpit, call 11; the

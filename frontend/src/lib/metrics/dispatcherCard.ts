@@ -10,45 +10,6 @@ import { agentStops, scoreStops } from "./stopScore";
 import type { Grade } from "./playerCard";
 import { isDelivered, isNeverRevenue } from "./status";
 
-// Career ranks climb on lifetime loads booked — the dispatcher's analogue of the
-// driver's lifetime miles.
-export const RANK_TIERS = [
-  { min: 0, name: "Rookie Dispatcher" },
-  { min: 25, name: "Load Wrangler" },
-  { min: 75, name: "Freight Closer" },
-  { min: 200, name: "Rate Hawk" },
-  { min: 500, name: "Dispatch Legend" },
-];
-
-export interface DispatchRank {
-  name: string;
-  index: number;
-  count: number;
-  next: { name: string; min: number } | null;
-  toNext: number; // loads to the next tier
-  pct: number; // progress within the current tier, 0..1
-}
-
-export const dispatchRank = (loadsBooked: number): DispatchRank => {
-  let i = 0;
-  for (let t = 0; t < RANK_TIERS.length; t++) {
-    if (loadsBooked >= RANK_TIERS[t].min) i = t;
-  }
-  const cur = RANK_TIERS[i];
-  const next = i < RANK_TIERS.length - 1 ? RANK_TIERS[i + 1] : null;
-  const toNext = next ? Math.max(0, next.min - loadsBooked) : 0;
-  const span = next ? next.min - cur.min : 1;
-  const pct = next ? Math.min(1, (loadsBooked - cur.min) / span) : 1;
-  return {
-    name: cur.name,
-    index: i,
-    count: loadsBooked,
-    next: next ? { name: next.name, min: next.min } : null,
-    toNext,
-    pct,
-  };
-};
-
 export interface DispatcherCard {
   loadsBookedLifetime: number;
   loadsBookedMonth: number;
@@ -61,7 +22,6 @@ export interface DispatcherCard {
   onTimePct: number | null;
   onTimeCount: number; // graded stops that hit on-time — raw, never gated
   gradedStops: number; // stops with an appointment + arrival
-  rank: DispatchRank;
   seasonGrade: Grade | null;
 }
 
@@ -123,7 +83,6 @@ export const getDispatcherCard = (
     onTimePct,
     onTimeCount: stopScore.onTimeCount,
     gradedStops: stopScore.gradedStops,
-    rank: dispatchRank(mine.length),
     seasonGrade,
   };
 };

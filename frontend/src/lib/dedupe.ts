@@ -1,8 +1,8 @@
 // Share one in-flight promise across concurrent identical requests.
 //
-// The dashboard mounts three hooks that each independently fetch the same two
-// endpoints (useGrind, useRateTargets, useAwardPops) — six network round-trips
-// for two answers, every load. This collapses each burst to one request.
+// The dashboard mounts hooks that each independently fetch the same
+// endpoints (useRateTargets, useOwnerFeeds, …) — several network round-trips
+// for one answer, every load. This collapses each burst to one request.
 //
 // It is a burst-dedupe, NOT a cache: the entry is dropped the moment the promise
 // settles, so the next call still hits the network and sees fresh data. Nothing

@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { ExpensePeriod } from "@/types/expense";
-import type { FuelEntry } from "@/types/fuelEntry";
 import {
-  careerRank,
   marginGrade,
   rpmGrade,
   worseGrade,
@@ -11,10 +9,8 @@ import {
   bottleneckLevers,
   allLeversOnTarget,
   getSeasonStats,
-  personalBests,
   gradedMargin,
   type SeasonStats,
-  earnedTrophies,
 } from "./playerCard";
 
 const NOW = new Date("2026-07-10T12:00:00Z");
@@ -63,24 +59,6 @@ const mkPeriod = (
     cogs_total: cogs,
     expense_total: expense,
   }) as ExpensePeriod;
-
-describe("careerRank", () => {
-  it("places 582k as Road Captain climbing to Highway Legend", () => {
-    const r = careerRank(582450);
-    expect(r.name).toBe("Road Captain");
-    expect(r.next?.name).toBe("Highway Legend");
-    expect(r.pct).toBeCloseTo(0.165, 2);
-  });
-  it("a newcomer is a Rookie", () => {
-    expect(careerRank(40000).name).toBe("Rookie");
-  });
-  it("tops out at Highway Legend with no next", () => {
-    const r = careerRank(1_200_000);
-    expect(r.name).toBe("Highway Legend");
-    expect(r.next).toBeNull();
-    expect(r.pct).toBe(1);
-  });
-});
 
 describe("grades", () => {
   it("marginGrade bands derive from the margin goal: goal −5 / goal / goal +5", () => {
@@ -200,46 +178,6 @@ describe("getSeasonStats", () => {
     expect(s.avgRpm).toBeCloseTo((3200 + 2600) / 1800, 3);
     expect(s.deadheadPct).toBeCloseTo(500 / 2300, 4); // odometer windows, not the planning field
     expect(s.bestLane?.lane).toBe("Dallas → Atlanta");
-  });
-});
-
-describe("personalBests", () => {
-  const fuel = [
-    { odometer_reading: 570368, gallons: 131.91, price_per_gallon: 4.639, fuel_date: "2026-05-24", filled_to_top: true },
-    { odometer_reading: 570967, gallons: 79.78, price_per_gallon: 4.589, fuel_date: "2026-05-26", filled_to_top: false },
-    { odometer_reading: 571651, gallons: 114.425, price_per_gallon: 4.462, fuel_date: "2026-05-28", filled_to_top: false },
-    { odometer_reading: 572503, gallons: 135.1, price_per_gallon: 4.322, fuel_date: "2026-05-30", filled_to_top: true },
-  ] as unknown as FuelEntry[];
-
-  it("finds best week, biggest load, most loads/week", () => {
-    const loads = [
-      mkLoad({ load_id: "a", delivery_date: "2026-05-12", linehaul: "3200", loaded_miles: 1000, odometer_start: 570000, odometer_end: 571200 }),
-      mkLoad({ load_id: "c", delivery_date: "2026-05-13", linehaul: "1000", loaded_miles: 500, odometer_start: 571200, odometer_end: 571800 }),
-      mkLoad({ load_id: "b", delivery_date: "2026-06-15", linehaul: "2600", loaded_miles: 800, odometer_start: 572000, odometer_end: 573100 }),
-    ];
-    const pb = personalBests(loads, fuel, NOW);
-    // PAY weeks (Wed→Tue) since 2026-11-04: Tue May 12 closes the week May 6–12 on its own (3,200);
-    // Wed May 13 opens the next. Monday weeks used to put a and c together at 4,200 / 2 loads.
-    expect(pb.bestWeekRevenue).toBeCloseTo(3200, 2);
-    expect(pb.mostLoadsInWeek).toBe(1);
-    expect(pb.biggestLoad).toBeCloseTo(3200, 2);
-    expect(pb.bestMpg).toBeCloseTo(6.483, 2);
-  });
-});
-
-describe("earnedTrophies", () => {
-  it("awards mile club, relationship, century, strong season, feather foot", () => {
-    const loads = Array.from({ length: 100 }, (_, i) =>
-      mkLoad({ load_id: `x${i}`, agent_id: "ag1", agent: "Redwood" }),
-    );
-    const t = earnedTrophies({ lifetimeMiles: 582450, loads, bestMpg: 6.5, seasonMargin: "strong" });
-    const keys = t.map((x) => x.key);
-    expect(keys).toContain("mileclub");
-    expect(keys).toContain("relationship");
-    expect(keys).toContain("century");
-    expect(keys).toContain("strong-season");
-    expect(keys).toContain("feather-foot");
-    expect(t.find((x) => x.key === "mileclub")?.name).toBe("500K Club");
   });
 });
 

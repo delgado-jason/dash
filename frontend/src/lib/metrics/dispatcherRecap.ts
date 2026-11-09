@@ -2,7 +2,7 @@
 // (detention she collected, her best pay-week). Same scope as the season:
 // booked by her, not cancelled, picked up in the range; all GROSS. Pure.
 import type { Load } from "@/types/load";
-import { loadGross, payWeekRange, type RateLadder } from "./rateTargets";
+import { loadGross, payWeekRange } from "./rateTargets";
 import { detentionCollectedMinutes } from "@/lib/detention";
 import { PAY_WEEK_START_DOW } from "@/lib/constants/targets";
 import type { RecapScope, RecapRange } from "./recap";
@@ -48,12 +48,11 @@ export const dispatcherRecap = (
   userId: string,
   scope: RecapScope,
   range: RecapRange,
-  ladder: RateLadder,
   freeHours: number,
 ): DispatcherRecapStats => {
   const mine = loadsInPeriod(loads, userId, range);
   return {
-    ...dispatchSeason(loads, userId, scope, range, ladder, freeHours),
+    ...dispatchSeason(loads, userId, scope, range, freeHours),
     detentionCollectedMin: mine.reduce(
       (s, l) => s + detentionCollectedMinutes(l, freeHours),
       0,

@@ -2,7 +2,6 @@ import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLoads } from "@/hooks/useLoads";
-import { useRateTargets } from "@/hooks/useRateTargets";
 import { getUser } from "@/services/teamService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { resolvePeriod, type RecapScope, type RecapRange } from "@/lib/metrics/recap";
@@ -26,7 +25,6 @@ const rangeAt = (scope: RecapScope, ago: number, now: Date): RecapRange =>
 // touches expenses, obligations, or fuel.
 const DispatcherRecapPage = () => {
   const { loads } = useLoads(0);
-  const targets = useRateTargets(loads);
   const now = useMemo(() => new Date(), []);
 
   const selfId = localStorage.getItem("user_id") ?? "";
@@ -54,8 +52,8 @@ const DispatcherRecapPage = () => {
 
   const range = useMemo(() => rangeAt(scope, ago, now), [scope, ago, now]);
   const stats = useMemo(
-    () => dispatcherRecap(loads, selfId, scope, range, targets.bookingLadder, freeHours),
-    [loads, selfId, scope, range, targets.bookingLadder, freeHours],
+    () => dispatcherRecap(loads, selfId, scope, range, freeHours),
+    [loads, selfId, scope, range, freeHours],
   );
 
   const canNext = ago > 0;
