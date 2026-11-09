@@ -228,20 +228,18 @@ export interface AreaMapDatum {
   members: string[]; // origin markets (state level) or member states (grouped)
 }
 
-// Choropleth data at the level the window implies, over the window itself (no
-// separate footprint — the tab drives both time and grouping). Keyed by group
-// key so the map can shade each shape and list its members on hover.
-export const getAreaMapData = (
+// The choropleth rollup over WHATEVER set of delivered loads it is handed — no
+// window of its own. The dashboard's Lanes tab passes the market ledger's own
+// window, so the thumbnail and the two market lists beside it can never
+// disagree about which loads they are describing.
+export const areaMapDataOf = (
   loads: Load[],
-  days: number,
   level: MapLevel,
-  now: number = Date.now(),
 ): Record<string, AreaMapDatum> => {
-  const recent = getRecentLoads(deliveredOnly(loads), days, now);
   const out: Record<string, AreaMapDatum> = {};
 
   for (const [key, group] of groupBy(
-    recent,
+    loads,
     (l) => groupKeyForState(l.origin_state, level) ?? " ",
   )) {
     if (key === " ") continue; // unrecognized origin states
@@ -265,12 +263,24 @@ export const getAreaMapData = (
   return out;
 };
 
+// Choropleth data at the level the window implies, over the window itself (no
+// separate footprint — the tab drives both time and grouping). Keyed by group
+// key so the map can shade each shape and list its members on hover.
+export const getAreaMapData = (
+  loads: Load[],
+  days: number,
+  level: MapLevel,
+  now: number = Date.now(),
+): Record<string, AreaMapDatum> =>
+  areaMapDataOf(getRecentLoads(deliveredOnly(loads), days, now), level);
+
 // ---- LOAD-TYPE MIX ---- (delivered loads grouped by load_type, by gross)
 export interface LoadTypeSlice {
   type: string;
   gross: number;
   loadCount: number;
   share: number; // 0..1 of total gross
+  typicalRpm: number | null; // median of the per-load rates — the mix that PAYS
 }
 export const getLoadTypeMix = (loads: Load[]): LoadTypeSlice[] => {
   const delivered = deliveredOnly(loads);
@@ -278,7 +288,13 @@ export const getLoadTypeMix = (loads: Load[]): LoadTypeSlice[] => {
   const slices: LoadTypeSlice[] = [];
   for (const [type, ls] of groupBy(delivered, (l) => l.load_type?.trim() || "Other")) {
     const g = grossRevenue(ls);
-    slices.push({ type, gross: g, loadCount: ls.length, share: total > 0 ? g / total : 0 });
+    slices.push({
+      type,
+      gross: g,
+      loadCount: ls.length,
+      share: total > 0 ? g / total : 0,
+      typicalRpm: medianRpm(ls),
+    });
   }
   return slices.sort((a, b) => b.gross - a.gross);
 };

@@ -214,9 +214,70 @@ export const sequenceLoads = (loads: Load[], trips: HomeTripLike[] = []): Sequen
   });
 };
 
+// ------------------------------------------------------------ getting empty
+
+// Display bands for the dashboard's reload line. NOT grading rules — the IN
+// grade reads the reload as a share of the next load's gross, and
+// marketFactor's own "85 % / 125 %" comment is an older calibration of that
+// share, a different thing entirely. These two are deliberately kept out of
+// the constants contract.
+export const RELOAD_NEAR_MILES = 85; // a reload at or under this is next door
+export const RELOAD_FAR_MILES = 125; // past this it is a real empty run
+
+export interface ReloadSummary {
+  legs: number; // the window's deliveries that have a next load
+  home: number; // of them, home stints — out of every figure below
+  unlogged: number; // away legs with no deadhead logged (0 or missing)
+  reloads: number; // away legs with a logged deadhead — the sample
+  medianMiles: number | null;
+  within: number; // ≤ RELOAD_NEAR_MILES
+  between: number; // > near and ≤ far
+  beyond: number; // > far
+  emptyMiles: number; // Σ logged deadhead over `reloads`
+}
+
+// One line's worth of "what getting empty cost you" over a window. Counts of
+// zero are honest here (you really did run no reloads), but the median is null
+// with no sample. Home stints are named and then held out of every figure —
+// the same rule every IN half uses, because a week parked at the house is not
+// a market's fault.
+export const reloadSummary = (
+  loads: Load[],
+  win: LedgerWindow,
+  now: Date,
+  trips: HomeTripLike[] = [],
+): ReloadSummary => {
+  const seqById = new Map(
+    sequenceLoads(loads, trips).map((s) => [s.load.load_id, s]),
+  );
+  const legs = windowLoads(loads, win, now)
+    .map((l) => seqById.get(l.load_id))
+    .filter((s): s is SequencedLoad => !!s && !!s.next);
+
+  const away = legs.filter((s) => !s.home);
+  const miles = away
+    .map((s) => s.next?.deadheadMiles)
+    .filter((m): m is number => m != null);
+
+  return {
+    legs: legs.length,
+    home: legs.filter((s) => s.home).length,
+    unlogged: away.length - miles.length,
+    reloads: miles.length,
+    medianMiles: median(miles),
+    within: miles.filter((m) => m <= RELOAD_NEAR_MILES).length,
+    between: miles.filter((m) => m > RELOAD_NEAR_MILES && m <= RELOAD_FAR_MILES)
+      .length,
+    beyond: miles.filter((m) => m > RELOAD_FAR_MILES).length,
+    emptyMiles: miles.reduce((s, m) => s + m, 0),
+  };
+};
+
 // ---------------------------------------------------------------- the rows
 
-export type LedgerGrain = "state" | "region";
+// The row's unit. "market" (the dashboard's Lanes tab) keys each side on the
+// book's own market name; "state" and "region" still bucket by the state code.
+export type LedgerGrain = "state" | "region" | "market";
 
 export interface HalfOut {
   loads: number;
@@ -238,11 +299,17 @@ export interface HalfIn {
   shareMedian: number | null; // as a share of the load it led to — the grade's basis
   nextRpmMedian: number | null;
   reloadedInState: number; // times the next load loaded in this same market
+  // The reload sample, over the same away legs the median reads (home stints
+  // out). The list prints "within of reloads", NEVER "of deliveries" — a
+  // delivery with no reload logged is not a free reload.
+  reloads: number;
+  within: number; // of `reloads`, at or under RELOAD_NEAR_MILES
   grade: MarketGrade;
 }
 
 export interface LedgerRow {
-  state: string; // the key: a 2-letter code, or a freight region at region grain
+  state: string; // the key: a 2-letter code, a freight region, or the market's name at market grain
+  abbr: string | null; // the state code to print faint beside a market's name ("Charlotte NC")
   name: string; // what to call it on the map's tooltip
   markets: string[]; // origin markets seen here, most-used first, ≤ 3
   out: HalfOut;
@@ -271,6 +338,50 @@ const grainKey = (stateAbbr: string | null | undefined, grain: LedgerGrain): str
 
 const grainName = (key: string, grain: LedgerGrain): string =>
   grain === "state" ? (getStateName(key) ?? key) : key;
+
+// The bucket ONE SIDE of a load belongs to. At market grain the unit is the
+// book's own market name ("Greenville Market" → "Greenville"); at state and
+// region grain it is still the state code's bucket. "" means skip this side,
+// exactly as an unrecognized state code was always skipped — a load the book
+// never named a market for is not a market called "".
+const sideKey = (
+  market: string | null | undefined,
+  state: string | null | undefined,
+  grain: LedgerGrain,
+): string => (grain === "market" ? stripMarket(market) : grainKey(state, grain));
+
+// The most frequent non-empty value; ties go to the first seen.
+const modal = (xs: string[]): string | null => {
+  const counts = new Map<string, number>();
+  for (const x of xs) if (x) counts.set(x, (counts.get(x) ?? 0) + 1);
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [k, n] of counts) {
+    if (n > bestN) {
+      best = k;
+      bestN = n;
+    }
+  }
+  return best;
+};
+
+// The state code printed faint beside a market's name. The key itself at state
+// grain; nothing at region grain (a region spans states); at market grain the
+// state this market's own freight actually came from, falling back to where
+// its deliveries landed for a market seen only as a destination.
+const abbrFor = (
+  grain: LedgerGrain,
+  key: string,
+  outLoads: Load[],
+  legs: SequencedLoad[],
+): string | null => {
+  if (grain === "state") return key;
+  if (grain === "region") return null;
+  return (
+    modal(outLoads.map((l) => up(l.origin_state))) ??
+    modal(legs.map((s) => up(s.load.destination_state)))
+  );
+};
 
 const mean = (xs: number[]): number | null =>
   xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null;
@@ -332,18 +443,24 @@ export const buildLedger = (
   // Both grades are read against your COST, never against this window's own
   // numbers: switching 12m → ytd → all can't re-grade a market whose own
   // figures didn't move.
-  const outGrades = outboundStrength(scoped, (l) => grainKey(l.origin_state, grain), costs);
-  const inGrades = inboundStrength(winSeq, costs, (s) => grainKey(s.load.destination_state, grain));
+  const outGrades = outboundStrength(
+    scoped,
+    (l) => sideKey(l.origin_market, l.origin_state, grain),
+    costs,
+  );
+  const inGrades = inboundStrength(winSeq, costs, (s) =>
+    sideKey(s.load.delivery_market, s.load.destination_state, grain),
+  );
 
   const outBy = new Map<string, Load[]>();
   for (const l of scoped) {
-    const o = grainKey(l.origin_state, grain);
+    const o = sideKey(l.origin_market, l.origin_state, grain);
     if (o) push(outBy, o, l);
   }
   // ONE delivery set, shared by the row's count and by the grade's thin test.
   const inBy = new Map<string, SequencedLoad[]>();
   for (const s of winSeq) {
-    const d = grainKey(s.load.destination_state, grain);
+    const d = sideKey(s.load.delivery_market, s.load.destination_state, grain);
     if (d) push(inBy, d, s);
   }
 
@@ -357,7 +474,7 @@ export const buildLedger = (
     // Home stints leave the reload and idle medians alike — the same rule the
     // grade uses, so the figure beside the grade is the figure it was read off.
     const away = legs.filter((s) => !s.home);
-    const reloads = away
+    const reloadMiles = away
       .map((s) => s.next?.deadheadMiles)
       .filter((m): m is number => m != null);
     const idles = away
@@ -369,6 +486,7 @@ export const buildLedger = (
 
     rows.push({
       state: key,
+      abbr: abbrFor(grain, key, outLoads, legs),
       name: grainName(key, grain),
       markets: topMarkets(outLoads),
       out: {
@@ -383,15 +501,23 @@ export const buildLedger = (
       },
       in: {
         deliveries: legs.length,
-        reloadMilesMedian: median(reloads),
-        reloadMilesAvg: mean(reloads),
+        reloadMilesMedian: median(reloadMiles),
+        reloadMilesAvg: mean(reloadMiles),
         idleDaysAvg: mean(idles),
         reloadCostMedian: inGrades.get(key)?.reloadCostMedian ?? null,
         shareMedian: inGrades.get(key)?.shareMedian ?? null,
         nextRpmMedian: median(nextRpms),
         reloadedInState: legs.filter(
-          (s) => s.next && grainKey(s.next.originState, grain) === key,
+          (s) =>
+            s.next &&
+            // stripMarket is idempotent, so the already-stripped originMarket
+            // off the sequence is safe to pass straight back through.
+            sideKey(s.next.originMarket, s.next.originState, grain) === key,
         ).length,
+        // The sample the median above was read off, so the list can print
+        // "4 of 7" instead of implying every delivery had a free reload.
+        reloads: reloadMiles.length,
+        within: reloadMiles.filter((m) => m <= RELOAD_NEAR_MILES).length,
         grade: inGrades.get(key)?.grade ?? "thin",
       },
     });
@@ -544,7 +670,9 @@ export const marketDetail = (
   const scoped = windowLoads(loads, win, now);
   const seqById = new Map(seq.map((s) => [s.load.load_id, s]));
 
-  const loadsOut = scoped.filter((l) => grainKey(l.origin_state, grain) === state);
+  const loadsOut = scoped.filter(
+    (l) => sideKey(l.origin_market, l.origin_state, grain) === state,
+  );
   // The SAME delivery set the ledger row counts and the grade is read off: a
   // delivered load with no pickup date has no place in the sequence, so it has
   // no reload story to tell and is not listed here either. The board's "n"
@@ -552,7 +680,7 @@ export const marketDetail = (
   const deliveries = scoped
     .filter(
       (l) =>
-        grainKey(l.destination_state, grain) === state &&
+        sideKey(l.delivery_market, l.destination_state, grain) === state &&
         seqById.has(l.load_id),
     )
     .map((l) => {
@@ -610,9 +738,14 @@ export const ledgerHeadline = (
     loaded += Number(l.loaded_miles) || 0;
   }
 
-  const distinct = (pick: (l: Load) => string | null | undefined): number =>
+  // Two-sided, so market grain reads each side's own market name while state
+  // and region grain still read the state code.
+  const distinct = (
+    market: (l: Load) => string | null | undefined,
+    state: (l: Load) => string | null | undefined,
+  ): number =>
     new Set(
-      scoped.map((l) => grainKey(pick(l), grain)).filter(Boolean),
+      scoped.map((l) => sideKey(market(l), state(l), grain)).filter(Boolean),
     ).size;
 
   const outRows = rows.filter(
@@ -631,8 +764,14 @@ export const ledgerHeadline = (
 
   return {
     loads: scoped.length,
-    originStates: distinct((l) => l.origin_state),
-    deliveryStates: distinct((l) => l.destination_state),
+    originStates: distinct(
+      (l) => l.origin_market,
+      (l) => l.origin_state,
+    ),
+    deliveryStates: distinct(
+      (l) => l.delivery_market,
+      (l) => l.destination_state,
+    ),
     emptyShare: empty + loaded > 0 ? empty / (empty + loaded) : null,
     undated: scoped.filter((l) => !l.pickup_date).length,
     bestOut: pick(
