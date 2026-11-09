@@ -7,29 +7,31 @@ import { useTrips } from "@/hooks/useTrips";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
-import { useDispatcherAwardPops } from "@/hooks/useDispatcherAwardPops";
-import { usePersonalGrind } from "@/hooks/useGrind";
 import { useIntegrity } from "@/hooks/useIntegrity";
-import { AwardPopHost } from "@/components/celebrations/AwardPopHost";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
-import { GrindMeterView } from "@/components/dashboard/GrindMeter";
-import { RaceBoard } from "@/components/dashboard/agents/RaceBoard";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
 import { DispatcherChip } from "@/components/dashboard/DispatcherChip";
+import { DispatcherKpis, Figure } from "@/components/dispatch/DispatcherKpis";
+import { weeksWords } from "@/components/dashboard/weeksWords";
 import { Board, BoardCell } from "@/components/ui/Board";
-import { ForgedPlate } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
 import { PaceMeter, paceMarker } from "@/components/ui/PaceMeter";
-import { CountUp } from "@/components/ui/CountUp";
 import {
   getLoadsMonthly,
   getDeadheadTrend,
   getDetentionOwed,
 } from "@/lib/metrics/dashboard";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
-import { getWeekGrossPipeline, getWeekGrossEarned, getBookedAheadGross } from "@/lib/metrics/rateTargets";
+import { quarterWeekVerdicts } from "@/lib/metrics/grind";
+import {
+  getWeekGrossPipeline,
+  getWeekGrossEarned,
+  getBookedAheadGross,
+  loadsInWeek,
+} from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -54,6 +56,10 @@ const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // Brandie's board — operational only. No net revenue, RPM, or P&L; gross pace
 // (which she books) is her chase surface. Detention is hours, not dollars.
+// Plain since the Redesign's phase B1 (the Cockpit, calls 10 and 11): the rank
+// chip, the heat meter, the award pops and the quarter race board are gone; her
+// booking figures are plain cards, and the one honest signal the meter carried
+// — the quarter's weeks over break-even — is a plain stat.
 const DispatchDashboard = () => {
   const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(0);
   // The viewer's open Integrity count — the data rows she can fix (call 2); the
@@ -66,10 +72,11 @@ const DispatchDashboard = () => {
   const now = useMemo(() => new Date(), []);
 
   // Two scopes on one board (Jason, 2026-09-11: "her goals must align with the
-  // business — my goals — but she achieves her own awards with her own stats"):
-  //   • the BUSINESS — what's booked, rolling, earned, committed this week — is
-  //     account-wide, so her numbers match the owner's board to the dollar;
-  //   • her HEAT streak, rank, and awards stay hers, from booked_by === her id.
+  // business — my goals"):
+  //   • the BUSINESS — what's booked, rolling, earned, committed this week, and
+  //     the quarter's weeks over break-even — is account-wide, so her numbers
+  //     match the owner's board to the dollar;
+  //   • her booking figures stay hers, from booked_by === her id.
   // Issue #465 was this split done wrong: the pace meter counted only her own
   // bookings, so a week where Jason booked one of the loads never summed.
   const selfId = localStorage.getItem("user_id") ?? "";
@@ -77,10 +84,6 @@ const DispatchDashboard = () => {
     () => (selfId ? loads.filter((l) => l.booked_by === selfId) : []),
     [loads, selfId],
   );
-  // Her personal-pace streak: graded against her OWN typical week (median of her
-  // recent weekly booked gross), so it's winnable and genuinely hers — not the
-  // shop's cost target. Feeds the HEAT meter + the Iron Booker patch.
-  const grind = usePersonalGrind(mine);
 
   // Free-time setting drives what counts as detention (same source as Loads).
   const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
@@ -90,38 +93,20 @@ const DispatchDashboard = () => {
       .catch(() => {});
   }, []);
 
-  // Her achievements pop the same way the driver's do — computed from her own
-  // bookings, celebrated on her board. Gated on the rate ladder being ready so
-  // the day-one baseline is built from complete data.
-  const awardInput =
-    selfId && targets.bookingLadder.walkAway != null
-      ? {
-          loads,
-          userId: selfId,
-          ladder: targets.bookingLadder,
-          scoreBasis: {
-            costPerDrivenMile: targets.basis.costPerTotalMile,
-            payTake: targets.basis.payTake,
-          },
-          freeHours,
-          streak: grind?.bestStreak ?? 0,
-          // Grade "steal"/"grand slam" on the same tiers her forge page uses, so
-          // the two surfaces never disagree on a medal.
-          tiers: targets.tiers,
-          specTiers: targets.specTiers,
-        }
-      : null;
-  const pops = useDispatcherAwardPops(awardInput);
-
-  // Her rank chip runs on the same engine as her card page — lifetime real
-  // bookings, cancelled loads excluded.
-  const rank = useMemo(
+  // Her figures run on the same engine as her page — real bookings only
+  // (a cancelled load or a TONU never counts), gross per driven mile.
+  const card = useMemo(
     () =>
       selfId
         ? getDispatcherCard(loads, selfId, targets.bookingLadder, freeHours, now)
-            .rank
         : null,
     [loads, selfId, targets.bookingLadder, freeHours, now],
+  );
+
+  // The quarter's completed pay weeks against the meter's own floor and target.
+  const quarter = useMemo(
+    () => weeksWords(quarterWeekVerdicts(loads, targets.gross, now)),
+    [loads, targets.gross, now],
   );
 
   const isLoading = loadsLoading || tripsLoading;
@@ -199,6 +184,11 @@ const DispatchDashboard = () => {
   // work happened NOW, so the card says so (Jason, 2026-08-15: her booked
   // $5,220 was invisible until its week arrived).
   const bookedAhead = targets.weekEnd ? getBookedAheadGross(loads, targets.weekEnd) : 0;
+  // Her loads landing this pay week — the same date rule as the meter.
+  const loadsThisWeek =
+    targets.weekStart && targets.weekEnd
+      ? loadsInWeek(mine, targets.weekStart, targets.weekEnd).length
+      : 0;
   const weeklyTarget: number | null = targets.gross?.weeklyTarget ?? null;
   const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
   const dailyTarget: number | null = targets.gross?.dailyTarget ?? null;
@@ -231,9 +221,8 @@ const DispatchDashboard = () => {
 
   return (
     <div className="min-h-screen text-ink font-body">
-      <AwardPopHost pops={pops} />
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
-        {/* full-bleed statusbar: her identity, her rank, her one big button */}
+        {/* full-bleed statusbar: her identity and her one big button */}
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           <h1 className="font-display text-[26px] tracking-[.06em] leading-none">
@@ -252,28 +241,9 @@ const DispatchDashboard = () => {
               INTEGRITY · {integrityOpen} OPEN ›
             </Link>
           )}
-          {rank && (
-            <span className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow">
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-amber"
-                style={{ boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 90%, transparent)" }}
-              />
-              {rank.name}
-              <span className="text-faint font-medium text-[10.5px]">
-                · {rank.count} booked
-                {rank.next ? ` · next tier at ${rank.next.min}` : ""}
-              </span>
-            </span>
-          )}
           <Link
             to="/score"
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] text-canvas whitespace-nowrap hover:brightness-105"
-            style={{
-              background:
-                "linear-gradient(178deg, var(--color-hot), var(--color-amber))",
-              boxShadow:
-                "0 5px 14px color-mix(in srgb, var(--color-amber) 30%, transparent), inset 0 1px 0 var(--color-highlight)",
-            }}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] bg-amber text-on-amber whitespace-nowrap hover:brightness-105"
           >
             <Zap size={15} /> SCORE A LOAD
           </Link>
@@ -352,9 +322,10 @@ const DispatchDashboard = () => {
             />
           </Board>
 
-          {/* her chase surface: the floor she books against + the week she's filling */}
+          {/* her chase surface: the floor she books against + the week she's
+              filling · beside it, her own figures and the quarter's weeks */}
           <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-3 items-start">
-            <ForgedPlate chamfer tilt className="p-5">
+            <Panel className="p-5">
               <div className="flex items-baseline justify-between flex-wrap gap-2">
                 <span className="ds2-label">
                   Booking floor &amp; your week pace · gross
@@ -404,10 +375,7 @@ const DispatchDashboard = () => {
                 {cur != null && (
                   <div
                     className="absolute top-[13px] w-[2px] h-[30px] -translate-x-1/2 bg-amber-hi"
-                    style={{
-                      left: `${pos(cur)}%`,
-                      boxShadow: "0 0 9px color-mix(in srgb, var(--color-amber-hi) 80%, transparent)",
-                    }}
+                    style={{ left: `${pos(cur)}%` }}
                   />
                 )}
               </div>
@@ -425,7 +393,7 @@ const DispatchDashboard = () => {
               <div className="flex gap-5 mt-3 flex-wrap items-end">
                 <div>
                   <p className="font-condensed font-semibold text-[19px] text-amber-hi tabular-nums leading-none">
-                    <CountUp value={earned} format={money} />
+                    {money(earned)}
                   </p>
                   <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
                     earned
@@ -458,8 +426,8 @@ const DispatchDashboard = () => {
                   </div>
                 )}
                 {dailyTarget != null && (
-                  <div className="ml-auto ds2-well px-3.5 py-2">
-                    <p className="font-display text-[22px] leading-none tabular-nums">
+                  <div className="ml-auto rounded-[10px] border border-hairline px-3.5 py-2">
+                    <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums">
                       {money(dailyTarget)}
                     </p>
                     <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
@@ -468,8 +436,14 @@ const DispatchDashboard = () => {
                   </div>
                 )}
               </div>
-            </ForgedPlate>
-            <GrindMeterView grind={grind} mode="personal" />
+            </Panel>
+
+            <div className="flex flex-col gap-3">
+              {card && <DispatcherKpis card={card} loadsThisWeek={loadsThisWeek} />}
+              <Panel className="p-4" data-testid="weeks-card">
+                <Figure label={quarter.label} value={quarter.figure} sub={quarter.detail} />
+              </Panel>
+            </div>
           </div>
 
           {/* The workhorses — searchable, paginated loads + agents */}
@@ -477,10 +451,6 @@ const DispatchDashboard = () => {
             <DispatchLoadsTable loads={loads} freeHours={freeHours} />
             <DispatchAgentsTable loads={loads} />
           </div>
-
-          {/* THE RACE — the same quarter leaderboard the owner sees, same
-              component, same logic. */}
-          <RaceBoard loads={loads} />
         </div>
       </div>
     </div>

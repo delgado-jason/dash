@@ -1,11 +1,12 @@
 import { Fragment } from "react";
 import { money } from "@/lib/format";
 
-// Design System v2 — the LED pace meter, the "forged = chase" hardware shared
-// by Pulse (the week) and Money (the month's notes). The target anchors at
-// ~78% of the track so there is always overdrive runway past it — targets get
-// beaten regularly and the meter must show it (Jason's rule, 2026-08-09).
-// Cells past the target burn hotter when lit. Marker labels are plain words.
+// The pace meter — a segmented bar shared by the dispatch board (the week), Money
+// (the month's threshold) and Fleet (the next service). The target anchors at
+// ~78% of the track so there is always runway past it — targets get beaten
+// regularly and the meter must show it (Jason's rule, 2026-08-09). Plain since
+// the Redesign's phase B: one amber for the fill, a brighter amber past the
+// target, no glow, no sunk cells. Marker labels are plain words.
 
 export interface PaceMarker {
   value: number;
@@ -37,44 +38,24 @@ export const PaceMeter = ({
 
   return (
     <div className="relative mt-7 mb-1">
-      <div className="flex gap-[3px] h-[18px]">
+      <div className="flex gap-[3px] h-[14px]">
         {Array.from({ length: cells }, (_, i) => {
           const on = i < filledCells;
           const com = !on && i < ghostCells;
-          const tip = on && i === filledCells - 1;
-          const od = i >= targetIdx; // overdrive territory
+          const od = i >= targetIdx; // past the target
           return (
             <span
               key={i}
               className="flex-1 rounded-[2px]"
-              style={
-                on
-                  ? {
-                      background: od
-                        ? "var(--color-hot)"
-                        : tip
-                          ? "var(--color-amber-hi)"
-                          : "var(--color-chart-amber)",
-                      boxShadow: od
-                        ? "0 0 9px color-mix(in srgb, var(--color-hot) 70%, transparent)"
-                        : tip
-                          ? "0 0 7px color-mix(in srgb, var(--color-amber-hi) 50%, transparent)"
-                          : "inset 0 1px 0 var(--color-highlight)",
-                    }
+              style={{
+                background: on
+                  ? od
+                    ? "var(--color-amber-hi)"
+                    : "var(--color-chart-amber)"
                   : com
-                    ? {
-                        background: od
-                          ? "color-mix(in srgb, var(--color-amber-hi) 55%, transparent)"
-                          : "color-mix(in srgb, var(--color-amber-dark) 30%, transparent)",
-                        boxShadow: od
-                          ? "0 0 6px color-mix(in srgb, var(--color-amber-hi) 40%, transparent)"
-                          : undefined,
-                      }
-                    : {
-                        background: "var(--color-well)",
-                        boxShadow: "var(--shadow-inset)",
-                      }
-              }
+                    ? "color-mix(in srgb, var(--color-amber) 35%, transparent)"
+                    : "var(--color-well)",
+              }}
             />
           );
         })}
@@ -82,7 +63,7 @@ export const PaceMeter = ({
       {markers.map((m) => (
         <Fragment key={m.label}>
           <div
-            className="absolute -top-1.5 w-px h-[30px] bg-dim"
+            className="absolute -top-1.5 w-px h-[26px] bg-dim"
             style={{ left: `${(m.value / scaleMax) * 100}%` }}
           >
             <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 text-[8.5px] font-semibold tracking-[.08em] uppercase text-faint whitespace-nowrap">

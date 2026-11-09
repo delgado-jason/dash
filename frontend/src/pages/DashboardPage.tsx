@@ -126,7 +126,7 @@ const OwnerDashboard = () => {
           active === "pulse" ? (
             <PulseTab loads={loads} trips={trips} targets={targets} alerts={alerts} feeds={feeds} cash={{ board, floatLine: boardInput?.floatLine ?? null }} plan={plan} nextDeposit={nextDeposit} />
           ) : active === "money" ? (
-            <MoneyTab loads={loads} trips={trips} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
+            <MoneyTab loads={loads} trips={trips} targets={targets} marginGoal={targets.marginGoal ?? null} obligationsMonthly={targets.obligationsMonthly} />
           ) : active === "lanes" ? (
             <LanesTab loads={loads} />
           ) : active === "agents" ? (

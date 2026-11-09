@@ -368,7 +368,7 @@ export const payWeekRange = (
 // load by its delivery day when there is one (planned or actual), else by its
 // pickup day — otherwise the in-transit load you're currently under (no delivery
 // date yet) drops out of the committed pipeline entirely.
-const loadsInWeek = (loads: Load[], start: Date, end: Date): Load[] =>
+export const loadsInWeek = (loads: Load[], start: Date, end: Date): Load[] =>
   loads.filter((l) => {
     if (isNeverRevenue(l)) return false;
     const ref = l.delivery_date ?? l.pickup_date;

@@ -7,16 +7,47 @@ import { useExpensePeriods } from "@/hooks/useExpensePeriods";
 import { useLocalToday } from "@/hooks/useLocalToday";
 import { topCategoriesWithOther } from "@/lib/metrics/expenses";
 import { Board, BoardCell } from "@/components/ui/Board";
-import { ForgedPlate } from "@/components/ui/ForgedPlate";
+import { Panel } from "@/components/ui/Panel";
 import { PaceMeter, paceMarker, type PaceMarker } from "@/components/ui/PaceMeter";
 import { monthCoverage } from "@/lib/metrics/monthCoverage";
-import { profitRows, ytdRows, ytdSummary } from "@/lib/metrics/profitSummary";
+import { profitRows, ytdRows, ytdSummary, monthsAtGoal } from "@/lib/metrics/profitSummary";
+import { getSeasonStats } from "@/lib/metrics/playerCard";
+import { bestPayWeek, weekLabel } from "@/lib/metrics/payWeeks";
+import { quarterWeekVerdicts } from "@/lib/metrics/grind";
+import { getWeekGrossEarned, payWeekRange, type RateTargets } from "@/lib/metrics/rateTargets";
+import { PAY_WEEK_START_DOW, DEADHEAD_TARGET } from "@/lib/constants/targets";
+import { weeksWords } from "./weeksWords";
 import { money, rpm } from "@/lib/format";
 
-// The month's story: P&L, the two margins, where it goes, and THE MONTH —
-// Money's one forged surface. Pulse chases the week; Money chases the month.
+// The month's story: P&L, the two margins, where it goes, and THE MONTH. Pulse
+// chases the week; Money chases the month and keeps the series behind it — the
+// weekly earnings with the best week, the last complete quarter. Plain since the
+// Redesign's phase B1: the BEST MONTH chip, the MONTH COVERED stamp and the
+// goal streak were the game's; the months at the goal are a count.
 // No settlement-pipeline section: the carrier clears it weekly (BCO reality),
 // so that beat lives on Pulse's Next rail as timing, not receivables.
+
+const WEEK_MS = 7 * 86400000;
+
+const Stat = ({
+  label,
+  value,
+  sub,
+  tone = "",
+  wrap = false,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: string;
+  wrap?: boolean; // a name (a lane) wraps; a figure never does
+}) => (
+  <div className="min-w-0">
+    <p className="ds2-label">{label}</p>
+    <p className={`font-condensed font-semibold mt-1.5 tabular-nums ${wrap ? "text-[17px] leading-tight" : "text-[22px] leading-none truncate"} ${tone}`}>{value}</p>
+    {sub && <p className="text-[11px] text-faint mt-1 leading-snug">{sub}</p>}
+  </div>
+);
 
 // Fixed-order categorical palette — validated 2026-08-09 (see index.css).
 const CAT_VARS = [
@@ -47,11 +78,13 @@ const fmtDay = (d: Date) =>
 export const MoneyTab = ({
   loads,
   trips,
+  targets,
   marginGoal,
   obligationsMonthly,
 }: {
   loads: Load[];
   trips: Trip[];
+  targets: RateTargets; // the one basis — the weekly target and floor, the pay week
   marginGoal: number | null;
   obligationsMonthly: number; // active, non-draw monthly notes (principal) — interest is already in the P&L
 }) => {
@@ -70,12 +103,8 @@ export const MoneyTab = ({
   const ytdMargin = summary.margin;
   const ytdCashMargin = summary.cashMargin;
   // ONE margin on this tab (2026-11-04, §5): after notes — the one the goal
-  // grades. The best month, the bars and the tile all read it; the operating
-  // margin stays beside it as a named figure, never graded.
-  const best = ytd.reduce<(typeof ytd)[number] | null>(
-    (b, r) => (!b || r.cashMargin > b.cashMargin ? r : b),
-    null,
-  );
+  // grades. The bars and the tile read it; the operating margin stays beside
+  // it as a named figure, never graded.
 
   // Realized per-mile economics — the year's income and all-in cost (P&L cost +
   // note principal) spread over odometer-true miles from loads and trips.
@@ -128,16 +157,36 @@ export const MoneyTab = ({
   ];
   const meterTarget = cov.threshold ?? Math.max(cov.income, 1);
 
-  // Months at-or-above the goal, counted back from the latest month.
-  const goalStreak = useMemo(() => {
-    if (marginGoal == null) return 0;
-    let n = 0;
-    for (let i = ytd.length - 1; i >= 0; i--) {
-      if (ytd[i].cashMargin >= marginGoal) n += 1;
-      else break;
+  // Months at or above the goal this year — a count, never a streak.
+  const atGoal = useMemo(() => monthsAtGoal(ytd, marginGoal), [ytd, marginGoal]);
+
+  // The last COMPLETE calendar quarter — the driver card's season grid, now a
+  // plain row here (the Cockpit, §1c). Debt obligations only, as the P&L's
+  // note principal.
+  const season = useMemo(
+    () => getSeasonStats(periods, loads, trips, now, obligationsMonthly),
+    [periods, loads, trips, now, obligationsMonthly],
+  );
+
+  // The last eight pay weeks (Wednesday → Tuesday), gross earned — delivered
+  // freight only — anchored on the basis's own pay week; and the best completed
+  // pay week ever, the one figure the Pulse used to count up to.
+  const weekAnchor = targets.weekStart ?? payWeekRange(now, PAY_WEEK_START_DOW).start;
+  const weeks = useMemo(() => {
+    const out: { start: Date; earned: number; now: boolean }[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const s = new Date(weekAnchor.getTime() - i * WEEK_MS);
+      out.push({ start: s, earned: getWeekGrossEarned(loads, s, new Date(s.getTime() + WEEK_MS)), now: i === 0 });
     }
-    return n;
-  }, [ytd, marginGoal]);
+    return out;
+  }, [loads, weekAnchor]);
+  const bestWeek = useMemo(() => bestPayWeek(loads, now.toISOString().slice(0, 10)), [loads, now]);
+  const quarter = useMemo(
+    () => weeksWords(quarterWeekVerdicts(loads, targets.gross, now)),
+    [loads, targets.gross, now],
+  );
+  const weeklyTarget = targets.gross?.weeklyTarget ?? null;
+  const weeklyFloor = targets.gross?.weeklyBreakEven ?? null;
 
   // "Where it goes" — the year's spending by category (backend rollup), top 6 +
   // Other. Profit is derived from the same category total so the bar sums to 100%.
@@ -239,8 +288,8 @@ export const MoneyTab = ({
         />
       </Board>
 
-      {/* THE NOTES — Money's one forged surface: the month's chase */}
-      <ForgedPlate chamfer tilt className="p-5">
+      {/* THE NOTES — the month's chase against its cost threshold */}
+      <Panel className="p-5">
         {cov.threshold != null ? (
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6">
             <div>
@@ -298,19 +347,8 @@ export const MoneyTab = ({
                   </>
                 )}
               </p>
-              {best && (
-                <span className="inline-flex items-center gap-2 mt-3.5 px-3 py-[7px] rounded-lg bg-well" style={{ boxShadow: "var(--shadow-inset)" }}>
-                  <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">
-                    BEST MONTH
-                  </span>
-                  <span className="font-condensed font-semibold text-[12.5px] text-ink tabular-nums">
-                    {monthShort(best.month).toUpperCase()} ·{" "}
-                    {Math.round(best.cashMargin * 100)}% after notes · {money(best.profit)}
-                  </span>
-                </span>
-              )}
             </div>
-            <div className="md:border-l md:border-white/10 md:pl-6 flex flex-col justify-center gap-3.5">
+            <div className="md:border-l md:border-hairline md:pl-6 flex flex-col justify-center gap-3.5">
               <div>
                 <p className="ds2-label">Month projection · straight-line</p>
                 <p className="font-condensed font-semibold text-[21px] leading-none tabular-nums mt-1">
@@ -324,29 +362,26 @@ export const MoneyTab = ({
                   {daysInMonth - dayOfMonth}
                 </p>
               </div>
-              {cov.covered ? (
-                <span
-                  className="inline-block self-start px-3.5 py-1.5 rounded-lg font-forge font-bold text-[16px] tracking-[.14em] text-status-positive-text border-2 border-status-positive-text -rotate-3"
-                  style={{ boxShadow: "inset 0 0 12px color-mix(in srgb, var(--color-status-positive-text) 15%, transparent)" }}
-                >
-                  MONTH COVERED
-                </span>
-              ) : (
-                <div>
-                  <p className="ds2-label">The win moment</p>
-                  <span className="inline-block mt-1 px-3.5 py-1 rounded-lg font-forge font-bold text-[14px] tracking-[.14em] text-ink/20 border-2 border-dashed border-white/15 -rotate-3">
-                    MONTH COVERED
-                  </span>
-                </div>
-              )}
+              <div>
+                <p className="ds2-label">Against the threshold</p>
+                {cov.covered ? (
+                  <p className="font-condensed font-semibold text-[21px] leading-none tabular-nums mt-1 text-status-positive-text">
+                    covered · {money(cov.marginOver ?? 0)} over
+                  </p>
+                ) : (
+                  <p className="font-condensed font-semibold text-[21px] leading-none tabular-nums mt-1">
+                    {money(cov.short ?? 0)} <span className="text-[13px] text-faint font-normal">short</span>
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         ) : (
           <div>
             <p className="ds2-label">{cov.monthLabel} — covering the month</p>
             <p className="text-sm text-dim mt-2">
-              The threshold forges from your P&L — post a month of expenses and the
-              meter arms against your mean monthly cost.
+              The threshold comes from your P&L — post a month of expenses and the
+              meter reads against your mean monthly cost.
             </p>
             <Link
               to="/expenses"
@@ -354,20 +389,9 @@ export const MoneyTab = ({
             >
               Add the month on Expenses →
             </Link>
-            {best && (
-              <span className="ml-4 inline-flex items-center gap-2 px-3 py-[7px] rounded-lg bg-well" style={{ boxShadow: "var(--shadow-inset)" }}>
-                <span className="font-forge font-semibold text-[11px] tracking-[.14em] text-amber-hi">
-                  BEST MONTH
-                </span>
-                <span className="font-condensed font-semibold text-[12.5px] text-ink tabular-nums">
-                  {monthShort(best.month).toUpperCase()} ·{" "}
-                  {Math.round(best.margin * 100)}% · {money(best.profit)}
-                </span>
-              </span>
-            )}
           </div>
         )}
-      </ForgedPlate>
+      </Panel>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-3">
         {/* monthly P&L */}
@@ -442,11 +466,6 @@ export const MoneyTab = ({
             <span className="normal-case tracking-normal font-normal flex gap-2.5 text-[10px] items-center">
               <span className="text-chart-amber">● after notes</span>
               <span className="text-chart-blue">● operating</span>
-              {goalStreak >= 2 && (
-                <span className="font-forge font-semibold text-[11px] tracking-[.12em] text-amber-hi">
-                  {goalStreak} MO ≥ GOAL
-                </span>
-              )}
             </span>
           </h3>
           <svg viewBox="0 0 320 140" className="w-full">
@@ -531,8 +550,120 @@ export const MoneyTab = ({
               : ""}
             .
           </p>
+          {atGoal && marginGoal != null && (
+            <p className="text-[12px] text-dim mt-1.5" data-testid="months-at-goal">
+              <b className="text-ink tabular-nums">{atGoal.at} of {atGoal.of}</b> month{atGoal.of === 1 ? "" : "s"} at or above the {Math.round(marginGoal * 100)}% goal this year.
+            </p>
+          )}
         </Board>
       </div>
+
+      {/* the last complete quarter — the season grid, as a plain row */}
+      <Panel className="p-4" data-testid="last-quarter">
+        <h3 className="ds2-label mb-3 flex justify-between flex-wrap gap-2">
+          <span>Last quarter · {season.label}</span>
+          <span className="normal-case tracking-normal font-normal text-faint">
+            the last complete calendar quarter · {season.months} P&amp;L month{season.months === 1 ? "" : "s"} filed
+          </span>
+        </h3>
+        {season.months === 0 && season.loads === 0 ? (
+          <p className="text-xs text-faint">No filed month and no delivered load in {season.label} yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-5 gap-y-4">
+            <Stat label="Net revenue" value={season.months > 0 ? money(season.netRevenue) : "—"} sub="P&L income · net of the carrier cut" />
+            <Stat
+              label="Operating profit"
+              value={season.months > 0 ? money(season.netProfit) : "—"}
+              tone={season.months > 0 ? (season.netProfit >= 0 ? "text-status-positive-text" : "text-status-negative-text") : ""}
+              sub="income − COGS − expenses"
+            />
+            <Stat
+              label="True net"
+              value={season.months > 0 ? money(season.trueNet) : "—"}
+              tone={season.months > 0 ? (season.trueNet >= 0 ? "text-status-positive-text" : "text-status-negative-text") : ""}
+              sub={`after ${money(obligationsMonthly)} of notes a month`}
+            />
+            <Stat label="Loads" value={String(season.loads)} sub="delivered in the quarter" />
+            <Stat label="Miles" value={Math.round(season.totalMiles).toLocaleString("en-US")} sub="odometer where logged" />
+            <Stat
+              label="Deadhead"
+              value={season.deadheadPct != null ? `${(season.deadheadPct * 100).toFixed(1)}%` : "—"}
+              tone={season.deadheadPct == null ? "" : season.deadheadPct <= DEADHEAD_TARGET ? "text-status-positive-text" : "text-status-negative-text"}
+              sub={`target ${Math.round(DEADHEAD_TARGET * 100)}%`}
+            />
+            <Stat label="Avg rate" value={season.avgRpm != null ? `${rpm(season.avgRpm)}/mi` : "—"} sub="gross per loaded mile" />
+            <Stat label="Best lane" value={season.bestLane?.lane ?? "—"} sub={season.bestLane ? `${money(season.bestLane.revenue)} gross` : undefined} wrap />
+          </div>
+        )}
+      </Panel>
+
+      {/* weekly earnings — the last eight pay weeks, the best week as a line */}
+      <Panel className="p-4" data-testid="weekly-earnings">
+        <h3 className="ds2-label mb-2 flex justify-between flex-wrap gap-2">
+          <span>Weekly earnings</span>
+          <span className="normal-case tracking-normal font-normal text-faint">
+            last 8 pay weeks · gross earned, delivered loads ·{" "}
+            <span className="text-amber-hi">— best week</span>
+            {weeklyTarget != null && <> · <span className="text-dim">-- target</span></>}
+          </span>
+        </h3>
+        {(() => {
+          const H = 120;
+          const max = Math.max(weeklyTarget ?? 0, bestWeek?.gross ?? 0, ...weeks.map((w) => w.earned), 1);
+          const y = (v: number) => 140 - (v / max) * H;
+          const colW = 620 / weeks.length;
+          const bestY = bestWeek ? y(bestWeek.gross) : null;
+          const targetY = weeklyTarget != null ? y(weeklyTarget) : null;
+          const bestLabelClear = bestY == null || targetY == null || Math.abs(bestY - targetY) > 12;
+          const dayLabel = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+          return (
+            <svg viewBox="0 0 620 160" className="w-full">
+              <line x1="0" y1="140" x2="620" y2="140" stroke="var(--color-hairline-lo)" />
+              {targetY != null && (
+                <>
+                  <line x1="0" y1={targetY} x2="620" y2={targetY} stroke="var(--color-dim)" strokeDasharray="4 4" opacity={0.6} />
+                  <text x="4" y={targetY - 3} fontSize={8.5} fill="var(--color-dim)">
+                    target {money(weeklyTarget ?? 0)}{weeklyFloor != null ? ` · floor ${money(weeklyFloor)}` : ""}
+                  </text>
+                </>
+              )}
+              {bestWeek && bestY != null && (
+                <>
+                  <line x1="0" y1={bestY} x2="620" y2={bestY} stroke="var(--color-amber-hi)" strokeWidth={1} opacity={0.8} />
+                  {bestLabelClear && (
+                    <text x="616" y={bestY - 3} textAnchor="end" fontSize={8.5} fill="var(--color-amber-hi)">
+                      best week {money(bestWeek.gross)} · {weekLabel(bestWeek.week)}
+                    </text>
+                  )}
+                </>
+              )}
+              {weeks.map((w, i) => {
+                const h = Math.max(2, (w.earned / max) * H);
+                const x = i * colW + colW * 0.16;
+                return (
+                  <g key={w.start.toISOString()} textAnchor="middle">
+                    <rect
+                      x={x}
+                      y={140 - h}
+                      width={colW * 0.68}
+                      height={h}
+                      rx={3}
+                      fill="var(--color-chart-amber)"
+                      opacity={w.now ? 0.45 : 1}
+                    />
+                    <text x={i * colW + colW / 2} y={152} fontSize={8.5} fill={w.now ? "var(--color-amber-hi)" : "var(--color-faint)"}>
+                      {w.now ? "this week" : dayLabel(w.start)}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          );
+        })()}
+        <p className="text-[12px] text-dim mt-1.5" data-testid="weeks-sentence">
+          <b className="text-ink tabular-nums">{quarter.figure}</b> {quarter.label.toLowerCase()} · {quarter.detail}
+        </p>
+      </Panel>
 
       {/* where it goes (year to date, by category) */}
       <Board className="p-4">

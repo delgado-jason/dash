@@ -4,7 +4,7 @@ import { bottleneckLevers, allLeversOnTarget } from "@/lib/metrics/playerCard";
 import { QuarterPaceCard } from "./QuarterPaceCard";
 import { DEADHEAD_TARGET } from "@/lib/constants/targets";
 import { money } from "@/lib/format";
-import { GRADE_META } from "./gradeMeta";
+import { GRADE_META } from "@/components/agents/gradeMeta";
 
 // The season machinery the mockup's card didn't carry but the business does:
 // the three profit levers with the bottleneck coach, the full quarter-pace

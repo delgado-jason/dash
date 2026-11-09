@@ -3,28 +3,23 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLoads } from "@/hooks/useLoads";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { useGrind } from "@/hooks/useGrind";
 import { getUser, type TeamMember } from "@/services/teamService";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
-import {
-  dispatcherMedals,
-  dispatcherPatches,
-  type DispatcherAwardInput,
-} from "@/lib/awards/dispatcherAwards";
-import { DispatcherCard } from "@/components/playercard/DispatcherCard";
+import { DispatcherKpis } from "@/components/dispatch/DispatcherKpis";
 import { DispatcherSeasonCard } from "@/components/dispatch/DispatcherSeasonCard";
-import { MedalBadge } from "@/components/awards/MedalBadge";
-import { HardwareBoard } from "@/components/awards/HardwareBoard";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// A dispatcher's own page — reached from her avatar chip on the board, or from
+// Settings → Team for the owner. Plain since the Redesign's phase B1: the rank
+// ladder, the medals, the patches, the hardware board and the period trophies
+// were the game's. What stays is what she booked: the figures and the season.
 const DispatcherPage = () => {
   const { id = "" } = useParams();
   const { loads, isLoading: loadsLoading, error } = useLoads(0);
   const targets = useRateTargets(loads);
-  const grind = useGrind(loads);
 
   const [member, setMember] = useState<TeamMember | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -82,34 +77,6 @@ const DispatcherPage = () => {
   );
   const name = member.display_name || member.email;
 
-  const awardInput: DispatcherAwardInput = {
-    loads,
-    userId: id,
-    ladder: targets.bookingLadder,
-    scoreBasis: {
-      costPerDrivenMile: targets.basis.costPerTotalMile,
-      payTake: targets.basis.payTake,
-    },
-    freeHours,
-    streak: grind?.bestStreak ?? 0,
-    tiers: targets.tiers,
-    specTiers: targets.specTiers,
-  };
-  const medals = dispatcherMedals(awardInput);
-  const patches = dispatcherPatches(awardInput);
-  const earnedMedals = medals.filter((m) => m.tier > 0);
-
-  const avatar = (
-    <EntityAvatar
-      kind="user"
-      id={id}
-      avatarUrl={avatarUrl}
-      size={64}
-      allowVariant
-      onUpdated={(u) => setAvatarUrl(u)}
-    />
-  );
-
   return (
     <div className="min-h-screen text-ink font-body">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
@@ -125,37 +92,31 @@ const DispatcherPage = () => {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap mt-[18px]">
-          <div className="shrink-0">{avatar}</div>
+          <div className="shrink-0">
+            <EntityAvatar
+              kind="user"
+              id={id}
+              avatarUrl={avatarUrl}
+              size={64}
+              allowVariant
+              onUpdated={(u) => setAvatarUrl(u)}
+            />
+          </div>
           <div className="min-w-0">
             <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
               {name.toUpperCase()}
             </h2>
-            <div className="flex gap-2 mt-2 flex-wrap">
-              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-amber/40 bg-amber/7">
-                {card.rank.name.toUpperCase()}
-              </span>
-              <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
-                DELGADO TRUCKING SERVICES · DISPATCH
-              </span>
-            </div>
+            <p className="font-condensed font-medium text-[12px] tracking-[.1em] uppercase text-faint mt-2">
+              Dispatch · the loads booked under this name, in gross
+            </p>
           </div>
-          {earnedMedals.length > 0 && (
-            <span className="ml-auto flex gap-1.5 flex-wrap justify-end">
-              {earnedMedals.map((m) => (
-                <MedalBadge key={m.key} medal={m} />
-              ))}
-            </span>
-          )}
         </div>
 
         <div className="mt-4">
-          <DispatcherCard card={card} />
+          <DispatcherKpis card={card} full title="Bookings" />
         </div>
 
-        {/* the hardware — coins mostly ghost today, the whole career visible */}
-        <HardwareBoard medals={medals} grindTags={patches} />
-
-        {/* season — her 90-day booking grade */}
+        {/* the season — her booked loads by month, quarter or year */}
         <div className="mt-4">
           <DispatcherSeasonCard
             loads={loads}

@@ -85,3 +85,15 @@ export const lastFiledMonth = (rows: ProfitRow[]): LastFiledMonth | null => {
 // Whether the month holding `dayKey` has a filed period (income total saved).
 export const monthIsFiled = (rows: ProfitRow[], dayKey: string): boolean =>
   rows.some((r) => r.month.slice(0, 7) === dayKey.slice(0, 7));
+
+// Months at or above the margin goal — a COUNT over the rows given (the Money
+// tab passes the year's filed months), never a trailing streak: a miss in the
+// middle does not erase the months that cleared it (the Redesign, B1 — the
+// "N MO ≥ GOAL" chip read a streak). null with no goal or no filed month.
+export const monthsAtGoal = (
+  rows: ProfitRow[],
+  goal: number | null,
+): { at: number; of: number } | null => {
+  if (goal == null || rows.length === 0) return null;
+  return { at: rows.filter((r) => r.cashMargin >= goal).length, of: rows.length };
+};

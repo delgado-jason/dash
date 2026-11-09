@@ -23,19 +23,15 @@ import RatingForm from "@/components/RatingForm";
 import { StopScorecard } from "@/components/StopScorecard";
 import { Kpi } from "@/components/Kpi";
 import { StatusBadge } from "@/components/StatusBadge";
-import { RatingStamp } from "@/components/agents/RatingStamp";
-import { TrophyCase } from "@/components/agents/TrophyCase";
-import { PRESTIGE_META } from "@/components/agents/PrestigeBadge";
-import { Coin, type CoinMetal } from "@/components/forge/Coin";
+import { RatingLabel } from "@/components/agents/RatingLabel";
+import { GRADE_META } from "@/components/agents/gradeMeta";
+import { agentAllInRpm, deliveredCount } from "@/lib/relationships/agentRpm";
+import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
+import { rpmGrade } from "@/lib/metrics/playerCard";
+import { GRADE_WORD } from "@/lib/metrics/leaderboard";
 import { fmtRpm, rpmTextClass, perDayTextClass } from "@/components/lanes/rpmStyle";
 import { fmtPerDay, perDayOver, perDayTone, perDayToneWord } from "@/lib/metrics/perDay";
 
-import {
-  agentPrestige,
-  computeHonors,
-  agentSeasonLog,
-  currentQuarterStanding,
-} from "@/lib/metrics/agentLeaderboard";
 import {
   getLoadCount,
   getGrossRevenue,
@@ -118,22 +114,16 @@ const AgentDetailPage = () => {
   );
 
   const agentId = agent?.agent_id;
-  const honors = useMemo(
-    () =>
-      agentId
-        ? computeHonors(allLoads ?? [], new Date()).get(agentId)
-        : undefined,
+  // The leaderboard's own grading, one level down: the all-in gross per driven
+  // mile over delivered loads picked up in the last 12 months, graded on the
+  // booking ladder once the agent has three delivered loads lifetime (the Tiers
+  // gate). The same arithmetic that grades their desk — never a second copy.
+  const allIn = useMemo(
+    () => (agentId ? agentAllInRpm(allLoads ?? [], agentId, new Date()) : null),
     [allLoads, agentId],
   );
-  const season = useMemo(
-    () => (agentId ? agentSeasonLog(allLoads ?? [], agentId, new Date()) : []),
-    [allLoads, agentId],
-  );
-  const live = useMemo(
-    () =>
-      agentId
-        ? currentQuarterStanding(allLoads ?? [], agentId, new Date())
-        : null,
+  const lifetimeDelivered = useMemo(
+    () => (agentId ? deliveredCount(allLoads ?? [], agentId) : 0),
     [allLoads, agentId],
   );
 
@@ -199,8 +189,18 @@ const AgentDetailPage = () => {
     );
   if (!agent) return null;
 
-  const tier = agentPrestige(honors);
-  const prestige = PRESTIGE_META[tier];
+  const usableLadder =
+    overallTargets.bookingLadder && overallTargets.bookingLadder.walkAway != null
+      ? overallTargets.bookingLadder
+      : null;
+  const established = lifetimeDelivered >= ESTABLISHED_AT;
+  const allInGrade =
+    established && usableLadder && allIn?.rpm != null ? rpmGrade(allIn.rpm, usableLadder) : null;
+  // The day the rating was last set — the newest entry in its history.
+  const ratingSetOn =
+    ratingHistory.length > 0
+      ? ratingHistory.reduce((m, h) => (h.changed_at > m ? h.changed_at : m), ratingHistory[0].changed_at)
+      : null;
   const grossRev = getGrossRevenue(loads);
   const rpm = getAverageRPM(loads);
   // What their freight pays per DAY of the truck — weighted Σgross ÷ Σdays
@@ -354,21 +354,6 @@ const AgentDetailPage = () => {
                 {whereabouts ? <span>· {whereabouts}</span> : null}
                 {carrierName ? <span>· {carrierName} Agent</span> : null}
               </div>
-              {prestige.label && (
-                <span className="inline-flex items-center gap-2 mt-1.5">
-                  <Coin
-                    metal={
-                      ({ contender: "bronze", "all-star": "silver", champion: "gold", legend: "platinum" } as Record<string, CoinMetal>)[tier] ?? "bronze"
-                    }
-                    size={22}
-                  >
-                    {agent.first_name.charAt(0)}
-                  </Coin>
-                  <span className="text-xs font-condensed font-semibold uppercase tracking-[.1em] text-dim">
-                    {prestige.label} agent
-                  </span>
-                </span>
-              )}
             </div>
           )}
         </div>
@@ -396,7 +381,29 @@ const AgentDetailPage = () => {
             </>
           ) : (
             <>
-              <RatingStamp rating={agent.rating} />
+              <div className="flex flex-col sm:items-end gap-1">
+                <RatingLabel rating={agent.rating} size="lg" setOn={ratingSetOn} />
+                <p className="text-[11.5px] text-faint" data-testid="agent-grade-line">
+                  {allInGrade && allIn?.rpm != null ? (
+                    <>
+                      <span
+                        className="font-condensed font-bold tracking-[.06em] text-[11px]"
+                        style={{ color: GRADE_META[allInGrade].fg }}
+                      >
+                        {GRADE_WORD[allInGrade]}
+                      </span>
+                      {" · "}
+                      {fmtRpm(allIn.rpm)}/mi all-in{allIn.partial ? "*" : ""} · 12 mo · {allIn.loads} load{allIn.loads === 1 ? "" : "s"}
+                    </>
+                  ) : !established ? (
+                    `not yet graded · ${lifetimeDelivered} of ${ESTABLISHED_AT} delivered loads`
+                  ) : allIn?.rpm == null ? (
+                    "no miles logged on their loads in the last 12 months"
+                  ) : (
+                    "the booking ladder needs a filed P&L month to grade"
+                  )}
+                </p>
+              </div>
               <div className="mt-3 flex items-center gap-2 sm:justify-end">
                 <button
                   onClick={() => setShowRatingForm(true)}
@@ -496,10 +503,6 @@ const AgentDetailPage = () => {
           </div>
         )}
       </Panel>
-
-      <div className="mt-4">
-        <TrophyCase honors={honors} log={season} live={live} />
-      </div>
 
       <Panel className="p-4 mt-4">
         <p className="text-xs text-dim uppercase tracking-wider mb-3">
