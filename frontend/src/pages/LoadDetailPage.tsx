@@ -30,6 +30,7 @@ import { deleteLoad } from "@/services/deleteLoadService";
 import { getAccessorialRates } from "@/services/accessorialRateService";
 
 import LoadForm from "@/components/LoadForm";
+import { LoadFormModal } from "@/components/loads/LoadFormModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { loadStatusWord } from "@/lib/loads/loadStatusWord";
 import { StatusWord } from "@/components/ui/StatusWord";
@@ -110,7 +111,11 @@ const fmtDate = (d?: string | null) =>
       )
     : "Not set";
 
-const cardLbl = "text-xs text-dim uppercase tracking-wider mb-2";
+// cardLbl lived here until v1.267.2 — this page's own panel heading, while the
+// rest of the app had settled on `ds2-label`. Four idioms were in play on one
+// screen: cardLbl on ten panels and the display face at 27px, 15px and 13px.
+// The display face now appears once, on the load number, which is phase B's
+// rule (Bebas for the wordmark and page titles only).
 
 const Row = ({ label, value }: { label: ReactNode; value: ReactNode }) => (
   <div className="flex justify-between gap-3 py-0.5 text-sm">
@@ -559,13 +564,11 @@ export const LoadDetailPage = () => {
   return (
     <div className="min-h-screen text-ink font-body">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10 pt-5">
-      {showEditForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowEditForm(false)}
-          />
-          <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-panel text-ink overflow-y-auto shadow-xl rounded-xl p-4 sm:p-6 border border-hairline">
+      <LoadFormModal
+        open={showEditForm}
+        onClose={() => setShowEditForm(false)}
+        label={`Edit load ${load.load_number}`}
+      >
             <LoadForm
               mode="edit"
               initialData={{
@@ -627,9 +630,7 @@ export const LoadDetailPage = () => {
               onMarketCreated={() => {}}
               onClose={() => setShowEditForm(false)}
             />
-          </div>
-        </div>
-      )}
+      </LoadFormModal>
 
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent>
@@ -934,10 +935,18 @@ export const LoadDetailPage = () => {
           label="Rate / driven mi · gross"
           value={fmtRpm(rateDriven)}
           valueClass={rpmTextClass(rateDriven, targets.bookingLadder)}
+          // This sub-line used to read "1,067 loaded + 380 empty mi · $6.01
+          // per loaded mi" — restating the two KPI cells sitting immediately
+          // beside it. It now carries only the figure it alone adds: the
+          // freight's own rate per LOADED mile, next to the headline's rate
+          // per DRIVEN mile. The refusal stays, because it explains why the
+          // headline rate above it may be missing.
           sub={
             emptyMi == null
-              ? `Deadhead — needs the odometer${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`
-              : `${fmtMi(loadedMi)} loaded + ${fmtMi(emptyMi)} empty mi${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`
+              ? `needs the odometer${rpm != null ? ` · ${fmtRpm(rpm)} per loaded mi` : ""}`
+              : rpm != null
+                ? `${fmtRpm(rpm)} per loaded mi · gross`
+                : ""
           }
         />
         <Kpi
@@ -957,13 +966,17 @@ export const LoadDetailPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <Panel className="p-4 md:col-span-2">
-          <p className={cardLbl}>Route</p>
+          <p className="ds2-label mb-2">Route</p>
           {route?.pickup && route?.delivery ? (
             <MissionMap
               pickup={route.pickup}
               delivery={route.delivery}
               deadhead={route.deadhead}
-              loadedMiles={route.loadedMiles}
+              // No mileage label on the map (v1.267.2). `route.loadedMiles`
+              // is the ROUTING ENGINE's figure, while the KPI and the Mileage
+              // rows read `load.loaded_miles` — two sources under one word,
+              // and the map never said which it was showing. The load's own
+              // reading owns the number; the map draws the shape.
               height={300}
             />
           ) : (
@@ -990,7 +1003,7 @@ export const LoadDetailPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 mt-4 pt-4 border-t border-hairline-lo">
             <div>
           <div className="flex items-baseline justify-between gap-2">
-            <p className={`${cardLbl} mb-0`}>Shipper</p>
+            <p className="ds2-label">Shipper</p>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-dim">
                 Pickup · {fmtDate(load.pickup_date)}
@@ -1029,7 +1042,7 @@ export const LoadDetailPage = () => {
             </div>
             <div>
           <div className="flex items-baseline justify-between gap-2">
-            <p className={`${cardLbl} mb-0`}>Receiver</p>
+            <p className="ds2-label">Receiver</p>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-dim">
                 Delivery · {fmtDate(load.delivery_date)}
@@ -1067,7 +1080,7 @@ export const LoadDetailPage = () => {
           <StopTimes inTime={load.receiver_in} outTime={load.receiver_out} />
             </div>
             <div>
-          <p className={cardLbl}>Mileage</p>
+          <p className="ds2-label mb-2">Mileage</p>
           <Row
             label="Loaded"
             value={loadedMi == null ? "—" : `${fmtMi(loadedMi)} mi`}
@@ -1097,7 +1110,7 @@ export const LoadDetailPage = () => {
         </Panel>
 
         <Panel className="p-4 border border-amber">
-          <p className={`${cardLbl} text-amber-light`}>Fleet</p>
+          <p className="ds2-label mb-2 text-amber-light">Fleet</p>
           <Row
             label={
               <span className="flex items-center gap-1.5">
@@ -1156,7 +1169,7 @@ export const LoadDetailPage = () => {
             }
           />
           <div className="mt-3 pt-3 border-t border-hairline-lo">
-          <p className={cardLbl}>Cargo</p>
+          <p className="ds2-label mb-2">Cargo</p>
           <Row label="Commodity" value={load.commodity || "—"} />
           <Row
             label="Weight"
@@ -1173,7 +1186,7 @@ export const LoadDetailPage = () => {
           />
           </div>
           <div className="mt-3 pt-3 border-t border-hairline-lo">
-          <p className={cardLbl}>Agency · agent</p>
+          <p className="ds2-label mb-2">Agency · agent</p>
           <p className="text-sm">{load.agency_code ?? "—"}</p>
           <p className="text-sm text-dim">
             <Link
@@ -1188,7 +1201,7 @@ export const LoadDetailPage = () => {
         </Panel>
 
         <Panel className="p-4">
-          <p className="font-display text-[15px] tracking-[.08em] text-dim">SETTLEMENT · MANIFEST</p>
+          <p className="ds2-label">Settlement</p>
           <div className="mt-2 [&>div]:border-b [&>div]:border-dotted [&>div]:border-hairline [&>div]:pb-1.5 [&>div]:mb-1.5">
           <Row label="Linehaul" value={moneyCents(Number(load.linehaul))} />
           <Row
@@ -1222,7 +1235,7 @@ export const LoadDetailPage = () => {
 
         <Panel className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <p className={`${cardLbl} mb-0`}>Fuel</p>
+            <p className="ds2-label">Fuel</p>
             <span
               className="text-[11px] px-2 py-0.5 rounded"
               style={{
@@ -1270,8 +1283,13 @@ export const LoadDetailPage = () => {
           )}
         </Panel>
 
-        <Panel className="p-4 md:col-span-2">
-          <p className={cardLbl}>Status — the journey</p>
+        {/* Status no longer spans both columns (v1.267.2). It used to, and
+            because Route already spans the full width, the running order left
+            Fuel alone in row three with the cell beside it empty at every
+            desktop width — Status could not fit there and bumped to row four.
+            Pairing the two closes the hole. */}
+        <Panel className="p-4">
+          <p className="ds2-label mb-2">Status — the journey</p>
           {(() => {
             const ORDER = ["booked", "in_transit", "delivered"];
             const reached = (st: string) =>
@@ -1290,12 +1308,18 @@ export const LoadDetailPage = () => {
                 {stations.map(([nm, on], i) => (
                   <div key={nm} className="flex items-center flex-1 last:flex-none">
                     <div className="flex flex-col items-center gap-1">
+                      {/* Flat since v1.267.2: a reached station was an amber
+                          dot with a 7px glow and an unreached one a pressed
+                          well — the same instrument-panel idiom as the two
+                          speedometer dials retired from the Fleet tab. A
+                          filled dot and a hairline ring say it without the
+                          lighting. */}
                       <span
                         className="w-2.5 h-2.5 rounded-full"
                         style={
                           on
-                            ? { background: "var(--color-amber)", boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 60%, transparent)" }
-                            : { background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }
+                            ? { background: "var(--color-amber)" }
+                            : { background: "transparent", border: "1px solid var(--color-hairline)" }
                         }
                       />
                       <span className={`text-[9px] font-semibold tracking-[.1em] uppercase ${on ? "text-dim" : "text-faint"}`}>{nm}</span>
@@ -1348,7 +1372,7 @@ export const LoadDetailPage = () => {
 
       <Panel className="p-4 mt-2">
         <div className="flex justify-between items-center mb-2">
-          <p className="font-display text-[13px] tracking-[.08em] text-dim">MANIFEST · ACCESSORIALS</p>
+          <p className="ds2-label">Accessorials</p>
           <span className="text-xs text-dim">
             Total {moneyCents(accTotal)}
           </span>
@@ -1522,9 +1546,7 @@ export const LoadDetailPage = () => {
           The upload path is the DTS Inbox, not dash. */}
       <Panel className="p-4 mt-2">
         <div className="flex items-center justify-between mb-3">
-          <p className="font-display text-[13px] tracking-[.08em] text-dim">
-            MANIFEST · PAPERWORK
-          </p>
+          <p className="ds2-label">Paperwork</p>
           {documents.length > 0 && (
             <span className="text-[11px] text-faint">
               {documents.length} filed on the server
@@ -1619,7 +1641,7 @@ export const LoadDetailPage = () => {
                   title={d.filename}
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-hairline bg-well text-amber-light hover:border-amber transition-colors"
                 >
-                  📎 {formatDoctype(d.doc_type)}
+                  {formatDoctype(d.doc_type)}
                 </a>
               ))}
             </div>

@@ -327,6 +327,7 @@ const NAV: { group: string; items: string[] }[] = [
       "In / out times & dwell",
       "Detention — a decision, not an auto-flag",
       "TONU — the dead-run fee",
+      "The line above the table",
       "The loads table, by color",
       "Paperwork on a load",
       "Facility & agent scorecards",
@@ -2311,6 +2312,32 @@ const GuidePage = () => {
             </Why>
           </Metric>
 
+          <Section title="The line above the table">
+            <p className="text-sm text-muted-text mb-2">
+              The Loads page answers whatever your filters currently show, in
+              one line:{" "}
+              <span className="text-light">
+                so many loads in this view · so many earning · gross ·
+                $/loaded mi
+              </span>
+              . The count is the rows on your screen — filter to TONUs and it
+              says how many TONUs there are.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              <span className="text-light">Earning</span> is the second,
+              smaller number, and it only appears when the two differ. Cancelled
+              and TONU runs are on the screen but out of the money: they are
+              real records you want to see, and they never carried a linehaul.
+              Holding them out is what keeps the gross and the $/loaded mile
+              honest — without it a cancelled load would quietly drag the rate
+              down as though you had hauled it for nothing.
+            </p>
+            <p className="text-sm text-muted-text">
+              So "14 loads in this view · 12 earning" means two of the fourteen
+              are dead runs, and the gross beside it is the twelve.
+            </p>
+          </Section>
+
           <Section title="The loads table, by color">
             <p className="text-sm text-muted-text mb-2">
               A left bar and row tint tell you what needs action, worst first:
@@ -2341,8 +2368,8 @@ const GuidePage = () => {
           <Section title="Paperwork on a load">
             <p className="text-sm text-muted-text mb-2">
               Every load page has a{" "}
-              <span className="text-light">MANIFEST · PAPERWORK</span> panel —
-              chips for the rate con, POD, freight bill, trip sheet, and
+              <span className="text-light">Paperwork</span> panel — chips for
+              the rate con, POD, freight bill, trip sheet, and
               anything else filed for that load. Tap a chip to open the
               document.
             </p>
