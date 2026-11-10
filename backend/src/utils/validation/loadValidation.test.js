@@ -231,3 +231,32 @@ describe("GL-106 — booked_by is required", () => {
     assert.deepEqual(bookerErrors(validateLoadPatch({ booked_by: BOOKER })), []);
   });
 });
+
+describe("106 — the console's stop stamps", () => {
+  const STAMPS = ["shipper_in_at", "shipper_out_at", "receiver_in_at", "receiver_out_at"];
+
+  test("every one of the four is validated, not just the pair I remembered", () => {
+    for (const f of STAMPS) {
+      assert.deepEqual(validateLoadPatch({ [f]: "nope" }), [`${f} must be a timestamp`]);
+    }
+  });
+  test("an ISO moment passes — that is what the console sends", () => {
+    for (const f of STAMPS) {
+      assert.deepEqual(validateLoadPatch({ [f]: "2026-11-10T14:32:07.001Z" }), []);
+    }
+  });
+  test("null clears a mis-tap, and absence is not a change", () => {
+    assert.deepEqual(validateLoadPatch({ shipper_in_at: null }), []);
+    assert.deepEqual(validateLoadPatch({ shipper_in_at: undefined }), []);
+  });
+  test("a bare time of day is refused — the stamp's whole point is the date", () => {
+    assert.deepEqual(validateLoadPatch({ shipper_in_at: "14:32:00" }), [
+      "shipper_in_at must be a timestamp",
+    ]);
+  });
+  test("a create does not take stamps at all; it takes the time-only columns", () => {
+    // Not a validation rule — the create allowlist in loadServices refuses the
+    // field by name. Recorded here so the asymmetry is deliberate, not a gap.
+    assert.deepEqual(validateLoadPatch({ shipper_in: "14:32:00" }), []);
+  });
+});

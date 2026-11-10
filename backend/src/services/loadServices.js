@@ -67,6 +67,11 @@ export async function getLoads(user_id) {
             shipper_facility_id,
             shipper_in,
             shipper_out,
+            -- The full moment a console tap stamped (106). The time-only
+            -- columns above are written alongside, so every existing reader
+            -- is untouched; these are what a live clock counts from.
+            shipper_in_at,
+            shipper_out_at,
             pickup_appt_start,
             pickup_appt_end,
             pickup_date,
@@ -78,6 +83,8 @@ export async function getLoads(user_id) {
             receiver_facility_id,
             receiver_in,
             receiver_out,
+            receiver_in_at,
+            receiver_out_at,
             delivery_appt_start,
             delivery_appt_end,
             delivery_date,
@@ -161,6 +168,8 @@ export async function getLoad(user_id, load_id) {
             shipper_facility_id,
             shipper_in,
             shipper_out,
+            shipper_in_at,
+            shipper_out_at,
             pickup_appt_start,
             pickup_appt_end,
             pickup_date,
@@ -172,6 +181,8 @@ export async function getLoad(user_id, load_id) {
             receiver_facility_id,
             receiver_in,
             receiver_out,
+            receiver_in_at,
+            receiver_out_at,
             delivery_appt_start,
             delivery_appt_end,
             delivery_date,
@@ -487,6 +498,13 @@ export async function patchLoad(user_id, load_id, data) {
     "driver_id",
     "trailer_id",
     "booked_by",
+    // The console's stamps (106). PATCH only, on purpose: a stamp means "she
+    // tapped, and it is now". A load typed up after the fact has times, not
+    // moments, so the create path keeps taking only the time-only columns.
+    "shipper_in_at",
+    "shipper_out_at",
+    "receiver_in_at",
+    "receiver_out_at",
   ];
 
   // Throw error if data contains invalid field(s)

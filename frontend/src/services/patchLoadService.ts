@@ -16,6 +16,22 @@ interface PatchLoadInput {
   // Decision 5A (074): whose customer this load is — the mark every footprint
   // reader follows. Only ever set by a person.
   customer_end?: CustomerEnd;
+  // The load console's taps (106). A stamp writes BOTH its *_at moment and the
+  // time-only column beside it, so detention, dwell, on-time, the facility
+  // ledger and the agent scorecard all carry on reading what they always read.
+  // `null` clears a mis-tap — the undo path.
+  shipper_in_at?: string | null;
+  shipper_out_at?: string | null;
+  receiver_in_at?: string | null;
+  receiver_out_at?: string | null;
+  shipper_in?: string | null;
+  shipper_out?: string | null;
+  receiver_in?: string | null;
+  receiver_out?: string | null;
+  // The completion. `loads_delivered_needs_readings` will not take a delivered
+  // load without a delivery date and both readings, so these travel together.
+  delivery_date?: string | null;
+  odometer_end?: number | null;
 }
 
 export const patchLoad = async (
