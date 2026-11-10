@@ -58,15 +58,25 @@ export const cashAsOf = (board: CashBoard, today: string): CashToday => {
     lines += 1;
     return true;
   };
-  const ok =
-    take(col.prevDeposit, 1) &&
-    take(col.deposit, 1) &&
-    take(col.payroll, -1) &&
-    take(col.accrual, -1) &&
-    take(col.catchUp, -1) &&
-    take(col.fuel.leftover, 1) &&
-    col.bills.every((b) => take(b, -1)) &&
-    col.moneyDays.every((m) => take(m, -1));
+  // EVERY column, not just the current one (v1.268.0). For TODAY this changes
+  // nothing — today always falls inside the current column, so the next one has
+  // no line dated on or before it. It matters when the figure is asked for a
+  // LATER day: a period's accrual pays the Friday after it closes, inside the
+  // next period's week, and that Friday is also the next period's payroll day.
+  // Walking one column would say the bank holds money that payroll has already
+  // taken — the same thing the cash board's ending used to do, and the reason
+  // Jason could not trust it. One date, one answer, on both surfaces.
+  const ok = board.columns.every(
+    (c) =>
+      take(c.prevDeposit, 1) &&
+      take(c.deposit, 1) &&
+      take(c.payroll, -1) &&
+      take(c.accrual, -1) &&
+      take(c.catchUp, -1) &&
+      take(c.fuel.leftover, 1) &&
+      c.bills.every((b) => take(b, -1)) &&
+      c.moneyDays.every((m) => take(m, -1)),
+  );
   if (!ok) return { ...refused, linesSince: lines };
 
   return { amount: round2(amount), linesSince: lines, missing: [] };
