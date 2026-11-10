@@ -82,3 +82,33 @@ export const setForecastAdjustment = async (
   const res = await api.put("/cashflow/adjustments", { month, weeks_off });
   return res.data.adjustment;
 };
+
+// ---- the deposit you typed, before the statement landed (migration 105) ----
+// These lived in one browser's localStorage until v1.268.0. They are the
+// account's now, so the phone, the laptop and Brandie all see one figure.
+export interface DepositOverrideRow {
+  statement_date: string; // YYYY-MM-DD, the Wednesday the period settles
+  amount: number;
+}
+
+const cleanOverride = (r: { statement_date: string; amount: string | number }): DepositOverrideRow => ({
+  statement_date: String(r.statement_date).slice(0, 10),
+  amount: Number(r.amount), // numeric comes back a string
+});
+
+export const getDepositOverrides = async (): Promise<DepositOverrideRow[]> => {
+  const res = await api.get("/cashflow/deposit-overrides");
+  return (res.data.overrides ?? []).map(cleanOverride);
+};
+
+export const setDepositOverride = async (
+  statement_date: string,
+  amount: number,
+): Promise<DepositOverrideRow> => {
+  const res = await api.put("/cashflow/deposit-overrides", { statement_date, amount });
+  return cleanOverride(res.data.override);
+};
+
+export const deleteDepositOverride = async (statement_date: string): Promise<void> => {
+  await api.delete(`/cashflow/deposit-overrides/${statement_date}`);
+};
