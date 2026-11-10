@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stopClock, hm, atClock } from "./stopClock";
+import { stopClock, hm, atClock, stopProgress } from "./stopClock";
 
 // Every moment here is built with the LOCAL Date constructor, because that is
 // what an appointment is: a wall-clock time at a dock. Building fixtures in UTC
@@ -172,5 +172,42 @@ describe("hm / atClock — how a clock reads", () => {
     expect(atClock(at(14, 2))).toBe("14:02");
     expect(atClock(null)).toBe(null);
     expect(atClock("not a date")).toBe(null);
+  });
+});
+
+describe("stopProgress — a stop counts whether it was tapped or typed", () => {
+  // The bug Jason hit on day one of v1.272.0. He logged the shipper's in and
+  // out times the old way, on the load detail page, so they are bare times
+  // with no stamps. The card asked `clock.started` — true only for a stamp —
+  // decided the shipper had never been reached, hid both its buttons, and
+  // locked the receiver's Arrived behind it. The load could not be worked.
+  const NO_STAMP = stopClock(null, null, "08:00:00", null, DAY, FREE, NOW);
+  const STAMPED_RUNNING = stopClock(at(9), null, "08:00:00", null, DAY, FREE, NOW);
+  const STAMPED_DONE = stopClock(at(9), moment(11), "08:00:00", null, DAY, FREE, NOW);
+
+  it("a TYPED in-time means reached, even with no stamp", () => {
+    expect(stopProgress(NO_STAMP, "09:00", null)).toEqual({ reached: true, released: false });
+  });
+
+  it("a TYPED out-time means released — this is what unlocked the receiver", () => {
+    expect(stopProgress(NO_STAMP, "09:00", "11:00")).toEqual({ reached: true, released: true });
+  });
+
+  it("a STAMP still means reached and released, as before", () => {
+    expect(stopProgress(STAMPED_RUNNING, null, null)).toEqual({ reached: true, released: false });
+    expect(stopProgress(STAMPED_DONE, null, null)).toEqual({ reached: true, released: true });
+  });
+
+  it("neither source means the truck is not there yet", () => {
+    expect(stopProgress(NO_STAMP, null, null)).toEqual({ reached: false, released: false });
+  });
+
+  it("the two sources can be mixed on one stop", () => {
+    // Typed the arrival on the load page, then tapped Departed on the console.
+    // Reached by the typed time, released by the stamp.
+    const stampedOutOnly = stopClock(null, moment(11), "08:00:00", null, DAY, FREE, NOW);
+    expect(stopProgress(stampedOutOnly, "09:00", null).reached).toBe(true);
+    // And the reverse: tapped in, time typed out later.
+    expect(stopProgress(STAMPED_RUNNING, null, "11:00")).toEqual({ reached: true, released: true });
   });
 });
