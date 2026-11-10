@@ -12,6 +12,7 @@ import { moneyCents, money } from "@/lib/format";
 import { BASIS_MONTHS } from "@/lib/constants/targets";
 import { completeMonthsBefore } from "@/lib/metrics/rateTargets";
 import { collectReadings } from "@/lib/metrics/odometer";
+import type { Trip } from "@/types/trip";
 import { retrueAccrued } from "@/lib/metrics/accrualTruth";
 import { archiveGaps } from "@/lib/metrics/cashflow";
 import { settlementDelta } from "@/lib/metrics/settlements";
@@ -295,6 +296,39 @@ export const runIntegrityChecks = (inputs: IntegrityInputs): Issue[] => {
       since: u.since,
       records: [{ kind: "accessorial", key: type, href: "/settings" }],
     });
+  }
+
+  // ---- INT-ODO-TRIP-INSIDE: a trip swallowed by a load's odometer window ----
+  //
+  // INT-ODO-OVERLAP above compares loads to LOADS, so a trip sitting inside a
+  // load's window has always been invisible. That is the exact signature of a
+  // stale odometer carry (v1.271.0): the load is created, the carry reads the
+  // last load's end, and the deadhead trip home is only logged afterwards — so
+  // the load's start is too low and it swallows the trip's miles. They then
+  // count twice, once as the trip and once inside the load.
+  //
+  // It catches the shape, not the cause, so it fires whatever put the number
+  // there — a stale carry, a typo, or a trip back-dated into a finished run.
+  const tripSpans = inputs.trips
+    .filter((t) => t.status !== "cancelled")
+    .map((t) => ({ t, s: pos(t.odometer_start), e: pos(t.odometer_end) }))
+    .filter((x): x is { t: Trip; s: number; e: number } => x.s != null && x.e != null && x.e > x.s);
+  for (const w of windows) {
+    for (const tr of tripSpans) {
+      // Any overlap at all. Touching ends are fine and normal — that is what
+      // tiling looks like (a trip starting exactly where a load ended).
+      if (tr.s >= w.e || tr.e <= w.s) continue;
+      issues.push({
+        id: "INT-ODO-TRIP-INSIDE",
+        key: `INT-ODO-TRIP-INSIDE:${w.l.load_number}:${day(tr.t.trip_date) ?? tr.s}`,
+        severity: "data",
+        title: `The ${day(tr.t.trip_date) ?? "undated"} trip runs inside load ${w.l.load_number}'s odometer window — the miles count twice.`,
+        detail: `${w.l.load_number} reads ${w.s.toLocaleString("en-US")}–${w.e.toLocaleString("en-US")}; the trip reads ${tr.s.toLocaleString("en-US")}–${tr.e.toLocaleString("en-US")}. A trip logged after the load was created is the usual cause: the load's start carried from the load before it and never saw the trip.`,
+        ...loadFix(w.l),
+        since: day(tr.t.trip_date) ?? day(w.l.delivery_date),
+        records: [loadRecord(w.l), { kind: "trip", key: day(tr.t.trip_date) ?? "trip", href: "/trips" }],
+      });
+    }
   }
 
   // ---- INT-SNAPSHOT-MILES: a snapshot's accrued miles against the odometer chain ----

@@ -5,6 +5,7 @@ import { Link } from "react-router";
 
 import type { Load } from "@/types/load";
 import { useLoads } from "@/hooks/useLoads";
+import { useTrips } from "@/hooks/useTrips";
 import { getSettlementsByLoad } from "@/services/settlementsService";
 import { settlementDelta } from "@/lib/metrics/settlements";
 import type { LoadSettlementSummary } from "@/types/settlement";
@@ -166,6 +167,9 @@ const LoadsPage = () => {
 
   const { agencies } = useAgencies(agencyRefreshKey);
   const { loads, isLoading, error } = useLoads(refreshKey);
+  // Trips feed the new load's odometer carry: a trip that ran after the last
+  // load is where the next one starts (v1.271.0).
+  const { trips } = useTrips(refreshKey);
   const { agents } = useAgents(agentRefreshKey);
   const { markets } = useMarkets(marketRefreshKey);
   const { facilities } = useFacilities(facilityRefreshKey);
@@ -281,6 +285,7 @@ const LoadsPage = () => {
               agents={agents}
               markets={markets}
               loads={loads}
+              trips={trips}
               facilities={facilities}
               onSubmit={async (data) => {
                 await createLoad(data);
