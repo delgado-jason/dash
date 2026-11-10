@@ -44,10 +44,14 @@ describe("facilityStops + scoreStops", () => {
 
   it("medians dwell and counts detention past free time", () => {
     // dwells: 2h, 3h, 5h (=120,180,300 min); free 3h → detention on the 5h stop.
+    // The appointment matches the arrival on purpose: the clock anchors at the
+    // later of the two, so an on-the-dot arrival makes dwell = out − in and
+    // keeps this test about the medians. It also has to BE there at all —
+    // detention is not claimable without an appointment (Jason's rule).
     const loads = [
-      shipLoad({ shipper_in: "06:00", shipper_out: "08:00" }),
-      shipLoad({ shipper_in: "06:00", shipper_out: "09:00" }),
-      shipLoad({ shipper_in: "06:00", shipper_out: "11:00", detention_paid: false }),
+      shipLoad({ shipper_in: "06:00", shipper_out: "08:00", pickup_appt_start: "06:00" }),
+      shipLoad({ shipper_in: "06:00", shipper_out: "09:00", pickup_appt_start: "06:00" }),
+      shipLoad({ shipper_in: "06:00", shipper_out: "11:00", pickup_appt_start: "06:00", detention_paid: false }),
     ];
     const score = scoreStops(facilityStops(loads, "FAC", 3));
     expect(score.hasData).toBe(true);
@@ -85,18 +89,24 @@ describe("facilityStops + scoreStops", () => {
 describe("agentStops", () => {
   it("scores both stops of each load", () => {
     const loads = [
+      // Appointments on the dot of each arrival, so the clock anchors there and
+      // the dwells below are what they say. Without one, nothing is claimable.
       L({
         shipper_in: "06:00",
         shipper_out: "08:00", // 2h
+        pickup_appt_start: "06:00",
         receiver_in: "06:00",
         receiver_out: "10:00", // 4h → detention at 3h free
+        delivery_appt_start: "06:00",
         detention_paid: false,
       }),
       L({
         shipper_in: "06:00",
         shipper_out: "07:30", // 1.5h
+        pickup_appt_start: "06:00",
         receiver_in: "06:00",
         receiver_out: "07:00", // 1h
+        delivery_appt_start: "06:00",
       }),
     ];
     const score = scoreStops(agentStops(loads, 3));

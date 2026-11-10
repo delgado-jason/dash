@@ -45,7 +45,10 @@ const stopOf = (
 ): Stop => {
   const detentionMin = stopDetentionMinutes(inT, outT, apptS, apptE, freeHours);
   return {
-    dwellMin: dwellMinutes(inT, outT),
+    // Anchored on the appointment, so an early arrival is not scored against
+    // the facility or the agent (Jason's rule, 2026-11-10). Dwell and detention
+    // now start at the same moment, which is what lets them be read together.
+    dwellMin: dwellMinutes(inT, outT, apptS),
     onTime: onTimeStatus(apptS, apptE, inT),
     detentionMin,
     detentionUnpaid: detentionMin > 0 && !paid,

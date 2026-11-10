@@ -6,6 +6,7 @@ import {
   detentionMinutes,
   detentionLabel,
   detentionEligible,
+  detentionBar,
   detentionOwed,
   detentionCollected,
   detentionCollectedMinutes,
@@ -32,15 +33,27 @@ describe("onTimeStatus", () => {
   });
 });
 
-describe("stopDetentionMinutes — clock starts at the appointment, not arrival", () => {
+describe("stopDetentionMinutes — the clock starts at the later of arrival and appointment", () => {
   it("set appointment: free time runs from the appt, so early arrival earns nothing", () => {
     // appt 08:00, arrive 07:30 (early), released 12:00, free 3h → clock out 11:00 → 60 min
     expect(stopDetentionMinutes("07:30", "12:00", "08:00", null, 3)).toBe(60);
   });
 
-  it("window: free time runs from the END of the window", () => {
-    // window 08:00–11:00, released 15:20, free 3h → clock out 14:00 → 80 min
-    expect(stopDetentionMinutes("07:45", "15:20", "08:00", "11:00", 3)).toBe(80);
+  it("window: free time runs from the window's START, never its end", () => {
+    // Jason's rule (2026-11-10): inside a window the clock starts when you
+    // arrive; before it opens, when it opens. The window's END only decides
+    // lateness. Window 08:00–11:00, in 07:45 (early) → clock from 08:00, free
+    // to 11:00, released 15:20 → 260 min.
+    //
+    // This used to anchor on the window's END (free to 14:00 → 80 min), which
+    // on a wide window made detention unclaimable no matter how long the truck
+    // sat — load 1045087's 07:00–23:45 "window" scored zero on a 9-hour hold.
+    expect(stopDetentionMinutes("07:45", "15:20", "08:00", "11:00", 3)).toBe(260);
+  });
+
+  it("inside a window, the clock starts on ARRIVAL — that is what a window is", () => {
+    // Window 08:00–12:00, backed in 09:30 → free to 12:30, released 14:00 → 90.
+    expect(stopDetentionMinutes("09:30", "14:00", "08:00", "12:00", 3)).toBe(90);
   });
 
   it("is zero when released within the free window", () => {
@@ -54,9 +67,33 @@ describe("stopDetentionMinutes — clock starts at the appointment, not arrival"
     expect(stopDetentionMinutes("05:00", "10:30", "08:00", null, 3)).toBe(0);
   });
 
-  it("falls back to arrival when no appointment is recorded", () => {
-    // no appt → clock = arrival 08:50; released 14:10, free 3h → 140 min
-    expect(stopDetentionMinutes("08:50", "14:10", null, null, 3)).toBe(140);
+  it("claims NOTHING when no appointment is recorded, however long the dwell", () => {
+    // Jason's rule (2026-11-10): "a late arrival or missing an appointment time
+    // means I will not be able to claim detention." This stop sat 5h20m — and
+    // the old rule billed 140 minutes of it by counting free time from arrival.
+    // Nobody pays that, so dash no longer offers it as a claim.
+    expect(stopDetentionMinutes("08:50", "14:10", null, null, 3)).toBe(0);
+    expect(detentionBar(null, null, "08:50")).toBe("no-appointment");
+  });
+
+  it("claims NOTHING on a late arrival, because lateness forfeits the claim", () => {
+    // 08:00 appointment, in at 09:44 (load 2194005's live receiver stop), out
+    // at 12:30. The old rule counted from 11:00 and offered 1h30m — detention
+    // for two hours the truck was not even at the dock.
+    expect(stopDetentionMinutes("09:44", "12:30", "08:00", null, 3)).toBe(0);
+    expect(detentionBar("08:00", null, "09:44")).toBe("late");
+  });
+
+  it("early still claims — you were there and waiting from when you were due", () => {
+    // Window 08:00–11:00, in at 06:00 ("waited"), out at 15:00. The two early
+    // hours are his own, so the clock starts at 08:00: free to 11:00 → 240 min.
+    expect(detentionBar("08:00", "11:00", "06:00")).toBe(null);
+    expect(stopDetentionMinutes("06:00", "15:00", "08:00", "11:00", 3)).toBe(240);
+  });
+
+  it("claims nothing with no in-time — there is no way to know if it was late", () => {
+    expect(detentionBar("08:00", null, null)).toBe("no-arrival");
+    expect(stopDetentionMinutes(null, "14:10", "08:00", null, 3)).toBe(0);
   });
 
   it("handles release after midnight", () => {
@@ -69,8 +106,10 @@ describe("stopDetentionMinutes — clock starts at the appointment, not arrival"
     // ZERO. The old rule wrapped 08:23 past midnight (out < window-end) and
     // charged ~18h. Anchoring the wrap on arrival keeps it at 0.
     expect(stopDetentionMinutes("07:00", "08:23", "08:00", "11:00", 3)).toBe(0);
-    // its receiver stop: window 07:00–08:00, released 12:54 → 1h54m past 11:00
-    expect(stopDetentionMinutes("06:00", "12:54", "07:00", "08:00", 3)).toBe(114);
+    // Its receiver stop: window 07:00–08:00, in 06:00 (early), released 12:54.
+    // The clock starts when the window opens at 07:00 → free to 10:00 → 174.
+    // Was 114 when the window's END anchored it.
+    expect(stopDetentionMinutes("06:00", "12:54", "07:00", "08:00", 3)).toBe(174);
   });
 
   it("is zero when the out time is missing", () => {
@@ -86,7 +125,8 @@ describe("detention across both stops", () => {
     shipper_out: "11:00",
     pickup_appt_start: "08:00",
     pickup_appt_end: null,
-    // receiver: window 09:00–12:00 (+3h free = 15:00), released 16:20 → 80 min
+    // receiver: window 09:00–12:00, in 08:45 (early) → clock from 09:00, free
+    // to 12:00, released 16:20 → 260 min
     receiver_in: "08:45",
     receiver_out: "16:20",
     delivery_appt_start: "09:00",
@@ -96,8 +136,8 @@ describe("detention across both stops", () => {
   });
 
   it("sums detention minutes across both stops", () => {
-    expect(detentionMinutes(load, 3)).toBe(80); // 0 (shipper) + 80 (receiver)
-    expect(detentionLabel(load, 3)).toBe("1h 20m");
+    expect(detentionMinutes(load, 3)).toBe(260); // 0 (shipper) + 260 (receiver)
+    expect(detentionLabel(load, 3)).toBe("4h 20m");
   });
 });
 

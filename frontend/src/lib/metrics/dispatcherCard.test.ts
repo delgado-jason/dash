@@ -103,11 +103,11 @@ describe("getDispatcherCard", () => {
   it("detention collected counts only confirmed + paid detention", () => {
     const loads = [
       // past appt (08:00) + 2h free → 180 min; confirmed billable AND paid
-      mk({ load_id: "E", shipper_in: "08:00", shipper_out: "13:00", detention_billable: true, detention_paid: true }),
+      mk({ load_id: "E", shipper_in: "08:00", shipper_out: "13:00", pickup_appt_start: "08:00", detention_billable: true, detention_paid: true }),
       // confirmed but not yet collected → excluded
-      mk({ load_id: "F", shipper_in: "08:00", shipper_out: "13:00", detention_billable: true, detention_paid: false }),
+      mk({ load_id: "F", shipper_in: "08:00", shipper_out: "13:00", pickup_appt_start: "08:00", detention_billable: true, detention_paid: false }),
       // paid flag set but never confirmed billable → excluded (shouldn't happen, but guard)
-      mk({ load_id: "G", shipper_in: "08:00", shipper_out: "13:00", detention_paid: true }),
+      mk({ load_id: "G", shipper_in: "08:00", shipper_out: "13:00", pickup_appt_start: "08:00", detention_paid: true }),
     ];
     const card = getDispatcherCard(loads, "me", ladder, 2, new Date());
     expect(card.detentionCollectedMin).toBe(180);
