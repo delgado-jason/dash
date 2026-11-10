@@ -45,16 +45,16 @@ export const BoardCell = ({
     <>
       <p className="ds2-label">{label}</p>
       <p
-        className={`font-condensed font-semibold text-[30px] leading-[1.05] mt-1.5 tabular-nums ${valueClassName}`}
+        className={`font-condensed font-semibold text-[32.5px] leading-[1.05] mt-1.5 tabular-nums ${valueClassName}`}
       >
         {value}
       </p>
-      {sub && <p className="mt-1 text-[11.5px] text-faint">{sub}</p>}
+      {sub && <p className="mt-1 text-[12.5px] text-faint">{sub}</p>}
       <span
         className={`absolute left-[18px] bottom-0 h-0.5 w-[34px] rounded-[1px] ${TONE[tone]}`}
       />
       {to && go && (
-        <span className="absolute top-3 right-3 text-[10px] text-amber-light opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="absolute top-3 right-3 text-[11px] text-amber-light opacity-0 group-hover:opacity-100 transition-opacity">
           → {go}
         </span>
       )}

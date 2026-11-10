@@ -106,7 +106,7 @@ const ProofWord = ({ r, className = "" }: { r: AgentRanking; className?: string 
   const claimed = r.nearestSource === "claimed";
   return (
     <span
-      className={`font-condensed text-[11px] text-faint ${claimed ? "border-b border-dashed border-faint" : ""} ${className}`}
+      className={`font-condensed text-[12px] text-faint ${claimed ? "border-b border-dashed border-faint" : ""} ${className}`}
       title={
         claimed
           ? "a market this agent named on a call — measured the same, not yet proved by a load"
@@ -132,7 +132,7 @@ const RankCodeChip = ({ r }: { r: AgentRanking }) =>
 // you're about to make.
 const ClassChip = ({ r, size = "md" }: { r: AgentRanking; size?: "sm" | "md" }) => (
   <span
-    className={`font-condensed font-semibold rounded ${size === "sm" ? "text-[10px] px-1.5 py-px" : "text-[11px] px-2 py-0.5"}`}
+    className={`font-condensed font-semibold rounded ${size === "sm" ? "text-[11px] px-1.5 py-px" : "text-[12px] px-2 py-0.5"}`}
     style={
       r.bucket === "direct"
         ? { color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 13%, transparent)" }
@@ -148,11 +148,11 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
   <Panel className="p-4 sm:p-5">
     <div className="flex items-center gap-2 mb-2">
       <span className="ds2-label">Top call</span>
-      <span className="font-condensed text-[12px] font-semibold px-2 py-0.5 rounded-md bg-well text-hot">
+      <span className="font-condensed text-[13px] font-semibold px-2 py-0.5 rounded-md bg-well text-hot">
         {TYPE_LABELS[r.loadType]}
       </span>
       {r.isNew && (
-        <span className="font-condensed text-[11px] font-semibold px-2 py-0.5 rounded" style={{ color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 13%, transparent)" }}>
+        <span className="font-condensed text-[12px] font-semibold px-2 py-0.5 rounded" style={{ color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 13%, transparent)" }}>
           NEW
         </span>
       )}
@@ -162,7 +162,7 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
     <div className="flex items-baseline gap-2.5 flex-wrap">
       <Link
         to={`/agents/${r.agentId}`}
-        className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors"
+        className="font-display text-[28px] text-amber leading-none hover:text-hot transition-colors"
       >
         {r.agentName}
       </Link>
@@ -171,41 +171,41 @@ const TopCall = ({ r, daily }: { r: AgentRanking; daily: DailyTargets | null }) 
 
     <div className="grid grid-cols-3 gap-3 mt-4 mb-3">
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">Proximity</p>
-        <p className="font-condensed font-semibold tabular-nums text-[24px] text-ink leading-none mt-1">
+        <p className="text-[12px] uppercase tracking-widest text-faint font-condensed">Proximity</p>
+        <p className="font-condensed font-semibold tabular-nums text-[26px] text-ink leading-none mt-1">
           {distanceLabel(r)} <ProofWord r={r} className="ml-1" />
         </p>
-        <p className="text-[12px] text-dim mt-1">{originSub(r)}</p>
+        <p className="text-[13px] text-dim mt-1">{originSub(r)}</p>
       </div>
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">Rate</p>
-        <p className="font-condensed font-semibold tabular-nums text-[24px] text-ink leading-none mt-1">
+        <p className="text-[12px] uppercase tracking-widest text-faint font-condensed">Rate</p>
+        <p className="font-condensed font-semibold tabular-nums text-[26px] text-ink leading-none mt-1">
           {r.rpm != null ? money2(r.rpm) : "—"}
-          {r.rpm != null && <span className="font-condensed text-[13px] text-dim"> /mi gross</span>}
+          {r.rpm != null && <span className="font-condensed text-[14px] text-dim"> /mi gross</span>}
         </p>
         {/* The mock's Rate cell: the $/mi, then the $/day with the ladder's
             word under it. The benchmark line the cell has always carried
             keeps its place below — "$/day BESIDE every $/mi" was the nod,
             not instead of the comparison that earns the rate score. */}
         {r.perDay != null && (
-          <p className="font-condensed text-[12px] mt-1">
+          <p className="font-condensed text-[13px] mt-1">
             <PerDayNote r={r} daily={daily} withWord />
           </p>
         )}
-        <p className="text-[12px] mt-1"><RateNote r={r} /></p>
+        <p className="text-[13px] mt-1"><RateNote r={r} /></p>
       </div>
       <div>
-        <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">History</p>
-        <p className="font-condensed font-semibold tabular-nums text-[24px] text-ink leading-none mt-1">
+        <p className="text-[12px] uppercase tracking-widest text-faint font-condensed">History</p>
+        <p className="font-condensed font-semibold tabular-nums text-[26px] text-ink leading-none mt-1">
           {r.loadCount} load{r.loadCount === 1 ? "" : "s"}
         </p>
-        <p className="text-[12px] text-dim mt-1">{historySub(r)}</p>
+        <p className="text-[13px] text-dim mt-1">{historySub(r)}</p>
       </div>
     </div>
 
     <Well className="px-3 py-2.5 flex items-center gap-3">
-      <span className="text-[11px] uppercase tracking-widest text-amber font-condensed shrink-0">Why</span>
-      <span className="text-[13.5px] text-ink/90">{r.why}</span>
+      <span className="text-[12px] uppercase tracking-widest text-amber font-condensed shrink-0">Why</span>
+      <span className="text-[14.5px] text-ink/90">{r.why}</span>
     </Well>
   </Panel>
 );
@@ -232,16 +232,16 @@ const RankedRow = ({
   daily: DailyTargets | null;
 }) => (
   <div className={`grid items-center gap-3 px-3.5 py-3 border-t border-hairline-lo ${ROW_GRID}`}>
-    <span className="hidden md:block font-condensed font-semibold tabular-nums text-[17px] text-faint">{rank}</span>
+    <span className="hidden md:block font-condensed font-semibold tabular-nums text-[18.5px] text-faint">{rank}</span>
     <div className="min-w-0">
       <div className="flex items-baseline gap-2 flex-wrap">
-        <Link to={`/agents/${r.agentId}`} className="font-condensed text-[15px] text-amber hover:text-hot transition-colors">
+        <Link to={`/agents/${r.agentId}`} className="font-condensed text-[16px] text-amber hover:text-hot transition-colors">
           {r.agentName}
         </Link>
         <RankCodeChip r={r} />
         <ClassChip r={r} size="sm" />
       </div>
-      <div className="text-[11.5px] truncate">
+      <div className="text-[12.5px] truncate">
         {r.isNew ? (
           <span className="font-condensed font-semibold uppercase tracking-wide" style={{ color: "var(--color-cat2)" }}>
             New {"·"} building
@@ -252,7 +252,7 @@ const RankedRow = ({
       </div>
     </div>
     <span className="text-right leading-tight">
-      <span className="font-condensed font-semibold tabular-nums text-[17px] text-ink block">{distanceLabel(r)}</span>
+      <span className="font-condensed font-semibold tabular-nums text-[18.5px] text-ink block">{distanceLabel(r)}</span>
       <ProofWord r={r} />
     </span>
     {/* The mock's pair: $5.01 /mi over $1,360 /day, coloured by the ladder.
@@ -260,21 +260,21 @@ const RankedRow = ({
         "/mi", so a "/mi gross" caption under it would only repeat the unit
         the reader just read. */}
     <span className="hidden md:block text-right leading-tight">
-      <span className="font-condensed font-semibold tabular-nums text-[17px] block">
+      <span className="font-condensed font-semibold tabular-nums text-[18.5px] block">
         {r.rpm != null ? money2(r.rpm) : <span className="text-faint">{"—"}</span>}
-        {r.rpm != null && <span className="font-condensed text-[11px] text-dim"> /mi</span>}
+        {r.rpm != null && <span className="font-condensed text-[12px] text-dim"> /mi</span>}
       </span>
       {r.perDay != null && (
-        <span className="font-condensed text-[11px]">
+        <span className="font-condensed text-[12px]">
           <PerDayNote r={r} daily={daily} />
         </span>
       )}
     </span>
     <span className="hidden md:block text-right leading-tight">
-      <span className="font-condensed text-[13px] text-dim block">
+      <span className="font-condensed text-[14px] text-dim block">
         {r.loadCount} load{r.loadCount === 1 ? "" : "s"}
       </span>
-      <span className="font-condensed text-[11px] text-faint">{historySub(r)}</span>
+      <span className="font-condensed text-[12px] text-faint">{historySub(r)}</span>
     </span>
   </div>
 );
@@ -293,11 +293,11 @@ const RankedList = ({
   return (
     <div className="ds2-board mt-3">
       <div className={`hidden md:grid gap-3 px-3.5 pt-3 pb-1.5 ${ROW_GRID}`}>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">#</span>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Agent</span>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Proximity</span>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">Rate</span>
-        <span className="text-[11px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
+        <span className="text-[12px] uppercase tracking-widest text-faint font-condensed">#</span>
+        <span className="text-[12px] uppercase tracking-widest text-faint font-condensed">Agent</span>
+        <span className="text-[12px] uppercase tracking-widest text-faint font-condensed text-right">Proximity</span>
+        <span className="text-[12px] uppercase tracking-widest text-faint font-condensed text-right">Rate</span>
+        <span className="text-[12px] uppercase tracking-widest text-faint font-condensed text-right">History</span>
       </div>
       {rows.map((r, i) => (
         <RankedRow key={r.agentId} r={r} rank={startRank + i} daily={daily} />
@@ -496,11 +496,11 @@ export const WhoToCallTab = () => {
       {/* controls */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Looking for</span>
+          <span className="text-[12px] uppercase tracking-widest text-faint font-condensed">Looking for</span>
           <SegmentedTabs size="sm" tabs={FOCUS_TABS} value={focus} onChange={setFocus} ariaLabel="Load type focus" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Rank by</span>
+          <span className="text-[12px] uppercase tracking-widest text-faint font-condensed">Rank by</span>
           <SegmentedTabs size="sm" tabs={MODE_TABS} value={mode} onChange={setMode} ariaLabel="Rank by" />
         </div>
       </div>
@@ -516,12 +516,12 @@ export const WhoToCallTab = () => {
 
       {/* anchor */}
       <div className="ds2-board flex items-center gap-3 px-4 py-3 mb-4">
-        <span className="text-amber text-[15px]">{"◉"}</span>
+        <span className="text-amber text-[16px]">{"◉"}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] uppercase tracking-widest text-faint font-condensed">Empty next</p>
-          <p className="font-condensed text-[18px] font-semibold text-ink leading-tight">
+          <p className="text-[12px] uppercase tracking-widest text-faint font-condensed">Empty next</p>
+          <p className="font-condensed text-[19.5px] font-semibold text-ink leading-tight">
             {board.anchor.city}, {board.anchor.state}
-            <span className="text-dim font-normal text-[12px] ml-2">{anchorHint}</span>
+            <span className="text-dim font-normal text-[13px] ml-2">{anchorHint}</span>
           </p>
         </div>
       </div>
@@ -550,7 +550,7 @@ export const WhoToCallTab = () => {
 
           {/* footer */}
           <div className="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
-            <p className="text-[11.5px] text-faint max-w-xl">
+            <p className="text-[12.5px] text-faint max-w-xl">
               One list, in score order: straight-line distance to where you'll be empty — from a market a
               load proved or one they claimed on a call — your gross $/mi within load type, and your
               history. Direct or Spot is a chip, not a rank; it only breaks a tie. A call list from who
@@ -558,7 +558,7 @@ export const WhoToCallTab = () => {
               {board.coverage.withCoords < board.coverage.total &&
                 " Distances sharpen to real miles as new cities finish geocoding."}
             </p>
-            <Link to="/guide" className="font-condensed text-[12.5px] text-dim hover:text-ink whitespace-nowrap">
+            <Link to="/guide" className="font-condensed text-[13.5px] text-dim hover:text-ink whitespace-nowrap">
               How it's ranked {"→"}
             </Link>
           </div>

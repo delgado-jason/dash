@@ -21,7 +21,7 @@ const Cell = ({
     className="rounded-[10px] p-3"
     style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)" }}
   >
-    <p className="font-condensed text-[11px] uppercase tracking-[.12em] text-faint">{label}</p>
+    <p className="font-condensed text-[12px] uppercase tracking-[.12em] text-faint">{label}</p>
     <p className="font-condensed text-xl font-semibold mt-0.5 tabular-nums">{value}</p>
     <p className="font-condensed text-xs mt-0.5">{sub}</p>
   </div>
@@ -48,10 +48,10 @@ export const LatestTankCard = ({
     >
       <div className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule flex-wrap">
         <div className="min-w-0">
-          <div className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase leading-none">
+          <div className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase leading-none">
             THE LAST TANK
           </div>
-          <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
+          <div className="font-condensed text-[12px] text-faint tracking-[.1em] uppercase mt-[3px]">
             closed {formatDate(tank.date) ?? ""}
             {place ? ` · ${place}` : ""}
           </div>
@@ -61,7 +61,7 @@ export const LatestTankCard = ({
             NEW BEST
           </span>
         ) : mpgVsAvg != null && mpgVsAvg >= 0 ? (
-          <span className="ml-auto font-condensed font-bold text-[10.5px] tracking-[.12em] px-[8px] py-[3px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
+          <span className="ml-auto font-condensed font-bold text-[11.5px] tracking-[.12em] px-[8px] py-[3px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
             ABOVE YOUR AVERAGE
           </span>
         ) : null}
@@ -70,12 +70,12 @@ export const LatestTankCard = ({
 
       <div className="flex items-end gap-2 flex-wrap">
         <span
-          className="text-[52px] font-condensed font-semibold tabular-nums leading-none"
+          className="text-[56px] font-condensed font-semibold tabular-nums leading-none"
           style={isRecord ? { color: "var(--color-amber-hi)" } : undefined}
         >
           {tank.mpg.toFixed(2)}
         </span>
-        <span className="font-condensed text-[13px] tracking-[.12em] uppercase text-faint mb-1.5">MPG · this tank</span>
+        <span className="font-condensed text-[14px] tracking-[.12em] uppercase text-faint mb-1.5">MPG · this tank</span>
         <span className="ml-1.5 text-sm mb-1">
           {mpgVsAvg != null ? (
             <span style={{ color: mpgVsAvg >= 0 ? GOOD : BAD }}>

@@ -144,10 +144,10 @@ const DispatchDashboard = () => {
         {/* full-bleed statusbar: her identity and her one big button */}
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">
             DISPATCH BOARD
           </h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <span className="font-condensed font-medium text-[16px] text-dim">
             {dateLine}
           </span>
           <span className="flex-1" />
@@ -155,14 +155,14 @@ const DispatchDashboard = () => {
           {integrityOpen > 0 && (
             <Link
               to="/integrity"
-              className="inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[12.5px] tracking-[.08em] whitespace-nowrap text-amber-hi hover:text-hot"
+              className="inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[13.5px] tracking-[.08em] whitespace-nowrap text-amber-hi hover:text-hot"
             >
               INTEGRITY · {integrityOpen} OPEN ›
             </Link>
           )}
           <Link
             to="/score"
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] bg-amber text-on-amber whitespace-nowrap hover:brightness-105"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15.5px] tracking-[.05em] bg-amber text-on-amber whitespace-nowrap hover:brightness-105"
           >
             <Zap size={15} /> SCORE A LOAD
           </Link>
@@ -218,7 +218,7 @@ const DispatchDashboard = () => {
                 </span>
               </p>
               <div className="flex items-baseline justify-between gap-3 flex-wrap mt-2">
-                <span className="font-condensed text-[14.5px]">
+                <span className="font-condensed text-[15.5px]">
                   {board.gap.sittingNow ? (
                     <b style={{ color: "var(--color-status-negative-text)" }}>Empty now — every hour is an empty hour.</b>
                   ) : board.gap.freeOn ? (
@@ -236,20 +236,20 @@ const DispatchDashboard = () => {
                 <span className="flex items-center gap-2 shrink-0">
                   <Link
                     to="/foreman"
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[9px] font-condensed font-semibold text-[12.5px] tracking-[.06em] uppercase bg-amber text-on-amber hover:brightness-105"
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.06em] uppercase bg-amber text-on-amber hover:brightness-105"
                   >
                     <Zap size={13} /> The Foreman
                   </Link>
                   <Link
                     to="/score"
-                    className="inline-flex items-center h-8 px-3 rounded-[9px] font-condensed font-semibold text-[12.5px] tracking-[.06em] uppercase border border-hairline text-dim hover:text-ink"
+                    className="inline-flex items-center h-8 px-3 rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.06em] uppercase border border-hairline text-dim hover:text-ink"
                   >
                     Score a load
                   </Link>
                 </span>
               </div>
               {cur != null && (
-                <p className="font-condensed text-[12.5px] text-faint mt-2">
+                <p className="font-condensed text-[13.5px] text-faint mt-2">
                   booking floor <b className="text-dim tabular-nums">{fmtRpm(cur)}</b>/mi gross — what a load has to beat
                 </p>
               )}
@@ -265,15 +265,15 @@ const DispatchDashboard = () => {
                 </span>
               </p>
               {board.owed.length === 0 && integrityOpen === 0 ? (
-                <p className="font-condensed text-[13.5px] text-faint mt-2">
+                <p className="font-condensed text-[14.5px] text-faint mt-2">
                   Detention claimed, appointments set, no rows to fix.
                 </p>
               ) : (
                 <div className="mt-1.5">
                   {board.owed.map((o) => (
                     <div key={o.kind} className="flex items-baseline justify-between gap-3 py-[7px] border-b ds2-cell-rule last:border-b-0">
-                      <span className="font-condensed text-[14px]">{OWED_WORDS[o.kind](o.count)}</span>
-                      <span className="font-condensed text-[12px] text-faint truncate max-w-[45%] text-right">
+                      <span className="font-condensed text-[15px]">{OWED_WORDS[o.kind](o.count)}</span>
+                      <span className="font-condensed text-[13px] text-faint truncate max-w-[45%] text-right">
                         {o.loads.slice(0, 3).join(" · ")}
                         {o.loads.length > 3 && ` +${o.loads.length - 3}`}
                       </span>
@@ -281,10 +281,10 @@ const DispatchDashboard = () => {
                   ))}
                   {integrityOpen > 0 && (
                     <div className="flex items-baseline justify-between gap-3 py-[7px] border-b ds2-cell-rule last:border-b-0">
-                      <span className="font-condensed text-[14px]">
+                      <span className="font-condensed text-[15px]">
                         {integrityOpen} row{integrityOpen === 1 ? "" : "s"} to fix
                       </span>
-                      <Link to="/integrity" className="font-condensed text-[12px] text-amber-hi underline-offset-2 hover:underline">
+                      <Link to="/integrity" className="font-condensed text-[13px] text-amber-hi underline-offset-2 hover:underline">
                         Integrity ›
                       </Link>
                     </div>

@@ -144,7 +144,7 @@ const AgentsPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
       <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
         <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-        <h1 className="font-display text-[26px] tracking-[.06em] leading-none">AGENTS</h1>
+        <h1 className="font-display text-[28px] tracking-[.06em] leading-none">AGENTS</h1>
         <span className="flex-1" />
         <Link to="/guide" className="text-xs text-dim hover:text-amber-light">
           How this works →
@@ -152,14 +152,14 @@ const AgentsPage = () => {
       </div>
 
       <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
-        <span className="font-condensed font-semibold text-[22px] tabular-nums">
+        <span className="font-condensed font-semibold text-[24px] tabular-nums">
           {rows.length} agent{plural(rows.length)}
         </span>
-        <span className="text-[12px] text-faint">in this view ·</span>
+        <span className="text-[13px] text-faint">in this view ·</span>
         <b className="font-condensed font-semibold text-ink tabular-nums">{money(revLifetime)} delivered through them · lifetime</b>
         {medOfMed != null && (
           <>
-            <span className="text-[12px] text-faint">·</span>
+            <span className="text-[13px] text-faint">·</span>
             <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(medOfMed)}/mi median</b>
           </>
         )}
@@ -171,7 +171,7 @@ const AgentsPage = () => {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`text-[12px] font-condensed font-semibold rounded-full px-3 py-1.5 border transition-colors ${
+              className={`text-[13px] font-condensed font-semibold rounded-full px-3 py-1.5 border transition-colors ${
                 filter === key
                   ? "bg-amber border-amber text-canvas"
                   : "border-hairline text-dim hover:text-ink"
@@ -186,7 +186,7 @@ const AgentsPage = () => {
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-3 py-1 rounded-md text-[12.5px] font-condensed font-semibold capitalize ${
+              className={`px-3 py-1 rounded-md text-[13.5px] font-condensed font-semibold capitalize ${
                 view === v ? "bg-amber text-canvas" : "text-dim hover:text-ink"
               }`}
             >

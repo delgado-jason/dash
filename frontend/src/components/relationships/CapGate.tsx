@@ -36,7 +36,7 @@ export const CapGate = ({ firstName, first, type, carried, busy, noteEmpty, onFo
     : "A call that happened is logged as it happened — say why in the note.";
   return (
     <div className="mt-3">
-      <p className="font-condensed text-[13px] text-ink leading-snug">
+      <p className="font-condensed text-[14px] text-ink leading-snug">
         {firstName} already had a proactive touch this week — {contactTypeLabel(first.type)}, {day}. {secondHalf}
       </p>
       <div className="flex gap-2 flex-wrap mt-2">

@@ -28,7 +28,7 @@ const Tile = ({
     >
       {value}
     </div>
-    <div className="text-[9px] text-muted-text mt-1 tracking-wide uppercase">
+    <div className="text-[11px] text-muted-text mt-1 tracking-wide uppercase">
       {label}
     </div>
   </div>
@@ -74,7 +74,7 @@ export const StopScorecard = ({ score, countLabel, countValue }: Props) => {
         <Tile value={String(countValue)} label={countLabel} />
       </div>
       {score.unpaidCount > 0 && (
-        <p className="text-[11px] mt-2" style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
+        <p className="text-[12px] mt-2" style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
           {score.unpaidCount} detention {score.unpaidCount === 1 ? "load" : "loads"}{" "}
           still unpaid — worth chasing.
         </p>

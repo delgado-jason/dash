@@ -29,9 +29,9 @@ export const AnsweringLine = ({
 
   return (
     <div
-      className={`flex items-baseline gap-3 flex-wrap font-condensed text-[14px] text-dim ${className}`}
+      className={`flex items-baseline gap-3 flex-wrap font-condensed text-[15px] text-dim ${className}`}
     >
-      <span className="font-condensed font-semibold text-[21px] tabular-nums text-ink">
+      <span className="font-condensed font-semibold text-[22.5px] tabular-nums text-ink">
         {head.loads} LOAD{head.loads === 1 ? "" : "S"}
       </span>
       <span>

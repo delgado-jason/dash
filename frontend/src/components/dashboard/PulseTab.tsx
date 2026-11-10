@@ -50,7 +50,7 @@ const MONTH_LONG = (k: string): string =>
 // a 12-column grid on a laptop — a single column on the phone, in order.
 const Band = ({ label, first = false, children }: { label: string; first?: boolean; children: ReactNode }) => (
   <section className={first ? "" : "border-t border-hairline pt-4"}>
-    <h2 className="text-[11px] uppercase tracking-wider text-muted-text mb-2">{label}</h2>
+    <h2 className="text-[12px] uppercase tracking-wider text-muted-text mb-2">{label}</h2>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-3">{children}</div>
   </section>
 );
@@ -284,7 +284,7 @@ export const PulseTab = ({
           <h3 className="ds2-label flex justify-between">
             Rate vs your floor
             {cur != null && (
-              <span className="font-condensed font-semibold text-[15px] tracking-normal normal-case text-amber-hi tabular-nums">
+              <span className="font-condensed font-semibold text-[16px] tracking-normal normal-case text-amber-hi tabular-nums">
                 {fmtRpm(cur)}
               </span>
             )}
@@ -323,7 +323,7 @@ export const PulseTab = ({
               />
             )}
           </div>
-          <p className="text-[10.5px] text-faint mt-1.5 font-condensed tracking-[.04em] tabular-nums">
+          <p className="text-[11.5px] text-faint mt-1.5 font-condensed tracking-[.04em] tabular-nums">
             {(
               [
                 ["walkAway", "walk-away"],
@@ -339,7 +339,7 @@ export const PulseTab = ({
                 </span>
               ))}
           </p>
-          <p className="text-[11px] text-dim mt-2">
+          <p className="text-[12px] text-dim mt-2">
             {overFloor != null ? (
               overFloor >= 0 ? (
                 <>
@@ -421,15 +421,15 @@ export const PulseTab = ({
                 to={r.to}
                 className="flex items-baseline gap-3 py-[9px] border-b ds2-cell-rule last:border-b-0 hover:opacity-85"
               >
-                <span className={`flex-none w-[86px] text-[9px] font-semibold tracking-[.12em] uppercase pt-px ${r.cls}`}>
+                <span className={`flex-none w-[86px] text-[11px] font-semibold tracking-[.12em] uppercase pt-px ${r.cls}`}>
                   {r.kind}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-ink truncate">{r.title}</span>
-                  {r.detail && <span className="block text-[11px] text-faint mt-px">{r.detail}</span>}
+                  <span className="block text-[14px] font-semibold text-ink truncate">{r.title}</span>
+                  {r.detail && <span className="block text-[12px] text-faint mt-px">{r.detail}</span>}
                 </span>
                 {r.amount != null && (
-                  <span className="ml-auto font-condensed font-semibold text-[14.5px] text-dim tabular-nums whitespace-nowrap">
+                  <span className="ml-auto font-condensed font-semibold text-[15.5px] text-dim tabular-nums whitespace-nowrap">
                     {money(r.amount)}
                   </span>
                 )}

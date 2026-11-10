@@ -31,7 +31,7 @@ const CoverageTrend = ({ months, parUnavailable }: { months: FuelMonth[]; parUna
   const max = Math.max(1, ...recent.map((m) => m.fscCoverage ?? 0));
   return (
     <div className="mt-4">
-      <p className="text-[11px] text-faint mb-2">
+      <p className="text-[12px] text-faint mb-2">
         Surcharge coverage by month — the tick is each month’s par (moves with
         diesel price and your deadhead)
       </p>
@@ -46,7 +46,7 @@ const CoverageTrend = ({ months, parUnavailable }: { months: FuelMonth[]; parUna
               className="flex-1 flex flex-col items-center gap-1"
             >
               <span
-                className="text-[10px] font-condensed"
+                className="text-[11px] font-condensed"
                 style={{ color: gradeColor[g] }}
               >
                 {pct0(c)}
@@ -73,7 +73,7 @@ const CoverageTrend = ({ months, parUnavailable }: { months: FuelMonth[]; parUna
                   }}
                 />
               </div>
-              <span className="text-[10px] text-faint">
+              <span className="text-[11px] text-faint">
                 {monthLabel(m.month, { month: "short" })}
               </span>
             </div>
@@ -108,18 +108,18 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
           <p className="text-xs text-faint uppercase tracking-wider">
             Fuel vs revenue
           </p>
-          <p className="text-[11px] text-faint mt-0.5">
+          <p className="text-[12px] text-faint mt-0.5">
             {monthLabel(m.month, { month: "long", year: "numeric" })} · last
             complete month · months with logged fuel only
           </p>
         </div>
         {m.fscCoverage != null &&
           (covered ? (
-            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-positive-text">SURCHARGE ON PAR</span>
+            <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-status-positive-text">SURCHARGE ON PAR</span>
           ) : grade === "close" ? (
-            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-amber">SURCHARGE NEAR PAR</span>
+            <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-amber">SURCHARGE NEAR PAR</span>
           ) : (
-            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-negative-text">SURCHARGE SHORT</span>
+            <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-status-negative-text">SURCHARGE SHORT</span>
           ))}
       </div>
 
@@ -129,7 +129,7 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
           <p className="text-2xl font-condensed mt-1 text-ink">
             {m.fuelPctNet == null ? "—" : pct0(m.fuelPctNet)}
           </p>
-          <p className="text-[11px] text-faint mt-0.5">
+          <p className="text-[12px] text-faint mt-0.5">
             {money(m.fuelSpend)}
             {m.net > 0 ? ` of ${money(m.net)} net` : ""}
           </p>
@@ -148,14 +148,14 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
           <p className="text-2xl font-condensed mt-1" style={{ color: gradeColor[grade] }}>
             {m.fscCoverage == null ? "—" : pct0(m.fscCoverage)}
             {expected != null && (
-              <span className="text-[13px] text-faint"> vs ~{pct0(expected)} par</span>
+              <span className="text-[14px] text-faint"> vs ~{pct0(expected)} par</span>
             )}
           </p>
-          <p className="text-[11px] mt-0.5" style={{ color: grade === "short" ? "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" : "var(--color-dim)" }}>
+          <p className="text-[12px] mt-0.5" style={{ color: grade === "short" ? "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" : "var(--color-dim)" }}>
             {money(m.fsc)} FSC vs {money(m.fuelSpend)} fuel
             {gap != null && gap < -1 ? ` · ${money(Math.abs(gap))} under par` : ""}
           </p>
-          <p className={"text-[10.5px] mt-1 " + (parUnavailable ? "font-condensed text-amber-hi" : "text-faint")}>
+          <p className={"text-[11.5px] mt-1 " + (parUnavailable ? "font-condensed text-amber-hi" : "text-faint")}>
             {parUnavailable
               ? "par unavailable — couldn't load the surcharge tables or the weekly scale"
               : fscParWords(m.par)}
@@ -164,7 +164,7 @@ export const FuelVsRevenueCard = ({ data, parUnavailable = false }: { data: Fuel
       </div>
 
       {sf && (
-        <p className="text-[11px] text-faint mt-3">
+        <p className="text-[12px] text-faint mt-3">
           {monthLabel(sf.month, { month: "long" })} so far ·{" "}
           {sf.fscCoverage == null ? "—" : pct0(sf.fscCoverage)}
           {!parUnavailable && sf.expectedCoverage != null ? ` vs ~${pct0(sf.expectedCoverage)} par` : ""} ·{" "}

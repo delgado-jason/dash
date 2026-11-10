@@ -290,13 +290,13 @@ export const AgentSheet = ({
       {/* ---- header ---- */}
       <div className="px-5 pt-5 pb-4 border-b border-hairline">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Link to={`/agents/${agent.agent_id}`} className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors">
+          <Link to={`/agents/${agent.agent_id}`} className="font-display text-[28px] text-amber leading-none hover:text-hot transition-colors">
             {name}
           </Link>
           <AgentCodeChip agent={agent} />
           {bucket === "parked" && <ParkedChip />}
         </div>
-        <p className="font-condensed text-[13.5px] text-dim mt-1.5">
+        <p className="font-condensed text-[14.5px] text-dim mt-1.5">
           {bucketLabel(bucket)} ·{" "}
           {loadsReady
             ? `${delivered} load${delivered === 1 ? "" : "s"} · ${rpm.rpm != null ? `${fmtRpm(rpm.rpm)} all-in` : "no RPM yet"}`
@@ -324,7 +324,7 @@ export const AgentSheet = ({
           </GhostLink>
         ) : null}
         {!agent.phone && !agent.email && (
-          <p className="font-condensed text-[13px] text-faint">no phone or email on file — add them under Contact</p>
+          <p className="font-condensed text-[14px] text-faint">no phone or email on file — add them under Contact</p>
         )}
       </div>
 
@@ -363,7 +363,7 @@ export const AgentSheet = ({
               <span
                 key={`${m.city},${m.state}`}
                 title="Proven — a load has come out of this market"
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[8px] border border-status-positive-text/60 bg-status-positive-text/10 font-condensed text-[12.5px] text-ink"
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[8px] border border-status-positive-text/60 bg-status-positive-text/10 font-condensed text-[13.5px] text-ink"
               >
                 {m.city.toUpperCase()} {m.state.toUpperCase()} <span className="text-dim">×{m.n}</span>
               </span>
@@ -378,7 +378,7 @@ export const AgentSheet = ({
               <span
                 key={c.coverage_id}
                 title={c.source === "confirmed" ? "Confirmed — a load has come out of this market" : "Stated — they said so; no load from here yet"}
-                className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[8px] border font-condensed text-[12.5px] text-ink ${
+                className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[8px] border font-condensed text-[13.5px] text-ink ${
                   c.source === "confirmed" ? "border-status-positive-text/60 bg-status-positive-text/10" : "border-dashed border-dim bg-white/5"
                 }`}
               >
@@ -388,7 +388,7 @@ export const AgentSheet = ({
             ))}
           </div>
         ) : hauledFrom.length === 0 ? (
-          <p className="font-condensed text-[13px] text-faint">no markets yet — hauled-from fills in from their loads, stated ones from a call</p>
+          <p className="font-condensed text-[14px] text-faint">no markets yet — hauled-from fills in from their loads, stated ones from a call</p>
         ) : null}
       </div>
 
@@ -434,7 +434,7 @@ export const AgentSheet = ({
             </div>
           </div>
         ) : (
-          <dl className="grid grid-cols-[92px_1fr] gap-x-3 gap-y-1 font-condensed text-[13.5px]">
+          <dl className="grid grid-cols-[92px_1fr] gap-x-3 gap-y-1 font-condensed text-[14.5px]">
             <dt className="text-faint">Phone</dt>
             <dd className="text-ink">{agent.phone || <span className="text-faint">—</span>}</dd>
             <dt className="text-faint">Email</dt>
@@ -452,7 +452,7 @@ export const AgentSheet = ({
       <div className="px-5 pb-4">
         {isAdmin ? (
           <>
-            <p className="font-condensed text-[13.5px] text-dim">
+            <p className="font-condensed text-[14.5px] text-dim">
               Now <b className="text-ink">{bucketLabel(bucket)}</b>
               {suggestion && suggestion !== "parked" ? (
                 <>
@@ -467,7 +467,7 @@ export const AgentSheet = ({
                 <> · no suggestion — the rate ladder isn't ready</>
               ) : null}
             </p>
-            <p className="font-condensed text-[12px] text-faint mt-0.5">{evidence}</p>
+            <p className="font-condensed text-[13px] text-faint mt-0.5">{evidence}</p>
             <div className="mt-2.5">
               <SegmentedTabs tabs={TIER_TABS} value={pendingTier} onChange={setPendingTier} size="sm" ariaLabel="Tier" />
             </div>
@@ -487,7 +487,7 @@ export const AgentSheet = ({
             </PrimaryButton>
           </>
         ) : (
-          <p className="flex items-center gap-2 font-condensed text-[13.5px] text-dim">
+          <p className="flex items-center gap-2 font-condensed text-[14.5px] text-dim">
             <Lock size={13} className="text-faint" /> {bucketLabel(bucket)} — the owner sets tiers
           </p>
         )}
@@ -498,7 +498,7 @@ export const AgentSheet = ({
       <div className="px-5 pb-5">
         {explicitlyParked ? (
           <>
-            {agent.park_reason && <p className="font-condensed text-[13px] text-dim mb-2 leading-snug">“{agent.park_reason}”</p>}
+            {agent.park_reason && <p className="font-condensed text-[14px] text-dim mb-2 leading-snug">“{agent.park_reason}”</p>}
             <ErrorLine>{errFor("park")}</ErrorLine>
             <GhostButton size="lg" className="w-full" disabled={busy === "unpark"} onClick={() => void unpark()}>
               {busy === "unpark" ? "Unparking…" : unparkLabel}
@@ -507,7 +507,7 @@ export const AgentSheet = ({
         ) : (
           <>
             {dormant && (
-              <p className="font-condensed text-[13px] text-dim mb-2 leading-snug">
+              <p className="font-condensed text-[14px] text-dim mb-2 leading-snug">
                 dormant — a two-way contact brings them back
               </p>
             )}
@@ -516,7 +516,7 @@ export const AgentSheet = ({
               onChange={(e) => setParkReason(e.target.value)}
               rows={2}
               placeholder={reasonRequired ? "Why — required (e.g. office personnel, not the freight decision-maker)" : "Why — optional for a spot agent"}
-              className="w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-ink text-[13px] placeholder:text-faint resize-y"
+              className="w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-ink text-[14px] placeholder:text-faint resize-y"
             />
             <ErrorLine>{errFor("park")}</ErrorLine>
             <GhostButton
@@ -533,7 +533,7 @@ export const AgentSheet = ({
         )}
         <Link
           to={`/agents/${agent.agent_id}`}
-          className="block text-center font-condensed font-semibold text-[12px] tracking-[.08em] uppercase text-amber-hi hover:text-hot mt-4"
+          className="block text-center font-condensed font-semibold text-[13px] tracking-[.08em] uppercase text-amber-hi hover:text-hot mt-4"
         >
           Full profile →
         </Link>

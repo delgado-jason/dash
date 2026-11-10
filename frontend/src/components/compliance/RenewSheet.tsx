@@ -98,7 +98,7 @@ export const RenewSheet = ({
 
   return (
     <div>
-      <p className="font-condensed text-[12.5px] text-faint mb-3">
+      <p className="font-condensed text-[13.5px] text-faint mb-3">
         <b className="font-semibold text-ink">{subject}</b>
         {currentExpiry ? ` · due ${fmtDay(currentExpiry)}` : " · no expiry on file"}
         {" — the cycle you're closing is kept as history."}
@@ -121,7 +121,7 @@ export const RenewSheet = ({
           <FieldLabel htmlFor="renewal-next-expiry">
             Next expiry
             {renewalMonths ? (
-              <span className="font-normal normal-case tracking-normal text-[12px] text-faint ml-2">
+              <span className="font-normal normal-case tracking-normal text-[13px] text-faint ml-2">
                 · {renewalMonths} months
               </span>
             ) : null}
@@ -153,7 +153,7 @@ export const RenewSheet = ({
         />
         {/* The blank IS a value here: an emptied box clears the stored number
             rather than leaving the old one behind, so the sheet says so. */}
-        <p className="text-[11px] text-faint mt-1">leave blank to clear</p>
+        <p className="text-[12px] text-faint mt-1">leave blank to clear</p>
       </div>
 
       <div className="mt-3">

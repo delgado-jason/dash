@@ -334,7 +334,7 @@ const AgentDetailPage = () => {
             </div>
           ) : (
             <div className="min-w-0">
-              <h1 className="font-display text-[27px] tracking-[.05em] leading-none">
+              <h1 className="font-display text-[29px] tracking-[.05em] leading-none">
                 {agent.first_name} {agent.last_name}
               </h1>
               {/* The agency reads as a name plus its lit code (the shared desk),
@@ -383,11 +383,11 @@ const AgentDetailPage = () => {
             <>
               <div className="flex flex-col sm:items-end gap-1">
                 <RatingLabel rating={agent.rating} size="lg" setOn={ratingSetOn} />
-                <p className="text-[11.5px] text-faint" data-testid="agent-grade-line">
+                <p className="text-[12.5px] text-faint" data-testid="agent-grade-line">
                   {allInGrade && allIn?.rpm != null ? (
                     <>
                       <span
-                        className="font-condensed font-bold tracking-[.06em] text-[11px]"
+                        className="font-condensed font-bold tracking-[.06em] text-[12px]"
                         style={{ color: GRADE_META[allInGrade].fg }}
                       >
                         {GRADE_WORD[allInGrade]}
@@ -463,10 +463,10 @@ const AgentDetailPage = () => {
         return (
           <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap bg-well border border-hairline">
             <span className="ds2-label text-amber-hi">BEST LOAD TOGETHER</span>
-            <span className="font-condensed font-semibold text-[13.5px] text-ink tabular-nums">
+            <span className="font-condensed font-semibold text-[14.5px] text-ink tabular-nums">
               {money(loadRevenue(best))} · {best.origin_city}, {best.origin_state} → {best.destination_city}, {best.destination_state}
             </span>
-            <span className="text-[11px] text-faint">the one to beat</span>
+            <span className="text-[12px] text-faint">the one to beat</span>
           </div>
         );
       })()}
@@ -781,7 +781,7 @@ const AgentDetailPage = () => {
           <p className="text-xs text-dim uppercase tracking-wider mb-1">
             Footprint
           </p>
-          <p className="text-[11.5px] text-faint mb-3 leading-snug">
+          <p className="text-[12.5px] text-faint mb-3 leading-snug">
             Markets they say they cover. A dashed chip is a claim; it turns
             solid once a load comes out of that city.
           </p>

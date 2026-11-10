@@ -260,7 +260,7 @@ const Rows = ({ rows, handled, dimmed, onOpen }: { rows: ViewRow[]; handled: Set
 );
 
 const Caption = ({ children }: { children: string }) => (
-  <span className="block text-[11px] uppercase tracking-widest text-faint font-condensed mb-1">{children}</span>
+  <span className="block text-[12px] uppercase tracking-widest text-faint font-condensed mb-1">{children}</span>
 );
 
 const CallsView = () => {
@@ -461,14 +461,14 @@ const CallsView = () => {
             </div>
           )}
         </div>
-        <p className="mt-2 font-condensed text-[11.5px] text-faint leading-snug">
+        <p className="mt-2 font-condensed text-[12.5px] text-faint leading-snug">
           {holidayTab
             ? `the active book — tiers and prospects; parked and dormant sit this one out · one ${holiday.label ?? "holiday"} note each, sent or skipped, and it never comes back`
             : grades.caption}
         </p>
 
         {!loadsReady ? (
-          <p className="mt-4 font-condensed text-[13px] text-dim">loads didn't come through — the call list is built from them; retry above.</p>
+          <p className="mt-4 font-condensed text-[14px] text-dim">loads didn't come through — the call list is built from them; retry above.</p>
         ) : (
           <>
             {listWorked && !agentId && <div className="md:hidden">{completion}</div>}
@@ -481,7 +481,7 @@ const CallsView = () => {
                   {holiday.rows.length === 0 ? (
                     <EmptyState title={`Everyone's been wished — ${holiday.label} notes are all out.`} hint="sent or skipped, each one stays down until next year" />
                   ) : holidayRows.length === 0 ? (
-                    <p className="px-3.5 py-4 font-condensed text-[13.5px] text-dim">nothing matches “{query.trim()}”</p>
+                    <p className="px-3.5 py-4 font-condensed text-[14.5px] text-dim">nothing matches “{query.trim()}”</p>
                   ) : (
                     <HolidayRows rows={holidayRows} onOpen={(r) => openAgent(r.agent.agent_id, { prefill: r.prefill })} />
                   )}
@@ -498,7 +498,7 @@ const CallsView = () => {
                       }
                     />
                   ) : displayRows.length === 0 ? (
-                    <p className="px-3.5 py-4 font-condensed text-[13.5px] text-dim">
+                    <p className="px-3.5 py-4 font-condensed text-[14.5px] text-dim">
                       nothing matches {market !== "all" ? `market ${market}` : ""}
                       {market !== "all" && q ? " and " : ""}
                       {q ? `“${query.trim()}”` : ""}
@@ -525,7 +525,7 @@ const CallsView = () => {
                           >
                             Recycle — next rotation · {recycleRows.length} · three unreached calls in two weeks
                           </SectionHead>
-                          <p className="px-3.5 pb-3 font-condensed text-[13px] text-dim leading-snug">
+                          <p className="px-3.5 pb-3 font-condensed text-[14px] text-dim leading-snug">
                             Persistence is a channel problem, not a frequency problem — find the number or the time they answer. They re-enter
                             on their own after {QUIET_DAYS} quiet days.
                           </p>
@@ -548,7 +548,7 @@ const CallsView = () => {
                       }
                     />
                   ) : displayRows.length === 0 ? (
-                    <p className="px-3.5 py-4 font-condensed text-[13.5px] text-dim">nothing matches</p>
+                    <p className="px-3.5 py-4 font-condensed text-[14.5px] text-dim">nothing matches</p>
                   ) : (
                     <Rows rows={prospectRows} handled={handled} onOpen={goTo} />
                   )}
@@ -556,14 +556,14 @@ const CallsView = () => {
               )}
             </div>
             {holidayTab ? (
-              <p className="mt-3 font-condensed text-[11.5px] text-faint max-w-xl leading-snug">
+              <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-xl leading-snug">
                 One {holiday.label} note per agent, by hand — tap a row and the note opens on their sheet, drafted in their name and yours, to
                 copy and send. Logging it, or skipping it, takes them off this list for good this year. A dimmed row with a Touched chip already
                 had this week's proactive touch: a note that goes out as a message folds into it, one that goes out as a call logs on its own
                 with a reason. Tier 1 is first — those are the ones the owner personalizes.
               </p>
             ) : (
-              <p className="mt-3 font-condensed text-[11.5px] text-faint max-w-xl leading-snug">
+              <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-xl leading-snug">
                 Reactivation is warm — prospects who hauled and went {QUIET_DAYS} days without a two-way contact or a load; a promised callback
                 keeps them off the list until it's due. Tap a row to call; Log & next moves down the list, Skip does too. A dimmed row with a
                 Touched chip already had this week's proactive touch.

@@ -25,7 +25,7 @@ export const SegControl = <T extends string | number>({
         role="tab"
         aria-selected={value === o.value}
         onClick={() => onChange(o.value)}
-        className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] tracking-[.05em] transition-colors ${
+        className={`px-3 rounded-md font-condensed font-semibold text-[13.5px] tracking-[.05em] transition-colors ${
           value === o.value ? "bg-amber text-canvas" : "text-dim hover:text-ink"
         }`}
       >

@@ -16,7 +16,7 @@ export const Toast = ({ toast, onDismiss }: { toast: ToastState | null; onDismis
     <div
       role="status"
       aria-live="polite"
-      className="fixed left-1/2 -translate-x-1/2 bottom-[72px] md:bottom-5 z-[60] flex items-center gap-3 h-11 px-4 rounded-[12px] bg-panel border border-hairline shadow-xl font-condensed text-[14px] text-ink max-w-[calc(100%-2rem)]"
+      className="fixed left-1/2 -translate-x-1/2 bottom-[72px] md:bottom-5 z-[60] flex items-center gap-3 h-11 px-4 rounded-[12px] bg-panel border border-hairline shadow-xl font-condensed text-[15px] text-ink max-w-[calc(100%-2rem)]"
     >
       <span className="truncate">{toast.message}</span>
       {toast.action && (

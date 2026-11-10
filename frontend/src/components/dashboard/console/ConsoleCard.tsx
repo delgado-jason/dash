@@ -114,7 +114,7 @@ const StopRow = ({
 
   return (
     <div className="py-2.5">
-      <p className={`font-condensed font-semibold text-[13.5px] ${reached ? "" : "text-faint"}`}>
+      <p className={`font-condensed font-semibold text-[14.5px] ${reached ? "" : "text-faint"}`}>
         {label}
         {where && <span className="text-faint font-normal"> · {where}</span>}
         {appt && <span className="text-faint font-normal"> · {appt}</span>}
@@ -122,10 +122,10 @@ const StopRow = ({
 
       <div className="flex items-center gap-x-3.5 gap-y-1.5 flex-wrap mt-1.5">
         {!reached ? (
-          <span className="font-condensed text-[13px] text-faint">not there yet</span>
+          <span className="font-condensed text-[14px] text-faint">not there yet</span>
         ) : (
           <>
-            <span className="font-condensed text-[13.5px] text-dim tabular-nums">
+            <span className="font-condensed text-[14.5px] text-dim tabular-nums">
               in <b className="text-ink">{clock.started ? atClock(inAt) : fmtTime(legacyIn)}</b>
               {released && (
                 <> · out <b className="text-ink">{outAt ? atClock(outAt) : fmtTime(legacyOut)}</b></>
@@ -137,7 +137,7 @@ const StopRow = ({
                 inside the free window, dim when nothing can be claimed. */}
             {(clock.started || typedDwell != null) && (
               <span
-                className="font-condensed font-semibold tabular-nums text-[21px] leading-none"
+                className="font-condensed font-semibold tabular-nums text-[22.5px] leading-none"
                 style={{
                   color: detentionNow > 0
                     ? "var(--color-status-negative-text)"
@@ -155,30 +155,30 @@ const StopRow = ({
                 appointment is fixable, arriving late is not. */}
             {detentionNow > 0 ? (
               <span
-                className="font-condensed font-semibold text-[12.5px]"
+                className="font-condensed font-semibold text-[13.5px]"
                 style={{ color: "var(--color-status-negative-text)" }}
               >
                 {hm(detentionNow)} past free — claimable
               </span>
             ) : clock.started ? (
               clock.noClaim ? (
-                <span className="font-condensed text-[12.5px] text-faint">
+                <span className="font-condensed text-[13.5px] text-faint">
                   held · {NO_CLAIM_WORDS[clock.noClaim]}
                 </span>
               ) : (
-                <span className="font-condensed text-[12.5px] text-faint">
+                <span className="font-condensed text-[13.5px] text-faint">
                   free until <b className="text-dim tabular-nums">{atClock(clock.freeUntil?.toISOString())}</b>
                 </span>
               )
             ) : typedDwell != null ? (
-              <span className="font-condensed text-[12.5px] text-faint">
+              <span className="font-condensed text-[13.5px] text-faint">
                 {typedBar ? NO_CLAIM_WORDS[typedBar] : "inside free"}
               </span>
             ) : (
               // Typed, and still sitting. The stored figure needs both ends and
               // a live one needs a date, so there is no honest number yet — say
               // so rather than counting from a guessed midnight.
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 typed on the load page — no clock until it is released
               </span>
             )}
@@ -194,7 +194,7 @@ const StopRow = ({
               type="button"
               onClick={() => actions.unstamp(load, inField)}
               disabled={inBusy}
-              className="font-condensed text-[11.5px] tracking-[.08em] uppercase text-faint hover:text-ink disabled:opacity-40"
+              className="font-condensed text-[12.5px] tracking-[.08em] uppercase text-faint hover:text-ink disabled:opacity-40"
             >
               Undo arrival
             </button>
@@ -204,7 +204,7 @@ const StopRow = ({
               type="button"
               onClick={() => actions.stamp(load, inField)}
               disabled={inBusy || !reachable}
-              className={`font-condensed font-bold text-[11.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] whitespace-nowrap disabled:opacity-40 ${
+              className={`font-condensed font-bold text-[12.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] whitespace-nowrap disabled:opacity-40 ${
                 reachable
                   ? "bg-amber text-on-amber hover:brightness-105"
                   : "border border-hairline text-faint"
@@ -218,14 +218,14 @@ const StopRow = ({
               type="button"
               onClick={() => actions.stamp(load, outField)}
               disabled={outBusy}
-              className="font-condensed font-bold text-[11.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] bg-amber text-on-amber hover:brightness-105 whitespace-nowrap disabled:opacity-40"
+              className="font-condensed font-bold text-[12.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] bg-amber text-on-amber hover:brightness-105 whitespace-nowrap disabled:opacity-40"
             >
               {outBusy ? "…" : "Departed"}
             </button>
           )}
           {released && (
             <span
-              className="font-condensed font-semibold text-[10px] tracking-[.11em] uppercase px-2 py-[2px] rounded-full"
+              className="font-condensed font-semibold text-[11px] tracking-[.11em] uppercase px-2 py-[2px] rounded-full"
               style={{
                 background: detentionNow > 0
                   ? "var(--color-status-negative-bg)"
@@ -287,15 +287,15 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
       <div className="flex items-baseline gap-2.5 flex-wrap">
         <Link
           to={`/loads/${load.load_id}`}
-          className="font-condensed font-bold text-[16px] hover:text-amber-hi"
+          className="font-condensed font-bold text-[17.5px] hover:text-amber-hi"
         >
           {load.load_number}
         </Link>
-        <span className="font-condensed text-[14px] text-dim">
+        <span className="font-condensed text-[15px] text-dim">
           {load.origin_city}, {load.origin_state} → {load.destination_city}, {load.destination_state}
         </span>
         {load.delivery_date && (
-          <span className="font-condensed text-[12.5px] text-faint">
+          <span className="font-condensed text-[13.5px] text-faint">
             delivers {whenWord(String(load.delivery_date).slice(0, 10), today)}
           </span>
         )}
@@ -308,7 +308,7 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
             aria-label={`Status of load ${load.load_number}`}
             disabled={actions.busy === `${load.load_id}:load_status`}
             onChange={(e) => actions.status(load, e.target.value)}
-            className="font-condensed text-[13px] w-full bg-transparent px-2.5"
+            className="font-condensed text-[14px] w-full bg-transparent px-2.5"
           >
             {BOARD_STATUSES.map((s) => (
               <option key={s} value={s}>{STATUS_WORDS[s]}</option>
@@ -372,11 +372,11 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
 
       <div className="flex items-center gap-2.5 flex-wrap pt-2.5 mt-0.5 border-t ds2-cell-rule">
         {start != null ? (
-          <span className="font-condensed text-[13px] text-dim">
+          <span className="font-condensed text-[14px] text-dim">
             started <b className="text-ink tabular-nums">{num(start)}</b>
           </span>
         ) : (
-          <span className="font-condensed text-[12.5px] text-faint">
+          <span className="font-condensed text-[13.5px] text-faint">
             no start odometer on this load — it is needed to deliver
           </span>
         )}
@@ -388,7 +388,7 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
               onClick={() => setFinishing(true)}
               disabled={noStart}
               title={noStart ? "This load has no start odometer yet" : undefined}
-              className={`font-condensed font-bold text-[11.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] whitespace-nowrap disabled:opacity-40 ${
+              className={`font-condensed font-bold text-[12.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] whitespace-nowrap disabled:opacity-40 ${
                 bothDone
                   ? "bg-amber text-on-amber hover:brightness-105"
                   : "border border-hairline text-dim hover:text-ink"
@@ -399,29 +399,29 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
           </span>
         ) : (
           <>
-            <span className="font-condensed text-[13px] text-dim flex items-center gap-2">
+            <span className="font-condensed text-[14px] text-dim flex items-center gap-2">
               end odometer
               <input
                 autoFocus
                 inputMode="numeric"
                 value={odo}
                 onChange={(e) => setOdo(e.target.value)}
-                className="ds-input font-condensed tabular-nums text-[14px] w-[104px] px-2 py-1"
+                className="ds-input font-condensed tabular-nums text-[15px] w-[104px] px-2 py-1"
                 style={{ borderColor: "var(--color-amber)" }}
                 aria-label="End odometer"
               />
               {/* The distance is the sanity check: a fat-fingered digit shows
                   up immediately as a wrong mileage, before it is saved. */}
               {tooFar ? (
-                <span className="text-[12.5px]" style={{ color: "var(--color-status-negative-text)" }}>
+                <span className="text-[13.5px]" style={{ color: "var(--color-status-negative-text)" }}>
                   {num(miles)} mi from {num(start)} — check that reading
                 </span>
               ) : miles != null ? (
-                <span className="text-faint text-[12.5px] tabular-nums">
+                <span className="text-faint text-[13.5px] tabular-nums">
                   {num(miles)} mi from {num(start)}
                 </span>
               ) : odo.trim() !== "" ? (
-                <span className="text-[12.5px]" style={{ color: "var(--color-status-negative-text)" }}>
+                <span className="text-[13.5px]" style={{ color: "var(--color-status-negative-text)" }}>
                   must be greater than {num(start)}
                 </span>
               ) : null}
@@ -430,7 +430,7 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
               <button
                 type="button"
                 onClick={() => { setFinishing(false); setOdo(""); }}
-                className="font-condensed text-[11.5px] tracking-[.08em] uppercase text-faint hover:text-ink"
+                className="font-condensed text-[12.5px] tracking-[.08em] uppercase text-faint hover:text-ink"
               >
                 Cancel
               </button>
@@ -438,7 +438,7 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
                 type="button"
                 onClick={() => actions.complete(load, end)}
                 disabled={miles == null || tooFar || completing}
-                className="font-condensed font-bold text-[11.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] bg-amber text-on-amber hover:brightness-105 whitespace-nowrap disabled:opacity-40"
+                className="font-condensed font-bold text-[12.5px] tracking-[.1em] uppercase px-3 h-8 rounded-[9px] bg-amber text-on-amber hover:brightness-105 whitespace-nowrap disabled:opacity-40"
               >
                 {completing ? "…" : "Complete load"}
               </button>

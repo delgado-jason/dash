@@ -57,7 +57,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
   return (
     <div className="ds2-board p-4 mt-4">
       <div className="flex justify-between items-start mb-1 gap-3 flex-wrap">
-        <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+        <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
           The notes · cash out that's not on your P&L
         </p>
         <p className="font-condensed text-sm">
@@ -65,7 +65,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
           <span className="font-semibold tabular-nums">{money(activeTotal)}</span>
         </p>
       </div>
-      <p className="text-[11px] text-faint mb-3">
+      <p className="text-[12px] text-faint mb-3">
         Loan <span className="text-ink">principal only</span> (not the full
         payment — interest is already counted on your P&amp;L), plus owner draws.
         These fold into the true cost in the KPIs above; toggle one inactive to
@@ -89,7 +89,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                   <span className={o.active ? "" : "opacity-40 line-through"}>
                     {o.label}
                     {o.is_draw && (
-                      <span className="font-condensed font-bold text-[10px] tracking-[.1em] text-amber-hi ml-1.5 align-middle">
+                      <span className="font-condensed font-bold text-[11px] tracking-[.1em] text-amber-hi ml-1.5 align-middle">
                         DRAW
                       </span>
                     )}
@@ -118,19 +118,19 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                                   />
                                 ))}
                               </span>
-                              <span className="font-condensed text-[10.5px] text-faint tabular-nums">
+                              <span className="font-condensed text-[11.5px] text-faint tabular-nums">
                                 {Math.round((pay.paidPct ?? 0) * 100)}% ·{" "}
                                 {money(pay.owed)} to go
                               </span>
                             </span>
                             {pay.draftsSince > 0 ? (
-                              <span className="block font-condensed text-[10px] text-faint tabular-nums">
+                              <span className="block font-condensed text-[11px] text-faint tabular-nums">
                                 statement {money(pay.statementOwed)} as of{" "}
                                 {formatDate(pay.balanceAsOf)} · {pay.draftsSince}{" "}
                                 {pay.draftsSince === 1 ? "draft" : "drafts"} since
                               </span>
                             ) : pay.balanceAsOf == null ? (
-                              <span className="block font-condensed text-[10px] text-faint">
+                              <span className="block font-condensed text-[11px] text-faint">
                                 balance date not set · retype the balance to stamp today
                               </span>
                             ) : null}
@@ -157,7 +157,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                 <div className="flex gap-3 justify-end text-faint">
                   {editing === o.obligation_id ? (
                     <button
-                      className="font-condensed font-semibold text-[10.5px] tracking-[.08em] text-amber-hi"
+                      className="font-condensed font-semibold text-[11.5px] tracking-[.08em] text-amber-hi"
                       aria-label="Save"
                       onClick={() =>
                         run(async () => {
@@ -185,7 +185,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                   ) : (
                     <>
                       <button
-                        className="font-condensed font-semibold text-[10.5px] tracking-[.08em] hover:text-ink"
+                        className="font-condensed font-semibold text-[11.5px] tracking-[.08em] hover:text-ink"
                         aria-label={o.active ? "Counted — click to exclude" : "Excluded — click to count"}
                         onClick={() =>
                           !busy &&
@@ -197,7 +197,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                         {o.active ? "HIDE" : "SHOW"}
                       </button>
                       <button
-                        className={`font-condensed font-semibold text-[10.5px] tracking-[.08em] ${o.is_draw ? "text-amber-hi" : "opacity-60 hover:text-ink"}`}
+                        className={`font-condensed font-semibold text-[11.5px] tracking-[.08em] ${o.is_draw ? "text-amber-hi" : "opacity-60 hover:text-ink"}`}
                         aria-label={
                           o.is_draw
                             ? "Owner draw — kept out of True Net (click to unmark)"
@@ -215,7 +215,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                         DRAW
                       </button>
                       <button
-                        className="font-condensed font-semibold text-[10.5px] tracking-[.08em] hover:text-ink"
+                        className="font-condensed font-semibold text-[11.5px] tracking-[.08em] hover:text-ink"
                         aria-label="Edit"
                         onClick={() => {
                           setEditing(o.obligation_id);
@@ -251,7 +251,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
               <tr>
                 <td colSpan={3} className="pb-3">
                   <div className="rounded bg-well/60 p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <label className="text-[11px] text-faint">
+                    <label className="text-[12px] text-faint">
                       Original $
                       <input
                         className="bg-well rounded px-2 py-1 w-full mt-0.5 text-ink"
@@ -260,7 +260,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                         placeholder="0"
                       />
                     </label>
-                    <label className="text-[11px] text-faint">
+                    <label className="text-[12px] text-faint">
                       Current balance $
                       <input
                         className="bg-well rounded px-2 py-1 w-full mt-0.5 text-ink"
@@ -269,7 +269,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                         placeholder="0"
                       />
                     </label>
-                    <label className="text-[11px] text-faint">
+                    <label className="text-[12px] text-faint">
                       Payoff / end date
                       <input
                         type="date"
@@ -278,7 +278,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                         onChange={(e) => setEditPayoff(e.target.value)}
                       />
                     </label>
-                    <label className="text-[11px] text-faint">
+                    <label className="text-[12px] text-faint">
                       Tracks asset
                       <select
                         className="bg-well rounded px-2 py-1 w-full mt-0.5 text-ink"
@@ -291,7 +291,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
                       </select>
                     </label>
                   </div>
-                  <p className="text-[10px] text-faint mt-1.5">
+                  <p className="text-[11px] text-faint mt-1.5">
                     Fill these to show a payoff tracker on the asset's page. Leave the
                     date blank to estimate at your payment pace; a $0 balance counts as paid off.
                   </p>
@@ -321,7 +321,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
               <td className="py-2 text-right">
                 <div className="flex gap-3 justify-end text-faint">
                   <button
-                    className="font-condensed font-semibold text-[10.5px] tracking-[.08em] text-amber-hi"
+                    className="font-condensed font-semibold text-[11.5px] tracking-[.08em] text-amber-hi"
                     aria-label="Add"
                     onClick={() =>
                       newLabel &&
@@ -352,7 +352,7 @@ export const ObligationsCard = ({ items, onChange }: Props) => {
             <tr>
               <td colSpan={3} className="py-2">
                 <button
-                  className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-amber-hi hover:text-hot"
+                  className="font-condensed font-semibold text-[13.5px] tracking-[.06em] text-amber-hi hover:text-hot"
                   onClick={() => setShowAdd(true)}
                 >
                   + ADD NOTE

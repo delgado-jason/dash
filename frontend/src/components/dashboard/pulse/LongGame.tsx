@@ -13,7 +13,7 @@ import { dayWords } from "./words";
 
 const FLOOR_NAME = { ops: "Ops", maintenance: "Maintenance", vault: "Vault" } as const;
 
-const Loading = () => <p className="font-condensed text-[26px] leading-none mt-1.5 text-faint">…</p>;
+const Loading = () => <p className="font-condensed text-[28px] leading-none mt-1.5 text-faint">…</p>;
 
 // BAND 4 · The floors — the three interlock floors in fill order, the Plan
 // page's own figures (status = getPlanStatus on the latest snapshot).
@@ -55,12 +55,12 @@ export const FloorsCard = ({
             {floors.map((f) => (
               <li key={f.key}>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[12px] font-semibold text-ink w-[92px]">{FLOOR_NAME[f.key]}</span>
+                  <span className="text-[13px] font-semibold text-ink w-[92px]">{FLOOR_NAME[f.key]}</span>
                   {f.balance != null && f.floor != null ? (
                     <>
-                      <span className="font-condensed font-semibold text-[15px] tabular-nums text-ink">{money(f.balance)}</span>
-                      <span className="text-[11.5px] text-faint tabular-nums">of {money(f.floor)} floor</span>
-                      <span className={`ml-auto text-[12px] font-semibold tabular-nums ${f.met ? "text-status-positive-text" : "text-status-negative-text"}`}>
+                      <span className="font-condensed font-semibold text-[16px] tabular-nums text-ink">{money(f.balance)}</span>
+                      <span className="text-[12.5px] text-faint tabular-nums">of {money(f.floor)} floor</span>
+                      <span className={`ml-auto text-[13px] font-semibold tabular-nums ${f.met ? "text-status-positive-text" : "text-status-negative-text"}`}>
                         {f.pct}%
                       </span>
                     </>
@@ -76,7 +76,7 @@ export const FloorsCard = ({
               </li>
             ))}
           </ul>
-          <p className="text-[11.5px] text-faint mt-3">
+          <p className="text-[12.5px] text-faint mt-3">
             {taxBalance != null ? (
               <>Tax set aside <b className="text-ink tabular-nums">{money(taxBalance)}</b></>
             ) : (
@@ -124,14 +124,14 @@ export const StageCard = ({
       ) : v.kind === "refused" ? (
         <MissingInputLine what={v.what} missing={v.missing} className="block mt-2" />
       ) : v.kind === "complete" ? (
-        <p className="text-[13px] text-status-positive-text mt-2">All {v.total} stages are done.</p>
+        <p className="text-[14px] text-status-positive-text mt-2">All {v.total} stages are done.</p>
       ) : (
         <>
-          <p className="font-condensed font-semibold text-[18px] leading-tight mt-1.5 text-ink">
+          <p className="font-condensed font-semibold text-[19.5px] leading-tight mt-1.5 text-ink">
             Stage {v.n} of {v.total} · {v.label}
           </p>
           {v.kind === "obligation" ? (
-            <div className="text-[12px] text-faint mt-1.5 space-y-0.5">
+            <div className="text-[13px] text-faint mt-1.5 space-y-0.5">
               <p>
                 {v.left != null ? (
                   <><b className="text-ink tabular-nums">{money(v.left)}</b> left{v.asOf ? ` · balance as of ${dayWords(v.asOf)}` : ""}</>
@@ -151,7 +151,7 @@ export const StageCard = ({
               </p>}
             </div>
           ) : (
-            <p className="text-[12px] text-faint mt-1.5">
+            <p className="text-[13px] text-faint mt-1.5">
               {v.current != null ? <b className="text-ink tabular-nums">{money(v.current)}</b> : <span className="text-hot">no balance typed</span>}
               {v.target != null && <> against <b className="text-ink tabular-nums">{money(v.target)}</b> target</>}
             </p>
@@ -159,7 +159,7 @@ export const StageCard = ({
         </>
       )}
       {!loading && failed.length === 0 && (
-        <p className={`text-[12px] mt-3 ${truck.ok ? "text-dim" : "text-hot"}`}>{truck.text}</p>
+        <p className={`text-[13px] mt-3 ${truck.ok ? "text-dim" : "text-hot"}`}>{truck.text}</p>
       )}
     </Panel>
   );
@@ -201,15 +201,15 @@ export const LeaveCard = ({
         <MissingInputLine what="price a parked week" missing={reserve.missing} className="block mt-2" />
       ) : (
         <>
-          <p className="font-condensed font-semibold text-[22px] leading-tight mt-1.5 text-ink tabular-nums">
-            {(reserve.weeksCovered ?? 0).toFixed(1)} wk <span className="text-[13px] text-faint font-normal">of {weeks}</span>
+          <p className="font-condensed font-semibold text-[24px] leading-tight mt-1.5 text-ink tabular-nums">
+            {(reserve.weeksCovered ?? 0).toFixed(1)} wk <span className="text-[14px] text-faint font-normal">of {weeks}</span>
           </p>
           {pct != null && (
             <div className="h-[6px] rounded-[3px] bg-well mt-2 overflow-hidden" role="img" aria-label={`${pct}% of the leave target is in the Vault`}>
               <div className="h-full bg-amber" style={{ width: `${pct}%` }} />
             </div>
           )}
-          <p className="text-[12px] text-faint mt-2 leading-snug">
+          <p className="text-[13px] text-faint mt-2 leading-snug">
             Vault <b className="text-ink tabular-nums">{money(vault ?? 0)}</b> · a parked week ≈{" "}
             <b className="text-ink tabular-nums">{money(reserve.weeklyBurn ?? 0)}</b>: payroll {money(weeklyPayroll ?? 0)} + fixed costs and notes ≈{" "}
             {money(sit?.sitWeekly ?? 0)} · {weeks} weeks ≈ {money(reserve.target ?? 0)}

@@ -12,10 +12,10 @@ export const Tile = ({
   color?: string;
 }) => (
   <div className="flex-1 rounded-[9px] px-1 py-2 text-center bg-well">
-    <div className="font-condensed font-semibold tabular-nums text-[19px] leading-none" style={{ color }}>
+    <div className="font-condensed font-semibold tabular-nums text-[20.5px] leading-none" style={{ color }}>
       {value}
     </div>
-    <div className="text-[9px] text-muted-text mt-1 tracking-wide">{label}</div>
+    <div className="text-[11px] text-muted-text mt-1 tracking-wide">{label}</div>
   </div>
 );
 
@@ -32,6 +32,6 @@ export const Hero = ({
     <div className="font-condensed font-semibold tabular-nums leading-none text-ink" style={{ fontSize: big ? 30 : 26 }}>
       {value}
     </div>
-    <div className="text-[10px] text-muted-text mt-1 tracking-wider">{label}</div>
+    <div className="text-[11px] text-muted-text mt-1 tracking-wider">{label}</div>
   </div>
 );

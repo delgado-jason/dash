@@ -15,7 +15,7 @@ const marginTone = (atGoal: boolean | null, m: number | null): string =>
 const signTone = (n: number): string => (n < 0 ? "text-status-negative-text" : "");
 
 const CELL = "px-2 py-1.5 text-right tabular-nums whitespace-nowrap";
-const HEAD = "px-2 pb-1.5 text-right text-[10.5px] font-semibold tracking-[.09em] uppercase text-faint border-b border-hairline";
+const HEAD = "px-2 pb-1.5 text-right text-[11.5px] font-semibold tracking-[.09em] uppercase text-faint border-b border-hairline";
 
 export const MonthsTable = ({
   rows,
@@ -27,7 +27,7 @@ export const MonthsTable = ({
   estimate: { label: string; income: number } | null; // the month in progress, from monthCoverage
 }) => (
   <div className="overflow-x-auto">
-    <table className="w-full border-collapse font-condensed text-[13px]" data-testid="months-table">
+    <table className="w-full border-collapse font-condensed text-[14px]" data-testid="months-table">
       <thead>
         <tr>
           <th className={`${HEAD} text-left`}>Month</th>
@@ -44,7 +44,7 @@ export const MonthsTable = ({
             const short = r.months < r.monthsWanted ? ` · ${r.months} of ${r.monthsWanted} months filed` : "";
             return (
               <tr key={r.key} className="bg-well text-dim font-semibold" data-testid="quarter-row">
-                <td className={`${CELL} text-left text-faint text-[11px] tracking-[.06em] uppercase`}>{r.label}{short}</td>
+                <td className={`${CELL} text-left text-faint text-[12px] tracking-[.06em] uppercase`}>{r.label}{short}</td>
                 <td className={CELL}>{money(r.income)}</td>
                 <td className={`${CELL} ${signTone(r.profit)}`}>{money(r.profit)}</td>
                 <td className={`${CELL} ${signTone(r.trueNet)}`}>{money(r.trueNet)}</td>
@@ -55,7 +55,7 @@ export const MonthsTable = ({
           }
           if (r.kind === "total") {
             return (
-              <tr key={r.key} className="text-ink font-bold text-[14px] border-t border-hairline" data-testid="total-row">
+              <tr key={r.key} className="text-ink font-bold text-[15px] border-t border-hairline" data-testid="total-row">
                 <td className={`${CELL} text-left`}>{r.label}</td>
                 <td className={CELL}>{money(r.income)}</td>
                 <td className={`${CELL} ${signTone(r.profit)}`}>{money(r.profit)}</td>
@@ -93,7 +93,7 @@ export const MonthsTable = ({
       </tbody>
     </table>
     {goal == null && (
-      <p className="text-[11px] text-amber-hi mt-2">No margin goal is set — the Goal column grades nothing until Settings has one.</p>
+      <p className="text-[12px] text-amber-hi mt-2">No margin goal is set — the Goal column grades nothing until Settings has one.</p>
     )}
   </div>
 );

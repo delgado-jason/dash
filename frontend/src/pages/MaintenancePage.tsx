@@ -179,8 +179,8 @@ const MaintenancePage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">MAINTENANCE</h1>
-          <span className="font-condensed font-medium text-[13.5px] text-dim tabular-nums">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">MAINTENANCE</h1>
+          <span className="font-condensed font-medium text-[14.5px] text-dim tabular-nums">
             {subLine}
           </span>
           <span className="flex-1" />
@@ -214,7 +214,7 @@ const MaintenancePage = () => {
             role="tab"
             aria-selected={tab === "schedule"}
             onClick={() => setTab("schedule")}
-            className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] ${
+            className={`px-3 rounded-md font-condensed font-semibold text-[13.5px] ${
               tab === "schedule" ? "bg-amber text-canvas" : "text-dim hover:text-ink"
             }`}
           >
@@ -224,7 +224,7 @@ const MaintenancePage = () => {
             role="tab"
             aria-selected={tab === "services"}
             onClick={() => setTab("services")}
-            className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] ${
+            className={`px-3 rounded-md font-condensed font-semibold text-[13.5px] ${
               tab === "services" ? "bg-amber text-canvas" : "text-dim hover:text-ink"
             }`}
           >
@@ -234,30 +234,30 @@ const MaintenancePage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-3">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums">
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums">
             {items.length} CLOCK{items.length === 1 ? "" : "S"}
           </span>
           {counts.overdue > 0 && (
-            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-negative-text border border-status-negative-text/35 bg-status-negative-text/8">
+            <span className="font-condensed font-bold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-negative-text border border-status-negative-text/35 bg-status-negative-text/8">
               {counts.overdue} OVERDUE
             </span>
           )}
           {counts.soon > 0 && (
-            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/35 bg-amber/8">
+            <span className="font-condensed font-bold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/35 bg-amber/8">
               {counts.soon} CLOSE
             </span>
           )}
           {counts.ok > 0 && (
-            <span className="font-condensed font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-positive-text border border-status-positive-text/30 bg-status-positive-text/6">
+            <span className="font-condensed font-bold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-positive-text border border-status-positive-text/30 bg-status-positive-text/6">
               {counts.ok} RUNNING
             </span>
           )}
           {counts.unknown > 0 && (
-            <span className="font-condensed font-semibold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-faint border border-dashed border-hairline">
+            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-faint border border-dashed border-hairline">
               {counts.unknown} NO BASELINE
             </span>
           )}
-          <span className="font-condensed text-[13px] text-faint">
+          <span className="font-condensed text-[14px] text-faint">
             · <b className="font-semibold text-ink">${Math.round(ytdSpend).toLocaleString("en-US")}</b>{" "}
             spent this year
           </span>

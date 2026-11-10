@@ -146,10 +146,10 @@ const LanesPage = () => {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[18px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">
             LANES
           </h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <span className="font-condensed font-medium text-[16px] text-dim">
             where your freight is born, and what each stop leaves you
           </span>
           <span className="flex-1" />
@@ -191,7 +191,7 @@ const LanesPage = () => {
           <div className="ds2-board p-3.5 lg:min-h-[440px] flex flex-col">
             <div className="flex items-center gap-2.5 flex-wrap pb-2.5">
               <span className="ds2-label">Where the freight lives</span>
-              <span className="ml-auto flex items-center gap-2.5 font-condensed text-[11.5px] text-amber-hi">
+              <span className="ml-auto flex items-center gap-2.5 font-condensed text-[12.5px] text-amber-hi">
                 hover a {areaWord} · click to pin ·
                 <label className="flex items-center gap-1.5 text-dim cursor-pointer select-none">
                   lanes
@@ -221,7 +221,7 @@ const LanesPage = () => {
             <div className="ds2-board overflow-hidden flex flex-col lg:absolute lg:inset-0">
               <div className="flex items-center gap-2.5 px-3.5 pt-2.5 pb-1.5 shrink-0">
                 <span className="ds2-label">The market ledger</span>
-                <span className="ml-auto font-condensed text-[11.5px] text-amber-hi">
+                <span className="ml-auto font-condensed text-[12.5px] text-amber-hi">
                   sorted by OUT $/mi · 2+ loads
                 </span>
               </div>

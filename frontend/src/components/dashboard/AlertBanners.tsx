@@ -21,7 +21,7 @@ const IconFor = ({ kind }: { kind: Alert["kind"] }) =>
   );
 
 const Row = ({ alert }: { alert: Alert }) => (
-  <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] ${styleFor(alert.severity)}`}>
+  <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[14px] ${styleFor(alert.severity)}`}>
     <IconFor kind={alert.kind} />
     <span className="flex-1 truncate">{alert.message}</span>
     {alert.actionHref && (
@@ -57,7 +57,7 @@ export const AlertBanners = ({ alerts, collapsedCount = 2 }: Props) => {
       {(hidden > 0 || open) && (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center justify-center gap-1.5 text-[11.5px] text-dim hover:text-ink rounded-lg py-1 bg-well border border-hairline transition-colors"
+          className="flex items-center justify-center gap-1.5 text-[12.5px] text-dim hover:text-ink rounded-lg py-1 bg-well border border-hairline transition-colors"
         >
           <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
           {open

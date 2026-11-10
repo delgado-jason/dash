@@ -144,7 +144,7 @@ const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="px-4 pt-4 pb-2 font-display text-[22px] tracking-[.05em] leading-none text-ink">
+        <div className="px-4 pt-4 pb-2 font-display text-[24px] tracking-[.05em] leading-none text-ink">
           DASH <span className="text-amber">/</span> DTS
         </div>
       </SidebarHeader>

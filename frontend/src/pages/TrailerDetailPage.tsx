@@ -241,10 +241,10 @@ const TrailerDetailPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">TRAILERS</h1>
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">TRAILERS</h1>
           <Link
             to="/trailers"
-            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+            className="font-condensed font-medium text-[16px] text-faint hover:text-ink"
           >
             ← back to the trailers
           </Link>
@@ -259,29 +259,29 @@ const TrailerDetailPage = () => {
             onUpdated={(u) => setTrailer({ ...trailer, avatar_url: u })}
           />
           <div className="min-w-0">
-            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+            <h2 className="font-display text-[36.5px] tracking-[.04em] leading-none">
               UNIT {trailer.unit_number}
             </h2>
             <div className="flex gap-2 mt-2 flex-wrap">
-              <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
+              <span className="font-condensed font-medium text-[11.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
                 {[trailer.year, trailer.make, trailer.model].filter(Boolean).join(" ")}
                 {trailer.trailer_type
                   ? ` · ${trailer.length_ft ? `${trailer.length_ft}′ ` : ""}${trailer.trailer_type}`
                   : ""}
               </span>
-              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8 uppercase">
+              <span className="font-condensed font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8 uppercase">
                 {trailer.status.replace(/_/g, " ")}
               </span>
             </div>
           </div>
           <div className="ml-auto text-right">
             <span
-              className="inline-block font-condensed font-semibold text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
+              className="inline-block font-condensed font-semibold text-[41px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
               style={{ boxShadow: "var(--shadow-inset)" }}
             >
               {Math.round(metrics.totalMiles).toLocaleString("en-US")}
             </span>
-            <p className="font-condensed text-[10.5px] tracking-[.14em] text-faint uppercase mt-1">
+            <p className="font-condensed text-[11.5px] tracking-[.14em] text-faint uppercase mt-1">
               miles carried · its own miles, not the tractor's
             </p>
           </div>
@@ -294,24 +294,24 @@ const TrailerDetailPage = () => {
           </div>
           <div className="grid grid-cols-3 border-b ds2-cell-rule">
             <div className="px-[18px] py-3 border-r ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[23px] tabular-nums">{money(revenue)}</p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+              <p className="font-condensed font-semibold text-[25px] tabular-nums">{money(revenue)}</p>
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-[2px]">
                 Its share · 8% basis
               </p>
             </div>
             <div className="px-[18px] py-3 border-r ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[23px] tabular-nums">
+              <p className="font-condensed font-semibold text-[25px] tabular-nums">
                 {deliveredLoads.length}
               </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-[2px]">
                 Hauls carried
               </p>
             </div>
             <div className="px-[18px] py-3">
-              <p className="font-condensed font-semibold text-[23px] tabular-nums">
+              <p className="font-condensed font-semibold text-[25px] tabular-nums">
                 {Math.round(metrics.totalMiles).toLocaleString("en-US")}
               </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-[2px]">
                 Miles carried
               </p>
             </div>
@@ -320,11 +320,11 @@ const TrailerDetailPage = () => {
           {/* the payoff — the long road */}
           <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.14em] uppercase text-faint">
                 The payoff — the long road
               </span>
               {payoff && (
-                <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums">
+                <span className="font-condensed font-semibold text-[13.5px] text-dim tabular-nums">
                   {payoff.paidPct != null ? `${(payoff.paidPct * 100).toFixed(1)}% yours · ` : ""}
                   {money(payoff.owed)} to go
                 </span>
@@ -343,7 +343,7 @@ const TrailerDetailPage = () => {
                     />
                   ))}
                 </div>
-                <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                <p className="font-condensed text-[11.5px] text-faint mt-[6px]">
                   {payoff.original != null ? `${money(payoff.original)} note · ` : ""}
                   {money(payoff.monthlyPayment)}/mo until paid off
                   {payoff.payoffDate
@@ -351,14 +351,14 @@ const TrailerDetailPage = () => {
                     : ""}
                 </p>
                 {payoff.draftsSince > 0 && (
-                  <p className="font-condensed text-[10.5px] text-faint mt-[3px] tabular-nums">
+                  <p className="font-condensed text-[11.5px] text-faint mt-[3px] tabular-nums">
                     statement {money(payoff.statementOwed)} as of {formatDate(payoff.balanceAsOf)} ·{" "}
                     {payoff.draftsSince} {payoff.draftsSince === 1 ? "draft" : "drafts"} since
                   </p>
                 )}
               </>
             ) : (
-              <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+              <p className="font-condensed text-[13.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
                 No tracked note against this trailer — free and clear, or add balances on
                 Expenses → obligations to arm the meter.
               </p>
@@ -367,23 +367,23 @@ const TrailerDetailPage = () => {
 
           {/* the meter */}
           <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
-            <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+            <span className="font-condensed font-semibold text-[12.5px] tracking-[.14em] uppercase text-faint">
               The meter
             </span>
-            <p className="font-condensed text-[10.5px] text-faint mt-[3px]">
+            <p className="font-condensed text-[11.5px] text-faint mt-[3px]">
               reads the truck&apos;s odometer · this trailer has no hubodometer
             </p>
             <div className="flex items-baseline gap-3 mt-[8px] flex-wrap">
-              <span className="font-condensed text-[11.5px] text-faint">Reading today</span>
-              <span className="font-condensed font-semibold text-[15px] text-dim tabular-nums">
+              <span className="font-condensed text-[12.5px] text-faint">Reading today</span>
+              <span className="font-condensed font-semibold text-[16px] text-dim tabular-nums">
                 {hub != null ? num(hub) : "—"}
               </span>
             </div>
-            <p className="font-condensed text-[10.5px] text-faint mt-[3px] tabular-nums">
+            <p className="font-condensed text-[11.5px] text-faint mt-[3px] tabular-nums">
               {meterWords(reading, truck?.unit_number)}
             </p>
             {trailerMiles != null && inServiceReading && trailer?.in_service_date && (
-              <p className="font-condensed text-[10.5px] text-faint mt-[2px] tabular-nums">
+              <p className="font-condensed text-[11.5px] text-faint mt-[2px] tabular-nums">
                 with this trailer since {shortDay(trailer.in_service_date)} · {num(trailerMiles)} mi (the truck read{" "}
                 {num(inServiceReading.reading)} that day · {inServiceReading.source})
               </p>
@@ -403,12 +403,12 @@ const TrailerDetailPage = () => {
           {/* next service */}
           <div className="px-[18px] py-[13px]">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.14em] uppercase text-faint">
                 Next service — the clocks · truck odometer
               </span>
               {nextClock && (
                 <span
-                  className={`font-condensed font-semibold text-[12.5px] tabular-nums ${
+                  className={`font-condensed font-semibold text-[13.5px] tabular-nums ${
                     nextClock.d.level === "overdue"
                       ? "text-status-negative-text"
                       : nextClock.d.level === "soon"
@@ -445,12 +445,12 @@ const TrailerDetailPage = () => {
                   ))}
                 </div>
                 {nextClock.last && (
-                  <p className="font-condensed text-[10.5px] text-faint mt-[6px] tabular-nums">
+                  <p className="font-condensed text-[11.5px] text-faint mt-[6px] tabular-nums">
                     done {shortDay(nextClock.last.date)}
                     {nextClock.last.reading != null ? ` at ${num(nextClock.last.reading)}` : " — no reading logged"}
                   </p>
                 )}
-                <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                <p className="font-condensed text-[11.5px] text-faint mt-[6px]">
                   {clocks[1]
                     ? `${clocks[1].it.name.toLowerCase()}${
                         clocks[1].d.milesRemaining != null
@@ -468,7 +468,7 @@ const TrailerDetailPage = () => {
                 </p>
               </>
             ) : (
-              <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+              <p className="font-condensed text-[13.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
                 No trailer clocks with a baseline yet — log services on Maintenance and
                 the clocks arm.
               </p>
@@ -478,7 +478,7 @@ const TrailerDetailPage = () => {
 
         {/* the numbers */}
         <div className="ds2-board p-4 mt-4">
-          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+          <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
             The numbers — what the deck costs and earns
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
@@ -524,16 +524,16 @@ const TrailerDetailPage = () => {
                 }}
               >
                 <p
-                  className="font-condensed font-semibold text-[19px] tabular-nums"
+                  className="font-condensed font-semibold text-[20.5px] tabular-nums"
                   style={k.pos ? { color: "var(--color-status-positive-text)" } : undefined}
                 >
                   {k.v}
                 </p>
-                <p className="font-condensed text-[10px] tracking-[.1em] uppercase text-faint mt-[2px]">
+                <p className="font-condensed text-[11px] tracking-[.1em] uppercase text-faint mt-[2px]">
                   {k.l}
                 </p>
                 {k.sub && (
-                  <p className="font-condensed text-[9.5px] text-faint">{k.sub}</p>
+                  <p className="font-condensed text-[11px] text-faint">{k.sub}</p>
                 )}
               </div>
             ))}
@@ -558,12 +558,12 @@ const TrailerDetailPage = () => {
           ) : (
             <>
               <div className="flex items-baseline gap-2.5 flex-wrap">
-                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                   Papers
                 </span>
                 <button
                   onClick={() => setEditing(true)}
-                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
+                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] text-dim bg-well border border-hairline"
                   style={{ boxShadow: "var(--shadow-inset)" }}
                 >
                   EDIT
@@ -589,7 +589,7 @@ const TrailerDetailPage = () => {
                   }
                 />
               </div>
-              <p className="font-condensed text-[12px] text-faint mt-3">
+              <p className="font-condensed text-[13px] text-faint mt-3">
                 Service history lives on the{" "}
                 <Link to="/maintenance" className="text-amber-hi hover:text-hot">
                   Maintenance page
@@ -602,11 +602,11 @@ const TrailerDetailPage = () => {
 
         {/* recent hauls — its share on every row */}
         <div className="ds2-board p-4 mt-4">
-          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+          <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
             Recent hauls — its share on every row · links to the load
           </p>
           {earnedLoads.length === 0 ? (
-            <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+            <p className="font-condensed text-[14px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
               None for this trailer yet.
             </p>
           ) : (
@@ -614,11 +614,11 @@ const TrailerDetailPage = () => {
               {earnedLoads.slice(0, 6).map((l) => (
                 <div
                   key={l.load_id}
-                  className="grid grid-cols-[92px_1fr_110px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                  className="grid grid-cols-[92px_1fr_110px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
                 >
                   <Link
                     to={`/loads/${l.load_id}`}
-                    className="font-display text-[15px] tracking-[.05em] text-amber-hi hover:text-hot"
+                    className="font-display text-[16px] tracking-[.05em] text-amber-hi hover:text-hot"
                   >
                     {l.load_number}
                   </Link>

@@ -128,8 +128,8 @@ export const AgentsTab = ({
 
       {/* the answering line */}
       <Panel className="p-4" data-testid="answering-line">
-        <div className="flex items-baseline gap-3 flex-wrap font-condensed text-[14px] text-dim">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums text-ink">
+        <div className="flex items-baseline gap-3 flex-wrap font-condensed text-[15px] text-dim">
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums text-ink">
             {shape.desks} DESK{shape.desks === 1 ? "" : "S"}
           </span>
           <span>
@@ -207,7 +207,7 @@ export const AgentsTab = ({
                   />
                 ))}
               </div>
-              <table className="w-full text-[12px]">
+              <table className="w-full text-[13px]">
                 <tbody>
                   {BAR.map((s) => (
                     <tr key={s.k} className="border-b ds2-cell-rule last:border-b-0">
@@ -239,7 +239,7 @@ export const AgentsTab = ({
                   ))}
                 </tbody>
               </table>
-              <p className="text-[11.5px] text-faint mt-2">
+              <p className="text-[12.5px] text-faint mt-2">
                 {shape.once.desks > 0 ? (
                   <>
                     {Math.round(shape.once.share * 100)}% of the money came from
@@ -272,7 +272,7 @@ export const AgentsTab = ({
             </p>
           ) : (
             <>
-              <table className="w-full text-[12px] mt-2">
+              <table className="w-full text-[13px] mt-2">
                 <thead>
                   <tr className="border-b ds2-cell-rule">
                     <th className={`${TH} text-left`}>Agent</th>
@@ -303,7 +303,7 @@ export const AgentsTab = ({
                   ))}
                 </tbody>
               </table>
-              <p className="text-[11.5px] text-faint mt-2">
+              <p className="text-[12.5px] text-faint mt-2">
                 Repeat desks with no freight in {QUIET_DAYS} days. A one-load desk
                 is a stranger, not a lapsed relationship, so it is not listed ·
                 who to call from where you drop →{" "}
@@ -333,7 +333,7 @@ export const AgentsTab = ({
                 <Link
                   key={r.agentId}
                   to={`/agents/${r.agentId}`}
-                  className="flex items-center justify-between gap-2 py-[5px] text-[12px] border-b ds2-cell-rule"
+                  className="flex items-center justify-between gap-2 py-[5px] text-[13px] border-b ds2-cell-rule"
                 >
                   <span className="truncate text-ink">{name(r)}</span>
                   <span className="whitespace-nowrap font-condensed font-semibold tabular-nums text-dim">
@@ -345,7 +345,7 @@ export const AgentsTab = ({
                 </Link>
               ))}
             </div>
-            <p className="text-[11.5px] text-faint mt-2">
+            <p className="text-[12.5px] text-faint mt-2">
               {plural(shape.desks, "desk")} worked in the window ·{" "}
               {money(shape.gross)} between them
             </p>

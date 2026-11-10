@@ -68,7 +68,7 @@ export const AgentCard = ({
             </p>
             {spec && (
               <span
-                className="text-[8.5px] font-bold tracking-wide px-1.5 py-0.5 rounded shrink-0"
+                className="text-[11px] font-bold tracking-wide px-1.5 py-0.5 rounded shrink-0"
                 style={{ color: spec.fg, background: spec.bg, border: `1px solid ${spec.border}` }}
               >
                 {spec.label}
@@ -86,7 +86,7 @@ export const AgentCard = ({
         <RatingLabel rating={agent.rating} />
         {goto && (
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0"
+            className="text-[11px] font-bold px-2 py-0.5 rounded-md shrink-0"
             style={{ color: goto.fg, background: goto.bg, border: `1px solid ${goto.border}` }}
           >
             {goto.label}
@@ -97,7 +97,7 @@ export const AgentCard = ({
       {/* relationship bucket + override */}
       <div className="flex items-center justify-between gap-2 mt-2">
         <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0"
+          className="text-[11px] font-bold px-2 py-0.5 rounded-md shrink-0"
           style={
             direct
               ? { color: "var(--color-cat2)", background: "color-mix(in srgb, var(--color-cat2) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--color-cat2) 40%, transparent)" }
@@ -111,7 +111,7 @@ export const AgentCard = ({
           </span>
         </span>
         {onSetClass && (
-          <div className="flex rounded-md overflow-hidden border ds2-cell-rule text-[9px] font-semibold uppercase tracking-wide">
+          <div className="flex rounded-md overflow-hidden border ds2-cell-rule text-[11px] font-semibold uppercase tracking-wide">
             {([["Auto", null], ["Direct", "direct"], ["Spot", "spot"]] as const).map(
               ([lbl, val]) => {
                 const active = (agent.agent_class ?? null) === val;
@@ -141,7 +141,7 @@ export const AgentCard = ({
       </div>
 
       {flag && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-hi">
+        <div className="mt-2 flex items-center gap-1.5 text-[12px] text-amber-hi">
           <TriangleAlert size={12} className="shrink-0" />
           <span>{flag}</span>
         </div>
@@ -156,7 +156,7 @@ export const AgentCard = ({
             {card?.medianRpm != null ? `${fmtRpm(card.medianRpm)}/mi` : ""}
           </span>
         </div>
-        <div className="flex items-center justify-between mt-1 text-[11px]">
+        <div className="flex items-center justify-between mt-1 text-[12px]">
           {dwell ? (
             <span style={{ color: DWELL_TONE[dwell.tone] }}>dwell: {dwell.label}</span>
           ) : (

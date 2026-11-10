@@ -221,7 +221,7 @@ const TiersView = () => {
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">Sort</span>
+          <span className="text-[12px] uppercase tracking-widest text-faint font-condensed">Sort</span>
           <SegmentedTabs tabs={SORT_TABS} value={sort ?? "loads"} onChange={setSort} size="sm" ariaLabel="Sort" />
         </div>
       </div>
@@ -256,7 +256,7 @@ const TiersView = () => {
           <>
             <SectionHead>Prospects · {prospects.length} · courting · graduate at three loads</SectionHead>
             {prospects.length === 0 ? (
-              <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">No prospects yet — + Prospect above</p>
+              <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">No prospects yet — + Prospect above</p>
             ) : (
               <>
                 <Rows rows={prospectsShown} onOpen={openAgent} />
@@ -264,7 +264,7 @@ const TiersView = () => {
                   <button
                     type="button"
                     onClick={() => setShowProspects(true)}
-                    className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-amber-hi hover:text-hot"
+                    className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[14px] text-amber-hi hover:text-hot"
                   >
                     {prospectsHidden} more{loadsReady ? ` · ${neverRan} never ran` : ""} · sorted by loads, then last contact
                   </button>
@@ -273,7 +273,7 @@ const TiersView = () => {
                   <button
                     type="button"
                     onClick={() => setShowProspects(false)}
-                    className="w-full text-left px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[12px] text-faint hover:text-ink"
+                    className="w-full text-left px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[13px] text-faint hover:text-ink"
                   >
                     show fewer
                   </button>
@@ -299,7 +299,7 @@ const TiersView = () => {
             {searching || showParked ? (
               <Rows rows={parked} dimmed onOpen={openAgent} />
             ) : (
-              <p className="px-3.5 pb-3.5 pt-0.5 font-condensed text-[13px] text-dim">
+              <p className="px-3.5 pb-3.5 pt-0.5 font-condensed text-[14px] text-dim">
                 {parked.length} parked — {parkedByYou} by you
                 {loadsReady ? `, ${parked.length - parkedByYou} dormant (nothing two-way in 180 days)` : ""}
               </p>
@@ -308,7 +308,7 @@ const TiersView = () => {
         )}
       </div>
 
-      <p className="mt-3 font-condensed text-[11.5px] text-faint max-w-xl leading-snug">
+      <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-xl leading-snug">
         Tiers hold established agents — three or more delivered loads — graded by all-in RPM against the live rate
         ladder. A row's chip is dash's suggestion; nothing moves until the owner approves it in the sheet. * = a
         load with no deadhead logged counted loaded miles only.

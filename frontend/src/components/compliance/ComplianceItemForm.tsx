@@ -192,7 +192,7 @@ export const ComplianceItemForm = ({
             maxLength={120}
             onChange={(e) => setLabel(e.target.value)}
           />
-          <p className="text-[11px] text-faint mt-1">
+          <p className="text-[12px] text-faint mt-1">
             Type anything — it doesn't have to be on the list.
           </p>
         </div>

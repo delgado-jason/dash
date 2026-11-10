@@ -92,14 +92,14 @@ export const AgentTable = ({
       <table className="w-full text-sm border-collapse" style={{ minWidth: 680 }}>
         <thead>
           <tr>
-            <th className="text-left font-normal text-[10px] uppercase tracking-wide text-dim py-2 px-2">
+            <th className="text-left font-normal text-[11px] uppercase tracking-wide text-dim py-2 px-2">
               Agent
             </th>
             {COLS.map((c) => (
               <th
                 key={c.key}
                 onClick={() => setSort(c.key)}
-                className="text-right font-normal text-[10px] uppercase tracking-wide py-2 px-2 cursor-pointer select-none whitespace-nowrap hover:text-ink"
+                className="text-right font-normal text-[11px] uppercase tracking-wide py-2 px-2 cursor-pointer select-none whitespace-nowrap hover:text-ink"
                 style={{ color: sort === c.key ? "var(--color-amber-hi)" : undefined }}
               >
                 {c.label}
@@ -135,7 +135,7 @@ export const AgentTable = ({
                     </span>
                     {spec && (
                       <span
-                        className="text-[8.5px] font-bold tracking-wide px-1.5 py-0.5 rounded"
+                        className="text-[11px] font-bold tracking-wide px-1.5 py-0.5 rounded"
                         style={{ color: spec.fg, background: spec.bg, border: `1px solid ${spec.border}` }}
                       >
                         {spec.label}
@@ -151,7 +151,7 @@ export const AgentTable = ({
                 </td>
                 <td className="text-right py-2 px-2">
                   <span
-                    className="text-[9.5px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap"
+                    className="text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap"
                     style={{ color: tier.fg, background: tier.bg, border: `1px solid ${tier.border}` }}
                   >
                     {tier.label}

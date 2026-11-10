@@ -252,7 +252,7 @@ export const FleetTab = ({
         <div className="mt-3">
           <MilesChart rows={mileRows} bookingFloor={bookingFloor} />
         </div>
-        <p className="text-[11.5px] text-faint mt-2.5">
+        <p className="text-[12.5px] text-faint mt-2.5">
           A thin month does not cost less — the notes, the insurance and the
           permits do not care how far you drove, so the same dollars land on
           fewer miles and every one has to carry more. A month with no P&amp;L
@@ -276,13 +276,13 @@ export const FleetTab = ({
             <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6">
               <div>
                 <p className="ds2-label">Truck {truck.unit_number} · cost to run</p>
-                <p className="font-condensed font-semibold text-[34px] leading-none mt-1.5 tabular-nums">
+                <p className="font-condensed font-semibold text-[36.5px] leading-none mt-1.5 tabular-nums">
                   {costPerMile != null ? rpm(costPerMile) : "—"}{" "}
-                  <span className="text-[15px] text-dim font-condensed tracking-normal">
+                  <span className="text-[16px] text-dim font-condensed tracking-normal">
                     fuel + shop + note, per mile
                   </span>
                 </p>
-                <p className="text-[11.5px] text-faint mt-1">
+                <p className="text-[12.5px] text-faint mt-1">
                   {costPerMile != null
                     ? costParts.map((cp) => `${cp.label} ${rpm(cp.v)}`).join(" + ")
                     : "needs a full-tank fuel window in the last 30 days"}
@@ -302,13 +302,13 @@ export const FleetTab = ({
                       target={interval}
                       markers={[{ value: interval, label: `due · ${svc.name.toLowerCase()}` }]}
                     />
-                    <p className="text-[11.5px] text-faint mt-1.5">
+                    <p className="text-[12.5px] text-faint mt-1.5">
                       <b className="text-ink">{svc.name}</b> {remain(svc.due)} — past
                       the marker she's running overdue.
                     </p>
                   </>
                 ) : (
-                  <p className="text-[12px] text-faint mt-4">
+                  <p className="text-[13px] text-faint mt-4">
                     {counts.overdue > 0
                       ? "Service overdue — see road-ready."
                       : "No mileage-based service tracked yet — add intervals on Maintenance."}
@@ -318,21 +318,21 @@ export const FleetTab = ({
               <div className="md:border-l md:border-hairline md:pl-6 flex flex-col justify-center gap-3">
                 <div>
                   <p className="ds2-label">Service</p>
-                  <p className={`font-condensed font-semibold text-[17px] mt-1 ${counts.overdue > 0 ? "text-status-negative-text" : nextSoon ? "text-amber-light" : "text-ink"}`}>
+                  <p className={`font-condensed font-semibold text-[18.5px] mt-1 ${counts.overdue > 0 ? "text-status-negative-text" : nextSoon ? "text-amber-light" : "text-ink"}`}>
                     {counts.overdue > 0 ? `${counts.overdue} overdue` : nextSoon ? `${nextSoon.name} · ${remain(nextSoon.due)}` : counts.ok > 0 ? "all good" : "no schedule yet"}
                   </p>
                 </div>
                 {chips[0] && (
                   <div>
                     <p className="ds2-label">Compliance</p>
-                    <p className={`font-condensed font-semibold text-[17px] mt-1 ${COMP[chips[0].level].cls}`}>
+                    <p className={`font-condensed font-semibold text-[18.5px] mt-1 ${COMP[chips[0].level].cls}`}>
                       {chips[0].label} · {chips[0].level === "expired" ? `expired ${Math.abs(chips[0].daysRemaining ?? 0)}d` : chips[0].level === "expiring" ? `${chips[0].daysRemaining}d` : "ok"}
                     </p>
                   </div>
                 )}
                 <div>
                   <p className="ds2-label">Miles / month</p>
-                  <p className="font-condensed font-semibold text-[17px] mt-1 tabular-nums text-ink">
+                  <p className="font-condensed font-semibold text-[18.5px] mt-1 tabular-nums text-ink">
                     {metrics?.milesPerMonth != null ? Math.round(metrics.milesPerMonth).toLocaleString("en-US") : "—"}
                   </p>
                 </div>
@@ -350,11 +350,11 @@ export const FleetTab = ({
       <Board className="grid grid-cols-1 sm:grid-cols-3">
         <div className="relative px-[18px] py-4 border-b sm:border-b-0 sm:border-r ds2-cell-rule">
           <p className="ds2-label">Fuel economy</p>
-          <p className="font-condensed font-semibold text-[26px] leading-none tabular-nums mt-2">
+          <p className="font-condensed font-semibold text-[28px] leading-none tabular-nums mt-2">
             {metrics?.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"}
-            <span className="text-[13px] text-dim"> mpg</span>
+            <span className="text-[14px] text-dim"> mpg</span>
           </p>
-          <p className="text-[10.5px] text-faint mt-1.5">
+          <p className="text-[11.5px] text-faint mt-1.5">
             {metrics?.bestTank != null
               ? `best tank ${metrics.bestTank.toFixed(1)} · lifetime, full tanks only`
               : "log a full tank"}
@@ -364,7 +364,7 @@ export const FleetTab = ({
           className="sm:border-r ds2-cell-rule"
           label="Home time"
           value={!home ? "—" : home.state === "none" ? "—" : home.daysOut === 0 ? "home today" : `${home.daysOut} days out`}
-          valueClassName={`text-[22px] ${home?.state === "over" ? "text-amber-light" : ""}`}
+          valueClassName={`text-[24px] ${home?.state === "over" ? "text-amber-light" : ""}`}
           sub={!home ? "waits for the home-time target in Settings" : home.state === "none" ? "no home marks yet" : home.state === "over" ? `past your ${home.threshold}-day target` : `${home.toTarget} left to your ${home.threshold}-day target`}
           tone={home?.state === "over" ? "amb" : "none"}
           to="/drivers"
@@ -373,7 +373,7 @@ export const FleetTab = ({
         <BoardCell
           label="Shop log · 12 mo"
           value={money(shop.total)}
-          valueClassName="text-[22px]"
+          valueClassName="text-[24px]"
           sub={`${shop.serviceCount} services · ${shop.perMonth != null ? money(shop.perMonth) : "—"} / mo over ${shop.monthsLogged} logged · not the P&L`}
           tone={counts.overdue > 0 ? "amb" : "none"}
           to="/maintenance"
@@ -385,15 +385,15 @@ export const FleetTab = ({
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-3 items-start">
         <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">under-load · home · idle, {metrics?.windowDays ?? 0}d</span>}>How hard she runs</H3>
-          <p className="text-[13px] font-bold">{rigName} <span className="text-muted-text font-normal text-[11.5px]">· #{truck.unit_number} · {Number(truck.current_odometer).toLocaleString()} mi</span></p>
-          {trailerName && <p className="text-[11px] text-muted-text mt-0.5">pulling a {trailerName} {trailer?.trailer_type} · #{trailer?.unit_number}</p>}
+          <p className="text-[14px] font-bold">{rigName} <span className="text-muted-text font-normal text-[12.5px]">· #{truck.unit_number} · {Number(truck.current_odometer).toLocaleString()} mi</span></p>
+          {trailerName && <p className="text-[12px] text-muted-text mt-0.5">pulling a {trailerName} {trailer?.trailer_type} · #{trailer?.unit_number}</p>}
 
           <div className="flex h-[22px] rounded-md overflow-hidden my-2.5" style={{ border: "1px solid var(--color-hairline)" }}>
-            {uUL > 0 && <div className="flex items-center justify-center text-[9.5px] font-bold" style={{ width: `${uUL}%`, background: "var(--color-amber)", color: "var(--color-on-amber)" }}>{util != null ? pct(util) : ""} rolling</div>}
+            {uUL > 0 && <div className="flex items-center justify-center text-[11px] font-bold" style={{ width: `${uUL}%`, background: "var(--color-amber)", color: "var(--color-on-amber)" }}>{util != null ? pct(util) : ""} rolling</div>}
             {uHome > 0 && <div style={{ width: `${uHome}%`, background: "var(--color-plate-b)" }} />}
             {uIdle > 0 && <div style={{ width: `${uIdle}%`, background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />}
           </div>
-          <div className="flex gap-3.5 text-[10px] text-muted-text">
+          <div className="flex gap-3.5 text-[11px] text-muted-text">
             <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "var(--color-amber)" }} />{metrics?.underLoadDays ?? 0} under load</span>
             <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />{metrics?.homeDays ?? 0} home</span>
             <span><i className="inline-block w-2 h-2 rounded-sm mr-1 align-[-1px]" style={{ background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />{metrics?.idleDays ?? 0} idle</span>
@@ -406,15 +406,15 @@ export const FleetTab = ({
               { v: metrics?.milesPerMonth != null ? Math.round(metrics.milesPerMonth).toLocaleString() : "—", l: "miles / month" },
             ].map((e) => (
               <div key={e.l} className="rounded-lg px-2.5 py-1.5" style={{ background: "var(--color-well)", border: "1px solid var(--color-plate)" }}>
-                <p className="text-[15px] font-bold" style={{ color: e.c }}>{e.v}</p>
-                <p className="text-[9px] uppercase tracking-wide text-muted-text mt-0.5">{e.l}</p>
+                <p className="text-[16px] font-bold" style={{ color: e.c }}>{e.v}</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-text mt-0.5">{e.l}</p>
               </div>
             ))}
           </div>
 
           {mpgSeries.length >= 2 && (
             <div>
-              <div className="flex justify-between text-[10px] uppercase tracking-wide text-muted-text"><span>Fuel economy — last {mpgSeries.length} tanks</span><span className="text-status-positive-text">{metrics?.avgMpg?.toFixed(1)} avg</span></div>
+              <div className="flex justify-between text-[11px] uppercase tracking-wide text-muted-text"><span>Fuel economy — last {mpgSeries.length} tanks</span><span className="text-status-positive-text">{metrics?.avgMpg?.toFixed(1)} avg</span></div>
               <svg viewBox="0 0 320 50" className="w-full mt-1">
                 <polyline fill="none" stroke="var(--color-chart-blue)" strokeWidth={2} points={mpgPts} />
                 {mpgSeries.map((_, i) => {
@@ -424,37 +424,37 @@ export const FleetTab = ({
               </svg>
             </div>
           )}
-          <Link to={`/trucks/${truck.truck_id}`} className="text-[11px] text-status-info-text hover:underline mt-2 inline-block">Truck details →</Link>
+          <Link to={`/trucks/${truck.truck_id}`} className="text-[12px] text-status-info-text hover:underline mt-2 inline-block">Truck details →</Link>
         </div>
 
         {/* road-ready */}
         <div className="ds2-board p-4">
-          <H3 right={<span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full" style={{ color: health.color, background: "var(--color-status-aware-bg)", border: `1px solid color-mix(in srgb, ${health.color} 33%, transparent)` }}>{health.label}</span>}>Road-ready</H3>
+          <H3 right={<span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ color: health.color, background: "var(--color-status-aware-bg)", border: `1px solid color-mix(in srgb, ${health.color} 33%, transparent)` }}>{health.label}</span>}>Road-ready</H3>
           {dues.length === 0 ? (
             <p className="text-xs text-muted-text">No maintenance schedule yet.</p>
           ) : (
             dues.slice(0, 4).map((d, i) => (
-              <div key={`${d.name}-${i}`} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
+              <div key={`${d.name}-${i}`} className="flex items-center gap-2 py-1.5 text-[13px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DUE_DOT[d.due.level] }} />
                 <span className="truncate">{d.name}</span>
-                <span className="ml-auto text-[11px] whitespace-nowrap" style={{ color: d.due.level === "overdue" ? "var(--color-status-negative-text)" : d.due.level === "soon" ? "var(--color-amber-hi)" : "var(--color-muted-text)" }}>
+                <span className="ml-auto text-[12px] whitespace-nowrap" style={{ color: d.due.level === "overdue" ? "var(--color-status-negative-text)" : d.due.level === "soon" ? "var(--color-amber-hi)" : "var(--color-muted-text)" }}>
                   {d.due.level === "ok" ? "ok" : remain(d.due)}
                 </span>
               </div>
             ))
           )}
-          <Link to="/maintenance" className="text-[11px] text-status-info-text hover:underline mt-2 inline-block">Maintenance →</Link>
+          <Link to="/maintenance" className="text-[12px] text-status-info-text hover:underline mt-2 inline-block">Maintenance →</Link>
           {chips.length > 0 && (
             <div className="border-t mt-3 pt-2.5" style={{ borderColor: "var(--color-hairline-lo)" }}>
-              <p className="text-[10px] uppercase tracking-wide text-muted-text font-bold mb-1.5">Compliance</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted-text font-bold mb-1.5">Compliance</p>
               <div className="flex flex-wrap gap-1.5">
                 {chips.map((c, i) => (
-                  <span key={`${c.label}-${i}`} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${COMP[c.level].cls}`} style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}>
+                  <span key={`${c.label}-${i}`} className={`text-[11px] font-semibold px-2 py-0.5 rounded ${COMP[c.level].cls}`} style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)" }}>
                     {c.label} · {c.level === "expired" ? `expired ${Math.abs(c.daysRemaining ?? 0)}d` : c.level === "expiring" ? `${c.daysRemaining}d` : "ok"}
                   </span>
                 ))}
               </div>
-              <Link to="/compliance" className="text-[11px] text-status-info-text hover:underline mt-2 inline-block">Compliance →</Link>
+              <Link to="/compliance" className="text-[12px] text-status-info-text hover:underline mt-2 inline-block">Compliance →</Link>
             </div>
           )}
         </div>
@@ -465,8 +465,8 @@ export const FleetTab = ({
         <div className="ds2-board p-4">
           <H3 right={<span className="normal-case tracking-normal font-normal">the shop log · last 12 months · the P&amp;L's Repairs line is the cost basis</span>}>Shop spend</H3>
           <div className="flex items-baseline gap-2.5 mb-1">
-            <span className="text-[28px] font-extrabold leading-none">{money(shop.total)}</span>
-            <span className="text-[11.5px] text-muted-text">{shop.serviceCount} services{shop.perMonth != null ? ` · ${money(shop.perMonth)} / mo over ${shop.monthsLogged} logged` : ""}</span>
+            <span className="text-[30px] font-extrabold leading-none">{money(shop.total)}</span>
+            <span className="text-[12.5px] text-muted-text">{shop.serviceCount} services{shop.perMonth != null ? ` · ${money(shop.perMonth)} / mo over ${shop.monthsLogged} logged` : ""}</span>
           </div>
           {shop.total === 0 ? (
             <p className="text-xs text-muted-text py-3">No shop visits logged in the last 12 months.</p>
@@ -486,7 +486,7 @@ export const FleetTab = ({
                 })}
               </svg>
               {shop.recent.map((s) => (
-                <div key={s.date + s.description} className="flex items-center gap-2 py-1.5 text-[12px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
+                <div key={s.date + s.description} className="flex items-center gap-2 py-1.5 text-[13px] border-t first:border-t-0" style={{ borderColor: "var(--color-hairline-lo)" }}>
                   <span className="text-muted-text w-9 shrink-0">{new Date(s.date.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })}</span>
                   <span className="truncate min-w-0 flex-1">{s.description}</span>
                   <span className="ml-auto font-bold whitespace-nowrap">{money(s.cost)}</span>
@@ -494,7 +494,7 @@ export const FleetTab = ({
               ))}
             </>
           )}
-          <Link to="/maintenance" className="text-[11px] text-status-info-text hover:underline mt-2 inline-block">Maintenance →</Link>
+          <Link to="/maintenance" className="text-[12px] text-status-info-text hover:underline mt-2 inline-block">Maintenance →</Link>
         </div>
 
         <div className="ds2-board p-4">
@@ -508,18 +508,18 @@ export const FleetTab = ({
             <>
               <div className="flex h-6 rounded-md overflow-hidden mb-2" style={{ border: "1px solid var(--color-hairline)" }}>
                 {costParts.map((p) => (
-                  <div key={p.key} className="flex items-center justify-center text-[9px] font-bold" style={{ width: `${costPct(p.v)}%`, background: p.color, color: "var(--color-on-amber)" }}>
+                  <div key={p.key} className="flex items-center justify-center text-[11px] font-bold" style={{ width: `${costPct(p.v)}%`, background: p.color, color: "var(--color-on-amber)" }}>
                     {costPct(p.v) >= 14 ? `${costPct(p.v)}%` : ""}
                   </div>
                 ))}
               </div>
               {costParts.map((p) => (
-                <div key={p.key} className="flex justify-between text-[11.5px] py-0.5">
+                <div key={p.key} className="flex justify-between text-[12.5px] py-0.5">
                   <span><b style={{ color: p.color }}>{rpm(p.v)}</b> {p.label} / mi</span>
                   <span className="text-muted-text">{costPct(p.v)}%</span>
                 </div>
               ))}
-              <div className="flex justify-between text-[11.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "var(--color-hairline-lo)" }}>
+              <div className="flex justify-between text-[12.5px] pt-1.5 mt-1 border-t" style={{ borderColor: "var(--color-hairline-lo)" }}>
                 <span className="font-bold">{rpm(costPerMile)} total / mi</span>
                 <span className="text-muted-text">
                   the truck's own running cost
@@ -529,7 +529,7 @@ export const FleetTab = ({
             </>
           )}
           {paidPerGal != null && (
-            <p className="text-[11.5px] text-muted-text border-t mt-2.5 pt-2.5" style={{ borderColor: "var(--color-hairline-lo)" }}>
+            <p className="text-[12.5px] text-muted-text border-t mt-2.5 pt-2.5" style={{ borderColor: "var(--color-hairline-lo)" }}>
               Diesel you paid <b className="text-status-aware-text">{dieselPrice(paidPerGal)}</b>
               {fleet.nationalDiesel != null && <> · national <b className="text-light">{dieselPrice(fleet.nationalDiesel)}</b>{dieselGap != null && Math.abs(dieselGap) >= 0.005 && <> · you run <b style={{ color: dieselGap > 0 ? "var(--color-status-negative-text)" : "var(--color-status-positive-text)" }}>{Math.abs(dieselGap * 100).toFixed(0)}¢</b> {dieselGap > 0 ? "over" : "under"}</>}</>}
             </p>
@@ -544,7 +544,7 @@ export const FleetTab = ({
           <div className="w-full">
             <div className="relative h-3.5 mb-1">
               {heat.months.map((m) => (
-                <span key={m.col} className="absolute text-[9px] text-dim" style={{ left: `${(m.col / Math.max(1, heat.weeks)) * 100}%` }}>{m.label}</span>
+                <span key={m.col} className="absolute text-[11px] text-dim" style={{ left: `${(m.col / Math.max(1, heat.weeks)) * 100}%` }}>{m.label}</span>
               ))}
             </div>
             <div className="grid gap-[4px] w-full" style={{ gridTemplateRows: "repeat(7, 16px)", gridAutoFlow: "column", gridAutoColumns: "1fr" }}>
@@ -555,7 +555,7 @@ export const FleetTab = ({
             </div>
           </div>
         </div>
-        <div className="flex gap-3.5 text-[10.5px] text-muted-text mt-2.5 flex-wrap">
+        <div className="flex gap-3.5 text-[11.5px] text-muted-text mt-2.5 flex-wrap">
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "var(--color-amber)" }} />under a load (earning)</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "var(--color-plate-b)" }} />home</span>
           <span><i className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]" style={{ background: "color-mix(in srgb, var(--color-amber) 40%, var(--color-well))" }} />idle</span>

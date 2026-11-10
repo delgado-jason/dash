@@ -118,7 +118,7 @@ const ClockCells = ({ fill, level }: { fill: number; level: ComplianceLevel }) =
 
 const inputCls =
   "bg-well border border-hairline rounded-[8px] px-2 py-1.5 text-sm w-full text-ink outline-none";
-const lbl = "font-condensed text-[11px] tracking-[.1em] uppercase text-faint mb-1 block";
+const lbl = "font-condensed text-[12px] tracking-[.1em] uppercase text-faint mb-1 block";
 
 const entityCol: Record<ComplianceScope, "driver_id" | "truck_id" | "trailer_id" | null> =
   { business: null, driver: "driver_id", truck: "truck_id", trailer: "trailer_id" };
@@ -147,7 +147,7 @@ const RenewalHistoryLine = ({
   const earlier = earlierCount(count);
   return (
     <div className="mt-[5px]">
-      <p className="font-condensed text-[12px] text-dim">
+      <p className="font-condensed text-[13px] text-dim">
         {line}
         {earlier > 0 && (
           <button
@@ -161,11 +161,11 @@ const RenewalHistoryLine = ({
       {open && (
         <div className="mt-1 pl-2 border-l border-hairline">
           {busy ? (
-            <p className="font-condensed text-[11.5px] text-faint">Loading…</p>
+            <p className="font-condensed text-[12.5px] text-faint">Loading…</p>
           ) : rows.length > 1 ? (
             // rows[0] is the cycle already printed above.
             rows.slice(1).map((r) => (
-              <p key={r.renewal_id} className="font-condensed text-[11.5px] text-faint">
+              <p key={r.renewal_id} className="font-condensed text-[12.5px] text-faint">
                 renewed {fmtDay(r.renewed_on)}
                 {r.expired_on ? ` · was due ${fmtDay(r.expired_on)}` : ""}
                 {r.doc_number ? ` · #${r.doc_number}` : ""}
@@ -174,7 +174,7 @@ const RenewalHistoryLine = ({
               </p>
             ))
           ) : (
-            <p className="font-condensed text-[11.5px] text-faint">No earlier cycles.</p>
+            <p className="font-condensed text-[12.5px] text-faint">No earlier cycles.</p>
           )}
         </div>
       )}
@@ -366,17 +366,17 @@ const CompliancePage = () => {
     return (
       <div key={item.compliance_item_id} className="px-4 py-3 border-t ds2-cell-rule">
         <div className="flex justify-between items-baseline gap-3 mb-[7px] flex-wrap">
-          <span className="font-condensed font-semibold text-[14.5px] min-w-0 flex items-center gap-2 flex-wrap">
+          <span className="font-condensed font-semibold text-[15.5px] min-w-0 flex items-center gap-2 flex-wrap">
             {item.label}
             {item.category && (
-              <span className="font-bold text-[10px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
+              <span className="font-bold text-[11px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
                 {item.category}
               </span>
             )}
           </span>
           <span className="flex items-center gap-3 shrink-0">
             <span
-              className="font-condensed font-semibold text-[13px] tabular-nums"
+              className="font-condensed font-semibold text-[14px] tabular-nums"
               style={{ color: pill.fg }}
             >
               {due.daysRemaining != null
@@ -400,21 +400,21 @@ const CompliancePage = () => {
                 closeForms();
                 setEditingId(item.compliance_item_id);
               }}
-              className="font-condensed font-semibold text-[11px] tracking-[.08em] text-dim hover:text-ink"
+              className="font-condensed font-semibold text-[12px] tracking-[.08em] text-dim hover:text-ink"
             >
               EDIT
             </button>
             <button
               aria-label="Delete"
               onClick={() => remove(item.compliance_item_id)}
-              className="font-condensed text-[13px] text-faint hover:text-status-negative-text"
+              className="font-condensed text-[14px] text-faint hover:text-status-negative-text"
             >
               ✕
             </button>
           </span>
         </div>
         <ClockCells fill={clockFill(item, due.expiresOn, due.daysRemaining)} level={due.level} />
-        <p className="font-condensed text-[10.5px] text-faint mt-[5px]">
+        <p className="font-condensed text-[11.5px] text-faint mt-[5px]">
           {item.doc_number ? `#${item.doc_number} · ` : ""}
           {item.renewal_months ? `renews every ${item.renewal_months} mo · ` : ""}
           warns inside {item.warn_lead_days ?? 30} days
@@ -446,16 +446,16 @@ const CompliancePage = () => {
     return (
       <div key={`cdl-${driver.driver_id}`} className="px-4 py-3 border-t ds2-cell-rule first:border-t-0">
         <div className="flex justify-between items-baseline gap-3 mb-[7px] flex-wrap">
-          <span className="font-condensed font-semibold text-[14.5px] min-w-0 flex items-center gap-2 flex-wrap">
+          <span className="font-condensed font-semibold text-[15.5px] min-w-0 flex items-center gap-2 flex-wrap">
             CDL{driver.cdl_number ? ` · ${driver.cdl_number}` : ""}
             {driver.cdl_state ? ` (${driver.cdl_state})` : ""}
-            <span className="font-bold text-[10px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
+            <span className="font-bold text-[11px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
               license
             </span>
           </span>
           <span className="flex items-center gap-3 shrink-0">
             <span
-              className="font-condensed font-semibold text-[13px] tabular-nums"
+              className="font-condensed font-semibold text-[14px] tabular-nums"
               style={{ color: pill.fg }}
             >
               {due.daysRemaining != null
@@ -479,7 +479,7 @@ const CompliancePage = () => {
                 closeForms();
                 setCdlDriver(driver);
               }}
-              className="font-condensed font-semibold text-[11px] tracking-[.08em] text-dim hover:text-ink"
+              className="font-condensed font-semibold text-[12px] tracking-[.08em] text-dim hover:text-ink"
             >
               EDIT
             </button>
@@ -489,7 +489,7 @@ const CompliancePage = () => {
           fill={clockFill({ issued_on: null, renewal_months: null }, due.expiresOn, due.daysRemaining)}
           level={due.level}
         />
-        <p className="font-condensed text-[10.5px] text-faint mt-[5px]">
+        <p className="font-condensed text-[11.5px] text-faint mt-[5px]">
           {driver.endorsements ? `endorsements ${driver.endorsements} · ` : ""}
           from the driver record — the same clock as the dossier's papers plate · warns
           inside {CDL_WARN_LEAD_DAYS} days
@@ -521,20 +521,20 @@ const CompliancePage = () => {
   ) => (
     <div key={key} className="ds2-board overflow-hidden mt-4">
       <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-        <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+        <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
           {title}
         </span>
         {link && (
           <Link
             to={link}
-            className="font-condensed text-[11px] text-faint hover:text-amber-hi tracking-[.06em]"
+            className="font-condensed text-[12px] text-faint hover:text-amber-hi tracking-[.06em]"
           >
             OPEN →
           </Link>
         )}
         <span className="flex-1" />
         <button
-          className="font-condensed font-semibold text-[12px] tracking-[.06em] text-amber-hi hover:text-hot"
+          className="font-condensed font-semibold text-[13px] tracking-[.06em] text-amber-hi hover:text-hot"
           onClick={() => {
             closeForms();
             setAdding({ scope, entityId });
@@ -546,7 +546,7 @@ const CompliancePage = () => {
       {leadRow}
       {rows.map(itemRow)}
       {leadRow == null && rows.length === 0 && (
-        <p className="font-condensed text-[13px] text-faint px-4 py-3">
+        <p className="font-condensed text-[14px] text-faint px-4 py-3">
           Nothing tracked yet.
         </p>
       )}
@@ -585,32 +585,32 @@ const CompliancePage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">COMPLIANCE</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">COMPLIANCE</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the papers that keep you legal
           </span>
         </div>
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums">
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums">
             {summary.valid + summary.expiring + summary.expired} PAPERS
           </span>
-          <span className={`font-condensed font-semibold text-[12px] tracking-[.1em] uppercase ${grounded ? "text-status-negative-text" : "text-status-positive-text"}`}>
+          <span className={`font-condensed font-semibold text-[13px] tracking-[.1em] uppercase ${grounded ? "text-status-negative-text" : "text-status-positive-text"}`}>
             {grounded ? "GROUNDED" : summary.expiring > 0 ? "CLEARED TO ROLL" : "ALL CLEAR"}
           </span>
           {summary.expired > 0 && (
-            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-negative-text border border-status-negative-text/35 bg-status-negative-text/8">
+            <span className="font-bold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-status-negative-text border border-status-negative-text/35 bg-status-negative-text/8">
               {summary.expired} EXPIRED
             </span>
           )}
           {summary.expiring > 0 && (
-            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/35 bg-amber/8">
+            <span className="font-bold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/35 bg-amber/8">
               {summary.expiring} EXPIRING
             </span>
           )}
           {nextUp && (
-            <span className="text-[13.5px] text-faint">
+            <span className="text-[14.5px] text-faint">
               · next up: <b className="font-semibold text-ink">{nextUp.label}</b> ·{" "}
               <b className="font-semibold text-ink tabular-nums">{nextUp.days} days</b>
             </span>
@@ -618,7 +618,7 @@ const CompliancePage = () => {
         </div>
 
         {loading ? (
-          <p className="font-condensed text-[13px] text-faint mt-6">Loading…</p>
+          <p className="font-condensed text-[14px] text-faint mt-6">Loading…</p>
         ) : (
           <>
             {section("business", "Business · Delgado Trucking Services", "business", null, null,
@@ -668,7 +668,7 @@ const CompliancePage = () => {
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
               >
-                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+                <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
                   {renewing
                     ? "MARK RENEWED"
                     : cdlDriver
@@ -796,13 +796,13 @@ const CdlForm = ({
       {error && <p className="text-destructive text-sm mt-2">{error}</p>}
       <div className="flex gap-2 justify-end mt-4">
         <button
-          className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline"
+          className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline"
           onClick={onCancel}
         >
           CANCEL
         </button>
         <button
-          className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+          className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
           disabled={busy}
           onClick={() =>
             onSave(driver, {

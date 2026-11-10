@@ -218,10 +218,10 @@ export const MoneyTab = ({
             <p className="ds2-label">
               {cov.monthLabel} · {cov.estimated ? "so far · estimated from delivered loads at net" : "filed"}
             </p>
-            <p className="font-condensed font-semibold text-[26px] leading-none mt-1.5 tabular-nums">
+            <p className="font-condensed font-semibold text-[28px] leading-none mt-1.5 tabular-nums">
               {cov.estimated ? "≈ " : ""}
               {money(cov.income)}{" "}
-              <span className="text-[13px] text-dim font-normal">
+              <span className="text-[14px] text-dim font-normal">
                 income{cov.estimated ? " so far" : ""} · {plural(deliveredThisMonth, "load")} delivered
               </span>
             </p>
@@ -233,7 +233,7 @@ export const MoneyTab = ({
                     month {money(cov.threshold)}
                   </span>
                 </div>
-                <p className="text-[12px] text-dim mt-2" data-testid="month-line">
+                <p className="text-[13px] text-dim mt-2" data-testid="month-line">
                   {cov.covered ? (
                     <>
                       Month <b className="text-status-positive-text">covered</b> —{" "}
@@ -257,7 +257,7 @@ export const MoneyTab = ({
                 </p>
               </>
             ) : (
-              <p className="text-[12px] text-dim mt-2">
+              <p className="text-[13px] text-dim mt-2">
                 The threshold comes from your P&amp;L —{" "}
                 <Link to="/expenses" className="text-amber-hi hover:text-hot">post a month of expenses</Link> and this
                 line reads against your mean monthly cost.
@@ -268,13 +268,13 @@ export const MoneyTab = ({
             <p className="ds2-label">Filed</p>
             {last ? (
               <>
-                <p className="font-condensed font-semibold text-[20px] leading-none mt-1.5">
+                <p className="font-condensed font-semibold text-[21.5px] leading-none mt-1.5">
                   {monthLong(last.month)}{" "}
                   {lastFiledAt && (
-                    <span className="text-[12px] text-dim font-normal">filed {fmtStamp(lastFiledAt)}</span>
+                    <span className="text-[13px] text-dim font-normal">filed {fmtStamp(lastFiledAt)}</span>
                   )}
                 </p>
-                <p className="text-[11.5px] text-faint mt-1.5">
+                <p className="text-[12.5px] text-faint mt-1.5">
                   operating{" "}
                   <b className={`tabular-nums ${last.profit < 0 ? "text-status-negative-text" : "text-ink"}`}>{money(last.profit)}</b> · after notes{" "}
                   <b className={`tabular-nums ${last.profit - obligationsMonthly < 0 ? "text-status-negative-text" : "text-ink"}`}>
@@ -284,10 +284,10 @@ export const MoneyTab = ({
                 </p>
               </>
             ) : (
-              <p className="text-[12px] text-dim mt-1.5">No month filed yet.</p>
+              <p className="text-[13px] text-dim mt-1.5">No month filed yet.</p>
             )}
             {!currentFiled && (
-              <p className="text-[11.5px] mt-2">
+              <p className="text-[12.5px] mt-2">
                 <Link to="/expenses" className="text-amber-hi hover:text-hot">
                   {cov.monthLabel} posts when you file it · Expenses ›
                 </Link>
@@ -307,7 +307,7 @@ export const MoneyTab = ({
           </span>
         </h3>
         <MonthsTable rows={table} goal={marginGoal} estimate={estimate} />
-        <p className="text-[11.5px] text-faint mt-3" data-testid="realized-line">
+        <p className="text-[12.5px] text-faint mt-3" data-testid="realized-line">
           Realized per odometer mile · {year} ·{" "}
           {revPerMi != null && costPerMi != null && profitPerMi != null ? (
             <>
@@ -387,7 +387,7 @@ export const MoneyTab = ({
         <Board className="p-4">
           <h3 className="ds2-label mb-2 flex justify-between items-center">
             Margin trend
-            <span className="normal-case tracking-normal font-normal flex gap-2.5 text-[10px] items-center">
+            <span className="normal-case tracking-normal font-normal flex gap-2.5 text-[11px] items-center">
               <span className="text-chart-amber">● after notes</span>
               <span className="text-chart-blue">● operating</span>
             </span>
@@ -448,12 +448,12 @@ export const MoneyTab = ({
               );
             })}
           </svg>
-          <p className="text-[11px] text-faint mt-1">
+          <p className="text-[12px] text-faint mt-1">
             Operating vs after-notes margin (owner's take), month by month
             {marginGoal != null ? ` — dashed line is your ${Math.round(marginGoal * 100)}% goal` : ""}. Losing months sit on the floor.
           </p>
           {atGoal && marginGoal != null && (
-            <p className="text-[12px] text-dim mt-1.5" data-testid="months-at-goal">
+            <p className="text-[13px] text-dim mt-1.5" data-testid="months-at-goal">
               <b className="text-ink tabular-nums">{atGoal.at} of {atGoal.of}</b> month{atGoal.of === 1 ? "" : "s"} at or above the {Math.round(marginGoal * 100)}% goal this year.
             </p>
           )}
@@ -526,7 +526,7 @@ export const MoneyTab = ({
             </svg>
           );
         })()}
-        <p className="text-[12px] text-dim mt-1.5" data-testid="weeks-sentence">
+        <p className="text-[13px] text-dim mt-1.5" data-testid="weeks-sentence">
           <b className="text-ink tabular-nums">{quarter.figure}</b> {quarter.label.toLowerCase()} · {quarter.detail}
         </p>
       </Panel>
@@ -544,7 +544,7 @@ export const MoneyTab = ({
             <div className="flex gap-[2px] h-7 rounded-md overflow-hidden mb-2.5 bg-canvas">
               {catProfit > 0 && (
                 <div
-                  className="h-full flex items-center justify-center text-[9px] font-bold text-on-amber"
+                  className="h-full flex items-center justify-center text-[11px] font-bold text-on-amber"
                   style={{ width: `${pctOf(catProfit)}%`, background: "var(--color-amber)" }}
                 >
                   {pctOf(catProfit) >= 9 ? "profit kept" : ""}
@@ -561,11 +561,11 @@ export const MoneyTab = ({
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               {cats.map((c, i) => (
-                <div key={c.category} className="flex items-center justify-between text-[11.5px] text-dim">
+                <div key={c.category} className="flex items-center justify-between text-[12.5px] text-dim">
                   <span className="truncate flex items-center gap-1.5">
                     <span className="inline-block w-2 h-2 rounded-sm" style={{ background: segColor(c.category, i) }} />
                     {c.category}
-                    {c.section === "cogs" && <span className="text-[8px] text-faint">COGS</span>}
+                    {c.section === "cogs" && <span className="text-[11px] text-faint">COGS</span>}
                   </span>
                   <span className="whitespace-nowrap font-condensed font-semibold text-ink tabular-nums">
                     {money(c.amount)} · {Math.round(pctOf(c.amount))}%
@@ -573,7 +573,7 @@ export const MoneyTab = ({
                 </div>
               ))}
             </div>
-            <Link to="/expenses" className="text-[12px] font-condensed font-semibold text-amber-hi mt-2.5 inline-block">
+            <Link to="/expenses" className="text-[13px] font-condensed font-semibold text-amber-hi mt-2.5 inline-block">
               Full P&amp;L →
             </Link>
           </>

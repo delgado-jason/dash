@@ -32,14 +32,14 @@ interface Source {
 }
 const SourceChips = ({ sources }: { sources: Source[] }) => (
   <div className="flex flex-wrap gap-1.5 mt-3">
-    <span className="text-[11px] text-muted-text self-center mr-0.5">
+    <span className="text-[12px] text-muted-text self-center mr-0.5">
       Shown on
     </span>
     {sources.map((s) => (
       <Link
         key={s.to + s.label}
         to={s.to}
-        className="text-[11px] px-2 py-0.5 rounded-full border transition-colors hover:bg-plate"
+        className="text-[12px] px-2 py-0.5 rounded-full border transition-colors hover:bg-plate"
         style={{ borderColor: "var(--color-hairline)", color: AMBER_HI }}
       >
         {s.label}
@@ -199,7 +199,7 @@ const ChainBox = ({ top, bottom }: { top: string; bottom: string }) => (
     <div className="font-condensed text-base" style={{ color: AMBER_HI }}>
       {top}
     </div>
-    <div className="text-[11px] text-muted-text">{bottom}</div>
+    <div className="text-[12px] text-muted-text">{bottom}</div>
   </div>
 );
 
@@ -255,7 +255,7 @@ const MiniLadder = ({ ladder, spec }: { ladder?: RateLadder | null; spec?: RateL
         />
         <span className="text-light">Specialized</span>
       </span>
-      <span className="text-[11px] text-muted-text">oversize · hazmat · heavy</span>
+      <span className="text-[12px] text-muted-text">oversize · hazmat · heavy</span>
       <span className="ml-auto text-muted-text">
         target <span style={{ color: AMBER }}>{rpm(spec?.target)}</span> · strong{" "}
         <span style={{ color: "var(--color-status-positive-text)" }}>{rpm(spec?.strong)}</span>
@@ -445,7 +445,7 @@ const GuideToc = ({
           variant === "rail" ? { maxHeight: "calc(100vh - 3rem)" } : undefined
         }
       >
-        <p className="text-[11px] tracking-wide text-muted-text px-1 mb-2">
+        <p className="text-[12px] tracking-wide text-muted-text px-1 mb-2">
           CONTENTS
         </p>
         <input

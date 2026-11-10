@@ -88,7 +88,7 @@ export const AgencyForm = ({
 
   return (
     <div className="ds2-board mt-3 p-3.5">
-      <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mb-3">
+      <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint mb-3">
         {editing ? `Edit ${agency.agency_code}` : "New agency"}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

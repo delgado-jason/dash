@@ -73,7 +73,7 @@ export const MarketDetailPanel = ({
     ) : (
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[10px] text-dim text-left">
+          <tr className="text-[11px] text-dim text-left">
             <th className="font-normal py-1">AGENT</th>
             <th className="font-normal text-right">$/MI</th>
             <th className="font-normal text-right">LOADS</th>
@@ -112,9 +112,9 @@ export const MarketDetailPanel = ({
       <p className="text-sm text-dim">Nothing has delivered here in this window.</p>
     ) : (
       <div className="overflow-x-auto">
-        <table className="w-full text-[13.5px]">
+        <table className="w-full text-[14.5px]">
           <thead>
-            <tr className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-faint text-left">
+            <tr className="text-[11.5px] font-semibold tracking-[.1em] uppercase text-faint text-left">
               <th className="font-semibold py-1.5 pr-3 border-b border-hairline">Delivered</th>
               <th className="font-semibold py-1.5 pr-3 border-b border-hairline">From</th>
               <th className="font-semibold py-1.5 pr-3 border-b border-hairline text-right">Paid</th>
@@ -142,7 +142,7 @@ export const MarketDetailPanel = ({
                     <b className="text-ink font-semibold">{emptyCell(s.next)}</b>
                   )}
                   {!s.home && legCost(s.next, costs) && (
-                    <span className="block text-[11.5px] text-faint">
+                    <span className="block text-[12.5px] text-faint">
                       {money(legCost(s.next, costs)!.cost)} · {Math.round(legCost(s.next, costs)!.share * 100)}% of the next load
                     </span>
                   )}
@@ -155,7 +155,7 @@ export const MarketDetailPanel = ({
       </div>
     )}
 
-    <p className="text-[13px] text-faint mt-2">
+    <p className="text-[14px] text-faint mt-2">
       "not logged" is a deadhead of 0 on the next load — the page never reads 0 as
       free. Home comes from your logged home trips or a gap over a week; idle counts
       weekdays. A reload's dollars are its empty miles at your cost per mile plus

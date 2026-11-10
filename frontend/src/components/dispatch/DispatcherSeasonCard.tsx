@@ -18,8 +18,8 @@ const Stat = ({
 }) => (
   <div className="min-w-0">
     <p className="ds2-label">{label}</p>
-    <p className="font-condensed font-semibold text-[22px] leading-none mt-1.5 tabular-nums">{value}</p>
-    {sub && <p className="text-[11px] text-faint mt-1">{sub}</p>}
+    <p className="font-condensed font-semibold text-[24px] leading-none mt-1.5 tabular-nums">{value}</p>
+    {sub && <p className="text-[12px] text-faint mt-1">{sub}</p>}
   </div>
 );
 
@@ -122,7 +122,7 @@ export const DispatcherSeasonCard = ({
           {log.map((e) => (
             <span
               key={e.label}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-hairline-lo px-2.5 py-1 text-[11px] text-dim tabular-nums"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-hairline-lo px-2.5 py-1 text-[12px] text-dim tabular-nums"
             >
               {e.label}
               <span className="text-faint">· {e.loads} load{e.loads === 1 ? "" : "s"}</span>

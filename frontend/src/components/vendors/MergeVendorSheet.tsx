@@ -245,7 +245,7 @@ const MergeVendorSheet = ({
           createName={createName}
         />
         {isOwnName && (
-          <p className="font-condensed text-[12px] text-faint mt-1.5">
+          <p className="font-condensed text-[13px] text-faint mt-1.5">
             that's this name — use Add
           </p>
         )}
@@ -254,10 +254,10 @@ const MergeVendorSheet = ({
           className="bg-well rounded-[10px] px-3 py-2.5 mt-3"
           style={{ boxShadow: "var(--shadow-inset)" }}
         >
-          <p className="font-condensed font-semibold text-[10px] tracking-[.14em] uppercase text-amber-hi">
+          <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-amber-hi">
             DASH
           </p>
-          <p className="font-condensed text-[13px] text-dim leading-[1.5] mt-1">
+          <p className="font-condensed text-[14px] text-dim leading-[1.5] mt-1">
             {into
               ? `${mergeSentence(row, into)} "${row.name}" is kept as an alias, so the next time it is typed on a service it files here on its own.`
               : "Pick the vendor these log rows belong to."}

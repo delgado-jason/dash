@@ -202,7 +202,7 @@ export const MaintenanceItemForm = ({
           />
         </div>
       </div>
-      <p className="text-[11px] text-faint mt-2">
+      <p className="text-[12px] text-faint mt-2">
         {isApu
           ? "Set an hours or a month interval. The APU counts HOURS — fill \"last done · APU hours\" to start the clock, or log a service that reads the meter."
           : "Set at least a mileage or a month interval. Fill \"last done\" to start the clock — or just log a service that completes it."}

@@ -166,7 +166,7 @@ export const LanesTab = ({
             </p>
           ) : (
             <>
-              <table className="w-full text-[12px] mt-2">
+              <table className="w-full text-[13px] mt-2">
                 <thead>
                   <tr className="border-b ds2-cell-rule">
                     <th className={`${TH} text-left`}>Market</th>
@@ -197,7 +197,7 @@ export const LanesTab = ({
                   ))}
                 </tbody>
               </table>
-              <p className="text-[11.5px] text-faint mt-2">
+              <p className="text-[12.5px] text-faint mt-2">
                 {plural(head.originStates, "market")} loaded in · the{" "}
                 {outRows.length} with three or more loads · the grade is the
                 ledger&rsquo;s own (the Scorer&rsquo;s four words on $/day
@@ -229,7 +229,7 @@ export const LanesTab = ({
             </p>
           ) : (
             <>
-              <table className="w-full text-[12px] mt-2">
+              <table className="w-full text-[13px] mt-2">
                 <thead>
                   <tr className="border-b ds2-cell-rule">
                     <th className={`${TH} text-left`}>Market</th>
@@ -270,7 +270,7 @@ export const LanesTab = ({
                   ))}
                 </tbody>
               </table>
-              <p className="text-[11.5px] text-faint mt-2">
+              <p className="text-[12.5px] text-faint mt-2">
                 {plural(head.deliveryStates, "market")} delivered into · the{" "}
                 {inRows.length} with three or more · the grade is the
                 ledger&rsquo;s IN grade (the reload as a share of the next
@@ -290,12 +290,12 @@ export const LanesTab = ({
           Getting empty · {WINDOW_PHRASE[win]}
         </h3>
         {reload.reloads === 0 ? (
-          <p className="font-condensed text-[13.5px] text-dim">
+          <p className="font-condensed text-[14.5px] text-dim">
             No reloads logged in this window.
           </p>
         ) : (
-          <p className="font-condensed text-[13.5px] text-dim">
-            <b className="font-semibold text-ink text-[20px] tabular-nums">
+          <p className="font-condensed text-[14.5px] text-dim">
+            <b className="font-semibold text-ink text-[21.5px] tabular-nums">
               {reload.reloads}
             </b>{" "}
             {reload.reloads === 1 ? "reload" : "reloads"}
@@ -358,7 +358,7 @@ export const LanesTab = ({
           <div className="mt-2.5">
             <LanesMapThumb data={thumb} />
           </div>
-          <span className="inline-flex mt-2 font-condensed font-semibold text-[12.5px] text-amber-hi tracking-[.05em]">
+          <span className="inline-flex mt-2 font-condensed font-semibold text-[13.5px] text-amber-hi tracking-[.05em]">
             Open the situation board →
           </span>
         </Link>
@@ -383,7 +383,7 @@ export const LanesTab = ({
                   {lanes.rows.slice(0, LANES_SHOWN).map((l) => (
                     <div
                       key={l.lane}
-                      className="flex items-center justify-between gap-2 py-[6px] text-[12px] border-b ds2-cell-rule last:border-b-0"
+                      className="flex items-center justify-between gap-2 py-[6px] text-[13px] border-b ds2-cell-rule last:border-b-0"
                     >
                       <span className="truncate text-ink" title={l.lane}>
                         {l.lane}
@@ -395,7 +395,7 @@ export const LanesTab = ({
                     </div>
                   ))}
                 </div>
-                <p className="text-[11.5px] text-faint mt-2">
+                <p className="text-[12.5px] text-faint mt-2">
                   {plural(lanes.singles, "lane")} ran once ·{" "}
                   <Link to="/lanes" className="text-amber-hi">
                     all of them on the Lanes page ›
@@ -442,7 +442,7 @@ export const LanesTab = ({
                   {mixShown.map((m, i) => (
                     <div
                       key={m.type}
-                      className="flex items-center justify-between gap-2 text-[11.5px] text-dim"
+                      className="flex items-center justify-between gap-2 text-[12.5px] text-dim"
                     >
                       <span className="truncate flex items-center gap-1.5">
                         <span
@@ -457,7 +457,7 @@ export const LanesTab = ({
                     </div>
                   ))}
                   {mixOther > 0 && (
-                    <div className="flex items-center justify-between gap-2 text-[11.5px] text-dim">
+                    <div className="flex items-center justify-between gap-2 text-[12.5px] text-dim">
                       <span className="flex items-center gap-1.5">
                         <span
                           className="inline-block w-2 h-2 rounded-sm shrink-0"

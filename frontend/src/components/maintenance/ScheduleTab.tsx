@@ -255,17 +255,17 @@ const DueNextCell = ({
     {row ? (
       <>
         <p
-          className="font-condensed font-semibold text-[19px] leading-[1.15] mt-1.5 truncate"
+          className="font-condensed font-semibold text-[20.5px] leading-[1.15] mt-1.5 truncate"
           style={{ color: META[row.due.level].color }}
         >
           {row.item.name}
         </p>
-        <p className="mt-1 text-[11.5px] text-faint truncate">
+        <p className="mt-1 text-[12.5px] text-faint truncate">
           {urgencyLine(row.item, row.due, now, row.estimated)}
         </p>
       </>
     ) : (
-      <p className="font-condensed font-semibold text-[19px] leading-[1.15] mt-1.5 text-faint">
+      <p className="font-condensed font-semibold text-[20.5px] leading-[1.15] mt-1.5 text-faint">
         {EMPTY_SLOT[slot]}
       </p>
     )}
@@ -280,7 +280,7 @@ const Chip = ({
   tone?: "job" | "dim";
 }) => (
   <span
-    className={`inline-flex items-center h-[22px] px-2.5 rounded-[11px] font-condensed font-semibold text-[11px] tracking-[.08em] uppercase ${
+    className={`inline-flex items-center h-[22px] px-2.5 rounded-[11px] font-condensed font-semibold text-[12px] tracking-[.08em] uppercase ${
       tone === "job"
         ? "text-amber-hi border border-amber/35 bg-amber/[.08]"
         : "text-faint border border-hairline"
@@ -366,7 +366,7 @@ export const ScheduleTab = ({
   if (items.length === 0 && !showForm) {
     return (
       <div className="ds2-board p-6 text-center mt-4">
-        <p className="font-condensed text-[14px] text-dim mb-4">
+        <p className="font-condensed text-[15px] text-dim mb-4">
           No maintenance schedule yet. Load the starter schedule for your LT625 +
           X15 + TriPac (severe-duty intervals you can tune), or add clocks
           yourself.
@@ -374,7 +374,7 @@ export const ScheduleTab = ({
         {error && <p className="text-destructive text-sm mb-3">{error}</p>}
         <div className="flex gap-2 justify-center">
           <button
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
             disabled={busy}
             onClick={() => run(async () => void (await seedMaintenanceItems()))}
           >
@@ -479,7 +479,7 @@ export const ScheduleTab = ({
               <button
                 type="button"
                 onClick={() => setOpened((p) => ({ ...p, [section]: true }))}
-                className="w-full text-left px-3.5 py-[11px] border-t border-hairline-lo font-condensed text-[12.5px] text-faint hover:text-dim"
+                className="w-full text-left px-3.5 py-[11px] border-t border-hairline-lo font-condensed text-[13.5px] text-faint hover:text-dim"
               >
                 {shown.length > 0 ? (
                   <>

@@ -247,15 +247,15 @@ const AgenciesPage = () => {
         {/* statusbar — the house pattern */}
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">AGENCIES</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim min-w-0 truncate max-w-full">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">AGENCIES</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim min-w-0 truncate max-w-full">
             rolled up by agency — agents keep their own numbers
           </span>
           <span className="flex-1" />
           <Link
             to="/relationships/review"
             title={`inbound share of attributed loads since ${SYSTEM_START}`}
-            className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow hover:text-hot"
+            className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[14px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow hover:text-hot"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber" style={{ boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 90%, transparent)" }} />
             INBOUND {data.loadsLoading ? "…" : data.loadsError ? "—" : headline}
@@ -346,11 +346,11 @@ const AgenciesPage = () => {
             <div className="ds2-board mt-3 overflow-hidden">
               <AgencyRowHeader cols={["agency", "delivered · gross", "all-in rpm", "agents", "since load"]} />
               {rows.length === 0 ? (
-                <p className="px-3.5 py-4 font-condensed text-[13.5px] text-dim">
+                <p className="px-3.5 py-4 font-condensed text-[14.5px] text-dim">
                   No agencies yet — one is created the first time an agent is filed under a code.
                 </p>
               ) : found.length === 0 ? (
-                <p className="px-3.5 py-4 font-condensed text-[13.5px] text-dim">
+                <p className="px-3.5 py-4 font-condensed text-[14.5px] text-dim">
                   Nothing matches “{query.trim()}”.
                 </p>
               ) : (
@@ -361,7 +361,7 @@ const AgenciesPage = () => {
                     <button
                       type="button"
                       onClick={() => setShowQuiet((v) => !v)}
-                      className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-amber-hi hover:text-hot"
+                      className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[14px] text-amber-hi hover:text-hot"
                     >
                       {showQuiet ? "show fewer" : `${quiet.length} more · nothing delivered in this window`}
                     </button>
@@ -376,7 +376,7 @@ const AgenciesPage = () => {
                 type="button"
                 onClick={() => setShelfOpen((v) => !v)}
                 aria-expanded={shelfOpen}
-                className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint hover:text-ink"
+                className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint hover:text-ink"
               >
                 {shelfOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                 <span>
@@ -390,14 +390,14 @@ const AgenciesPage = () => {
                       ? " · …"
                       : ` · ${plural(shelf.length, "code")} · ${plural(shelfLoads, "load")}`}
                 </span>
-                <span className="ml-auto normal-case tracking-[.06em] text-[11.5px] text-amber-hi">
+                <span className="ml-auto normal-case tracking-[.06em] text-[12.5px] text-amber-hi">
                   {shelfYear ? `dash tracks from ${shelfYear} — earlier settlements are omitted` : ""}
                 </span>
               </button>
               {shelfOpen && (
                 <>
                   {shelf.length === 0 ? (
-                    <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim border-t border-hairline-lo">
+                    <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim border-t border-hairline-lo">
                       {shelfSlice.error
                         ? // Never the all-clear on a failed read: an empty
                           // shelf because the query fell over is not "nothing
@@ -457,14 +457,14 @@ const AgenciesPage = () => {
                       );
                     })
                   )}
-                  <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[12px] text-faint leading-snug">
+                  <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[13px] text-faint leading-snug">
                     These rows never enter the ladder, the tiers or the Foreman — no miles, no agent, no footprint.
                   </p>
                 </>
               )}
             </div>
 
-            <p className="mt-3 font-condensed text-[11.5px] text-faint max-w-2xl leading-snug">
+            <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-2xl leading-snug">
               An agency's numbers come off the LOADS booked through it, so a person who moves desks leaves their
               history behind. The people keep their own tiers and their own RPM — those live on the agent, not here.
               * = a load with no deadhead logged counted loaded miles only.

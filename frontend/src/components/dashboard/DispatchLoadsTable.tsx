@@ -127,7 +127,7 @@ export const DispatchLoadsTable = ({
   return (
     <Panel className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-condensed font-semibold text-[15px] tracking-[.06em] text-amber-hi">
+        <span className="font-condensed font-semibold text-[16px] tracking-[.06em] text-amber-hi">
           LOADS
         </span>
       </div>
@@ -153,12 +153,12 @@ export const DispatchLoadsTable = ({
             >
               <div className="flex items-center justify-between">
                 <span
-                  className="text-[10px] flex items-center gap-1"
+                  className="text-[11px] flex items-center gap-1"
                   style={{ color: "var(--color-status-info-text)" }}
                 >
                   <Truck size={11} /> ON THE ROAD
                 </span>
-                <span className="text-[10px] text-dim">
+                <span className="text-[11px] text-dim">
                   del {fmtDate(l.delivery_date)}
                 </span>
               </div>
@@ -175,7 +175,7 @@ export const DispatchLoadsTable = ({
           <button
             key={f.key}
             onClick={() => onFilter(f.key)}
-            className="rounded-full px-2.5 py-0.5 text-[11px]"
+            className="rounded-full px-2.5 py-0.5 text-[12px]"
             style={
               filter === f.key
                 ? { background: "var(--color-amber)", color: "var(--color-on-amber)", fontWeight: 600 }
@@ -187,7 +187,7 @@ export const DispatchLoadsTable = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-[46px_1fr_66px_46px] text-[10px] text-dim uppercase tracking-wide px-1 pb-1.5 border-b border-steel">
+      <div className="grid grid-cols-[46px_1fr_66px_46px] text-[11px] text-dim uppercase tracking-wide px-1 pb-1.5 border-b border-steel">
         <span>Load</span>
         <span>Lane</span>
         <span>Status</span>
@@ -206,7 +206,7 @@ export const DispatchLoadsTable = ({
             <Link
               key={l.load_id}
               to={`/loads/${l.load_id}`}
-              className="grid grid-cols-[46px_1fr_66px_46px] items-center text-[11px] py-1.5 px-1 border-b border-hairline-lo last:border-b-0 hover:opacity-80"
+              className="grid grid-cols-[46px_1fr_66px_46px] items-center text-[12px] py-1.5 px-1 border-b border-hairline-lo last:border-b-0 hover:opacity-80"
             >
               <span style={{ color: "var(--color-status-info-text)" }} className="underline">
                 #{l.load_number}
@@ -215,7 +215,7 @@ export const DispatchLoadsTable = ({
                 <span className="truncate">{lane(l)}</span>
                 {owed && (
                   <span
-                    className="shrink-0 rounded px-1 text-[9px]"
+                    className="shrink-0 rounded px-1 text-[11px]"
                     style={{ background: "var(--color-status-aware-bg)", color: "var(--color-amber-hi)" }}
                   >
                     {fmtDuration(detentionMinutes(l, freeHours))}
@@ -223,14 +223,14 @@ export const DispatchLoadsTable = ({
                 )}
                 {eligible && (
                   <span
-                    className="shrink-0 rounded px-1 text-[9px]"
+                    className="shrink-0 rounded px-1 text-[11px]"
                     style={{ color: "var(--color-muted-text)" }}
                   >
                     det?
                   </span>
                 )}
               </span>
-              <span className="text-[11px]">
+              <span className="text-[12px]">
                 <StatusChip status={l.load_status} />
               </span>
               <span className="text-right text-dim">
@@ -242,7 +242,7 @@ export const DispatchLoadsTable = ({
       )}
 
       <div className="flex items-center justify-between mt-2.5">
-        <span className="text-[11px] text-dim">
+        <span className="text-[12px] text-dim">
           {filtered.length === 0
             ? "0 loads"
             : `${start + 1}–${start + shown.length} of ${filtered.length}`}

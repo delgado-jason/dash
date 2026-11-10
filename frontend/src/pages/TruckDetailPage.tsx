@@ -226,10 +226,10 @@ const TruckDetailPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">TRUCKS</h1>
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">TRUCKS</h1>
           <Link
             to="/trucks"
-            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+            className="font-condensed font-medium text-[16px] text-faint hover:text-ink"
           >
             ← back to the fleet
           </Link>
@@ -244,28 +244,28 @@ const TruckDetailPage = () => {
             onUpdated={(u) => setTruck({ ...truck, avatar_url: u })}
           />
           <div className="min-w-0">
-            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+            <h2 className="font-display text-[36.5px] tracking-[.04em] leading-none">
               UNIT {truck.unit_number}
             </h2>
             <div className="flex gap-2 mt-2 flex-wrap">
               {(truck.year || truck.make || truck.model) && (
-                <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
+                <span className="font-condensed font-medium text-[11.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
                   {[truck.year, truck.make, truck.model].filter(Boolean).join(" ")}
                 </span>
               )}
-              <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8 uppercase">
+              <span className="font-condensed font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8 uppercase">
                 {truck.status.replace(/_/g, " ")}
               </span>
             </div>
           </div>
           <div className="ml-auto text-right">
             <span
-              className="inline-block font-condensed font-semibold text-[38px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
+              className="inline-block font-condensed font-semibold text-[41px] tracking-[.1em] tabular-nums px-3 py-[2px] rounded-[8px] bg-well border border-hairline"
               style={{ boxShadow: "var(--shadow-inset)" }}
             >
               {odometer.toLocaleString("en-US")}
             </span>
-            <p className="font-condensed text-[10.5px] tracking-[.14em] text-faint uppercase mt-1">
+            <p className="font-condensed text-[11.5px] tracking-[.14em] text-faint uppercase mt-1">
               odometer · one constant
             </p>
           </div>
@@ -278,24 +278,24 @@ const TruckDetailPage = () => {
           </div>
           <div className="grid grid-cols-3 border-b ds2-cell-rule">
             <div className="px-[18px] py-3 border-r ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[23px] tabular-nums">{money(revenue)}</p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+              <p className="font-condensed font-semibold text-[25px] tabular-nums">{money(revenue)}</p>
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-[2px]">
                 Earned · full net
               </p>
             </div>
             <div className="px-[18px] py-3 border-r ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[23px] tabular-nums">
+              <p className="font-condensed font-semibold text-[25px] tabular-nums">
                 {deliveredLoads.length}
               </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-[2px]">
                 Hauls delivered
               </p>
             </div>
             <div className="px-[18px] py-3">
-              <p className="font-condensed font-semibold text-[23px] tabular-nums">
+              <p className="font-condensed font-semibold text-[25px] tabular-nums">
                 {metrics.avgMpg != null ? metrics.avgMpg.toFixed(1) : "—"}
               </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-[2px]">
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-[2px]">
                 Avg MPG
               </p>
             </div>
@@ -304,11 +304,11 @@ const TruckDetailPage = () => {
           {/* the payoff */}
           <div className="px-[18px] py-[13px] border-b ds2-cell-rule">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.14em] uppercase text-faint">
                 The payoff — owning the iron
               </span>
               {payoff && (
-                <span className="font-condensed font-semibold text-[12.5px] text-dim tabular-nums">
+                <span className="font-condensed font-semibold text-[13.5px] text-dim tabular-nums">
                   {payoff.paidPct != null ? `${Math.round(payoff.paidPct * 100)}% yours · ` : ""}
                   {money(payoff.owed)} to go
                 </span>
@@ -338,7 +338,7 @@ const TruckDetailPage = () => {
                     />
                   ))}
                 </div>
-                <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                <p className="font-condensed text-[11.5px] text-faint mt-[6px]">
                   {payoff.original != null ? `${money(payoff.original)} note · ` : ""}
                   {money(payoff.monthlyPayment)}/mo — paid off, that payment comes home
                   every month
@@ -347,14 +347,14 @@ const TruckDetailPage = () => {
                     : ""}
                 </p>
                 {payoff.draftsSince > 0 && (
-                  <p className="font-condensed text-[10.5px] text-faint mt-[3px] tabular-nums">
+                  <p className="font-condensed text-[11.5px] text-faint mt-[3px] tabular-nums">
                     statement {money(payoff.statementOwed)} as of {formatDate(payoff.balanceAsOf)} ·{" "}
                     {payoff.draftsSince} {payoff.draftsSince === 1 ? "draft" : "drafts"} since
                   </p>
                 )}
               </>
             ) : (
-              <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+              <p className="font-condensed text-[13.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
                 No tracked note against this truck — free and clear, or add balances on
                 Expenses → obligations to arm the meter.
               </p>
@@ -364,12 +364,12 @@ const TruckDetailPage = () => {
           {/* next service */}
           <div className="px-[18px] py-[13px]">
             <div className="flex justify-between items-baseline gap-3 mb-[8px]">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.14em] uppercase text-faint">
                 Next service — the clocks
               </span>
               {nextClock && (
                 <span
-                  className={`font-condensed font-semibold text-[12.5px] tabular-nums ${
+                  className={`font-condensed font-semibold text-[13.5px] tabular-nums ${
                     nextClock.d.level === "overdue"
                       ? "text-status-negative-text"
                       : nextClock.d.level === "soon"
@@ -424,7 +424,7 @@ const TruckDetailPage = () => {
                     );
                   })}
                 </div>
-                <p className="font-condensed text-[10.5px] text-faint mt-[6px]">
+                <p className="font-condensed text-[11.5px] text-faint mt-[6px]">
                   {clocks[1]
                     ? `${clocks[1].it.name.toLowerCase()}${
                         clocks[1].d.milesRemaining != null
@@ -440,7 +440,7 @@ const TruckDetailPage = () => {
                 </p>
               </>
             ) : (
-              <p className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
+              <p className="font-condensed text-[13.5px] text-faint border border-dashed border-hairline rounded-[7px] px-3 py-[7px]">
                 No service clocks with a baseline yet — log services on Maintenance and
                 the clocks arm.
               </p>
@@ -450,7 +450,7 @@ const TruckDetailPage = () => {
 
         {/* the numbers — the full running-cost strip, relocated deliberately */}
         <div className="ds2-board p-4 mt-4">
-          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+          <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
             The numbers — what it costs to run
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mt-3">
@@ -492,19 +492,19 @@ const TruckDetailPage = () => {
                 }}
               >
                 <p
-                  className="font-condensed font-semibold text-[19px] tabular-nums"
+                  className="font-condensed font-semibold text-[20.5px] tabular-nums"
                   style={k.pos ? { color: "var(--color-status-positive-text)" } : undefined}
                 >
                   {k.v}
                 </p>
-                <p className="font-condensed text-[10px] tracking-[.1em] uppercase text-faint mt-[2px]">
+                <p className="font-condensed text-[11px] tracking-[.1em] uppercase text-faint mt-[2px]">
                   {k.l}
                 </p>
               </div>
             ))}
           </div>
           {metrics.windowDays > 0 && (
-            <p className="font-condensed text-[11.5px] text-faint mt-2">
+            <p className="font-condensed text-[12.5px] text-faint mt-2">
               {metrics.windowDays.toLocaleString("en-US")} days ·{" "}
               <span style={{ color: "var(--color-status-positive-text)" }}>{metrics.underLoadDays} under load</span> ·{" "}
               <span style={{ color: "var(--color-status-info-text)" }}>{metrics.homeDays} home</span> ·{" "}
@@ -531,12 +531,12 @@ const TruckDetailPage = () => {
           ) : (
             <>
               <div className="flex items-baseline gap-2.5 flex-wrap">
-                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                   Papers
                 </span>
                 <button
                   onClick={() => setEditing(true)}
-                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
+                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] text-dim bg-well border border-hairline"
                   style={{ boxShadow: "var(--shadow-inset)" }}
                 >
                   EDIT
@@ -555,7 +555,7 @@ const TruckDetailPage = () => {
                 <Spec label="In service" value={formatDate(truck.in_service_date)} />
                 <Spec label="Status" value={truck.status.replace(/_/g, " ")} />
               </div>
-              <p className="font-condensed text-[12px] text-faint mt-3">
+              <p className="font-condensed text-[13px] text-faint mt-3">
                 Service history lives on the{" "}
                 <Link to="/maintenance" className="text-amber-hi hover:text-hot">
                   Maintenance page
@@ -568,11 +568,11 @@ const TruckDetailPage = () => {
 
         {/* recent hauls */}
         <div className="ds2-board p-4 mt-4">
-          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+          <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
             Recent hauls — every row links to its load
           </p>
           {earnedLoads.length === 0 ? (
-            <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+            <p className="font-condensed text-[14px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
               None for this truck yet.
             </p>
           ) : (
@@ -580,11 +580,11 @@ const TruckDetailPage = () => {
               {earnedLoads.slice(0, 6).map((l) => (
                 <div
                   key={l.load_id}
-                  className="grid grid-cols-[92px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                  className="grid grid-cols-[92px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
                 >
                   <Link
                     to={`/loads/${l.load_id}`}
-                    className="font-display text-[15px] tracking-[.05em] text-amber-hi hover:text-hot"
+                    className="font-display text-[16px] tracking-[.05em] text-amber-hi hover:text-hot"
                   >
                     {l.load_number}
                   </Link>

@@ -23,7 +23,7 @@ export const StatusPill = ({
   children: ReactNode;
 }) => (
   <span
-    className={`inline-flex items-center gap-1.5 h-[21px] px-2.5 rounded-[10px] text-[10px] font-semibold tracking-[.09em] uppercase before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-current ${TONE[tone]} ${className}`}
+    className={`inline-flex items-center gap-1.5 h-[21px] px-2.5 rounded-[10px] text-[11px] font-semibold tracking-[.09em] uppercase before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-current ${TONE[tone]} ${className}`}
   >
     {children}
   </span>
@@ -41,9 +41,9 @@ export const AlertLamp = ({
   children: ReactNode;
 }) => (
   <div
-    className={`flex items-center gap-2.5 h-[34px] px-3.5 rounded-lg border border-amber/30 bg-amber/8 text-[12.5px] text-dim ${className}`}
+    className={`flex items-center gap-2.5 h-[34px] px-3.5 rounded-lg border border-amber/30 bg-amber/8 text-[13.5px] text-dim ${className}`}
   >
-    <span className="text-[9.5px] font-semibold tracking-[.14em] uppercase text-amber-hi">
+    <span className="text-[11px] font-semibold tracking-[.14em] uppercase text-amber-hi">
       {category}
     </span>
     <span className="min-w-0 truncate">{children}</span>

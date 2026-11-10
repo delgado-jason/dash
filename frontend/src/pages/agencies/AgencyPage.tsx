@@ -74,7 +74,7 @@ const sharedDomain = (agents: AgencyAgentRow[]): string | null => {
 // The mock's `.chip dim` — the quiet fact chip the header wears for the city
 // and the shared email domain. Module level, never inside a render body.
 const DimChip = ({ children }: { children: ReactNode }) => (
-  <span className="inline-flex items-center h-[22px] px-2 rounded-[5px] font-condensed font-semibold text-[11px] tracking-[.06em] uppercase bg-dim/10 text-dim">
+  <span className="inline-flex items-center h-[22px] px-2 rounded-[5px] font-condensed font-semibold text-[12px] tracking-[.06em] uppercase bg-dim/10 text-dim">
     {children}
   </span>
 );
@@ -188,7 +188,7 @@ const AgencyPage = () => {
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           <Link
             to="/agencies"
-            className="inline-flex items-center gap-1 font-condensed font-semibold text-[12px] tracking-[.08em] uppercase text-dim hover:text-ink"
+            className="inline-flex items-center gap-1 font-condensed font-semibold text-[13px] tracking-[.08em] uppercase text-dim hover:text-ink"
           >
             <ChevronLeft size={15} /> Agencies
           </Link>
@@ -230,7 +230,7 @@ const AgencyPage = () => {
           // Only when the book actually came through: with the lamp lit above,
           // the missing agency is a symptom, not a verdict on the id.
           bookError ? null : (
-            <p className="mt-6 font-condensed text-[14px] text-dim">
+            <p className="mt-6 font-condensed text-[15px] text-dim">
               No agency with that id.{" "}
               <Link to="/agencies" className="text-amber-hi hover:text-hot underline underline-offset-2">
                 Back to the agencies
@@ -241,7 +241,7 @@ const AgencyPage = () => {
         ) : (
           <>
             <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <h1 className="font-display text-[26px] leading-none text-amber">
+              <h1 className="font-display text-[28px] leading-none text-amber">
                 {row.agency.name ?? row.agency.agency_code}
               </h1>
               <CodeChip code={row.agency.agency_code} kind="agency" />
@@ -297,7 +297,7 @@ const AgencyPage = () => {
                   <>
                     {row.allInRpm == null ? "—" : `${fmtRpm(row.allInRpm)}${row.partialRpm ? "*" : ""}`}
                     {deskPerDay != null && (
-                      <span className="block font-condensed text-[15px] mt-0.5">
+                      <span className="block font-condensed text-[16px] mt-0.5">
                         <span className={deskPerDayTone ? perDayTextClass(deskPerDayTone) : undefined}>
                           {fmtPerDay(deskPerDay)}
                         </span>
@@ -325,7 +325,7 @@ const AgencyPage = () => {
                 Agents · {row.agents.length}
               </SectionHead>
               {row.agents.length === 0 ? (
-                <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">
+                <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">
                   Nobody is filed under this agency yet — file an agent under the code and they show up here.
                 </p>
               ) : (
@@ -349,11 +349,11 @@ const AgencyPage = () => {
             <div className="ds2-board mt-3 overflow-hidden">
               <SectionHead right="settlements vs dash">Code trail</SectionHead>
               {delivered.length === 0 ? (
-                <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">
+                <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">
                   No delivered freight in this window — nothing for the settlements to disagree with.
                 </p>
               ) : trail.unmatched.length === 0 ? (
-                <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">
+                <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">
                   {trail.matched} of {delivered.length} delivered loads post a code this agency owns. Nothing to
                   reconcile.
                   {trail.uncoded > 0 && ` ${plural(trail.uncoded, "load")} not on a settlement yet.`}
@@ -364,7 +364,7 @@ const AgencyPage = () => {
                       the reader is left doing arithmetic that does not close:
                       "6 of 10 … · 1 under a code it does not · 3 not settled
                       yet". The uncoded loads are named in BOTH branches. */}
-                  <p className="px-3.5 pb-2 pt-1 font-condensed text-[13.5px] text-dim">
+                  <p className="px-3.5 pb-2 pt-1 font-condensed text-[14.5px] text-dim">
                     {trail.matched} of {delivered.length} delivered loads post a code this agency owns
                     {trail.uncoded > 0 ? `, ${plural(trail.uncoded, "load")} not on a settlement yet` : ""}.{" "}
                     {plural(trail.unmatched.length, "load")} posted under a code it does not:
@@ -375,10 +375,10 @@ const AgencyPage = () => {
                       to={`/loads/${u.load.load_id}`}
                       className="flex items-center gap-2.5 px-3.5 py-2.5 border-t border-hairline-lo hover:bg-white/[.02]"
                     >
-                      <span className="font-condensed font-medium text-[14px] text-amber">{u.load.load_number}</span>
-                      <span className="font-condensed text-[12px] text-dim">posted</span>
+                      <span className="font-condensed font-medium text-[15px] text-amber">{u.load.load_number}</span>
+                      <span className="font-condensed text-[13px] text-dim">posted</span>
                       <CodeChip code={u.postingCode} kind="posting" />
-                      <span className="ml-auto font-condensed text-[12px] text-faint">
+                      <span className="ml-auto font-condensed text-[13px] text-faint">
                         {shortDate(u.load.pickup_date) ?? "—"}
                       </span>
                     </Link>
@@ -392,7 +392,7 @@ const AgencyPage = () => {
                 Loads · {WINDOW_LABEL[range]}
               </SectionHead>
               {windowed.length === 0 ? (
-                <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">
+                <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">
                   Nothing booked through this desk in this window.
                 </p>
               ) : (
@@ -405,18 +405,18 @@ const AgencyPage = () => {
                     >
                       <span className="min-w-0">
                         <span className="flex items-center gap-2 flex-wrap">
-                          <span className="font-condensed font-medium text-[14px] text-amber">{l.load_number}</span>
+                          <span className="font-condensed font-medium text-[15px] text-amber">{l.load_number}</span>
                           {l.posting_code && <CodeChip code={l.posting_code} kind="posting" />}
                           {!isDelivered(l) && (
                             <StatusPill tone="amber">{l.load_status.replace(/_/g, " ")}</StatusPill>
                           )}
                         </span>
-                        <span className="block text-[11.5px] text-dim truncate mt-0.5">
+                        <span className="block text-[12.5px] text-dim truncate mt-0.5">
                           {l.origin_city}, {l.origin_state} → {l.destination_city}, {l.destination_state} ·{" "}
                           {shortDate(l.pickup_date) ?? "—"}
                         </span>
                       </span>
-                      <span className="font-condensed text-[13px] text-dim tabular-nums text-right">
+                      <span className="font-condensed text-[14px] text-dim tabular-nums text-right">
                         {money(loadGross(l))}
                       </span>
                     </Link>
@@ -425,7 +425,7 @@ const AgencyPage = () => {
                     <button
                       type="button"
                       onClick={() => setShowAllLoads((v) => !v)}
-                      className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-amber-hi hover:text-hot"
+                      className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[14px] text-amber-hi hover:text-hot"
                     >
                       {showAllLoads ? "show fewer" : `${windowed.length - LOADS_FOLD} more`}
                     </button>
@@ -434,7 +434,7 @@ const AgencyPage = () => {
               )}
             </div>
 
-            <p className="mt-3 font-condensed text-[11.5px] text-faint max-w-2xl leading-snug">
+            <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-2xl leading-snug">
               This desk's numbers come off the loads booked THROUGH it, whoever works here now. The people's delivered
               counts and RPM are their own, over every load they have ever booked. * = a load with no deadhead logged
               counted loaded miles only.

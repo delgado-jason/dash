@@ -16,7 +16,7 @@ interface Props {
 
 const KindTag = ({ kind }: { kind: string }) => (
   <span
-    className="text-[9px] px-1.5 py-0.5 rounded-full"
+    className="text-[11px] px-1.5 py-0.5 rounded-full"
     style={
       kind === "job_site"
         ? { background: "var(--color-status-info-bg)", color: "var(--color-status-info-text)" }
@@ -134,14 +134,14 @@ export const FacilityPicker = ({
                   className="px-2.5 py-2 flex items-center justify-between gap-2"
                   style={{ background: "var(--color-status-aware-bg)", borderBottom: "1px solid color-mix(in srgb, var(--color-amber) 30%, transparent)" }}
                 >
-                  <span className="text-[11px]" style={{ color: "var(--color-amber-hi)" }}>
+                  <span className="text-[12px]" style={{ color: "var(--color-amber-hi)" }}>
                     ⚠ Looks like this exists · {facilityLabel(nudge)} · {nudge.city},{" "}
                     {nudge.state}
                   </span>
                   <button
                     type="button"
                     onClick={() => choose(nudge)}
-                    className="bg-amber text-steel text-[11px] px-2 py-0.5 rounded font-semibold shrink-0"
+                    className="bg-amber text-steel text-[12px] px-2 py-0.5 rounded font-semibold shrink-0"
                   >
                     Use it
                   </button>

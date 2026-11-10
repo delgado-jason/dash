@@ -22,16 +22,16 @@ export const AGENCY_ROW_GRID =
 // One md+ cell: a number and the small word under it. `sub` null draws nothing
 // — a cell with no verdict says nothing rather than inventing one.
 export const RowCell = ({ value, sub }: { value: ReactNode; sub?: ReactNode }) => (
-  <span className="hidden md:block font-condensed text-[13px] text-dim text-right tabular-nums leading-tight">
+  <span className="hidden md:block font-condensed text-[14px] text-dim text-right tabular-nums leading-tight">
     <span className="block truncate">{value}</span>
-    {sub ? <span className="block text-[10.5px] text-faint truncate">{sub}</span> : null}
+    {sub ? <span className="block text-[11.5px] text-faint truncate">{sub}</span> : null}
   </span>
 );
 
 // The md+ column words, on the row grid.
 export const AgencyRowHeader = ({ cols }: { cols: [string, string, string, string, string] }) => (
   <div
-    className={`hidden md:grid items-center gap-3 px-3.5 py-2 ${AGENCY_ROW_GRID} font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint`}
+    className={`hidden md:grid items-center gap-3 px-3.5 py-2 ${AGENCY_ROW_GRID} font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint`}
   >
     <span>{cols[0]}</span>
     <span className="text-right">{cols[1]}</span>
@@ -95,23 +95,23 @@ export const AgencyRow = ({
             <Link
               to={to}
               onClick={stop}
-              className="font-condensed font-medium text-[15px] text-amber hover:text-hot transition-colors leading-tight"
+              className="font-condensed font-medium text-[16px] text-amber hover:text-hot transition-colors leading-tight"
             >
               {name}
             </Link>
           ) : (
-            <span className="font-condensed font-medium text-[15px] text-amber leading-tight">{name}</span>
+            <span className="font-condensed font-medium text-[16px] text-amber leading-tight">{name}</span>
           )}
           {chips}
         </div>
-        <div className="text-[11.5px] text-dim truncate mt-0.5">{context}</div>
+        <div className="text-[12.5px] text-dim truncate mt-0.5">{context}</div>
       </div>
       {cells[0]}
       {cells[1]}
       {cells[2]}
       <span className="text-right">
-        <span className="block font-condensed font-semibold text-[17px] text-ink tabular-nums leading-none">{right.value}</span>
-        <span className="block font-condensed text-[10px] tracking-[.08em] uppercase text-faint mt-0.5">
+        <span className="block font-condensed font-semibold text-[18.5px] text-ink tabular-nums leading-none">{right.value}</span>
+        <span className="block font-condensed text-[11px] tracking-[.08em] uppercase text-faint mt-0.5">
           {right.caption}
         </span>
       </span>

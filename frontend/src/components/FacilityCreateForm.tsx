@@ -146,7 +146,7 @@ export const FacilityCreateForm = ({
           className="rounded-md p-2"
           style={{ border: "1px solid color-mix(in srgb, var(--color-amber) 40%, transparent)", background: "var(--color-status-aware-bg)" }}
         >
-          <p className="text-[11px]" style={{ color: "var(--color-amber-hi)" }}>
+          <p className="text-[12px]" style={{ color: "var(--color-amber-hi)" }}>
             ⚠ Looks like{" "}
             <b>
               {facilityLabel(dup)} · {dup.city}, {dup.state}

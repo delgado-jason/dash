@@ -49,7 +49,7 @@ const MONTH = new Date().toLocaleString("en-US", { month: "short" });
 
 const PurposeChip = ({ p }: { p: Purpose }) => (
   <span
-    className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[.1em] uppercase"
+    className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[.1em] uppercase"
     style={{ color: PURPOSE[p].color }}
   >
     <span className="w-1.5 h-1.5 rounded-full" style={{ background: "currentColor" }} />
@@ -136,15 +136,15 @@ const TripsPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">TRIPS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">TRIPS</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the miles the loads don't cover
           </span>
           <span className="flex-1" />
           {!showForm && (
             <button
               onClick={() => openCreate()}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
             >
               + LOG TRIP
             </button>
@@ -154,11 +154,11 @@ const TripsPage = () => {
         {/* the year ledger, by purpose */}
         <div className="ds2-board overflow-hidden mt-4">
           <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-            <span className="font-condensed font-semibold tabular-nums text-[17px] text-amber-hi">{YEAR}</span>
-            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            <span className="font-condensed font-semibold tabular-nums text-[18.5px] text-amber-hi">{YEAR}</span>
+            <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
               trip miles by purpose
             </span>
-            <span className="ml-auto font-condensed font-medium text-[12.5px] text-dim">
+            <span className="ml-auto font-condensed font-medium text-[13.5px] text-dim">
               {MONTH} so far · <b className="font-semibold text-ink tabular-nums">{num(totals.monthMi)} mi</b>
             </span>
           </div>
@@ -172,15 +172,15 @@ const TripsPage = () => {
                 >
                   <PurposeChip p={p} />
                   <p
-                    className={`font-condensed font-semibold text-[24px] mt-1 tabular-nums ${pt.ytdTrips === 0 ? "text-faint" : ""}`}
+                    className={`font-condensed font-semibold text-[26px] mt-1 tabular-nums ${pt.ytdTrips === 0 ? "text-faint" : ""}`}
                   >
                     {num(pt.ytdMi)}{" "}
-                    <span className="text-[13px] text-faint font-medium">
+                    <span className="text-[14px] text-faint font-medium">
                       mi{pt.ytdTrips > 0 ? ` · ${pt.ytdTrips} trip${pt.ytdTrips === 1 ? "" : "s"}` : ""}
                     </span>
                   </p>
                   {pt.monthMi > 0 && (
-                    <p className="font-condensed font-medium text-[12.5px] text-dim mt-[3px] tabular-nums">
+                    <p className="font-condensed font-medium text-[13.5px] text-dim mt-[3px] tabular-nums">
                       {MONTH} · <b className="font-semibold text-amber-hi">{num(pt.monthMi)} mi</b>
                     </p>
                   )}
@@ -193,14 +193,14 @@ const TripsPage = () => {
         {/* answering line + filters */}
         <div className="flex items-center gap-3 flex-wrap mt-4">
           <div className="flex items-baseline gap-2">
-            <span className="font-condensed font-semibold text-[21px] tabular-nums">
+            <span className="font-condensed font-semibold text-[22.5px] tabular-nums">
               {visible.length} trip{visible.length === 1 ? "" : "s"}
             </span>
-            <span className="text-[12px] text-faint">in this view ·</span>
+            <span className="text-[13px] text-faint">in this view ·</span>
             <b className="font-condensed font-semibold tabular-nums">{num(visibleMiles)} miles</b>
           </div>
           {gaps.length > 0 && (
-            <span className="inline-flex items-center gap-1.5 h-[26px] px-3 rounded-full font-condensed font-semibold text-[12px] text-amber-hi border border-amber/30 bg-amber/10">
+            <span className="inline-flex items-center gap-1.5 h-[26px] px-3 rounded-full font-condensed font-semibold text-[13px] text-amber-hi border border-amber/30 bg-amber/10">
               ⚠ {gaps.length} gap{gaps.length === 1 ? "" : "s"} · {num(gapMiles)} mi unaccounted
             </span>
           )}
@@ -212,7 +212,7 @@ const TripsPage = () => {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-2.5 rounded-md font-condensed font-semibold text-[12.5px] ${
+                className={`px-2.5 rounded-md font-condensed font-semibold text-[13.5px] ${
                   filter === f ? "bg-amber text-canvas" : "text-dim hover:text-ink"
                 }`}
               >
@@ -251,7 +251,7 @@ const TripsPage = () => {
                       (h, i) => (
                         <th
                           key={i}
-                          className={`text-[9.5px] font-semibold tracking-[.14em] uppercase text-faint px-4 py-2.5 border-b border-hairline whitespace-nowrap ${h === "Miles" ? "text-right" : "text-left"}`}
+                          className={`text-[11px] font-semibold tracking-[.14em] uppercase text-faint px-4 py-2.5 border-b border-hairline whitespace-nowrap ${h === "Miles" ? "text-right" : "text-left"}`}
                         >
                           {h}
                         </th>
@@ -265,10 +265,10 @@ const TripsPage = () => {
                       <tr key={`gap-${item.gap.fromOdo}`}>
                         <td colSpan={7} className="border-b ds2-cell-rule p-0">
                           <div className="flex items-center gap-3 m-2 px-3.5 py-2 rounded-[9px] border border-dashed border-amber/45 bg-amber/5">
-                            <span className="text-[9.5px] font-semibold tracking-[.13em] uppercase text-amber-hi shrink-0">
+                            <span className="text-[11px] font-semibold tracking-[.13em] uppercase text-amber-hi shrink-0">
                               ⚠ Unaccounted
                             </span>
-                            <span className="text-[12.5px] text-dim min-w-0">
+                            <span className="text-[13.5px] text-dim min-w-0">
                               <b className="text-ink font-condensed tabular-nums">
                                 {num(item.gap.miles)} mi
                               </b>{" "}
@@ -286,7 +286,7 @@ const TripsPage = () => {
                             </span>
                             <button
                               onClick={() => openCreate(item.gap.fromOdo)}
-                              className="ml-auto shrink-0 h-7 px-3 rounded-lg border border-amber/50 text-amber-hi font-condensed font-semibold text-[12px] hover:bg-amber/10"
+                              className="ml-auto shrink-0 h-7 px-3 rounded-lg border border-amber/50 text-amber-hi font-condensed font-semibold text-[13px] hover:bg-amber/10"
                             >
                               LOG THIS GAP
                             </button>
@@ -299,28 +299,28 @@ const TripsPage = () => {
                         onClick={() => openEdit(item.trip)}
                         className="cursor-pointer transition-colors hover:bg-well group"
                       >
-                        <td className="px-4 py-2.5 border-b ds2-cell-rule font-condensed font-semibold text-amber-hi text-[14px] whitespace-nowrap group-hover:shadow-[inset_3px_0_0_var(--color-amber)]">
+                        <td className="px-4 py-2.5 border-b ds2-cell-rule font-condensed font-semibold text-amber-hi text-[15px] whitespace-nowrap group-hover:shadow-[inset_3px_0_0_var(--color-amber)]">
                           {item.trip.trip_number}
                         </td>
-                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-dim text-[13px] whitespace-nowrap">
+                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-dim text-[14px] whitespace-nowrap">
                           {formatDate(item.trip.trip_date)}
                         </td>
                         <td className="px-4 py-2.5 border-b ds2-cell-rule whitespace-nowrap">
                           <PurposeChip p={item.trip.trip_purpose} />
                         </td>
-                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-ink text-[13px] whitespace-nowrap">
+                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-ink text-[14px] whitespace-nowrap">
                           {tripRoute(item.trip)}
                         </td>
-                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-[12.5px] whitespace-nowrap font-condensed text-dim tabular-nums">
+                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-[13.5px] whitespace-nowrap font-condensed text-dim tabular-nums">
                           {item.trip.odometer_start != null && item.trip.odometer_end != null
                             ? `${num(Number(item.trip.odometer_start))} → ${num(Number(item.trip.odometer_end))}`
                             : "—"}
                         </td>
-                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-right font-condensed font-semibold text-ink text-[14.5px] tabular-nums whitespace-nowrap">
+                        <td className="px-4 py-2.5 border-b ds2-cell-rule text-right font-condensed font-semibold text-ink text-[15.5px] tabular-nums whitespace-nowrap">
                           {miles(item.trip) != null ? num(miles(item.trip)!) : "—"}
                         </td>
                         <td className="px-4 py-2.5 border-b ds2-cell-rule text-right">
-                          <span className="text-[10px] text-amber-hi opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[11px] text-amber-hi opacity-0 group-hover:opacity-100 transition-opacity">
                             → edit
                           </span>
                         </td>

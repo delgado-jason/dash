@@ -147,7 +147,7 @@ const OnTimeBadge = ({ status }: { status: OnTime | null }) => {
   const s = ONTIME_STYLE[status];
   return (
     <span
-      className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+      className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
       style={{ background: s.bg, color: s.fg }}
     >
       {s.label}
@@ -173,7 +173,7 @@ const StopTimes = ({
       <span className="text-sm">{fmtTime(outTime)}</span>
       {d && (
         <span
-          className="ml-auto text-[11px] px-2 py-0.5 rounded-full"
+          className="ml-auto text-[12px] px-2 py-0.5 rounded-full"
           style={{
             backgroundColor: "var(--color-status-positive-bg)",
             color: "var(--color-status-positive-text)",
@@ -660,7 +660,7 @@ export const LoadDetailPage = () => {
       <div className="flex flex-col gap-3 mt-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="font-display text-[27px] tracking-[.05em] leading-none">{load.load_number}</h1>
+            <h1 className="font-display text-[29px] tracking-[.05em] leading-none">{load.load_number}</h1>
             {/* The stamp IS the status once one exists — badges only carry
                 the un-stampable states (booked / in transit), so the verdict
                 keeps its meaning (Jason's call, 2026-08-09). */}
@@ -681,10 +681,10 @@ export const LoadDetailPage = () => {
               const meta = VERDICT_META[g.verdict as keyof typeof VERDICT_META];
               return (
                 <span className="inline-flex items-center gap-2 h-[26px] px-2.5 rounded-[13px] bg-well border border-hairline">
-                  <span className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase" style={{ color: meta.fg }}>
+                  <span className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase" style={{ color: meta.fg }}>
                     {meta.label}
                   </span>
-                  <span className="font-condensed font-semibold text-[10.5px] text-faint">booked grade</span>
+                  <span className="font-condensed font-semibold text-[11.5px] text-faint">booked grade</span>
                 </span>
               );
             })()}
@@ -707,10 +707,10 @@ export const LoadDetailPage = () => {
                     isDelivered(load) ? "" : " — planned, this load has not delivered yet"
                   }${word ? ` · ${word}` : ""}`}
                 >
-                  <span className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase" style={{ color: fg }}>
+                  <span className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase" style={{ color: fg }}>
                     {fmtPerDay(perDay)} /DAY
                   </span>
-                  <span className="font-condensed font-semibold text-[10.5px] text-faint">
+                  <span className="font-condensed font-semibold text-[11.5px] text-faint">
                     {isDelivered(load) ? `${days}d on the truck` : `${days}d planned`}
                   </span>
                 </span>
@@ -727,7 +727,7 @@ export const LoadDetailPage = () => {
             {/* Decision 4: the claim flag — breaks the agent's on-time,
                 claim-free streak. Owner and dispatcher both set it. */}
             <label
-              className={`inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-[13px] border font-condensed font-semibold text-[11px] tracking-[.08em] uppercase cursor-pointer select-none ${
+              className={`inline-flex items-center gap-1.5 h-[26px] px-2.5 rounded-[13px] border font-condensed font-semibold text-[12px] tracking-[.08em] uppercase cursor-pointer select-none ${
                 load.claim_filed === true
                   ? "border-status-negative-text/50 bg-status-negative-text/10 text-status-negative-text"
                   : "border-hairline text-dim hover:text-ink"
@@ -743,7 +743,7 @@ export const LoadDetailPage = () => {
               Claim filed
             </label>
             {claimError && (
-              <span role="alert" className="font-condensed text-[11.5px] text-destructive">
+              <span role="alert" className="font-condensed text-[12.5px] text-destructive">
                 {claimError}
               </span>
             )}
@@ -758,7 +758,7 @@ export const LoadDetailPage = () => {
               follows it. On a phone it wraps under the stamps. */}
           <div className="mt-3 max-w-2xl">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="text-[11px] uppercase tracking-widest text-faint font-condensed">
+              <span className="text-[12px] uppercase tracking-widest text-faint font-condensed">
                 The agent's customer on this load
               </span>
               <SegmentedTabs
@@ -773,27 +773,27 @@ export const LoadDetailPage = () => {
                 }))}
               />
               {endError && (
-                <span role="alert" className="font-condensed text-[11.5px] text-destructive">
+                <span role="alert" className="font-condensed text-[12.5px] text-destructive">
                   {endError}
                 </span>
               )}
             </div>
-            <p className="text-[11.5px] text-faint mt-1.5">
+            <p className="text-[12.5px] text-faint mt-1.5">
               Shipper puts the origin on the agent's footprint, Receiver the destination, Neither
               nothing at all.
             </p>
 
             {suggestion && (
               <Well className="mt-2 px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="text-[11px] uppercase tracking-widest text-amber font-condensed shrink-0">
+                <span className="text-[12px] uppercase tracking-widest text-amber font-condensed shrink-0">
                   dash
                 </span>
-                <span className="text-[13px] text-ink/90 flex-1 min-w-[12rem]">{suggestion.why}</span>
+                <span className="text-[14px] text-ink/90 flex-1 min-w-[12rem]">{suggestion.why}</span>
                 <button
                   type="button"
                   disabled={savingEnd}
                   onClick={() => void setCustomerEnd(suggestion.end)}
-                  className="h-7 px-3 rounded-[9px] border border-hairline text-dim hover:text-ink text-[12.5px] font-condensed font-semibold shrink-0 disabled:opacity-50 disabled:hover:text-dim"
+                  className="h-7 px-3 rounded-[9px] border border-hairline text-dim hover:text-ink text-[13.5px] font-condensed font-semibold shrink-0 disabled:opacity-50 disabled:hover:text-dim"
                 >
                   Mark {suggestion.end === "receiver" ? "Receiver" : "Shipper"}
                 </button>
@@ -827,7 +827,7 @@ export const LoadDetailPage = () => {
             <p className="font-condensed text-lg" style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
               TONU fee owed · {money(revenue)}
             </p>
-            <p className="text-[11px] text-dim">
+            <p className="text-[12px] text-dim">
               Truck ordered, not used. Collect the fee, then mark it.
             </p>
           </div>
@@ -861,7 +861,7 @@ export const LoadDetailPage = () => {
             <p className="font-condensed text-lg" style={{ color: "var(--color-amber-hi)" }}>
               Possible detention · {detentionLabel(load, freeHours)}
             </p>
-            <p className="text-[11px] text-dim">
+            <p className="text-[12px] text-dim">
               {freeHoursKnown
                 ? `Released past your ${freeHours}h free`
                 : `Released past ${freeHours}h free — dash's default, not your setting; the settlement schedule hasn't loaded`}{" "}
@@ -898,7 +898,7 @@ export const LoadDetailPage = () => {
             <p className="font-condensed text-lg" style={{ color: "var(--color-amber-hi)" }}>
               Detention · {detentionLabel(load, freeHours)} · waiting on payment
             </p>
-            <p className="text-[11px] text-dim">
+            <p className="text-[12px] text-dim">
               Confirmed with the agent. Bill it as an accessorial; mark paid
               when it lands.
             </p>
@@ -1005,7 +1005,7 @@ export const LoadDetailPage = () => {
           <div className="flex items-baseline justify-between gap-2">
             <p className="ds2-label">Shipper</p>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-dim">
+              <span className="text-[12px] text-dim">
                 Pickup · {fmtDate(load.pickup_date)}
               </span>
               <OnTimeBadge
@@ -1033,7 +1033,7 @@ export const LoadDetailPage = () => {
             {load.origin_city}, {load.origin_state}
           </p>
           {schedLabel(load.pickup_appt_start, load.pickup_appt_end) && (
-            <p className="text-[11px] text-dim mt-1">
+            <p className="text-[12px] text-dim mt-1">
               Scheduled ·{" "}
               {schedLabel(load.pickup_appt_start, load.pickup_appt_end)}
             </p>
@@ -1044,7 +1044,7 @@ export const LoadDetailPage = () => {
           <div className="flex items-baseline justify-between gap-2">
             <p className="ds2-label">Receiver</p>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-dim">
+              <span className="text-[12px] text-dim">
                 Delivery · {fmtDate(load.delivery_date)}
               </span>
               <OnTimeBadge
@@ -1072,7 +1072,7 @@ export const LoadDetailPage = () => {
             {load.destination_city}, {load.destination_state}
           </p>
           {schedLabel(load.delivery_appt_start, load.delivery_appt_end) && (
-            <p className="text-[11px] text-dim mt-1">
+            <p className="text-[12px] text-dim mt-1">
               Scheduled ·{" "}
               {schedLabel(load.delivery_appt_start, load.delivery_appt_end)}
             </p>
@@ -1220,24 +1220,24 @@ export const LoadDetailPage = () => {
           {Math.abs(net - revenue) > 0.005 && (
             <>
               <div className="ds2-well mt-2.5 px-3.5 py-2.5 flex justify-between items-baseline">
-                <span className="text-[10.5px] font-semibold tracking-[.14em] uppercase text-amber-hi">Your net</span>
-                <span className="font-condensed font-semibold text-[24px] text-amber-hi tabular-nums">
+                <span className="text-[11.5px] font-semibold tracking-[.14em] uppercase text-amber-hi">Your net</span>
+                <span className="font-condensed font-semibold text-[26px] text-amber-hi tabular-nums">
                   {moneyCents(net)}
                 </span>
               </div>
-              <p className="text-[11px] text-dim mt-1">
+              <p className="text-[12px] text-dim mt-1">
                 After your carrier's cut — what your company keeps.
               </p>
             </>
           )}
-          {settledOn && <p className="font-condensed text-[12px] text-dim mt-1">{settledOn}</p>}
+          {settledOn && <p className="font-condensed text-[13px] text-dim mt-1">{settledOn}</p>}
         </Panel>
 
         <Panel className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <p className="ds2-label">Fuel</p>
             <span
-              className="text-[11px] px-2 py-0.5 rounded"
+              className="text-[12px] px-2 py-0.5 rounded"
               style={{
                 backgroundColor: fuelAllMeasured
                   ? "var(--color-status-positive-bg)"
@@ -1322,7 +1322,7 @@ export const LoadDetailPage = () => {
                             : { background: "transparent", border: "1px solid var(--color-hairline)" }
                         }
                       />
-                      <span className={`text-[9px] font-semibold tracking-[.1em] uppercase ${on ? "text-dim" : "text-faint"}`}>{nm}</span>
+                      <span className={`text-[11px] font-semibold tracking-[.1em] uppercase ${on ? "text-dim" : "text-faint"}`}>{nm}</span>
                     </div>
                     {i < stations.length - 1 && (
                       <span className={`h-[2px] flex-1 mx-1.5 -mt-3.5 ${stations[i + 1][1] ? "bg-amber/50" : "bg-hairline"}`} />
@@ -1364,9 +1364,9 @@ export const LoadDetailPage = () => {
             </button>
           </div>
           {needsDelivered && (
-            <p className="font-condensed text-[12px] text-amber-hi mt-2">{needsDelivered}</p>
+            <p className="font-condensed text-[13px] text-amber-hi mt-2">{needsDelivered}</p>
           )}
-          {saveError && <p className="font-condensed text-[12px] text-amber-hi mt-2">{saveError}</p>}
+          {saveError && <p className="font-condensed text-[13px] text-amber-hi mt-2">{saveError}</p>}
         </Panel>
       </div>
 
@@ -1401,7 +1401,7 @@ export const LoadDetailPage = () => {
                   <Fragment key={a.accessorial_id}>
                   {reimbursementRows[0]?.accessorial_id === a.accessorial_id && (
                     <tr className="border-t border-hairline">
-                      <td colSpan={3} className="py-2 font-condensed text-[12px] text-dim">
+                      <td colSpan={3} className="py-2 font-condensed text-[13px] text-dim">
                         reimbursements · {moneyCents(reimbursementsTotal)} · paid back, not revenue
                         {load.reimbursements != null &&
                           Number.isFinite(Number(load.reimbursements)) &&
@@ -1426,10 +1426,10 @@ export const LoadDetailPage = () => {
                         a.accessorial_type
                       )}
                       {passThrough && !editing && (
-                        <span className="font-condensed text-[12px] text-dim"> · reimbursement</span>
+                        <span className="font-condensed text-[13px] text-dim"> · reimbursement</span>
                       )}
                       {a.warning && (
-                        <p className="font-condensed text-[12px] text-amber-hi mt-0.5">{a.warning}</p>
+                        <p className="font-condensed text-[13px] text-amber-hi mt-0.5">{a.warning}</p>
                       )}
                     </td>
                     <td className="py-2 text-right whitespace-nowrap">
@@ -1548,7 +1548,7 @@ export const LoadDetailPage = () => {
         <div className="flex items-center justify-between mb-3">
           <p className="ds2-label">Paperwork</p>
           {documents.length > 0 && (
-            <span className="text-[11px] text-faint">
+            <span className="text-[12px] text-faint">
               {documents.length} filed on the server
             </span>
           )}
@@ -1570,14 +1570,14 @@ export const LoadDetailPage = () => {
             n.toLocaleString("en-US", { style: "currency", currency: "USD" });
           const chip = (bg: string, fg: string, text: string) => (
             <span
-              className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-[.06em]"
+              className="text-[11px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-[.06em]"
               style={{ backgroundColor: bg, color: fg }}
             >
               {text}
             </span>
           );
           return (
-            <div className="mb-3 px-3 py-2.5 rounded-[9px] border border-hairline bg-well font-condensed text-[12.5px] leading-relaxed">
+            <div className="mb-3 px-3 py-2.5 rounded-[9px] border border-hairline bg-well font-condensed text-[13.5px] leading-relaxed">
               <div className="flex items-center gap-2 flex-wrap">
                 {roll.status === "unexplained"
                   ? chip("var(--color-status-negative-bg)", "var(--color-status-negative-text)",
@@ -1601,7 +1601,7 @@ export const LoadDetailPage = () => {
                     href={lastLine.server_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="ml-auto text-amber-light hover:underline text-[11.5px] font-semibold"
+                    className="ml-auto text-amber-light hover:underline text-[12.5px] font-semibold"
                     title="The most recent statement that touched this load (tailnet)"
                   >
                     open statement ({lastLine.period_ending.slice(5)}) →
@@ -1639,13 +1639,13 @@ export const LoadDetailPage = () => {
                   target="_blank"
                   rel="noreferrer"
                   title={d.filename}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-hairline bg-well text-amber-light hover:border-amber transition-colors"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-full border border-hairline bg-well text-amber-light hover:border-amber transition-colors"
                 >
                   {formatDoctype(d.doc_type)}
                 </a>
               ))}
             </div>
-            <p className="text-[11px] text-faint mt-2">
+            <p className="text-[12px] text-faint mt-2">
               Documents open from the DTS server — your device must be on the
               tailnet.
             </p>

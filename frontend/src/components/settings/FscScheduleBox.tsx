@@ -107,7 +107,7 @@ const Editor = ({ onDone, onCancel }: EditorProps) => {
         onChange={(e) => setText(e.target.value)}
         rows={8}
         placeholder="paste Landstar's table — one band per line: low   high   ¢ per mile; the last line may say 'and up'"
-        className={field + " w-full font-mono text-[12px]"}
+        className={field + " w-full font-mono text-[13px]"}
         aria-label="Landstar's band table"
       />
       <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -129,7 +129,7 @@ const Editor = ({ onDone, onCancel }: EditorProps) => {
       </div>
 
       {parsed.bands.length > 0 && (
-        <p className="font-condensed text-[12px] text-muted-text mt-3">
+        <p className="font-condensed text-[13px] text-muted-text mt-3">
           dash read {parsed.bands.length} bands:{" "}
           {parsed.bands
             .map((b) => `${bandWords(b)} → ${centsWords(b.cpm)}`)
@@ -137,12 +137,12 @@ const Editor = ({ onDone, onCancel }: EditorProps) => {
         </p>
       )}
       {parsed.rejected.length > 0 && (
-        <p className="font-condensed text-[12px] text-amber-hi mt-2">
+        <p className="font-condensed text-[13px] text-amber-hi mt-2">
           couldn't read: {parsed.rejected.join(" · ")}
         </p>
       )}
       {problems.map((s, i) => (
-        <p key={i} className="font-condensed text-[12px] text-amber-hi mt-1">
+        <p key={i} className="font-condensed text-[13px] text-amber-hi mt-1">
           {s}
         </p>
       ))}
@@ -168,7 +168,7 @@ const Editor = ({ onDone, onCancel }: EditorProps) => {
         </button>
       </div>
       {errs.map((s, i) => (
-        <p key={i} className="font-condensed text-[12px] text-amber-hi mt-2">
+        <p key={i} className="font-condensed text-[13px] text-amber-hi mt-2">
           {s}
         </p>
       ))}
@@ -187,7 +187,7 @@ const RemoveAsk = ({
   onYes: () => void;
   onNo: () => void;
 }) => (
-  <p className="font-condensed text-[13px] text-light mt-2">
+  <p className="font-condensed text-[14px] text-light mt-2">
     Remove the table effective {dayWords(schedule.effective_from)}? Months it
     priced fall back to the estimate.{" "}
     <button
@@ -268,7 +268,7 @@ const PointEditor = ({ onDone, onCancel }: EditorProps) => {
         onChange={(e) => setText(e.target.value)}
         rows={6}
         placeholder="paste the report's header — the 'effective' line, the National Average line, the % line and the PADD lines — or just: National Average $6.292 .86"
-        className={field + " w-full font-mono text-[12px]"}
+        className={field + " w-full font-mono text-[13px]"}
         aria-label="Landstar's weekly scale line"
       />
       <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -293,18 +293,18 @@ const PointEditor = ({ onDone, onCancel }: EditorProps) => {
       </div>
 
       {preview && (
-        <p className="font-condensed text-[12px] text-muted-text mt-3">
+        <p className="font-condensed text-[13px] text-muted-text mt-3">
           dash read: {weekOf ? `week of ${shortDay(weekOf)} · ` : ""}
           {preview}
         </p>
       )}
       {parsed.rejected.length > 0 && (
-        <p className="font-condensed text-[12px] text-amber-hi mt-2">
+        <p className="font-condensed text-[13px] text-amber-hi mt-2">
           couldn't read: {parsed.rejected.join(" · ")}
         </p>
       )}
       {problems.map((s, i) => (
-        <p key={i} className="font-condensed text-[12px] text-amber-hi mt-1">
+        <p key={i} className="font-condensed text-[13px] text-amber-hi mt-1">
           {s}
         </p>
       ))}
@@ -328,7 +328,7 @@ const PointEditor = ({ onDone, onCancel }: EditorProps) => {
         </button>
       </div>
       {errs.map((s, i) => (
-        <p key={i} className="font-condensed text-[12px] text-amber-hi mt-2">
+        <p key={i} className="font-condensed text-[13px] text-amber-hi mt-2">
           {s}
         </p>
       ))}
@@ -426,7 +426,7 @@ const ScaleSection = ({
                     </button>
                   </div>
                   {removing === p.point_id && (
-                    <p className="font-condensed text-[13px] text-light mt-2">
+                    <p className="font-condensed text-[14px] text-light mt-2">
                       Remove the week of {shortDay(p.week_of)}? The scale is
                       re-fitted from the weeks that remain.{" "}
                       <button
@@ -453,7 +453,7 @@ const ScaleSection = ({
             </div>
           )}
           {removeErrs.map((s, i) => (
-            <p key={i} className="font-condensed text-[12px] text-amber-hi">
+            <p key={i} className="font-condensed text-[13px] text-amber-hi">
               {s}
             </p>
           ))}
@@ -760,7 +760,7 @@ export const FscScheduleBox = () => {
             </div>
           )}
           {removeErrs.map((s, i) => (
-            <p key={i} className="font-condensed text-[12px] text-amber-hi">
+            <p key={i} className="font-condensed text-[13px] text-amber-hi">
               {s}
             </p>
           ))}

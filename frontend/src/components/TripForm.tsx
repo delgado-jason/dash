@@ -338,7 +338,7 @@ const TripForm = ({ onSuccess, onClose, trip = null, prefillOdometerStart = null
           <button
             onClick={handleDelete}
             disabled={submitting || deleting}
-            className="ml-auto h-9 px-4 rounded-[9px] border border-status-negative-text/35 text-status-negative-text font-condensed font-semibold text-[13px] hover:bg-status-negative-text/10 disabled:opacity-50"
+            className="ml-auto h-9 px-4 rounded-[9px] border border-status-negative-text/35 text-status-negative-text font-condensed font-semibold text-[14px] hover:bg-status-negative-text/10 disabled:opacity-50"
           >
             {deleting ? "Deleting..." : "Delete trip"}
           </button>

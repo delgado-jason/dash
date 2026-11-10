@@ -66,7 +66,7 @@ export const PaceMeter = ({
             className="absolute -top-1.5 w-px h-[26px] bg-dim"
             style={{ left: `${(m.value / scaleMax) * 100}%` }}
           >
-            <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 text-[8.5px] font-semibold tracking-[.08em] uppercase text-faint whitespace-nowrap">
+            <span className="absolute -top-[15px] left-1/2 -translate-x-1/2 text-[11px] font-semibold tracking-[.08em] uppercase text-faint whitespace-nowrap">
               {m.label}
             </span>
           </div>
