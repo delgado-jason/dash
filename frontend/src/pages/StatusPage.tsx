@@ -159,7 +159,11 @@ const FIELD =
   "h-9 w-full rounded-[9px] bg-well border border-hairline px-3 font-condensed text-[14px] text-ink outline-none";
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-faint mb-1 block";
 const BOARD_HEAD = "flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule";
-const BOARD_TITLE = "font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint";
+// The house panel heading (v1.269.1). This page ran its own 11.5px condensed
+// variant alongside two inline 15px idioms and an 11px one, and used
+// `ds2-label` — the primitive 28 other files share — exactly zero times. Same
+// finding C1b closed on the load page, one scale per job.
+const BOARD_TITLE = "ds2-label";
 const BOARD_SUB = "font-condensed text-[12px] text-faint";
 
 const StatusPage = () => {
@@ -623,6 +627,12 @@ const StatusPage = () => {
   const maintBal = balanceOf(latest, maintAcct?.account_id);
   const taxBal = balanceOf(latest, taxAcct?.account_id);
   const floorsBoard: FloorStatus[] = view?.interlock?.floors ?? [];
+  // All three floors met — nothing distributes until they are, so this is what
+  // decides whether the ladder draws compact or open (v1.269.1). `every` on an
+  // empty list is true, and that is the default we want: with no floors to
+  // read we cannot say they are short, so the ladder OPENS rather than folding
+  // his plan away on a figure the page never had.
+  const floorsHold = floorsBoard.every((f) => f.met);
   const acc = view?.accrual ?? null;
   const prevTax = prevFiled && taxPct != null ? getTaxMove(prevFiled.pretax, taxPct) : null;
   const owedMiles = owedToday.weeks.length ? owedToday.miles : null;
@@ -823,78 +833,17 @@ const StatusPage = () => {
           );
         })()}
 
-        {/* ops + vault */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div
-            className="ds2-board overflow-hidden"
-          >
-            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3">
-              <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">OPS — THE FLOAT</span>
-              <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 1 · {floatLine != null ? money(floatLine) : "—"}</span>
-            </div>
-            <div className="p-4">
-              <p className="font-condensed font-semibold text-[40px] leading-none tabular-nums">
-                {opsBal != null ? money(opsBal) : <span className="font-condensed text-[18px] text-faint">no balance typed</span>}
-              </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
-                ops balance
-                {view?.opsAfter != null && !accrualMoved && ((acc != null && acc > 0) || (view.moneyDay != null && view.moneyDay.tax > 0)) && (
-                  <> · {fmtMoney(view.opsAfter)} after {view.moneyDay && view.moneyDay.tax > 0 ? "the moves" : "the accrual"}</>
-                )}
-                {accrualMoved && <> · the accrual is already in the balances</>}
-                {floorsBoard[0] && floorsBoard[0].short != null && (floorsBoard[0].short > 0 ? <> · short {money(floorsBoard[0].short)}</> : <> · holds the float</>)}
-              </p>
-              <p className="font-condensed text-[12.5px] text-dim mt-3">
-                {view?.verdict === "below-float"
-                  ? `Below the float. Nothing leaves Ops but the accrual until it holds ${floatLine != null ? money(floatLine) : "the float line"}.`
-                  : view?.verdict === "floors-first"
-                    ? `Ops holds the float. On the money day the surplus fills ${maintAcct?.name ?? "Maintenance"} and the ${vaultAcct?.name ?? "Vault"} to their floors before anything is split.`
-                    : view?.verdict === "on-plan"
-                      ? `Every floor holds. On the money day the surplus splits ${objPctWords} to ${objectiveName} · ${householdWords} household.`
-                      : view && view.waitingOn.length > 0
-                        ? "The verdict waits — see what it needs above."
-                        : "Take the first Friday snapshot and the orders appear here."}
-              </p>
-              <p className="font-condensed text-[11.5px] text-faint mt-3">
-                snapshot first, then move the money — next week's snapshot confirms the moves landed.
-                {plan?.float_line_home_lo && (
-                  <> home-time weeks run {money(Number(plan.float_line_home_lo))}–{money(Number(plan.float_line_home_hi ?? plan.float_line_home_lo))}.</>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div
-            className="ds2-board overflow-hidden"
-          >
-            <div className="px-4 py-3 border-b ds2-cell-rule flex items-baseline gap-3">
-              <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">THE VAULT — GENERAL RESERVE</span>
-              <span className="ml-auto font-condensed text-[12px] text-amber-hi">floor 3 · {floorsBoard[2]?.floor != null ? money(floorsBoard[2].floor) : "unset"}</span>
-            </div>
-            <div className="p-4">
-              <p className="font-condensed font-semibold text-[40px] leading-none tabular-nums">
-                {vaultBal != null ? money(vaultBal) : <span className="font-condensed text-[18px] text-faint">no balance typed</span>}
-              </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
-                vault balance
-                {latest?.note && <> · {formatDate(latest.as_of)}: <span className="normal-case tracking-normal">"{latest.note.length > 64 ? `${latest.note.slice(0, 64)}…` : latest.note}"</span></>}
-              </p>
-              <p className="font-condensed text-[12.5px] text-dim mt-3">
-                {floorsBoard[2] && floorsBoard[2].met === false && floorsBoard[2].floor != null
-                  ? `Third in the fill order — after ${opsAcct?.name ?? "Ops"} and ${maintAcct?.name ?? "Maintenance"} hold their floors, the surplus builds this to ${money(floorsBoard[2].floor)}.`
-                  : view?.cushion
-                    ? `The floor holds · ${money(view.cushion.toGoal)} to the goal. Money above the ratchet goes whole to ${objectiveName}.`
-                    : "The floor is the ladder's first vault rung — set it in EDIT PLAN."}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* the interlock */}
+        {/* The three floors — and, since v1.269.1, the ONLY place the account
+            balances are drawn. The page used to show them three times: an
+            "OPS — THE FLOAT" card and a "THE VAULT" card that were interlock
+            rows 1 and 3 at 40px, and a Reserves block that was row 2 plus Tax.
+            Nine stacked blocks became six with no fact lost, and the room that
+            bought is what lets the ladder keep its own space rather than
+            compete for it (Nod Sheet "The two money pages"). */}
         {view?.interlock && (
           <div className="ds2-board overflow-hidden mt-4">
             <div className={BOARD_HEAD}>
-              <span className={BOARD_TITLE}>The interlock — three floors, filled in this order before anything is distributed</span>
+              <span className={BOARD_TITLE}>The three floors — filled in this order before anything is distributed</span>
               <span className={BOARD_SUB}>· {opsAcct?.name ?? "Ops"} → {maintAcct?.name ?? "Maintenance"} → {vaultAcct?.name ?? "Vault"}</span>
             </div>
             {floorsBoard.map((f, i) => {
@@ -930,6 +879,30 @@ const StatusPage = () => {
                 </div>
               );
             })}
+            {/* Tax rides here as a fourth, WATCHED line — it is a reserve, not
+                a floor, and it is labelled that way. It used to live in the
+                Reserves block with the Maintenance balance that is now floor 2
+                above it, which is how the same account ended up drawn twice. */}
+            {taxAcct && (
+              <div className="flex items-center gap-[14px] px-4 py-3 border-t ds2-cell-rule">
+                {/* Unnumbered on purpose: the floors are an ORDER, and Tax is
+                    not in it. A ring with a number would put it in the queue. */}
+                <span
+                  className="w-[30px] h-[30px] rounded-full shrink-0 border border-hairline-lo"
+                  aria-hidden="true"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-condensed font-semibold text-[15px] text-dim">{taxAcct.name} · watched, not a floor</p>
+                  <p className="font-condensed text-[12px] text-faint mt-[2px]">
+                    {taxBal != null ? money(taxBal) : noBalance}
+                    {pending && taxPct != null && pending.pretaxProfit != null && pending.pretaxProfit > 0 && (
+                      <> · {taxPct} % of {monthName(pending.month)}’s profit = {money((pending.pretaxProfit * taxPct) / 100)} on the money day</>
+                    )}
+                  </p>
+                </div>
+                <Stamp tone="dim">RESERVE</Stamp>
+              </div>
+            )}
             {maintAcct == null && (
               <p className="font-condensed text-[12px] text-amber-hi px-4 py-2 border-t ds2-cell-rule">
                 No account carries the maintenance role — give your Maintenance account the role in EDIT PLAN so floor 2 can be read.
@@ -953,7 +926,11 @@ const StatusPage = () => {
           <div className="ds2-board overflow-hidden mt-4">
             <div className={BOARD_HEAD}>
               <span className={BOARD_TITLE}>The ladder — one objective at a time</span>
-              <span className={BOARD_SUB}>· rung 1 is floor 3 · edit the rungs in EDIT PLAN</span>
+              <span className={BOARD_SUB}>
+                {floorsHold
+                  ? "· rung 1 is floor 3 · edit the rungs in EDIT PLAN"
+                  : "· compact while the floors are short — every rung opens the week Ops holds its float"}
+              </span>
             </div>
             {view.waterfall.stages.map((st, i) => {
               const floorStage = stageInputs.filter((s) => s.kind === "vault").sort((a, b) => a.position - b.position)[0];
@@ -961,6 +938,40 @@ const StatusPage = () => {
               const isObjective = i === view.objectiveIndex;
               const ring = st.state === "done" ? "done" : isObjective ? "act" : "pend";
               const quiet = st.state !== "done" && !isObjective && !isFloor;
+              // Which rung the next dollar actually reaches. Until the floors
+              // hold, nothing distributes and the only rung being filled is
+              // floor 3, by the interlock. Once they hold, it is the objective.
+              const nextDollar = floorsHold ? isObjective : isFloor && st.state !== "done";
+              // COMPACT while nothing can move (v1.269.1). Jason: "I'm okay
+              // with folding down the plan page … It instills focus." Every
+              // rung keeps its name and its target — this is his plan for the
+              // surplus, not decoration — but a rung that cannot receive a
+              // dollar yet is ONE LINE instead of a row with an empty meter.
+              // Four empty meters is the number 0% drawn four times. They all
+              // open on their own the week the floors hold.
+              const full = floorsHold || st.state === "done" || isObjective || isFloor;
+              if (!full) {
+                return (
+                  <div
+                    key={st.stage.stage_id ?? st.stage.position}
+                    className="flex items-center gap-[14px] px-4 py-[9px] border-t ds2-cell-rule first:border-t-0 opacity-60"
+                  >
+                    <Ring state="pend">{st.stage.position}</Ring>
+                    <p className="flex-1 min-w-0 font-condensed text-[14px] truncate">
+                      <span className="font-semibold">{st.stage.label}</span>
+                      {num(st.stage.target_lo) != null && (
+                        <span className="text-faint">
+                          {" "}· {money(num(st.stage.target_lo)!)}
+                          {st.stage.target_hi ? `–${money(Number(st.stage.target_hi))}` : ""}
+                        </span>
+                      )}
+                    </p>
+                    <span className="font-condensed text-[12px] text-faint shrink-0">
+                      {st.currentValue != null ? money(st.currentValue) : "—"}
+                    </span>
+                  </div>
+                );
+              }
               return (
                 <div
                   key={st.stage.stage_id ?? st.stage.position}
@@ -971,8 +982,9 @@ const StatusPage = () => {
                     <p className="font-condensed font-semibold text-[15px]">
                       {st.stage.label}
                       {st.state === "done" && <Stamp tone="pos">DONE</Stamp>}
-                      {st.state !== "done" && isFloor && <Stamp tone="dim">FLOOR 3</Stamp>}
-                      {isObjective && <Stamp tone="amber">CURRENT OBJECTIVE</Stamp>}
+                      {st.state !== "done" && isFloor && !nextDollar && <Stamp tone="dim">FLOOR 3</Stamp>}
+                      {nextDollar && <Stamp tone="amber">NEXT DOLLAR</Stamp>}
+                      {isObjective && !nextDollar && <Stamp tone="amber">CURRENT OBJECTIVE</Stamp>}
                     </p>
                     {st.stage.kind === "obligation" && st.currentValue == null && (
                       <p className="font-condensed text-[12px] text-faint mt-[2px]">
@@ -1051,10 +1063,14 @@ const StatusPage = () => {
           </div>
         )}
 
-        {/* reserves */}
+        {/* What moves, and what it moves on. This was "Reserves" until
+            v1.269.1 and led with the Maintenance and Tax BALANCES — which are
+            floor 2 and the watched line in the block above. The balances went;
+            the accrual arithmetic and the money-day clause, which live nowhere
+            else, stayed. */}
         <div className="ds2-board overflow-hidden mt-4">
           <div className={BOARD_HEAD}>
-            <span className={BOARD_TITLE}>Reserves</span>
+            <span className={BOARD_TITLE}>This Friday</span>
             <span className={BOARD_SUB}>
               {plan && `· $${perMile ?? "—"}/mi to ${maintAcct?.name ?? "Maintenance"} every Friday · ${taxPct ?? "—"} % of profit to ${taxAcct?.name ?? "Tax"} on the money day`}
             </span>
@@ -1062,9 +1078,7 @@ const StatusPage = () => {
           {maintAcct && (
             <div className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule first:border-t-0">
               <div className="flex-1 min-w-0">
-                <p className="font-condensed font-semibold text-[16px]">
-                  {maintAcct.name} <span className="text-[13px] text-faint font-normal">{maintBal != null ? money(maintBal) : "no balance typed"}</span>
-                </p>
+                <p className="font-condensed font-semibold text-[16px]">{maintAcct.name}</p>
                 <p className="font-condensed text-[13px] text-dim mt-[2px]">
                   {owedToday.weeks.length && acc != null && perMile != null ? (
                     <>
@@ -1116,9 +1130,7 @@ const StatusPage = () => {
           {taxAcct && (
             <div className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule">
               <div className="flex-1 min-w-0">
-                <p className="font-condensed font-semibold text-[16px]">
-                  {taxAcct.name} <span className="text-[13px] text-faint font-normal">{taxBal != null ? money(taxBal) : "no balance typed"}</span>
-                </p>
+                <p className="font-condensed font-semibold text-[16px]">{taxAcct.name}</p>
                 <p className="font-condensed text-[13px] text-dim mt-[2px]">
                   {pending && pendingLabel && preview?.moneyDay ? (
                     <>
