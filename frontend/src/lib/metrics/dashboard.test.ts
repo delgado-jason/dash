@@ -15,7 +15,6 @@ import {
   getOutstandingSummary,
   getDeadheadTrend,
   getDetentionOwed,
-  getAgentGrossTable,
 } from "./dashboard";
 
 // ---- typed factories: override only the fields a test cares about ----
@@ -234,25 +233,6 @@ describe("getLoadsMonthly", () => {
   });
 });
 
-describe("getAgentGrossTable", () => {
-  it("lists every agent with a delivered load, gross + count, gross-sorted", () => {
-    const loads = [
-      makeLoad({ agent_id: "a1", agent: "Ann", linehaul: "1000", delivery_date: "2026-06-10T04:00:00.000Z" }),
-      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-01T04:00:00.000Z" }),
-      makeLoad({ agent_id: "a2", agent: "Bob", linehaul: "400", delivery_date: "2026-06-05T04:00:00.000Z" }),
-      // booked → excluded (no realized gross yet)
-      makeLoad({ agent_id: "a3", agent: "Cid", load_status: "booked", linehaul: "9999" }),
-    ];
-    const table = getAgentGrossTable(loads);
-    expect(table.map((r) => r.agent)).toEqual(["Ann", "Bob"]); // 1000 > 800
-    expect(table[1].loadCount).toBe(2);
-    expect(table[1].revenue).toBe(800);
-  });
-
-  it("returns an empty list when no loads are delivered", () => {
-    expect(getAgentGrossTable([])).toEqual([]);
-  });
-});
 
 describe("getRecentDeliveredLoads", () => {
   it("returns delivered loads newest first with lane and revenue", () => {

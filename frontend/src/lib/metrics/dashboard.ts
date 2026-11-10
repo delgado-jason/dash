@@ -1,6 +1,6 @@
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
-import { loadNetRevenue, loadGross } from "./rateTargets";
+import { loadNetRevenue } from "./rateTargets";
 import { detentionOwed, detentionMinutes } from "@/lib/detention";
 import { deadheadPctOver, hasOdometerWindow } from "./deadhead";
 import { median } from "./stats";
@@ -385,42 +385,11 @@ export const getLoadsMonthly = (loads: Load[], now: Date = localToday()): Monthl
   };
 };
 
-// ---- TOP AGENTS BY GROSS ---- (delivered loads, grouped by agent)
-// `revenue` here is the agent's total GROSS (the full customer rate). Agents are
-// graded on the market value they bring, NOT Jason's net — net would penalize a
-// good booking for his deadhead/cost, which the agent doesn't control. Gross is
-// used for agents/lanes/targets app-wide (owner dashboard too). Assets stay net.
-export interface AgentRevenue {
-  agentId: string;
-  agent: string;
-  revenue: number; // GROSS
-  loadCount: number;
-}
-
-const agentGross = (loads: Load[]): number =>
-  loads.reduce((sum, l) => sum + loadGross(l), 0);
-
-export const getAgentGrossTable = (loads: Load[]): AgentRevenue[] => {
-  const byAgent = new Map<string, Load[]>();
-  for (const load of loads) {
-    if (!isDelivered(load)) continue;
-    const bucket = byAgent.get(load.agent_id);
-    if (bucket) bucket.push(load);
-    else byAgent.set(load.agent_id, [load]);
-  }
-
-  const rows: AgentRevenue[] = [];
-  for (const [agentId, agentLoads] of byAgent) {
-    rows.push({
-      agentId,
-      agent: agentLoads[0].agent,
-      revenue: agentGross(agentLoads),
-      loadCount: agentLoads.length,
-    });
-  }
-  return rows.sort((a, b) => b.revenue - a.revenue);
-};
-
+// `getAgentGrossTable` and `AgentRevenue` lived here until v1.270.0. Their
+// only reader was DispatchAgentsTable on the dispatcher dashboard, which
+// ranked agents by gross with medals directly above a desk board doing the
+// same ranking better. The table went; leaving the engine behind is the
+// mistake phase B made with agentLeaderboard, so it went with it.
 // ---- UPCOMING LOADS ---- (booked / in-transit, soonest pickup first)
 export interface UpcomingLoad {
   load_id: string;

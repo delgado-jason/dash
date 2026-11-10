@@ -3930,73 +3930,52 @@ const GuidePage = () => {
 
           <Section title="The Dispatch board">
             <p className="text-sm text-muted-text">
-              A dispatcher's dashboard leads with the operational picture
-              instead of the money. Five doors across the top:{" "}
-              <span className="text-light">booked</span>,{" "}
-              <span className="text-light">in transit</span>, loads delivered
-              this month, <span className="text-light">detention owed</span>,
-              and <span className="text-light">deadhead</span> this month
-              against a rolling 90-day average. Detention is shown in{" "}
-              <span className="text-light">hours</span>, not dollars — the rate
-              per hour isn't settled until it lands on your statement, so the
-              board tracks the wait you're owed and lets you mark it paid once
-              collected. These counts are the whole business's.
+              A dispatcher opens her board to <span className="text-light">act</span>,
+              not to think, and she has one question that repeats on a horizon
+              of hours: is the truck covered, and what do I do next? So the
+              board answers in that order — <span className="text-light">Now</span>,{" "}
+              <span className="text-light">Next</span>,{" "}
+              <span className="text-light">Owed</span> — and it changes colour
+              with the state. A covered week and an empty one should not look
+              the same at a glance.
             </p>
             <p className="text-sm text-muted-text mt-3">
-              The <span className="text-light">Booking floor &amp; your week
-              pace · gross</span> card carries the booking ladder with its
-              needle and the pace meter: earned, committed, projected, booked
-              ahead and the daily target. It is account-wide — every load
-              landing this pay week counts, whoever booked it — and it uses the
-              same numbers as the owner's board, so your pace and the owner's
-              pace agree to the dollar.
+              <span className="text-light">Now</span> is what is on the road:
+              each rolling load, where it is going, and when it delivers — the
+              appointment time when one is set, in the words that matter
+              (<span className="text-light">today</span>,{" "}
+              <span className="text-light">tomorrow</span>, then the weekday).
+              A rolling load with <span className="text-light">no in-time
+              logged at the shipper</span> is called out in red: that is not a
+              data-entry nicety, it is money that cannot be claimed later,
+              because the detention clock was never started.
             </p>
             <p className="text-sm text-muted-text mt-3">
-              Beside it, <span className="text-light">Your bookings</span> —
-              scored only on loads with you as "Booked by" (cancelled loads and
-              TONUs never count):
-            </p>
-            <ul className="text-sm text-muted-text space-y-2 mt-2 list-disc pl-5">
-              <li>
-                <span className="text-light">Booked over the floor</span> — your
-                average booked rate, gross per driven mile, against the
-                walk-away floor of the booking ladder ("$4.62/mi · $0.45 over
-                the $4.17 floor"). Loads with unknown driven miles are left out
-                and counted beside it.
-              </li>
-              <li>
-                <span className="text-light">Detention collected</span> — hours
-                of detention on your loads that were confirmed billable and
-                paid.
-              </li>
-              <li>
-                <span className="text-light">On-time</span> — on-time stops as a
-                share of graded stops (an appointment and an arrival) on your
-                delivered loads.
-              </li>
-              <li>
-                <span className="text-light">Loads this week</span> — the loads
-                you booked that land in this pay week.
-              </li>
-            </ul>
-            <p className="text-sm text-muted-text mt-3">
-              One more account-wide figure:{" "}
-              <span className="text-light">weeks over break-even this
-              quarter</span>, read as "7 of 9". Of the completed pay weeks in
-              the current calendar quarter that delivered freight, it counts how
-              many earned gross at or above the weekly break-even floor, and
-              beside it how many reached the weekly target. Weeks with no
-              delivered freight (home weeks) are not counted either way. The
-              floor and target are the same weekly gross figures the pace meter
-              uses.
+              <span className="text-light">Next</span> is the gap. It names the
+              day and the town the truck comes free — the last load to deliver
+              decides it, not the first — and turns{" "}
+              <span className="text-light">red when nothing is booked behind
+              it</span>, because an empty truck costs money every hour it
+              lasts. From there it hands you straight to The Foreman and Score
+              a Load, with the booking floor underneath: what a load has to
+              beat, gross per mile.
             </p>
             <p className="text-sm text-muted-text mt-3">
-              Below sit two searchable, paginated tables —{" "}
-              <span className="text-light">Loads</span> (with the load on the
-              road pulled out on top, and filters for booked / in&#8209;transit
-              / delivered / detention) and{" "}
-              <span className="text-light">Agents</span>. Net revenue, RPM, and
-              profit never appear.
+              <span className="text-light">Owed</span> is the quiet one — the
+              chase list. Detention to claim, pickups inside three days with no
+              window set, rolling loads missing their in-time, and rows waiting
+              on Integrity. None of it is as urgent as an empty truck, so it
+              sits last and stays grey.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              Below the bands: the loads table, searchable and filterable, and
+              the desk board — which agents actually pay. Detention is shown in{" "}
+              <span className="text-light">hours</span>, not dollars, because
+              the rate per hour isn't settled until it lands on the statement.
+              Your own booking figures live on{" "}
+              <span className="text-light">Recap</span>, by month, quarter or
+              year — a worklist and a report card are different jobs, and
+              before v1.270.0 they were competing on one screen.
             </p>
           </Section>
 
@@ -4004,7 +3983,7 @@ const GuidePage = () => {
             <p className="text-sm text-muted-text">
               Everywhere an <span className="text-light">agent</span> or a{" "}
               <span className="text-light">lane</span> is ranked on the
-              dispatcher's side — the Agents table on her board and the agent
+              dispatcher's side — the desk board and the agent
               pages — the number is <span className="text-light">gross</span> revenue
               (the full customer rate), not net. An agent who books a strong
               load did their job; they shouldn't be marked down because a
