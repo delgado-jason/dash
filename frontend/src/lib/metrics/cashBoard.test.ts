@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, runningAdvancePace, type CashBoardInput, type CashCheck } from "./cashBoard";
+import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, runningAdvancePace, balanceOn, type CashBoardInput, type CashCheck } from "./cashBoard";
 import { collectReadings } from "./odometer";
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
@@ -118,6 +118,48 @@ describe("fuelForWeek — the card, the advance, the Monday leftover", () => {
     expect(fuelForWeek(input(), PREV, B930).leftover.counted).toBe(false);
     expect(fuelForWeek(input(), CUR, { ...B930, date: "2026-10-05" }).leftover.counted).toBe(false);
     expect(fuelForWeek(input(), CUR, { ...B930, date: "2026-10-04" }).leftover.counted).toBe(true);
+  });
+});
+
+describe("balanceOn — the bank's number, which is not the period's ending", () => {
+  // Jason, 2026-11-09, reading v1.267.3 on prod: "the payroll is not being
+  // deducted from the current Friday. It's rolling over to the next period.
+  // So it's not showing an honest ending amount."
+  //
+  // He is reading a real collision. A period's accrual pays the Friday AFTER
+  // it closes, which falls inside the NEXT period's week — and that Friday is
+  // also the next period's payroll day. So the current column's Ending is
+  // dated a day on which the other column moves money it does not count.
+  // Both figures are correct; only one is a bank balance.
+  it("the current ending's own Friday is also the next period's payroll day", () => {
+    const b = buildCashBoard(input())!;
+    expect(b.columns[0].accrual.date).toBe("2026-10-09");
+    expect(b.columns[1].payroll.date).toBe("2026-10-09");
+  });
+  it("the bank on that Friday is lower than the ending, by everything the other column has already taken", () => {
+    const b = buildCashBoard(input())!;
+    const ending = b.columns[0].ending!;
+    const bank = balanceOn(b.base, b.columns, "2026-10-09")!;
+    expect(bank).toBeLessThan(ending);
+    // NOT just the payroll — the next period's week opens Oct 7, so its Canva
+    // ($20) and Claude ($100) on the 7th and its Analysis Ch ($20) on the 9th
+    // have gone too. The gap is everything the other column spent by that day,
+    // which is why the Ending's note says "by this day", not "on this day".
+    expect(round2(ending - bank)).toBe(1908 + 20 + 100 + 20);
+  });
+  it("walked to the far end it IS the next column's ending — the two columns are one timeline", () => {
+    const b = buildCashBoard(input())!;
+    expect(balanceOn(b.base, b.columns, "2026-12-31")).toBe(b.columns[1].ending);
+  });
+  it("counts nothing dated after the day asked for", () => {
+    const b = buildCashBoard(input())!;
+    const atOps = balanceOn(b.base, b.columns, b.base.date)!;
+    // On the day of the Ops number itself, nothing later has moved yet.
+    expect(atOps).toBe(b.base.balance);
+  });
+  it("refuses when a counted line is refused — no bank figure out of a guess", () => {
+    const b = buildCashBoard(input({ weeklyPayroll: null }))!;
+    expect(balanceOn(b.base, b.columns, "2026-10-09")).toBeNull();
   });
 });
 

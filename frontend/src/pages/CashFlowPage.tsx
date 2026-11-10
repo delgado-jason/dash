@@ -36,7 +36,7 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import { deductionBuckets, isFirstOfMonth } from "@/lib/metrics/settlements";
 import {
-  buildCashBoard, fuelForWeek, runningWeekPace,
+  buildCashBoard, fuelForWeek, runningWeekPace, balanceOn,
   type PeriodColumn, type CashCheck, type DepositLine,
 } from "@/lib/metrics/cashBoard";
 import { addDays } from "@/lib/metrics/odometer";
@@ -528,6 +528,11 @@ const CashFlowPage = () => {
                 : last.kind === "leftover"
                   ? "after the card settles"
                   : "after the deposit lands";
+    // What the bank holds at the end of that same day, counting BOTH columns.
+    // Only said when it differs from this column's own ending — on a quiet
+    // handoff the two agree and the clause would be noise.
+    const bank = e != null && board ? balanceOn(board.base, board.columns, endDate) : null;
+    const bankGap = bank != null && e != null && Math.abs(bank - e) >= 0.01 ? { bank, other: Math.abs(bank - e) } : null;
     out.push({
       key: "end", date: endDate, label: "Ending",
       note:
@@ -543,7 +548,18 @@ const CashFlowPage = () => {
             // periods; this judges where THIS period lands. They can disagree —
             // a week that dips when bills draft and recovers by Friday — so
             // they no longer share the words "clears the float".
-            `Ops ${afterWords}${floatLine != null ? (under ? ` · this period ends ${money(floatLine - e)} under the ${money(floatLine)} float` : ` · ends above the ${money(floatLine)} float`) : ""}${c.key === "current" ? " · opens the next period" : ""}`,
+            // The periods overlap in time: a period's accrual pays the Friday
+            // AFTER it closes, inside the next period's week. So this Ending
+            // can be dated the same Friday the NEXT period's payroll leaves,
+            // and count the accrual but not the payroll. Both figures are
+            // right — one is this period's economics, one is the bank — but
+            // only one of them is what the account will hold that day, and
+            // reading the wrong one off the screen is how you plan short.
+            // (Jason, 2026-11-09.)
+            // "by this day", not "on this day": the next period's week opens
+            // before this Ending's date, so its early bills have gone too, not
+            // only its payroll. A test pins the composition.
+            `Ops ${afterWords}${bankGap != null ? ` · the ${c.key === "current" ? "next" : "other"} period has already taken ${money(bankGap.other)} by this day, so the bank reads ${money(bankGap.bank)}` : ""}${floatLine != null ? (under ? ` · this period ends ${money(floatLine - e)} under the ${money(floatLine)} float` : ` · ends above the ${money(floatLine)} float`) : ""}${c.key === "current" ? " · opens the next period" : ""}`,
       amount: e, stamp: null, counted: true, kind: "ending", tone: e == null ? undefined : endTone(e),
     });
     return out;

@@ -808,8 +808,17 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
 // Ops number: the lowest balance from today on is the verdict's number — two
 // endings can clear the float while a Sunday between them sits under it.
 export const lowestDay = (base: CashCheck, columns: PeriodColumn[], today: string): LowestDay | null => {
+  const { moves, blocked } = datedMoves(columns);
+  if (blocked) return null;
+  return lowestOf(base, moves, today);
+};
+
+// Every counted line of both columns as a dated money movement, in one list.
+// Shared by `lowestDay` and `balanceOn` so the verdict and the bank figure can
+// never be computed two different ways.
+const datedMoves = (columns: PeriodColumn[]): { moves: { date: string; amount: number }[]; blocked: boolean } => {
   const moves: { date: string; amount: number }[] = [];
-  let blocked = false; // a counted line is refused — no lowest day without every line
+  let blocked = false; // a counted line is refused — no running balance without every line
   const push = (l: Line | null | undefined, sign: 1 | -1) => {
     if (l && l.counted && l.amount == null) blocked = true;
     else if (l && l.counted && l.amount !== 0) moves.push({ date: l.date, amount: sign * l.amount! });
@@ -832,8 +841,30 @@ export const lowestDay = (base: CashCheck, columns: PeriodColumn[], today: strin
     for (const b of c.bills) push(b, -1);
     for (const m of c.moneyDays) push({ amount: m.amount, date: m.date, counted: m.counted }, -1);
   }
-  if (blocked) return null;
   moves.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return { moves, blocked };
+};
+
+// What the BANK says at the end of a given day: every counted line of BOTH
+// columns dated on or before it, run from the Ops number.
+//
+// This is not the same question as a column's `ending`, and the difference is
+// the whole point. A column's ending is that PERIOD's economics — what it
+// earns against what it carries — while the two periods OVERLAP in time,
+// because a period's accrual pays the Friday AFTER it closes, inside the next
+// period's week. So the current column's Ending can be dated Fri Nov 13 and
+// sit directly across from the next column's Fri Nov 13 payroll without
+// counting it. Both figures are right; only one of them is a bank balance.
+// (Jason, 2026-11-09: "it's not showing an honest ending amount.")
+export const balanceOn = (base: CashCheck, columns: PeriodColumn[], date: string): number | null => {
+  const { moves, blocked } = datedMoves(columns);
+  if (blocked) return null;
+  let bal = base.balance;
+  for (const m of moves) if (m.date <= date) bal += m.amount;
+  return round2(bal);
+};
+
+const lowestOf = (base: CashCheck, moves: { date: string; amount: number }[], today: string): LowestDay | null => {
   let bal = base.balance;
   let low: LowestDay | null = null;
   let sawToday = false;
