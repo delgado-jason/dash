@@ -24,6 +24,7 @@ import { buildForecast, pretaxMargin, archiveGaps } from "@/lib/metrics/cashflow
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import { money as fmtMoney, moneyCents as fmtMoneyCents } from "@/lib/format";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Obligation } from "@/types/obligation";
 import { getSettlements } from "@/services/settlementsService";
 import { getFuelEntries } from "@/services/fuelService";
@@ -48,7 +49,7 @@ import {
   assembleCashBoardInput, pickPlan, depositOverridesOf, numOrNull, waitsFor, blankInputs,
 } from "@/lib/metrics/cashBoardInput";
 
-const LBL = "font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint";
+const LBL = "ds2-label";
 const FIELD =
   "w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-[15px] text-ink tabular-nums focus:outline-none focus:border-amber";
 
@@ -56,8 +57,13 @@ const FIELD =
 // never "$-1,908" — this page used to carry its own copies (2026-11-04).
 const money = (n: number | null | undefined): string => fmtMoney(n);
 const moneyCents = (n: number | null | undefined): string => fmtMoneyCents(n);
+// A signed money column, in the SAME format as the Ending column beside it.
+// It used to print "+1,234.00" with no currency mark while `moneyCents` two
+// cells over printed "$12,340.00" — two money formats in one table row
+// (C2b call 10). `moneyCents` already renders a negative as "−$1,234.00", so
+// only the plus has to be added.
 const signed = (n: number): string =>
-  n === 0 ? "0.00" : `${n > 0 ? "+" : "−"}${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  n === 0 ? moneyCents(0) : `${n > 0 ? "+" : ""}${moneyCents(n)}`;
 
 // "2026-11-01" → "Nov ’26"
 const monthLabel = (k: string): string => {
@@ -348,8 +354,28 @@ const CashFlowPage = () => {
     return amounts.length ? { lo: Math.min(...amounts), hi: Math.max(...amounts) } : null;
   }, [runningWeeks]);
 
+  // The page's own shape while its thirteen fetches land, instead of a centred
+  // sentence that tells you nothing about what is coming (C2b call 10). Same
+  // treatment the dispatch board got: the boards are drawn at roughly the
+  // heights they will occupy, so the layout does not jump when the data lands.
+  //
+  // DEVIATION, named: the sheet asked for per-PANEL skeletons, so a slow fetch
+  // only holds up its own board. That means rendering 1,700 lines of money page
+  // against half-absent data, which is a bigger change than a redraw patch
+  // should carry and belongs in its own issue. This fixes the blank-sentence
+  // half of the complaint and leaves the all-or-nothing half standing.
   if (loading)
-    return <div className="text-sm text-muted-text py-12 text-center">Loading the cash picture…</div>;
+    return (
+      <div className="min-h-screen text-ink font-body">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
+          <Skeleton className="h-8 w-44 mt-5" />
+          <Skeleton className="h-[220px] mt-4" style={{ borderRadius: 13 }} />
+          <Skeleton className="h-[92px] mt-4" style={{ borderRadius: 13 }} />
+          <Skeleton className="h-[260px] mt-4" style={{ borderRadius: 13 }} />
+          <Skeleton className="h-[240px] mt-4" style={{ borderRadius: 13 }} />
+        </div>
+      </div>
+    );
 
   // ---- the board's verdict badge ----
   const badgeWord =
@@ -604,13 +630,13 @@ const CashFlowPage = () => {
           <span className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setShowPaste(true)}
-              className="font-condensed font-bold text-[12.5px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3.5 py-[7px] hover:bg-amber-hi"
+              className="font-condensed font-bold ds2-label text-on-amber bg-amber rounded-[8px] px-3.5 py-2 hover:bg-amber-hi disabled:opacity-40"
             >
               Paste months
             </button>
             <button
               onClick={() => setShowAssume(true)}
-              className="font-condensed font-semibold text-[12.5px] tracking-[.12em] uppercase text-dim border border-hairline rounded-[8px] px-3 py-[6px] hover:text-ink"
+              className="ds2-label border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink"
             >
               Assumptions
             </button>
@@ -667,7 +693,7 @@ const CashFlowPage = () => {
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap"
           >
-            <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
+            <span className="ds2-label">
               THE CASH BOARD
             </span>
             <span
@@ -694,13 +720,13 @@ const CashFlowPage = () => {
             <span className="ml-auto flex items-center gap-3">
               <button
                 onClick={() => setShowOpsNow(true)}
-                className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3 py-[6px] hover:bg-amber-hi"
+                className="font-condensed font-bold ds2-label text-on-amber bg-amber rounded-[8px] px-3.5 py-2 hover:bg-amber-hi disabled:opacity-40"
               >
                 Ops now ▸
               </button>
               <button
                 onClick={() => setShowBills(true)}
-                className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-amber-hi hover:text-hot"
+                className="ds2-label text-amber-hi hover:text-hot"
               >
                 Edit bills ▸
               </button>
@@ -712,7 +738,7 @@ const CashFlowPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-hairline-lo">
                 {ledgers.map(({ column: c, lines }) => (
                   <div key={c.key} className="min-w-0">
-                    <div className="px-4 py-2 border-b border-hairline font-condensed text-[12.5px] tracking-[.12em] uppercase text-faint">
+                    <div className="px-4 py-2 border-b border-hairline ds2-label">
                       <span className="text-ink">{WEEK_TITLE[c.key]}</span>
                       {c.state === "open" && <BoardStamp>OPEN</BoardStamp>}
                       <span className="block text-[12px] normal-case tracking-normal mt-0.5">
@@ -759,15 +785,48 @@ const CashFlowPage = () => {
           )}
         </div>
 
+        {/* FUEL — lifted out of THE SETTLEMENTS (C2b call 9).
+            It lived in that panel's `settlements.length > 0` branch, so with no
+            statement fed it vanished — even with a full fuel log behind it. And
+            it never read a statement: `runningWeekPace(fuelEntries)` is the fuel
+            log, an entirely separate feed. Escrow and Deductions DO read
+            settlements, so those two stay where they are.
+
+            Above the settlements on purpose: it is the number on this page with
+            an answer every week, and sitting over the statements rather than
+            under them says it does not wait on them. */}
+        <div className="ds2-board mt-4 px-4 py-3">
+          <p className="ds2-label">
+            Fuel
+            <span className="ml-2 normal-case tracking-normal text-faint font-normal">
+              pace of the last four running weeks · from the fuel log
+            </span>
+          </p>
+          <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber-hi mt-1">
+            {fuelPace != null ? `${money(fuelPace)}/wk` : "no running week on the log"}
+          </p>
+          <p className="font-condensed text-[12.5px] text-faint mt-1 leading-snug">
+            {lastPayWeek && (
+              <>last week <b className="text-dim tabular-nums">{money(lastPayWeek.amount)}</b> actual ({fills(lastPayWeek.fills)}) · </>
+            )}
+            this week <b className="text-dim tabular-nums">{money(thisPayWeekFuel.soFar)}</b> so far
+            {fourWeekRange && (
+              <> · those four weeks <b className="text-dim tabular-nums">{money(fourWeekRange.lo)}–{money(fourWeekRange.hi)}</b></>
+            )}
+            {" · "}on the pay week’s own {wdLong(setlDay)} statement, cash{" "}
+            {wdLong(setlDay + lag)}
+          </p>
+        </div>
+
         {/* THE SETTLEMENTS — Landstar's weekly actuals, fed by the server */}
         <div className="ds2-board mt-4 overflow-hidden">
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
           >
-            <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
+            <span className="ds2-label">
               THE SETTLEMENTS
             </span>
-            <span className="ml-auto font-condensed text-[13px] text-faint">
+            <span className="ml-auto text-[11px] text-faint">
               weekly deposits as Landstar actually paid them · every row reconciled to its own statement
             </span>
           </div>
@@ -781,7 +840,7 @@ const CashFlowPage = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-[14px] font-condensed" style={{ fontVariantNumeric: "tabular-nums" }}>
                   <thead>
-                    <tr className="text-faint text-[11.5px] uppercase tracking-[.1em]">
+                    <tr className="text-[11px] uppercase tracking-[.12em] text-faint">
                       <th className="text-left px-4 py-2">Statement · cash</th>
                       <th className="text-right px-3 py-2">Loads</th>
                       <th className="text-right px-3 py-2">Revenue</th>
@@ -840,7 +899,7 @@ const CashFlowPage = () => {
               </div>
               {settlements[0]?.adjustments.length > 0 && (
                 <div className="mx-4 my-3 px-3 py-2 rounded-[9px] border font-condensed text-[13.5px]" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)", background: "var(--color-well)" }}>
-                  <span className="text-amber-hi font-semibold uppercase text-[11.5px] tracking-[.08em]">
+                  <span className="ds2-label text-amber-hi">
                     Adjustments · week of {settlements[0].period_ending.slice(5)}
                   </span>{" "}
                   <span className="text-dim">— Landstar reached back into paid loads:</span>{" "}
@@ -860,26 +919,9 @@ const CashFlowPage = () => {
                   ))}
                 </div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 pb-4 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4 pb-4 pt-1">
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[11.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel · pace of the last four running weeks</p>
-                  <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber-hi mt-1">
-                    {fuelPace != null ? `${money(fuelPace)}/wk` : "no running week on the log"}
-                  </p>
-                  <p className="font-condensed text-[12.5px] text-faint mt-1 leading-snug">
-                    {lastPayWeek && (
-                      <>last week <b className="text-dim tabular-nums">{money(lastPayWeek.amount)}</b> actual ({fills(lastPayWeek.fills)}) · </>
-                    )}
-                    this week <b className="text-dim tabular-nums">{money(thisPayWeekFuel.soFar)}</b> so far
-                    {fourWeekRange && (
-                      <> · those four weeks <b className="text-dim tabular-nums">{money(fourWeekRange.lo)}–{money(fourWeekRange.hi)}</b></>
-                    )}
-                    {" · "}on the pay week’s own {wdLong(setlDay)} statement, cash{" "}
-                    {wdLong(setlDay + lag)}
-                  </p>
-                </div>
-                <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[11.5px] uppercase tracking-[.12em] text-faint font-condensed">Deductions · two buckets · ex-advances</p>
+                  <p className="ds2-label">Deductions · two buckets · ex-advances</p>
                   <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber-hi mt-1">
                     {buckets.standard != null ? money(buckets.standard) : "—"}
                     <span className="text-[16px] text-faint"> · </span>
@@ -891,7 +933,7 @@ const CashFlowPage = () => {
                   </p>
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[11.5px] uppercase tracking-[.12em] text-faint font-condensed">Escrow balances</p>
+                  <p className="ds2-label">Escrow balances</p>
                   <p className="font-condensed font-semibold tabular-nums text-[26px] mt-1" style={{ color: "var(--color-chart-blue)" }}>
                     {settlements[0]?.escrow_tractor == null && settlements[0]?.escrow_trailer == null
                       ? "—"
@@ -911,10 +953,10 @@ const CashFlowPage = () => {
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
           >
-            <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
+            <span className="ds2-label">
               THE SIX-MONTH ROAD
             </span>
-            <span className="ml-auto font-condensed text-[13px] text-faint">
+            <span className="ml-auto text-[11px] text-faint">
               {financials.length > 0 ? (
                 <>
                   last {actualsShown.length} actual months + 6 forecast · a full running month{" "}
@@ -987,7 +1029,7 @@ const CashFlowPage = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
                   <thead>
-                    <tr className="font-condensed text-[12px] tracking-[.1em] uppercase text-faint">
+                    <tr className="text-[11px] uppercase tracking-[.12em] text-faint">
                       {["Month", "Net income", "Pretax margin", "+ Depreciation", "Financing", "Income tax", "Net change", "Ending", "Wks off"].map((h, i) => (
                         <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-3.5 py-2 border-b border-hairline whitespace-nowrap`}>{h}</th>
                       ))}
@@ -1007,7 +1049,18 @@ const CashFlowPage = () => {
                           <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">—</td>
                           <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(change)}</td>
                           <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{moneyCents(Number(f.ending_cash))}</td>
-                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">—</td>
+                          {/* An actual month's weeks-off used to print "—" even
+                              though the forecast baseline still READS it for
+                              that month — a figure that kept working and could
+                              not be seen (C2b call 10). It stays read-only
+                              here: a month that has posted is history, and the
+                              input belongs on the months still being planned. */}
+                          <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">
+                            {(() => {
+                              const w = adjustments.get(f.month.slice(0, 10));
+                              return w != null && w > 0 ? `${w}` : "—";
+                            })()}
+                          </td>
                         </tr>
                       );
                     })}
@@ -1064,7 +1117,7 @@ const CashFlowPage = () => {
 
               {lastForecastEnd != null && (
                 <div className="mx-4 my-3 rounded-[8px] px-3.5 py-2.5 font-condensed text-[13.5px] text-dim" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "var(--shadow-inset)" }}>
-                  💰 <b className="text-ink tabular-nums">true spendable ≈ {money(lastForecastEnd - catchup)}</b>
+                  <b className="text-ink tabular-nums">true spendable ≈ {money(lastForecastEnd - catchup)}</b>
                   {" — "}{monthLabel(forecast.months.at(-1)!.month)} ending {money(lastForecastEnd)} −{" "}
                   <b className="text-ink">{money(catchup)}</b> tax catch-up earmark · forecast = 6-actual average
                   net income − home-time weeks, depreciation added back, financing floor and taxes out
@@ -1174,7 +1227,7 @@ const LedgerRow = ({
       className={`grid grid-cols-[84px_1fr_auto] gap-x-3 px-4 py-2 border-b border-hairline-lo ${line.kind === "ending" ? "bg-rail" : ""}`}
       style={line.counted ? undefined : { opacity: 0.6 }}
     >
-      <div className="font-condensed text-[12px] tracking-[.06em] uppercase text-faint pt-[3px] whitespace-nowrap">{dShort(line.date)}</div>
+      <div className="text-[11px] uppercase tracking-[.12em] text-faint pt-[3px] whitespace-nowrap">{dShort(line.date)}</div>
       <div className="min-w-0">
         <div className={`font-condensed ${line.kind === "ending" ? "font-semibold text-ink" : "text-dim"} text-[14px]`}>{line.label}</div>
         {line.missing && line.missing.length > 0 ? (
@@ -1377,14 +1430,14 @@ const BillsPopup = ({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">THE BILLS</span>
-          <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">what drafts, and when</span>
+          <span className="ds2-label">THE BILLS</span>
+          <span className="text-[11px] text-faint">what drafts, and when</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
           <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
             <thead>
-              <tr className="font-condensed text-[11.5px] tracking-[.08em] uppercase text-faint">
+              <tr className="text-[11px] uppercase tracking-[.12em] text-faint">
                 <th className="text-left px-1 py-1 border-b border-hairline">Bill</th>
                 <th className="text-left px-1 py-1 border-b border-hairline">Category</th>
                 <th className="text-right px-1 py-1 border-b border-hairline">Day</th>
@@ -1419,7 +1472,7 @@ const BillsPopup = ({
                       <input className={`${SEL} w-24 text-right`} type="number" step="0.01" value={st.amount} onChange={(e) => setRow(o.obligation_id, { amount: e.target.value })} />
                     </td>
                     <td className="text-right px-1 py-1.5 border-b border-hairline-lo whitespace-nowrap">
-                      <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[12px] uppercase tracking-[.08em] mr-2" onClick={() => saveRow(o)}>save</button>
+                      <button disabled={busy} className="ds2-label text-amber-hi hover:text-hot mr-2" onClick={() => saveRow(o)}>save</button>
                       <button disabled={busy} className="text-faint hover:text-warn" title="remove from the draft calendar — stays active for break-even/payoff" onClick={() => removeRow(o)}>✕</button>
                     </td>
                   </tr>
@@ -1446,7 +1499,7 @@ const BillsPopup = ({
                   )}
                 </td>
                 <td className="text-right px-1 py-2">
-                  <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[12px] uppercase tracking-[.08em]" onClick={addBill}>+ add</button>
+                  <button disabled={busy} className="ds2-label text-amber-hi hover:text-hot" onClick={addBill}>+ add</button>
                 </td>
               </tr>
             </tbody>
@@ -1498,8 +1551,8 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[680px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">PASTE MONTHS</span>
-          <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">one row per month, straight from the QBO worksheet</span>
+          <span className="ds2-label">PASTE MONTHS</span>
+          <span className="text-[11px] text-faint">one row per month, straight from the QBO worksheet</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
@@ -1515,7 +1568,7 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
           {parsed.length > 0 && (
             <table className="w-full mt-3 text-[13px] tabular-nums" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="font-condensed text-[11px] tracking-[.08em] uppercase text-faint">
+                <tr className="text-[11px] uppercase tracking-[.12em] text-faint">
                   <th className="text-left px-2 py-1 border-b border-hairline">Month</th>
                   <th className="text-right px-2 py-1 border-b border-hairline">Net income</th>
                   <th className="text-right px-2 py-1 border-b border-hairline">Ending cash</th>
@@ -1541,11 +1594,11 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
             <button
               disabled={busy || good.length === 0 || bad.length > 0}
               onClick={commit}
-              className="font-condensed font-bold text-[13px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40"
+              className="font-condensed font-bold ds2-label text-on-amber bg-amber rounded-[8px] px-3.5 py-2 hover:bg-amber-hi disabled:opacity-40"
             >
               {busy ? "Committing…" : `Commit ${good.length} month${good.length === 1 ? "" : "s"}`}
             </button>
-            <button onClick={onClose} className="font-condensed font-semibold text-[13px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+            <button onClick={onClose} className="ds2-label border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
               Cancel
             </button>
             {bad.length > 0 && (
@@ -1634,7 +1687,7 @@ const AssumptionsPopup = ({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">ASSUMPTIONS</span>
+          <span className="ds2-label">ASSUMPTIONS</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
@@ -1652,10 +1705,10 @@ const AssumptionsPopup = ({
             day, and full draft amount; loan rows keep a separate break-even (principal) amount so nothing double-counts.
           </p>
           <div className="flex items-center gap-2 mt-4">
-            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[13px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
+            <button disabled={busy} onClick={save} className="font-condensed font-bold ds2-label text-on-amber bg-amber rounded-[8px] px-3.5 py-2 hover:bg-amber-hi disabled:opacity-40">
               {busy ? "Saving…" : "Save"}
             </button>
-            <button onClick={onClose} className="font-condensed font-semibold text-[13px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+            <button onClick={onClose} className="ds2-label border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
               Cancel
             </button>
           </div>
@@ -1721,8 +1774,8 @@ const OpsNowPopup = ({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">OPS NOW</span>
-          <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">
+          <span className="ds2-label">OPS NOW</span>
+          <span className="text-[11px] text-faint">
             the bank’s ops balance this morning
           </span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
