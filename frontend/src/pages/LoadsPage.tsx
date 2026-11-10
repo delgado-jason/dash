@@ -15,6 +15,7 @@ import { useFacilities } from "@/hooks/useFacilities";
 import { StatusBadge } from "@/components/StatusBadge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import LoadForm from "../components/LoadForm";
+import { LoadFormModal } from "@/components/loads/LoadFormModal";
 import { createLoad } from "@/services/createLoadService";
 import { loadRevenue, loadsViewTotals } from "@/lib/metrics/loads";
 import { fmtRpm } from "@/components/lanes/rpmStyle";
@@ -23,6 +24,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { Panel } from "@/components/ui/Panel";
 import {
   loadFlag,
   detentionOwed,
@@ -268,13 +270,11 @@ const LoadsPage = () => {
   return (
     <div className="min-h-screen text-ink font-body">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
-      {showCreateForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setShowCreateForm(false)}
-          />
-          <div className="relative w-full max-w-[750px] mx-4 max-h-[90vh] bg-panel text-ink overflow-y-auto shadow-xl rounded-xl p-4 sm:p-6 border border-hairline">
+      <LoadFormModal
+        open={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        label="New load"
+      >
             <LoadForm
               mode="create"
               agencies={agencies}
@@ -292,9 +292,7 @@ const LoadsPage = () => {
               onFacilityCreated={() => setFacilityRefreshKey((p) => p + 1)}
               onClose={() => setShowCreateForm(false)}
             />
-          </div>
-        </div>
-      )}
+      </LoadFormModal>
 
       <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
         <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
@@ -359,36 +357,22 @@ const LoadsPage = () => {
         </select>
       </div>
 
+      {/* The one flat surface, like every other group in the app (C1 is this
+          page's turn in the C1–C6 sweep). This was a hand-rolled card: its own
+          rounded border and a tinted header bar built from two color-mix
+          values, plus a 🚚. The rows inside are what matter. */}
       {inTransit.length > 0 && (
-        <div
-          className="border rounded-xl overflow-hidden mt-4"
-          style={{ borderColor: "color-mix(in srgb, var(--color-status-positive-text) 30%, transparent)" }}
-        >
-          <div
-            className="px-3 py-2 flex items-center gap-2"
-            style={{
-              background: "color-mix(in srgb, var(--color-status-positive-text) 12%, transparent)",
-              borderBottom: "1px solid color-mix(in srgb, var(--color-status-positive-text) 30%, transparent)",
-            }}
-          >
-            <span className="text-base">🚚</span>
-            <span
-              className="font-condensed text-lg"
-              style={{ color: "var(--color-status-positive-text)" }}
-            >
+        <Panel className="p-4 mt-4">
+          <h3 className="ds2-label flex justify-between items-center mb-2">
+            <span>
               On the road
+              <span className="ml-2 text-status-positive-text">{inTransit.length}</span>
             </span>
-            <span
-              className="text-[11px] px-2 py-0.5 rounded-full"
-              style={{ background: "var(--color-status-positive-bg)", color: "var(--color-status-positive-text)" }}
-            >
-              {inTransit.length}
+            <span className="normal-case tracking-normal font-normal text-faint">
+              what&rsquo;s rolling now
             </span>
-            <span className="text-[11px] text-dim ml-auto">
-              what's rolling now
-            </span>
-          </div>
-          <div className="overflow-x-auto" style={{ background: "var(--color-well)" }}>
+          </h3>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[760px] px-2 [&_td]:pr-5 [&_td:last-child]:pr-0 [&_td:first-child]:pl-3">
               <tbody>
                 {inTransit.map((load) => (
@@ -402,10 +386,10 @@ const LoadsPage = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </Panel>
       )}
 
-      <div className="ds2-board p-4 mt-4 overflow-x-auto">
+      <Panel className="p-4 mt-4 overflow-x-auto">
         {rest.length === 0 ? (
           (loads ?? []).length === 0 ? (
             <EmptyState
@@ -444,7 +428,7 @@ const LoadsPage = () => {
             </tbody>
           </table>
         )}
-      </div>
+      </Panel>
       </div>
     </div>
   );

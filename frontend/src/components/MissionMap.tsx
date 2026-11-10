@@ -103,13 +103,12 @@ const MissionMap = ({
       {dh && <circle cx={dh.x} cy={dh.y} r={6} fill="var(--color-dim)" />}
       <circle cx={pk.x} cy={pk.y} r={8} fill="var(--color-amber)" stroke="var(--color-well)" strokeWidth={2} />
 
-      {/* Objective — target reticle. */}
-      <circle cx={dl.x} cy={dl.y} r={13} fill="none" stroke="var(--color-amber-hi)" strokeWidth={2.5} />
-      <circle cx={dl.x} cy={dl.y} r={4.5} fill="var(--color-amber-hi)" />
-      <line x1={dl.x} y1={dl.y - 20} x2={dl.x} y2={dl.y - 13} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
-      <line x1={dl.x} y1={dl.y + 13} x2={dl.x} y2={dl.y + 20} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
-      <line x1={dl.x - 20} y1={dl.y} x2={dl.x - 13} y2={dl.y} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
-      <line x1={dl.x + 13} y1={dl.y} x2={dl.x + 20} y2={dl.y} stroke="var(--color-amber-hi)" strokeWidth={2.5} />
+      {/* The destination. A four-arm targeting reticle sat here until
+          v1.267.2 — the last of the mission framing, after phase B took the
+          rest. A ring and a centre say "this is the drop" without aiming at
+          it. */}
+      <circle cx={dl.x} cy={dl.y} r={9} fill="none" stroke="var(--color-amber-hi)" strokeWidth={2.5} />
+      <circle cx={dl.x} cy={dl.y} r={4} fill="var(--color-amber-hi)" />
 
       {/* Labels. */}
       <g fontFamily="system-ui" fontSize={13} fontWeight={600}>
