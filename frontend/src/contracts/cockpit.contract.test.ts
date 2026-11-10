@@ -89,8 +89,17 @@ describe("CASH ON HAND · one input, one builder", () => {
     expect(board?.base.balance).toBe(11240.15);
     expect(input.floatLine).toBe(10000);
     expect(board?.columns[0].missing).toEqual([]);
-    // pinned figure: the board's own arithmetic on the book (the line-by-line derivation lives in cashBoard.contract.test.ts)
-    expect(board?.columns[0].ending).toBeCloseTo(13829.56, 2);
+    // Re-pinned in v1.268.0, and the figure moved because the RULE moved.
+    // A column's ending used to be that period's own lines summed; it is now
+    // the BANK's balance on the column's last day, counting both columns —
+    // Jason's "two timelines", the bank keeping only the calendar one. The
+    // current column's last day here is Fri Nov 13 (its accrual, paid the
+    // Friday after the period closes), by which point the NEXT period's $1,300
+    // payroll has gone: 13,829.56 − 1,300 = 12,529.56. The rule this file
+    // protects — one input, one builder, both surfaces the same number — is
+    // unchanged, and `cashAsOf` moved with it so the plate and the page still
+    // agree on every date, not only on today.
+    expect(board?.columns[0].ending).toBeCloseTo(12529.56, 2);
   });
 
   it("the Cash Flow page and the Pulse plate both come through assembleCashBoardInput (the same parts → the same ending)", () => {
@@ -146,6 +155,21 @@ describe("CASH ON HAND, TODAY · the number walked to today and no further", () 
   const book = syntheticBook();
   const board = buildCashBoard(assembleCashBoardInput(partsOf(book)));
 
+  // The net of every counted line of EVERY column dated after `from` and on or
+  // before `to`. Reconstructing a figure from one column's lines stopped being
+  // honest in v1.268.0: the bank keeps one timeline, so a Friday payroll earned
+  // in the next period still leaves the account on that Friday.
+  const netAfter = (from: string, to: string): number => {
+    let n = 0;
+    for (const c of board!.columns) {
+      const inRange = (l: { date: string; counted: boolean } | null | undefined) =>
+        !!l && l.counted && l.date > from && l.date <= to;
+      for (const l of [c.deposit, c.prevDeposit, c.fuel.leftover]) if (inRange(l)) n += l!.amount ?? 0;
+      for (const l of [c.payroll, c.accrual, c.catchUp, ...c.bills, ...c.moneyDays]) if (inRange(l)) n -= l!.amount ?? 0;
+    }
+    return n;
+  };
+
   it("the book's board has a current column with an opening and an ending", () => {
     expect(board).not.toBeNull();
     expect(board!.columns[0].opening).not.toBeNull();
@@ -160,15 +184,12 @@ describe("CASH ON HAND, TODAY · the number walked to today and no further", () 
     const lastDay = dated.reduce((m, d) => (d > m ? d : m), col.week.end);
     expect(lastDay > col.week.end).toBe(true); // the deposit's landing day is outside the week
     expect(cashAsOf(board!, lastDay).amount).toBeCloseTo(col.ending!, 2);
-    // and at the period's own last day the deposit is still ahead, so the figure is lower by exactly it
+    // and at the period's own last day the deposit is still ahead, so the
+    // figure is lower by exactly what has not moved yet — across BOTH columns
+    // (v1.268.0), because the ending is the bank's number and the bank does
+    // not know which period a Friday payroll was earned in.
     const atEnd = cashAsOf(board!, col.week.end).amount!;
-    const ahead = [col.deposit, col.prevDeposit].filter((l): l is NonNullable<typeof l> => !!l && l.counted && l.date > col.week.end)
-      .reduce((s, l) => s + (l.amount ?? 0), 0);
-    const outAhead = [col.payroll, col.accrual, col.catchUp, ...col.bills, ...col.moneyDays]
-      .filter((l): l is NonNullable<typeof l> => !!l && l.counted && l.date > col.week.end)
-      .reduce((s, l) => s + (l.amount ?? 0), 0);
-    const leftoverAhead = col.fuel.leftover.counted && col.fuel.leftover.date > col.week.end ? (col.fuel.leftover.amount ?? 0) : 0;
-    expect(atEnd + ahead + leftoverAhead - outAhead).toBeCloseTo(col.ending!, 2);
+    expect(atEnd + netAfter(col.week.end, col.endDate)).toBeCloseTo(col.ending!, 2);
   });
 
   it("before the period's first dated line, it is the opening plus the prior periods' totals", () => {
@@ -184,13 +205,10 @@ describe("CASH ON HAND, TODAY · the number walked to today and no further", () 
     const col = board!.columns[0];
     const t = cashAsOf(board!, TODAY);
     expect(t.amount).not.toBeNull();
-    const later = [col.deposit, col.payroll, col.accrual, col.prevDeposit, col.catchUp, col.fuel.leftover, ...col.bills, ...col.moneyDays]
-      .filter((l): l is NonNullable<typeof l> => !!l && l.counted && l.date > TODAY);
-    const laterSum = later.reduce((s, l) => {
-      const sign = l === col.deposit || l === col.prevDeposit || l === col.fuel.leftover ? 1 : -1;
-      return s + sign * (l.amount ?? 0);
-    }, 0);
-    expect(t.amount! + laterSum).toBeCloseTo(col.ending!, 2);
+    // Both columns again: the ending is the bank on the column's last day, so
+    // walking today's figure forward to it has to cross every line in between,
+    // whichever period earned it (v1.268.0).
+    expect(t.amount! + netAfter(TODAY, col.endDate)).toBeCloseTo(col.ending!, 2);
   });
 });
 

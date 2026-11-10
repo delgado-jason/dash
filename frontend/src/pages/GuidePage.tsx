@@ -1627,7 +1627,25 @@ const GuidePage = () => {
               Monday, this period’s own deposit on the Thursday after it
               closes, then the ending — <span className="text-light">dated
               after the last thing that moved</span>, which in a normal week is
-              Friday’s payroll, not Thursday’s deposit. A faint line is already
+              Friday’s payroll, not Thursday’s deposit.
+            </Why>
+            <Why>
+              <span className="text-light">The ending is what the bank holds,
+              not what the period earned.</span> Two timelines run at once here.
+              The deposit, the fuel and the advance belong to the{" "}
+              <span className="text-light">pay period</span> that earned them —
+              that is what each column groups. Payroll and the bills are plain{" "}
+              <span className="text-light">calendar</span> events: they happen
+              on their day whatever period it is. The bank only keeps the second
+              one. And because a period’s accrual pays the Friday <i>after</i>{" "}
+              it closes, the current column’s last day falls inside the next
+              period’s week — the same Friday its payroll leaves. So each
+              ending counts every line of <span className="text-light">both</span>{" "}
+              columns dated on or before its day: settlement lands Thursday,
+              payroll goes Friday, and the ending is what is left after both.
+              A line the previous ending has already taken off still shows in
+              its own period, greyed, saying so — you booked the freight, you
+              should see the payroll — but it is never subtracted twice. A faint line is already
               inside your number. The deposit is the statement’s actual once the
               vault has it; before that it is the delivered and expected loads —
               or a normal planning week when they say less, so one small booking

@@ -36,7 +36,7 @@ import type { Trip } from "@/types/trip";
 import type { ExpensePeriod } from "@/types/expense";
 import { deductionBuckets, isFirstOfMonth } from "@/lib/metrics/settlements";
 import {
-  buildCashBoard, fuelForWeek, runningWeekPace, balanceOn,
+  buildCashBoard, fuelForWeek, runningWeekPace, absorbedBy,
   type PeriodColumn, type CashCheck, type DepositLine,
 } from "@/lib/metrics/cashBoard";
 import { addDays } from "@/lib/metrics/odometer";
@@ -498,6 +498,19 @@ const CashFlowPage = () => {
     }
     out.push(...billLines(c.bills, c.key, null));
     for (const m of c.moneyDays) out.push({ key: `md-${m.date}`, date: m.date, label: m.label, note: `tax and the surplus that moved${m.counted ? "" : inOps}`, amount: negate(m.amount), missing: m.missing, stamp: null, counted: m.counted, kind: "money" });
+    // Lines the PREVIOUS column's ending has already taken off. They stay on
+    // the screen — you booked the freight, you should see the payroll — but
+    // they read as spent, exactly like a line already inside the Ops number,
+    // so nothing is subtracted twice (v1.268.0).
+    if (c.key === "next" && board) {
+      const prev = board.columns[0];
+      for (const l of out) {
+        if (l.kind !== "ops" && l.counted && absorbedBy(prev, l.date)) {
+          l.counted = false;
+          l.note = `${l.note ? `${l.note} · ` : ""}already off in the current period’s ending`;
+        }
+      }
+    }
     out.sort((x, y) => (x.kind === "ops" ? -1 : y.kind === "ops" ? 1 : x.date < y.date ? -1 : x.date > y.date ? 1 : KIND_ORDER[x.kind] - KIND_ORDER[y.kind]));
     const e = c.ending;
     const under = e != null && floatLine != null && e < floatLine;
@@ -509,11 +522,12 @@ const CashFlowPage = () => {
     // up a payroll short. It now carries the LAST counted line's date and
     // names it. Not hard-coded to Friday: a bill drafting on the 10th lands
     // after payroll, and then Friday would be wrong the other way.
-    const settled = out.filter((l) => l.counted && l.kind !== "ops" && l.date);
-    const last = settled.length
-      ? settled.reduce((a, b) => (b.date > a.date ? b : a))
-      : null;
-    const endDate = last?.date ?? c.deposit.date;
+    // The column tells us the day its ending speaks for, so the ledger and the
+    // arithmetic can never disagree about it. `out` is already sorted, so the
+    // last row on that day is the last thing to move.
+    const endDate = c.endDate;
+    const atEnd = out.filter((l) => l.counted && l.kind !== "ops" && l.date === endDate);
+    const last = atEnd.length ? atEnd[atEnd.length - 1] : null;
     const afterWords =
       last == null
         ? "after this period’s lines"
@@ -528,11 +542,6 @@ const CashFlowPage = () => {
                 : last.kind === "leftover"
                   ? "after the card settles"
                   : "after the deposit lands";
-    // What the bank holds at the end of that same day, counting BOTH columns.
-    // Only said when it differs from this column's own ending — on a quiet
-    // handoff the two agree and the clause would be noise.
-    const bank = e != null && board ? balanceOn(board.base, board.columns, endDate) : null;
-    const bankGap = bank != null && e != null && Math.abs(bank - e) >= 0.01 ? { bank, other: Math.abs(bank - e) } : null;
     out.push({
       key: "end", date: endDate, label: "Ending",
       note:
@@ -556,10 +565,9 @@ const CashFlowPage = () => {
             // only one of them is what the account will hold that day, and
             // reading the wrong one off the screen is how you plan short.
             // (Jason, 2026-11-09.)
-            // "by this day", not "on this day": the next period's week opens
-            // before this Ending's date, so its early bills have gone too, not
-            // only its payroll. A test pins the composition.
-            `Ops ${afterWords}${bankGap != null ? ` · the ${c.key === "current" ? "next" : "other"} period has already taken ${money(bankGap.other)} by this day, so the bank reads ${money(bankGap.bank)}` : ""}${floatLine != null ? (under ? ` · this period ends ${money(floatLine - e)} under the ${money(floatLine)} float` : ` · ends above the ${money(floatLine)} float`) : ""}${c.key === "current" ? " · opens the next period" : ""}`,
+            // The ending IS the bank now, so it says so plainly rather than
+            // footnoting the difference the way v1.267.4 did.
+            `what the bank holds ${afterWords}${floatLine != null ? (under ? ` · ${money(floatLine - e)} under the ${money(floatLine)} float` : ` · above the ${money(floatLine)} float`) : ""}${c.key === "current" ? " · opens the next period" : ""}`,
       amount: e, stamp: null, counted: true, kind: "ending", tone: e == null ? undefined : endTone(e),
     });
     return out;

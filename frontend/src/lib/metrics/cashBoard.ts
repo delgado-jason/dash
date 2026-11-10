@@ -220,6 +220,11 @@ export interface PeriodColumn {
   bills: BillLine[];
   billsTotal: number; // counted only
   moneyDays: MoneyDayLine[];
+  // The day the ending speaks for: the last counted line this column owns.
+  endDate: string;
+  // The bank's balance at the end of `endDate` — every counted line of BOTH
+  // columns dated on or before it. This is the ending, because the bank only
+  // keeps one timeline (v1.268.0, Jason).
   ending: number | null; // null when the column has no opening, or a counted line is refused (see `missing`)
   // The planning inputs a COUNTED line of this column needed and didn't have —
   // deduplicated by key. Non-empty ⇒ ending is null.
@@ -787,17 +792,46 @@ export const buildCashBoard = (raw: CashBoardInput): CashBoard | null => {
       for (const m of moneyDays) if (m.counted) ending -= m.amount!;
       ending = round2(ending);
     }
+    // The day this column's ending speaks for: the last day it moves money of
+    // its own. Everything else is dated earlier, so the bank has settled it.
+    const owned: (Line | null | undefined)[] = [
+      prevIn, deposit, payroll, accrual, cu, fuel.leftover, ...bills, ...moneyDays.map((m) => ({ amount: m.amount, date: m.date, counted: m.counted })),
+      ...since.flatMap((p) => [p.deposit, p.leftover, p.payroll, p.accrual, ...p.bills, ...p.moneyDays.map((m) => ({ amount: m.amount, date: m.date, counted: m.counted }))]),
+    ];
+    const endDate = owned.reduce<string>(
+      (a, l) => (l && l.counted && l.date > a ? l.date : a),
+      deposit.date,
+    );
     return {
       key, week, state: week.start > input.today ? "future" : "open", opening,
       since: key === "current" ? since : [],
       prevDeposit: prevIn, deposit, payroll, accrual, catchUp: cu, fuel, bills,
       billsTotal: round2(bills.filter((b) => b.counted).reduce((s, b) => s + b.amount, 0)),
-      moneyDays, ending, missing,
+      moneyDays, endDate, ending, missing,
     };
   };
 
-  const col0 = build("current", current, base.balance, base);
-  const col1 = build("next", next, col0.ending);
+  const raw0 = build("current", current, base.balance, base);
+  const raw1 = build("next", next, raw0.ending);
+  // ---- the handoff (v1.268.0) ----
+  // Jason: "there's two timelines. There's the pay period timeline of how we
+  // tally up what is due … and then there's the regular calendar timeline."
+  // He is right, and the bank only keeps the second one. The deposit, the fuel
+  // and the advance belong to the PERIOD that earned them; payroll and bills
+  // are calendar events that happen whatever period it is. Because a period's
+  // accrual pays the Friday AFTER it closes, the current column's last day
+  // falls inside the next period's week — the same Friday its payroll leaves.
+  //
+  // So each ending is the BANK's balance at the end of that column's last day,
+  // counting both columns. The next column opens on it, and the lines it has
+  // already had taken off are marked spent (see `absorbedBy` below) so nothing
+  // is subtracted twice. The ledger still GROUPS by period, which is the
+  // useful thing; only the ending had to stop pretending the grouping was a
+  // calendar.
+  const handoff = (c: PeriodColumn): number | null =>
+    c.ending == null ? null : balanceOn(base, [raw0, raw1], c.endDate);
+  const col0: PeriodColumn = { ...raw0, ending: handoff(raw0) };
+  const col1: PeriodColumn = { ...raw1, opening: col0.ending, ending: handoff(raw1) };
   const missing = dedupe([...col0.missing, ...col1.missing]);
   const lowest = missing.length ? null : lowestDay(base, [col0, col1], input.today);
   const clears = lowest != null && input.floatLine != null ? lowest.amount >= input.floatLine : null;
@@ -863,6 +897,13 @@ export const balanceOn = (base: CashCheck, columns: PeriodColumn[], date: string
   for (const m of moves) if (m.date <= date) bal += m.amount;
   return round2(bal);
 };
+
+// A line of the NEXT column that the previous column's ending has already
+// taken off, because it is dated on or before the handoff. The ledger shows it
+// spent — the same treatment a line already inside the Ops number gets — so
+// the reader can see it without it being subtracted twice.
+export const absorbedBy = (prev: PeriodColumn | null | undefined, date: string): boolean =>
+  prev != null && prev.ending != null && date <= prev.endDate;
 
 const lowestOf = (base: CashCheck, moves: { date: string; amount: number }[], today: string): LowestDay | null => {
   let bal = base.balance;

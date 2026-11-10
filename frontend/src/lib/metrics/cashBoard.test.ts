@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, runningAdvancePace, balanceOn, type CashBoardInput, type CashCheck } from "./cashBoard";
+import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, runningAdvancePace, balanceOn, absorbedBy, type CashBoardInput, type CashCheck } from "./cashBoard";
 import { collectReadings } from "./odometer";
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
@@ -51,6 +51,18 @@ const input = (over: Partial<CashBoardInput> = {}): CashBoardInput => ({
   ...over,
 });
 const round2 = (n: number) => Math.round(n * 100) / 100;
+// CHANGED in v1.268.0, and it changes what `ending` MEANS, so it is named once
+// here rather than smuggled into eight sums. Jason: "there's two timelines …
+// I get paid on Thursday from my settlement. Friday, payroll comes out. So my
+// true balance is the pay that I make on Thursday minus the payroll."
+//
+// A column's ending used to be that PERIOD's economics — its own lines only.
+// It is now the BANK's balance on the column's last day, counting both
+// columns, because the bank keeps one timeline and that is the number he reads
+// off the screen. The current column's last day is Fri Oct 9 (its accrual, paid
+// the Friday after the period closes), by which point the NEXT period has
+// already taken its payroll and its bills on the 7th and the 9th.
+const HANDOFF = 1908 + 100 + 20 + 20; // $2,048
 const CUR = { start: "2026-09-30", end: "2026-10-06" };
 const NEXT = { start: "2026-10-07", end: "2026-10-13" };
 const PREV = { start: "2026-09-23", end: "2026-09-29" };
@@ -121,31 +133,43 @@ describe("fuelForWeek — the card, the advance, the Monday leftover", () => {
   });
 });
 
-describe("balanceOn — the bank's number, which is not the period's ending", () => {
-  // Jason, 2026-11-09, reading v1.267.3 on prod: "the payroll is not being
-  // deducted from the current Friday. It's rolling over to the next period.
-  // So it's not showing an honest ending amount."
+describe("balanceOn — the ending IS the bank, across both columns", () => {
+  // Jason, 2026-11-09, twice, the second time with his own arithmetic:
+  // "there's two timelines. There's the pay period timeline of how we tally up
+  // what is due … and then there's the regular calendar timeline … I get paid
+  // on Thursday from my settlement. Friday, payroll comes out. So my true
+  // balance is the pay that I make on Thursday minus the payroll."
   //
-  // He is reading a real collision. A period's accrual pays the Friday AFTER
-  // it closes, which falls inside the NEXT period's week — and that Friday is
-  // also the next period's payroll day. So the current column's Ending is
-  // dated a day on which the other column moves money it does not count.
-  // Both figures are correct; only one is a bank balance.
+  // The columns group money by the period that EARNED it, which is the useful
+  // thing and stays. But a period's accrual pays the Friday AFTER it closes —
+  // inside the next period's week, the same Friday its payroll leaves. v1.267.4
+  // footnoted that gap; he wanted the number, and he is right: the bank keeps
+  // one timeline and the ending is what he reads off the screen.
   it("the current ending's own Friday is also the next period's payroll day", () => {
     const b = buildCashBoard(input())!;
+    expect(b.columns[0].endDate).toBe("2026-10-09");
     expect(b.columns[0].accrual.date).toBe("2026-10-09");
     expect(b.columns[1].payroll.date).toBe("2026-10-09");
   });
-  it("the bank on that Friday is lower than the ending, by everything the other column has already taken", () => {
+  it("so the ending counts that payroll — it is the bank on the day, not the period's own sum", () => {
     const b = buildCashBoard(input())!;
-    const ending = b.columns[0].ending!;
-    const bank = balanceOn(b.base, b.columns, "2026-10-09")!;
-    expect(bank).toBeLessThan(ending);
-    // NOT just the payroll — the next period's week opens Oct 7, so its Canva
-    // ($20) and Claude ($100) on the 7th and its Analysis Ch ($20) on the 9th
-    // have gone too. The gap is everything the other column spent by that day,
-    // which is why the Ending's note says "by this day", not "on this day".
-    expect(round2(ending - bank)).toBe(1908 + 20 + 100 + 20);
+    const [cur, nxt] = b.columns;
+    expect(cur.ending).toBe(balanceOn(b.base, b.columns, cur.endDate));
+    // The size of the handoff — NOT just the payroll, since the next period's
+    // week opens Oct 7, so its Claude ($100) and Canva ($20) on the 7th and
+    // Analysis Ch ($20) on the 9th have gone too — is pinned against the
+    // column's own explicit line sum further down this file.
+    //
+    // And the next column opens on it, so the chain still ties.
+    expect(nxt.opening).toBe(cur.ending);
+  });
+  it("the absorbed lines are marked spent, so nothing is subtracted twice", () => {
+    const b = buildCashBoard(input())!;
+    const [cur, nxt] = b.columns;
+    expect(absorbedBy(cur, nxt.payroll.date)).toBe(true); // Oct 9 — inside the ending
+    expect(absorbedBy(cur, nxt.deposit.date)).toBe(false); // Oct 15 — still to come
+    // The far end is unchanged by the handoff: the total is the total.
+    expect(nxt.ending).toBe(balanceOn(b.base, b.columns, "2026-12-31"));
   });
   it("walked to the far end it IS the next column's ending — the two columns are one timeline", () => {
     const b = buildCashBoard(input())!;
@@ -264,7 +288,7 @@ describe("buildCashBoard — Thu Oct 1, two periods, the Ops number from Sep 30"
     expect(cur.bills.map((b) => b.label)).toEqual(["Google", "Prepass", "Health Ins", "Intuit"]);
     expect(cur.billsTotal).toBeCloseTo(716.48, 2);
     expect(cur.fuel.leftover).toMatchObject({ amount: 41, date: "2026-10-05", counted: true });
-    expect(cur.ending).toBeCloseTo(7309.08 - 720.32 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41, 2);
+    expect(cur.ending).toBeCloseTo(7309.08 - 720.32 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41 - HANDOFF, 2);
   });
 
   it("the next period opens on the current ending; the fallback deposit, payroll, Oct 7–13's bills, $41 from the card; the accrual is nothing yet", () => {
@@ -274,7 +298,7 @@ describe("buildCashBoard — Thu Oct 1, two periods, the Ops number from Sep 30"
     expect(nxt.deposit.amount).toBeCloseTo(4647 - 2000 - 172, 2);
     expect(nxt.accrual).toMatchObject({ amount: 0, source: "none", date: "2026-10-16" });
     expect(nxt.bills.map((b) => b.label)).toEqual(["Claude", "Canva", "Analysis Ch"]);
-    expect(nxt.ending).toBeCloseTo(cur.ending! + 2475 - 1908 - 140 + 41, 2);
+    expect(nxt.ending).toBeCloseTo(cur.ending! + 2475 + 41, 2);
   });
 
   it("the verdict reads the lowest DAY, not the two endings: Oct 6, after Intuit drafts and before the Oct 8 deposit", () => {
@@ -299,7 +323,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     expect(cur.bills.find((x) => x.label === "Prepass")!.counted).toBe(true);
     // last period's accrual (Fri Oct 2) comes off after a morning check typed that day
     expect(cur.since[0]?.accrual).toMatchObject({ date: "2026-10-02", counted: true });
-    expect(cur.ending).toBeCloseTo(9000 - 720.32 + cur.deposit.amount! - 1908 - cur.accrual.amount! - 16.8 - 200 - 380.45 - 119.23 + 41, 2);
+    expect(cur.ending).toBeCloseTo(9000 - 720.32 + cur.deposit.amount! - 1908 - cur.accrual.amount! - 16.8 - 200 - 380.45 - 119.23 + 41 - HANDOFF, 2);
   });
 
   it("a Friday snapshot, taken after payroll, the drafts and the accrual move, already holds that Friday — this period's own accrual (Oct 9) still counts", () => {
@@ -311,7 +335,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     expect(cur.bills.find((x) => x.label === "Prepass")!.counted).toBe(true);
     expect(cur.accrual.counted).toBe(true);
     expect(cur.since).toEqual([]); // last period's Oct 2 accrual was moved before the snapshot was typed
-    expect(cur.ending).toBeCloseTo(9000 + cur.deposit.amount! - cur.accrual.amount! - 200 - 380.45 - 119.23 + 41, 2);
+    expect(cur.ending).toBeCloseTo(9000 + cur.deposit.amount! - cur.accrual.amount! - 200 - 380.45 - 119.23 + 41 - HANDOFF, 2);
   });
 
   it("an Ops number typed the day the deposit lands already holds it — nothing is added twice", () => {
@@ -319,7 +343,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
     const b = buildCashBoard(input({ checks: c }))!;
     const cur = b.columns[0];
     expect(cur.prevDeposit).toMatchObject({ date: "2026-10-01", amount: 4718.09, counted: false });
-    expect(cur.ending).toBeCloseTo(12024.08 - 720.32 + 2404.76 - 1908 - 234.88 - 716.48 + 41, 2);
+    expect(cur.ending).toBeCloseTo(12024.08 - 720.32 + 2404.76 - 1908 - 234.88 - 716.48 + 41 - HANDOFF, 2);
   });
 
   it("a Friday snapshot and an Ops check on the same day: the check, typed later, is the number", () => {
@@ -330,7 +354,7 @@ describe("buildCashBoard — the Ops number's date decides what counts", () => {
   it("a run money day inside the period leaves Ops on its day", () => {
     const b = buildCashBoard(input({ moneyDays: [{ date: "2026-10-02", amount: 500, label: "Money day · August 2026" }] }))!;
     expect(b.columns[0].moneyDays).toEqual([{ date: "2026-10-02", amount: 500, label: "Money day · August 2026", counted: true }]);
-    expect(b.columns[0].ending).toBeCloseTo(7309.08 - 720.32 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41 - 500, 2);
+    expect(b.columns[0].ending).toBeCloseTo(7309.08 - 720.32 + 4718.09 + 2404.76 - 1908 - 234.88 - 716.48 + 41 - 500 - HANDOFF, 2);
   });
 
   it("a future-dated balance is ignored; no balance at all → no board", () => {
@@ -355,7 +379,7 @@ describe("buildCashBoard — an Ops number older than this Wednesday: what the p
     expect(p.bills.map((x) => x.label)).toEqual(["Truck Note", "Guarantee fee", "Trailer Payment", "Phone"]);
     expect(p.total).toBeCloseTo(1000.52 - 720.32 - 3291.19, 2);
     expect(cur.prevDeposit).toMatchObject({ amount: 4718.09, counted: true });
-    expect(cur.ending).toBeCloseTo(9927.54 + (1000.52 - 720.32 - 3291.19) + 4718.09 + 2404.76 - 1908 - 234.88 + 41 - 716.48, 2);
+    expect(cur.ending).toBeCloseTo(9927.54 + (1000.52 - 720.32 - 3291.19) + 4718.09 + 2404.76 - 1908 - 234.88 + 41 - 716.48 - HANDOFF, 2);
     expect(b.columns[1].since).toEqual([]);
   });
 
