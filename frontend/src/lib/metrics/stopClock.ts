@@ -165,6 +165,35 @@ export const loadStops = (load: Load, freeHours: number, now: Date) => ({
   ),
 });
 
+/**
+ * Did this stop happen — counting BOTH ways it can be recorded?
+ *
+ * A stop is completed either by a tap on the console (a stamp, which carries
+ * its date) or by a time typed on the load page (a bare time, which does not).
+ * Both are legitimate. Which one it was decides what can be DISPLAYED — a live
+ * clock needs the date — but never whether the truck was there.
+ *
+ * v1.272.0 shipped without this distinction: the card asked `clock.started`,
+ * which is only ever true for a stamp. A load whose shipper times were typed
+ * showed no buttons at all, and its receiver stayed locked behind a shipper
+ * the card could not see had been left. Jason hit it the first day.
+ */
+export interface StopProgress {
+  /** The truck got there. */
+  reached: boolean;
+  /** And was let go. */
+  released: boolean;
+}
+
+export const stopProgress = (
+  clock: StopClock,
+  legacyIn: string | null | undefined,
+  legacyOut: string | null | undefined,
+): StopProgress => ({
+  reached: clock.started || !!legacyIn,
+  released: (clock.started && !clock.running) || !!legacyOut,
+});
+
 /** "1h 48m" · "47m" · "0m". A clock reads in hours and minutes, never decimals. */
 export const hm = (minutes: number): string => {
   const m = Math.max(0, Math.round(minutes));

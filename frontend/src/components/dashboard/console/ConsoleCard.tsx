@@ -9,12 +9,18 @@
 // So the card carries the taps: arrive and depart at both stops, the status,
 // and the completion. The clocks are arithmetic on stored stamps, so nothing
 // here depends on the page staying open.
+//
+// TWO SOURCES, ONE TRUTH. A stop can be completed from this card (a stamp,
+// which carries its date) or typed on the load page (a bare time, which does
+// not). Both are legitimate and the card must read both — v1.272.0 shipped
+// treating a stamp as the only way a stop could be done, so a shipper whose
+// times were typed showed no buttons at all AND locked the receiver behind it.
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import type { Load } from "@/types/load";
-import { NO_CLAIM_WORDS } from "@/lib/detention";
-import { loadStops, hm, atClock, type StopClock } from "@/lib/metrics/stopClock";
-import { fmtTime } from "@/lib/stopTimes";
+import { NO_CLAIM_WORDS, stopDetentionMinutes, detentionBar } from "@/lib/detention";
+import { loadStops, hm, atClock, stopProgress, type StopClock } from "@/lib/metrics/stopClock";
+import { fmtTime, dwellMinutes } from "@/lib/stopTimes";
 import { SelectControl } from "@/components/ui/FormControls";
 
 // Everything the card can ask the console to write. The console owns the
@@ -60,12 +66,13 @@ interface StopProps {
   state: string | null | undefined;
   apptStart: string | null | undefined;
   apptEnd: string | null | undefined;
-  /** The time-only column — all a pre-106 row has. */
+  /** The time-only columns — all a row typed on the load page has. */
   legacyIn: string | null | undefined;
   legacyOut: string | null | undefined;
   inAt: string | null | undefined;
   outAt: string | null | undefined;
   clock: StopClock;
+  freeHours: number;
   inField: StampField;
   outField: StampField;
   load: Load;
@@ -75,8 +82,8 @@ interface StopProps {
 }
 
 const StopRow = ({
-  label, name, city, state, apptStart, apptEnd,
-  legacyIn, legacyOut, inAt, outAt, clock, inField, outField, load, actions, reachable,
+  label, name, city, state, apptStart, apptEnd, legacyIn, legacyOut,
+  inAt, outAt, clock, freeHours, inField, outField, load, actions, reachable,
 }: StopProps) => {
   const where = [name, [city, state].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
   const appt =
@@ -88,83 +95,101 @@ const StopRow = ({
 
   const inBusy = actions.busy === `${load.load_id}:${inField}`;
   const outBusy = actions.busy === `${load.load_id}:${outField}`;
-  const done = clock.started && !clock.running;
 
-  // A row written before migration 106: a time of day and no date. The clock
-  // refuses rather than counting from a guessed midnight.
-  const legacyOnly = !inAt && !!legacyIn;
+  // Reached and released read BOTH sources — a stamp from this card, or a time
+  // typed on the load page. Which one it was changes what can be SHOWN, never
+  // whether the stop happened.
+  const { reached, released } = stopProgress(clock, legacyIn, legacyOut);
+  // A typed time has no date, so a live clock cannot run off it. A FINISHED
+  // typed stop is different: both ends are known, so the stored figures —
+  // the same ones the loads table, the facility ledger and the agent
+  // scorecard read — are exact and belong on the card.
+  const typed = !clock.started && reached;
+  const typedDwell = typed && legacyOut ? dwellMinutes(legacyIn, legacyOut, apptStart) : null;
+  const typedDetention =
+    typed && legacyOut ? stopDetentionMinutes(legacyIn, legacyOut, apptStart, apptEnd, freeHours) : 0;
+  const typedBar = typed && legacyOut ? detentionBar(apptStart, apptEnd, legacyIn) : null;
+
+  const detentionNow = clock.started ? clock.detentionMinutes : typedDetention;
 
   return (
-    <div className="py-[11px] border-b ds2-cell-rule last:border-b-0">
-      <p className={`font-condensed font-semibold text-[13.5px] ${clock.started ? "" : "text-faint"}`}>
+    <div className="py-2.5">
+      <p className={`font-condensed font-semibold text-[13.5px] ${reached ? "" : "text-faint"}`}>
         {label}
         {where && <span className="text-faint font-normal"> · {where}</span>}
         {appt && <span className="text-faint font-normal"> · {appt}</span>}
       </p>
 
       <div className="flex items-center gap-x-3.5 gap-y-1.5 flex-wrap mt-1.5">
-        {legacyOnly ? (
-          <>
-            <span className="font-condensed text-[13.5px] text-dim tabular-nums">
-              in <b className="text-ink">{fmtTime(legacyIn)}</b>
-              {legacyOut && <> · out <b className="text-ink">{fmtTime(legacyOut)}</b></>}
-            </span>
-            <span className="font-condensed text-[12px] text-faint">
-              logged before stamps — no date on this time, so no clock
-            </span>
-          </>
-        ) : !clock.started ? (
+        {!reached ? (
           <span className="font-condensed text-[13px] text-faint">not there yet</span>
         ) : (
           <>
             <span className="font-condensed text-[13.5px] text-dim tabular-nums">
-              in <b className="text-ink">{atClock(inAt)}</b>
-              {outAt && <> · out <b className="text-ink">{atClock(outAt)}</b></>}
+              in <b className="text-ink">{clock.started ? atClock(inAt) : fmtTime(legacyIn)}</b>
+              {released && (
+                <> · out <b className="text-ink">{outAt ? atClock(outAt) : fmtTime(legacyOut)}</b></>
+              )}
             </span>
 
-            {/* The held time. Jason's rule: it runs from the LATER of the
-                arrival and the appointment, so an early arrival is not charged
-                to the dock. Red once it is claimable, amber while it ticks
+            {/* The held time, from the later of the arrival and the
+                appointment. Red once it is claimable, amber while it ticks
                 inside the free window, dim when nothing can be claimed. */}
-            <span
-              className="font-condensed font-semibold tabular-nums text-[21px] leading-none"
-              style={{
-                color: clock.detentionMinutes > 0
-                  ? "var(--color-status-negative-text)"
-                  : clock.noClaim
-                    ? "var(--color-dim)"
-                    : "var(--color-amber-hi)",
-              }}
-            >
-              {hm(clock.dwellMinutes ?? 0)}
-            </span>
+            {(clock.started || typedDwell != null) && (
+              <span
+                className="font-condensed font-semibold tabular-nums text-[21px] leading-none"
+                style={{
+                  color: detentionNow > 0
+                    ? "var(--color-status-negative-text)"
+                    : (clock.started ? clock.noClaim : typedBar)
+                      ? "var(--color-dim)"
+                      : "var(--color-amber-hi)",
+                }}
+              >
+                {hm((clock.started ? clock.dwellMinutes : typedDwell) ?? 0)}
+              </span>
+            )}
 
             {/* Dwell and the claim are two different numbers and the card says
                 both. The reason matters when there is no claim: a missing
                 appointment is fixable, arriving late is not. */}
-            {clock.noClaim ? (
-              <span className="font-condensed text-[12.5px] text-faint">
-                held · {NO_CLAIM_WORDS[clock.noClaim]}
-              </span>
-            ) : clock.detentionMinutes > 0 ? (
+            {detentionNow > 0 ? (
               <span
                 className="font-condensed font-semibold text-[12.5px]"
                 style={{ color: "var(--color-status-negative-text)" }}
               >
-                {hm(clock.detentionMinutes)} past free — claimable
+                {hm(detentionNow)} past free — claimable
+              </span>
+            ) : clock.started ? (
+              clock.noClaim ? (
+                <span className="font-condensed text-[12.5px] text-faint">
+                  held · {NO_CLAIM_WORDS[clock.noClaim]}
+                </span>
+              ) : (
+                <span className="font-condensed text-[12.5px] text-faint">
+                  free until <b className="text-dim tabular-nums">{atClock(clock.freeUntil?.toISOString())}</b>
+                </span>
+              )
+            ) : typedDwell != null ? (
+              <span className="font-condensed text-[12.5px] text-faint">
+                {typedBar ? NO_CLAIM_WORDS[typedBar] : "inside free"}
               </span>
             ) : (
-              <span className="font-condensed text-[12.5px] text-faint">
-                free until <b className="text-dim tabular-nums">{atClock(clock.freeUntil?.toISOString())}</b>
+              // Typed, and still sitting. The stored figure needs both ends and
+              // a live one needs a date, so there is no honest number yet — say
+              // so rather than counting from a guessed midnight.
+              <span className="font-condensed text-[12px] text-faint">
+                typed on the load page — no clock until it is released
               </span>
             )}
           </>
         )}
 
         <span className="ml-auto flex items-center gap-2">
-          {/* A stamp is a fact, so it stays undoable — a mis-tap on a phone at
-              a dock should not need the load page to fix. */}
-          {clock.started && clock.running && !legacyOnly && (
+          {/* A stamp is a fact, so it stays undoable — a mis-tap at a dock
+              should not need the load page to fix. Only a stamp THIS card made
+              can be taken back; a typed time belongs to the load page. */}
+          {clock.started && clock.running && (
             <button
               type="button"
               onClick={() => actions.unstamp(load, inField)}
@@ -174,7 +199,7 @@ const StopRow = ({
               Undo arrival
             </button>
           )}
-          {!clock.started && !legacyOnly && (
+          {!reached && (
             <button
               type="button"
               onClick={() => actions.stamp(load, inField)}
@@ -188,7 +213,7 @@ const StopRow = ({
               {inBusy ? "…" : "Arrived"}
             </button>
           )}
-          {clock.started && clock.running && (
+          {reached && !released && (
             <button
               type="button"
               onClick={() => actions.stamp(load, outField)}
@@ -198,19 +223,19 @@ const StopRow = ({
               {outBusy ? "…" : "Departed"}
             </button>
           )}
-          {done && (
+          {released && (
             <span
               className="font-condensed font-semibold text-[10px] tracking-[.11em] uppercase px-2 py-[2px] rounded-full"
               style={{
-                background: clock.detentionMinutes > 0
+                background: detentionNow > 0
                   ? "var(--color-status-negative-bg)"
                   : "var(--color-status-positive-bg)",
-                color: clock.detentionMinutes > 0
+                color: detentionNow > 0
                   ? "var(--color-status-negative-text)"
                   : "var(--color-status-positive-text)",
               }}
             >
-              {clock.detentionMinutes > 0 ? `${hm(clock.detentionMinutes)} detention` : "inside free"}
+              {detentionNow > 0 ? `${hm(detentionNow)} detention` : "inside free"}
             </span>
           )}
         </span>
@@ -236,10 +261,11 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
   const [finishing, setFinishing] = useState(false);
   const [odo, setOdo] = useState("");
 
-  const rolling = load.load_status === "in_transit";
-  const bothDone =
-    stops.shipper.started && !stops.shipper.running &&
-    stops.receiver.started && !stops.receiver.running;
+  // Released, from either source — see StopRow. The receiver cannot be arrived
+  // at until the shipper has been left, however that was recorded.
+  const shipperReleased = stopProgress(stops.shipper, load.shipper_in, load.shipper_out).released;
+  const receiverReleased = stopProgress(stops.receiver, load.receiver_in, load.receiver_out).released;
+  const bothDone = shipperReleased && receiverReleased;
 
   const start = load.odometer_start ?? null;
   const end = Number(odo.replace(/[^0-9]/g, ""));
@@ -257,14 +283,8 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
   const noStart = start == null;
 
   return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{
-        borderColor: rolling ? "var(--color-amber)" : "var(--color-hairline)",
-        background: "var(--t-panel)",
-      }}
-    >
-      <div className="flex items-baseline gap-2.5 flex-wrap px-3.5 py-2.5 border-b border-hairline">
+    <div>
+      <div className="flex items-baseline gap-2.5 flex-wrap">
         <Link
           to={`/loads/${load.load_id}`}
           className="font-condensed font-bold text-[16px] hover:text-amber-hi"
@@ -279,10 +299,9 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
             delivers {whenWord(String(load.delivery_date).slice(0, 10), today)}
           </span>
         )}
-        {/* Held to a width so it reads as a chip on the card rather than a
-            form field claiming its own row — the 44px height of `.ds-ctrl`
-            stays, because that is the tap target a thumb needs on a phone and
-            this control is meant to be tapped at a dock. */}
+        {/* Held to a width so it reads as a chip rather than a form field
+            claiming its own row — the 44px height of `.ds-ctrl` stays, because
+            that is the tap target a thumb needs and this gets tapped at a dock. */}
         <span className="ml-auto w-[124px] shrink-0">
           <SelectControl
             value={load.load_status}
@@ -303,7 +322,12 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
         </span>
       </div>
 
-      <div className="px-3.5">
+      {/* One hairline between the two stops, and none anywhere else. The card
+          used to be a bordered box inside a bordered panel — two amber
+          rectangles a few pixels apart, with rules above and below each
+          section. Jason called it crammed and he was right: the content sat
+          four insets deep before it reached a word. */}
+      <div className="mt-1 divide-y ds2-cell-rule">
         <StopRow
           label="Shipper"
           name={load.shipper_name}
@@ -316,6 +340,7 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
           inAt={load.shipper_in_at}
           outAt={load.shipper_out_at}
           clock={stops.shipper}
+          freeHours={freeHours}
           inField="shipper_in"
           outField="shipper_out"
           load={load}
@@ -334,17 +359,18 @@ export const ConsoleCard = ({ load, freeHours, now, actions, today, whenWord }: 
           inAt={load.receiver_in_at}
           outAt={load.receiver_out_at}
           clock={stops.receiver}
+          freeHours={freeHours}
           inField="receiver_in"
           outField="receiver_out"
           load={load}
           actions={actions}
           // You cannot arrive at the receiver before leaving the shipper. The
-          // button greys rather than hiding, so the order is legible.
-          reachable={stops.shipper.started && !stops.shipper.running}
+          // button greys rather than hiding, so the order stays legible.
+          reachable={shipperReleased}
         />
       </div>
 
-      <div className="flex items-center gap-2.5 flex-wrap px-3.5 py-2.5 border-t border-hairline">
+      <div className="flex items-center gap-2.5 flex-wrap pt-2.5 mt-0.5 border-t ds2-cell-rule">
         {start != null ? (
           <span className="font-condensed text-[13px] text-dim">
             started <b className="text-ink tabular-nums">{num(start)}</b>

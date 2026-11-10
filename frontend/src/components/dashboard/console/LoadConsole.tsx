@@ -228,17 +228,26 @@ export const LoadConsole = ({ loads, freeHours, today, whenWord, onChanged }: Pr
           </Link>
         </p>
       ) : (
-        <div className="flex flex-col gap-2.5 mt-2.5">
+        // One amber rectangle, not two. The cards used to be bordered boxes
+        // inside this bordered panel — concentric yellow rounded rectangles a
+        // few pixels apart, which read as crammed and said the same thing
+        // twice. The panel carries the state now; the cards are content, and
+        // on the rare day two loads roll a rule divides them.
+        <div className="mt-2 divide-y divide-hairline">
           {cards.map((l) => (
-            <ConsoleCard
+            <div
               key={String(l.load_id ?? l.load_number)}
-              load={l}
-              freeHours={freeHours}
-              now={now}
-              actions={actions}
-              today={today}
-              whenWord={whenWord}
-            />
+              className="py-2.5 first:pt-0 last:pb-0"
+            >
+              <ConsoleCard
+                load={l}
+                freeHours={freeHours}
+                now={now}
+                actions={actions}
+                today={today}
+                whenWord={whenWord}
+              />
+            </div>
           ))}
         </div>
       )}
