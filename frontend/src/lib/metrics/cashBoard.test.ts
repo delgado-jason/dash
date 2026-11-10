@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, type CashBoardInput, type CashCheck } from "./cashBoard";
+import { buildCashBoard, depositForWeek, fuelForWeek, accrualForWeek, statementDateOf, normalizeSettlementDay, runningWeekPace, runningMilesPace, runningAdvancePace, type CashBoardInput, type CashCheck } from "./cashBoard";
 import { collectReadings } from "./odometer";
 import type { Load } from "@/types/load";
 import type { Obligation } from "@/types/obligation";
@@ -80,26 +80,67 @@ describe("fuelForWeek — the card, the advance, the Monday leftover", () => {
     expect(f).toMatchObject({ spent: 1959, spentSource: "pace", soFar: 0, advances: 2000, advancesSource: "assumed" });
     expect(f.leftover).toMatchObject({ amount: 41, date: "2026-10-05", counted: true });
   });
-  it("fills that pass $2,000 become the advance — you borrow what the fuel costs — and the fuel figure is actual, not the pace", () => {
+  // CHANGED in v1.268.0, deliberately — both of these encoded the silent zero.
+  // They used to assert that fuelling past the advance produced a leftover of
+  // exactly $0, on the theory that the advance simply rose to meet the fills.
+  // Jason's statements say otherwise: the advance is a CARD PRE-TRIP lump he
+  // draws, and it ran $0–$4,000 across twelve statements with the fills past
+  // it on four of them. Fuel bought past the draw comes out of Ops, and
+  // `Math.max(0, …)` erased every dollar of it — always in the direction that
+  // flatters Ops.
+  it("fills past the advance come OUT of Ops — the leftover goes negative, it is not zero", () => {
     const heavy = [...fuel, { fuel_date: "2026-09-30", gallons: 200, price_per_gallon: 6, odometer_reading: 606300 }, { fuel_date: "2026-10-01", gallons: 200, price_per_gallon: 6, odometer_reading: 607000 }];
     const f = fuelForWeek(input({ fuelEntries: heavy }), CUR);
-    expect(f).toMatchObject({ spent: 2400, spentSource: "actual", advances: 2400, advancesSource: "fills" });
-    expect(f.leftover.amount).toBe(0);
+    expect(f).toMatchObject({ spent: 2400, spentSource: "actual", advances: 2000, advancesSource: "assumed" });
+    expect(f.leftover.amount).toBe(-400);
   });
-  it("a pace above $2,000 with no fills yet: the fuel figure runs at the pace, but the advance stays the $2,000 until the fills pass it — nothing left on the card", () => {
+  it("a pace above the advance is a shortfall you will cover, not a wash", () => {
     const f = fuelForWeek(input({ fuelPaceWeekly: 2087 }), CUR, B930);
     expect(f).toMatchObject({ spent: 2087, spentSource: "pace", advances: 2000, advancesSource: "assumed", soFar: 0 });
-    expect(f.leftover.amount).toBe(0);
+    expect(f.leftover.amount).toBe(-87);
   });
-  it("a closed period with no loads drew nothing — no advance, no leftover", () => {
+  it("with four draws on file the advance is projected from them, not from the typed figure", () => {
+    const f = fuelForWeek(input({ advancePaceWeekly: 2218.75, fuelPaceWeekly: 1959 }), CUR, B930);
+    expect(f).toMatchObject({ advances: 2218.75, advancesSource: "pace" });
+    expect(f.leftover.amount).toBe(259.75);
+  });
+  // CHANGED in v1.268.0 with the two above, and the most telling of the three:
+  // the clamp was pinned by THREE separate tests, which is how it survived this
+  // long. A closed period with no loads drew no advance — but the fuel log says
+  // he still put $1,874 in the tank, and with no advance behind it that money
+  // came straight out of Ops. Asserting $0 here claimed the fuel was free.
+  it("no loads means no advance — so fuel bought that week came out of Ops in full", () => {
     const f = fuelForWeek(input({ settlements: [] }), PREV, undefined, true);
     expect(f).toMatchObject({ spent: 1874.48, advances: 0, advancesSource: "none" });
-    expect(f.leftover.amount).toBe(0);
+    expect(f.leftover.amount).toBe(-1874.48);
   });
   it("the Monday leftover is money that's there by morning: before or on the day of the Ops number it's already inside it", () => {
     expect(fuelForWeek(input(), PREV, B930).leftover.counted).toBe(false);
     expect(fuelForWeek(input(), CUR, { ...B930, date: "2026-10-05" }).leftover.counted).toBe(false);
     expect(fuelForWeek(input(), CUR, { ...B930, date: "2026-10-04" }).leftover.counted).toBe(true);
+  });
+});
+
+describe("runningAdvancePace — the advance measured, not typed", () => {
+  const stmt = (ending: string, advances: number): SettlementSummary =>
+    ({ ...sep30, settlement_id: `s${ending}`, period_ending: ending, advances }) as SettlementSummary;
+  // Newest first, the way the server returns them.
+  const four = [stmt("2026-09-30", 2875), stmt("2026-09-23", 2000), stmt("2026-09-16", 1000), stmt("2026-09-09", 3000)];
+
+  it("averages the last four statements that drew", () => {
+    expect(runningAdvancePace(four, "2026-10-01")).toBe(2218.75);
+  });
+  it("refuses on fewer than four draws rather than guessing from two — the typed figure stays the fallback", () => {
+    expect(runningAdvancePace(four.slice(0, 3), "2026-10-01")).toBeNull();
+    expect(runningAdvancePace([], "2026-10-01")).toBeNull();
+  });
+  it("a week that drew nothing is not a $0 draw — it is skipped, and the next one back counts", () => {
+    const withZero = [stmt("2026-09-30", 0), ...four];
+    expect(runningAdvancePace(withZero, "2026-10-01")).toBe(2218.75);
+  });
+  it("a statement dated today or later hasn't settled, so it never enters the pace", () => {
+    const ahead = [stmt("2026-10-07", 9999), ...four];
+    expect(runningAdvancePace(ahead, "2026-10-01")).toBe(2218.75);
   });
 });
 

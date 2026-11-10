@@ -1623,16 +1623,21 @@ const GuidePage = () => {
               period, and every line sits on the day the money moves: the Ops
               number you typed, last period’s deposit on its Thursday, payroll
               on Friday, the accrual on the period’s own miles the Friday after
-              it closes, the bills on their draft days, the card leftover on
-              Monday (the advance borrowed against the loads minus the fuel —
-              fills never come out of Ops), this period’s own deposit on the
-              Thursday after it closes, then the ending. A faint line is already
+              it closes, the bills on their draft days, the fuel advance on
+              Monday, this period’s own deposit on the Thursday after it
+              closes, then the ending — <span className="text-light">dated
+              after the last thing that moved</span>, which in a normal week is
+              Friday’s payroll, not Thursday’s deposit. A faint line is already
               inside your number. The deposit is the statement’s actual once the
               vault has it; before that it is the delivered and expected loads —
               or a normal planning week when they say less, so one small booking
-              never replaces the week — minus the weekly advance (
-              <span className="text-light">$2,000 unless the fills pass it</span>
-              ) and the fixed deductions, minus whatever the statement before
+              never replaces the week — minus the advance (
+              <span className="text-light">
+                the average of your last four statements that drew one
+              </span>
+              , since a CARD PRE-TRIP lump is never the same number twice; the
+              figure in Assumptions is only the fallback until four are on
+              file) and the fixed deductions, minus whatever the statement before
               carried forward: a home week’s statement nets under zero, lands
               nothing, and Landstar takes it out of the next one. A TONU is never
               counted until the statement pays it — the shipper decides what it
@@ -1650,14 +1655,26 @@ const GuidePage = () => {
               dated on or after it comes off; a snapshot already holds its own
               day, including the accrual you moved before typing it, while a
               morning check still has that day ahead. Whatever an earlier period
-              still owes after your number — its Friday accrual, its card
-              leftover, its bills — rides into the current column on its own
-              date. The verdict reads the{" "}
+              still owes after your number — its Friday accrual, its fuel
+              advance, its bills — rides into the current column on its own
+              date. The fuel line{" "}
+              <span className="text-light">can go either way</span>: the advance
+              minus what you actually burned. Spend less and the rest is still
+              on the card, so it comes back to Ops. Spend more — or run a week
+              with no loads, and so no advance at all — and the difference came
+              out of Ops, which is why that line is allowed to be negative. It
+              used to be floored at zero, and four of your statements since
+              August read $0 when you had genuinely fuelled past the draw.
+              The verdict reads the{" "}
               <span className="text-light">lowest day</span> across both
               periods, not the two endings: a board can end above the float and
-              dip under it on a Sunday in between. Tap either deposit to type
-              the figure you know; it is kept on this browser until the
-              statement lands.
+              dip under it on a Sunday in between. That is why the badge says{" "}
+              <span className="text-light">every day clears</span> or{" "}
+              <span className="text-light">a day under the float</span> while
+              each ending speaks only for its own period — the two can
+              disagree, and now they no longer borrow each other’s words. Tap
+              either deposit to type the figure you know; it is kept on this
+              browser until the statement lands.
             </Why>
           </Metric>
 

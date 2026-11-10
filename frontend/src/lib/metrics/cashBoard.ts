@@ -107,7 +107,8 @@ export interface CashBoardInput {
   fuelPaceWeekly: number | null; // $/week over the last four running pay weeks (runningWeekPace); null → fuelFallback
   fuelFallback: number | null;
   milesPaceWeekly?: number | null; // odometer miles/week over the last four running pay weeks (runningMilesPace)
-  advanceDefault: number | null; // the weekly fuel advance borrowed against the loads — $2,000
+  advanceDefault: number | null; // the typed weekly fuel advance — the FALLBACK only, once four statements have drawn
+  advancePaceWeekly?: number | null; // the mean of the last four statements that drew an advance (runningAdvancePace)
   buckets: DeductionBuckets;
   deductionsFallback: number | null;
   weeklyRevenueFallback: number | null; // when nothing is booked into a period yet
@@ -132,11 +133,15 @@ export interface FuelLine {
   spentSource: "actual" | "pace";
   fills: number;
   soFar: number;
-  advances: number | null; // drawn in the period — the statement's actual, else assumed; null when the weekly advance isn't set
-  // actual = the statement · assumed = the weekly advance · fills = the logged
-  // fills passed it · none = no loads, no draw
-  advancesSource: "actual" | "assumed" | "fills" | "none";
-  leftover: Line; // advances − spent → Ops, the Monday inside the period
+  advances: number | null; // drawn in the period — the statement's actual, else the measured pace, else the typed figure
+  // actual = the statement · pace = the last four draws · assumed = the typed
+  // figure · none = no loads, no draw
+  advancesSource: "actual" | "pace" | "assumed" | "none";
+  // advances − spent → Ops, the Monday inside the period. SIGNED since
+  // v1.268.0: a NEGATIVE leftover is fuel he bought past the advance, which
+  // came out of Ops and is real. `Math.max(0, …)` used to erase it, and only
+  // ever in the direction that flatters Ops.
+  leftover: Line;
   missing: MissingInput[]; // the planning inputs the advance / the pace needed and didn't have
 }
 
@@ -246,7 +251,13 @@ const INPUT_WORDS = {
   advanceDefault: { label: "the weekly fuel advance", fixAt: "ASSUMPTIONS" },
   deductionsFallback: { label: "the weekly settlement deductions", fixAt: "ASSUMPTIONS" },
   weeklyRevenueFallback: { label: "the weekly revenue fallback", fixAt: "ASSUMPTIONS" },
-  fuelFallback: { label: "the weekly fuel fallback", fixAt: "ASSUMPTIONS" },
+  // There is no "weekly fuel fallback" box and there never was: until v1.268.0
+  // this key was fed from `weekly_fuel_advance`, so one blank setting reported
+  // TWO missing inputs and sent you hunting for a second one. Worse, it made
+  // the board assume fuel SPEND equalled the ADVANCE — two different numbers
+  // ($1,446/wk against $2,207 on Jason's book). The pace is measured off the
+  // fuel log now or it refuses, and this says what it actually needs.
+  fuelFallback: { label: "a fill on the fuel log to read your pace from", fixAt: "FUEL", fixTo: "/fuel-entries" },
   perMile: { label: "the plan's $ per mile", fixAt: "EDIT PLAN", fixTo: "/status" },
 } satisfies Record<string, InputWords>;
 type PlanKey = keyof typeof INPUT_WORDS;
@@ -365,6 +376,29 @@ export const runningWeekPace = (fuel: FuelLike[], today: string, weeks = 4): num
 export const runningMilesPace = (readings: OdometerReading[], today: string, weeks = 4): number | null =>
   runningPace(today, (w) => weekOdometerMiles(readings, w).miles, weeks);
 
+// The fuel advance's own pace: the mean of the last four statements that
+// actually drew one, measured the way fuel already is. The typed figure in
+// Assumptions is a single number standing in for a CARD PRE-TRIP lump that
+// ran $0–$4,000 across twelve statements, so it describes nothing — but a
+// mean of two draws describes little more, which is why this REFUSES (null,
+// falling back to the typed figure) until four statements have drawn.
+// `settlements` arrives newest-first from the server.
+export const runningAdvancePace = (
+  settlements: SettlementSummary[],
+  before: string,
+  weeks = 4,
+): number | null => {
+  const drawn: number[] = [];
+  for (const s of settlements) {
+    if (day(s.period_ending) >= before) continue; // a statement at or after today hasn't settled
+    const v = Number(s.advances);
+    if (Number.isFinite(v) && v > 0) drawn.push(v);
+    if (drawn.length === weeks) break;
+  }
+  if (drawn.length < weeks) return null;
+  return round2(drawn.reduce((a, b) => a + b, 0) / weeks);
+};
+
 // The period's fuel: the log's fills once the period closes; while it's open,
 // the fills so far or the 30-day pace, whichever is larger; a future period
 // at the pace. The advance drawn against the period's loads: the statement's
@@ -373,7 +407,7 @@ export const runningMilesPace = (readings: OdometerReading[], today: string, wee
 // against (a closed period that earned nothing). What's left on the card
 // after the fills goes to Ops on the Monday inside the period.
 export const fuelForWeek = (
-  input: Pick<CashBoardInput, "fuelEntries" | "today" | "fuelPaceWeekly" | "fuelFallback" | "advanceDefault" | "settlements" | "settlementDay">,
+  input: Pick<CashBoardInput, "fuelEntries" | "today" | "fuelPaceWeekly" | "fuelFallback" | "advanceDefault" | "advancePaceWeekly" | "settlements" | "settlementDay">,
   week: PayWeek,
   base?: CashCheck,
   noLoads = false,
@@ -389,18 +423,26 @@ export const fuelForWeek = (
   const statementDate = statementDateOf(week, input.settlementDay);
   const actual = input.settlements.find((s) => day(s.period_ending) === statementDate);
   const advancesActual = actual ? num(actual.advances) : null;
-  const advMissing = advancesActual == null && !noLoads ? missingIn(input, ["advanceDefault"]) : [];
-  const advanceDefault = Number(input.advanceDefault);
-  const advances = advancesActual ?? (noLoads ? 0 : advMissing.length ? null : Math.max(advanceDefault, total));
+  // What he DRAWS, projected. The statement's own figure when there is one;
+  // otherwise the measured pace of the last four statements that drew. The
+  // typed figure is the fallback only — it is one number standing in for a
+  // CARD PRE-TRIP lump that ran $0–$4,000 across twelve statements, and the
+  // old `max(typed, fills)` could never project below it even though a
+  // quarter of the statements did (v1.268.0).
+  const advPace = input.advancePaceWeekly ?? null;
+  const advMissing =
+    advancesActual == null && advPace == null && !noLoads ? missingIn(input, ["advanceDefault"]) : [];
+  const advances =
+    advancesActual ?? (noLoads ? 0 : advMissing.length ? null : advPace ?? Number(input.advanceDefault));
   const advancesSource: FuelLine["advancesSource"] =
-    advancesActual != null ? "actual" : noLoads ? "none" : advMissing.length === 0 && total > advanceDefault ? "fills" : "assumed";
+    advancesActual != null ? "actual" : noLoads ? "none" : advPace != null ? "pace" : "assumed";
   const monday = nextDow(week.start, 1);
   const missing = dedupe([...advMissing, ...paceMissing]);
   const counted = countsIn(monday, base);
   const leftover: Line =
     advances == null || spent == null
       ? { amount: null, date: monday, counted, missing }
-      : { amount: round2(Math.max(0, advances - spent)), date: monday, counted };
+      : { amount: round2(advances - spent), date: monday, counted };
   return { spent, spentSource, fills: count, soFar: total, advances, advancesSource, leftover, missing };
 };
 

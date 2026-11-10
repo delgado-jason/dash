@@ -49,6 +49,7 @@ import {
   monthName,
   money as fmtMoney,
   FIX_SNAPSHOT,
+  FIX_PLAN,
   type SnapshotInput,
   type MoneyDayInput,
   type FloorStatus,
@@ -58,6 +59,7 @@ import { retrueWords } from "@/lib/metrics/accrualTruth";
 import { money, formatDate } from "@/lib/format";
 import { readPlanStatus, byTyped, milesKnown } from "@/lib/metrics/planRead";
 import { MissingInputLine } from "@/components/integrity/MissingInput";
+import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { missingWords, type MissingInput } from "@/lib/integrity/require";
 
 // The Plan page (ADMIN-03, #500). Two beats. THE FRIDAY: snapshot first —
@@ -175,6 +177,8 @@ const StatusPage = () => {
   const [showPlan, setShowPlan] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [servicesFailed, setServicesFailed] = useState(false);
 
   const load = () =>
     Promise.all([
@@ -201,8 +205,13 @@ const StatusPage = () => {
         setLoads(l);
         setFuelEntries(f);
         setTrips(t);
+        setLoadFailed(false);
       })
-      .catch(() => {})
+      // This used to swallow the failure whole (v1.268.0). A dead request left
+      // every array empty and the page read "NO SNAPSHOT YET" — a confident
+      // statement about his money, made out of nothing. It is the page that
+      // moves money and it says so now.
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -212,8 +221,15 @@ const StatusPage = () => {
   // The standing read — plan, floors, accrual clock — is built by the ONE
   // function the landing page also calls (lib/metrics/planRead.ts).
   const [services, setServices] = useState<MaintenanceService[]>([]);
+  const loadServices = () =>
+    getMaintenanceServices()
+      .then((s) => {
+        setServices(s);
+        setServicesFailed(false);
+      })
+      .catch(() => setServicesFailed(true));
   useEffect(() => {
-    getMaintenanceServices().then(setServices).catch(() => {});
+    loadServices();
   }, []);
   const read = useMemo(
     () => readPlanStatus({ today: todayKey(), plans, accounts, snapshots, opsChecks, obligations, loads, fuelEntries, trips, services }),
@@ -630,7 +646,9 @@ const StatusPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">ACCOUNT STATUS</h1>
+          {/* The sidebar has always called this page "Plan" and the page has
+              always called itself "ACCOUNT STATUS" (v1.268.0). One name. */}
+          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">PLAN</h1>
           <span className="font-condensed font-medium text-[15px] text-dim">
             where the money stands
           </span>
@@ -662,6 +680,26 @@ const StatusPage = () => {
             + FRIDAY SNAPSHOT
           </button>
         </div>
+
+        {loadFailed && (
+          <FetchFailed
+            what="the plan, the accounts and the snapshots"
+            detail="nothing below is a reading of your money until it loads"
+            onRetry={() => {
+              setLoading(true);
+              load();
+            }}
+            className="mt-3"
+          />
+        )}
+        {servicesFailed && (
+          <FetchFailed
+            what="the shop log's odometer readings"
+            detail="the accrual's mile chain runs without them until it loads"
+            onRetry={loadServices}
+            className="mt-3"
+          />
+        )}
 
         {/* the plan sentence */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
@@ -906,16 +944,21 @@ const StatusPage = () => {
         )}
 
         {/* the ladder */}
-        {status?.waterfall && (
+        {/* `view`, not `status` (v1.268.0). Line 275 promises "the whole page
+            previews it … so the panel and the board never disagree", and the
+            ladder was the one panel that read the un-previewed figures — so on
+            an open money day the verdict, the Ops card and the floors showed
+            the preview while the rungs beneath them showed yesterday. */}
+        {view?.waterfall && (
           <div className="ds2-board overflow-hidden mt-4">
             <div className={BOARD_HEAD}>
               <span className={BOARD_TITLE}>The ladder — one objective at a time</span>
               <span className={BOARD_SUB}>· rung 1 is floor 3 · edit the rungs in EDIT PLAN</span>
             </div>
-            {status.waterfall.stages.map((st, i) => {
+            {view.waterfall.stages.map((st, i) => {
               const floorStage = stageInputs.filter((s) => s.kind === "vault").sort((a, b) => a.position - b.position)[0];
               const isFloor = st.stage.kind === "vault" && floorStage != null && st.stage.position === floorStage.position;
-              const isObjective = i === status.objectiveIndex;
+              const isObjective = i === view.objectiveIndex;
               const ring = st.state === "done" ? "done" : isObjective ? "act" : "pend";
               const quiet = st.state !== "done" && !isObjective && !isFloor;
               return (
@@ -974,6 +1017,37 @@ const StatusPage = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* The ladder used to simply NOT EXIST when it couldn't be graded
+            (v1.268.0). `getWaterfallStage` returns null with no stages OR with
+            a null Vault balance, and the panel was gated on that — so leaving
+            one box blank on the Friday form made four named rungs disappear
+            with no message, on a page where every other panel refuses out
+            loud. The engine's null is right; formatting it is this file's job. */}
+        {view != null && view.waterfall == null && (
+          <div className="ds2-board overflow-hidden mt-4">
+            <div className={BOARD_HEAD}>
+              <span className={BOARD_TITLE}>The ladder — one objective at a time</span>
+              <span className={BOARD_SUB}>· rung 1 is floor 3 · edit the rungs in EDIT PLAN</span>
+            </div>
+            <div className="px-4 py-4">
+              {stageInputs.length === 0
+                ? // `missingWords` appends "isn't set", so these are bare noun
+                  // phrases — a label carrying its own verb reads "… isn't on
+                  // the snapshot isn't set."
+                  refusalLines("draw the ladder", [
+                    { key: "stages", label: "the ladder's rungs", fixAt: FIX_PLAN },
+                  ])
+                : refusalLines("grade the ladder", [
+                    {
+                      key: "vaultBalance",
+                      label: `the ${vaultAcct?.name ?? "Vault"} balance on the ${latest ? formatDate(latest.as_of) : "latest"} snapshot`,
+                      fixAt: FIX_SNAPSHOT,
+                    },
+                  ])}
+            </div>
           </div>
         )}
 
