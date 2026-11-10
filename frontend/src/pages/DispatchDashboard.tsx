@@ -1,49 +1,40 @@
 import { DEFAULT_DETENTION_FREE_HOURS } from "@/lib/detention";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
 import { useLoads } from "@/hooks/useLoads";
-import { useTrips } from "@/hooks/useTrips";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { useMaintenanceAlerts } from "@/hooks/useMaintenanceAlerts";
 import { useComplianceAlerts } from "@/hooks/useComplianceAlerts";
 import { useIntegrity } from "@/hooks/useIntegrity";
+import { useLocalTodayKey } from "@/hooks/useLocalToday";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
-import { DispatchAgentsTable } from "@/components/dashboard/DispatchAgentsTable";
 import { DeskLeaderboardPanel } from "@/components/dashboard/agents/DeskLeaderboardPanel";
 import { DispatcherChip } from "@/components/dashboard/DispatcherChip";
-import { DispatcherKpis, Figure } from "@/components/dispatch/DispatcherKpis";
-import { weeksWords } from "@/components/dashboard/weeksWords";
-import { Board, BoardCell } from "@/components/ui/Board";
 import { Panel } from "@/components/ui/Panel";
-import { PaceMeter, paceMarker } from "@/components/ui/PaceMeter";
-import {
-  getLoadsMonthly,
-  getDeadheadTrend,
-  getDetentionOwed,
-} from "@/lib/metrics/dashboard";
-import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
-import { quarterWeekVerdicts } from "@/lib/metrics/grind";
-import {
-  getWeekGrossPipeline,
-  getWeekGrossEarned,
-  getBookedAheadGross,
-  loadsInWeek,
-} from "@/lib/metrics/rateTargets";
+import { dispatchBoard, type OwedKind } from "@/lib/metrics/dispatchBoard";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
-import { DEADHEAD_TARGET } from "@/lib/constants/targets";
-import { money, rpm as fmtRpm } from "@/lib/format";
+import { rpm as fmtRpm } from "@/lib/format";
 
-const formatPercent = (ratio: number | null): string =>
-  ratio === null ? "—" : `${(ratio * 100).toFixed(1)}%`;
+// "today" · "tomorrow" · "Thu Nov 12". A dispatcher thinks in those words, not
+// in dates — and the first two are the only ones that change what she does now.
+const whenWord = (key: string, today: string): string => {
+  if (key === today) return "today";
+  const t = new Date(`${today}T00:00:00Z`);
+  t.setUTCDate(t.getUTCDate() + 1);
+  if (key === t.toISOString().slice(0, 10)) return "tomorrow";
+  const d = new Date(`${key}T00:00:00Z`);
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+};
 
-// Detention headline as decimal hours ("12.5h") — the dollar isn't known until
-// the settlement lands, so we only ever show time.
-const hoursLabel = (minutes: number): string =>
-  minutes === 0 ? "0h" : `${(minutes / 60).toFixed(1)}h`;
+const OWED_WORDS: Record<OwedKind, (n: number) => string> = {
+  detention: (n) => `Detention to claim on ${n} load${n === 1 ? "" : "s"}`,
+  appointment: (n) => `${n} pickup${n === 1 ? "" : "s"} inside three days with no window set`,
+  intime: (n) => `${n} rolling load${n === 1 ? "" : "s"} with no in-time logged`,
+};
 
 // ISO-8601 week number, UTC-anchored like every other date in the app.
 const isoWeek = (d: Date): number => {
@@ -67,24 +58,10 @@ const DispatchDashboard = () => {
   // chip hides at zero and while loading (call 1).
   const integrity = useIntegrity();
   const integrityOpen = integrity.loading ? 0 : integrity.visible.length;
-  const { trips, isLoading: tripsLoading, error: tripsError } = useTrips(0);
   const targets = useRateTargets(loads);
   const alerts = [...useMaintenanceAlerts(loads), ...useComplianceAlerts()];
-  const now = useMemo(() => new Date(), []);
-
-  // Two scopes on one board (Jason, 2026-09-11: "her goals must align with the
-  // business — my goals"):
-  //   • the BUSINESS — what's booked, rolling, earned, committed this week, and
-  //     the quarter's weeks over break-even — is account-wide, so her numbers
-  //     match the owner's board to the dollar;
-  //   • her booking figures stay hers, from booked_by === her id.
-  // Issue #465 was this split done wrong: the pace meter counted only her own
-  // bookings, so a week where Jason booked one of the loads never summed.
-  const selfId = localStorage.getItem("user_id") ?? "";
-  const mine = useMemo(
-    () => (selfId ? loads.filter((l) => l.booked_by === selfId) : []),
-    [loads, selfId],
-  );
+  const now = new Date();
+  const todayKey = useLocalTodayKey();
 
   // Free-time setting drives what counts as detention (same source as Loads).
   const [freeHours, setFreeHours] = useState(DEFAULT_DETENTION_FREE_HOURS);
@@ -94,24 +71,13 @@ const DispatchDashboard = () => {
       .catch(() => {});
   }, []);
 
-  // Her figures run on the same engine as her page — real bookings only
-  // (a cancelled load or a TONU never counts), gross per driven mile.
-  const card = useMemo(
-    () =>
-      selfId
-        ? getDispatcherCard(loads, selfId, targets.bookingLadder, freeHours, now)
-        : null,
-    [loads, selfId, targets.bookingLadder, freeHours, now],
-  );
+  // Her OWN booking figures were derived here, split from the account-wide
+  // ones (issue #465). They moved to /my-recap in v1.270.0 — a worklist should
+  // not compete with a report card, and that page already does month, quarter
+  // and year properly. The trips feed left with the deadhead tile.
 
-  // The quarter's completed pay weeks against the meter's own floor and target.
-  const quarter = useMemo(
-    () => weeksWords(quarterWeekVerdicts(loads, targets.gross, now)),
-    [loads, targets.gross, now],
-  );
-
-  const isLoading = loadsLoading || tripsLoading;
-  const error = loadsError || tripsError;
+  const isLoading = loadsLoading;
+  const error = loadsError;
 
   if (isLoading)
     return (
@@ -137,71 +103,18 @@ const DispatchDashboard = () => {
       </div>
     );
 
-  // The board she dispatches is the whole board — every load, whoever booked it.
-  const bookedCount = loads.filter((l) => l.load_status === "booked").length;
-  const inTransitCount = loads.filter(
-    (l) => l.load_status === "in_transit",
-  ).length;
-  const loadsMonthly = getLoadsMonthly(loads);
-  const loadsDeltaPct =
-    loadsMonthly.lastMonth > 0
-      ? Math.round(
-          ((loadsMonthly.thisMonth - loadsMonthly.lastMonth) /
-            loadsMonthly.lastMonth) *
-            100,
-        )
-      : null;
-  const detention = getDetentionOwed(loads, freeHours);
-  // Deadhead is truck physics — trips carry no booker, so pairing HER loads with
-  // fleet trips would mis-charge fleet empty miles against her loaded miles. Keep
-  // it account-wide (the rig's real deadhead), which is what the tile means.
-  const deadhead = getDeadheadTrend(loads, trips, now);
-  // Leaner than the 90-day baseline (or the target when there's no baseline yet)
-  // reads green; drifting above it reads red so she catches it early.
-  const deadheadBaseline = deadhead.rolling90 ?? DEADHEAD_TARGET;
-  const deadheadTone =
-    deadhead.thisMonth === null
-      ? "none"
-      : deadhead.thisMonth <= deadheadBaseline
-        ? "pos"
-        : "neg";
-
-  // Her chase surface — the shop's booking floor + weekly target (account cost)
-  // and the week the BUSINESS is filling: every load landing this pay week,
-  // hers or Jason's. Same inputs as the owner's pace meter, so the two boards
-  // never disagree on how the week is going (#465).
-  const earned =
-    targets.weekStart && targets.weekEnd
-      ? getWeekGrossEarned(loads, targets.weekStart, targets.weekEnd)
-      : 0;
-  // The still-open slice of the week — NOT getWeekGrossCommitted, which
-  // includes delivered loads and double-counts them when summed with earned.
-  const committed =
-    targets.weekStart && targets.weekEnd
-      ? getWeekGrossPipeline(loads, targets.weekStart, targets.weekEnd)
-      : 0;
-  // The pipeline on the board — bookings landing beyond this pay week. The
-  // meter can't show them yet (committed counts the landing week), but the
-  // work happened NOW, so the card says so (Jason, 2026-08-15: her booked
-  // $5,220 was invisible until its week arrived).
-  const bookedAhead = targets.weekEnd ? getBookedAheadGross(loads, targets.weekEnd) : 0;
-  // Her loads landing this pay week — the same date rule as the meter.
-  const loadsThisWeek =
-    targets.weekStart && targets.weekEnd
-      ? loadsInWeek(mine, targets.weekStart, targets.weekEnd).length
-      : 0;
-  const weeklyTarget: number | null = targets.gross?.weeklyTarget ?? null;
-  const weeklyFloor: number | null = targets.gross?.weeklyBreakEven ?? null;
-  const dailyTarget: number | null = targets.gross?.dailyTarget ?? null;
-  const ladder = targets.bookingLadder ?? {};
+  // Everything the three bands need, and nothing else. The five KPI cells and
+  // the pace meter that used to live here took a dozen more derivations with
+  // them (v1.270.0) — the monthly deadhead trend, the load-count delta, her
+  // week's earned/committed gross, the gauge geometry. None of it answered
+  // "is the truck covered", which is the only question this page has.
+  const board = dispatchBoard(loads, freeHours, todayKey);
+  // Red when there is nothing behind the work in hand: an empty truck costs
+  // money every hour, and no other state on this page does.
+  const gapIsOpen = board.gap.sittingNow || board.gap.booked === 0;
+  // The floor a load has to beat — the one booking figure that survives here,
+  // because it is an instruction rather than a score.
   const cur: number | null = targets.grossRate ?? null;
-  const gaugeHi = Math.max(ladder.strong ?? 0, cur ?? 0, ladder.target ?? 0) || 1;
-  const gaugeLo = Math.min(ladder.walkAway ?? gaugeHi, cur ?? gaugeHi);
-  const span = Math.max(gaugeHi - gaugeLo, gaugeHi * 0.1);
-  const lo = gaugeLo - span * 0.16;
-  const hi = gaugeHi + span * 0.1;
-  const pos = (v: number | null | undefined) =>
-    v == null ? 0 : Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
 
   const dateLine = [
     now.toLocaleDateString("en-US", {
@@ -253,205 +166,162 @@ const DispatchDashboard = () => {
         <div className="mt-4 flex flex-col gap-3">
           <AlertBanners alerts={alerts} />
 
-          {/* operational vitals — five doors, no money-kept numbers */}
-          <Board className="grid grid-cols-2 md:grid-cols-5">
-            <BoardCell
-              className="border-b md:border-b-0 md:border-r ds2-cell-rule"
-              label="Booked"
-              value={String(bookedCount)}
-              sub="on the board"
-              to="/loads"
-              go="loads"
-            />
-            <BoardCell
-              className="border-b md:border-b-0 md:border-r ds2-cell-rule"
-              label="In transit"
-              value={String(inTransitCount)}
-              sub="rolling now"
-              tone={inTransitCount > 0 ? "amb" : "none"}
-              to="/loads"
-              go="loads"
-            />
-            <BoardCell
-              className="border-b md:border-b-0 md:border-r ds2-cell-rule"
-              label="Loads · MTD"
-              value={String(loadsMonthly.thisMonth)}
-              sub={
-                loadsDeltaPct != null ? (
-                  <>
-                    <b
-                      className={
-                        loadsDeltaPct >= 0
-                          ? "text-status-positive-text"
-                          : "text-status-negative-text"
-                      }
-                    >
-                      {loadsDeltaPct >= 0 ? "▲" : "▼"} {Math.abs(loadsDeltaPct)}%
-                    </b>{" "}
-                    vs last month
-                  </>
-                ) : (
-                  `last month ${loadsMonthly.lastMonth}`
-                )
-              }
-              tone={loadsDeltaPct != null && loadsDeltaPct >= 0 ? "pos" : "none"}
-              to="/loads"
-              go="loads"
-            />
-            <BoardCell
-              className="md:border-r ds2-cell-rule"
-              label="Detention owed"
-              value={hoursLabel(detention.totalMinutes)}
-              sub={
-                detention.loadCount === 0
-                  ? "nothing to chase"
-                  : `${detention.loadCount} load${
-                      detention.loadCount === 1 ? "" : "s"
-                    } · settles on the statement`
-              }
-              tone={detention.totalMinutes > 0 ? "amb" : "none"}
-              to="/loads"
-              go="loads"
-            />
-            <BoardCell
-              label="Deadhead · MTD"
-              value={formatPercent(deadhead.thisMonth)}
-              sub={`90-day avg ${formatPercent(deadhead.rolling90)}`}
-              tone={deadheadTone as "pos" | "neg" | "none"}
-              to="/trips"
-              go="trips"
-            />
-          </Board>
-
-          {/* her chase surface: the floor she books against + the week she's
-              filling · beside it, her own figures and the quarter's weeks */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-3 items-start">
-            <Panel className="p-5">
-              <div className="flex items-baseline justify-between flex-wrap gap-2">
-                <span className="ds2-label">
-                  Booking floor &amp; your week pace · gross
+          {/* NOW · NEXT · OWED (v1.270.0, Nod Sheet "Brandie's board").
+              This was five KPI cells — two of them monthly aggregates she
+              cannot act on today — above her own pace meter and the quarter's
+              weeks. The one urgent fact, that nothing is booked behind the
+              load that is rolling, sat in a fifth of a strip between "Loads ·
+              MTD" and "Deadhead · MTD".
+              She has one question that repeats on a horizon of hours: is the
+              truck covered, and what do I do next? The bands answer it in that
+              order, and they change colour with the state — a covered week and
+              an empty one should not look the same at a glance. */}
+          <div className="flex flex-col gap-3">
+            <Panel
+              className="p-4"
+              style={board.now.length > 0 ? { borderColor: "var(--color-amber)" } : undefined}
+            >
+              <p className="ds2-label">
+                Now
+                <span className="ml-2 normal-case tracking-normal text-faint font-normal">
+                  {board.now.length === 0 ? "nothing on the road" : "on the road"}
                 </span>
-                {cur != null && (
-                  <span className="font-condensed font-semibold text-[15px] text-amber-hi tabular-nums">
-                    booking {fmtRpm(cur)}/mi
-                  </span>
-                )}
-              </div>
-              <div className="relative h-[60px] mt-3.5">
-                <div className="absolute left-0 right-0 top-[28px] h-[2px] bg-hairline" />
-                {ladder.walkAway != null && (
-                  <div
-                    className="absolute left-0 top-[28px] h-[2px] bg-status-negative-text opacity-55"
-                    style={{ width: `${pos(ladder.walkAway)}%` }}
-                  />
-                )}
-                {(
-                  [
-                    ["walkAway", "Walk-away"],
-                    ["target", "Target"],
-                    ["strong", "Strong"],
-                  ] as const
-                ).map(([k, nm]) =>
-                  ladder[k] != null ? (
-                    <div key={k}>
-                      <div
-                        className="absolute top-[22px] w-px h-[13px] bg-dim"
-                        style={{ left: `${pos(ladder[k])}%` }}
-                      />
-                      <span
-                        className="absolute top-0 -translate-x-1/2 text-[9px] font-semibold tracking-[.1em] uppercase text-faint whitespace-nowrap"
-                        style={{ left: `${pos(ladder[k])}%` }}
-                      >
-                        {nm}
+              </p>
+              {board.now.length === 0 ? (
+                <p className="font-condensed text-[13.5px] text-faint mt-2">
+                  No load is rolling. Anything booked shows under Next.
+                </p>
+              ) : (
+                board.now.map((r) => (
+                  <div key={r.load.load_id ?? r.load.load_number} className="mt-2.5">
+                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                      <span className="font-condensed font-semibold text-[15px]">
+                        <Link to={`/loads/${r.load.load_id}`} className="hover:text-amber-hi">
+                          {r.load.load_number}
+                        </Link>{" "}
+                        <span className="text-dim">
+                          {r.load.origin_city}, {r.load.origin_state} → {r.load.destination_city}, {r.load.destination_state}
+                        </span>
                       </span>
-                      <span
-                        className="absolute top-[42px] -translate-x-1/2 font-condensed font-semibold text-[12px] text-dim tabular-nums"
-                        style={{ left: `${pos(ladder[k])}%` }}
-                      >
-                        {fmtRpm(ladder[k])}
+                      <span className="font-condensed text-[13px] text-dim">
+                        {r.deliversOn
+                          ? <>delivers <b className="text-ink">{r.deliversAt ? `${r.deliversAt} ` : ""}{whenWord(r.deliversOn, todayKey)}</b></>
+                          : "no delivery date set"}
                       </span>
                     </div>
-                  ) : null,
-                )}
-                {cur != null && (
-                  <div
-                    className="absolute top-[13px] w-[2px] h-[30px] -translate-x-1/2 bg-amber-hi"
-                    style={{ left: `${pos(cur)}%` }}
-                  />
-                )}
-              </div>
-              {weeklyTarget ? (
-                <PaceMeter
-                  filled={earned}
-                  ghost={committed}
-                  target={weeklyTarget}
-                  markers={[
-                    ...(weeklyFloor ? [paceMarker("floor", weeklyFloor)] : []),
-                    paceMarker("target", weeklyTarget),
-                  ]}
-                />
-              ) : null}
-              <div className="flex gap-5 mt-3 flex-wrap items-end">
-                <div>
-                  <p className="font-condensed font-semibold text-[19px] text-amber-hi tabular-nums leading-none">
-                    {money(earned)}
-                  </p>
-                  <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
-                    earned
-                  </p>
-                </div>
-                <div>
-                  <p className="font-condensed font-semibold text-[19px] text-dim tabular-nums leading-none">
-                    {money(committed)}
-                  </p>
-                  <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
-                    committed
-                  </p>
-                </div>
-                <div>
-                  <p className="font-condensed font-semibold text-[19px] tabular-nums leading-none">
-                    {money(earned + committed)}
-                  </p>
-                  <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
-                    projected
-                  </p>
-                </div>
-                {bookedAhead > 0 && (
-                  <div>
-                    <p className="font-condensed font-semibold text-[19px] tabular-nums leading-none text-amber-hi">
-                      {money(bookedAhead)}
-                    </p>
-                    <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
-                      booked ahead · lands beyond this week
-                    </p>
+                    {r.needsInTime && (
+                      <p className="font-condensed text-[12.5px] mt-1" style={{ color: "var(--color-status-negative-text)" }}>
+                        No in-time logged at the shipper — detention cannot be counted on this load until it is.{" "}
+                        <Link to={`/loads/${r.load.load_id}`} className="underline-offset-2 hover:underline">Fix ›</Link>
+                      </p>
+                    )}
                   </div>
-                )}
-                {dailyTarget != null && (
-                  <div className="ml-auto rounded-[10px] border border-hairline px-3.5 py-2">
-                    <p className="font-condensed font-semibold text-[22px] leading-none tabular-nums">
-                      {money(dailyTarget)}
-                    </p>
-                    <p className="ds2-label mt-1" style={{ fontSize: 9 }}>
-                      daily target
-                    </p>
-                  </div>
-                )}
-              </div>
+                ))
+              )}
             </Panel>
 
-            <div className="flex flex-col gap-3">
-              {card && <DispatcherKpis card={card} loadsThisWeek={loadsThisWeek} />}
-              <Panel className="p-4" data-testid="weeks-card">
-                <Figure label={quarter.label} value={quarter.figure} sub={quarter.detail} />
-              </Panel>
-            </div>
+            {/* The gap. Red when the truck has nothing behind it, because that
+                is the state that costs money every hour it lasts. */}
+            <Panel
+              className="p-4"
+              style={gapIsOpen ? { borderColor: "var(--color-status-negative-text)" } : undefined}
+            >
+              <p className="ds2-label">
+                Next
+                <span
+                  className="ml-2 normal-case tracking-normal font-normal"
+                  style={{ color: gapIsOpen ? "var(--color-status-negative-text)" : "var(--color-faint)" }}
+                >
+                  {board.gap.sittingNow
+                    ? "the truck is sitting"
+                    : board.gap.booked === 0
+                      ? "nothing booked behind it"
+                      : `${board.gap.booked} booked behind it`}
+                </span>
+              </p>
+              <div className="flex items-baseline justify-between gap-3 flex-wrap mt-2">
+                <span className="font-condensed text-[14.5px]">
+                  {board.gap.sittingNow ? (
+                    <b style={{ color: "var(--color-status-negative-text)" }}>Empty now — every hour is an empty hour.</b>
+                  ) : board.gap.freeOn ? (
+                    <>
+                      Truck free{" "}
+                      <b style={{ color: gapIsOpen ? "var(--color-status-negative-text)" : "var(--color-ink)" }}>
+                        {board.gap.freeAt ? `${board.gap.freeAt} ` : ""}{whenWord(board.gap.freeOn, todayKey)}
+                      </b>
+                      {board.gap.freeCity && <> in <b className="text-ink">{board.gap.freeCity}, {board.gap.freeState}</b></>}
+                    </>
+                  ) : (
+                    <span className="text-faint">No delivery date on the work in hand — the free moment is unknown.</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-2 shrink-0">
+                  <Link
+                    to="/foreman"
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[9px] font-condensed font-semibold text-[12.5px] tracking-[.06em] uppercase bg-amber text-on-amber hover:brightness-105"
+                  >
+                    <Zap size={13} /> The Foreman
+                  </Link>
+                  <Link
+                    to="/score"
+                    className="inline-flex items-center h-8 px-3 rounded-[9px] font-condensed font-semibold text-[12.5px] tracking-[.06em] uppercase border border-hairline text-dim hover:text-ink"
+                  >
+                    Score a load
+                  </Link>
+                </span>
+              </div>
+              {cur != null && (
+                <p className="font-condensed text-[12.5px] text-faint mt-2">
+                  booking floor <b className="text-dim tabular-nums">{fmtRpm(cur)}</b>/mi gross — what a load has to beat
+                </p>
+              )}
+            </Panel>
+
+            {/* Her chase list. Quiet by design: these cost money slowly, and
+                none of them is more urgent than an empty truck. */}
+            <Panel className="p-4">
+              <p className="ds2-label">
+                Owed
+                <span className="ml-2 normal-case tracking-normal text-faint font-normal">
+                  {board.owed.length === 0 && integrityOpen === 0 ? "nothing to chase" : "what needs a call"}
+                </span>
+              </p>
+              {board.owed.length === 0 && integrityOpen === 0 ? (
+                <p className="font-condensed text-[13.5px] text-faint mt-2">
+                  Detention claimed, appointments set, no rows to fix.
+                </p>
+              ) : (
+                <div className="mt-1.5">
+                  {board.owed.map((o) => (
+                    <div key={o.kind} className="flex items-baseline justify-between gap-3 py-[7px] border-b ds2-cell-rule last:border-b-0">
+                      <span className="font-condensed text-[14px]">{OWED_WORDS[o.kind](o.count)}</span>
+                      <span className="font-condensed text-[12px] text-faint truncate max-w-[45%] text-right">
+                        {o.loads.slice(0, 3).join(" · ")}
+                        {o.loads.length > 3 && ` +${o.loads.length - 3}`}
+                      </span>
+                    </div>
+                  ))}
+                  {integrityOpen > 0 && (
+                    <div className="flex items-baseline justify-between gap-3 py-[7px] border-b ds2-cell-rule last:border-b-0">
+                      <span className="font-condensed text-[14px]">
+                        {integrityOpen} row{integrityOpen === 1 ? "" : "s"} to fix
+                      </span>
+                      <Link to="/integrity" className="font-condensed text-[12px] text-amber-hi underline-offset-2 hover:underline">
+                        Integrity ›
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Panel>
           </div>
 
-          {/* The workhorses — searchable, paginated loads + agents */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-            <DispatchLoadsTable loads={loads} freeHours={freeHours} />
-            <DispatchAgentsTable loads={loads} />
-          </div>
+          {/* The loads table stays — it is the detail she already knows how
+              to use. The agents table came OFF in v1.270.0: it ranked agents
+              by gross with 🥇🥈🥉 medals, directly above a desk board doing
+              the same ranking better. Two leaderboards on one page, and the
+              second one was mine (v1.266.0). One is enough. */}
+          <DispatchLoadsTable loads={loads} freeHours={freeHours} />
 
           {/* Which desks actually pay — the same board the owner sees. She
               books the freight; she should be able to see the rates. */}
