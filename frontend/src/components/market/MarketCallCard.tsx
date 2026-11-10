@@ -49,15 +49,15 @@ const TierColumn = ({ call }: { call: TierCall }) => {
 
   return (
     <div className="p-4">
-      <div className="text-[11px] uppercase tracking-[.10em] text-faint font-condensed mb-2">
+      <div className="text-[12px] uppercase tracking-[.10em] text-faint font-condensed mb-2">
         {call.label} <span className="normal-case tracking-normal">· last 90 days</span>
       </div>
-      <div className="font-condensed text-[19px] font-semibold leading-tight" style={{ color: ACTION_COLOR[call.action] }}>
+      <div className="font-condensed text-[20.5px] font-semibold leading-tight" style={{ color: ACTION_COLOR[call.action] }}>
         {call.headline}
       </div>
-      <p className="text-[12.5px] text-dim mt-1 leading-snug">{call.why}</p>
+      <p className="text-[13.5px] text-dim mt-1 leading-snug">{call.why}</p>
       {evidence && (
-        <p className="font-condensed text-[11.5px] text-faint mt-1.5 mb-3 leading-snug">
+        <p className="font-condensed text-[12.5px] text-faint mt-1.5 mb-3 leading-snug">
           <span className="uppercase tracking-[.1em]">evidence</span> · {evidence}
         </p>
       )}
@@ -69,13 +69,13 @@ const TierColumn = ({ call }: { call: TierCall }) => {
               className="flex items-center justify-between rounded-[7px] px-2.5 py-1.5"
               style={r.you ? { background: "color-mix(in srgb, var(--color-amber) 13%, transparent)", border: "1px solid color-mix(in srgb, var(--color-amber) 36%, transparent)" } : undefined}
             >
-              <span className="text-[12.5px]" style={{ color: RUNG_COLOR[r.key], fontWeight: r.you ? 600 : 400 }}>
+              <span className="text-[13.5px]" style={{ color: RUNG_COLOR[r.key], fontWeight: r.you ? 600 : 400 }}>
                 {r.label}
                 {RUNG_TAG[r.key] && (
-                  <span className="text-[9.5px] uppercase tracking-[.06em] text-faint ml-1.5">{RUNG_TAG[r.key]}</span>
+                  <span className="text-[11px] uppercase tracking-[.06em] text-faint ml-1.5">{RUNG_TAG[r.key]}</span>
                 )}
               </span>
-              <span className="font-condensed text-[16px]" style={{ color: r.you ? "var(--color-amber-hi)" : "var(--color-ink)", fontWeight: r.you ? 600 : 400 }}>
+              <span className="font-condensed text-[17.5px]" style={{ color: r.you ? "var(--color-amber-hi)" : "var(--color-ink)", fontWeight: r.you ? 600 : 400 }}>
                 {fmtRpm(r.rate)}
               </span>
             </div>
@@ -110,16 +110,16 @@ export const MarketCallCard = ({ call }: { call: MarketCall }) => {
   return (
     <div className="ds2-board overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-hairline">
-        <span className="font-condensed text-[18px] font-semibold text-ink">The call</span>
-        <span className="font-condensed text-[12px] text-faint">one move per tier, each on its own freight</span>
+        <span className="font-condensed text-[19.5px] font-semibold text-ink">The call</span>
+        <span className="font-condensed text-[13px] text-faint">one move per tier, each on its own freight</span>
         <span
-          className="ml-auto flex items-center gap-1.5 text-[12.5px] rounded-lg px-2.5 py-1"
+          className="ml-auto flex items-center gap-1.5 text-[13.5px] rounded-lg px-2.5 py-1"
           style={{ color: meta.color, background: meta.bg, border: `1px solid ${meta.border}` }}
         >
           <span>{meta.arrow}</span> {word}
         </span>
       </div>
-      <div className="px-4 py-3 border-b border-hairline text-[13.5px] text-dim">
+      <div className="px-4 py-3 border-b border-hairline text-[14.5px] text-dim">
         {indexSentence(call.signal)} · the index may nudge a tier one step, only once it has held two prints and isn’t diesel.
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x divide-hairline">

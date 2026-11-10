@@ -27,8 +27,8 @@ export const Figure = ({
 }) => (
   <div className="min-w-0">
     <p className="ds2-label">{label}</p>
-    <p className={`font-condensed font-semibold text-[24px] leading-none mt-1.5 tabular-nums ${tone}`}>{value}</p>
-    {sub && <p className="text-[11px] text-faint mt-1 leading-snug">{sub}</p>}
+    <p className={`font-condensed font-semibold text-[26px] leading-none mt-1.5 tabular-nums ${tone}`}>{value}</p>
+    {sub && <p className="text-[12px] text-faint mt-1 leading-snug">{sub}</p>}
   </div>
 );
 

@@ -91,7 +91,7 @@ const LegendItem = ({
 
 // When this week's booked gross clears the weekly target — the plain word.
 const TargetWord = () => (
-  <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-positive-text">
+  <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-status-positive-text">
     Target!
   </span>
 );
@@ -138,7 +138,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
             </p>
             <BandedLadder ladder={bookingLadder} rpm={grossRate} label="Standard flatbed" />
             <BandedLadder ladder={specLadder} rpm={grossRate} label="Oversize / specialized" />
-            <p className="text-[11px] text-muted-text mt-2">
+            <p className="text-[12px] text-muted-text mt-2">
               walk-away = your cost/mile ÷ your{" "}
               {Math.round(linehaulTake * 100)}% keep. Book above it — with your
               deadhead in the miles — and you clear cost.
@@ -157,7 +157,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
               floor={gross.weeklyBreakEven ?? 0}
               target={gross.weeklyTarget ?? 0}
             />
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] text-muted-text">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[12px] text-muted-text">
               <LegendItem color={AMBER} label="floor" value={money(gross.weeklyBreakEven)} />
               <LegendItem
                 color={GREEN_TICK}

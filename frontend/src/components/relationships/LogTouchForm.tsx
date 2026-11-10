@@ -223,7 +223,7 @@ export const LogTouchForm = ({
           </Field>
           <Field label="Type">
             <SegmentedTabs tabs={typeTabs(options)} value={type} onChange={setType} size="sm" ariaLabel="Type" />
-            <p className="font-condensed text-[11.5px] text-faint mt-1">
+            <p className="font-condensed text-[12.5px] text-faint mt-1">
               {kind === "proactive"
                 ? "proactive — counts against the one-a-week cap"
                 : kind === "operational"
@@ -240,7 +240,7 @@ export const LogTouchForm = ({
           )}
         </>
       ) : (
-        <div className="flex items-center gap-2 mt-2 font-condensed text-[13.5px] text-dim flex-wrap">
+        <div className="flex items-center gap-2 mt-2 font-condensed text-[14.5px] text-dim flex-wrap">
           <span>
             <b className="text-ink font-semibold">{summary.split(" · ")[0]}</b>
             {summary.slice(summary.indexOf(" · "))}
@@ -248,7 +248,7 @@ export const LogTouchForm = ({
           <StatusPill tone="neutral" className="h-[18px]">
             {KIND_WORD[kind]}
           </StatusPill>
-          <button type="button" onClick={() => setExpanded(true)} className="ml-auto text-[12px] text-amber-hi hover:text-hot">
+          <button type="button" onClick={() => setExpanded(true)} className="ml-auto text-[13px] text-amber-hi hover:text-hot">
             change
           </button>
         </div>
@@ -257,10 +257,10 @@ export const LogTouchForm = ({
       {showQuestion && (
         <Field label="The one question — do they have their own customers?">
           <SegmentedTabs tabs={CLASS_TABS} value={cls ?? ("" as ClassPick)} onChange={setCls} size="sm" ariaLabel="Agent class" />
-          <p className="font-condensed text-[11.5px] text-faint mt-1">{CLASS_HELP}</p>
+          <p className="font-condensed text-[12.5px] text-faint mt-1">{CLASS_HELP}</p>
           {cls === "spot" && (
             <div className="mt-2">
-              <label className="flex items-start gap-2 cursor-pointer text-[13px] text-dim leading-snug">
+              <label className="flex items-start gap-2 cursor-pointer text-[14px] text-dim leading-snug">
                 <input type="checkbox" checked={parkNow} onChange={(e) => setParkNow(e.target.checked)} className="mt-[3px] accent-amber" />
                 <span>
                   <b className="text-ink">Park them now</b> — leaves every list, keeps every record.
@@ -288,7 +288,7 @@ export const LogTouchForm = ({
                 key={c.label}
                 type="button"
                 onClick={() => setNextStepAt(c.key)}
-                className={`h-8 px-3 rounded-[8px] border font-condensed text-[12.5px] ${
+                className={`h-8 px-3 rounded-[8px] border font-condensed text-[13.5px] ${
                   nextStepAt === c.key ? "border-amber text-amber-hi bg-amber/10" : "border-hairline text-dim hover:text-ink"
                 }`}
               >
@@ -300,14 +300,14 @@ export const LogTouchForm = ({
               aria-label="Pick a date"
               value={nextStepAt ?? ""}
               onChange={(e) => setNextStepAt(e.target.value || null)}
-              className="ds-input h-8 w-auto text-[13px]"
+              className="ds-input h-8 w-auto text-[14px]"
             />
           </div>
         )}
       </Field>
 
       {isProspect && (
-        <label className="flex items-center gap-2 mt-3 cursor-pointer font-condensed text-[13px] text-dim">
+        <label className="flex items-center gap-2 mt-3 cursor-pointer font-condensed text-[14px] text-dim">
           <input type="checkbox" checked={footprint} onChange={(e) => setFootprint(e.target.checked)} className="accent-amber" />
           <span>
             <b className="text-ink">Footprint captured</b> — markets, freight, best time on file
@@ -327,7 +327,7 @@ export const LogTouchForm = ({
       <ErrorLine>{error}</ErrorLine>
 
       {promised && proactive && cap.blocked && cap.first && (
-        <p className="font-condensed text-[12.5px] text-faint mt-3 leading-snug">
+        <p className="font-condensed text-[13.5px] text-faint mt-3 leading-snug">
           {agent.first_name} already had a proactive touch this week ({contactTypeLabel(cap.first.type)}, {weekdayShort(cap.first.contacted_at)}) — a promised call-back is
           kept anyway; this one logs with the cap overridden.
         </p>

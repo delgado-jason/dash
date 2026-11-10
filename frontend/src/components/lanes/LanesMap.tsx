@@ -337,7 +337,7 @@ export const LanesMap = ({
         />
       </svg>
 
-      <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap pt-2.5 text-[10.5px] text-faint font-condensed">
+      <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap pt-2.5 text-[11.5px] text-faint font-condensed">
         <span className="flex items-center gap-[5px]">
           {legend.label}
           {ramp.map((c) => (
@@ -366,7 +366,7 @@ export const LanesMap = ({
 
       {hover && tip && (
         <div
-          className="absolute pointer-events-none bg-panel border border-hairline rounded-lg px-2.5 py-2 text-[12px] text-dim font-condensed z-10 shadow-lg"
+          className="absolute pointer-events-none bg-panel border border-hairline rounded-lg px-2.5 py-2 text-[13px] text-dim font-condensed z-10 shadow-lg"
           style={{ left: tip.left, top: tip.top, maxWidth: TIP_W }}
         >
           <div>

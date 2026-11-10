@@ -19,7 +19,7 @@ const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const Chip = ({ children, tone }: { children: React.ReactNode; tone?: "amber" }) => (
   <span
-    className={`inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[12.5px] tracking-[.08em] whitespace-nowrap ${tone === "amber" ? "text-amber-hi" : "text-dim"}`}
+    className={`inline-flex items-center gap-[7px] h-[26px] px-[11px] rounded-full border border-hairline font-condensed font-semibold text-[13.5px] tracking-[.08em] whitespace-nowrap ${tone === "amber" ? "text-amber-hi" : "text-dim"}`}
   >
     {children}
   </span>
@@ -63,10 +63,10 @@ export const OpsStatusbar = ({
   return (
     <div className="flex items-center gap-x-[18px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
       <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-      <h1 className="font-display text-[26px] tracking-[.06em] leading-none text-ink">
+      <h1 className="font-display text-[28px] tracking-[.06em] leading-none text-ink">
         OPERATIONS
       </h1>
-      <span className="font-condensed font-medium text-[15px] text-dim">
+      <span className="font-condensed font-medium text-[16px] text-dim">
         {dateLine}
       </span>
       <span className="flex-1" />

@@ -115,7 +115,7 @@ export const LogServiceSheet = ({
 
   return (
     <Board className="p-4 sm:p-5 mb-4">
-      <p className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase mb-4">
+      <p className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase mb-4">
         Log service
       </p>
 
@@ -138,7 +138,7 @@ export const LogServiceSheet = ({
                   setTrailerTyped(null);
                   setCompleted(new Set()); // a different unit, different clocks
                 }}
-                className={`px-3 rounded-md font-condensed font-semibold text-[12.5px] ${
+                className={`px-3 rounded-md font-condensed font-semibold text-[13.5px] ${
                   unit === value ? "bg-amber text-canvas" : "text-dim hover:text-ink"
                 }`}
               >
@@ -201,7 +201,7 @@ export const LogServiceSheet = ({
                     placeholder="568737"
                     inputMode="numeric"
                   />
-                  <p className="font-condensed text-[11.5px] text-faint mt-1.5">
+                  <p className="font-condensed text-[12.5px] text-faint mt-1.5">
                     {!date
                       ? "pick the date and the truck's reading that day fills in"
                       : prefill && trailerTyped == null
@@ -265,7 +265,7 @@ export const LogServiceSheet = ({
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggle(i.item_id)}
-                    className={`inline-flex items-center h-[24px] px-2.5 rounded-[12px] font-condensed font-semibold text-[11.5px] ${
+                    className={`inline-flex items-center h-[24px] px-2.5 rounded-[12px] font-condensed font-semibold text-[12.5px] ${
                       on
                         ? "text-amber-hi border border-amber/40 bg-amber/[.1]"
                         : "text-faint border border-hairline hover:text-dim"
@@ -277,7 +277,7 @@ export const LogServiceSheet = ({
               })}
             </div>
             {unit === "apu" && (
-              <p className="font-condensed text-[11.5px] text-faint mt-1.5">
+              <p className="font-condensed text-[12.5px] text-faint mt-1.5">
                 Completing an APU clock stamps its last-done hours from the
                 reading above — without one, the clock keeps its date and still
                 needs a meter.

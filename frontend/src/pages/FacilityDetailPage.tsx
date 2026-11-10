@@ -21,13 +21,13 @@ import { BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { formatDate } from "@/lib/format";
 
 const PlateLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+  <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
     {children}
   </p>
 );
 
 const GhostLine = ({ children }: { children: React.ReactNode }) => (
-  <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+  <p className="font-condensed text-[14px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
     {children}
   </p>
 );
@@ -175,28 +175,28 @@ const FacilityDetailPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">FACILITIES</h1>
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">FACILITIES</h1>
           <Link
             to="/facilities"
-            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+            className="font-condensed font-medium text-[16px] text-faint hover:text-ink"
           >
             ← back to the ledger
           </Link>
         </div>
 
         <div className="flex items-baseline gap-[14px] flex-wrap mt-[18px]">
-          <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+          <h2 className="font-display text-[36.5px] tracking-[.04em] leading-none">
             {facilityLabel(facility).toUpperCase()}
           </h2>
-          <span className="font-condensed font-semibold text-[13px] tracking-[.12em] text-faint uppercase">
+          <span className="font-condensed font-semibold text-[14px] tracking-[.12em] text-faint uppercase">
             {facility.city}, {facility.state} · {role}
           </span>
           <KindChip kind={facility.kind} />
           <span className="ml-auto text-right">
-            <span className="font-condensed font-semibold text-[19px] tabular-nums block leading-none">
+            <span className="font-condensed font-semibold text-[20.5px] tabular-nums block leading-none">
               {rows.length}
             </span>
-            <span className="font-condensed text-[10.5px] text-faint tracking-[.08em]">
+            <span className="font-condensed text-[11.5px] text-faint tracking-[.08em]">
               VISIT{rows.length === 1 ? "" : "S"}
             </span>
           </span>
@@ -209,25 +209,25 @@ const FacilityDetailPage = () => {
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 mt-[10px] border border-hairline-lo rounded-[10px] overflow-hidden">
                 <div className="px-4 py-3 bg-well sm:border-r border-b sm:border-b-0 ds2-cell-rule">
-                  <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+                  <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint">
                     Median dwell
                   </p>
-                  <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+                  <p className="font-condensed font-semibold text-[26px] mt-1 tabular-nums">
                     {fmtDuration(score.medianDwellMin) ?? "—"}{" "}
-                    <span className="text-[12.5px] text-faint font-medium">
+                    <span className="text-[13.5px] text-faint font-medium">
                       {score.timedStops} timed stop{score.timedStops === 1 ? "" : "s"}
                     </span>
                   </p>
                 </div>
                 <div className="px-4 py-3 bg-well sm:border-r border-b sm:border-b-0 ds2-cell-rule">
-                  <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+                  <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint">
                     On-time arrivals
                   </p>
-                  <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+                  <p className="font-condensed font-semibold text-[26px] mt-1 tabular-nums">
                     {score.gradedStops > 0 ? (
                       <>
                         {score.onTimeCount} of {score.gradedStops}{" "}
-                        <span className="text-[12.5px] text-faint font-medium">you, not them</span>
+                        <span className="text-[13.5px] text-faint font-medium">you, not them</span>
                       </>
                     ) : (
                       <span className="text-faint">—</span>
@@ -235,16 +235,16 @@ const FacilityDetailPage = () => {
                   </p>
                 </div>
                 <div className="px-4 py-3 bg-well">
-                  <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+                  <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint">
                     Ran past free time
                   </p>
-                  <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+                  <p className="font-condensed font-semibold text-[26px] mt-1 tabular-nums">
                     {score.detentionCount}{" "}
-                    <span className="text-[12.5px] text-faint font-medium">
+                    <span className="text-[13.5px] text-faint font-medium">
                       of {score.timedStops} stop{score.timedStops === 1 ? "" : "s"}
                     </span>
                     {score.unpaidCount > 0 && (
-                      <span className="text-[12.5px] text-status-negative-text font-medium">
+                      <span className="text-[13.5px] text-status-negative-text font-medium">
                         {" "}
                         · {score.unpaidCount} unpaid
                       </span>
@@ -254,7 +254,7 @@ const FacilityDetailPage = () => {
               </div>
               {!score.hasData && (
                 <div className="mt-[10px]">
-                  <span className="font-condensed text-[13px] text-faint">
+                  <span className="font-condensed text-[14px] text-faint">
                     Full scorecard opens at {MIN_STOPS} timed stops —{" "}
                     {MIN_STOPS - score.timedStops} more visit
                     {MIN_STOPS - score.timedStops === 1 ? "" : "s"} with in/out logged and
@@ -303,11 +303,11 @@ const FacilityDetailPage = () => {
                   return (
                     <div
                       key={`${r.loadId}-${r.role}`}
-                      className="grid grid-cols-[100px_105px_90px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                      className="grid grid-cols-[100px_105px_90px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
                     >
                       <Link
                         to={`/loads/${r.loadId}`}
-                        className="font-display text-[15px] tracking-[.05em] text-amber-hi hover:text-hot"
+                        className="font-display text-[16px] tracking-[.05em] text-amber-hi hover:text-hot"
                       >
                         {r.loadNumber}
                       </Link>
@@ -317,7 +317,7 @@ const FacilityDetailPage = () => {
                         {r.inT || r.outT ? (
                           <>
                             in {fmtTime(r.inT)} → out {fmtTime(r.outT)}{" "}
-                            {clause && <span className={`text-[12px] ${clause.tone}`}>{clause.text}</span>}
+                            {clause && <span className={`text-[13px] ${clause.tone}`}>{clause.text}</span>}
                           </>
                         ) : (
                           <span className="text-faint">times not logged</span>
@@ -342,14 +342,14 @@ const FacilityDetailPage = () => {
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             placeholder="Gate codes, who to call, where they stage oversize, which door — write it once, read it every time you're routed back."
-            className="w-full mt-[10px] bg-well border border-hairline-lo rounded-[10px] px-[14px] py-[12px] text-[14px] leading-[1.55] text-ink placeholder:text-faint placeholder:font-condensed placeholder:text-[13px] outline-none resize-y"
+            className="w-full mt-[10px] bg-well border border-hairline-lo rounded-[10px] px-[14px] py-[12px] text-[15px] leading-[1.55] text-ink placeholder:text-faint placeholder:font-condensed placeholder:text-[14px] outline-none resize-y"
             style={{ boxShadow: "var(--shadow-inset)" }}
           />
           {notesDirty && (
             <button
               onClick={saveNotes}
               disabled={savingNotes}
-              className="mt-2 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13.5px] tracking-[.04em] bg-amber text-on-amber disabled:opacity-50"
+              className="mt-2 h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[14.5px] tracking-[.04em] bg-amber text-on-amber disabled:opacity-50"
             >
               {savingNotes ? "SAVING…" : "SAVE NOTES"}
             </button>
@@ -360,14 +360,14 @@ const FacilityDetailPage = () => {
         <div className="ds2-board p-4 mt-[14px]">
           <PlateLabel>Housekeeping</PlateLabel>
           <div className="flex gap-[10px] items-center flex-wrap mt-[10px]">
-            <p className="font-condensed text-[13px] text-faint flex-1 min-w-[220px]">
+            <p className="font-condensed text-[14px] text-faint flex-1 min-w-[220px]">
               Duplicate of another facility? Merge this one into it — its stops move
               over, then this card is deleted.
             </p>
             <select
               value={mergeTarget}
               onChange={(e) => setMergeTarget(e.target.value)}
-              className="h-[34px] px-2 rounded-[9px] bg-well border border-hairline font-condensed text-[13px] text-ink outline-none max-w-[260px]"
+              className="h-[34px] px-2 rounded-[9px] bg-well border border-hairline font-condensed text-[14px] text-ink outline-none max-w-[260px]"
             >
               <option value="">merge into…</option>
               {facilities
@@ -381,7 +381,7 @@ const FacilityDetailPage = () => {
             <button
               onClick={doMerge}
               disabled={!mergeTarget || merging}
-              className="h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline disabled:opacity-40"
+              className="h-[34px] px-[14px] rounded-[9px] font-condensed font-semibold text-[14px] text-dim bg-well border border-hairline disabled:opacity-40"
               style={{ boxShadow: "var(--shadow-inset)" }}
             >
               {merging ? "MERGING…" : "MERGE"}

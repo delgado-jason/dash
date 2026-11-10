@@ -11,7 +11,7 @@ export const Stamp = ({
 }) => (
   <span
     className={`inline-block font-condensed font-semibold uppercase rounded ${
-      size === "sm" ? "text-[11px] px-2 py-0" : "text-sm px-2.5 py-0.5"
+      size === "sm" ? "text-[12px] px-2 py-0" : "text-sm px-2.5 py-0.5"
     }`}
     style={{ border: `3px double ${color}`, color, letterSpacing: "2px" }}
   >

@@ -201,15 +201,15 @@ const RelationshipsLayout = () => {
         {/* statusbar — the house pattern */}
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">RELATIONSHIPS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim min-w-0 truncate max-w-full" title={subLine}>
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">RELATIONSHIPS</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim min-w-0 truncate max-w-full" title={subLine}>
             {subLine}
           </span>
           <span className="flex-1" />
           <Link
             to="/relationships/review"
             title={`inbound share of attributed loads since ${SYSTEM_START}`}
-            className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[13px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow hover:text-hot"
+            className="inline-flex items-center gap-2 h-[30px] px-3 rounded-full font-condensed font-semibold text-[14px] bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10 shadow hover:text-hot"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber" style={{ boxShadow: "0 0 7px color-mix(in srgb, var(--color-amber) 90%, transparent)" }} />
             INBOUND {data.loadsLoading ? "…" : data.loadsError ? "—" : headline}

@@ -114,15 +114,15 @@ const DriversPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">DRIVERS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">DRIVERS</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             who's in the seat
           </span>
           <span className="flex-1" />
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
             >
               + ADD DRIVER
             </button>
@@ -143,7 +143,7 @@ const DriversPage = () => {
         )}
 
         {drivers.length === 0 ? (
-          <p className="text-faint font-condensed text-[14px] mt-5">
+          <p className="text-faint font-condensed text-[15px] mt-5">
             No drivers yet. Add one to get started.
           </p>
         ) : (
@@ -167,19 +167,19 @@ const DriversPage = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-condensed font-semibold text-[17px] flex items-center gap-[9px] flex-wrap">
+                    <div className="font-condensed font-semibold text-[18.5px] flex items-center gap-[9px] flex-wrap">
                       {d.first_name} {d.last_name}
                       {d.active ? (
-                        <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
+                        <span className="font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
                           ACTIVE
                         </span>
                       ) : (
-                        <span className="font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
+                        <span className="font-medium text-[11.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
                           INACTIVE
                         </span>
                       )}
                     </div>
-                    <div className="font-condensed text-[13px] text-dim mt-[3px]">
+                    <div className="font-condensed text-[14px] text-dim mt-[3px]">
                       {stats.hauls} haul{stats.hauls === 1 ? "" : "s"} ·{" "}
                       {stats.miles.toLocaleString("en-US")} mi on the odometer
                       {cdl ? ` · ${cdl}` : ""}
@@ -190,7 +190,7 @@ const DriversPage = () => {
                     <a
                       href={`tel:${d.phone.replace(/[^+\d]/g, "")}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-[7px] h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-amber-hi bg-well border border-amber/35 whitespace-nowrap"
+                      className="inline-flex items-center gap-[7px] h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] text-amber-hi bg-well border border-amber/35 whitespace-nowrap"
                       style={{ boxShadow: "var(--shadow-inset)" }}
                     >
                       {CALL_ICON}

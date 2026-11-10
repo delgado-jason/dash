@@ -118,15 +118,15 @@ const FacilitiesPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">FACILITIES</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">FACILITIES</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             every dock you've backed into
           </span>
           <span className="flex-1" />
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
             >
               + ADD FACILITY
             </button>
@@ -135,15 +135,15 @@ const FacilitiesPage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums">
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums">
             {facilities.length} FACILIT{facilities.length === 1 ? "Y" : "IES"}
           </span>
-          <span className="font-condensed text-[13px] text-faint">
+          <span className="font-condensed text-[14px] text-faint">
             · <b className="font-semibold text-ink">{repeats}</b> repeat stops ·{" "}
             <b className="font-semibold text-ink">{timedTotal}</b> timed stops logged
           </span>
           <input
-            className="ml-auto h-[34px] px-3 rounded-[9px] bg-well font-condensed text-[13px] text-ink placeholder:text-faint min-w-[210px] outline-none"
+            className="ml-auto h-[34px] px-3 rounded-[9px] bg-well font-condensed text-[14px] text-ink placeholder:text-faint min-w-[210px] outline-none"
             style={{ boxShadow: "var(--shadow-inset)" }}
             placeholder="⌕  search name, address, city…"
             value={search}
@@ -168,10 +168,10 @@ const FacilitiesPage = () => {
         {dupes.length > 0 && (
           <div className="ds2-board overflow-hidden mt-4" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 40%, transparent)" }}>
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-amber-hi">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-amber-hi">
                 Possible duplicates
               </span>
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 · pick the one to keep
               </span>
             </div>
@@ -180,13 +180,13 @@ const FacilitiesPage = () => {
               return (
                 <div key={clusterKey(cluster)} className="px-4 py-3 border-t ds2-cell-rule first:border-t-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-condensed font-semibold text-[14px] text-amber-hi">
+                    <span className="font-condensed font-semibold text-[15px] text-amber-hi">
                       {cluster[0].city}, {cluster[0].state}
                     </span>
                     <KindChip kind={cluster[0].kind} />
                     <button
                       onClick={() => setConfirmCluster(cluster)}
-                      className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-amber-hi bg-well border border-amber/35"
+                      className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] text-amber-hi bg-well border border-amber/35"
                       style={{ boxShadow: "var(--shadow-inset)" }}
                     >
                       MERGE {cluster.length - 1} INTO KEEPER →
@@ -195,7 +195,7 @@ const FacilitiesPage = () => {
                   {cluster.map((f) => (
                     <label
                       key={f.facility_id}
-                      className="flex items-center gap-2.5 py-[7px] border-t ds2-cell-rule cursor-pointer font-condensed text-[14px] first-of-type:border-t-0 mt-1"
+                      className="flex items-center gap-2.5 py-[7px] border-t ds2-cell-rule cursor-pointer font-condensed text-[15px] first-of-type:border-t-0 mt-1"
                     >
                       <input
                         type="radio"
@@ -209,9 +209,9 @@ const FacilitiesPage = () => {
                         style={{ accentColor: "var(--color-amber)" }}
                       />
                       <span className="flex-1 min-w-0 truncate">{facilityLabel(f)}</span>
-                      <span className="text-faint text-[12px]">{loadCount(f)} loads</span>
+                      <span className="text-faint text-[13px]">{loadCount(f)} loads</span>
                       {keeperId === f.facility_id && (
-                        <span className="font-condensed font-bold text-[10px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-canvas bg-amber-hi">
+                        <span className="font-condensed font-bold text-[11px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-canvas bg-amber-hi">
                           KEEPER
                         </span>
                       )}
@@ -225,20 +225,20 @@ const FacilitiesPage = () => {
 
         {/* the ledger */}
         {facilities.length === 0 ? (
-          <p className="text-faint font-condensed text-[14px] mt-5">
+          <p className="text-faint font-condensed text-[15px] mt-5">
             No facilities yet. They're created as you add loads, or add one here.
           </p>
         ) : filtered.length === 0 ? (
-          <p className="text-faint font-condensed text-[14px] mt-5">
+          <p className="text-faint font-condensed text-[15px] mt-5">
             No facilities match "{search}".
           </p>
         ) : (
           <div className="ds2-board overflow-hidden mt-4">
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                 The ledger
               </span>
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 · repeats first, then by last visit
               </span>
             </div>
@@ -257,36 +257,36 @@ const FacilitiesPage = () => {
                   }`}
                 >
                   <span className="w-[52px] text-right shrink-0">
-                    <span className="font-condensed font-semibold text-[19px] tabular-nums block leading-none">
+                    <span className="font-condensed font-semibold text-[20.5px] tabular-nums block leading-none">
                       {visits}
                     </span>
-                    <span className="font-condensed text-[10.5px] text-faint tracking-[.08em]">
+                    <span className="font-condensed text-[11.5px] text-faint tracking-[.08em]">
                       VISIT{visits === 1 ? "" : "S"}
                     </span>
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="font-condensed font-semibold text-[16px] flex items-center gap-[9px] flex-wrap">
+                    <div className="font-condensed font-semibold text-[17.5px] flex items-center gap-[9px] flex-wrap">
                       {facilityLabel(f)}
                       <KindChip kind={f.kind} />
                     </div>
-                    <div className="font-condensed text-[13px] text-dim mt-[3px]">
+                    <div className="font-condensed text-[14px] text-dim mt-[3px]">
                       {f.city}, {f.state} · {roleLabel(f)}
                       {t?.lastVisit ? ` · last in ${formatDate(t.lastVisit)}` : ""}
                     </div>
                   </div>
                   {dwellStr ? (
                     <span
-                      className={`text-right font-condensed font-semibold text-[14px] tabular-nums ${
+                      className={`text-right font-condensed font-semibold text-[15px] tabular-nums ${
                         slow ? "text-amber-hi" : ""
                       }`}
                     >
                       {dwellStr}
-                      <span className="block font-medium text-[11px] text-faint tracking-[.05em]">
+                      <span className="block font-medium text-[12px] text-faint tracking-[.05em]">
                         {t!.timed === 1 ? "1 timed stop" : `median · ${t!.timed} timed`}
                       </span>
                     </span>
                   ) : (
-                    <span className="font-condensed text-[11.5px] text-faint border border-dashed border-hairline rounded-[6px] px-2 py-[3px] whitespace-nowrap">
+                    <span className="font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[6px] px-2 py-[3px] whitespace-nowrap">
                       no timed stops yet
                     </span>
                   )}
@@ -309,22 +309,22 @@ const FacilitiesPage = () => {
                   onClick={() => setConfirmCluster(null)}
                 />
                 <div className="relative bg-canvas border border-hairline rounded-[12px] p-5 max-w-md mx-4">
-                  <h3 className="font-display text-[22px] tracking-[.04em]">MERGE FACILITIES?</h3>
-                  <p className="font-condensed text-[14px] text-dim mt-2">Everything moves onto:</p>
-                  <p className="font-condensed text-[15px] mt-1">
+                  <h3 className="font-display text-[24px] tracking-[.04em]">MERGE FACILITIES?</h3>
+                  <p className="font-condensed text-[15px] text-dim mt-2">Everything moves onto:</p>
+                  <p className="font-condensed text-[16px] mt-1">
                     <b>{facilityLabel(keeper)}</b>{" "}
                     <span className="text-faint">
                       · {keeper.city}, {keeper.state}
                     </span>
                   </p>
-                  <p className="font-condensed text-[14px] text-dim mt-3">
+                  <p className="font-condensed text-[15px] text-dim mt-3">
                     <b className="text-ink">
                       {totalLoads} load{totalLoads === 1 ? "" : "s"}
                     </b>{" "}
                     reassigned from {merges.length}{" "}
                     {merges.length === 1 ? "facility" : "facilities"}, then deleted:
                   </p>
-                  <div className="font-condensed text-[14px] mt-2 flex flex-col gap-1">
+                  <div className="font-condensed text-[15px] mt-2 flex flex-col gap-1">
                     {merges.map((f) => (
                       <span key={f.facility_id}>
                         • {facilityLabel(f)}{" "}
@@ -332,7 +332,7 @@ const FacilitiesPage = () => {
                       </span>
                     ))}
                   </div>
-                  <p className="font-condensed text-[12px] text-status-negative-text mt-3">
+                  <p className="font-condensed text-[13px] text-status-negative-text mt-3">
                     ⚠ This can't be undone.
                   </p>
                   {mergeErr && (
@@ -341,14 +341,14 @@ const FacilitiesPage = () => {
                   <div className="flex gap-2 justify-end mt-4">
                     <button
                       onClick={() => setConfirmCluster(null)}
-                      className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline"
+                      className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline"
                     >
                       CANCEL
                     </button>
                     <button
                       onClick={runMerge}
                       disabled={merging}
-                      className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+                      className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
                     >
                       {merging ? "MERGING…" : "MERGE"}
                     </button>

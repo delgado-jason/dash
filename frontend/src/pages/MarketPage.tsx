@@ -392,8 +392,8 @@ const MarketPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">MARKET</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">MARKET</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the freight market, and where you stand in it
           </span>
         </div>
@@ -408,28 +408,28 @@ const MarketPage = () => {
         {dialAdv && (
           <div className="ds2-board p-4 mt-4">
             <div className="flex items-baseline gap-2.5 flex-wrap">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                 The index’s nudge
               </span>
-              <span className="font-condensed text-[11px] text-faint">
+              <span className="font-condensed text-[12px] text-faint">
                 from the index alone · one step when it holds · {indexSentence(signal)}
               </span>
             </div>
             <p
-              className="font-condensed font-bold text-[15px] tracking-[.02em] mt-2"
+              className="font-condensed font-bold text-[16px] tracking-[.02em] mt-2"
               style={{ color: dialAdv.hold ? "var(--color-ok)" : dialAdv.direction === "softening" ? "var(--color-amber-hi)" : "var(--color-ok)" }}
             >
               {dialAdv.headline}
             </p>
             {!dialAdv.hold && (
-              <p className="font-condensed text-[13px] text-dim mt-1 tabular-nums">
+              <p className="font-condensed text-[14px] text-dim mt-1 tabular-nums">
                 Standard → <b className="text-ink">{(dialAdv.std * 100).toFixed(0)}%</b> margin
                 {" "}({dialAdv.stdDelta >= 0 ? "+" : "−"}{Math.abs(dialAdv.stdDelta * 100).toFixed(0)} pts from where you sit)
                 {" "}· Specialized → <b className="text-ink">{(dialAdv.spec * 100).toFixed(0)}%</b>
                 {" "}({dialAdv.specDelta >= 0 ? "+" : "−"}{Math.abs(dialAdv.specDelta * 100).toFixed(0)} pts)
               </p>
             )}
-            <p className="font-condensed text-[12px] text-faint mt-1.5">
+            <p className="font-condensed text-[13px] text-faint mt-1.5">
               {dialAdv.why}{" "}
               <Link to="/settings" className="text-amber-hi hover:text-hot">adjust the dials on Settings →</Link>
             </p>
@@ -440,7 +440,7 @@ const MarketPage = () => {
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           {ok ? (
             <span
-              className="font-condensed font-bold text-[18px] uppercase tracking-[.04em]"
+              className="font-condensed font-bold text-[19.5px] uppercase tracking-[.04em]"
               style={{ color: yvmColor }}
             >
               {ok.verdict === "beating"
@@ -450,11 +450,11 @@ const MarketPage = () => {
                   : "▪ MOVING WITH THE MARKET"}
             </span>
           ) : (
-            <span className="font-condensed font-bold text-[18px] uppercase tracking-[.04em] text-faint">
+            <span className="font-condensed font-bold text-[19.5px] uppercase tracking-[.04em] text-faint">
               THE MARKET
             </span>
           )}
-          <span className="text-[13.5px] text-faint">
+          <span className="text-[14.5px] text-faint">
             {ok && (
               <>
                 · <b className="font-semibold text-ink">{gapPts} pts</b> vs PPI specialized
@@ -482,7 +482,7 @@ const MarketPage = () => {
         </div>
 
         {points.length === 0 ? (
-          <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-4">
+          <p className="font-condensed text-[14px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-4">
             No delivered loads with rate + mileage yet. Once you've run some freight,
             your rate history shows up here.
           </p>
@@ -491,10 +491,10 @@ const MarketPage = () => {
             {/* scatter */}
             <div className="ds2-board overflow-hidden mt-4">
               <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                   Every load · rate vs the year
                 </span>
-                <span className="font-condensed text-[12px] text-faint">
+                <span className="font-condensed text-[13px] text-faint">
                   · gross $/driven mile · break-even in red · today’s rungs drawn across every year
                   {targets.bookingLadder.walkAway != null && (
                     <>
@@ -515,7 +515,7 @@ const MarketPage = () => {
                 </span>
               </div>
               {targets.basis.missingLabel && (
-                <div className="px-4 py-[6px] border-b ds2-cell-rule font-condensed text-[12.5px] text-amber-hi">
+                <div className="px-4 py-[6px] border-b ds2-cell-rule font-condensed text-[13.5px] text-amber-hi">
                   ⚠ no P&L filed for {targets.basis.missingLabel} — the break-even stops short of it. File the month on{" "}
                   <Link to="/expenses" className="underline hover:text-hot">Expenses</Link> and every number on this page moves.
                 </div>
@@ -528,13 +528,13 @@ const MarketPage = () => {
                     specLadder={targets.specLadder}
                   />
                 ) : (
-                  <p className="font-condensed text-[12.5px] text-faint py-6 text-center">
+                  <p className="font-condensed text-[13.5px] text-faint py-6 text-center">
                     Upload a few months of P&L on the Expenses page to draw your
                     break-even and tier lines.
                   </p>
                 )}
               </div>
-              <div className="flex gap-4 flex-wrap font-condensed text-[11px] text-faint px-4 py-[9px]">
+              <div className="flex gap-4 flex-wrap font-condensed text-[12px] text-faint px-4 py-[9px]">
                 <span>
                   <span className="inline-block w-2.5 h-2.5 rounded-full align-middle mr-1" style={{ background: COLOR.standard }} />
                   standard flatbed
@@ -554,10 +554,10 @@ const MarketPage = () => {
               {/* barometer + you-vs-market */}
               <div className="ds2-board overflow-hidden">
                 <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                     Market barometer
                   </span>
-                  <span className="font-condensed text-[12px] text-faint">
+                  <span className="font-condensed text-[13px] text-faint">
                     · your monthly median vs the index · months on the axis
                   </span>
                 </div>
@@ -569,7 +569,7 @@ const MarketPage = () => {
                         breakEven={targets.bookingLadder.walkAway}
                         hasPpi={hasPpi}
                       />
-                      <div className="flex gap-4 font-condensed text-[11px] text-faint mt-1 px-1">
+                      <div className="flex gap-4 font-condensed text-[12px] text-faint mt-1 px-1">
                         <span>
                           <span style={{ color: "var(--color-amber-hi)" }}>▬</span> you (median $/mi)
                         </span>
@@ -580,17 +580,17 @@ const MarketPage = () => {
                         )}
                       </div>
                       {yvm && !yvm.ok && (
-                        <p className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3 font-condensed text-[11.5px] text-faint">
+                        <p className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3 font-condensed text-[12.5px] text-faint">
                           You vs the market · not enough standard loads to compare — {yvm.recent.n} in {yvm.recent.label}, {yvm.prior.n} in {yvm.prior.label}; {yvm.need} on each side needed.
                         </p>
                       )}
                       {ok && (
                         <div className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3">
-                          <p className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint mb-2">
+                          <p className="font-condensed text-[12.5px] tracking-[.12em] uppercase text-faint mb-2">
                             You vs the market · {ok.recent.label} vs {ok.prior.label} · standard loads, {ok.recent.n} and {ok.prior.n}
                           </p>
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className="font-condensed text-[11px] text-faint w-14">you</span>
+                            <span className="font-condensed text-[12px] text-faint w-14">you</span>
                             <div
                               className="flex-1 h-2 rounded-[3px] overflow-hidden"
                               style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
@@ -611,7 +611,7 @@ const MarketPage = () => {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-condensed text-[11px] text-faint w-14">market</span>
+                            <span className="font-condensed text-[12px] text-faint w-14">market</span>
                             <div
                               className="flex-1 h-2 rounded-[3px] overflow-hidden"
                               style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
@@ -624,7 +624,7 @@ const MarketPage = () => {
                           </div>
                           {yvmText && (
                             <p
-                              className="mt-2.5 rounded-[8px] px-3 py-2 font-condensed text-[11.5px] leading-relaxed"
+                              className="mt-2.5 rounded-[8px] px-3 py-2 font-condensed text-[12.5px] leading-relaxed"
                               style={{ background: "var(--color-well)", color: yvmColor }}
                             >
                               {yvmText}
@@ -634,7 +634,7 @@ const MarketPage = () => {
                       )}
                     </>
                   ) : (
-                    <p className="font-condensed text-[12.5px] text-faint py-6 text-center">No data yet.</p>
+                    <p className="font-condensed text-[13.5px] text-faint py-6 text-center">No data yet.</p>
                   )}
                 </div>
               </div>
@@ -642,10 +642,10 @@ const MarketPage = () => {
               {/* tier gauge */}
               <div className="ds2-board overflow-hidden">
                 <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                     Your accepted loads · where your rungs sit
                   </span>
-                  <span className="font-condensed text-[12px] text-faint">
+                  <span className="font-condensed text-[13px] text-faint">
                     · last 90 days · {gauge.windowN} loads · a rung ranks among eight or more of its type · evidence for the call, not the market
                   </span>
                 </div>
@@ -665,7 +665,7 @@ const MarketPage = () => {
                                 ) : (
                                   <>
                                     {Math.round(r.pctile * 100)}
-                                    <span className="text-faint text-[10px]">th pctile · {r.n} loads</span>
+                                    <span className="text-faint text-[11px]">th pctile · {r.n} loads</span>
                                   </>
                                 )}
                               </span>
@@ -684,7 +684,7 @@ const MarketPage = () => {
                       </div>
                     </>
                   ) : (
-                    <p className="font-condensed text-[12.5px] text-faint py-6 text-center">
+                    <p className="font-condensed text-[13.5px] text-faint py-6 text-center">
                       Needs your break-even (Expenses P&L) to place the tiers.
                     </p>
                   )}
@@ -696,10 +696,10 @@ const MarketPage = () => {
             {zones && (
               <div className="ds2-board overflow-hidden mt-4">
                 <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                     Where your loads land · the ladder as a distribution
                   </span>
-                  <span className="font-condensed text-[12px] text-faint">
+                  <span className="font-condensed text-[13px] text-faint">
                     · {zones.total} loads · last 90 days · zone colors = the banded ladder's
                   </span>
                 </div>
@@ -718,7 +718,7 @@ const MarketPage = () => {
                     key={z.n}
                     className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
                   >
-                    <span className="w-[150px] font-bold text-[11px] tracking-[.1em] uppercase" style={{ color: z.c }}>
+                    <span className="w-[150px] font-bold text-[12px] tracking-[.1em] uppercase" style={{ color: z.c }}>
                       {z.n}
                     </span>
                     <span
@@ -727,13 +727,13 @@ const MarketPage = () => {
                     >
                       <i className="block h-full" style={{ width: `${(z.v / zones.max) * 100}%`, background: z.bg }} />
                     </span>
-                    <span className="w-[120px] text-right text-[13px] text-dim tabular-nums">
+                    <span className="w-[120px] text-right text-[14px] text-dim tabular-nums">
                       {z.v} load{z.v === 1 ? "" : "s"} · {Math.round((z.v / Math.max(1, zones.total)) * 100)}%
                     </span>
                   </div>
                 ))}
                 {zones.stdTotal > 0 && (
-                  <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
+                  <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[13.5px] text-faint">
                     <b className="text-dim">the straight read:</b> {zones.stdBelow} of your{" "}
                     {zones.stdTotal} standard-flatbed loads ran below break-even —{" "}
                     {zones.specBelow} of {zones.specTotal} specialized did.

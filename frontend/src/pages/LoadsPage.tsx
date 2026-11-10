@@ -73,7 +73,7 @@ const TINT: Partial<Record<LoadFlag, string>> = {
 
 const Chip = ({ bg, fg, text }: { bg: string; fg: string; text: string }) => (
   <span
-    className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full align-middle"
+    className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full align-middle"
     style={{ background: bg, color: fg }}
   >
     {text}
@@ -301,10 +301,10 @@ const LoadsPage = () => {
 
       <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
         <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-        <h1 className="font-display text-[26px] tracking-[.06em] leading-none">LOADS</h1>
+        <h1 className="font-display text-[28px] tracking-[.06em] leading-none">LOADS</h1>
         <span className="flex-1" />
         <button
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14.5px] tracking-[.05em] bg-amber text-on-amber hover:brightness-105"
+          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15.5px] tracking-[.05em] bg-amber text-on-amber hover:brightness-105"
           onClick={() => setShowCreateForm(true)}
         >
           + CREATE LOAD
@@ -313,10 +313,10 @@ const LoadsPage = () => {
 
       {/* the answering line — sums whatever the filters currently show */}
       <div className="flex items-baseline gap-2.5 flex-wrap mt-4 px-0.5">
-        <span className="font-condensed font-semibold text-[22px] tabular-nums">
+        <span className="font-condensed font-semibold text-[24px] tabular-nums">
           {totals.rows} load{plural(totals.rows)}
         </span>
-        <span className="text-[12px] text-faint">in this view ·</span>
+        <span className="text-[13px] text-faint">in this view ·</span>
         {/* Said only when it differs: cancelled and TONU freight is on the
             screen but out of the money, and you should be able to see that
             rather than wonder why the gross looks light. */}
@@ -325,13 +325,13 @@ const LoadsPage = () => {
             <b className="font-condensed font-semibold text-ink tabular-nums">
               {totals.earning} earning
             </b>
-            <span className="text-[12px] text-faint">·</span>
+            <span className="text-[13px] text-faint">·</span>
           </>
         )}
         <b className="font-condensed font-semibold text-ink tabular-nums">{money(totals.gross)} gross</b>
         {totals.rpm != null && (
           <>
-            <span className="text-[12px] text-faint">·</span>
+            <span className="text-[13px] text-faint">·</span>
             <b className="font-condensed font-semibold text-status-positive-text tabular-nums">{fmtRpm(totals.rpm)}/loaded mi · gross</b>
           </>
         )}
@@ -411,7 +411,7 @@ const LoadsPage = () => {
         ) : (
           <table className="w-full text-sm min-w-[760px] [&_th]:pr-5 [&_td]:pr-5 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
             <thead>
-              <tr className="text-[10px] uppercase tracking-[.12em] text-faint text-left">
+              <tr className="text-[11px] uppercase tracking-[.12em] text-faint text-left">
                 <th className="font-normal pb-2">Load #</th>
                 <th className="font-normal pb-2">Status</th>
                 <th className="font-normal pb-2">Agency · agent</th>

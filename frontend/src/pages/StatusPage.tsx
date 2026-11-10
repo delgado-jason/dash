@@ -132,7 +132,7 @@ const Cells = ({
 // The little tags: FLOOR 3 · CURRENT OBJECTIVE · HELD · MET · NEXT.
 const Stamp = ({ tone, children }: { tone: "amber" | "dim" | "pos"; children: string }) => (
   <span
-    className={`font-condensed font-semibold text-[11px] tracking-[.1em] uppercase ml-2 inline-block align-middle ${
+    className={`font-condensed font-semibold text-[12px] tracking-[.1em] uppercase ml-2 inline-block align-middle ${
       tone === "amber" ? "text-amber-hi" : tone === "pos" ? "text-status-positive-text" : "text-faint"
     }`}
   >
@@ -142,7 +142,7 @@ const Stamp = ({ tone, children }: { tone: "amber" | "dim" | "pos"; children: st
 
 const Ring = ({ state, children }: { state: "done" | "act" | "pend"; children: number }) => (
   <span
-    className="w-[30px] h-[30px] rounded-full flex items-center justify-center font-condensed font-semibold tabular-nums text-[15px] shrink-0"
+    className="w-[30px] h-[30px] rounded-full flex items-center justify-center font-condensed font-semibold tabular-nums text-[16px] shrink-0"
     style={
       state === "done"
         ? { background: "var(--color-amber)", color: "var(--color-on-amber)" }
@@ -156,15 +156,15 @@ const Ring = ({ state, children }: { state: "done" | "act" | "pend"; children: n
 );
 
 const FIELD =
-  "h-9 w-full rounded-[9px] bg-well border border-hairline px-3 font-condensed text-[14px] text-ink outline-none";
-const LBL = "font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-faint mb-1 block";
+  "h-9 w-full rounded-[9px] bg-well border border-hairline px-3 font-condensed text-[15px] text-ink outline-none";
+const LBL = "font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint mb-1 block";
 const BOARD_HEAD = "flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule";
 // The house panel heading (v1.269.1). This page ran its own 11.5px condensed
 // variant alongside two inline 15px idioms and an 11px one, and used
 // `ds2-label` — the primitive 28 other files share — exactly zero times. Same
 // finding C1b closed on the load page, one scale per job.
 const BOARD_TITLE = "ds2-label";
-const BOARD_SUB = "font-condensed text-[12px] text-faint";
+const BOARD_SUB = "font-condensed text-[13px] text-faint";
 
 const StatusPage = () => {
   const [plans, setPlans] = useState<PlanRow[]>([]);
@@ -658,18 +658,18 @@ const StatusPage = () => {
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
           {/* The sidebar has always called this page "Plan" and the page has
               always called itself "ACCOUNT STATUS" (v1.268.0). One name. */}
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">PLAN</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">PLAN</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             where the money stands
           </span>
           {plan && (
-            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-amber-hi">
+            <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-amber-hi">
               {plan.label.toUpperCase()}
             </span>
           )}
           <button
             onClick={openPlanEditor}
-            className="font-condensed font-semibold text-[12px] tracking-[.06em] text-dim hover:text-ink"
+            className="font-condensed font-semibold text-[13px] tracking-[.06em] text-dim hover:text-ink"
           >
             EDIT PLAN ▸
           </button>
@@ -677,7 +677,7 @@ const StatusPage = () => {
           {pending && pendingLabel && (
             <button
               onClick={() => openSnapshot(true)}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[13px] tracking-[.05em] text-amber-hi bg-well border"
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] text-amber-hi bg-well border"
               style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)", boxShadow: "var(--shadow-inset)" }}
             >
               MONEY DAY · {pendingLabel.split(" ")[0].toUpperCase()} ▸
@@ -685,7 +685,7 @@ const StatusPage = () => {
           )}
           <button
             onClick={() => openSnapshot(false)}
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
           >
             + FRIDAY SNAPSHOT
           </button>
@@ -715,11 +715,11 @@ const StatusPage = () => {
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
           {view?.verdict ? (
             <>
-              <span className={`font-condensed font-semibold text-[12px] tracking-[.1em] uppercase ${view.verdict === "on-plan" ? "text-status-positive-text" : "text-amber-hi"}`}>
+              <span className={`font-condensed font-semibold text-[13px] tracking-[.1em] uppercase ${view.verdict === "on-plan" ? "text-status-positive-text" : "text-amber-hi"}`}>
                 {view.verdict === "on-plan" ? "ON PLAN" : view.verdict === "floors-first" ? "FLOORS FIRST" : "BELOW FLOAT — HOLD"}
               </span>
               {/* the stamp names its basis (PL-04): the Ops number it read and the moves it took off */}
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 {verdictBasis(view, {
                   opsWords: opsFromCheck
                     ? `OPS NOW ${formatDate(opsFromCheck.as_of) ?? opsFromCheck.as_of}`
@@ -732,17 +732,17 @@ const StatusPage = () => {
             </>
           ) : view && view.waitingOn.length > 0 ? (
             <>
-              <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-faint">
                 VERDICT WAITS
               </span>
               <span>{refusalLines("give the verdict", view.waitingOn)}</span>
             </>
           ) : (
-            <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-faint">
+            <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-faint">
               NO SNAPSHOT YET
             </span>
           )}
-          <span className="text-[13.5px] text-faint">
+          <span className="text-[14.5px] text-faint">
             this Friday: <b className="font-semibold text-ink">{accrualWords}</b>
             {pending && pendingLabel ? (
               <>
@@ -782,9 +782,9 @@ const StatusPage = () => {
           const fills = il.floors.filter((f) => f.fill > 0);
           const step = (k: number, what: string, value: string, dim = false) => (
             <div className="grid grid-cols-[34px_1fr_auto] gap-3 items-baseline px-4 py-[10px] border-t ds2-cell-rule first:border-t-0">
-              <span className="font-condensed font-semibold tabular-nums text-[20px] text-amber">{k}</span>
-              <span className="font-condensed text-[14px] text-dim">{what}</span>
-              <span className={`font-condensed font-semibold text-[15px] text-right whitespace-nowrap ${dim ? "text-faint" : "text-hot"}`}>{value}</span>
+              <span className="font-condensed font-semibold tabular-nums text-[21.5px] text-amber">{k}</span>
+              <span className="font-condensed text-[15px] text-dim">{what}</span>
+              <span className={`font-condensed font-semibold text-[16px] text-right whitespace-nowrap ${dim ? "text-faint" : "text-hot"}`}>{value}</span>
             </div>
           );
           return (
@@ -824,7 +824,7 @@ const StatusPage = () => {
                 <span className={BOARD_SUB}>the seven-line entry for Excel is on the form ·</span>
                 <button
                   onClick={() => openSnapshot(true)}
-                  className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-amber-hi hover:text-hot"
+                  className="font-condensed font-semibold text-[13.5px] tracking-[.06em] text-amber-hi hover:text-hot"
                 >
                   RUN {pendingLabel.split(" ")[0].toUpperCase()}'S MONEY DAY ▸
                 </button>
@@ -854,8 +854,8 @@ const StatusPage = () => {
                 <div key={f.key} className="flex items-center gap-[14px] px-4 py-3 border-t ds2-cell-rule first:border-t-0">
                   <Ring state={f.met ? "done" : f.state === "held" ? "act" : "pend"}>{i + 1}</Ring>
                   <div className="flex-1 min-w-0">
-                    <p className="font-condensed font-semibold text-[15px]">{floorTitle[f.key]}</p>
-                    <p className="font-condensed text-[12px] text-faint mt-[2px]">
+                    <p className="font-condensed font-semibold text-[16px]">{floorTitle[f.key]}</p>
+                    <p className="font-condensed text-[13px] text-faint mt-[2px]">
                       {before != null ? money(before) : noBalance}
                       {f.key !== "vault" && f.balance != null && before != null && Math.round(f.balance) !== Math.round(before) && (
                         <> → {fmtMoney(f.balance)} after the {f.key === "ops" && view.moneyDay && view.moneyDay.tax > 0 ? "moves" : "accrual"}</>
@@ -892,8 +892,8 @@ const StatusPage = () => {
                   aria-hidden="true"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="font-condensed font-semibold text-[15px] text-dim">{taxAcct.name} · watched, not a floor</p>
-                  <p className="font-condensed text-[12px] text-faint mt-[2px]">
+                  <p className="font-condensed font-semibold text-[16px] text-dim">{taxAcct.name} · watched, not a floor</p>
+                  <p className="font-condensed text-[13px] text-faint mt-[2px]">
                     {taxBal != null ? money(taxBal) : noBalance}
                     {pending && taxPct != null && pending.pretaxProfit != null && pending.pretaxProfit > 0 && (
                       <> · {taxPct} % of {monthName(pending.month)}’s profit = {money((pending.pretaxProfit * taxPct) / 100)} on the money day</>
@@ -904,7 +904,7 @@ const StatusPage = () => {
               </div>
             )}
             {maintAcct == null && (
-              <p className="font-condensed text-[12px] text-amber-hi px-4 py-2 border-t ds2-cell-rule">
+              <p className="font-condensed text-[13px] text-amber-hi px-4 py-2 border-t ds2-cell-rule">
                 No account carries the maintenance role — give your Maintenance account the role in EDIT PLAN so floor 2 can be read.
               </p>
             )}
@@ -957,7 +957,7 @@ const StatusPage = () => {
                     className="flex items-center gap-[14px] px-4 py-[9px] border-t ds2-cell-rule first:border-t-0 opacity-60"
                   >
                     <Ring state="pend">{st.stage.position}</Ring>
-                    <p className="flex-1 min-w-0 font-condensed text-[14px] truncate">
+                    <p className="flex-1 min-w-0 font-condensed text-[15px] truncate">
                       <span className="font-semibold">{st.stage.label}</span>
                       {num(st.stage.target_lo) != null && (
                         <span className="text-faint">
@@ -966,7 +966,7 @@ const StatusPage = () => {
                         </span>
                       )}
                     </p>
-                    <span className="font-condensed text-[12px] text-faint shrink-0">
+                    <span className="font-condensed text-[13px] text-faint shrink-0">
                       {st.currentValue != null ? money(st.currentValue) : "—"}
                     </span>
                   </div>
@@ -979,7 +979,7 @@ const StatusPage = () => {
                 >
                   <Ring state={ring}>{st.stage.position}</Ring>
                   <div className="flex-1 min-w-0">
-                    <p className="font-condensed font-semibold text-[15px]">
+                    <p className="font-condensed font-semibold text-[16px]">
                       {st.stage.label}
                       {st.state === "done" && <Stamp tone="pos">DONE</Stamp>}
                       {st.state !== "done" && isFloor && !nextDollar && <Stamp tone="dim">FLOOR 3</Stamp>}
@@ -987,18 +987,18 @@ const StatusPage = () => {
                       {isObjective && !nextDollar && <Stamp tone="amber">CURRENT OBJECTIVE</Stamp>}
                     </p>
                     {st.stage.kind === "obligation" && st.currentValue == null && (
-                      <p className="font-condensed text-[12px] text-faint mt-[2px]">
+                      <p className="font-condensed text-[13px] text-faint mt-[2px]">
                         not bound to an obligation yet — bind it in EDIT PLAN to grade this stage
                       </p>
                     )}
                     {st.state !== "done" && isFloor && (
-                      <p className="font-condensed text-[12px] text-faint mt-[2px]">
+                      <p className="font-condensed text-[13px] text-faint mt-[2px]">
                         {st.currentValue != null ? money(st.currentValue) : "no balance typed"}{num(st.stage.target_lo) != null && <> of {money(num(st.stage.target_lo)!)}</>} · filled by the interlock, not the split
                       </p>
                     )}
                     {st.missing.length > 0 && <p className="mt-[2px]">{refusalLines(`grade rung ${st.stage.position}`, st.missing)}</p>}
                     {isObjective && (
-                      <p className="font-condensed text-[12px] text-amber-hi mt-[2px]">
+                      <p className="font-condensed text-[13px] text-amber-hi mt-[2px]">
                         {st.stage.kind === "obligation" && st.currentValue != null && (
                           <>{money(st.currentValue)} left{st.stage.obligation?.original_balance ? ` of ${money(st.stage.obligation.original_balance)}` : ""} · </>
                         )}
@@ -1013,10 +1013,10 @@ const StatusPage = () => {
                     </div>
                   </div>
                   <div className="text-right shrink-0 font-condensed">
-                    <p className="font-semibold text-[14px] tabular-nums">
+                    <p className="font-semibold text-[15px] tabular-nums">
                       {st.currentValue != null ? money(st.currentValue) : "—"}
                     </p>
-                    <p className="text-[10.5px] text-faint">
+                    <p className="text-[11.5px] text-faint">
                       {st.stage.kind === "obligation"
                         ? "balance left"
                         : st.stage.kind === "trailer"
@@ -1078,8 +1078,8 @@ const StatusPage = () => {
           {maintAcct && (
             <div className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule first:border-t-0">
               <div className="flex-1 min-w-0">
-                <p className="font-condensed font-semibold text-[16px]">{maintAcct.name}</p>
-                <p className="font-condensed text-[13px] text-dim mt-[2px]">
+                <p className="font-condensed font-semibold text-[17.5px]">{maintAcct.name}</p>
+                <p className="font-condensed text-[14px] text-dim mt-[2px]">
                   {owedToday.weeks.length && acc != null && perMile != null ? (
                     <>
                       <b className="text-hot font-semibold">Accrue {money(acc)} this Friday</b> — pay week {owedToday.label},{" "}
@@ -1114,7 +1114,7 @@ const StatusPage = () => {
                   {floorsBoard[1] && floorsBoard[1].floor != null && floorsBoard[1].short != null && (floorsBoard[1].short > 0 ? <> · floor {money(floorsBoard[1].floor)}, {money(floorsBoard[1].short)} short after</> : <> · floor {money(floorsBoard[1].floor)} holds</>)}
                 </p>
                 {status?.accrualFlag && (
-                  <p className="font-condensed text-[12px] text-amber-hi mt-[2px]">{status.accrualFlag}</p>
+                  <p className="font-condensed text-[13px] text-amber-hi mt-[2px]">{status.accrualFlag}</p>
                 )}
                 {owedToday.weeks.length > 0 && owedTodayMiles == null && (
                   <p className="mt-[2px]">
@@ -1122,7 +1122,7 @@ const StatusPage = () => {
                   </p>
                 )}
               </div>
-              <span className={`font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap ${owedToday.weeks.length ? "text-status-positive-text bg-status-positive-text/10" : "text-dim bg-dim/12"}`}>
+              <span className={`font-condensed font-semibold text-[11.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap ${owedToday.weeks.length ? "text-status-positive-text bg-status-positive-text/10" : "text-dim bg-dim/12"}`}>
                 {owedToday.weeks.length ? "this Friday" : "accrued"}
               </span>
             </div>
@@ -1130,8 +1130,8 @@ const StatusPage = () => {
           {taxAcct && (
             <div className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule">
               <div className="flex-1 min-w-0">
-                <p className="font-condensed font-semibold text-[16px]">{taxAcct.name}</p>
-                <p className="font-condensed text-[13px] text-dim mt-[2px]">
+                <p className="font-condensed font-semibold text-[17.5px]">{taxAcct.name}</p>
+                <p className="font-condensed text-[14px] text-dim mt-[2px]">
                   {pending && pendingLabel && preview?.moneyDay ? (
                     <>
                       {pendingLabel.split(" ")[0]}'s money day: {taxPct} % of {pending.pretaxProfit != null && pending.pretaxProfit < 0 ? "−" : ""}{pending.pretaxProfit != null ? money(Math.abs(pending.pretaxProfit)) : "no profit figure"} = <b className="text-ink font-semibold">{money(preview.moneyDay.tax)}</b>
@@ -1156,21 +1156,21 @@ const StatusPage = () => {
                   {opensNext && <> · {opensNext.split(" ")[0]} waits for its P&amp;L</>}
                 </p>
               </div>
-              <span className="font-condensed font-semibold text-[10.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap text-status-info-text bg-status-info-text/12">
+              <span className="font-condensed font-semibold text-[11.5px] tracking-[.09em] uppercase rounded-[11px] px-[10px] py-[3px] whitespace-nowrap text-status-info-text bg-status-info-text/12">
                 money day
               </span>
             </div>
           )}
           {otherReserves.map((a) => (
             <div key={a.account_id} className="flex items-center gap-4 px-4 py-3 border-t ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[16px] flex-1">
-                {a.name} <span className="text-[13px] text-faint font-normal">{balanceOf(latest, a.account_id) != null ? money(balanceOf(latest, a.account_id)!) : "no balance typed"}</span>
+              <p className="font-condensed font-semibold text-[17.5px] flex-1">
+                {a.name} <span className="text-[14px] text-faint font-normal">{balanceOf(latest, a.account_id) != null ? money(balanceOf(latest, a.account_id)!) : "no balance typed"}</span>
               </p>
-              <span className="font-condensed text-[11px] text-faint">watched</span>
+              <span className="font-condensed text-[12px] text-faint">watched</span>
             </div>
           ))}
           {!maintAcct && !taxAcct && otherReserves.length === 0 && (
-            <p className="font-condensed text-[13px] text-faint px-4 py-4">
+            <p className="font-condensed text-[14px] text-faint px-4 py-4">
               No reserve accounts — add them in EDIT PLAN and give one the maintenance role and one the tax role.
             </p>
           )}
@@ -1198,12 +1198,12 @@ const StatusPage = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <p className="font-condensed text-[13px] text-faint px-3 py-6">
+              <p className="font-condensed text-[14px] text-faint px-3 py-6">
                 The trend draws after two snapshots — one Friday at a time.
               </p>
             )}
           </div>
-          <div className="flex gap-4 font-condensed text-[11px] text-faint px-4 pb-2">
+          <div className="flex gap-4 font-condensed text-[12px] text-faint px-4 pb-2">
             <span><i className="inline-block w-3.5 h-[3px] rounded align-middle mr-1" style={{ background: "var(--color-amber-hi)" }} />ops</span>
             <span><i className="inline-block w-3.5 h-[3px] rounded align-middle mr-1" style={{ background: "var(--color-chart-blue)" }} />vault</span>
           </div>
@@ -1215,10 +1215,10 @@ const StatusPage = () => {
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowSnap(false)} />
             <div className="relative w-full max-w-[560px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+                <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
                   {formMoneyDay && pendingLabel ? `MONEY DAY · ${pendingLabel.toUpperCase()}` : "FRIDAY SNAPSHOT"}
                 </span>
-                <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
+                <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">
                   {formMoneyDay ? "balances today, then the orders — snapshot first" : "raw balances — before you move anything"}
                 </span>
                 <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={() => setShowSnap(false)}>✕</button>
@@ -1228,7 +1228,7 @@ const StatusPage = () => {
                   <label className={LBL}>As of</label>
                   <input type="date" className={FIELD} value={fAsOf} max={todayKey()} onChange={(e) => changeAsOf(e.target.value)} />
                   {asOfFuture && (
-                    <p className="font-condensed text-[11.5px] text-destructive mt-1">{dayWords(fAsOf)} hasn't happened — a snapshot is dated today or earlier</p>
+                    <p className="font-condensed text-[12.5px] text-destructive mt-1">{dayWords(fAsOf)} hasn't happened — a snapshot is dated today or earlier</p>
                   )}
                 </div>
                 {activeAccounts.map((a) => (
@@ -1270,7 +1270,7 @@ const StatusPage = () => {
                     onChange={(e) => setFMiles(e.target.value)}
                   />
                   {owedForm.weeks.length > 0 && (
-                    <p className="font-condensed text-[11.5px] text-faint mt-1">
+                    <p className="font-condensed text-[12.5px] text-faint mt-1">
                       {owedForm.source === "odometer" ? (
                         <>
                           pre-filled by odometer: {owedForm.readingsWords} · the loads say {owedForm.loadsMiles.toLocaleString("en-US")} · edit if the truck says otherwise
@@ -1294,11 +1294,11 @@ const StatusPage = () => {
                 </div>
                 {pending && pendingLabel && (
                   <div className="col-span-2 rounded-[9px] px-3 py-[10px]" style={{ border: "1px solid color-mix(in srgb, var(--color-amber) 35%, transparent)", background: "color-mix(in srgb, var(--color-amber) 5%, transparent)" }}>
-                    <label className="flex items-center gap-[10px] font-condensed text-[14px] cursor-pointer">
+                    <label className="flex items-center gap-[10px] font-condensed text-[15px] cursor-pointer">
                       <input type="checkbox" className="accent-amber w-4 h-4" checked={formMoneyDay} disabled={firstFriday} onChange={(e) => setFMoneyDay(e.target.checked)} />
                       <span className={firstFriday ? "text-faint" : undefined}>Money day · <b className="font-semibold">{pendingLabel}</b> — tax, the interlock and the split on this snapshot</span>
                     </label>
-                    <p className={`font-condensed text-[11.5px] mt-1 pl-[26px] ${firstFriday ? "text-amber-hi" : "text-faint"}`}>
+                    <p className={`font-condensed text-[12.5px] mt-1 pl-[26px] ${firstFriday ? "text-amber-hi" : "text-faint"}`}>
                       {firstFriday
                         ? `${dayWords(fAsOf)} is the month's first Friday — the money day runs any other day`
                         : "P&L filed · untick if you're only taking Friday's balances today"}
@@ -1313,12 +1313,12 @@ const StatusPage = () => {
                 {formMoneyDay && draftStatus?.moneyDay ? (
                   <div className="col-span-2">
                     <label className={LBL}>The entry as you type · for Excel</label>
-                    <pre className="font-mono text-[12px] leading-[1.6] text-ink bg-well border border-hairline rounded-[9px] px-3 py-2 overflow-x-auto whitespace-pre m-0">
+                    <pre className="font-mono text-[13px] leading-[1.6] text-ink bg-well border border-hairline rounded-[9px] px-3 py-2 overflow-x-auto whitespace-pre m-0">
                       {draftStatus.moneyDay.entry.join("\n")}
                     </pre>
                   </div>
                 ) : draftStatus?.orders?.length ? (
-                  <p className="col-span-2 font-condensed text-[12.5px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
+                  <p className="col-span-2 font-condensed text-[13.5px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
                     the verdict as you type: <b className="text-amber-hi">{draftStatus.orders.join(" · ")}</b>
                   </p>
                 ) : null}
@@ -1326,14 +1326,14 @@ const StatusPage = () => {
                 {error && <p className="col-span-2 text-destructive text-sm">{error}</p>}
               </div>
               <div className="flex gap-2 justify-end px-5 pb-5">
-                <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={() => setShowSnap(false)}>CANCEL</button>
+                <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline" onClick={() => setShowSnap(false)}>CANCEL</button>
                 {formMoneyDay && draftStatus?.moneyDay && (
-                  <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-amber-hi bg-well border" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)" }} onClick={copyEntry}>
+                  <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-amber-hi bg-well border" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)" }} onClick={copyEntry}>
                     {copied ? "COPIED" : "COPY THE ENTRY"}
                   </button>
                 )}
                 <button
-                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
                   disabled={
                     busy ||
                     asOfFuture ||
@@ -1357,8 +1357,8 @@ const StatusPage = () => {
             <div className="absolute inset-0 bg-black/60" onClick={() => setShowPlan(false)} />
             <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
               <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">{plan.label.toUpperCase()}</span>
-                {plan.active && <span className="font-condensed text-[11px] text-faint tracking-[.08em]">· ACTIVE</span>}
+                <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">{plan.label.toUpperCase()}</span>
+                {plan.active && <span className="font-condensed text-[12px] text-faint tracking-[.08em]">· ACTIVE</span>}
                 <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={() => setShowPlan(false)}>✕</button>
               </div>
               <div className="p-5 grid grid-cols-2 gap-3">
@@ -1374,13 +1374,13 @@ const StatusPage = () => {
                 <div><label className={LBL}>Leave horizon · weeks of a parked truck</label><input inputMode="numeric" className={`${FIELD} border-amber`} value={pLeaveWeeks} onChange={(e) => setPLeaveWeeks(e.target.value)} /></div>
                 <div><label className={LBL}>Tax · % of pre-tax profit</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pTaxPct} onChange={(e) => setPTaxPct(e.target.value)} /></div>
                 <div><label className={LBL}>Minimum movement</label><input inputMode="decimal" className={`${FIELD} border-amber`} value={pMinMove} onChange={(e) => setPMinMove(e.target.value)} /></div>
-                <div><label className={LBL}>Split · objective % <span className="normal-case tracking-normal text-faint">household gets the rest</span></label><div className="flex items-center gap-2"><input inputMode="decimal" className={`${FIELD} border-amber`} value={pObjPct} onChange={(e) => setPObjPct(e.target.value)} /><span className="font-condensed text-[12px] text-faint whitespace-nowrap">· household {pObjPct.trim() !== "" && Number.isFinite(Number(pObjPct)) ? 100 - Number(pObjPct) : "—"}</span></div></div>
+                <div><label className={LBL}>Split · objective % <span className="normal-case tracking-normal text-faint">household gets the rest</span></label><div className="flex items-center gap-2"><input inputMode="decimal" className={`${FIELD} border-amber`} value={pObjPct} onChange={(e) => setPObjPct(e.target.value)} /><span className="font-condensed text-[13px] text-faint whitespace-nowrap">· household {pObjPct.trim() !== "" && Number.isFinite(Number(pObjPct)) ? 100 - Number(pObjPct) : "—"}</span></div></div>
                 <div><label className={LBL}>First money month</label><input type="month" className={`${FIELD} border-amber`} value={pFirstMonth} onChange={(e) => setPFirstMonth(e.target.value)} /></div>
-                <p className="col-span-2 font-condensed text-[11.5px] text-faint">
+                <p className="col-span-2 font-condensed text-[12.5px] text-faint">
                   Retired: {money(Number(plan.maintenance_weekly))}/wk maintenance · {money(Number(plan.tax_weekly))}/wk tax — kept on the row for history, not used. The Vault floor is not a setting: it is the ladder's first vault rung.
                 </p>
 
-                <p className="col-span-2 font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mt-2">
+                <p className="col-span-2 font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint mt-2">
                   The accounts — what the snapshot asks for · one ops, one vault, one maintenance, one tax
                 </p>
                 {pAccounts.map((a, i) => (
@@ -1419,7 +1419,7 @@ const StatusPage = () => {
                 ))}
                 <div className="col-span-2">
                   <button
-                    className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-amber-hi hover:text-hot"
+                    className="font-condensed font-semibold text-[13.5px] tracking-[.06em] text-amber-hi hover:text-hot"
                     onClick={() =>
                       setPAccounts((rows) => [
                         ...rows,
@@ -1429,20 +1429,20 @@ const StatusPage = () => {
                   >
                     + ADD ACCOUNT
                   </button>
-                  <span className="font-condensed text-[11px] text-faint ml-3">
+                  <span className="font-condensed text-[12px] text-faint ml-3">
                     removing hides the account going forward — its history stays
                   </span>
                 </div>
 
-                <p className="col-span-2 font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint mt-2">
+                <p className="col-span-2 font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint mt-2">
                   The ladder — order is the plan · the first vault rung is floor 3 · debt rungs bind to an obligation
                 </p>
                 {pStages.map((s, i) => (
                   <div key={s.stage_id} className="col-span-2 rounded-[10px] border border-hairline-lo bg-well/50 p-3 grid grid-cols-[auto_1fr] gap-2">
                     <div className="flex flex-col gap-1">
-                      <button className="text-faint hover:text-ink text-[12px]" aria-label="Move up" onClick={() => moveStage(i, -1)}>▲</button>
-                      <span className="font-condensed font-semibold tabular-nums text-[14px] text-center text-dim">{i + 1}</span>
-                      <button className="text-faint hover:text-ink text-[12px]" aria-label="Move down" onClick={() => moveStage(i, 1)}>▼</button>
+                      <button className="text-faint hover:text-ink text-[13px]" aria-label="Move up" onClick={() => moveStage(i, -1)}>▲</button>
+                      <span className="font-condensed font-semibold tabular-nums text-[15px] text-center text-dim">{i + 1}</span>
+                      <button className="text-faint hover:text-ink text-[13px]" aria-label="Move down" onClick={() => moveStage(i, 1)}>▼</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2 min-w-0">
                       <div className="col-span-2 flex gap-2">
@@ -1478,7 +1478,7 @@ const StatusPage = () => {
                 ))}
                 <div className="col-span-2 flex gap-3 flex-wrap items-center">
                   <button
-                    className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-amber-hi hover:text-hot"
+                    className="font-condensed font-semibold text-[13.5px] tracking-[.06em] text-amber-hi hover:text-hot"
                     onClick={() =>
                       setPStages((rows) => [
                         ...rows,
@@ -1489,7 +1489,7 @@ const StatusPage = () => {
                     + ADD STAGE
                   </button>
                   <button
-                    className="ml-auto font-condensed font-semibold text-[12.5px] tracking-[.06em] text-dim hover:text-ink"
+                    className="ml-auto font-condensed font-semibold text-[13.5px] tracking-[.06em] text-dim hover:text-ink"
                     disabled={busy}
                     onClick={writeNextYearPlan}
                   >
@@ -1499,9 +1499,9 @@ const StatusPage = () => {
                 {error && <p className="col-span-2 text-destructive text-sm">{error}</p>}
               </div>
               <div className="flex gap-2 justify-end px-5 pb-5">
-                <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={() => setShowPlan(false)}>CANCEL</button>
+                <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline" onClick={() => setShowPlan(false)}>CANCEL</button>
                 <button
-                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+                  className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
                   disabled={busy}
                   onClick={savePlan}
                 >

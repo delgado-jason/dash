@@ -9,9 +9,9 @@ import { codeOf, type CodedAgentLike, type CodeKind } from "@/lib/agencies/codeO
 
 type Size = "sm" | "md" | "lg";
 const HEIGHT: Record<Size, string> = {
-  sm: "h-8 px-3 text-[13px]",
-  md: "h-9 px-4 text-[14.5px]",
-  lg: "h-11 px-5 text-[15px]",
+  sm: "h-8 px-3 text-[14px]",
+  md: "h-9 px-4 text-[15.5px]",
+  lg: "h-11 px-5 text-[16px]",
 };
 
 // The amber gradient CTA — the app's primary button.
@@ -96,11 +96,11 @@ export const SectionHead = ({
   className?: string;
 }) => (
   <div
-    className={`flex items-center gap-2.5 flex-wrap px-3.5 pt-3 pb-2 font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint ${className}`}
+    className={`flex items-center gap-2.5 flex-wrap px-3.5 pt-3 pb-2 font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint ${className}`}
   >
     <span>{children}</span>
     {right && (
-      <span className="ml-auto normal-case tracking-[.06em] text-[11.5px] text-amber-hi">
+      <span className="ml-auto normal-case tracking-[.06em] text-[12.5px] text-amber-hi">
         {right}
       </span>
     )}
@@ -123,20 +123,20 @@ export const CodeChip = ({
     kind === "posting" ? (
       <span
         title="their own posting code"
-        className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-dim border border-dashed border-hairline"
+        className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[12px] tracking-[.12em] text-dim border border-dashed border-hairline"
       >
         {code}
       </span>
     ) : (
       <span
         title="the agency code — the shared desk"
-        className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[11px] tracking-[.12em] text-hot bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10"
+        className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-bold text-[12px] tracking-[.12em] text-hot bg-gradient-to-b from-plate-a to-plate-lo border-t border-white/10"
       >
         {code}
       </span>
     )
   ) : (
-    <span className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-semibold text-[10px] tracking-[.12em] uppercase text-faint border border-dashed border-hairline">
+    <span className="inline-flex items-center h-[18px] px-[7px] rounded font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-faint border border-dashed border-hairline">
       no code
     </span>
   );
@@ -150,7 +150,7 @@ export const AgentCodeChip = ({ agent }: { agent: CodedAgentLike | null | undefi
 
 // PARKED — outlined red, transparent (the nod sheet's .pill.parked).
 export const ParkedChip = () => (
-  <span className="inline-flex items-center h-[20px] px-2.5 rounded-[10px] font-condensed font-semibold text-[10px] tracking-[.09em] uppercase text-status-negative-text border border-status-negative-text/40">
+  <span className="inline-flex items-center h-[20px] px-2.5 rounded-[10px] font-condensed font-semibold text-[11px] tracking-[.09em] uppercase text-status-negative-text border border-status-negative-text/40">
     parked
   </span>
 );
@@ -159,7 +159,7 @@ export const ParkedChip = () => (
 export const FieldLabel = ({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) => (
   <label
     htmlFor={htmlFor}
-    className="block font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-faint mb-1"
+    className="block font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-faint mb-1"
   >
     {children}
   </label>
@@ -168,7 +168,7 @@ export const FieldLabel = ({ children, htmlFor }: { children: ReactNode; htmlFor
 // A write's error, by name, right where it happened.
 export const ErrorLine = ({ children }: { children: ReactNode }) =>
   children ? (
-    <p role="alert" className="font-condensed text-[12.5px] text-status-negative-text mt-2">
+    <p role="alert" className="font-condensed text-[13.5px] text-status-negative-text mt-2">
       {children}
     </p>
   ) : null;

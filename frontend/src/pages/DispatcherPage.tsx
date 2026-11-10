@@ -49,7 +49,7 @@ const DispatcherPage = () => {
   if (notFound)
     return (
       <div className="p-6 text-ink font-body min-h-screen">
-        <p className="text-faint font-condensed text-[14px]">Dispatcher not found.</p>
+        <p className="text-faint font-condensed text-[15px]">Dispatcher not found.</p>
       </div>
     );
 
@@ -82,10 +82,10 @@ const DispatcherPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">DISPATCHER</h1>
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">DISPATCHER</h1>
           <Link
             to={backTo}
-            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+            className="font-condensed font-medium text-[16px] text-faint hover:text-ink"
           >
             ← back
           </Link>
@@ -103,10 +103,10 @@ const DispatcherPage = () => {
             />
           </div>
           <div className="min-w-0">
-            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+            <h2 className="font-display text-[36.5px] tracking-[.04em] leading-none">
               {name.toUpperCase()}
             </h2>
-            <p className="font-condensed font-medium text-[12px] tracking-[.1em] uppercase text-faint mt-2">
+            <p className="font-condensed font-medium text-[13px] tracking-[.1em] uppercase text-faint mt-2">
               Dispatch · the loads booked under this name, in gross
             </p>
           </div>

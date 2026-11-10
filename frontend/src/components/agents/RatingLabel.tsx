@@ -27,8 +27,8 @@ export const RatingLabel = ({
   setOn?: string | null; // the day the rating was last set, when known
 }) => {
   const t = rating ? TIERS[rating] : null;
-  const word = size === "lg" ? "text-[17px]" : "text-[12px]";
-  const figure = size === "lg" ? "text-[13px]" : "text-[11px]";
+  const word = size === "lg" ? "text-[18.5px]" : "text-[13px]";
+  const figure = size === "lg" ? "text-[14px]" : "text-[12px]";
   return (
     <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
       <span className={`font-condensed font-semibold uppercase tracking-[.06em] ${word} ${t ? t.cls : "text-faint"}`}>

@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const FetchFailed = ({ what, onRetry, detail, className = "" }: Props) => (
-  <p className={"font-condensed text-[13px] text-status-negative-text " + className} role="alert">
+  <p className={"font-condensed text-[14px] text-status-negative-text " + className} role="alert">
     Couldn't load {what} — {detail ?? "the server didn't answer"}.{" "}
     <button type="button" className="font-semibold underline-offset-2 hover:underline" onClick={onRetry}>
       Retry ›

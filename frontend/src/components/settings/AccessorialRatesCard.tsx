@@ -98,7 +98,7 @@ export const AccessorialRatesCard = () => {
         the dropdown when you add a charge to a load. Anything not listed here
         falls back to your default accessorial rate above.
       </p>
-      <p className="font-condensed text-[12px] text-muted-text mt-1">
+      <p className="font-condensed text-[13px] text-muted-text mt-1">
         a pass-through is paid back in full but is not revenue — it leaves gross, the rate per mile and the
         booking stats
       </p>

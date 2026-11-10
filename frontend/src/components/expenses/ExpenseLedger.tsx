@@ -78,7 +78,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
               <span aria-hidden>⇄</span>
               {editing === l.line_id ? (
                 <button
-                  className="font-condensed font-semibold text-[10.5px] tracking-[.08em] text-amber-hi"
+                  className="font-condensed font-semibold text-[11.5px] tracking-[.08em] text-amber-hi"
                   aria-label="Save"
                   onClick={() =>
                     run(async () => {
@@ -93,7 +93,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
                 </button>
               ) : (
                 <button
-                  className="font-condensed font-semibold text-[10.5px] tracking-[.08em] hover:text-ink"
+                  className="font-condensed font-semibold text-[11.5px] tracking-[.08em] hover:text-ink"
                   aria-label="Edit value"
                   onClick={() => {
                     setEditing(l.line_id);
@@ -163,7 +163,7 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
               <td className="p-2 text-right">
                 <div className="flex gap-3 justify-end text-faint">
                   <button
-                    className="font-condensed font-semibold text-[10.5px] tracking-[.08em] text-amber-hi"
+                    className="font-condensed font-semibold text-[11.5px] tracking-[.08em] text-amber-hi"
                     aria-label="Add expense"
                     onClick={() =>
                       newCat &&

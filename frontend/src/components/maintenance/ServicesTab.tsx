@@ -105,7 +105,7 @@ const VendorCell = ({
       ) : (
         <>
           <span className="text-dim">{name}</span>{" "}
-          <Link to="/vendors" className="text-[10.5px] text-faint hover:text-amber-hi">
+          <Link to="/vendors" className="text-[11.5px] text-faint hover:text-amber-hi">
             · file it →
           </Link>
         </>
@@ -240,10 +240,10 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
     <div>
       {justLogged && (
         <div className="ds2-board flex items-center gap-3 px-4 py-3 mt-4">
-          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase text-status-positive-text">
+          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase text-status-positive-text">
             SERVICE LOGGED ✓
           </span>
-          <span className="font-condensed text-[13px] text-dim">
+          <span className="font-condensed text-[14px] text-dim">
             the clocks it covered just reset.
           </span>
         </div>
@@ -271,7 +271,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
             <button
               key={key}
               onClick={() => setMode(key)}
-              className={`px-2.5 rounded-md font-condensed font-semibold text-[12px] ${
+              className={`px-2.5 rounded-md font-condensed font-semibold text-[13px] ${
                 mode === key ? "bg-amber text-canvas" : "text-dim hover:text-ink"
               }`}
             >
@@ -280,9 +280,9 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
           ))}
         </span>
         {mode === "custom" && (
-          <span className="flex items-center gap-2 font-condensed text-[12.5px] text-faint">
+          <span className="flex items-center gap-2 font-condensed text-[13.5px] text-faint">
             <select
-              className="h-[30px] px-2 rounded-[8px] bg-well border border-hairline text-ink text-[13px] outline-none"
+              className="h-[30px] px-2 rounded-[8px] bg-well border border-hairline text-ink text-[14px] outline-none"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
             >
@@ -294,7 +294,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
             </select>
             →
             <select
-              className="h-[30px] px-2 rounded-[8px] bg-well border border-hairline text-ink text-[13px] outline-none"
+              className="h-[30px] px-2 rounded-[8px] bg-well border border-hairline text-ink text-[14px] outline-none"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
             >
@@ -306,8 +306,8 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
             </select>
           </span>
         )}
-        <span className="ml-auto font-condensed text-[13px] text-faint">
-          <b className="font-condensed font-semibold text-[19px] text-ink tabular-nums">
+        <span className="ml-auto font-condensed text-[14px] text-faint">
+          <b className="font-condensed font-semibold text-[20.5px] text-ink tabular-nums">
             {filtered.length}
           </b>{" "}
           service{filtered.length !== 1 ? "s" : ""} ·{" "}
@@ -319,10 +319,10 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
       {vendors.length > 0 && (
         <div className="ds2-board overflow-hidden mt-4">
           <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
               By vendor
             </span>
-            <span className="font-condensed text-[12px] text-faint">
+            <span className="font-condensed text-[13px] text-faint">
               · the range's shop money · the unit each shop works on · filed names link to their card
             </span>
           </div>
@@ -333,7 +333,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
                 key={vendor}
                 className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
               >
-                <span className="font-semibold text-[14.5px] flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-[15.5px] flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                   <VendorCell name={vendor} vendorIdByName={vendorIdByName} />
                   {[...v.units].map((u) => (
                     <StatusPill key={u} tone="info">
@@ -344,10 +344,10 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
                     <StatusPill tone="amber">{twins} spellings</StatusPill>
                   )}
                 </span>
-                <span className="text-[12.5px] text-faint w-[80px] text-right">
+                <span className="text-[13.5px] text-faint w-[80px] text-right">
                   {v.count} visit{v.count === 1 ? "" : "s"}
                 </span>
-                <span className="font-semibold text-[14.5px] w-[100px] text-right tabular-nums">
+                <span className="font-semibold text-[15.5px] w-[100px] text-right tabular-nums">
                   {moneyCents(v.total)}
                 </span>
               </div>
@@ -358,7 +358,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
 
       {/* the log */}
       {filtered.length === 0 ? (
-        <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-4">
+        <p className="font-condensed text-[14px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-4">
           {services.length === 0
             ? "No services logged yet."
             : "No services in this month range."}
@@ -366,10 +366,10 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
       ) : (
         <div className="ds2-board overflow-hidden mt-4">
           <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
               The log
             </span>
-            <span className="font-condensed text-[12px] text-faint">
+            <span className="font-condensed text-[13px] text-faint">
               · chronological · cost here tracks vendor pricing, not your P&L
             </span>
           </div>
@@ -378,7 +378,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
               {filtered.map((sv) => (
                 <div
                   key={sv.service_id}
-                  className="grid grid-cols-[92px_1fr_190px_130px_90px_30px] gap-3 items-baseline px-4 py-[11px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                  className="grid grid-cols-[92px_1fr_190px_130px_90px_30px] gap-3 items-baseline px-4 py-[11px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
                 >
                   <span className="text-faint whitespace-nowrap">
                     {fmtDate(sv.service_date)}
@@ -390,7 +390,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
                         {sv.item_ids.map((iid) => (
                           <span
                             key={iid}
-                            className="text-[10.5px] font-semibold text-faint bg-well border border-hairline-lo px-1.5 rounded-[4px]"
+                            className="text-[11.5px] font-semibold text-faint bg-well border border-hairline-lo px-1.5 rounded-[4px]"
                           >
                             ✓ {nameById.get(iid) ?? "item"}
                           </span>
@@ -403,9 +403,9 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
                     location={sv.location}
                     vendorIdByName={vendorIdByName}
                   />
-                  <span className="text-right text-faint text-[12.5px] tabular-nums whitespace-nowrap">
+                  <span className="text-right text-faint text-[13.5px] tabular-nums whitespace-nowrap">
                     {reading(sv)}
-                    <span className="block text-[10px] uppercase tracking-[.08em]">
+                    <span className="block text-[11px] uppercase tracking-[.08em]">
                       {sv.unit}
                     </span>
                   </span>
@@ -417,7 +417,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
                     onClick={() =>
                       !busy && run(() => deleteMaintenanceService(sv.service_id))
                     }
-                    className="text-right text-faint hover:text-status-negative-text text-[13px]"
+                    className="text-right text-faint hover:text-status-negative-text text-[14px]"
                   >
                     ✕
                   </button>

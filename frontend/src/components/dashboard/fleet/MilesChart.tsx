@@ -80,7 +80,7 @@ export const MilesChart = ({
                 }
               >
                 <span
-                  className={`font-condensed font-semibold text-[9.5px] tabular-nums text-center ${floorTone(r.breakEven, bookingFloor)}`}
+                  className={`font-condensed font-semibold text-[11px] tabular-nums text-center ${floorTone(r.breakEven, bookingFloor)}`}
                 >
                   {r.breakEven == null ? "—" : fmtRpm(r.breakEven)}
                 </span>
@@ -109,13 +109,13 @@ export const MilesChart = ({
       {/* the month, and the miles you drove it */}
       <div className="grid gap-[7px] mt-1.5 text-center" style={cols}>
         {rows.map((r) => (
-          <span key={r.longLabel} className="font-condensed text-[10px] text-faint">
+          <span key={r.longLabel} className="font-condensed text-[11px] text-faint">
             {r.label}
             {/* A month of real freight whose loads carry no odometer reading
                 is an UNKNOWN, not a zero — printing 0 would claim the truck
                 sat still. Only a month with nothing logged at all reads 0. */}
             <b
-              className={`block font-semibold text-[11px] tabular-nums mt-px ${
+              className={`block font-semibold text-[12px] tabular-nums mt-px ${
                 r.measured ? (r.inProgress ? "text-faint" : "text-ink") : "text-faint"
               }`}
             >
@@ -125,7 +125,7 @@ export const MilesChart = ({
         ))}
       </div>
 
-      <div className="flex gap-3.5 flex-wrap mt-2.5 font-condensed text-[11px] text-dim">
+      <div className="flex gap-3.5 flex-wrap mt-2.5 font-condensed text-[12px] text-dim">
         <span>
           <i
             className="inline-block w-2.5 h-2.5 rounded-sm mr-1.5 align-[-1px]"

@@ -146,15 +146,15 @@ const TrucksPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">TRUCKS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">TRUCKS</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the iron that earns it
           </span>
           <span className="flex-1" />
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
             >
               + ADD TRUCK
             </button>
@@ -175,7 +175,7 @@ const TrucksPage = () => {
         )}
 
         {trucks.length === 0 ? (
-          <p className="text-faint font-condensed text-[14px] mt-5">
+          <p className="text-faint font-condensed text-[15px] mt-5">
             No trucks yet. Add one to get started.
           </p>
         ) : (
@@ -194,32 +194,32 @@ const TrucksPage = () => {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-condensed font-semibold text-[17px] flex items-center gap-[9px] flex-wrap">
+                  <div className="font-condensed font-semibold text-[18.5px] flex items-center gap-[9px] flex-wrap">
                     UNIT {t.unit_number}
                     {(t.year || t.make || t.model) && (
-                      <span className="font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
+                      <span className="font-medium text-[11.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline uppercase">
                         {[t.year, t.make, t.model].filter(Boolean).join(" ")}
                       </span>
                     )}
                     <span
-                      className={`font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] border uppercase ${
+                      className={`font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] border uppercase ${
                         STATUS_CHIP[t.status] ?? STATUS_CHIP.inactive
                       }`}
                     >
                       {t.status.replace(/_/g, " ")}
                     </span>
                     {overdue > 0 && (
-                      <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
+                      <span className="font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
                         {overdue} OVERDUE
                       </span>
                     )}
                     {overdue === 0 && soon > 0 && (
-                      <span className="font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-amber/45 bg-amber/10">
+                      <span className="font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-amber-hi border border-amber/45 bg-amber/10">
                         {soon} SERVICE{soon === 1 ? "" : "S"} CLOSE
                       </span>
                     )}
                   </div>
-                  <div className="font-condensed text-[13px] text-dim mt-[3px]">
+                  <div className="font-condensed text-[14px] text-dim mt-[3px]">
                     {odo.toLocaleString("en-US")} mi · {hauls} haul{hauls === 1 ? "" : "s"}
                     {mpg != null ? ` · ${mpg.toFixed(1)} MPG avg` : ""}
                     {payoff?.paidPct != null

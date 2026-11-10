@@ -116,7 +116,7 @@ const Editor = ({ existing, onDone, onCancel }: EditorProps) => {
         )}
       </div>
       {existing && confirming && (
-        <p className="font-condensed text-[13px] text-light mt-3">
+        <p className="font-condensed text-[14px] text-light mt-3">
           Remove the {moneyRate(existing.rate)} rate from {dayWords(existing.effective_from)}? Days it priced
           will have no rate.{" "}
           <button type="button" onClick={remove} disabled={busy} className="font-semibold text-amber-hi hover:text-hot">
@@ -134,7 +134,7 @@ const Editor = ({ existing, onDone, onCancel }: EditorProps) => {
         </p>
       )}
       {errs.map((s, i) => (
-        <p key={i} className="font-condensed text-[12px] text-amber-hi mt-2">
+        <p key={i} className="font-condensed text-[13px] text-amber-hi mt-2">
           {s}
         </p>
       ))}

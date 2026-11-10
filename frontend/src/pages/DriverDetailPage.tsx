@@ -65,7 +65,7 @@ const Spec = ({
 const GradeChip = ({ grade }: { grade: Grade | null }) =>
   grade ? (
     <span
-      className="inline-flex items-center font-condensed font-bold text-[9.5px] tracking-[.06em] px-[5px] h-[17px] rounded"
+      className="inline-flex items-center font-condensed font-bold text-[11px] tracking-[.06em] px-[5px] h-[17px] rounded"
       style={{ color: GRADE_META[grade].fg, background: GRADE_META[grade].bg }}
     >
       {GRADE_META[grade].label}
@@ -93,10 +93,10 @@ const LeverFigure = ({
   <div className="min-w-0">
     <p className="ds2-label">{label}</p>
     <div className="flex items-center gap-2 mt-1">
-      <span className="font-condensed font-semibold text-[24px] tabular-nums leading-none">{value}</span>
+      <span className="font-condensed font-semibold text-[26px] tabular-nums leading-none">{value}</span>
       <GradeChip grade={grade} />
     </div>
-    {basis && <p className="text-[11px] text-faint mt-1">{basis}</p>}
+    {basis && <p className="text-[12px] text-faint mt-1">{basis}</p>}
   </div>
 );
 
@@ -311,10 +311,10 @@ const DriverDetailPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">DRIVERS</h1>
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">DRIVERS</h1>
           <Link
             to="/drivers"
-            className="font-condensed font-medium text-[15px] text-faint hover:text-ink"
+            className="font-condensed font-medium text-[16px] text-faint hover:text-ink"
           >
             ← back to the roster
           </Link>
@@ -323,32 +323,32 @@ const DriverDetailPage = () => {
         <div className="flex items-center gap-4 flex-wrap mt-[18px]">
           <div className="shrink-0">{avatar}</div>
           <div className="min-w-0">
-            <h2 className="font-display text-[34px] tracking-[.04em] leading-none">
+            <h2 className="font-display text-[36.5px] tracking-[.04em] leading-none">
               {name.toUpperCase()}
             </h2>
             <div className="flex gap-2 mt-2 flex-wrap">
               {driver.active ? (
-                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
+                <span className="font-condensed font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
                   ACTIVE
                 </span>
               ) : (
-                <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
+                <span className="font-condensed font-medium text-[11.5px] tracking-[.1em] px-[7px] py-[2px] rounded-[4px] text-faint border border-hairline">
                   INACTIVE
                 </span>
               )}
               {hometime?.state === "over" && (
-                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
+                <span className="font-condensed font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
                   OUT {hometime.daysOut} DAYS · PAST YOUR {hometime.threshold}-DAY LINE
                 </span>
               )}
               {hometime?.state === "ok" && (
-                <span className="font-condensed font-semibold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-dim border border-hairline">
+                <span className="font-condensed font-semibold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-dim border border-hairline">
                   OUT {hometime.daysOut} DAY{hometime.daysOut === 1 ? "" : "S"} ·{" "}
                   {hometime.toTarget} TO YOUR LINE
                 </span>
               )}
               {hometime?.state === "home" && (
-                <span className="font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
+                <span className="font-condensed font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] text-status-positive-text border border-status-positive-text/35 bg-status-positive-text/8">
                   HOME
                 </span>
               )}
@@ -362,22 +362,22 @@ const DriverDetailPage = () => {
               <p className="ds2-label">Career · delivered loads</p>
               <div className="grid grid-cols-3 gap-4 mt-2">
                 <div>
-                  <p className="font-condensed font-semibold text-[24px] tabular-nums leading-none">
+                  <p className="font-condensed font-semibold text-[26px] tabular-nums leading-none">
                     {card.career.hauls.toLocaleString("en-US")}
                   </p>
-                  <p className="text-[11px] text-faint mt-1">Hauls delivered</p>
+                  <p className="text-[12px] text-faint mt-1">Hauls delivered</p>
                 </div>
                 <div>
-                  <p className="font-condensed font-semibold text-[24px] tabular-nums leading-none">
+                  <p className="font-condensed font-semibold text-[26px] tabular-nums leading-none">
                     {Math.round(card.career.miles).toLocaleString("en-US")}
                   </p>
-                  <p className="text-[11px] text-faint mt-1">Loaded miles</p>
+                  <p className="text-[12px] text-faint mt-1">Loaded miles</p>
                 </div>
                 <div>
-                  <p className="font-condensed font-semibold text-[24px] tabular-nums leading-none">
+                  <p className="font-condensed font-semibold text-[26px] tabular-nums leading-none">
                     {money(card.career.linehaul)}
                   </p>
-                  <p className="text-[11px] text-faint mt-1">Linehaul · gross</p>
+                  <p className="text-[12px] text-faint mt-1">Linehaul · gross</p>
                 </div>
               </div>
             </Panel>
@@ -412,7 +412,7 @@ const DriverDetailPage = () => {
                 const bottleneck = bottleneckLevers(levers);
                 if (bottleneck.length > 0)
                   return (
-                    <p className="text-[12px] text-dim mt-3">
+                    <p className="text-[13px] text-dim mt-3">
                       <span className="text-amber-hi">Bottleneck</span> ·{" "}
                       {bottleneck.map((l) => l.label).join(" & ")}:{" "}
                       {bottleneck.length === 1
@@ -421,7 +421,7 @@ const DriverDetailPage = () => {
                     </p>
                   );
                 return (
-                  <p className="text-[12px] text-dim mt-3">
+                  <p className="text-[13px] text-dim mt-3">
                     {allLeversOnTarget(levers)
                       ? "Every lever at target or better."
                       : "Grades build over a full month of data."}
@@ -432,7 +432,7 @@ const DriverDetailPage = () => {
             <div className="flex gap-4 mt-3">
               <Link
                 to="/recap"
-                className="font-condensed font-semibold text-[12.5px] tracking-[.06em] text-dim hover:text-ink"
+                className="font-condensed font-semibold text-[13.5px] tracking-[.06em] text-dim hover:text-ink"
               >
                 FULL RECAP →
               </Link>
@@ -458,12 +458,12 @@ const DriverDetailPage = () => {
           ) : (
             <>
               <div className="flex items-baseline gap-2.5 flex-wrap">
-                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                   Papers
                 </span>
                 <button
                   onClick={() => setEditing(true)}
-                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline"
+                  className="ml-auto h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] text-dim bg-well border border-hairline"
                   style={{ boxShadow: "var(--shadow-inset)" }}
                 >
                   EDIT
@@ -481,18 +481,18 @@ const DriverDetailPage = () => {
                   }
                 />
                 <div className="min-w-0">
-                  <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">
+                  <p className="font-condensed text-[12px] tracking-[.12em] uppercase text-faint">
                     CDL expires
                   </p>
-                  <p className="font-condensed text-[14px] break-words flex items-center gap-2 flex-wrap">
+                  <p className="font-condensed text-[15px] break-words flex items-center gap-2 flex-wrap">
                     {formatDate(driver.cdl_expiration) ?? "—"}
                     {cdlDays != null &&
                       (cdlDays <= 60 ? (
-                        <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
+                        <span className="font-bold text-[11.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-status-negative-text border border-status-negative-text/45 bg-status-negative-text/10">
                           {cdlDays <= 0 ? "EXPIRED" : `${cdlDays} DAYS`}
                         </span>
                       ) : (
-                        <span className="font-semibold text-[10.5px] tracking-[.08em] px-[6px] py-[1px] rounded-[4px] text-faint border border-hairline">
+                        <span className="font-semibold text-[11.5px] tracking-[.08em] px-[6px] py-[1px] rounded-[4px] text-faint border border-hairline">
                           {cdlDays} days
                         </span>
                       ))}
@@ -501,7 +501,7 @@ const DriverDetailPage = () => {
                 <Spec label="Endorsements" value={driver.endorsements} />
                 <Spec label="Hired" value={formatDate(driver.hire_date)} />
               </div>
-              <p className="font-condensed text-[12px] text-faint mt-3">
+              <p className="font-condensed text-[13px] text-faint mt-3">
                 CDL is managed on the{" "}
                 <Link to="/compliance" className="text-amber-hi hover:text-hot">
                   Compliance page
@@ -516,26 +516,26 @@ const DriverDetailPage = () => {
         {!card && (
           <div className="ds2-board grid grid-cols-2 md:grid-cols-3 overflow-hidden mt-4">
             <div className="px-4 py-3 md:border-r border-b md:border-b-0 ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+              <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint">
                 Loads hauled
               </p>
-              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+              <p className="font-condensed font-semibold text-[26px] mt-1 tabular-nums">
                 {earnedLoads.length}
               </p>
             </div>
             <div className="px-4 py-3 md:border-r border-b md:border-b-0 ds2-cell-rule">
-              <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+              <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint">
                 Net revenue · all time
               </p>
-              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+              <p className="font-condensed font-semibold text-[26px] mt-1 tabular-nums">
                 {money(revenue)}
               </p>
             </div>
             <div className="px-4 py-3">
-              <p className="font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint">
+              <p className="font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint">
                 Miles hauled
               </p>
-              <p className="font-condensed font-semibold text-[24px] mt-1 tabular-nums">
+              <p className="font-condensed font-semibold text-[26px] mt-1 tabular-nums">
                 {milesHauled.toLocaleString("en-US")}
               </p>
             </div>
@@ -544,11 +544,11 @@ const DriverDetailPage = () => {
 
         {/* recent hauls — every row links to its load */}
         <div className="ds2-board p-4 mt-4">
-          <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+          <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
             Recent hauls — every row links to its load
           </p>
           {earnedLoads.length === 0 ? (
-            <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
+            <p className="font-condensed text-[14px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-[10px] mt-[10px]">
               None for this driver yet.
             </p>
           ) : (
@@ -556,11 +556,11 @@ const DriverDetailPage = () => {
               {earnedLoads.slice(0, 6).map((l) => (
                 <div
                   key={l.load_id}
-                  className="grid grid-cols-[92px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim"
+                  className="grid grid-cols-[92px_1fr_90px] gap-[10px] items-baseline py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
                 >
                   <Link
                     to={`/loads/${l.load_id}`}
-                    className="font-display text-[15px] tracking-[.05em] text-amber-hi hover:text-hot"
+                    className="font-display text-[16px] tracking-[.05em] text-amber-hi hover:text-hot"
                   >
                     {l.load_number}
                   </Link>

@@ -16,13 +16,13 @@ export default function ForemanPage() {
       <div className="flex items-center gap-3">
         <SidebarTrigger />
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-amber font-condensed leading-none">
+          <p className="text-[12px] uppercase tracking-widest text-amber font-condensed leading-none">
             Dispatch
           </p>
-          <h1 className="font-display text-[32px] text-ink leading-none mt-1">THE FOREMAN</h1>
+          <h1 className="font-display text-[34.5px] text-ink leading-none mt-1">THE FOREMAN</h1>
         </div>
       </div>
-      <p className="text-dim text-[13px] mt-2 mb-4">
+      <p className="text-dim text-[14px] mt-2 mb-4">
         Who to call from where you'll be empty next — and the ties worth building.
       </p>
 
@@ -33,7 +33,7 @@ export default function ForemanPage() {
           onChange={setTab}
           ariaLabel="Foreman sections"
         />
-        <span className="text-[11px] text-faint font-condensed">more tools coming</span>
+        <span className="text-[12px] text-faint font-condensed">more tools coming</span>
       </div>
 
       {tab === "who-to-call" && <WhoToCallTab />}

@@ -65,7 +65,7 @@ export const CutTiersCard = () => {
 
       <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-3">
         {TIERS.map((t) => (
-          <span key={t.key} className="inline-flex items-center gap-1.5 text-[11px] text-muted-text">
+          <span key={t.key} className="inline-flex items-center gap-1.5 text-[12px] text-muted-text">
             <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.color }} />
             <span className="text-light">{t.label}</span> {t.blurb}
           </span>
@@ -101,7 +101,7 @@ export const CutTiersCard = () => {
                     <button
                       type="button"
                       onClick={() => change(r.category, null)}
-                      className="ml-2 text-[10.5px] uppercase tracking-wide text-amber-400 hover:underline"
+                      className="ml-2 text-[11.5px] uppercase tracking-wide text-amber-400 hover:underline"
                       title={`Reset to auto (${LABEL[auto]})`}
                     >
                       edited · reset
@@ -128,7 +128,7 @@ export const CutTiersCard = () => {
                       </option>
                     ))}
                   </select>
-                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-text text-[10px]">
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-text text-[11px]">
                     ▾
                   </span>
                 </div>

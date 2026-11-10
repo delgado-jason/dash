@@ -151,25 +151,25 @@ const PerDiemPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">PER DIEM</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">PER DIEM</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the days out — the meal money the IRS gives back
           </span>
         </div>
 
         {/* the money first */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums" style={{ color: "var(--color-status-positive-text)" }}>
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums" style={{ color: "var(--color-status-positive-text)" }}>
             {deductibleText} DEDUCTIBLE
           </span>
-          <span className="text-[13.5px] text-faint">
+          <span className="text-[14.5px] text-faint">
             {year === curYear ? "· year to date " : `· ${year} `}·{" "}
             <b className="font-semibold text-ink">{summary?.fullDays ?? "—"}</b> full ·{" "}
             <b className="font-semibold text-ink">{summary?.halfDays ?? "—"}</b> half ·{" "}
             <b className="font-semibold text-ink">{pctWords}%</b>
           </span>
           {summary && summary.inferredCount > 0 && (
-            <span className="font-bold text-[11px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/40 bg-amber/8">
+            <span className="font-bold text-[12px] tracking-[.1em] px-[10px] py-[3px] rounded-full text-amber-hi border border-amber/40 bg-amber/8">
               ⚠ {summary.inferredCount} DAY{summary.inferredCount === 1 ? "" : "S"} INFERRED
               FROM LOADS — TAP TO CONFIRM
             </span>
@@ -184,24 +184,24 @@ const PerDiemPage = () => {
             <div
               className="flex items-center gap-3 px-4 py-3 border-b ds2-cell-rule"
             >
-              <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+              <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
                 THE DEDUCTION
               </span>
               <span className="ml-auto flex items-center gap-2 font-condensed">
                 <button
                   onClick={() => setYear((y) => y - 1)}
-                  className="text-faint hover:text-ink text-[16px]"
+                  className="text-faint hover:text-ink text-[17.5px]"
                   aria-label="previous year"
                 >
                   ‹
                 </button>
-                <span className="font-condensed font-semibold tabular-nums text-[18px] w-12 text-center">
+                <span className="font-condensed font-semibold tabular-nums text-[19.5px] w-12 text-center">
                   {year}
                 </span>
                 <button
                   onClick={() => setYear((y) => Math.min(curYear, y + 1))}
                   disabled={year >= curYear}
-                  className="text-faint hover:text-ink disabled:opacity-30 text-[16px]"
+                  className="text-faint hover:text-ink disabled:opacity-30 text-[17.5px]"
                   aria-label="next year"
                 >
                   ›
@@ -209,17 +209,17 @@ const PerDiemPage = () => {
               </span>
             </div>
             <div className="p-4">
-              <p className="font-condensed font-semibold tabular-nums text-[44px] leading-none" style={{ color: "var(--color-status-positive-text)" }}>
+              <p className="font-condensed font-semibold tabular-nums text-[47.5px] leading-none" style={{ color: "var(--color-status-positive-text)" }}>
                 {deductibleText}
               </p>
-              <p className="font-condensed text-[11px] tracking-[.14em] uppercase text-faint mt-1">
+              <p className="font-condensed text-[12px] tracking-[.14em] uppercase text-faint mt-1">
                 deductible per-diem{year === curYear ? " · year to date" : ""}
               </p>
-              <div className="flex justify-between font-condensed text-[14px] text-dim mt-3">
+              <div className="flex justify-between font-condensed text-[15px] text-dim mt-3">
                 <span>Full days</span>
                 <b className="text-ink tabular-nums">{summary?.fullDays ?? "—"}</b>
               </div>
-              <div className="flex justify-between font-condensed text-[14px] text-dim mt-1">
+              <div className="flex justify-between font-condensed text-[15px] text-dim mt-1">
                 <span>Half days</span>
                 <b className="text-ink tabular-nums">{summary?.halfDays ?? "—"}</b>
               </div>
@@ -231,7 +231,7 @@ const PerDiemPage = () => {
               )}
               {summary && (
                 <div
-                  className="mt-3 rounded-[8px] px-3 py-2 font-condensed text-[12px] text-faint tabular-nums"
+                  className="mt-3 rounded-[8px] px-3 py-2 font-condensed text-[13px] text-faint tabular-nums"
                   style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "var(--shadow-inset)" }}
                 >
                   {summary.missingDays.length > 0 && (
@@ -255,7 +255,7 @@ const PerDiemPage = () => {
                   <div>× {pctWords}% deductible</div>
                 </div>
               )}
-              <p className="font-condensed text-[11.5px] text-faint mt-2.5">
+              <p className="font-condensed text-[12.5px] text-faint mt-2.5">
                 {rates == null ? (
                   "loading rates…"
                 ) : rates.length === 0 ? (
@@ -280,10 +280,10 @@ const PerDiemPage = () => {
           {/* THE YEAR */}
           <div className="ds2-board overflow-hidden">
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                 The year
               </span>
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 {/* The rule differs by era — say the right one for the year on screen. */}
                 {year < flipYear
                   ? "· unmarked counts home — tap a day: full → half → home → clear"
@@ -298,7 +298,7 @@ const PerDiemPage = () => {
             >
             {MONTHS.map((name, mo) => (
               <div key={mo}>
-                <div className="text-[11px] uppercase tracking-wide text-muted-text mb-1">
+                <div className="text-[12px] uppercase tracking-wide text-muted-text mb-1">
                   {name}
                 </div>
                 <div className="grid grid-cols-7 gap-0.5">
@@ -326,7 +326,7 @@ const PerDiemPage = () => {
                           disabled={future}
                           onClick={() => cycle(key)}
                           title={autoFull ? `${key} — full day (automatic)` : key}
-                          className="rounded-[3px] text-[9px] flex items-center justify-center leading-none"
+                          className="rounded-[3px] text-[11px] flex items-center justify-center leading-none"
                           style={{
                             aspectRatio: "1",
                             ...cellStyle(eff, isInferred, autoFull, future),
@@ -343,7 +343,7 @@ const PerDiemPage = () => {
               </div>
             ))}
             </div>
-            <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[11px] text-faint">
+            <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[12px] text-faint">
               {year >= flipYear && (
                 <Sw style={AUTO_FULL_STYLE} label="Full — automatic (unmarked)" />
               )}
@@ -370,7 +370,7 @@ const PerDiemPage = () => {
                 label="Future"
               />
             </div>
-            <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+            <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
               <b className="text-dim">the wiring:</b> from <b className="text-dim">Aug 18, 2026</b>{" "}
               an unmarked day counts as a FULL day out — you only mark home time and
               departure/return halves. Days before that kept the old rules (home unless a

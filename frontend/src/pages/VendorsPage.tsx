@@ -49,7 +49,7 @@ const CallButton = ({ phone, big = false }: { phone: string; big?: boolean }) =>
     href={`tel:${phone.replace(/[^+\d]/g, "")}`}
     onClick={(e) => e.stopPropagation()}
     className={`inline-flex items-center gap-[7px] rounded-[9px] font-condensed font-semibold text-amber-hi bg-well border border-amber/35 whitespace-nowrap ${
-      big ? "h-10 px-[18px] text-[14.5px]" : "h-8 px-[13px] text-[13px]"
+      big ? "h-10 px-[18px] text-[15.5px]" : "h-8 px-[13px] text-[14px]"
     }`}
     style={{ boxShadow: "var(--shadow-inset)" }}
   >
@@ -66,7 +66,7 @@ const StateChips = ({ area }: { area: string | null | undefined }) => {
       {states.map((s) => (
         <i
           key={s}
-          className="not-italic font-condensed font-semibold text-[11px] text-dim bg-well border border-hairline-lo rounded-[4px] px-[5px] py-[1px]"
+          className="not-italic font-condensed font-semibold text-[12px] text-dim bg-well border border-hairline-lo rounded-[4px] px-[5px] py-[1px]"
         >
           {s}
         </i>
@@ -95,7 +95,7 @@ const DoorButton = ({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] tracking-[.05em] bg-amber text-on-amber whitespace-nowrap disabled:opacity-40"
+      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber whitespace-nowrap disabled:opacity-40"
     >
       {children}
     </button>
@@ -103,7 +103,7 @@ const DoorButton = ({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[13px] text-dim bg-well border border-hairline whitespace-nowrap disabled:opacity-40"
+      className="shrink-0 h-8 px-[13px] rounded-[9px] font-condensed font-semibold text-[14px] text-dim bg-well border border-hairline whitespace-nowrap disabled:opacity-40"
       style={{ boxShadow: "var(--shadow-inset)" }}
     >
       {children}
@@ -134,11 +134,11 @@ const UnfiledRow = ({
   return (
     <div className="flex items-center gap-[14px] px-4 py-3 border-t ds2-cell-rule first:border-t-0">
       <div className="min-w-0 flex-1">
-        <div className="font-condensed font-semibold text-[16px] flex items-center gap-[9px] flex-wrap">
+        <div className="font-condensed font-semibold text-[17.5px] flex items-center gap-[9px] flex-wrap">
           <span className="truncate">{row.name}</span>
           {hit && <StatusPill tone="amber">looks like {hit.target}</StatusPill>}
         </div>
-        <div className="font-condensed text-[13px] text-dim">
+        <div className="font-condensed text-[14px] text-dim">
           {row.service_count} service{row.service_count === 1 ? "" : "s"}
           {row.total_spend != null && (
             <>
@@ -181,10 +181,10 @@ const DismissedRow = ({
 }) => (
   <div className="flex items-center gap-[14px] px-4 py-[11px] border-t ds2-cell-rule">
     <div className="min-w-0 flex-1">
-      <div className="font-condensed font-semibold text-[15px] text-dim truncate">
+      <div className="font-condensed font-semibold text-[16px] text-dim truncate">
         {row.name}
       </div>
-      <div className="font-condensed text-[12.5px] text-faint">
+      <div className="font-condensed text-[13.5px] text-faint">
         {row.service_count === 0 ? (
           "no log rows now"
         ) : (
@@ -319,15 +319,15 @@ const VendorsPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">VENDORS</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">VENDORS</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             who you call — and who you don't
           </span>
           <span className="flex-1" />
           {!showNew && (
             <button
               onClick={() => openCreate()}
-              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+              className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
             >
               + NEW VENDOR
             </button>
@@ -336,26 +336,26 @@ const VendorsPage = () => {
 
         {/* answering line — the trust ledger */}
         <div className="flex items-center gap-3 flex-wrap mt-4">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums">
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums">
             {vendors.length} VENDOR{vendors.length === 1 ? "" : "S"}
           </span>
           {trust.goTo > 0 && (
-            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[12px] text-amber-hi border border-amber/30 bg-amber/10">
+            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[13px] text-amber-hi border border-amber/30 bg-amber/10">
               {trust.goTo} go-to{trust.goTo === 1 ? "" : "'s"}
             </span>
           )}
           {trust.steerClear > 0 && (
-            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[12px] text-status-negative-text border border-status-negative-text/30 bg-status-negative-text/8">
+            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[13px] text-status-negative-text border border-status-negative-text/30 bg-status-negative-text/8">
               {trust.steerClear} steer clear
             </span>
           )}
           {trust.unproven > 0 && (
-            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[12px] text-faint border border-dashed border-hairline">
+            <span className="inline-flex items-center h-[26px] px-[11px] rounded-full font-condensed font-semibold text-[13px] text-faint border border-dashed border-hairline">
               {trust.unproven} unproven
             </span>
           )}
           <input
-            className="ml-auto h-[34px] px-3 rounded-[9px] bg-well font-condensed text-[13px] text-ink placeholder:text-faint min-w-[210px] outline-none"
+            className="ml-auto h-[34px] px-3 rounded-[9px] bg-well font-condensed text-[14px] text-ink placeholder:text-faint min-w-[210px] outline-none"
             style={{ boxShadow: "var(--shadow-inset)" }}
             placeholder="⌕  search name, city, contact…"
             value={search}
@@ -392,10 +392,10 @@ const VendorsPage = () => {
         {(unfiled.length > 0 || dismissed.length > 0) && (
           <div className="ds2-board overflow-hidden mt-4">
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                 From your maintenance log
               </span>
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 · {unfiled.length} not in the rolodex yet
               </span>
             </div>
@@ -415,17 +415,17 @@ const VendorsPage = () => {
             {dismissed.length > 0 && (
               <>
                 <div className="flex items-center gap-2.5 px-4 pt-2.5 pb-[7px] border-t ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                     DISMISSED · ONE-OFF STOPS · {dismissed.length}
                   </span>
                   <button
                     onClick={() => setShowDismissed((v) => !v)}
-                    className="ml-auto font-condensed font-semibold text-[12px] text-amber-hi"
+                    className="ml-auto font-condensed font-semibold text-[13px] text-amber-hi"
                   >
                     {showDismissed ? "hide" : "show · undo"}
                   </button>
                 </div>
-                <p className="font-condensed text-[12.5px] text-dim leading-[1.5] px-4 pb-3">
+                <p className="font-condensed text-[13.5px] text-dim leading-[1.5] px-4 pb-3">
                   {DISMISSED_NOTE}
                 </p>
                 {showDismissed &&
@@ -451,20 +451,20 @@ const VendorsPage = () => {
             />
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-faint font-condensed text-[14px] mt-5">
+          <p className="text-faint font-condensed text-[15px] mt-5">
             No vendors match your search.
           </p>
         ) : (
           groups.map((g) => (
             <div key={g.category} className="ds2-board overflow-hidden mt-4">
               <div className="flex items-center gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                   {g.category}
                 </span>
-                <span className="font-condensed text-[12px] text-faint">· {g.vendors.length}</span>
+                <span className="font-condensed text-[13px] text-faint">· {g.vendors.length}</span>
                 {g.champion && (
                   <span
-                    className="ml-auto font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-amber-hi">
+                    className="ml-auto font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-amber-hi">
                     GO-TO <span className="text-dim tracking-[.1em]">· {g.champion.name.toUpperCase()}</span>
                   </span>
                 )}
@@ -488,27 +488,27 @@ const VendorsPage = () => {
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="font-condensed font-semibold text-[16.5px] flex items-center gap-[9px] flex-wrap">
+                      <div className="font-condensed font-semibold text-[18px] flex items-center gap-[9px] flex-wrap">
                         {v.name}
                         <VendorTrustTag rating={v.rating} />
                         {v.status === "inactive" && (
-                          <span className="font-condensed font-medium text-[10.5px] tracking-[.1em] text-faint border border-hairline rounded-[4px] px-[6px] py-[1px]">
+                          <span className="font-condensed font-medium text-[11.5px] tracking-[.1em] text-faint border border-hairline rounded-[4px] px-[6px] py-[1px]">
                             INACTIVE
                           </span>
                         )}
                       </div>
-                      <div className="font-condensed text-[13px] text-dim mt-[3px] flex items-center gap-2 flex-wrap">
+                      <div className="font-condensed text-[14px] text-dim mt-[3px] flex items-center gap-2 flex-wrap">
                         {[place, v.contact_name].filter(Boolean).join(" · ")}
                         <StateChips area={v.service_area} />
                         {spend && <span className="text-ink tabular-nums">{spend}</span>}
                       </div>
                       {note ? (
-                        <div className="text-[12.5px] text-faint italic mt-1 truncate max-w-[560px]">
+                        <div className="text-[13.5px] text-faint italic mt-1 truncate max-w-[560px]">
                           "{note}"
                         </div>
                       ) : (
                         trustLevel === "ghost" && (
-                          <div className="font-condensed text-[12.5px] text-faint mt-1">
+                          <div className="font-condensed text-[13.5px] text-faint mt-1">
                             rate them after the first job — the pips punch in here
                           </div>
                         )

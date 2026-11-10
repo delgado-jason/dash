@@ -199,7 +199,7 @@ export const LoadConsole = ({ loads, freeHours, today, whenWord, onChanged }: Pr
 
       {error && (
         <p
-          className="font-condensed text-[12.5px] mt-2"
+          className="font-condensed text-[13.5px] mt-2"
           style={{ color: "var(--color-status-negative-text)" }}
           role="alert"
         >
@@ -209,11 +209,11 @@ export const LoadConsole = ({ loads, freeHours, today, whenWord, onChanged }: Pr
 
       {undo && (
         <div className="flex items-center gap-3 mt-2.5 px-3 py-2 rounded-[9px] border border-hairline">
-          <span className="font-condensed text-[13px] text-dim">{undo.label}</span>
+          <span className="font-condensed text-[14px] text-dim">{undo.label}</span>
           <button
             type="button"
             onClick={undo.revert}
-            className="ml-auto font-condensed font-semibold text-[11.5px] tracking-[.1em] uppercase text-amber-hi hover:text-hot"
+            className="ml-auto font-condensed font-semibold text-[12.5px] tracking-[.1em] uppercase text-amber-hi hover:text-hot"
           >
             Undo
           </button>
@@ -221,7 +221,7 @@ export const LoadConsole = ({ loads, freeHours, today, whenWord, onChanged }: Pr
       )}
 
       {cards.length === 0 ? (
-        <p className="font-condensed text-[13.5px] text-faint mt-2">
+        <p className="font-condensed text-[14.5px] text-faint mt-2">
           No load is rolling and nothing is booked.{" "}
           <Link to="/foreman" className="text-amber-hi underline-offset-2 hover:underline">
             Find one ›

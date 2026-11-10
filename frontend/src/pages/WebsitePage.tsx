@@ -86,11 +86,11 @@ const Fig = ({
 }) => (
   <div className={`p-4 ${rule}`}>
     <span className="ds2-label">{label}</span>
-    <div className="font-condensed font-semibold text-[36px] leading-none text-hot tabular-nums mt-1.5">
+    <div className="font-condensed font-semibold text-[39px] leading-none text-hot tabular-nums mt-1.5">
       {value == null ? "—" : value}
     </div>
     {note && (
-      <span className="block mt-1 font-condensed text-[13px] text-faint">
+      <span className="block mt-1 font-condensed text-[14px] text-faint">
         {note}
       </span>
     )}
@@ -112,7 +112,7 @@ const KIT_TONE: Record<SiteSubscriber["kit_status"], string> = {
 
 const KitPill = ({ status }: { status: SiteSubscriber["kit_status"] }) => (
   <span
-    className={`inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[9.5px] tracking-[.06em] uppercase ${KIT_TONE[status]}`}
+    className={`inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[11px] tracking-[.06em] uppercase ${KIT_TONE[status]}`}
   >
     {status}
   </span>
@@ -134,14 +134,14 @@ const ListBoard = ({
       <span className="ds2-label">{title}</span>
     </div>
     {rows.length === 0 ? (
-      <div className="px-4 py-2 border-t border-hairline-lo font-condensed text-[14px] text-faint">
+      <div className="px-4 py-2 border-t border-hairline-lo font-condensed text-[15px] text-faint">
         {empty}
       </div>
     ) : (
       rows.map((r) => (
         <div
           key={r.key}
-          className="flex items-baseline gap-2.5 px-4 py-2 border-t border-hairline-lo font-condensed text-[14px] text-ink"
+          className="flex items-baseline gap-2.5 px-4 py-2 border-t border-hairline-lo font-condensed text-[15px] text-ink"
         >
           <span className="truncate" title={r.label}>
             {r.label}
@@ -186,16 +186,16 @@ const SignupsBoard = ({
         type="button"
         onClick={onSync}
         disabled={syncing || !subscribers}
-        className="ml-auto h-7 px-3 rounded-[8px] bg-well border border-hairline font-condensed font-semibold text-[12px] tracking-[.05em] uppercase text-amber-hi hover:text-hot disabled:opacity-50 disabled:hover:text-amber-hi transition-colors"
+        className="ml-auto h-7 px-3 rounded-[8px] bg-well border border-hairline font-condensed font-semibold text-[13px] tracking-[.05em] uppercase text-amber-hi hover:text-hot disabled:opacity-50 disabled:hover:text-amber-hi transition-colors"
       >
         {syncing ? "Syncing…" : "Sync to Kit ›"}
       </button>
     </div>
     {syncNote && (
-      <div className="px-4 pb-2.5 -mt-1 font-condensed text-[12.5px] text-dim">{syncNote}</div>
+      <div className="px-4 pb-2.5 -mt-1 font-condensed text-[13.5px] text-dim">{syncNote}</div>
     )}
     <div className="overflow-x-auto">
-      <table className="w-full font-condensed text-[14px]">
+      <table className="w-full font-condensed text-[15px]">
         <thead>
           <tr className="text-left border-t border-hairline-lo">
             {["When", "Address", "From", "Status"].map((h) => (
@@ -340,10 +340,10 @@ const WebsitePage = () => {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[18px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">
             Website
           </h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <span className="font-condensed font-medium text-[16px] text-dim">
             delgadotruckingservices.com · live from the site
           </span>
           <span className="flex-1" />
@@ -473,7 +473,7 @@ const WebsitePage = () => {
             <span className="ds2-label">Latest visits</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full font-condensed text-[14px]">
+            <table className="w-full font-condensed text-[15px]">
               <thead>
                 <tr className="text-left border-t border-hairline-lo">
                   {["When", "Page", "State", "Came from", "Device"].map((h) => (

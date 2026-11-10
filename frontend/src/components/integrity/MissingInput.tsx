@@ -20,7 +20,7 @@ export const MissingInputLine = ({ what, missing, onFix, className = "" }: Props
   const fix = "Set " + (missing.length > 1 ? "them" : "it") + " in " + first.fixAt + " ›";
   const linkClass = "text-amber-hi hover:text-hot underline-offset-2 hover:underline";
   return (
-    <span className={"font-condensed text-[12px] text-amber-hi " + className}>
+    <span className={"font-condensed text-[13px] text-amber-hi " + className}>
       Can't {what} — {missingWords(missing)}.{" "}
       {first.fixTo ? (
         <Link to={first.fixTo} className={linkClass}>

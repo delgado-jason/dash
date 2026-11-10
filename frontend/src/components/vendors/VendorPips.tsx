@@ -47,7 +47,7 @@ export const VendorPips = ({ rating, caption = true, align = "end" }: VendorPips
         })}
       </span>
       {caption && (
-        <span className="font-condensed text-[11px] text-faint tracking-[.06em]">
+        <span className="font-condensed text-[12px] text-faint tracking-[.06em]">
           {r != null ? `${r} of 5` : "not yet rated"}
         </span>
       )}

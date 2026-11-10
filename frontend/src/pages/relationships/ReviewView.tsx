@@ -73,7 +73,7 @@ const shareCell = (s: Share): string => (s.attributed === 0 ? "—" : fractionWo
 // ---- small shared furniture ----
 const Chip = ({ tone, children }: { tone: "day" | "job" | "dim"; children: ReactNode }) => (
   <span
-    className={`inline-flex items-center h-[22px] px-2 rounded-[5px] font-condensed font-semibold text-[11px] tracking-[.06em] uppercase ${
+    className={`inline-flex items-center h-[22px] px-2 rounded-[5px] font-condensed font-semibold text-[12px] tracking-[.06em] uppercase ${
       tone === "day" ? "bg-well text-hot" : tone === "job" ? "bg-amber text-canvas" : "bg-dim/10 text-dim"
     }`}
   >
@@ -83,15 +83,15 @@ const Chip = ({ tone, children }: { tone: "day" | "job" | "dim"; children: React
 
 const Cell = ({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) => (
   <div className="min-w-0">
-    <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">{label}</p>
-    <p className="font-condensed font-semibold text-[24px] leading-none mt-1 tabular-nums text-ink">{value}</p>
-    {sub && <p className="text-[12px] text-dim mt-1 leading-snug">{sub}</p>}
+    <p className="font-condensed text-[12px] tracking-[.12em] uppercase text-faint">{label}</p>
+    <p className="font-condensed font-semibold text-[26px] leading-none mt-1 tabular-nums text-ink">{value}</p>
+    {sub && <p className="text-[13px] text-dim mt-1 leading-snug">{sub}</p>}
   </div>
 );
 
 // The md+ column words, on the row grid so they sit over their cells.
 const RowHeader = ({ cols }: { cols: [string, string, string, string] }) => (
-  <div className={`hidden md:grid items-center gap-3 px-3.5 py-1.5 ${AGENT_ROW_GRID_ACTIONS} font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint`}>
+  <div className={`hidden md:grid items-center gap-3 px-3.5 py-1.5 ${AGENT_ROW_GRID_ACTIONS} font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint`}>
     <span>{cols[0]}</span>
     <span className="text-right">{cols[1]}</span>
     <span className="text-right">{cols[2]}</span>
@@ -105,11 +105,11 @@ const Panel = ({ children, className = "" }: { children: ReactNode; className?: 
 );
 
 const EmptyLine = ({ children }: { children: ReactNode }) => (
-  <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim leading-snug">{children}</p>
+  <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim leading-snug">{children}</p>
 );
 
 const FootLine = ({ children }: { children: ReactNode }) => (
-  <p className="flex items-start gap-2 px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[12px] text-faint leading-snug">
+  <p className="flex items-start gap-2 px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[13px] text-faint leading-snug">
     {children}
   </p>
 );
@@ -143,9 +143,9 @@ const MonthTable = ({ model }: { model: ReviewModel<Agent> }) => (
   <Panel>
     <SectionHead>Month by month · since {shortDate(SYSTEM_START)}</SectionHead>
     <div className="overflow-x-auto">
-      <table className="w-full text-[13px] tabular-nums font-condensed" style={{ borderCollapse: "collapse" }}>
+      <table className="w-full text-[14px] tabular-nums font-condensed" style={{ borderCollapse: "collapse" }}>
         <thead>
-          <tr className="text-[10.5px] tracking-[.1em] uppercase text-faint">
+          <tr className="text-[11.5px] tracking-[.1em] uppercase text-faint">
             {["Month", "Inbound", "Tier 1", "Tier 2", "Tier 3"].map((h, i) => (
               <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-3.5 py-2 border-b border-hairline whitespace-nowrap`}>
                 {h}
@@ -275,17 +275,17 @@ const ScoreExpansion = ({ row, daily }: { row: ScoreRow<Agent>; daily: DailyTarg
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2.5">
       {scoreFacts(row, daily).map((f) => (
         <div key={f.label} className="min-w-0">
-          <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint">{f.label}</p>
-          <p className="font-condensed font-semibold text-[15px] text-ink tabular-nums" style={f.tone ? { color: f.tone } : undefined}>
+          <p className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint">{f.label}</p>
+          <p className="font-condensed font-semibold text-[16px] text-ink tabular-nums" style={f.tone ? { color: f.tone } : undefined}>
             {f.value}
           </p>
-          {f.sub && <p className="text-[11px] text-faint truncate">{f.sub}</p>}
+          {f.sub && <p className="text-[12px] text-faint truncate">{f.sub}</p>}
         </div>
       ))}
     </div>
     <Well className="mt-2.5 px-3 py-2 flex gap-3 items-start">
-      <span className="font-condensed text-[11px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
-      <p className="text-[13px] text-ink/90 leading-snug">{row.why}</p>
+      <span className="font-condensed text-[12px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
+      <p className="text-[14px] text-ink/90 leading-snug">{row.why}</p>
     </Well>
   </div>
 );
@@ -307,9 +307,9 @@ const ScoreTable = ({
   ladder: RateLadder | null;
 }) => (
   <div className="hidden md:block overflow-x-auto">
-    <table className="w-full text-[13px] tabular-nums font-condensed" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
+    <table className="w-full text-[14px] tabular-nums font-condensed" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
       <thead>
-        <tr className="text-[10.5px] tracking-[.1em] uppercase text-faint">
+        <tr className="text-[11.5px] tracking-[.1em] uppercase text-faint">
           {["Agent", "Verdict", "Loads", "Net", "Gross $/driven mi", "$ / day", "Deadhead", "Inbound", "Last load", "Touched / in"].map((h, i) => (
             <th
               key={h}
@@ -331,7 +331,7 @@ const ScoreTable = ({
             <Fragment key={r.agent.agent_id}>
               {groupHead && (
                 <tr>
-                  <td colSpan={10} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[13px] tracking-[.08em] text-amber-hi" style={{ background: "color-mix(in srgb, var(--color-amber) 5%, transparent)" }}>
+                  <td colSpan={10} className="text-left px-3 py-1.5 border-b border-hairline-lo font-display text-[14px] tracking-[.08em] text-amber-hi" style={{ background: "color-mix(in srgb, var(--color-amber) 5%, transparent)" }}>
                     {bucketWord(r.bucket).toUpperCase()}
                   </td>
                 </tr>
@@ -348,7 +348,7 @@ const ScoreTable = ({
                 </td>
                 <td className="text-left px-3 py-2 border-b border-hairline-lo sticky bg-panel z-10 whitespace-nowrap" style={VERDICT_COL}>
                   <StatusPill tone={VERDICT_META[r.verdict].tone}>{VERDICT_META[r.verdict].label}</StatusPill>
-                  <span className="block text-[10.5px] text-faint mt-0.5 max-w-[280px] truncate" title={r.why}>
+                  <span className="block text-[11.5px] text-faint mt-0.5 max-w-[280px] truncate" title={r.why}>
                     {r.why}
                   </span>
                 </td>
@@ -356,11 +356,11 @@ const ScoreTable = ({
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{money(r.net)}</td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">
                   <span className={rpmTextClass(r.grossDrivenRpm, ladder)}>{fmtRpm(r.grossDrivenRpm)}</span>
-                  {r.grade && <span className="block text-[10.5px] text-faint">{r.grade}</span>}
+                  {r.grade && <span className="block text-[11.5px] text-faint">{r.grade}</span>}
                 </td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">
                   <span className={pd.cls}>{pd.value}</span>
-                  <span className="block text-[10.5px] text-faint">{pd.sub}</span>
+                  <span className="block text-[11.5px] text-faint">{pd.sub}</span>
                 </td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{pct0(r.deadheadPct)}</td>
                 <td className="text-right px-3 py-2 border-b border-hairline-lo">{shareCell(r.inbound)}</td>
@@ -498,7 +498,7 @@ const QuarterBoards = ({
       ) : (
         <ul className="px-3.5 pb-3.5 grid gap-1.5">
           {q.markets.map((g, i) => (
-            <li key={g.state} className="font-condensed text-[13.5px] text-dim">
+            <li key={g.state} className="font-condensed text-[14.5px] text-dim">
               <b className="text-ink font-semibold">
                 {i + 1}. {g.state}
               </b>{" "}
@@ -546,10 +546,10 @@ const SignSheet = ({
   return (
     <RelSheetShell open={open} onClose={onClose} title={`Mark ${period.name} ${isQuarter ? "audited" : "reviewed"}`}>
       <div className="px-5 pt-5 pb-5">
-        <p className="font-display text-[22px] text-amber leading-none">
+        <p className="font-display text-[24px] text-amber leading-none">
           Mark {period.name} {isQuarter ? "audited" : "reviewed"}
         </p>
-        <p className="font-condensed text-[13px] text-dim mt-1.5 leading-snug">
+        <p className="font-condensed text-[14px] text-dim mt-1.5 leading-snug">
           {isQuarter
             ? "The names you intend to go after next quarter — saved with your signature on this audit."
             : "What the month ahead is for. One to three lines; they print under the head until the next month is signed."}
@@ -562,9 +562,9 @@ const SignSheet = ({
             onChange={(e) => onTargets(e.target.value)}
             rows={4}
             placeholder={nextWord}
-            className="w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-ink text-[13px] placeholder:text-faint resize-y"
+            className="w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-ink text-[14px] placeholder:text-faint resize-y"
           />
-          <p className={`font-condensed text-[11.5px] mt-1 ${lines > max ? "text-status-negative-text" : "text-faint"}`}>
+          <p className={`font-condensed text-[12.5px] mt-1 ${lines > max ? "text-status-negative-text" : "text-faint"}`}>
             {plural(lines, "line")} · one to {max}
           </p>
         </div>
@@ -715,7 +715,7 @@ const ReviewView = () => {
         </GhostButton>
       </>
     ) : (
-      <span className="font-condensed text-[12px] text-faint whitespace-nowrap">the owner sets tiers</span>
+      <span className="font-condensed text-[13px] text-faint whitespace-nowrap">the owner sets tiers</span>
     );
 
   const suggestionRow = (row: SuggestionRow<Agent>) => (
@@ -777,7 +777,7 @@ const ReviewView = () => {
           size="sm"
           ariaLabel="Review window"
         />
-        <span className="font-display text-[16px] tracking-[.05em] flex items-center gap-2">
+        <span className="font-display text-[17.5px] tracking-[.05em] flex items-center gap-2">
           <button type="button" className="text-faint hover:text-ink" onClick={() => setAgo((a) => a + 1)} aria-label="previous period">
             ‹
           </button>
@@ -792,7 +792,7 @@ const ReviewView = () => {
             ›
           </button>
         </span>
-        <span className="font-condensed text-[11.5px] text-faint">{evidenceWord}</span>
+        <span className="font-condensed text-[12.5px] text-faint">{evidenceWord}</span>
         <span className="flex-1" />
         <GhostButton size="sm" onClick={copyReport}>
           Copy report
@@ -811,17 +811,17 @@ const ReviewView = () => {
             Mark {period.name} {period.scope === "quarter" ? "audited" : "reviewed"}
           </PrimaryButton>
         ) : (
-          <span className="flex items-center gap-1.5 font-condensed text-[12.5px] text-faint">
+          <span className="flex items-center gap-1.5 font-condensed text-[13.5px] text-faint">
             <Lock size={12} /> the owner signs the month
           </span>
         )}
       </div>
       {signed?.targets && (
         <div className="ds2-board mt-2 px-3.5 py-2.5">
-          <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">Targets</p>
+          <p className="font-condensed text-[12px] tracking-[.12em] uppercase text-faint">Targets</p>
           <ul className="mt-1 grid gap-0.5">
             {signed.targets.split("\n").map((t, i) => (
-              <li key={`${t}-${i}`} className="font-condensed text-[13.5px] text-ink">
+              <li key={`${t}-${i}`} className="font-condensed text-[14.5px] text-ink">
                 {t}
               </li>
             ))}
@@ -832,7 +832,7 @@ const ReviewView = () => {
           {isAdmin && (
             <button
               type="button"
-              className="mt-1.5 font-condensed text-[12px] text-amber-hi hover:text-hot underline underline-offset-2"
+              className="mt-1.5 font-condensed text-[13px] text-amber-hi hover:text-hot underline underline-offset-2"
               onClick={() => openSign(signed.targets ?? "")}
             >
               edit
@@ -849,7 +849,7 @@ const ReviewView = () => {
           <Chip tone="day">since {shortDate(SYSTEM_START)}</Chip>
           <Chip tone="dim">90d</Chip>
         </div>
-        <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber leading-none mt-3">
+        <p className="font-condensed font-semibold tabular-nums text-[28px] text-amber leading-none mt-3">
           {model.inbound.all.attributed === 0
             ? "nothing attributed yet"
             : model.inbound.all.attributed < INBOUND_HEADLINE_MIN
@@ -857,7 +857,7 @@ const ReviewView = () => {
               : `${inboundWord} inbound`}
         </p>
         {(model.inbound.all.attributed >= INBOUND_HEADLINE_MIN || model.inbound.prospects.attributed > 0) && (
-          <p className="font-condensed text-[13px] text-dim mt-1">
+          <p className="font-condensed text-[14px] text-dim mt-1">
             {model.inbound.all.attributed >= INBOUND_HEADLINE_MIN ? `${fractionWord(model.inbound.all)} came to you` : ""}
             {model.inbound.all.attributed >= INBOUND_HEADLINE_MIN && model.inbound.prospects.attributed > 0 ? " · " : ""}
             {model.inbound.prospects.attributed > 0 ? `prospects ${fractionWord(model.inbound.prospects)}` : ""}
@@ -871,8 +871,8 @@ const ReviewView = () => {
           <Cell label="Tier 3" value={shareCell(model.inbound.tier3)} sub="came to you" />
         </div>
         <Well className="mt-3 px-3 py-2.5 flex gap-3 items-start">
-          <span className="font-condensed text-[11px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
-          <p className="text-[13.5px] text-ink/90 leading-snug">
+          <span className="font-condensed text-[12px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
+          <p className="text-[14.5px] text-ink/90 leading-snug">
             Inbound = loads where the agent reached out first, over loads booked since system start. A load counts on the day it
             was booked, not the day it picks up — book it today for next week and it is in today's number. Pre-system loads carry
             no attribution and sit outside the math. The percent appears at {INBOUND_HEADLINE_MIN} attributed loads.
@@ -1057,7 +1057,7 @@ const ReviewView = () => {
         ) : (
           <ul className="px-3.5 pb-3.5 grid gap-1">
             {model.hygiene.map((h) => (
-              <li key={h.key} className="font-condensed text-[13px] text-dim">
+              <li key={h.key} className="font-condensed text-[14px] text-dim">
                 <b className="text-ink font-semibold">{h.agents.length}</b> {h.label} —{" "}
                 {h.agents.slice(0, 3).map((a, i) => (
                   <span key={a.agent_id}>
@@ -1080,7 +1080,7 @@ const ReviewView = () => {
         ) : (
           <ul className="px-3.5 pb-3.5 grid gap-1.5">
             {model.moves.map((h) => (
-              <li key={h.history_id} className="font-condensed text-[13px] text-dim leading-snug">
+              <li key={h.history_id} className="font-condensed text-[14px] text-dim leading-snug">
                 <span className="text-ink font-semibold">{shortDate(h.changed_at)}</span> ·{" "}
                 <Link to={`/agents/${h.agent_id}`} className="text-amber-hi hover:text-hot">
                   {`${h.first_name ?? ""} ${h.last_name ?? ""}`.trim() || "—"}

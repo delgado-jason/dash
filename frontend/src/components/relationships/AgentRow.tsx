@@ -162,19 +162,19 @@ export const AgentRow = ({
           <Link
             to={`/agents/${agent.agent_id}`}
             onClick={stop}
-            className="font-condensed font-medium text-[15px] text-amber hover:text-hot transition-colors leading-tight"
+            className="font-condensed font-medium text-[16px] text-amber hover:text-hot transition-colors leading-tight"
           >
             {name}
           </Link>
           <AgentCodeChip agent={agent} />
           {chip && <RowChipPill chip={chip} />}
         </div>
-        <div className="text-[11.5px] text-dim truncate mt-0.5">{context}</div>
+        <div className="text-[12.5px] text-dim truncate mt-0.5">{context}</div>
       </div>
-      <span className="hidden md:block font-condensed text-[13px] text-dim text-right truncate">
+      <span className="hidden md:block font-condensed text-[14px] text-dim text-right truncate">
         {market || "—"}
       </span>
-      <span className="hidden md:block font-condensed text-[13px] text-dim text-right tabular-nums">
+      <span className="hidden md:block font-condensed text-[14px] text-dim text-right tabular-nums">
         {loadsCell || "—"}
       </span>
       {meter && (
@@ -183,14 +183,14 @@ export const AgentRow = ({
           title={`footprint ${meter.on} of ${meter.cells}`}
           aria-label={`footprint ${meter.on} of ${meter.cells}`}
         >
-          <span className="font-condensed text-[13px] text-dim tabular-nums">{meter.on} of {meter.cells}</span>
+          <span className="font-condensed text-[14px] text-dim tabular-nums">{meter.on} of {meter.cells}</span>
         </span>
       )}
       <span className="text-right">
-        <span className="block font-condensed font-semibold text-[17px] text-ink tabular-nums leading-none">
+        <span className="block font-condensed font-semibold text-[18.5px] text-ink tabular-nums leading-none">
           {right ? right.value : daysSince === undefined ? "—" : daysSince === null ? "never" : `${daysSince}d`}
         </span>
-        <span className="block font-condensed text-[10px] tracking-[.08em] uppercase text-faint mt-0.5">
+        <span className="block font-condensed text-[11px] tracking-[.08em] uppercase text-faint mt-0.5">
           {right ? right.caption : daysSince === null ? neverCaption : daysCaption}
         </span>
       </span>

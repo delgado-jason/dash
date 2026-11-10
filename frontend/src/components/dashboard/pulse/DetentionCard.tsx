@@ -14,7 +14,7 @@ export const DetentionCard = ({ owed, freeHours }: { owed: DetentionOwed; freeHo
     <Panel className="p-4 h-full" data-testid="detention-card">
       <p className="ds2-label">Detention owed</p>
       {n === 0 ? (
-        <p className="font-condensed font-semibold text-[18px] mt-1.5 text-ink">nothing owed</p>
+        <p className="font-condensed font-semibold text-[19.5px] mt-1.5 text-ink">nothing owed</p>
       ) : (
         <>
           <button
@@ -23,15 +23,15 @@ export const DetentionCard = ({ owed, freeHours }: { owed: DetentionOwed; freeHo
             onClick={() => setOpen((o) => !o)}
             className="block w-full text-left mt-1.5"
           >
-            <span className="font-condensed font-semibold text-[18px] leading-tight text-ink">
+            <span className="font-condensed font-semibold text-[19.5px] leading-tight text-ink">
               {n} load{n === 1 ? "" : "s"} · {hm(owed.totalMinutes)} past the free {freeHours} hours · not yet billed
             </span>
-            <span className="text-amber-hi text-[12px] ml-2">{open ? "hide ▴" : "show ▾"}</span>
+            <span className="text-amber-hi text-[13px] ml-2">{open ? "hide ▴" : "show ▾"}</span>
           </button>
           {open && (
             <ul className="mt-2 divide-y ds2-cell-rule">
               {owed.items.map((i) => (
-                <li key={i.load_id} className="py-1.5 flex items-baseline gap-2 text-[12px]">
+                <li key={i.load_id} className="py-1.5 flex items-baseline gap-2 text-[13px]">
                   <Link to={`/loads/${i.load_id}`} className="font-semibold text-ink hover:underline">{i.load_number}</Link>
                   <span className="text-faint truncate">{i.lane}</span>
                   <span className="ml-auto text-dim tabular-nums whitespace-nowrap">{i.minutes} min</span>
@@ -41,7 +41,7 @@ export const DetentionCard = ({ owed, freeHours }: { owed: DetentionOwed; freeHo
           )}
         </>
       )}
-      <p className="text-[11px] text-faint mt-2">from the dispatch board</p>
+      <p className="text-[12px] text-faint mt-2">from the dispatch board</p>
     </Panel>
   );
 };

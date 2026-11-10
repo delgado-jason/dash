@@ -140,7 +140,7 @@ const Editor = ({ existing, onDone, onCancel }: EditorProps) => {
         )}
       </div>
       {existing && confirming && (
-        <p className="font-condensed text-[13px] text-light mt-3">
+        <p className="font-condensed text-[14px] text-light mt-3">
           Remove the {dayWords(existing.effective_from)} schedule? Loads it settled move to the row before it.{" "}
           <button type="button" onClick={remove} disabled={busy} className="font-semibold text-amber-hi hover:text-hot">
             Yes
@@ -157,7 +157,7 @@ const Editor = ({ existing, onDone, onCancel }: EditorProps) => {
         </p>
       )}
       {errs.map((s, i) => (
-        <p key={i} className="font-condensed text-[12px] text-amber-hi mt-2">
+        <p key={i} className="font-condensed text-[13px] text-amber-hi mt-2">
           {s}
         </p>
       ))}

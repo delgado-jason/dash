@@ -139,7 +139,7 @@ export const EntityAvatar = ({
           {url && (
             <button
               onClick={() => setEditing(false)}
-              className="text-[11px] text-muted-text hover:text-light"
+              className="text-[12px] text-muted-text hover:text-light"
             >
               Done
             </button>

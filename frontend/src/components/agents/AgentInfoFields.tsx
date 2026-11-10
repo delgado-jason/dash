@@ -11,7 +11,7 @@ import { PREFERRED, type AgentEditDraft } from "@/lib/agents/agentEdit";
 
 type DraftPatch = Partial<AgentEditDraft>;
 
-const LABEL = "font-condensed text-[11px] tracking-[.1em] uppercase text-faint";
+const LABEL = "font-condensed text-[12px] tracking-[.1em] uppercase text-faint";
 const INPUT =
   "h-[34px] w-full min-w-0 bg-well border border-hairline rounded-[7px] px-2.5 text-sm text-ink";
 
@@ -122,7 +122,7 @@ export const IdentityFields = ({
           </select>
         </Field>
       </div>
-      <p className="text-[11px] text-faint leading-snug">
+      <p className="text-[12px] text-faint leading-snug">
         Their own code on the freight bill — leave blank if they post under the
         agency's. Loads already booked keep their own agency.
       </p>

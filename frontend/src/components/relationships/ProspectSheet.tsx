@@ -136,8 +136,8 @@ export const ProspectSheet = ({ open, agents, agencies, onClose, onOpenAgent, re
   return (
     <RelSheetShell open={open} onClose={close} title="Add a prospect" description="A new agent to court — lands in Prospects">
       <div className="px-5 pt-5 pb-3 border-b border-hairline">
-        <p className="font-display text-[24px] text-ink leading-none">+ PROSPECT</p>
-        <p className="font-condensed text-[13px] text-dim mt-1">the person first — the code can come later</p>
+        <p className="font-display text-[26px] text-ink leading-none">+ PROSPECT</p>
+        <p className="font-condensed text-[14px] text-dim mt-1">the person first — the code can come later</p>
       </div>
       <div className="px-5 py-4 grid gap-3">
         {/* one column, person first — First above Last, as the sheet was drawn */}
@@ -150,7 +150,7 @@ export const ProspectSheet = ({ open, agents, agencies, onClose, onOpenAgent, re
           <input id="pros-last" value={last} onChange={(e) => setLast(e.target.value)} maxLength={50} className="ds-input" />
         </div>
         {dup && (
-          <p className="font-condensed text-[13px] text-dim -mt-1">
+          <p className="font-condensed text-[14px] text-dim -mt-1">
             Looks like <b className="text-ink">{nameOf(dup)}</b>
             {dup.agency_code || dup.posting_code ? <> · <AgentCodeChip agent={dup} /></> : null} —{" "}
             <button
@@ -207,7 +207,7 @@ export const ProspectSheet = ({ open, agents, agencies, onClose, onOpenAgent, re
                       setCode(a.agency_code.toUpperCase());
                       setCodeOpen(false);
                     }}
-                    className="w-full text-left px-2.5 py-1.5 rounded-[6px] font-condensed text-[14px] text-ink hover:bg-white/5"
+                    className="w-full text-left px-2.5 py-1.5 rounded-[6px] font-condensed text-[15px] text-ink hover:bg-white/5"
                   >
                     {a.agency_code}
                     {a.name ? <span className="text-faint"> · {a.name}</span> : null}
@@ -216,7 +216,7 @@ export const ProspectSheet = ({ open, agents, agencies, onClose, onOpenAgent, re
               ))}
             </ul>
           )}
-          <p className="font-condensed text-[11.5px] text-faint mt-1">
+          <p className="font-condensed text-[12.5px] text-faint mt-1">
             {!codeUpper
               ? "blank is fine — they'll wear NO CODE until you learn it"
               : exact
@@ -258,7 +258,7 @@ export const ProspectSheet = ({ open, agents, agencies, onClose, onOpenAgent, re
         <GhostButton size="lg" onClick={close}>
           Cancel
         </GhostButton>
-        <span className="font-condensed text-[12px] text-faint ml-auto">lands in Prospects</span>
+        <span className="font-condensed text-[13px] text-faint ml-auto">lands in Prospects</span>
       </div>
     </RelSheetShell>
   );

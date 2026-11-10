@@ -70,7 +70,7 @@ export const TeamCard = () => {
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-steel text-muted-text">
+                <span className="text-[12px] px-2 py-0.5 rounded-full bg-steel text-muted-text">
                   {m.role === "admin" ? "Owner · Admin" : "Dispatcher"}
                 </span>
                 {m.role === "dispatcher" && (

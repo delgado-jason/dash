@@ -21,7 +21,7 @@ export const StatusWord = ({
   if (!value) return null;
   return (
     <span
-      className={`inline-block font-condensed font-semibold uppercase tracking-[.1em] ${size === "md" ? "text-[14px]" : "text-[11.5px]"} ${TONE[value]} ${className}`}
+      className={`inline-block font-condensed font-semibold uppercase tracking-[.1em] ${size === "md" ? "text-[15px]" : "text-[12.5px]"} ${TONE[value]} ${className}`}
     >
       {value}
     </span>

@@ -129,10 +129,10 @@ export interface CallScreenProps {
 // contact carries cap_override. There is no fold mode for a call (THE CAP).
 type WriteMode = "log" | "anyway";
 
-const TAG = "px-3 py-[6px] rounded-[8px] text-[13px] border transition-colors cursor-pointer";
+const TAG = "px-3 py-[6px] rounded-[8px] text-[14px] border transition-colors cursor-pointer";
 const TAG_OFF = "border-hairline bg-panel text-dim hover:text-ink";
 const TAG_ON = "border-amber text-amber-hi bg-amber/10";
-const CHIP_BTN = "h-8 px-3 rounded-[8px] border font-condensed text-[12.5px]";
+const CHIP_BTN = "h-8 px-3 rounded-[8px] border font-condensed text-[13.5px]";
 const CHIP_ON = "border-amber text-amber-hi bg-amber/10";
 const CHIP_OFF = "border-hairline text-dim hover:text-ink";
 
@@ -191,9 +191,9 @@ const Question = ({
   children: ReactNode;
 }) => (
   <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-2 py-3 border-t border-hairline-lo">
-    <span className="font-condensed font-semibold tabular-nums text-[20px] text-amber-hi leading-none pt-0.5">{n}</span>
+    <span className="font-condensed font-semibold tabular-nums text-[21.5px] text-amber-hi leading-none pt-0.5">{n}</span>
     <div className="min-w-0">
-      <p className="font-condensed text-[14px] text-ink flex items-center gap-2 mb-2">
+      <p className="font-condensed text-[15px] text-ink flex items-center gap-2 mb-2">
         {text}
         {done && <Check size={14} className="text-status-positive-text shrink-0" aria-label="answered" />}
       </p>
@@ -204,9 +204,9 @@ const Question = ({
 
 const Stat = ({ label, value, sub }: { label: string; value: string; sub: string | null }) => (
   <div className="min-w-0">
-    <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">{label}</p>
-    <p className="font-condensed font-semibold text-[24px] text-ink leading-none mt-1 truncate tabular-nums">{value}</p>
-    {sub && <p className="text-[12px] text-dim mt-1 truncate">{sub}</p>}
+    <p className="font-condensed text-[12px] tracking-[.12em] uppercase text-faint">{label}</p>
+    <p className="font-condensed font-semibold text-[26px] text-ink leading-none mt-1 truncate tabular-nums">{value}</p>
+    {sub && <p className="text-[13px] text-dim mt-1 truncate">{sub}</p>}
   </div>
 );
 
@@ -593,7 +593,7 @@ export const CallScreen = ({
           <ChevronLeft size={22} />
         </button>
         {positionPill}
-        <span className="ml-auto font-condensed text-[12px] text-faint uppercase tracking-[.1em]">
+        <span className="ml-auto font-condensed text-[13px] text-faint uppercase tracking-[.1em]">
           {working === "reactivation" ? "Reactivation" : "Prospecting"}
         </span>
       </div>
@@ -602,7 +602,7 @@ export const CallScreen = ({
         {/* ---- header ---- */}
         <div className="px-4 md:px-5 pt-4 pb-3 border-b border-hairline">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <Link to={`/agents/${agent.agent_id}`} className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors">
+            <Link to={`/agents/${agent.agent_id}`} className="font-display text-[28px] text-amber leading-none hover:text-hot transition-colors">
               {name}
             </Link>
             <AgentCodeChip agent={agent} />
@@ -620,7 +620,7 @@ export const CallScreen = ({
             {badNumber && <StatusPill tone="bad">bad #</StatusPill>}
             <span className="hidden md:inline-flex ml-auto">{positionPill}</span>
           </div>
-          <p className="font-condensed text-[13.5px] text-dim mt-1.5">{headLine}</p>
+          <p className="font-condensed text-[14.5px] text-dim mt-1.5">{headLine}</p>
           <div className="flex gap-2 flex-wrap mt-3">
             {agent.phone && (
               <span className="hidden md:inline-flex">
@@ -639,7 +639,7 @@ export const CallScreen = ({
                 <Mail size={15} /> Email
               </GhostLink>
             )}
-            {!agent.phone && <span className="font-condensed text-[13px] text-faint self-center">no phone on file — question 6 below</span>}
+            {!agent.phone && <span className="font-condensed text-[14px] text-faint self-center">no phone on file — question 6 below</span>}
           </div>
 
           <div className="grid grid-cols-3 gap-3 mt-4">
@@ -649,8 +649,8 @@ export const CallScreen = ({
           </div>
 
           <Well className="px-3 py-2.5 flex items-center gap-3 mt-3">
-            <span className="text-[11px] uppercase tracking-[.12em] text-amber font-condensed shrink-0">Why they're on the list</span>
-            <span className="text-[13.5px] text-ink/90">{why ?? "not on today's list — the call still files against their record"}</span>
+            <span className="text-[12px] uppercase tracking-[.12em] text-amber font-condensed shrink-0">Why they're on the list</span>
+            <span className="text-[14.5px] text-ink/90">{why ?? "not on today's list — the call still files against their record"}</span>
           </Well>
         </div>
 
@@ -674,13 +674,13 @@ export const CallScreen = ({
         </SectionHead>
         {scriptOpen && (
           <div className="px-4 md:px-5 pb-3 grid gap-2">
-            <p className="text-[13.5px] text-dim leading-relaxed">
-              <span className="font-condensed text-[11px] uppercase tracking-[.1em] text-amber-hi mr-2">Opener</span>“{script.opener}”
+            <p className="text-[14.5px] text-dim leading-relaxed">
+              <span className="font-condensed text-[12px] uppercase tracking-[.1em] text-amber-hi mr-2">Opener</span>“{script.opener}”
             </p>
-            <p className="text-[13px] text-faint leading-relaxed">
-              <span className="font-condensed text-[11px] uppercase tracking-[.1em] text-amber-hi mr-2">Voicemail</span>“{script.voicemail}”
+            <p className="text-[14px] text-faint leading-relaxed">
+              <span className="font-condensed text-[12px] uppercase tracking-[.1em] text-amber-hi mr-2">Voicemail</span>“{script.voicemail}”
             </p>
-            <p className="font-condensed text-[11.5px] text-faint">
+            <p className="font-condensed text-[12.5px] text-faint">
               suggested language — say it your way. Reached and willing → the footprint below, then ask for freight.
             </p>
           </div>
@@ -713,7 +713,7 @@ export const CallScreen = ({
                   <span
                     key={`${m.city},${m.state}`}
                     title="Proven — a load has come out of this market"
-                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[8px] border border-status-positive-text/60 bg-status-positive-text/10 font-condensed text-[12.5px] text-ink"
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[8px] border border-status-positive-text/60 bg-status-positive-text/10 font-condensed text-[13.5px] text-ink"
                   >
                     {m.city.toUpperCase()} {m.state.toUpperCase()} <span className="text-dim">×{m.n}</span>
                   </span>
@@ -721,7 +721,7 @@ export const CallScreen = ({
               </div>
             )}
             {creating ? (
-              <p className="font-condensed text-[12.5px] text-faint">
+              <p className="font-condensed text-[13.5px] text-faint">
                 markets file under {divertWords.join(" ")} once they exist — add them from their sheet after the call
               </p>
             ) : (
@@ -738,10 +738,10 @@ export const CallScreen = ({
               ))}
             </div>
             {(agent.freight_types?.length ?? 0) > 0 && freightTouched && (
-              <p className="font-condensed text-[11.5px] text-faint mt-1.5">changed — writes on Log & next{freight.length === 0 ? " (clears what was on file)" : ""}</p>
+              <p className="font-condensed text-[12.5px] text-faint mt-1.5">changed — writes on Log & next{freight.length === 0 ? " (clears what was on file)" : ""}</p>
             )}
             {!targetIsDialed && !freightTouched && freight.length > 0 && (
-              <p className="font-condensed text-[11.5px] text-faint mt-1.5">prefilled from {agent.first_name}'s record — counts for who answered only once you change it</p>
+              <p className="font-condensed text-[12.5px] text-faint mt-1.5">prefilled from {agent.first_name}'s record — counts for who answered only once you change it</p>
             )}
           </Question>
 
@@ -759,7 +759,7 @@ export const CallScreen = ({
 
           <Question n={6} text="Best number and best time to call?" done={parts.bestTime}>
             {badNumber && (
-              <p className="font-condensed text-[12.5px] text-status-negative-text mb-2">
+              <p className="font-condensed text-[13.5px] text-status-negative-text mb-2">
                 the last call came back bad number — fix the phone here and it writes on Log & next
               </p>
             )}
@@ -780,7 +780,7 @@ export const CallScreen = ({
         <SectionHead>Outcome</SectionHead>
         <div className="px-4 md:px-5 pb-3">
           <SegmentedTabs tabs={OUTCOME_TABS} value={outcome} onChange={pickOutcome} size="sm" ariaLabel="Outcome" />
-          {outcome !== "reached" && <p className="font-condensed text-[11.5px] text-faint mt-1.5">nobody spoken to — no class can be pinned, and the quiet clock keeps running</p>}
+          {outcome !== "reached" && <p className="font-condensed text-[12.5px] text-faint mt-1.5">nobody spoken to — no class can be pinned, and the quiet clock keeps running</p>}
         </div>
 
         {/* ---- the one question ---- */}
@@ -789,20 +789,20 @@ export const CallScreen = ({
             <SectionHead>The one question — do they have their own customers?</SectionHead>
             <div className="px-4 md:px-5 pb-3">
               {pinned && !changeClass ? (
-                <div className="flex items-center gap-2 flex-wrap font-condensed text-[13.5px] text-dim">
+                <div className="flex items-center gap-2 flex-wrap font-condensed text-[14.5px] text-dim">
                   <StatusPill tone={classAgent.agent_class === "direct" ? "good" : "neutral"}>{classAgent.agent_class} · pinned</StatusPill>
                   <span>answered on an earlier call</span>
-                  <button type="button" onClick={() => setChangeClass(true)} className="ml-auto text-[12px] text-amber-hi hover:text-hot">
+                  <button type="button" onClick={() => setChangeClass(true)} className="ml-auto text-[13px] text-amber-hi hover:text-hot">
                     change
                   </button>
                 </div>
               ) : (
                 <>
                   <SegmentedTabs tabs={CLASS_TABS} value={cls ?? ("" as ClassPick)} onChange={setCls} size="sm" ariaLabel="Agent class" />
-                  <p className="font-condensed text-[11.5px] text-faint mt-1">{CLASS_HELP}</p>
+                  <p className="font-condensed text-[12.5px] text-faint mt-1">{CLASS_HELP}</p>
                   {cls === "spot" && (
                     <div className="mt-2">
-                      <label className="flex items-start gap-2 cursor-pointer text-[13px] text-dim leading-snug">
+                      <label className="flex items-start gap-2 cursor-pointer text-[14px] text-dim leading-snug">
                         <input type="checkbox" checked={parkNow} onChange={(e) => setParkNow(e.target.checked)} className="mt-[3px] accent-amber" />
                         <span>
                           <b className="text-ink">Park them now</b> — leaves every list, keeps every record.
@@ -814,7 +814,7 @@ export const CallScreen = ({
                     </div>
                   )}
                   {changeClass && (
-                    <button type="button" onClick={() => { setChangeClass(false); setCls(null); }} className="font-condensed text-[12px] text-faint hover:text-ink mt-1.5">
+                    <button type="button" onClick={() => { setChangeClass(false); setCls(null); }} className="font-condensed text-[13px] text-faint hover:text-ink mt-1.5">
                       keep {classAgent.agent_class}
                     </button>
                   )}
@@ -824,7 +824,7 @@ export const CallScreen = ({
           </>
         )}
         {outcome === "reached" && classAgent != null && classAgent.relationship_tier != null && (
-          <p className="px-4 md:px-5 pb-3 font-condensed text-[12px] text-faint">the one question is settled — the owner set a tier</p>
+          <p className="px-4 md:px-5 pb-3 font-condensed text-[13px] text-faint">the one question is settled — the owner set a tier</p>
         )}
 
         {/* ---- next step ---- */}
@@ -838,7 +838,7 @@ export const CallScreen = ({
                   {c.label}
                 </button>
               ))}
-              <input type="date" aria-label="Pick a date" value={nextStepAt ?? ""} onChange={(e) => setNextStepAt(e.target.value || null)} className="ds-input h-8 w-auto text-[13px]" />
+              <input type="date" aria-label="Pick a date" value={nextStepAt ?? ""} onChange={(e) => setNextStepAt(e.target.value || null)} className="ds-input h-8 w-auto text-[14px]" />
             </div>
           )}
         </div>
@@ -848,7 +848,7 @@ export const CallScreen = ({
         <div className="px-4 md:px-5 pb-3">
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="what happened · what was promised · what's owed · load # if any" className="ds-input" />
           {(lane.trim() || regular.trim() || season.trim()) && (
-            <p className="font-condensed text-[11.5px] text-faint mt-1.5 truncate">
+            <p className="font-condensed text-[12.5px] text-faint mt-1.5 truncate">
               logs as: {foldNote(note, lane, regular, season, null)}
             </p>
           )}
@@ -860,7 +860,7 @@ export const CallScreen = ({
             <button
               type="button"
               onClick={() => setDivertOpen(true)}
-              className="inline-flex items-center gap-1.5 font-condensed text-[12.5px] border-b border-dotted hover:text-ink"
+              className="inline-flex items-center gap-1.5 font-condensed text-[13.5px] border-b border-dotted hover:text-ink"
               style={{ color: "var(--color-chart-blue)", borderColor: "color-mix(in srgb, var(--color-chart-blue) 40%, transparent)" }}
             >
               <CornerDownRight size={14} /> Someone else answered — file this call under them
@@ -869,7 +869,7 @@ export const CallScreen = ({
             <div className="rounded-[9px] p-3" style={{ background: "color-mix(in srgb, var(--color-chart-blue) 6%, transparent)", border: "1px solid color-mix(in srgb, var(--color-chart-blue) 35%, transparent)" }}>
               <div className="flex items-center gap-2 mb-2">
                 <CornerDownRight size={14} style={{ color: "var(--color-chart-blue)" }} />
-                <p className="font-condensed text-[12px] text-dim">Who actually answered — any agent, any code; the person is the anchor.</p>
+                <p className="font-condensed text-[13px] text-dim">Who actually answered — any agent, any code; the person is the anchor.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -877,13 +877,13 @@ export const CallScreen = ({
                     setDivertName("");
                     setDivertPick(null);
                   }}
-                  className="ml-auto font-condensed text-[11px] uppercase tracking-[.1em] text-faint hover:text-ink"
+                  className="ml-auto font-condensed text-[12px] uppercase tracking-[.1em] text-faint hover:text-ink"
                 >
                   cancel
                 </button>
               </div>
               {divertPick ? (
-                <div className="flex items-center gap-2 flex-wrap font-condensed text-[13.5px]">
+                <div className="flex items-center gap-2 flex-wrap font-condensed text-[14.5px]">
                   <span className="text-ink font-semibold">{nameOf(divertPick)}</span>
                   <AgentCodeChip agent={divertPick} />
                   <span className="text-dim">found</span>
@@ -895,7 +895,7 @@ export const CallScreen = ({
                       setDivertPick(null);
                       setDivertName("");
                     }}
-                    className="ml-auto text-[12px] text-amber-hi hover:text-hot"
+                    className="ml-auto text-[13px] text-amber-hi hover:text-hot"
                   >
                     change
                   </button>
@@ -917,19 +917,19 @@ export const CallScreen = ({
                           <button
                             type="button"
                             onClick={() => setDivertPick(a)}
-                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] font-condensed text-[14px] text-ink hover:bg-well text-left"
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-[6px] font-condensed text-[15px] text-ink hover:bg-well text-left"
                           >
                             {nameOf(a)} <AgentCodeChip agent={a} />
-                            {a.agent_city && <span className="text-faint text-[12px]">{a.agent_city}{a.agent_state ? `, ${a.agent_state}` : ""}</span>}
+                            {a.agent_city && <span className="text-faint text-[13px]">{a.agent_city}{a.agent_state ? `, ${a.agent_state}` : ""}</span>}
                           </button>
                         </li>
                       ))}
                     </ul>
                   )}
-                  {divertIncomplete && <p className="font-condensed text-[11.5px] text-faint mt-1.5">first and last name — or pick a match above</p>}
+                  {divertIncomplete && <p className="font-condensed text-[12.5px] text-faint mt-1.5">first and last name — or pick a match above</p>}
                   {creating && (
                     <div className="flex items-end gap-2 flex-wrap mt-2">
-                      <span className="font-condensed text-[13px] text-dim">
+                      <span className="font-condensed text-[14px] text-dim">
                         create <b className="text-ink">{divertWords.join(" ")}</b> on
                       </span>
                       <input
@@ -940,7 +940,7 @@ export const CallScreen = ({
                         maxLength={3}
                         className="ds-input w-[130px] uppercase tracking-[.08em]"
                       />
-                      <span className="font-condensed text-[11.5px] text-faint">
+                      <span className="font-condensed text-[12.5px] text-faint">
                         {divertCode.trim()
                           ? agencies.some((a) => a.agency_code.toUpperCase() === divertCode.trim().toUpperCase())
                             ? "an existing code"
@@ -952,7 +952,7 @@ export const CallScreen = ({
                 </>
               )}
               {diverting && (
-                <p className="font-condensed text-[11.5px] text-faint mt-2 leading-snug">
+                <p className="font-condensed text-[12.5px] text-faint mt-2 leading-snug">
                   Everything from this call — outcome, class, freight, best time, the note, the contact — files under{" "}
                   <b className="text-ink">{divertPick ? nameOf(divertPick) : divertWords.join(" ")}</b>
                   {divertPick ? "" : divertCode.trim() ? ` (created on ${divertCode.trim().toUpperCase()})` : " (created with no code)"}.{" "}

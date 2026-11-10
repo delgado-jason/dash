@@ -427,23 +427,23 @@ const LoadForm = ({
         title={`${create ? "Create & use" : "Use"} ${rec.market_name} — ${rec.reason}`}
       >
         <span
-          className="shrink-0 text-[10.5px] font-condensed font-semibold uppercase tracking-[.09em]"
+          className="shrink-0 text-[11.5px] font-condensed font-semibold uppercase tracking-[.09em]"
           style={{ color: create ? "var(--color-cat2)" : "var(--color-amber-hi)" }}
         >
           {create ? "+ Create & use" : "Use"}
         </span>
-        <span className="text-[13px] text-ink font-medium truncate">
+        <span className="text-[14px] text-ink font-medium truncate">
           {rec.market_name}
           {create && (
             <span
-              className="ml-1.5 text-[9.5px] uppercase tracking-[.08em] rounded-[5px] px-1.5 py-px"
+              className="ml-1.5 text-[11px] uppercase tracking-[.08em] rounded-[5px] px-1.5 py-px"
               style={{ color: "var(--color-cat2)", border: "1px solid color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}
             >
               new
             </span>
           )}
         </span>
-        <span className="ml-auto shrink-0 text-[11px] text-dim">{rec.reason}</span>
+        <span className="ml-auto shrink-0 text-[12px] text-dim">{rec.reason}</span>
       </button>
     );
   };
@@ -762,7 +762,7 @@ const LoadForm = ({
                   </SelectContent>
                 </Select>
                 {needsBooker && (
-                  <p className="font-condensed text-[12px] text-amber-hi mt-1">{needsBooker}</p>
+                  <p className="font-condensed text-[13px] text-amber-hi mt-1">{needsBooker}</p>
                 )}
               </div>
             )}
@@ -1009,7 +1009,7 @@ const LoadForm = ({
                       })
                     }
                   />
-                  <span className="text-[11px] text-muted-text">
+                  <span className="text-[12px] text-muted-text">
                     their own code on the freight bill — leave blank if they post
                     under the agency's
                   </span>
@@ -1155,7 +1155,7 @@ const LoadForm = ({
                     }
                   />
                 </div>
-                <span className="text-[11px] text-muted-text">
+                <span className="text-[12px] text-muted-text">
                   Blank "to" = set appointment; fill it for a window.
                 </span>
               </div>
@@ -1196,7 +1196,7 @@ const LoadForm = ({
                     }
                   />
                 </div>
-                <span className="text-[11px] text-muted-text">
+                <span className="text-[12px] text-muted-text">
                   Blank "to" = set appointment; fill it for a window.
                 </span>
               </div>
@@ -1631,7 +1631,7 @@ const LoadForm = ({
                   obvious instead of trusted (v1.271.0). On a refusal it says
                   why the field is blank rather than leaving it unexplained. */}
               {mode === "create" && (
-                <p className="font-condensed text-[11.5px] text-faint mt-1">{carryWords(carry)}</p>
+                <p className="font-condensed text-[12.5px] text-faint mt-1">{carryWords(carry)}</p>
               )}
             </div>
             <div>
@@ -1644,7 +1644,7 @@ const LoadForm = ({
                 value={formData.odometer_end ?? ""}
               ></Input>
               {needsDelivered && (
-                <p className="font-condensed text-[12px] text-amber-hi mt-1">{needsDelivered}</p>
+                <p className="font-condensed text-[13px] text-amber-hi mt-1">{needsDelivered}</p>
               )}
             </div>
           </div>

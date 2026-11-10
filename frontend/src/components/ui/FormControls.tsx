@@ -28,7 +28,7 @@ export const Field = ({
   <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
     <label
       htmlFor={htmlFor}
-      className="text-[11px] font-semibold uppercase tracking-wide text-dim"
+      className="text-[12px] font-semibold uppercase tracking-wide text-dim"
     >
       {label}
       {hint && (
@@ -38,7 +38,7 @@ export const Field = ({
       )}
     </label>
     {children}
-    {error && <span className="text-[11.5px] text-status-negative-text">{error}</span>}
+    {error && <span className="text-[12.5px] text-status-negative-text">{error}</span>}
   </div>
 );
 

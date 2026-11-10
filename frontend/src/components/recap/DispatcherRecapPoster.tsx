@@ -19,10 +19,10 @@ const TopBox = ({
   value: string | null;
 }) => (
   <div className="flex-1 min-w-[130px] rounded-[10px] px-3 py-2.5 bg-well">
-    <div className="text-[10px] text-muted-text tracking-wide">
+    <div className="text-[11px] text-muted-text tracking-wide">
       {icon} {label}
     </div>
-    <div className="font-condensed font-semibold text-[16px] text-ink mt-0.5">{value ?? "—"}</div>
+    <div className="font-condensed font-semibold text-[17.5px] text-ink mt-0.5">{value ?? "—"}</div>
   </div>
 );
 

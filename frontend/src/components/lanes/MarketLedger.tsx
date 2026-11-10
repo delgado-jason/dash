@@ -22,7 +22,7 @@ const GRADE_TONE: Record<MarketGrade, string> = {
 
 export const GradeChip = ({ grade }: { grade: MarketGrade }) => (
   <span
-    className={`inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[9.5px] tracking-[.06em] uppercase ${GRADE_TONE[grade]}`}
+    className={`inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[11px] tracking-[.06em] uppercase ${GRADE_TONE[grade]}`}
   >
     {grade}
   </span>
@@ -74,7 +74,7 @@ export const MarketLedger = ({
   return (
     <>
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-        <table className="w-full table-fixed font-condensed text-[12.5px] border-collapse">
+        <table className="w-full table-fixed font-condensed text-[13.5px] border-collapse">
           <colgroup>
             <col style={{ width: "28%" }} />
             <col style={{ width: "7%" }} />
@@ -91,18 +91,18 @@ export const MarketLedger = ({
               <th className="text-left" />
               <th
                 colSpan={4}
-                className="text-center text-[10px] font-semibold tracking-[.1em] uppercase text-amber-hi px-2 pt-1.5"
+                className="text-center text-[11px] font-semibold tracking-[.1em] uppercase text-amber-hi px-2 pt-1.5"
               >
                 OUT · loads born here
               </th>
               <th
                 colSpan={4}
-                className="text-center text-[10px] font-semibold tracking-[.1em] uppercase text-amber-hi px-2 pt-1.5 border-l border-hairline"
+                className="text-center text-[11px] font-semibold tracking-[.1em] uppercase text-amber-hi px-2 pt-1.5 border-l border-hairline"
               >
                 IN · when you deliver here
               </th>
             </tr>
-            <tr className="text-[10px] font-semibold tracking-[.1em] uppercase text-faint">
+            <tr className="text-[11px] font-semibold tracking-[.1em] uppercase text-faint">
               <th className="text-left px-2 py-1.5 border-b border-hairline">Market</th>
               <th className="text-right px-1.5 py-1.5 border-b border-hairline">loads</th>
               <th className="text-right px-1.5 py-1.5 border-b border-hairline">typ $/mi</th>
@@ -150,7 +150,7 @@ export const MarketLedger = ({
                   <td className="text-right px-1.5 py-[6px]">
                     <GradeChip grade={row.out.grade} />
                     {row.out.perDayExFuel != null && (
-                      <span className="block font-condensed text-[10.5px] text-faint tabular-nums leading-tight">
+                      <span className="block font-condensed text-[11.5px] text-faint tabular-nums leading-tight">
                         {fmtPerDay(row.out.perDayExFuel)} ex-fuel
                       </span>
                     )}
@@ -167,7 +167,7 @@ export const MarketLedger = ({
                   <td className="text-right px-1.5 py-[6px]">
                     <GradeChip grade={row.in.grade} />
                     {row.in.shareMedian != null && row.in.reloadCostMedian != null && (
-                      <span className="block font-condensed text-[10.5px] text-faint tabular-nums leading-tight">
+                      <span className="block font-condensed text-[11.5px] text-faint tabular-nums leading-tight">
                         {money0(row.in.reloadCostMedian)} · {Math.round(row.in.shareMedian * 100)}% of the next load
                       </span>
                     )}
@@ -183,7 +183,7 @@ export const MarketLedger = ({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="w-full shrink-0 text-left flex items-center gap-2.5 px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-ink hover:bg-white/[.03]"
+          className="w-full shrink-0 text-left flex items-center gap-2.5 px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[14px] text-ink hover:bg-white/[.03]"
         >
           <span className="text-dim font-medium">
             {expanded ? "− hide the thin rows" : "+"}{" "}

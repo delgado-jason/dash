@@ -93,7 +93,7 @@ const nurtureSentence = (f: NurtureFlag): string =>
 // ---- plate furniture ----
 const Chip = ({ tone, children }: { tone: "day" | "job" | "dim"; children: ReactNode }) => (
   <span
-    className={`inline-flex items-center h-[22px] px-2 rounded-[5px] font-condensed font-semibold text-[11px] tracking-[.06em] uppercase ${
+    className={`inline-flex items-center h-[22px] px-2 rounded-[5px] font-condensed font-semibold text-[12px] tracking-[.06em] uppercase ${
       tone === "day" ? "bg-well text-hot" : tone === "job" ? "bg-amber text-canvas" : "bg-dim/10 text-dim"
     }`}
   >
@@ -103,15 +103,15 @@ const Chip = ({ tone, children }: { tone: "day" | "job" | "dim"; children: React
 
 const Cell = ({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) => (
   <div className="min-w-0">
-    <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">{label}</p>
-    <p className="font-condensed font-semibold text-[24px] leading-none mt-1 tabular-nums text-ink">{value}</p>
-    {sub && <p className="text-[12px] text-dim mt-1 leading-snug">{sub}</p>}
+    <p className="font-condensed text-[12px] tracking-[.12em] uppercase text-faint">{label}</p>
+    <p className="font-condensed font-semibold text-[26px] leading-none mt-1 tabular-nums text-ink">{value}</p>
+    {sub && <p className="text-[13px] text-dim mt-1 leading-snug">{sub}</p>}
   </div>
 );
 
 const Hero = ({ agent }: { agent: Agent }) => (
   <p className="mt-3 flex items-center gap-2.5 flex-wrap">
-    <Link to={`/agents/${agent.agent_id}`} className="font-display text-[26px] text-amber leading-none hover:text-hot transition-colors">
+    <Link to={`/agents/${agent.agent_id}`} className="font-display text-[28px] text-amber leading-none hover:text-hot transition-colors">
       {nameOf(agent)}
     </Link>
     <AgentCodeChip agent={agent} />
@@ -125,10 +125,10 @@ const DraftWell = ({ text, right }: { text: string; right?: ReactNode }) => {
   const long = text.length > 150 || text.includes("\n");
   return (
     <Well className="mt-3 px-3 py-2.5 flex gap-3 items-start">
-      <span className="font-condensed text-[11px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Draft</span>
+      <span className="font-condensed text-[12px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Draft</span>
       <div className="min-w-0 flex-1">
-        <p className={`text-[13.5px] text-ink/90 leading-snug ${full ? "whitespace-pre-wrap" : "truncate"}`}>{text}</p>
-        <p className="flex items-center gap-2 mt-1 font-condensed text-[12px] text-amber-hi">
+        <p className={`text-[14.5px] text-ink/90 leading-snug ${full ? "whitespace-pre-wrap" : "truncate"}`}>{text}</p>
+        <p className="flex items-center gap-2 mt-1 font-condensed text-[13px] text-amber-hi">
           {long && (
             <button type="button" onClick={() => setFull((v) => !v)} className="hover:text-hot">
               {full ? "show less" : "show full"}
@@ -178,7 +178,7 @@ const PlateActions = ({ mobile, children }: { mobile: boolean; children: ReactNo
   );
 
 const ForemanDoor = ({ children }: { children: ReactNode }) => (
-  <Link to="/foreman" className="font-condensed font-semibold text-[12.5px] text-amber-hi hover:text-hot">
+  <Link to="/foreman" className="font-condensed font-semibold text-[13.5px] text-amber-hi hover:text-hot">
     {children} →
   </Link>
 );
@@ -257,7 +257,7 @@ const CapacityPlate = ({ today, plate, signer, mobile, busy, error, onLog, onCop
       {hero && email && text ? (
         <>
           <Hero agent={hero.agent} />
-          <p className="font-condensed text-[13px] text-dim mt-1">
+          <p className="font-condensed text-[14px] text-dim mt-1">
             {placeLabel(hero.nearestPlace)} · about {roundMiles(hero.miles)} miles · prefers {methodFor(hero.agent.preferred_contact)}
             {heroFlag ? ` · ${nurtureLabel(heroFlag)} due — one combined message` : ""}
           </p>
@@ -302,7 +302,7 @@ const CapacityPlate = ({ today, plate, signer, mobile, busy, error, onLog, onCop
           </PlateActions>
         </>
       ) : (
-        <p className="font-condensed text-[13.5px] text-dim mt-3 leading-snug">{empty}</p>
+        <p className="font-condensed text-[14.5px] text-dim mt-3 leading-snug">{empty}</p>
       )}
     </>
   );
@@ -333,14 +333,14 @@ const ReactivationPlate = ({ today, plate, mobile, onOpen }: PlateProps & { plat
             <Cell label="Market" value={hero.place ?? "—"} sub="hauled from" />
           </div>
           <Well className="mt-3 px-3 py-2.5 flex gap-3 items-start">
-            <span className="font-condensed text-[11px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
-            <p className="text-[13.5px] text-ink/90 leading-snug">
+            <span className="font-condensed text-[12px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Why</span>
+            <p className="text-[14.5px] text-ink/90 leading-snug">
               {hero.delivered === 1 ? "One load" : `${hero.delivered} loads`} worth {money(hero.gross)}
               {hero.quietDays == null ? ", never a two-way contact" : `, ${hero.quietDays} days since`} — a warm re-open, not a cold call. Lead with the truck: where it goes empty, what it hauls.
             </p>
           </Well>
           {heroTouched && (
-            <p className="font-condensed text-[12.5px] text-amber-hi mt-2">
+            <p className="font-condensed text-[13.5px] text-amber-hi mt-2">
               {contactTypeLabel(heroTouched.contact.type)} went out {heroTouched.day} — cap reached this week; everyone lapsed already heard from you.
               {carried ? " A reactivation is already in that message." : ""}
             </p>
@@ -360,7 +360,7 @@ const ReactivationPlate = ({ today, plate, mobile, onOpen }: PlateProps & { plat
                     <Phone size={14} /> Call {hero.agent.phone}
                   </PrimaryLink>
                 ) : (
-                  <span className="font-condensed text-[12.5px] text-faint">no phone on file</span>
+                  <span className="font-condensed text-[13.5px] text-faint">no phone on file</span>
                 )}
                 <GhostButton size="sm" onClick={() => onOpen(hero.agent, prefill)}>
                   Log the call
@@ -370,7 +370,7 @@ const ReactivationPlate = ({ today, plate, mobile, onOpen }: PlateProps & { plat
           </PlateActions>
         </>
       ) : (
-        <p className="font-condensed text-[13.5px] text-dim mt-3 leading-snug">
+        <p className="font-condensed text-[14.5px] text-dim mt-3 leading-snug">
           Nobody lapsed — every prospect who hauled has had a two-way contact inside six weeks.{" "}
           <Link to="/relationships/calls" className="text-amber-hi hover:text-hot">
             Call list →
@@ -430,7 +430,7 @@ const NurturePlate = ({ today, plate, signer, mobile, busy, error, onOpen, onLog
             <Cell label="Streak" value={heroStreak} sub="on time, claim-free" />
           </div>
           {hero.type === "holiday" && agent.relationship_tier === 1 && (
-            <p className="font-condensed text-[12.5px] text-amber-hi mt-2">Tier 1 — the owner personalizes this one.</p>
+            <p className="font-condensed text-[13.5px] text-amber-hi mt-2">Tier 1 — the owner personalizes this one.</p>
           )}
           <DraftWell text={draft.body} />
           <ErrorLine>{error}</ErrorLine>
@@ -470,11 +470,11 @@ const NurturePlate = ({ today, plate, signer, mobile, busy, error, onOpen, onLog
           </PlateActions>
         </>
       ) : held > 0 ? (
-        <p className="font-condensed text-[13.5px] text-dim mt-3 leading-snug">
+        <p className="font-condensed text-[14.5px] text-dim mt-3 leading-snug">
           {held === 1 ? "The one flagged agent is" : `All ${held} flagged agents are`} owed a call back today — the note waits for the call. Their rows are under CALL BACK below.
         </p>
       ) : (
-        <p className="font-condensed text-[13.5px] text-dim mt-3 leading-snug">
+        <p className="font-condensed text-[14.5px] text-dim mt-3 leading-snug">
           Nothing flagged — no load-count, streak or anniversary crossing waiting, and no holiday inside its window. Milestones flag at 5 · 10 · 25 · 50 · 100 loads, streaks at 10 · 20 · 50.
         </p>
       )}
@@ -501,16 +501,16 @@ const FivePlate = ({ today, plate, onCopied }: PlateProps & { plate: Extract<Pla
       </div>
       <div className="flex items-center gap-2.5 flex-wrap mt-3">
         <CopyButton text={fiveText(five)} label="Copy the five" onCopied={() => onCopied("the five")} />
-        <span className="font-condensed text-[12.5px] text-faint">plain text — paste it to the owner</span>
+        <span className="font-condensed text-[13.5px] text-faint">plain text — paste it to the owner</span>
       </div>
       <div className="mt-3.5 border-t border-hairline pt-3">
-        <p className="font-condensed text-[11px] tracking-[.12em] uppercase text-faint">Hygiene</p>
+        <p className="font-condensed text-[12px] tracking-[.12em] uppercase text-faint">Hygiene</p>
         {hygiene.length === 0 ? (
-          <p className="font-condensed text-[13px] text-dim mt-1">every active agent has a phone, a preferred channel and a footprint</p>
+          <p className="font-condensed text-[14px] text-dim mt-1">every active agent has a phone, a preferred channel and a footprint</p>
         ) : (
           <ul className="mt-1 grid gap-1">
             {hygiene.map((h) => (
-              <li key={h.key} className="font-condensed text-[13px] text-dim">
+              <li key={h.key} className="font-condensed text-[14px] text-dim">
                 <b className="text-ink font-semibold">{h.agents.length}</b> {h.label} —{" "}
                 {h.agents.slice(0, 3).map((a, i) => (
                   <span key={a.agent_id}>
@@ -541,8 +541,8 @@ const WeekendPlate = ({ today, plate }: PlateProps & { plate: Extract<Plate, { k
         <Chip tone="dim">close-outs and callbacks only</Chip>
       </div>
       <Well className="mt-3 px-3 py-2.5 flex gap-3 items-start">
-        <span className="font-condensed text-[11px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Monday</span>
-        <p className="text-[13.5px] text-ink/90 leading-snug">
+        <span className="font-condensed text-[12px] tracking-[.12em] uppercase text-amber shrink-0 mt-0.5">Monday</span>
+        <p className="text-[14.5px] text-ink/90 leading-snug">
           {!anchor ? (
             <>No empty-next point yet — the Foreman needs a committed or delivered load. </>
           ) : !anchorResolved ? (
@@ -608,7 +608,7 @@ const QueueRows = ({
           />
           {draft && (
             <div className="flex items-center gap-3 px-3.5 pb-2.5 -mt-0.5">
-              <Well className="flex-1 min-w-0 px-3 py-1.5 font-condensed text-[12.5px] text-ink/85 truncate">{draft.subject}</Well>
+              <Well className="flex-1 min-w-0 px-3 py-1.5 font-condensed text-[13.5px] text-ink/85 truncate">{draft.subject}</Well>
               <CopyButton text={draftText(draft)} onCopied={() => onCopied(nameOf(r.agent))} />
             </div>
           )}
@@ -652,7 +652,7 @@ const TodayView = () => {
   if (!today) {
     return (
       <div className="ds2-board mt-4 px-4 py-6">
-        <p className="font-condensed text-[14px] text-dim">
+        <p className="font-condensed text-[15px] text-dim">
           {loadsReady ? "Building the day…" : "Today needs the loads — a close-out, a capacity list and a milestone all read them. Retry above and the queue fills in."}
         </p>
       </div>
@@ -731,7 +731,7 @@ const TodayView = () => {
       <div className="ds2-board mt-3 overflow-hidden">
         <SectionHead right="the queue does the thinking — you do the talking">Today · {today.count} left</SectionHead>
         {queueEmpty ? (
-          <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">
+          <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">
             Nothing owed today — close-outs, the plate's rows and callbacks land here as they come.
           </p>
         ) : (
@@ -739,7 +739,7 @@ const TodayView = () => {
             <QueueRows rows={today.closeOuts} loads={loads} trips={trips} signer={signer} onOpen={open} onCopied={copied} />
             <QueueRows rows={today.plateRows} loads={loads} trips={trips} signer={signer} onOpen={open} onCopied={copied} />
             {today.plate.kind === "capacity" && today.plate.list.touched.length > 0 && (
-              <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-ink">
+              <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed font-semibold text-[14px] text-ink">
                 already touched this week · {today.plate.list.touched.length}{" "}
                 <span className="text-dim font-medium">— {today.plate.list.touched.map((t) => nameOf(t.agent)).join(", ")} · one proactive touch each</span>
               </p>
@@ -749,7 +749,7 @@ const TodayView = () => {
           </>
         )}
         {today.listMore > 0 && (
-          <Link to="/relationships/calls" className="block px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[13px] text-amber-hi hover:text-hot">
+          <Link to="/relationships/calls" className="block px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[14px] text-amber-hi hover:text-hot">
             Call list → {today.listMore} more
           </Link>
         )}
@@ -758,14 +758,14 @@ const TodayView = () => {
             <button
               type="button"
               onClick={() => setDoneOpen((v) => !v)}
-              className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint hover:text-ink"
+              className="w-full text-left px-3.5 py-3 border-t border-hairline-lo font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint hover:text-ink"
             >
               Done today · {today.done.length} ✓ {doneOpen ? "· hide" : ""}
             </button>
             {doneOpen && (
               <div className="opacity-60">
                 {today.done.map((d) => (
-                  <div key={d.contact.contact_id} className="flex items-center gap-3 px-3.5 py-2 border-t border-hairline-lo font-condensed text-[13px]">
+                  <div key={d.contact.contact_id} className="flex items-center gap-3 px-3.5 py-2 border-t border-hairline-lo font-condensed text-[14px]">
                     <span className="text-ink font-semibold truncate">{d.agent ? nameOf(d.agent) : "—"}</span>
                     <span className="text-dim truncate">
                       {d.label} · {d.contact.direction === "inbound" ? "they reached out" : d.contact.method} · {d.time}
@@ -792,13 +792,13 @@ const TodayView = () => {
           </span>
         </SectionHead>
         {coolingRows.length === 0 ? (
-          <p className="px-3.5 pb-4 pt-1 font-condensed text-[13.5px] text-dim">
+          <p className="px-3.5 pb-4 pt-1 font-condensed text-[14.5px] text-dim">
             Nobody cooling — every tiered agent has had a two-way contact inside their threshold (Tier 1 · 21 days, Tier 2 · 42, Tier 3 · 90), and none flags in the next two weeks.
           </p>
         ) : (
           <>
             <CoolingRows rows={coolingRows} isAdmin={isAdmin} onOpen={(agent) => open(agent, { direction: "outbound", method: "call", type: "owner_personal" })} />
-            <p className="flex items-center gap-2 px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[12px] text-faint">
+            <p className="flex items-center gap-2 px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[13px] text-faint">
               {isAdmin ? (
                 <>tap a row to log your own thread — Owner personal, uncapped. A reached call or a load resets the clock; a voicemail or an email does not.</>
               ) : (

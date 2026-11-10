@@ -36,11 +36,11 @@ export const DieselCompareCard = ({
           <p className="text-xs text-faint uppercase tracking-wider">
             You vs. national diesel
           </p>
-          <p className="text-[11px] text-faint mt-0.5">
+          <p className="text-[12px] text-faint mt-0.5">
             U.S. retail avg · week of {fmtWeek(national.period)} · EIA
           </p>
         </div>
-        {under && <span className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-status-positive-text">UNDER THE NATIONAL</span>}
+        {under && <span className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase text-status-positive-text">UNDER THE NATIONAL</span>}
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-4">

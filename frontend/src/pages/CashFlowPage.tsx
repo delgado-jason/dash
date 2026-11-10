@@ -48,9 +48,9 @@ import {
   assembleCashBoardInput, pickPlan, depositOverridesOf, numOrNull, waitsFor, blankInputs,
 } from "@/lib/metrics/cashBoardInput";
 
-const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
+const LBL = "font-condensed font-semibold text-[12px] tracking-[.14em] uppercase text-faint";
 const FIELD =
-  "w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-[14px] text-ink tabular-nums focus:outline-none focus:border-amber";
+  "w-full bg-well border border-hairline rounded-[8px] px-3 py-2 text-[15px] text-ink tabular-nums focus:outline-none focus:border-amber";
 
 // Money reads the same on every page (format.ts): a negative is "−$1,908",
 // never "$-1,908" — this page used to carry its own copies (2026-11-04).
@@ -597,20 +597,20 @@ const CashFlowPage = () => {
         {/* statusbar */}
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">CASH FLOW</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">CASH FLOW</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the drains, the drafts, and the runway
           </span>
           <span className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setShowPaste(true)}
-              className="font-condensed font-bold text-[11.5px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3.5 py-[7px] hover:bg-amber-hi"
+              className="font-condensed font-bold text-[12.5px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3.5 py-[7px] hover:bg-amber-hi"
             >
               Paste months
             </button>
             <button
               onClick={() => setShowAssume(true)}
-              className="font-condensed font-semibold text-[11.5px] tracking-[.12em] uppercase text-dim border border-hairline rounded-[8px] px-3 py-[6px] hover:text-ink"
+              className="font-condensed font-semibold text-[12.5px] tracking-[.12em] uppercase text-dim border border-hairline rounded-[8px] px-3 py-[6px] hover:text-ink"
             >
               Assumptions
             </button>
@@ -646,7 +646,7 @@ const CashFlowPage = () => {
           />
         )}
         {loadError && (
-          <p className="mt-3 font-condensed text-[12.5px]" style={{ color: "var(--color-warn)" }}>
+          <p className="mt-3 font-condensed text-[13.5px]" style={{ color: "var(--color-warn)" }}>
             ⚠ some data didn’t load — the boards below may be missing pieces.{" "}
             <button className="underline underline-offset-2" onClick={load}>retry</button>
           </p>
@@ -654,7 +654,7 @@ const CashFlowPage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="text-[13.5px] text-faint">
+          <span className="text-[14.5px] text-faint">
             two pay periods, Wednesday to Tuesday — the one you’re running and the next — each the money it earns against what it carries; Ops carries from your latest number
             {ytdMargin != null && (
               <> · YTD pretax margin (QBO) <b className="font-semibold text-ink tabular-nums">{(ytdMargin * 100).toFixed(1)}%</b></>
@@ -667,17 +667,17 @@ const CashFlowPage = () => {
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule flex-wrap"
           >
-            <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+            <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
               THE CASH BOARD
             </span>
             <span
-              className="font-condensed font-semibold text-[12px] tracking-[.1em] uppercase whitespace-nowrap"
+              className="font-condensed font-semibold text-[13px] tracking-[.1em] uppercase whitespace-nowrap"
               style={{ color: badgeTone }}
             >
               {badgeWord}
             </span>
             {board && (
-              <span className="font-condensed text-[12.5px] text-faint">
+              <span className="font-condensed text-[13.5px] text-faint">
                 · lowest day{" "}
                 <b className="font-semibold text-ink tabular-nums">
                   {board.lowest != null ? money(board.lowest.amount) : "—"}
@@ -694,13 +694,13 @@ const CashFlowPage = () => {
             <span className="ml-auto flex items-center gap-3">
               <button
                 onClick={() => setShowOpsNow(true)}
-                className="font-condensed font-bold text-[11px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3 py-[6px] hover:bg-amber-hi"
+                className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-3 py-[6px] hover:bg-amber-hi"
               >
                 Ops now ▸
               </button>
               <button
                 onClick={() => setShowBills(true)}
-                className="font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-amber-hi hover:text-hot"
+                className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-amber-hi hover:text-hot"
               >
                 Edit bills ▸
               </button>
@@ -712,10 +712,10 @@ const CashFlowPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-hairline-lo">
                 {ledgers.map(({ column: c, lines }) => (
                   <div key={c.key} className="min-w-0">
-                    <div className="px-4 py-2 border-b border-hairline font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint">
+                    <div className="px-4 py-2 border-b border-hairline font-condensed text-[12.5px] tracking-[.12em] uppercase text-faint">
                       <span className="text-ink">{WEEK_TITLE[c.key]}</span>
                       {c.state === "open" && <BoardStamp>OPEN</BoardStamp>}
-                      <span className="block text-[11px] normal-case tracking-normal mt-0.5">
+                      <span className="block text-[12px] normal-case tracking-normal mt-0.5">
                         {weekSpan(c.week)}
                         {c.key === "current" && <> · today is {weekdayLong(asOfKey)}</>} · statement {md(c.deposit.statementDate)} · cash {dayFull(c.deposit.date)}
                       </span>
@@ -727,7 +727,7 @@ const CashFlowPage = () => {
                 ))}
               </div>
 
-              <div className="px-4 pb-3 font-condensed text-[11px] text-faint">
+              <div className="px-4 pb-3 font-condensed text-[12px] text-faint">
                 Each column is one pay period, Wednesday to Tuesday: what it delivers goes on the next Wednesday’s statement and lands Thursday, and that money belongs to the period that earned it · every line sits on the day it hits the bank; a faint line is already inside your number · a statement that nets under zero lands nothing — Landstar carries it into the next one · a TONU is never counted until the statement pays it · the verdict is the lowest day across both periods · <span style={{ color: "var(--color-warn)" }}>red</span> under the float
                 {floatLine != null && (
                   <> ({money(floatLine)} — the plan’s line, edited on{" "}
@@ -764,10 +764,10 @@ const CashFlowPage = () => {
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
           >
-            <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+            <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
               THE SETTLEMENTS
             </span>
-            <span className="ml-auto font-condensed text-[12px] text-faint">
+            <span className="ml-auto font-condensed text-[13px] text-faint">
               weekly deposits as Landstar actually paid them · every row reconciled to its own statement
             </span>
           </div>
@@ -779,9 +779,9 @@ const CashFlowPage = () => {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full text-[13px] font-condensed" style={{ fontVariantNumeric: "tabular-nums" }}>
+                <table className="w-full text-[14px] font-condensed" style={{ fontVariantNumeric: "tabular-nums" }}>
                   <thead>
-                    <tr className="text-faint text-[10.5px] uppercase tracking-[.1em]">
+                    <tr className="text-faint text-[11.5px] uppercase tracking-[.1em]">
                       <th className="text-left px-4 py-2">Statement · cash</th>
                       <th className="text-right px-3 py-2">Loads</th>
                       <th className="text-right px-3 py-2">Revenue</th>
@@ -804,7 +804,7 @@ const CashFlowPage = () => {
                             </a>
                             <span className="ml-1 text-faint font-normal"> · cash {md(addDays(s.period_ending.slice(0, 10), lag))}</span>
                             {isFirstOfMonth(s.period_ending) && (
-                              <span className="ml-2 text-[10px] text-faint uppercase">1st of mo</span>
+                              <span className="ml-2 text-[11px] text-faint uppercase">1st of mo</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">{s.loads}</td>
@@ -823,11 +823,11 @@ const CashFlowPage = () => {
                           </td>
                           <td className="px-4 py-2 text-right">
                             {s.unmatched_loads.length > 0 ? (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-negative-bg)", color: "var(--color-status-negative-text)" }} title={`Loads on the statement but not in dash: ${s.unmatched_loads.join(", ")}`}>
+                              <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-negative-bg)", color: "var(--color-status-negative-text)" }} title={`Loads on the statement but not in dash: ${s.unmatched_loads.join(", ")}`}>
                                 FIX {s.unmatched_loads.length}
                               </span>
                             ) : (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-positive-bg)", color: "var(--color-status-positive-text)" }}>
+                              <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "var(--color-status-positive-bg)", color: "var(--color-status-positive-text)" }}>
                                 ✓
                               </span>
                             )}
@@ -839,8 +839,8 @@ const CashFlowPage = () => {
                 </table>
               </div>
               {settlements[0]?.adjustments.length > 0 && (
-                <div className="mx-4 my-3 px-3 py-2 rounded-[9px] border font-condensed text-[12.5px]" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)", background: "var(--color-well)" }}>
-                  <span className="text-amber-hi font-semibold uppercase text-[10.5px] tracking-[.08em]">
+                <div className="mx-4 my-3 px-3 py-2 rounded-[9px] border font-condensed text-[13.5px]" style={{ borderColor: "color-mix(in srgb, var(--color-amber) 35%, transparent)", background: "var(--color-well)" }}>
+                  <span className="text-amber-hi font-semibold uppercase text-[11.5px] tracking-[.08em]">
                     Adjustments · week of {settlements[0].period_ending.slice(5)}
                   </span>{" "}
                   <span className="text-dim">— Landstar reached back into paid loads:</span>{" "}
@@ -862,11 +862,11 @@ const CashFlowPage = () => {
               )}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 pb-4 pt-1">
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel · pace of the last four running weeks</p>
-                  <p className="font-condensed font-semibold tabular-nums text-[24px] text-amber-hi mt-1">
+                  <p className="text-[11.5px] uppercase tracking-[.12em] text-faint font-condensed">Fuel · pace of the last four running weeks</p>
+                  <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber-hi mt-1">
                     {fuelPace != null ? `${money(fuelPace)}/wk` : "no running week on the log"}
                   </p>
-                  <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
+                  <p className="font-condensed text-[12.5px] text-faint mt-1 leading-snug">
                     {lastPayWeek && (
                       <>last week <b className="text-dim tabular-nums">{money(lastPayWeek.amount)}</b> actual ({fills(lastPayWeek.fills)}) · </>
                     )}
@@ -879,25 +879,25 @@ const CashFlowPage = () => {
                   </p>
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Deductions · two buckets · ex-advances</p>
-                  <p className="font-condensed font-semibold tabular-nums text-[24px] text-amber-hi mt-1">
+                  <p className="text-[11.5px] uppercase tracking-[.12em] text-faint font-condensed">Deductions · two buckets · ex-advances</p>
+                  <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber-hi mt-1">
                     {buckets.standard != null ? money(buckets.standard) : "—"}
-                    <span className="text-[15px] text-faint"> · </span>
+                    <span className="text-[16px] text-faint"> · </span>
                     {buckets.firstOfMonth != null ? money(buckets.firstOfMonth) : "—"}
                   </p>
-                  <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
+                  <p className="font-condensed text-[12.5px] text-faint mt-1 leading-snug">
                     standard · first statement of the month (insurance)
                     {nextFirstStatement && <> · next first-of-month: <b className="text-dim">{md(nextFirstStatement)}</b></>}
                   </p>
                 </div>
                 <div className="ds2-well rounded-[10px] px-3.5 py-3">
-                  <p className="text-[10.5px] uppercase tracking-[.12em] text-faint font-condensed">Escrow balances</p>
-                  <p className="font-condensed font-semibold tabular-nums text-[24px] mt-1" style={{ color: "var(--color-chart-blue)" }}>
+                  <p className="text-[11.5px] uppercase tracking-[.12em] text-faint font-condensed">Escrow balances</p>
+                  <p className="font-condensed font-semibold tabular-nums text-[26px] mt-1" style={{ color: "var(--color-chart-blue)" }}>
                     {settlements[0]?.escrow_tractor == null && settlements[0]?.escrow_trailer == null
                       ? "—"
                       : moneyCents(Number(settlements[0]?.escrow_tractor ?? 0) + Number(settlements[0]?.escrow_trailer ?? 0))}
                   </p>
-                  <p className="font-condensed text-[11.5px] text-faint mt-1 leading-snug">
+                  <p className="font-condensed text-[12.5px] text-faint mt-1 leading-snug">
                     tractor {settlements[0]?.escrow_tractor == null ? "—" : moneyCents(Number(settlements[0].escrow_tractor))} · trailer {settlements[0]?.escrow_trailer == null ? "—" : moneyCents(Number(settlements[0].escrow_trailer))} — Landstar's hold that's still yours
                   </p>
                 </div>
@@ -911,10 +911,10 @@ const CashFlowPage = () => {
           <div
             className="flex items-center gap-3 px-4 py-[11px] border-b ds2-cell-rule"
           >
-            <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+            <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
               THE SIX-MONTH ROAD
             </span>
-            <span className="ml-auto font-condensed text-[12px] text-faint">
+            <span className="ml-auto font-condensed text-[13px] text-faint">
               {financials.length > 0 ? (
                 <>
                   last {actualsShown.length} actual months + 6 forecast · a full running month{" "}
@@ -985,9 +985,9 @@ const CashFlowPage = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-[13px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+                <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
                   <thead>
-                    <tr className="font-condensed text-[11px] tracking-[.1em] uppercase text-faint">
+                    <tr className="font-condensed text-[12px] tracking-[.1em] uppercase text-faint">
                       {["Month", "Net income", "Pretax margin", "+ Depreciation", "Financing", "Income tax", "Net change", "Ending", "Wks off"].map((h, i) => (
                         <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-3.5 py-2 border-b border-hairline whitespace-nowrap`}>{h}</th>
                       ))}
@@ -1016,7 +1016,7 @@ const CashFlowPage = () => {
                         <td className="text-left px-3.5 py-1.5 border-b border-hairline-lo">
                           {monthLabel(fm.month)} <span className="text-faint">◦</span>
                           {fm.weeksOff > 0 && (
-                            <span className="ml-2 font-condensed text-[10px] font-semibold tracking-[.06em] px-[7px] rounded-full border" style={{ color: "var(--color-chart-blue)", borderColor: "color-mix(in srgb, var(--color-chart-blue) 45%, transparent)" }}>
+                            <span className="ml-2 font-condensed text-[11px] font-semibold tracking-[.06em] px-[7px] rounded-full border" style={{ color: "var(--color-chart-blue)", borderColor: "color-mix(in srgb, var(--color-chart-blue) 45%, transparent)" }}>
                               {fm.weeksOff} wk home
                             </span>
                           )}
@@ -1038,7 +1038,7 @@ const CashFlowPage = () => {
                             min={0}
                             max={5}
                             step={0.5}
-                            className="w-14 bg-well border border-hairline rounded-[6px] px-1.5 py-0.5 text-right text-[12px] text-ink focus:outline-none focus:border-amber"
+                            className="w-14 bg-well border border-hairline rounded-[6px] px-1.5 py-0.5 text-right text-[13px] text-ink focus:outline-none focus:border-amber"
                             defaultValue={fm.weeksOff}
                             onBlur={(e) => {
                               const v = Number(e.target.value);
@@ -1063,7 +1063,7 @@ const CashFlowPage = () => {
               </div>
 
               {lastForecastEnd != null && (
-                <div className="mx-4 my-3 rounded-[8px] px-3.5 py-2.5 font-condensed text-[12.5px] text-dim" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "var(--shadow-inset)" }}>
+                <div className="mx-4 my-3 rounded-[8px] px-3.5 py-2.5 font-condensed text-[13.5px] text-dim" style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline-lo)", boxShadow: "var(--shadow-inset)" }}>
                   💰 <b className="text-ink tabular-nums">true spendable ≈ {money(lastForecastEnd - catchup)}</b>
                   {" — "}{monthLabel(forecast.months.at(-1)!.month)} ending {money(lastForecastEnd)} −{" "}
                   <b className="text-ink">{money(catchup)}</b> tax catch-up earmark · forecast = 6-actual average
@@ -1148,7 +1148,7 @@ export interface LedgerLine {
 
 // The little tags: OPEN · ACTUAL · EXPECTED · PROJECTED · YOU SAID · AT PACE.
 const BoardStamp = ({ children }: { children: string }) => (
-  <span className="ml-1.5 font-condensed font-semibold text-[11px] tracking-[.1em] uppercase text-amber-hi inline-block align-middle">
+  <span className="ml-1.5 font-condensed font-semibold text-[12px] tracking-[.1em] uppercase text-amber-hi inline-block align-middle">
     {children}
   </span>
 );
@@ -1174,17 +1174,17 @@ const LedgerRow = ({
       className={`grid grid-cols-[84px_1fr_auto] gap-x-3 px-4 py-2 border-b border-hairline-lo ${line.kind === "ending" ? "bg-rail" : ""}`}
       style={line.counted ? undefined : { opacity: 0.6 }}
     >
-      <div className="font-condensed text-[11px] tracking-[.06em] uppercase text-faint pt-[3px] whitespace-nowrap">{dShort(line.date)}</div>
+      <div className="font-condensed text-[12px] tracking-[.06em] uppercase text-faint pt-[3px] whitespace-nowrap">{dShort(line.date)}</div>
       <div className="min-w-0">
-        <div className={`font-condensed ${line.kind === "ending" ? "font-semibold text-ink" : "text-dim"} text-[13px]`}>{line.label}</div>
+        <div className={`font-condensed ${line.kind === "ending" ? "font-semibold text-ink" : "text-dim"} text-[14px]`}>{line.label}</div>
         {line.missing && line.missing.length > 0 ? (
           <div className="mt-0.5">
             <MissingInputLine what="place this line" missing={line.missing} onFix={onFix} />
           </div>
         ) : (
-          line.note && <div className="font-condensed text-[11px] text-faint leading-[1.35] mt-0.5">{line.note}</div>
+          line.note && <div className="font-condensed text-[12px] text-faint leading-[1.35] mt-0.5">{line.note}</div>
         )}
-        {line.flag && <div className="font-condensed text-[11px] text-amber-hi leading-[1.35] mt-0.5">{line.flag}</div>}
+        {line.flag && <div className="font-condensed text-[12px] text-amber-hi leading-[1.35] mt-0.5">{line.flag}</div>}
       </div>
       <div className="text-right whitespace-nowrap tabular-nums">
         {line.edit ? (
@@ -1192,13 +1192,13 @@ const LedgerRow = ({
             {line.amount != null && line.amount > 0 && !plain && <span style={{ color: tone }}>+</span>}
             <EditCell id={line.edit.id} editing={editing} setEditing={setEditing} value={line.edit.value} prefix="$" onCommit={line.edit.onCommit} />
             {line.edit.clear && (
-              <button className="ml-1 text-amber-hi hover:text-hot text-[11px]" onClick={line.edit.clear} title="drop what you said">
+              <button className="ml-1 text-amber-hi hover:text-hot text-[12px]" onClick={line.edit.clear} title="drop what you said">
                 ✕
               </button>
             )}
           </>
         ) : (
-          <span className={line.kind === "ending" ? "font-condensed font-semibold tabular-nums text-[22px]" : "font-semibold"} style={tone ? { color: tone } : undefined}>
+          <span className={line.kind === "ending" ? "font-condensed font-semibold tabular-nums text-[24px]" : "font-semibold"} style={tone ? { color: tone } : undefined}>
             {figure}
           </span>
         )}
@@ -1226,7 +1226,7 @@ const EditCell = ({
         type="number"
         step="0.01"
         defaultValue={original}
-        className="w-28 bg-well border border-amber rounded-[6px] px-2 py-0.5 text-right text-[13px] text-ink focus:outline-none"
+        className="w-28 bg-well border border-amber rounded-[6px] px-2 py-0.5 text-right text-[14px] text-ink focus:outline-none"
         onBlur={(e) => {
           const v = Number(e.target.value);
           // Tap-to-look must not freeze an override — only a CHANGED value commits.
@@ -1370,21 +1370,21 @@ const BillsPopup = ({
     }
   };
 
-  const SEL = "bg-well border border-hairline rounded-[6px] px-1.5 py-1 text-[12px] text-ink focus:outline-none focus:border-amber";
+  const SEL = "bg-well border border-hairline rounded-[6px] px-1.5 py-1 text-[13px] text-ink focus:outline-none focus:border-amber";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[640px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">THE BILLS</span>
-          <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">what drafts, and when</span>
+          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">THE BILLS</span>
+          <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">what drafts, and when</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
-          <table className="w-full text-[13px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+          <table className="w-full text-[14px] tabular-nums" style={{ borderCollapse: "collapse" }}>
             <thead>
-              <tr className="font-condensed text-[10.5px] tracking-[.08em] uppercase text-faint">
+              <tr className="font-condensed text-[11.5px] tracking-[.08em] uppercase text-faint">
                 <th className="text-left px-1 py-1 border-b border-hairline">Bill</th>
                 <th className="text-left px-1 py-1 border-b border-hairline">Category</th>
                 <th className="text-right px-1 py-1 border-b border-hairline">Day</th>
@@ -1400,7 +1400,7 @@ const BillsPopup = ({
                     <td className="text-left px-1 py-1.5 border-b border-hairline-lo">
                       {o.label}
                       {!o.on_pl && (
-                        <span className="ml-1.5 font-condensed text-[9.5px] text-faint uppercase tracking-[.06em]" title="break-even reads the principal amount, not this draft">
+                        <span className="ml-1.5 font-condensed text-[11px] text-faint uppercase tracking-[.06em]" title="break-even reads the principal amount, not this draft">
                           principal {moneyCents(o.amount)}
                         </span>
                       )}
@@ -1419,7 +1419,7 @@ const BillsPopup = ({
                       <input className={`${SEL} w-24 text-right`} type="number" step="0.01" value={st.amount} onChange={(e) => setRow(o.obligation_id, { amount: e.target.value })} />
                     </td>
                     <td className="text-right px-1 py-1.5 border-b border-hairline-lo whitespace-nowrap">
-                      <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[11px] uppercase tracking-[.08em] mr-2" onClick={() => saveRow(o)}>save</button>
+                      <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[12px] uppercase tracking-[.08em] mr-2" onClick={() => saveRow(o)}>save</button>
                       <button disabled={busy} className="text-faint hover:text-warn" title="remove from the draft calendar — stays active for break-even/payoff" onClick={() => removeRow(o)}>✕</button>
                     </td>
                   </tr>
@@ -1446,13 +1446,13 @@ const BillsPopup = ({
                   )}
                 </td>
                 <td className="text-right px-1 py-2">
-                  <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[11px] uppercase tracking-[.08em]" onClick={addBill}>+ add</button>
+                  <button disabled={busy} className="text-amber-hi hover:text-hot font-condensed text-[12px] uppercase tracking-[.08em]" onClick={addBill}>+ add</button>
                 </td>
               </tr>
             </tbody>
           </table>
-          {err && <p className="font-condensed text-[12px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
-          <p className="font-condensed text-[11px] text-faint mt-3 leading-[1.5]">
+          {err && <p className="font-condensed text-[13px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
+          <p className="font-condensed text-[12px] text-faint mt-3 leading-[1.5]">
             Loan/lease rows: the draft is the FULL bank payment — the break-even principal amount
             stays separate (shown in the chip, edited on{" "}
             <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>). ✕ removes a bill
@@ -1498,24 +1498,24 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[680px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">PASTE MONTHS</span>
-          <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">one row per month, straight from the QBO worksheet</span>
+          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">PASTE MONTHS</span>
+          <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">one row per month, straight from the QBO worksheet</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
-          <div className="font-mono text-[10.5px] rounded-[6px] px-2.5 py-2 overflow-x-auto whitespace-nowrap" style={{ color: "var(--color-amber-hi)", background: "var(--color-well)", border: "1px dashed color-mix(in srgb, var(--color-amber) 35%, transparent)" }}>
+          <div className="font-mono text-[11.5px] rounded-[6px] px-2.5 py-2 overflow-x-auto whitespace-nowrap" style={{ color: "var(--color-amber-hi)", background: "var(--color-well)", border: "1px dashed color-mix(in srgb, var(--color-amber) 35%, transparent)" }}>
             {FINANCIAL_COLUMNS.join(" · ")}
           </div>
           <textarea
-            className="w-full mt-3 bg-well border border-hairline rounded-[8px] px-3 py-2 text-[12px] font-mono text-ink min-h-[110px] focus:outline-none focus:border-amber"
+            className="w-full mt-3 bg-well border border-hairline rounded-[8px] px-3 py-2 text-[13px] font-mono text-ink min-h-[110px] focus:outline-none focus:border-amber"
             placeholder={"2026-07\t33552.45\t6521.97\t…  (tab or comma separated; header row ok; re-pasting a month updates it)"}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
           {parsed.length > 0 && (
-            <table className="w-full mt-3 text-[12px] tabular-nums" style={{ borderCollapse: "collapse" }}>
+            <table className="w-full mt-3 text-[13px] tabular-nums" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="font-condensed text-[10px] tracking-[.08em] uppercase text-faint">
+                <tr className="font-condensed text-[11px] tracking-[.08em] uppercase text-faint">
                   <th className="text-left px-2 py-1 border-b border-hairline">Month</th>
                   <th className="text-right px-2 py-1 border-b border-hairline">Net income</th>
                   <th className="text-right px-2 py-1 border-b border-hairline">Ending cash</th>
@@ -1536,20 +1536,20 @@ const PastePopup = ({ onClose, onCommitted }: { onClose: () => void; onCommitted
               </tbody>
             </table>
           )}
-          {err && <p className="text-[12px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
+          {err && <p className="text-[13px] mt-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
           <div className="flex items-center gap-2 mt-4">
             <button
               disabled={busy || good.length === 0 || bad.length > 0}
               onClick={commit}
-              className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40"
+              className="font-condensed font-bold text-[13px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40"
             >
               {busy ? "Committing…" : `Commit ${good.length} month${good.length === 1 ? "" : "s"}`}
             </button>
-            <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+            <button onClick={onClose} className="font-condensed font-semibold text-[13px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
               Cancel
             </button>
             {bad.length > 0 && (
-              <span className="font-condensed text-[11.5px]" style={{ color: "var(--color-warn)" }}>
+              <span className="font-condensed text-[12.5px]" style={{ color: "var(--color-warn)" }}>
                 fix {bad.length} flagged row{bad.length === 1 ? "" : "s"} first — the archive never takes half a paste
               </span>
             )}
@@ -1634,7 +1634,7 @@ const AssumptionsPopup = ({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">ASSUMPTIONS</span>
+          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">ASSUMPTIONS</span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         <div className="p-5">
@@ -1644,18 +1644,18 @@ const AssumptionsPopup = ({
               <input type="number" step="0.01" className={FIELD} value={f[key]} onChange={set(key)} />
             </div>
           ))}
-          {err && <p className="text-[12px] mb-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
-          <p className="font-condensed text-[11.5px] text-faint leading-[1.5]">
+          {err && <p className="text-[13px] mb-2" style={{ color: "var(--color-warn)" }}>{err}</p>}
+          <p className="font-condensed text-[12.5px] text-faint leading-[1.5]">
             The red line on both boards is the plan’s float{floatLine != null && <> ({money(floatLine)})</>} — edited on{" "}
             <Link to="/status" className="text-amber-hi hover:text-hot">Status</Link>, not here. Bills live with your
             obligations on <Link to="/expenses" className="text-amber-hi hover:text-hot">Expenses</Link>: category, draft
             day, and full draft amount; loan rows keep a separate break-even (principal) amount so nothing double-counts.
           </p>
           <div className="flex items-center gap-2 mt-4">
-            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[12px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
+            <button disabled={busy} onClick={save} className="font-condensed font-bold text-[13px] tracking-[.12em] uppercase text-on-amber bg-amber rounded-[8px] px-4 py-2 disabled:opacity-40">
               {busy ? "Saving…" : "Save"}
             </button>
-            <button onClick={onClose} className="font-condensed font-semibold text-[12px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
+            <button onClick={onClose} className="font-condensed font-semibold text-[13px] tracking-[.12em] uppercase text-faint border border-hairline rounded-[8px] px-3.5 py-2 hover:text-ink">
               Cancel
             </button>
           </div>
@@ -1721,8 +1721,8 @@ const OpsNowPopup = ({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto bg-canvas text-ink rounded-[12px] border border-hairline shadow-xl">
         <div className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule">
-          <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">OPS NOW</span>
-          <span className="font-condensed text-[11px] text-faint tracking-[.06em] uppercase">
+          <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">OPS NOW</span>
+          <span className="font-condensed text-[12px] text-faint tracking-[.06em] uppercase">
             the bank’s ops balance this morning
           </span>
           <button className="ml-auto text-faint hover:text-ink" aria-label="Close" onClick={onClose}>✕</button>
@@ -1739,11 +1739,11 @@ const OpsNowPopup = ({
           {dep && (
             <div className="mb-3">
               <span className={LBL}>{dayKey === today ? "Today’s deposit" : `The deposit dated ${md(dayKey!)}`}</span>
-              <label className="flex items-center gap-2 font-condensed text-[13.5px] text-ink cursor-pointer">
+              <label className="flex items-center gap-2 font-condensed text-[14.5px] text-ink cursor-pointer">
                 <input id="opsnow-landed" type="checkbox" checked={landed} onChange={(e) => setLanded(e.target.checked)} />
                 it has landed
               </label>
-              <p className="font-condensed text-[12px] text-faint mt-1">
+              <p className="font-condensed text-[13px] text-faint mt-1">
                 {dep.amount != null ? `Landstar’s ${money(dep.amount)}` : "a deposit"} is dated {dayKey === today ? "today" : md(dayKey!)} · unticked, the board keeps it still to come
               </p>
             </div>
@@ -1752,7 +1752,7 @@ const OpsNowPopup = ({
             <label className={LBL} htmlFor="opsnow-note">Note · optional</label>
             <input id="opsnow-note" className={FIELD} value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="before Friday’s payroll and the sweep" />
           </div>
-          <p className="font-condensed text-[12px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
+          <p className="font-condensed text-[13px] text-faint border border-dashed border-hairline rounded-[8px] px-3 py-2">
             {dayKey == null ? (
               <>pick the day the balance is from</>
             ) : future ? (
@@ -1769,9 +1769,9 @@ const OpsNowPopup = ({
           {err && <p className="mt-2 text-destructive text-sm">{err}</p>}
         </div>
         <div className="flex gap-2 justify-end px-5 pb-5">
-          <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline" onClick={onClose}>CANCEL</button>
+          <button className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline" onClick={onClose}>CANCEL</button>
           <button
-            className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+            className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
             disabled={busy || future}
             onClick={save}
           >

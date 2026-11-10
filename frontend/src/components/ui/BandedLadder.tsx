@@ -40,7 +40,7 @@ export const BandedLadder = ({
   return (
     <div className="mt-2">
       {label && (
-        <p className="font-condensed font-semibold text-[10.5px] tracking-[.14em] uppercase text-faint mb-[6px]">
+        <p className="font-condensed font-semibold text-[11.5px] tracking-[.14em] uppercase text-faint mb-[6px]">
           {label}
         </p>
       )}
@@ -51,7 +51,7 @@ export const BandedLadder = ({
             style={{ left: `${at(rpm) * 100}%` }}
             aria-hidden
           >
-            <span className="absolute -top-[14px] -left-[30px] font-condensed text-[9px] tracking-[.08em] text-faint whitespace-nowrap">
+            <span className="absolute -top-[14px] -left-[30px] font-condensed text-[11px] tracking-[.08em] text-faint whitespace-nowrap">
               YOU BOOK HERE · ${rpm.toFixed(2)}
             </span>
           </span>
@@ -61,7 +61,7 @@ export const BandedLadder = ({
           return <i key={ci} className="flex-1 h-[14px] rounded-[3px]" style={zone(v)} />;
         })}
       </div>
-      <div className="flex justify-between font-condensed text-[10.5px] text-faint mt-[6px] tabular-nums">
+      <div className="flex justify-between font-condensed text-[11.5px] text-faint mt-[6px] tabular-nums">
         <span>${ladder.walkAway.toFixed(2)} walk-away</span>
         <span>minimum · ${ladder.minimum.toFixed(2)}</span>
         <span>target · ${ladder.target.toFixed(2)}</span>
@@ -70,7 +70,7 @@ export const BandedLadder = ({
       {/* Both currencies, always: markup for the negotiation, margin for the
           goal — a +15% markup is only a 13% margin, and this line is where
           that stops being a surprise. */}
-      <div className="flex justify-between font-condensed text-[9.5px] text-faint mt-[2px] tabular-nums opacity-80">
+      <div className="flex justify-between font-condensed text-[11px] text-faint mt-[2px] tabular-nums opacity-80">
         <span>0% margin</span>
         {(["minimum", "target", "strong"] as const).map((k) => {
           const markup = ladder[k]! / ladder.walkAway! - 1;

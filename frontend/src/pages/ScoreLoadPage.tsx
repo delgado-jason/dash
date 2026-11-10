@@ -51,7 +51,7 @@ const GRADE_META: Record<MarketGrade, { label: string; color: string }> = {
 // ---- inputs ----
 const Lbl = ({ children, accent }: { children: ReactNode; accent?: boolean }) => (
   <div
-    className={`font-condensed uppercase tracking-widest text-[10px] mb-1 ${accent ? "text-amber" : "text-faint"}`}
+    className={`font-condensed uppercase tracking-widest text-[11px] mb-1 ${accent ? "text-amber" : "text-faint"}`}
   >
     {children}
   </div>
@@ -75,9 +75,9 @@ const NumField = ({
   <div
     className={`flex items-center justify-between px-3 py-2.5 rounded-lg bg-well border ${accent ? "border-amber/50" : "border-hairline"}`}
   >
-    <span className={`font-condensed text-[13px] ${accent ? "text-amber" : "text-dim"}`}>{label}</span>
+    <span className={`font-condensed text-[14px] ${accent ? "text-amber" : "text-dim"}`}>{label}</span>
     <span className="flex items-baseline gap-1">
-      {prefix && <span className="text-[12px] text-faint">{prefix}</span>}
+      {prefix && <span className="text-[13px] text-faint">{prefix}</span>}
       <input
         type="number"
         inputMode="decimal"
@@ -86,13 +86,13 @@ const NumField = ({
         placeholder="0"
         className="w-24 bg-transparent text-right text-lg outline-none font-condensed font-semibold tabular-nums text-ink"
       />
-      {suffix && <span className="text-[11px] text-faint">{suffix}</span>}
+      {suffix && <span className="text-[12px] text-faint">{suffix}</span>}
     </span>
   </div>
 );
 
 const cityInputCls =
-  "w-full bg-well border border-hairline rounded-lg px-2.5 py-2 text-[14px] text-ink outline-none focus:border-amber/60";
+  "w-full bg-well border border-hairline rounded-lg px-2.5 py-2 text-[15px] text-ink outline-none focus:border-amber/60";
 
 const PlaceRow = ({
   label,
@@ -152,18 +152,18 @@ const DimField = ({
         value={val.ft}
         placeholder="0"
         onChange={(e) => onChange({ ...val, ft: e.target.value })}
-        className="w-7 bg-transparent text-right outline-none text-ink text-[13px]"
+        className="w-7 bg-transparent text-right outline-none text-ink text-[14px]"
       />
-      <span className="text-[11px] text-faint mx-0.5">'</span>
+      <span className="text-[12px] text-faint mx-0.5">'</span>
       <input
         type="number"
         inputMode="numeric"
         value={val.in}
         placeholder="0"
         onChange={(e) => onChange({ ...val, in: e.target.value })}
-        className="w-7 bg-transparent text-right outline-none text-ink text-[13px]"
+        className="w-7 bg-transparent text-right outline-none text-ink text-[14px]"
       />
-      <span className="text-[11px] text-faint ml-0.5">"</span>
+      <span className="text-[12px] text-faint ml-0.5">"</span>
     </div>
   </div>
 );
@@ -222,7 +222,7 @@ const AgentField = ({
                 onQuery(agentLabel(a));
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-md cursor-pointer text-[14px] text-ink hover:bg-well"
+              className="flex items-center gap-2 px-2.5 py-2 rounded-md cursor-pointer text-[15px] text-ink hover:bg-well"
             >
               <span className="font-condensed font-semibold text-amber">{agentCode(a) || "—"}</span>
               <span className="text-dim">·</span>
@@ -416,10 +416,10 @@ const ScoreLoadPage = () => {
       <div className="flex items-center gap-3 mb-4">
         <SidebarTrigger />
         <div>
-          <p className="font-condensed uppercase tracking-widest text-[11px] text-amber leading-none">
+          <p className="font-condensed uppercase tracking-widest text-[12px] text-amber leading-none">
             Take it or leave it
           </p>
-          <h1 className="font-display text-[30px] text-ink leading-none mt-1">SCORE A LOAD</h1>
+          <h1 className="font-display text-[32.5px] text-ink leading-none mt-1">SCORE A LOAD</h1>
         </div>
       </div>
 
@@ -430,19 +430,19 @@ const ScoreLoadPage = () => {
             <button
               type="button"
               onClick={() => setScored(false)}
-              className="font-condensed text-[13px] text-dim hover:text-ink border border-hairline rounded-lg px-3 py-1.5"
+              className="font-condensed text-[14px] text-dim hover:text-ink border border-hairline rounded-lg px-3 py-1.5"
             >
               ‹ Score another
             </button>
-            <span className="font-condensed text-[15px] font-semibold text-ink">
+            <span className="font-condensed text-[16px] font-semibold text-ink">
               {pickup.city}, {pickup.state} <span className="text-faint">→</span>{" "}
               <span className="text-amber">{delivery.city}, {delivery.state}</span>
             </span>
             <div className="ml-auto flex items-baseline gap-3 flex-wrap">
-              <span className="font-condensed text-dim text-[13px]">${Number(rate).toLocaleString("en-US")}</span>
-              {agent && <span className="font-condensed text-dim text-[13px]">{agentLabel(agent)}</span>}
-              {isNewAgent && <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>NEW AGENT</span>}
-              <span className="font-condensed text-[12px] px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--color-cat2) 14%, transparent)", color: "var(--color-cat2)" }}>
+              <span className="font-condensed text-dim text-[14px]">${Number(rate).toLocaleString("en-US")}</span>
+              {agent && <span className="font-condensed text-dim text-[14px]">{agentLabel(agent)}</span>}
+              {isNewAgent && <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>NEW AGENT</span>}
+              <span className="font-condensed text-[13px] px-2 py-0.5 rounded" style={{ background: "color-mix(in srgb, var(--color-cat2) 14%, transparent)", color: "var(--color-cat2)" }}>
                 {specialized ? "Specialized" : "Flatbed"}
               </span>
             </div>
@@ -457,7 +457,7 @@ const ScoreLoadPage = () => {
               }}
             >
               <Lbl accent>The call</Lbl>
-              <p className="text-[14.5px] text-ink font-medium">{call.text}</p>
+              <p className="text-[15.5px] text-ink font-medium">{call.text}</p>
             </div>
           )}
 
@@ -470,10 +470,10 @@ const ScoreLoadPage = () => {
               </div>
               <div className="pl-5" style={{ borderLeft: "1px solid color-mix(in srgb, var(--color-ink) 8%, transparent)" }}>
                 <div className="flex items-baseline gap-2">
-                  <span className="font-condensed font-semibold tabular-nums text-[34px] text-ink">{fmtRpm(score.allInRpm)}</span>
-                  <span className="font-condensed text-[13px] text-dim">/ driven mi (all-in)</span>
+                  <span className="font-condensed font-semibold tabular-nums text-[36.5px] text-ink">{fmtRpm(score.allInRpm)}</span>
+                  <span className="font-condensed text-[14px] text-dim">/ driven mi (all-in)</span>
                 </div>
-                <div className="font-condensed text-[13px] text-dim mt-0.5">
+                <div className="font-condensed text-[14px] text-dim mt-0.5">
                   {score.pctOverBreakeven != null && (
                     <>
                       {score.pctOverBreakeven >= 0 ? "+" : ""}
@@ -485,7 +485,7 @@ const ScoreLoadPage = () => {
                   </span>{" "}
                   tiers, target +{Math.round(activeTiers.target * 100)}%
                 </div>
-                <div className="font-condensed text-[12px] text-faint mt-1">
+                <div className="font-condensed text-[13px] text-faint mt-1">
                   basis · cash · {targets.basis.windowLabel ?? "no P&L filed"} · {targets.basis.months} of{" "}
                   {targets.basis.monthsWanted} months filed
                   {monthSpread && <> · months ran {fmtRpm(monthSpread.lo)}–{fmtRpm(monthSpread.hi)}</>}
@@ -512,7 +512,7 @@ const ScoreLoadPage = () => {
                     }}
                   />
                 </div>
-                <div className="flex justify-between text-[8.5px] font-condensed tracking-wide mt-1">
+                <div className="flex justify-between text-[11px] font-condensed tracking-wide mt-1">
                   <span style={{ color: "var(--color-status-negative-text)" }}>SCRAP</span>
                   <span style={{ color: "var(--color-amber-hi)" }}>THIN</span>
                   <span style={{ color: "var(--color-cat2)" }}>SOLID</span>
@@ -528,19 +528,19 @@ const ScoreLoadPage = () => {
               <Lbl>Freight vs deadhead</Lbl>
               <div className="grid grid-cols-2 gap-2.5 mt-2 mb-2.5">
                 <Well className="px-3 py-2">
-                  <div className="font-condensed text-[11px]" style={{ color: "var(--color-cat2)" }}>FREIGHT</div>
-                  <div className="font-condensed font-semibold tabular-nums text-[20px] text-ink">
-                    {fmtRpm(score.loadedRpm)}<span className="font-condensed text-[11px] text-faint"> /loaded</span>
+                  <div className="font-condensed text-[12px]" style={{ color: "var(--color-cat2)" }}>FREIGHT</div>
+                  <div className="font-condensed font-semibold tabular-nums text-[21.5px] text-ink">
+                    {fmtRpm(score.loadedRpm)}<span className="font-condensed text-[12px] text-faint"> /loaded</span>
                   </div>
                 </Well>
                 <Well className="px-3 py-2">
-                  <div className="font-condensed text-[11px] text-amber">DEADHEAD</div>
-                  <div className="font-condensed font-semibold tabular-nums text-[20px] text-ink">
-                    {deadMi == null ? "—" : deadMi.toLocaleString("en-US")}<span className="font-condensed text-[11px] text-faint">{deadMi == null || deadShare == null ? " needs the odometer" : ` mi · ${Math.round(deadShare * 100)}%`}</span>
+                  <div className="font-condensed text-[12px] text-amber">DEADHEAD</div>
+                  <div className="font-condensed font-semibold tabular-nums text-[21.5px] text-ink">
+                    {deadMi == null ? "—" : deadMi.toLocaleString("en-US")}<span className="font-condensed text-[12px] text-faint">{deadMi == null || deadShare == null ? " needs the odometer" : ` mi · ${Math.round(deadShare * 100)}%`}</span>
                   </div>
                 </Well>
               </div>
-              <p className="text-[12.5px] text-dim">
+              <p className="text-[13.5px] text-dim">
                 {deadShare == null
                   ? "Deadhead unknown — needs the odometer. Type it in (0 only if the truck is already there) and this reads."
                   : freightDrag
@@ -550,7 +550,7 @@ const ScoreLoadPage = () => {
                     : "Freight rate and all-in are close; deadhead isn't the story here."}
               </p>
               {toll != null && (
-                <p className="text-[11.5px] text-faint mt-2">Est. tolls ≈ {money(toll)} · bill as accessorial (Landstar pays 100%)</p>
+                <p className="text-[12.5px] text-faint mt-2">Est. tolls ≈ {money(toll)} · bill as accessorial (Landstar pays 100%)</p>
               )}
             </div>
 
@@ -559,18 +559,18 @@ const ScoreLoadPage = () => {
               <div className="flex items-center justify-between gap-2">
                 <Lbl>Destination · where it leaves you</Lbl>
                 <span
-                  className="font-condensed font-bold text-[16px] uppercase tracking-[.04em]"
+                  className="font-condensed font-bold text-[17.5px] uppercase tracking-[.04em]"
                   style={{ color: destFactor.market ? GRADE_META[destFactor.market.grade].color : "var(--color-faint)" }}
                 >
                   {destFactor.market ? GRADE_META[destFactor.market.grade].label : "UNPROVEN"}
                 </span>
               </div>
-              <div className="font-condensed text-[15px] font-semibold text-ink mt-1">
+              <div className="font-condensed text-[16px] font-semibold text-ink mt-1">
                 {delivery.city}, {delivery.state}
               </div>
               {destFactor.market ? (
                 <Well className="px-3 py-2 mt-2">
-                  <div className="text-[11.5px] text-dim">
+                  <div className="text-[12.5px] text-dim">
                     Your {destFactor.state} outbound:{" "}
                     <span style={{ color: GRADE_META[destFactor.market.grade].color }}>
                       {destFactor.market.loadsOut} load{destFactor.market.loadsOut === 1 ? "" : "s"}
@@ -580,18 +580,18 @@ const ScoreLoadPage = () => {
                   </div>
                 </Well>
               ) : (
-                <div className="text-[11.5px] text-dim mt-2">
+                <div className="text-[12.5px] text-dim mt-2">
                   No outbound history from {destFactor.state || "here"} yet — unproven for you.
                 </div>
               )}
               {destFactor.strongMarkets.length > 0 && (
                 <>
-                  <div className="text-[11px] text-faint mt-2.5">Your strong outbound:</div>
+                  <div className="text-[12px] text-faint mt-2.5">Your strong outbound:</div>
                   <div className="flex gap-1.5 flex-wrap mt-1">
                     {destFactor.strongMarkets.map((m) => (
                       <span
                         key={m.state}
-                        className="font-condensed text-[11.5px] px-2 py-0.5 rounded"
+                        className="font-condensed text-[12.5px] px-2 py-0.5 rounded"
                         style={{ background: "color-mix(in srgb, var(--color-cat2) 12%, transparent)", color: "var(--color-cat2)" }}
                       >
                         {m.state} {fmtRpm(m.medianRpm)} · {m.loadsOut}
@@ -601,7 +601,7 @@ const ScoreLoadPage = () => {
                 </>
               )}
               {destFactor.nearestStrong && (
-                <p className="text-[11.5px] text-dim mt-2.5">
+                <p className="text-[12.5px] text-dim mt-2.5">
                   Nearest strong freight ~{Math.round(destFactor.nearestStrong.miles)} mi ({destFactor.nearestStrong.city}, {destFactor.nearestStrong.state})
                 </p>
               )}
@@ -611,11 +611,11 @@ const ScoreLoadPage = () => {
               <Lbl>Agent</Lbl>
               {agent ? (
                 <>
-                  <Link to={`/agents/${agent.agent_id}`} className="font-condensed text-[16px] text-amber hover:text-hot">
+                  <Link to={`/agents/${agent.agent_id}`} className="font-condensed text-[17.5px] text-amber hover:text-hot">
                     {agentLabel(agent)}
                   </Link>
                   {agentCard && agentCard.loadCount > 0 ? (
-                    <div className="text-[12.5px] text-dim mt-1.5 leading-relaxed">
+                    <div className="text-[13.5px] text-dim mt-1.5 leading-relaxed">
                       {agentCard.loadCount} load{agentCard.loadCount === 1 ? "" : "s"} together
                       {agentCard.medianRpm != null ? ` · ${fmtRpm(agentCard.medianRpm)}/mi avg` : ""}
                       <br />
@@ -623,16 +623,16 @@ const ScoreLoadPage = () => {
                       {agentCard.daysSince != null ? ` · last ${agentCard.daysSince}d ago` : ""}
                     </div>
                   ) : (
-                    <div className="text-[12.5px] text-dim mt-1.5">No delivered history yet with this agent.</div>
+                    <div className="text-[13.5px] text-dim mt-1.5">No delivered history yet with this agent.</div>
                   )}
                 </>
               ) : isNewAgent ? (
-                <div className="text-[12.5px] text-dim mt-1">
-                  <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase mr-1.5" style={{ color: "var(--color-cat2)" }}>NEW</span>
+                <div className="text-[13.5px] text-dim mt-1">
+                  <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase mr-1.5" style={{ color: "var(--color-cat2)" }}>NEW</span>
                   No history yet — the rate scores on its own; the relationship builds once you book.
                 </div>
               ) : (
-                <div className="text-[12.5px] text-faint mt-1">No agent entered.</div>
+                <div className="text-[13.5px] text-faint mt-1">No agent entered.</div>
               )}
             </div>
 
@@ -641,22 +641,22 @@ const ScoreLoadPage = () => {
                 <Lbl>What to ask the agent</Lbl>
                 <div className="mt-2 flex flex-col gap-2">
                   <Well className="flex items-baseline justify-between px-3 py-1.5">
-                    <span className="font-condensed text-[11px]" style={{ color: "var(--color-status-negative-text)" }}>FLOOR</span>
-                    <span className="font-condensed font-semibold tabular-nums text-[18px] text-ink">{money(counter.floor)}</span>
+                    <span className="font-condensed text-[12px]" style={{ color: "var(--color-status-negative-text)" }}>FLOOR</span>
+                    <span className="font-condensed font-semibold tabular-nums text-[19.5px] text-ink">{money(counter.floor)}</span>
                   </Well>
                   <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
-                    <span className="font-condensed text-[11px]" style={{ color: "var(--color-cat2)" }}>SOLID</span>
-                    <span className="font-condensed font-semibold tabular-nums text-[18px]" style={{ color: "var(--color-cat2)" }}>{money(counter.take)}</span>
+                    <span className="font-condensed text-[12px]" style={{ color: "var(--color-cat2)" }}>SOLID</span>
+                    <span className="font-condensed font-semibold tabular-nums text-[19.5px]" style={{ color: "var(--color-cat2)" }}>{money(counter.take)}</span>
                   </Well>
                   <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-hot) 45%, transparent)" }}>
-                    <span className="font-condensed text-[11px]" style={{ color: "var(--color-hot)" }}>PRIME</span>
-                    <span className="font-condensed font-semibold tabular-nums text-[18px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
+                    <span className="font-condensed text-[12px]" style={{ color: "var(--color-hot)" }}>PRIME</span>
+                    <span className="font-condensed font-semibold tabular-nums text-[19.5px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
                   </Well>
                 </div>
               </div>
             ) : (
               <div className="ds2-board p-4 flex items-center justify-center text-center">
-                <p className="text-[12.5px] text-dim">
+                <p className="text-[13.5px] text-dim">
                   Already clears your target — no counter needed. Book it before it's gone.
                 </p>
               </div>
@@ -668,7 +668,7 @@ const ScoreLoadPage = () => {
         <div className="ds2-board mx-auto p-4 sm:p-5" style={{ maxWidth: 440 }}>
           <NumField label="Rate" value={rate} onChange={setRate} prefix="$" />
 
-          <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
+          <p className="font-condensed uppercase tracking-widest text-[11px] text-faint mt-4 mb-1.5">
             Route <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— city autocompletes</span>
           </p>
           <PlaceRow label="Truck now" place={truckNow} onChange={setTruck} />
@@ -680,15 +680,15 @@ const ScoreLoadPage = () => {
             <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
             {isNewAgent && (
               <div className="mt-1.5 flex items-center gap-2">
-                <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>
+                <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>
                   NEW AGENT
                 </span>
-                <span className="text-[11px] text-dim">no history yet · not saved until you book</span>
+                <span className="text-[12px] text-dim">no history yet · not saved until you book</span>
               </div>
             )}
           </div>
 
-          <p className="font-condensed uppercase tracking-widest text-[10px] text-faint mt-4 mb-1.5">
+          <p className="font-condensed uppercase tracking-widest text-[11px] text-faint mt-4 mb-1.5">
             Load size <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— leave blank if legal</span>
           </p>
           <div className="mb-2">
@@ -704,24 +704,24 @@ const ScoreLoadPage = () => {
             className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer select-none bg-well border ${hazmat ? "border-amber/60" : "border-hairline"}`}
           >
             <input type="checkbox" checked={hazmat} onChange={(e) => setHazmat(e.target.checked)} className="accent-amber" />
-            <span className="text-[12.5px] text-ink">Hazmat</span>
-            <span className="ml-auto text-[10px] text-faint">premium · specialized tiers</span>
+            <span className="text-[13.5px] text-ink">Hazmat</span>
+            <span className="ml-auto text-[11px] text-faint">premium · specialized tiers</span>
           </label>
 
           {anyDim &&
             (oversize.oversize ? (
               <div className="flex items-start gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "var(--color-status-aware-bg)", border: "1px solid color-mix(in srgb, var(--color-amber) 50%, transparent)" }}>
-                <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase text-amber">OVERSIZE</span>
-                <span className="text-[11px] mt-0.5 text-dim">{oversize.reasons.join(" · ")} → specialized tiers</span>
+                <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase text-amber">OVERSIZE</span>
+                <span className="text-[12px] mt-0.5 text-dim">{oversize.reasons.join(" · ")} → specialized tiers</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg" style={{ background: "var(--color-status-positive-bg)", border: "1px solid color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
-                <span className="font-condensed font-semibold text-[11px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>LEGAL</span>
-                <span className="text-[11px] text-dim">standard flatbed → standard tiers</span>
+                <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>LEGAL</span>
+                <span className="text-[12px] text-dim">standard flatbed → standard tiers</span>
               </div>
             ))}
 
-          <div className="text-[10px] mt-3 mb-1" style={{ color: routeErr ? "var(--color-amber)" : "var(--color-faint)" }}>
+          <div className="text-[11px] mt-3 mb-1" style={{ color: routeErr ? "var(--color-amber)" : "var(--color-faint)" }}>
             {routeNote}
           </div>
           <div className="flex gap-2.5">
@@ -743,14 +743,14 @@ const ScoreLoadPage = () => {
                 type="button"
                 onClick={() => setScored(true)}
                 disabled={!canScore}
-                className={`w-full mt-5 py-3 rounded-lg font-condensed font-semibold text-[17px] tracking-[.08em] transition-colors ${
+                className={`w-full mt-5 py-3 rounded-lg font-condensed font-semibold text-[18.5px] tracking-[.08em] transition-colors ${
                   canScore ? "bg-amber text-on-amber hover:brightness-110" : "bg-well text-faint border border-hairline cursor-not-allowed"
                 }`}
               >
                 SCORE IT ▸
               </button>
               {!canScore && (
-                <p className="text-[11px] text-faint text-center mt-1.5">enter a rate, loaded miles, and deadhead to score — type 0 deadhead only if the truck is already there</p>
+                <p className="text-[12px] text-faint text-center mt-1.5">enter a rate, loaded miles, and deadhead to score — type 0 deadhead only if the truck is already there</p>
               )}
             </>
           )}

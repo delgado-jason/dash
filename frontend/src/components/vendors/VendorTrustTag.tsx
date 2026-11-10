@@ -27,7 +27,7 @@ export const VendorTrustTag = ({ rating }: { rating: number | null | undefined }
   const trust = vendorTrust(rating);
   if (!trust) return null;
   return (
-    <span className={`font-condensed font-bold text-[10.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] ${TAG_CLASS[trust]}`}>
+    <span className={`font-condensed font-bold text-[11.5px] tracking-[.12em] px-[7px] py-[2px] rounded-[4px] ${TAG_CLASS[trust]}`}>
       {TAG_LABEL[trust]}
     </span>
   );

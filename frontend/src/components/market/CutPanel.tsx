@@ -30,10 +30,10 @@ export const CutPanel = ({ plan }: { plan: CutPlan }) => {
   return (
     <div className="ds2-board overflow-hidden mt-3" style={{ background: "var(--color-well)" }}>
       <div className="px-4 pt-3 pb-2.5 border-b border-hairline">
-        <div className="text-[11.5px] font-bold uppercase tracking-[.07em]" style={{ color: "var(--color-status-negative-text)" }}>
+        <div className="text-[12.5px] font-bold uppercase tracking-[.07em]" style={{ color: "var(--color-status-negative-text)" }}>
           A cut plan from your books — to get back to break-even
         </div>
-        <p className="text-[12.5px] text-dim mt-1 leading-snug">
+        <p className="text-[13.5px] text-dim mt-1 leading-snug">
           You need about <span className="text-ink font-semibold">{money(plan.gapNeeded)}/mo</span>. Cheapest,
           least-painful first — pulled from <span className="text-ink">your</span> spend, balanced to hit the number
           (never a canned list).
@@ -47,26 +47,26 @@ export const CutPanel = ({ plan }: { plan: CutPlan }) => {
             className="grid grid-cols-[1fr_auto] items-baseline gap-x-3.5 py-2.5 border-t border-hairline/60 first:border-t-0"
           >
             <div>
-              <span className="text-[13.5px] text-ink">{l.category}</span>
+              <span className="text-[14.5px] text-ink">{l.category}</span>
               <span
-                className="ml-2 text-[9.5px] uppercase tracking-[.05em] font-bold rounded px-1.5 py-px"
+                className="ml-2 text-[11px] uppercase tracking-[.05em] font-bold rounded px-1.5 py-px"
                 style={{ color: TIER_COLOR[l.tier], background: tint(TIER_COLOR[l.tier], 0.11), border: `1px solid ${tint(TIER_COLOR[l.tier], 0.3)}` }}
               >
                 {TIER_LABEL[l.tier]}
               </span>
-              <div className="text-[11px] text-faint mt-0.5">{l.reason}</div>
+              <div className="text-[12px] text-faint mt-0.5">{l.reason}</div>
             </div>
-            <div className="font-condensed text-[16px]" style={{ color: l.tier === "last_resort" ? "var(--color-status-negative-text)" : "var(--color-cat2)" }}>
+            <div className="font-condensed text-[17.5px]" style={{ color: l.tier === "last_resort" ? "var(--color-status-negative-text)" : "var(--color-cat2)" }}>
               −{money(l.amount)}
             </div>
           </div>
         ))}
 
         <div className="grid grid-cols-[1fr_auto] gap-x-3.5 pt-2.5 pb-1 mt-1 border-t border-hairline">
-          <div className="font-condensed font-bold text-[14px]" style={{ color: plan.reachesGap ? "var(--color-cat2)" : "var(--color-amber-hi)" }}>
+          <div className="font-condensed font-bold text-[15px]" style={{ color: plan.reachesGap ? "var(--color-cat2)" : "var(--color-amber-hi)" }}>
             {plan.reachesGap ? "Plan total — closes the gap" : "Plan total — as far as safe cuts reach"}
           </div>
-          <div className="font-condensed font-bold text-[17px]" style={{ color: plan.reachesGap ? "var(--color-cat2)" : "var(--color-amber-hi)" }}>
+          <div className="font-condensed font-bold text-[18.5px]" style={{ color: plan.reachesGap ? "var(--color-cat2)" : "var(--color-amber-hi)" }}>
             −{money(plan.planTotal)}
           </div>
         </div>
@@ -74,12 +74,12 @@ export const CutPanel = ({ plan }: { plan: CutPlan }) => {
 
       <div className="px-4 pb-3.5 pt-2">
         {!plan.reachesGap && (
-          <p className="text-[12px] mt-1 mb-2 leading-snug" style={{ color: "var(--color-amber-hi)" }}>
+          <p className="text-[13px] mt-1 mb-2 leading-snug" style={{ color: "var(--color-amber-hi)" }}>
             Even after every safe cut you're about <span className="font-semibold">{money(plan.shortfall)}/mo</span> short —
             that last stretch has to come from rate or home time, not more cost-cutting.
           </p>
         )}
-        <p className="text-[11px] text-faint leading-relaxed">
+        <p className="text-[12px] text-faint leading-relaxed">
           {plan.offLimits.length > 0 && (
             <>
               <span style={{ color: "var(--color-faint)" }}>🔒 Off-limits (never cut):</span>{" "}

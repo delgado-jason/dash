@@ -75,7 +75,7 @@ export const RateDial = ({
           · pricing for {pct1(margin)} margin
         </span>
         {!atFloor && !under && (
-          <span className="text-[11px]" style={{ color: "var(--color-status-positive-text)" }}>
+          <span className="text-[12px]" style={{ color: "var(--color-status-positive-text)" }}>
             {Math.round((margin - goal) * 10) / 10} pts above your {goal}% goal — your padding
           </span>
         )}
@@ -91,11 +91,11 @@ export const RateDial = ({
         </div>
         {/* fixed markers: break-even and the goal */}
         <span className="absolute" style={{ left: posOf(0), top: 14, width: 2, height: 28, background: "var(--color-ink)", opacity: 0.85 }} />
-        <span className="absolute text-[10px] text-muted-text" style={{ left: posOf(0), top: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
+        <span className="absolute text-[11px] text-muted-text" style={{ left: posOf(0), top: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
           break-even 0%
         </span>
         <span className="absolute" style={{ left: posOf(goal), top: 14, width: 2, height: 28, background: "var(--color-ink)", opacity: 0.85 }} />
-        <span className="absolute text-[10px] text-muted-text" style={{ left: posOf(goal), top: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
+        <span className="absolute text-[11px] text-muted-text" style={{ left: posOf(goal), top: 0, transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
           your goal {goal}%
         </span>
         <input
@@ -109,24 +109,24 @@ export const RateDial = ({
           className="rate-dial-range absolute"
           style={{ left: `${zx(0)}%`, right: 0, top: 16, height: 24, ["--dial-thumb" as string]: atFloor ? "var(--color-status-negative-text)" : "var(--color-amber-hi)" }}
         />
-        <span className="absolute text-[10px] text-muted-text" style={{ left: 0, bottom: 0 }}>−10%</span>
-        <span className="absolute text-[10px] text-muted-text" style={{ right: 0, bottom: 0 }}>45%</span>
+        <span className="absolute text-[11px] text-muted-text" style={{ left: 0, bottom: 0 }}>−10%</span>
+        <span className="absolute text-[11px] text-muted-text" style={{ right: 0, bottom: 0 }}>45%</span>
       </div>
 
       {atFloor && (
-        <p className="text-[12px] mt-2 font-semibold" style={{ color: "var(--color-status-negative-text)" }}>
+        <p className="text-[13px] mt-2 font-semibold" style={{ color: "var(--color-status-negative-text)" }}>
           ⚠ AT BREAK-EVEN — the handle stops here. Everything left of the marker is
           the red zone: every mile there pays the agency.
         </p>
       )}
       {under && (
-        <p className="text-[12px] mt-2" style={{ color: "var(--color-amber)" }}>
+        <p className="text-[13px] mt-2" style={{ color: "var(--color-amber)" }}>
           Pricing under your {goal}% goal — slippage lands below it. Down-market mode; watch the volume.
         </p>
       )}
 
       {/* live readout — both currencies plus this week's actual dollars */}
-      <div className="text-[11px] text-muted-text mt-2.5">
+      <div className="text-[12px] text-muted-text mt-2.5">
         {be != null ? (
           <>
             {pct1(margin)} margin ⇒{" "}
@@ -142,19 +142,19 @@ export const RateDial = ({
       <div className="grid grid-cols-3 gap-2 mt-2">
         {stored.map((r, i) => (
           <div key={r.key} className="rounded px-2 py-1.5" style={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline)" }}>
-            <div className="text-[10px] uppercase tracking-wide text-muted-text">
+            <div className="text-[11px] uppercase tracking-wide text-muted-text">
               {["Minimum", "Target", "Strong"][i]}
             </div>
             <div className="text-sm tabular-nums font-semibold" style={{ color: ["var(--color-muted-text)", "var(--color-amber)", "var(--color-status-positive-text)"][i] }}>
               {at(r.markup)}
             </div>
-            <div className="text-[10px] text-muted-text tabular-nums">
+            <div className="text-[11px] text-muted-text tabular-nums">
               {pct1(r.margin * 100)} margin · +{pct1(r.markup * 100)}
             </div>
           </div>
         ))}
       </div>
-      <div className="text-[10.5px] text-muted-text mt-1.5">
+      <div className="text-[11.5px] text-muted-text mt-1.5">
         walk-away {be != null ? `$${be.toFixed(2)}` : "—"} · cash{windowLabel ? ` · ${windowLabel}` : ""} · live — moves with your break-even
       </div>
     </div>

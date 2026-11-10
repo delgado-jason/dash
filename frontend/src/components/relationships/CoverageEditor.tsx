@@ -75,7 +75,7 @@ export const CoverageEditor = ({
     <div>
       <div className="flex flex-wrap gap-2 mb-3">
         {rows.length === 0 && (
-          <span className="text-faint text-[13px] italic">{emptyText}</span>
+          <span className="text-faint text-[14px] italic">{emptyText}</span>
         )}
         {rows.map((c) => (
           <span
@@ -85,7 +85,7 @@ export const CoverageEditor = ({
                 ? "Confirmed — a load has come out of this market"
                 : "Claimed — they said so; no load from here yet"
             }
-            className={`inline-flex items-center gap-2 px-[11px] py-[7px] rounded-[9px] text-[13.5px] text-ink ${
+            className={`inline-flex items-center gap-2 px-[11px] py-[7px] rounded-[9px] text-[14.5px] text-ink ${
               c.source === "confirmed"
                 ? "border border-status-positive-text bg-status-positive-text/10"
                 : "border border-dashed border-dim bg-white/5"
@@ -100,14 +100,14 @@ export const CoverageEditor = ({
             />
             {c.city}, {c.state}
             {c.shipper_name && (
-              <span className="font-condensed text-[12.5px] tracking-[.04em] text-dim">
+              <span className="font-condensed text-[13.5px] tracking-[.04em] text-dim">
                 {c.shipper_name}
               </span>
             )}
             <button
               onClick={() => remove(c.coverage_id)}
               aria-label={`Remove ${c.city}, ${c.state}`}
-              className="text-dim hover:text-ink text-[15px] leading-none"
+              className="text-dim hover:text-ink text-[16px] leading-none"
             >
               ×
             </button>
@@ -128,27 +128,27 @@ export const CoverageEditor = ({
               setPicked({ city, state });
             }}
             placeholder="Start typing a city…"
-            inputClassName="w-full bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[14px]"
+            inputClassName="w-full bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[15px]"
           />
         </div>
         <input
           value={shipper}
           onChange={(e) => setShipper(e.target.value)}
           placeholder="Shipper (optional)"
-          className="w-[150px] bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[14px] placeholder:text-faint"
+          className="w-[150px] bg-canvas border border-hairline rounded-[8px] px-3 py-[10px] text-ink text-[15px] placeholder:text-faint"
         />
         <button
           onClick={add}
           disabled={!picked || busy}
-          className="bg-plate text-ink rounded-[8px] px-4 font-semibold text-[14px] disabled:bg-hairline disabled:text-faint disabled:cursor-not-allowed"
+          className="bg-plate text-ink rounded-[8px] px-4 font-semibold text-[15px] disabled:bg-hairline disabled:text-faint disabled:cursor-not-allowed"
         >
           Add
         </button>
       </div>
 
-      {err && <p className="text-status-negative-text text-[13px] mt-2">{err}</p>}
+      {err && <p className="text-status-negative-text text-[14px] mt-2">{err}</p>}
 
-      <p className="text-dim text-[12.5px] mt-[11px] leading-[1.5]">
+      <p className="text-dim text-[13.5px] mt-[11px] leading-[1.5]">
         <b className="text-ink">Pick the city from the dropdown</b> — a typed
         city has no coordinate, so the Foreman can't place it. Shipper name is
         optional; a market on its own is worth having.

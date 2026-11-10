@@ -244,8 +244,8 @@ const ExpensesPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">EXPENSES</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">EXPENSES</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the books — what it costs to run
           </span>
           <span className="flex-1" />
@@ -264,7 +264,7 @@ const ExpensesPage = () => {
                     role="tab"
                     aria-selected={selectedId === per.period_id}
                     onClick={() => setSelectedId(per.period_id)}
-                    className={`px-2.5 rounded-md font-condensed font-semibold text-[12px] whitespace-nowrap ${
+                    className={`px-2.5 rounded-md font-condensed font-semibold text-[13px] whitespace-nowrap ${
                       selectedId === per.period_id
                         ? "bg-amber text-canvas"
                         : "text-dim hover:text-ink"
@@ -277,7 +277,7 @@ const ExpensesPage = () => {
           )}
           <button
             onClick={() => setShowUpload(true)}
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
           >
             UPLOAD P&L
           </button>
@@ -308,10 +308,10 @@ const ExpensesPage = () => {
           <>
             {/* the month sentence */}
             <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-              <span className="font-display text-[21px] tracking-[.03em] uppercase">
+              <span className="font-display text-[22.5px] tracking-[.03em] uppercase">
                 {selected.period_label}
               </span>
-              <span className="text-[13.5px] text-faint">
+              <span className="text-[14.5px] text-faint">
                 {selected && selected.income_total == null && selected.cogs_total == null && selected.expense_total == null && (
                   <span className="font-semibold" style={{ color: "var(--color-warn)" }}>
                     this month was saved without its totals — re-upload its P&L ·{" "}
@@ -364,18 +364,18 @@ const ExpensesPage = () => {
                     className={`px-4 py-3 ${ki < 4 ? "md:border-r" : ""} ${ki < 2 ? "border-b md:border-b-0" : ""} ds2-cell-rule`}
                   >
                     <p
-                      className="font-condensed font-semibold text-[22px] tabular-nums"
+                      className="font-condensed font-semibold text-[24px] tabular-nums"
                       style={"pos" in k && k.pos != null ? { color: k.pos ? "var(--color-status-positive-text)" : "var(--color-status-negative-text)" } : undefined}
                     >
                       {k.v}
                     </p>
-                    <p className="font-condensed text-[10.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
+                    <p className="font-condensed text-[11.5px] tracking-[.12em] uppercase text-faint mt-[2px]">
                       {k.l}
                     </p>
                   </div>
                 ))}
               </div>
-              <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+              <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
                 <b className="text-dim">Cost / total mile</b> is over every mile you drive;{" "}
                 <b className="text-dim">break-even / loaded mile</b> spreads that same cost over
                 only the paid miles — the gap is your deadhead. Per-mile figures blend{" "}
@@ -385,7 +385,7 @@ const ExpensesPage = () => {
                 {obligationsCost > 0 && ` Cost includes ${money(obligationsCost)}/mo of notes.`}
               </div>
               {targets.basis.missingLabel && (
-                <div className="px-4 py-[6px] border-t ds2-cell-rule font-condensed text-[12.5px] text-amber-hi">
+                <div className="px-4 py-[6px] border-t ds2-cell-rule font-condensed text-[13.5px] text-amber-hi">
                   ⚠ no P&L filed for {targets.basis.missingLabel} — the blend stops short of it. Upload
                   the month above and every blended number here and on the Market page moves.
                 </div>
@@ -400,48 +400,48 @@ const ExpensesPage = () => {
             {burn && !costUnsure && (
               <div className="ds2-board overflow-hidden mt-4">
                 <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                     The burn — sit vs run
                   </span>
-                  <span className="font-condensed text-[12px] text-faint">
+                  <span className="font-condensed text-[13px] text-faint">
                     · daily and weekly · {basisWord} · {windowFull.length}-month blend + your notes
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2">
                   <div className="px-[18px] py-[14px] sm:border-r border-b sm:border-b-0 ds2-cell-rule">
-                    <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase" style={{ color: "var(--color-chart-blue)" }}>
+                    <p className="font-condensed font-bold text-[12px] tracking-[.14em] uppercase" style={{ color: "var(--color-chart-blue)" }}>
                       Cost to sit
                     </p>
-                    <p className="font-condensed font-semibold text-[34px] mt-1 tabular-nums">
+                    <p className="font-condensed font-semibold text-[36.5px] mt-1 tabular-nums">
                       {money(burn.sitDaily)}
-                      <span className="font-condensed text-[14px] text-faint"> / day</span>
+                      <span className="font-condensed text-[15px] text-faint"> / day</span>
                     </p>
-                    <p className="font-condensed font-semibold text-[17px] mt-[2px] tabular-nums text-dim">
+                    <p className="font-condensed font-semibold text-[18.5px] mt-[2px] tabular-nums text-dim">
                       {money(burn.sitWeekly)}
-                      <span className="text-[12px] text-faint"> / week</span>
+                      <span className="text-[13px] text-faint"> / week</span>
                     </p>
-                    <p className="font-condensed text-[11px] text-faint mt-[6px]">
+                    <p className="font-condensed text-[12px] text-faint mt-[6px]">
                       fixed costs + the notes — bleeding whether the truck moves or not
                     </p>
                   </div>
                   <div className="px-[18px] py-[14px]">
-                    <p className="font-condensed font-bold text-[11px] tracking-[.14em] uppercase text-amber-hi">
+                    <p className="font-condensed font-bold text-[12px] tracking-[.14em] uppercase text-amber-hi">
                       Cost to run
                     </p>
-                    <p className="font-condensed font-semibold text-[34px] mt-1 tabular-nums">
+                    <p className="font-condensed font-semibold text-[36.5px] mt-1 tabular-nums">
                       {money(burn.runDaily)}
-                      <span className="font-condensed text-[14px] text-faint"> / day</span>
+                      <span className="font-condensed text-[15px] text-faint"> / day</span>
                     </p>
-                    <p className="font-condensed font-semibold text-[17px] mt-[2px] tabular-nums text-dim">
+                    <p className="font-condensed font-semibold text-[18.5px] mt-[2px] tabular-nums text-dim">
                       {money(burn.runWeekly)}
-                      <span className="text-[12px] text-faint"> / week</span>
+                      <span className="text-[13px] text-faint"> / week</span>
                     </p>
-                    <p className="font-condensed text-[11px] text-faint mt-[6px]">
+                    <p className="font-condensed text-[12px] text-faint mt-[6px]">
                       sit + the variable burn — fuel, repairs, the road itself
                     </p>
                   </div>
                 </div>
-                <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+                <div className="px-4 py-[9px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
                   the <b className="text-dim">{money(burn.roadDaily)}/day</b> between them is what
                   the road costs on top of existing — a day parked still burns{" "}
                   {money(burn.sitDaily)}, so a cheap load isn't always cheaper than sitting.
@@ -458,10 +458,10 @@ const ExpensesPage = () => {
                   className="flex items-center gap-[14px] px-[18px] py-[13px] border-b ds2-cell-rule"
                 >
                   <div>
-                    <div className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase leading-none">
+                    <div className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase leading-none">
                       RATE TO BOOK
                     </div>
-                    <div className="font-condensed text-[11px] text-faint tracking-[.1em] uppercase mt-[3px]">
+                    <div className="font-condensed text-[12px] text-faint tracking-[.1em] uppercase mt-[3px]">
                       gross $/mile driven · {basisWord} · {targets.basis.months} of{" "}
                       {targets.basis.monthsWanted} months filed · the number that pays for everything
                     </div>
@@ -469,7 +469,7 @@ const ExpensesPage = () => {
                 </div>
                 <div className="flex items-center gap-[10px] flex-wrap px-[18px] py-[14px]">
                   <span
-                    className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
+                    className="font-condensed font-semibold text-[14.5px] rounded-[8px] px-3 py-[7px] text-dim"
                     style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "var(--shadow-inset)" }}
                   >
                     <b className="text-ink tabular-nums">${targets.basis.costPerTotalMile?.toFixed(2)}</b> / total
@@ -477,7 +477,7 @@ const ExpensesPage = () => {
                   </span>
                   <span className="font-condensed text-faint">→</span>
                   <span
-                    className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
+                    className="font-condensed font-semibold text-[14.5px] rounded-[8px] px-3 py-[7px] text-dim"
                     style={{ background: "var(--color-well)", border: "1px solid var(--color-hairline)", boxShadow: "var(--shadow-inset)" }}
                   >
                     ÷ <b className="text-ink">{Math.round(targets.keep * 100)}%</b>{" "}
@@ -485,10 +485,10 @@ const ExpensesPage = () => {
                   </span>
                   <span className="font-condensed text-faint">→</span>
                   <span
-                    className="font-condensed font-semibold text-[13.5px] rounded-[8px] px-3 py-[7px] text-dim"
+                    className="font-condensed font-semibold text-[14.5px] rounded-[8px] px-3 py-[7px] text-dim"
                     style={{ background: "var(--color-well)", border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)", boxShadow: "var(--shadow-inset)" }}
                   >
-                    <b className="font-condensed font-semibold text-[22px] text-amber-hi tabular-nums">
+                    <b className="font-condensed font-semibold text-[24px] text-amber-hi tabular-nums">
                       ${targets.bookingLadder.walkAway?.toFixed(2)}
                     </b>{" "}
                     walk-away
@@ -498,7 +498,7 @@ const ExpensesPage = () => {
                   <BandedLadder ladder={targets.bookingLadder} rpm={targets.grossRate} label="Standard flatbed" />
                   <BandedLadder ladder={targets.specLadder} rpm={targets.grossRate} label="Oversize / specialized" />
                 </div>
-                <div className="px-[18px] py-[9px] border-t ds2-cell-rule font-condensed text-[11.5px] text-faint">
+                <div className="px-[18px] py-[9px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
                   walk-away = your cost/mile ÷ your {Math.round(targets.keep * 100)}% keep — the share
                   of an all-in dollar that reaches you (linehaul at your split, fuel surcharge and
                   accessorials in full). The same basis, keep and rungs as the Market page and the
@@ -514,10 +514,10 @@ const ExpensesPage = () => {
             {/* fixed vs variable */}
             <div className="ds2-board overflow-hidden mt-4">
               <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+                <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                   Fixed vs variable · {selected.period_label} operating
                 </span>
-                <span className="font-condensed text-[12px] text-faint">
+                <span className="font-condensed text-[13px] text-faint">
                   · {money(metrics.monthlyCost)}
                 </span>
               </div>
@@ -532,7 +532,7 @@ const ExpensesPage = () => {
                   <div style={{ flex: 1, background: "var(--color-amber)" }} />
                 </div>
               </div>
-              <div className="px-4 pb-3 pt-2 font-condensed text-[13px] text-dim flex gap-6 flex-wrap">
+              <div className="px-4 pb-3 pt-2 font-condensed text-[14px] text-dim flex gap-6 flex-wrap">
                 <span>
                   <span style={{ color: "var(--color-chart-blue)" }}>●</span> Fixed{" "}
                   <b className="text-ink tabular-nums">{money(metrics.fixedTotal)}</b>
@@ -557,7 +557,7 @@ const ExpensesPage = () => {
             )}
 
             <div className="ds2-board p-4 mt-4">
-              <p className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint mb-2">
+              <p className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint mb-2">
                 All expenses · {selected.period_label} — reclassify, edit, add or delete
               </p>
               <ExpenseLedger
@@ -580,7 +580,7 @@ const ExpensesPage = () => {
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
               >
-                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+                <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
                   UPLOAD P&L
                 </span>
                 <button

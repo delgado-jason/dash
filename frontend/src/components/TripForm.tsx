@@ -85,6 +85,11 @@ const TripForm = ({ onSuccess, onClose, trip = null, prefillOdometerStart = null
     return () => {
       active = false;
     };
+    // A prefill is a MOUNT action, not a reaction. `editing` and
+    // `prefillOdometerStart` are read once, to decide whether to fetch at all;
+    // listing them would re-run the fetch when they change and overwrite a
+    // reading the user has already typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Prefill the START location with the truck's last known spot (the end of the
@@ -105,6 +110,9 @@ const TripForm = ({ onSuccess, onClose, trip = null, prefillOdometerStart = null
     return () => {
       active = false;
     };
+    // Mount-only, same as the odometer prefill above: re-running on `editing`
+    // would stamp the truck's last known spot over a start the user has typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,7 +346,7 @@ const TripForm = ({ onSuccess, onClose, trip = null, prefillOdometerStart = null
           <button
             onClick={handleDelete}
             disabled={submitting || deleting}
-            className="ml-auto h-9 px-4 rounded-[9px] border border-status-negative-text/35 text-status-negative-text font-condensed font-semibold text-[13px] hover:bg-status-negative-text/10 disabled:opacity-50"
+            className="ml-auto h-9 px-4 rounded-[9px] border border-status-negative-text/35 text-status-negative-text font-condensed font-semibold text-[14px] hover:bg-status-negative-text/10 disabled:opacity-50"
           >
             {deleting ? "Deleting..." : "Delete trip"}
           </button>

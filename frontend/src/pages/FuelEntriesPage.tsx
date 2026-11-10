@@ -370,15 +370,15 @@ const FuelEntriesPage = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 pb-10">
         <div className="flex items-center gap-x-[14px] gap-y-2 flex-wrap pt-5 pb-3.5 border-b border-hairline">
           <SidebarTrigger className="text-dim hover:text-ink -ml-1" />
-          <h1 className="font-display text-[26px] tracking-[.06em] leading-none">FUEL</h1>
-          <span className="font-condensed font-medium text-[15px] text-dim">
+          <h1 className="font-display text-[28px] tracking-[.06em] leading-none">FUEL</h1>
+          <span className="font-condensed font-medium text-[16px] text-dim">
             the tanks and the burn
             {truck ? ` · unit ${truck.unit_number}` : ""}
           </span>
           <span className="flex-1" />
           <button
             onClick={openCreate}
-            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[14px] tracking-[.05em] bg-amber text-on-amber"
+            className="h-9 px-4 rounded-[10px] font-condensed font-semibold text-[15px] tracking-[.05em] bg-amber text-on-amber"
           >
             + LOG FILL-UP
           </button>
@@ -386,10 +386,10 @@ const FuelEntriesPage = () => {
 
         {/* answering line */}
         <div className="flex items-center gap-3 flex-wrap mt-4 font-condensed">
-          <span className="font-condensed font-semibold text-[21px] tabular-nums">
+          <span className="font-condensed font-semibold text-[22.5px] tabular-nums">
             {entries.length} FILL{entries.length === 1 ? "" : "S"}
           </span>
-          <span className="text-[13.5px] text-faint">
+          <span className="text-[14.5px] text-faint">
             · <b className="font-semibold text-ink tabular-nums">{Math.round(stats.totalGallons).toLocaleString("en-US")} gal</b>
             {" "}· <b className="font-semibold text-ink tabular-nums">{money(stats.totalSpend)}</b>
             {stats.avgMpg != null && (
@@ -438,10 +438,10 @@ const FuelEntriesPage = () => {
         {(byState.states.length > 0 || byState.unassigned.fills > 0) && (
           <div className="ds2-board overflow-hidden mt-4">
             <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-              <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+              <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
                 Fuel by state
               </span>
-              <span className="font-condensed text-[12px] text-faint">
+              <span className="font-condensed text-[13px] text-faint">
                 · the IFTA numbers, ready to re-enter
               </span>
             </div>
@@ -450,7 +450,7 @@ const FuelEntriesPage = () => {
                 key={r.st}
                 className="flex items-center gap-3 px-4 py-[9px] border-t ds2-cell-rule first:border-t-0 font-condensed"
               >
-                <span className="font-display text-[17px] tracking-[.05em] w-[40px]">{r.st}</span>
+                <span className="font-display text-[18.5px] tracking-[.05em] w-[40px]">{r.st}</span>
                 <span
                   className="flex-1 h-[8px] rounded-[3px] overflow-hidden"
                   style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
@@ -460,16 +460,16 @@ const FuelEntriesPage = () => {
                     style={{ width: `${(r.gal / byState.maxGal) * 100}%`, background: "var(--color-amber-dark)" }}
                   />
                 </span>
-                <span className="w-[130px] text-right text-[13px] text-dim tabular-nums">
+                <span className="w-[130px] text-right text-[14px] text-dim tabular-nums">
                   {r.fills} fill{r.fills === 1 ? "" : "s"} · {Math.round(r.gal)} gal
                 </span>
-                <span className="w-[80px] text-right font-semibold text-[13.5px] tabular-nums">
+                <span className="w-[80px] text-right font-semibold text-[14.5px] tabular-nums">
                   {money(r.spend)}
                 </span>
               </div>
             ))}
             {byState.unassigned.fills > 0 && (
-              <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
+              <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[13.5px] text-faint">
                 <b className="text-dim font-semibold">
                   {byState.unassigned.fills} fills unassigned — {Math.round(byState.unassigned.gal)} gal ·{" "}
                   {money(byState.unassigned.spend)}
@@ -484,17 +484,17 @@ const FuelEntriesPage = () => {
         {/* the log */}
         <div className="ds2-board overflow-hidden mt-4">
           <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-            <span className="font-condensed font-semibold text-[11.5px] tracking-[.16em] uppercase text-faint">
+            <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
               The log
             </span>
-            <span className="font-condensed text-[12px] text-faint">
+            <span className="font-condensed text-[13px] text-faint">
               · FULL closes a tank and stamps its MPG · tap a row to edit
             </span>
           </div>
           {loading ? (
-            <p className="font-condensed text-[13px] text-faint px-4 py-3">Loading…</p>
+            <p className="font-condensed text-[14px] text-faint px-4 py-3">Loading…</p>
           ) : rows.length === 0 ? (
-            <p className="font-condensed text-[13px] text-faint px-4 py-3">
+            <p className="font-condensed text-[14px] text-faint px-4 py-3">
               No fill-ups yet — log your first.
             </p>
           ) : (
@@ -510,25 +510,25 @@ const FuelEntriesPage = () => {
                     <div
                       key={e.fuel_entry_id}
                       onClick={() => openEdit(e)}
-                      className="grid grid-cols-[84px_1fr_150px_70px_80px_90px_30px] gap-[10px] items-baseline px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[13.5px] text-dim cursor-pointer hover:bg-well/60"
+                      className="grid grid-cols-[84px_1fr_150px_70px_80px_90px_30px] gap-[10px] items-baseline px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim cursor-pointer hover:bg-well/60"
                     >
                       <span className="text-faint whitespace-nowrap">{fmtDate(e.fuel_date)}</span>
                       <span className="min-w-0 truncate text-ink">
                         {e.company_name || "—"}
                         {pl ? ` · ${pl}` : ""}
                         {full && mpg != null && (
-                          <span className="ml-2 font-condensed font-semibold tabular-nums text-[11px] tracking-[.1em] text-status-positive-text border border-status-positive-text/40 rounded-[4px] px-[6px] py-[1px] whitespace-nowrap">
+                          <span className="ml-2 font-condensed font-semibold tabular-nums text-[12px] tracking-[.1em] text-status-positive-text border border-status-positive-text/40 rounded-[4px] px-[6px] py-[1px] whitespace-nowrap">
                             CLOSED THE TANK · {mpg.toFixed(1)} MPG
                           </span>
                         )}
                       </span>
                       <span className="text-right tabular-nums whitespace-nowrap">
                         {full ? (
-                          <span className="font-bold text-[10.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-amber-hi border border-amber/40 bg-amber/7 mr-1.5">
+                          <span className="font-bold text-[11.5px] tracking-[.1em] px-[6px] py-[1px] rounded-[4px] text-amber-hi border border-amber/40 bg-amber/7 mr-1.5">
                             FULL
                           </span>
                         ) : (
-                          <span className="font-semibold text-[10.5px] tracking-[.08em] px-[6px] py-[1px] rounded-[4px] text-faint border border-dashed border-hairline mr-1.5">
+                          <span className="font-semibold text-[11.5px] tracking-[.08em] px-[6px] py-[1px] rounded-[4px] text-faint border border-dashed border-hairline mr-1.5">
                             PARTIAL
                           </span>
                         )}
@@ -547,7 +547,7 @@ const FuelEntriesPage = () => {
                           ev.stopPropagation();
                           remove(e.fuel_entry_id);
                         }}
-                        className="text-right text-faint hover:text-status-negative-text text-[13px]"
+                        className="text-right text-faint hover:text-status-negative-text text-[14px]"
                       >
                         ✕
                       </button>
@@ -575,10 +575,10 @@ const FuelEntriesPage = () => {
               <div
                 className="flex items-center gap-3 px-5 py-[14px] border-b ds2-cell-rule"
               >
-                <span className="font-condensed font-semibold text-[15px] tracking-[.1em] uppercase">
+                <span className="font-condensed font-semibold text-[16px] tracking-[.1em] uppercase">
                   {editingId ? "EDIT FILL-UP" : "LOG FILL-UP"}
                 </span>
-                <span className="font-condensed text-[11px] text-faint tracking-[.08em] uppercase">
+                <span className="font-condensed text-[12px] text-faint tracking-[.08em] uppercase">
                   vendor &amp; state remember your last stop
                 </span>
                 <button
@@ -636,7 +636,7 @@ const FuelEntriesPage = () => {
                   clr("apuHours");
                 }}
               />
-              <p className="font-condensed text-[11px] text-faint mt-1">
+              <p className="font-condensed text-[12px] text-faint mt-1">
                 meter reading — keeps the APU schedule honest
               </p>
             </Field>
@@ -681,7 +681,7 @@ const FuelEntriesPage = () => {
                 {computedPpg == null ? "—" : `$${computedPpg.toFixed(3)} / gal`}
               </span>
               {ppgOver && (
-                <span className="text-[11px] text-status-negative-text">
+                <span className="text-[12px] text-status-negative-text">
                   over the $10 limit — check gallons
                 </span>
               )}
@@ -768,15 +768,15 @@ const FuelEntriesPage = () => {
                     checked={filledToTop}
                     onChange={(ev) => setFilledToTop(ev.target.checked)}
                   />
-                  <span className="font-condensed text-[13px] text-ink">Filled to the top</span>
-                  <span className="font-condensed text-[11.5px] text-faint">
+                  <span className="font-condensed text-[14px] text-ink">Filled to the top</span>
+                  <span className="font-condensed text-[12.5px] text-faint">
                     untick a partial — only a full fill closes a tank window
                   </span>
                 </label>
                 {error && <p className="text-destructive text-sm mt-2">{error}</p>}
                 <div className="flex gap-2 justify-end mt-5">
                   <button
-                    className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] text-dim bg-well border border-hairline"
+                    className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] text-dim bg-well border border-hairline"
                     onClick={() => {
                       setShowForm(false);
                       setEditingId(null);
@@ -787,7 +787,7 @@ const FuelEntriesPage = () => {
                     CANCEL
                   </button>
                   <button
-                    className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[13.5px] bg-amber text-on-amber disabled:opacity-50"
+                    className="h-9 px-4 rounded-[9px] font-condensed font-semibold text-[14.5px] bg-amber text-on-amber disabled:opacity-50"
                     onClick={save}
                     disabled={busy}
                   >

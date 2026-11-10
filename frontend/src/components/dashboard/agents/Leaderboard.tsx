@@ -39,7 +39,7 @@ const GradeWord = ({ r }: { r: DeskRow }) => {
   const m = GRADE_META[r.grade];
   return (
     <span
-      className="inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[9.5px] tracking-[.06em] whitespace-nowrap"
+      className="inline-flex items-center h-[17px] px-[5px] rounded font-condensed font-bold text-[11px] tracking-[.06em] whitespace-nowrap"
       style={{ color: m.fg, background: m.bg }}
     >
       {r.gradeWord}
@@ -94,9 +94,9 @@ const PlainTh = ({ children, right }: { children: string; right?: boolean }) => 
 
 const People = ({ r, contactsFailed, now }: { r: DeskRow; contactsFailed: boolean; now: Date }) => (
   <div className="pl-6 pr-2 py-2 grid gap-1">
-    {r.peopleRows.length === 0 && <p className="text-[11px] text-muted-text">No one is on file at this desk.</p>}
+    {r.peopleRows.length === 0 && <p className="text-[12px] text-muted-text">No one is on file at this desk.</p>}
     {r.peopleRows.map((p) => (
-      <div key={p.agent.agent_id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px]">
+      <div key={p.agent.agent_id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px]">
         <Link to={`/agents/${p.agent.agent_id}`} className="text-light hover:underline">
           {nameOf(p.agent)}
         </Link>
@@ -114,7 +114,7 @@ const People = ({ r, contactsFailed, now }: { r: DeskRow; contactsFailed: boolea
         </span>
       </div>
     ))}
-    <p className="text-[10.5px] text-faint">
+    <p className="text-[11.5px] text-faint">
       {ESTABLISHED_AT} delivered loads (lifetime, all people) grade a desk · {r.lifetime} so far · as of {formatDate(utcDayKey(now))}
     </p>
   </div>
@@ -142,8 +142,8 @@ const Row = ({ r, n, isOpen, toggle, contactsFailed, now }: ItemProps & { n: num
           >
             <ChevronRight size={13} className={`mt-[3px] flex-none transition-transform ${isOpen ? "rotate-90" : ""}`} />
             <span>
-              <span className="block text-ink font-semibold text-[12.5px]">{r.name}</span>
-              <span className="block text-[10.5px] text-muted-text">
+              <span className="block text-ink font-semibold text-[13.5px]">{r.name}</span>
+              <span className="block text-[11.5px] text-muted-text">
                 {r.codes.join(" · ")}
                 {r.people ? ` · ${r.people}` : ""}
               </span>
@@ -181,14 +181,14 @@ const Card = ({ r, isOpen, toggle, contactsFailed, now }: ItemProps) => {
     <div className="border-t ds2-cell-rule py-2 first:border-t-0">
       <button type="button" aria-expanded={isOpen} onClick={() => toggle(r.key)} className="w-full text-left">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-ink font-semibold text-[13px] truncate">{r.name}</span>
+          <span className="text-ink font-semibold text-[14px] truncate">{r.name}</span>
           <GradeWord r={r} />
         </div>
-        <div className="text-[10.5px] text-muted-text">
+        <div className="text-[11.5px] text-muted-text">
           {r.codes.join(" · ")}
           {r.people ? ` · ${r.people}` : ""}
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-3 text-[11.5px] tabular-nums text-light">
+        <div className="mt-1 flex flex-wrap gap-x-3 text-[12.5px] tabular-nums text-light">
           <span>
             {r.loads} loads · {money(r.gross)} · {pct(r.share)}
           </span>
@@ -240,7 +240,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
       : "not built yet — desks show a rate, not a grade";
 
   const bestLine = (
-    <p className="text-[11.5px] text-muted-text mt-3">
+    <p className="text-[12.5px] text-muted-text mt-3">
       Best desk by freight class (graded desks):{" "}
       {FREIGHT_CLASSES.map((cls, i) => {
         const b = board.best[cls];
@@ -264,7 +264,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
   return (
     <Panel className="p-4">
       <h3 className="ds2-label">The leaderboard</h3>
-      <p className="text-[11px] text-faint mb-2.5">
+      <p className="text-[12px] text-faint mb-2.5">
         by desk · {board.rangeLabel.toLowerCase()} to {formatDate(utcDayKey(now))} · tap a column to sort · ladder: {ladderText}
       </p>
 
@@ -276,7 +276,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
         <>
           {/* desktop — the table */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[13px]">
               <thead>
                 <tr>
                   <PlainTh>#</PlainTh>
@@ -298,7 +298,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
                 ))}
                 {ungraded.length > 0 && (
                   <tr className="border-t ds2-cell-rule">
-                    <td colSpan={12} className="px-2 py-1.5 text-[10.5px] text-faint tracking-wide uppercase">
+                    <td colSpan={12} className="px-2 py-1.5 text-[11.5px] text-faint tracking-wide uppercase">
                       Not yet graded · under {ESTABLISHED_AT} delivered loads
                     </td>
                   </tr>
@@ -316,7 +316,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
               <Card key={r.key} {...item(r)} />
             ))}
             {ungraded.length > 0 && (
-              <p className="border-t ds2-cell-rule pt-1.5 text-[10.5px] text-faint tracking-wide uppercase">
+              <p className="border-t ds2-cell-rule pt-1.5 text-[11.5px] text-faint tracking-wide uppercase">
                 Not yet graded · under {ESTABLISHED_AT} delivered loads
               </p>
             )}
@@ -326,7 +326,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
           </div>
 
           {singles.length > 0 && (
-            <p className="text-[11.5px] text-muted-text mt-2">
+            <p className="text-[12.5px] text-muted-text mt-2">
               {showAll ? "" : `+ ${singles.length} desk${singles.length === 1 ? "" : "s"} with one load this year `}
               <button type="button" className="underline-offset-2 hover:underline text-light" onClick={() => setShowAll((v) => !v)}>
                 {showAll ? "show fewer" : "show all"}
@@ -334,7 +334,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
             </p>
           )}
           {board.unattributed.loads > 0 && (
-            <p className="text-[11.5px] text-muted-text mt-1">
+            <p className="text-[12.5px] text-muted-text mt-1">
               {board.unattributed.loads} unattributed load{board.unattributed.loads === 1 ? "" : "s"} · {money(board.unattributed.gross)}
             </p>
           )}

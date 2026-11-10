@@ -44,7 +44,7 @@ export interface MaintenanceRowProps {
 // word sits over its column.
 export const MaintenanceRowHead = () => (
   <div
-    className={`grid items-center gap-3 px-3.5 py-1.5 border-t border-hairline-lo font-condensed font-semibold text-[10px] tracking-[.12em] uppercase text-faint ${MAINTENANCE_ROW_GRID}`}
+    className={`grid items-center gap-3 px-3.5 py-1.5 border-t border-hairline-lo font-condensed font-semibold text-[11px] tracking-[.12em] uppercase text-faint ${MAINTENANCE_ROW_GRID}`}
   >
     <span>item</span>
     <span className="hidden md:block text-right">interval</span>
@@ -55,13 +55,13 @@ export const MaintenanceRowHead = () => (
 );
 
 const Fact = ({ fact, className = "" }: { fact: RowFact; className?: string }) => (
-  <span className={`font-condensed text-[13px] text-dim text-right ${className}`}>
+  <span className={`font-condensed text-[14px] text-dim text-right ${className}`}>
     <span className="block truncate tabular-nums">
       <b className="font-semibold text-ink">{fact.lead}</b>
       {fact.rest ? ` ${fact.rest}` : ""}
     </span>
     {fact.sub && (
-      <span className="block text-[10.5px] text-faint truncate">{fact.sub}</span>
+      <span className="block text-[11.5px] text-faint truncate">{fact.sub}</span>
     )}
   </span>
 );
@@ -96,23 +96,23 @@ export const MaintenanceRow = ({
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-condensed font-medium text-[15px] text-ink leading-tight truncate">
+          <span className="font-condensed font-medium text-[16px] text-ink leading-tight truncate">
             {name}
           </span>
           {chip && <StatusPill tone={chip.tone}>{chip.label}</StatusPill>}
         </div>
-        <div className="text-[11.5px] text-dim truncate mt-0.5">{context}</div>
+        <div className="text-[12.5px] text-dim truncate mt-0.5">{context}</div>
       </div>
       <Fact fact={interval} className="hidden md:block" />
       <Fact fact={lastDone} className="hidden md:block" />
       <span className="text-right">
         <span
-          className="block font-condensed font-semibold text-[17px] tabular-nums leading-none"
+          className="block font-condensed font-semibold text-[18.5px] tabular-nums leading-none"
           style={{ color: left.color ?? "var(--color-ink)" }}
         >
           {left.value}
         </span>
-        <span className="block font-condensed text-[10px] tracking-[.08em] uppercase text-faint mt-0.5">
+        <span className="block font-condensed text-[11px] tracking-[.08em] uppercase text-faint mt-0.5">
           {left.caption}
         </span>
       </span>
