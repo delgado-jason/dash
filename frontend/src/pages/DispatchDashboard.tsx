@@ -14,6 +14,7 @@ import { AlertBanners } from "@/components/dashboard/AlertBanners";
 import { DispatchLoadsTable } from "@/components/dashboard/DispatchLoadsTable";
 import { DeskLeaderboardPanel } from "@/components/dashboard/agents/DeskLeaderboardPanel";
 import { DispatcherChip } from "@/components/dashboard/DispatcherChip";
+import { LoadConsole } from "@/components/dashboard/console/LoadConsole";
 import { Panel } from "@/components/ui/Panel";
 import { dispatchBoard, type OwedKind } from "@/lib/metrics/dispatchBoard";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -53,7 +54,11 @@ const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 // booking figures are plain cards, and the one honest signal the meter carried
 // — the quarter's weeks over break-even — is a plain stat.
 const DispatchDashboard = () => {
-  const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(0);
+  // The console writes, so the page has to be able to re-read. This was 0 —
+  // fetch once, never again — which was fine when nothing on the page changed
+  // anything.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { loads, isLoading: loadsLoading, error: loadsError } = useLoads(refreshKey);
   // The viewer's open Integrity count — the data rows she can fix (call 2); the
   // chip hides at zero and while loading (call 1).
   const integrity = useIntegrity();
@@ -177,48 +182,21 @@ const DispatchDashboard = () => {
               order, and they change colour with the state — a covered week and
               an empty one should not look the same at a glance. */}
           <div className="flex flex-col gap-3">
-            <Panel
-              className="p-4"
-              style={board.now.length > 0 ? { borderColor: "var(--color-amber)" } : undefined}
-            >
-              <p className="ds2-label">
-                Now
-                <span className="ml-2 normal-case tracking-normal text-faint font-normal">
-                  {board.now.length === 0 ? "nothing on the road" : "on the road"}
-                </span>
-              </p>
-              {board.now.length === 0 ? (
-                <p className="font-condensed text-[13.5px] text-faint mt-2">
-                  No load is rolling. Anything booked shows under Next.
-                </p>
-              ) : (
-                board.now.map((r) => (
-                  <div key={r.load.load_id ?? r.load.load_number} className="mt-2.5">
-                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
-                      <span className="font-condensed font-semibold text-[15px]">
-                        <Link to={`/loads/${r.load.load_id}`} className="hover:text-amber-hi">
-                          {r.load.load_number}
-                        </Link>{" "}
-                        <span className="text-dim">
-                          {r.load.origin_city}, {r.load.origin_state} → {r.load.destination_city}, {r.load.destination_state}
-                        </span>
-                      </span>
-                      <span className="font-condensed text-[13px] text-dim">
-                        {r.deliversOn
-                          ? <>delivers <b className="text-ink">{r.deliversAt ? `${r.deliversAt} ` : ""}{whenWord(r.deliversOn, todayKey)}</b></>
-                          : "no delivery date set"}
-                      </span>
-                    </div>
-                    {r.needsInTime && (
-                      <p className="font-condensed text-[12.5px] mt-1" style={{ color: "var(--color-status-negative-text)" }}>
-                        No in-time logged at the shipper — detention cannot be counted on this load until it is.{" "}
-                        <Link to={`/loads/${r.load.load_id}`} className="underline-offset-2 hover:underline">Fix ›</Link>
-                      </p>
-                    )}
-                  </div>
-                ))
-              )}
-            </Panel>
+            {/* The NOW band became the load console (v1.272.0, Nod Sheet "The
+                Load Console"). It used to be a read: the load number, the lane,
+                the delivery day, and a red line when no in-time was logged —
+                with the fix four clicks away on the load page. That friction is
+                why only 28 of 139 loads carried a shipper in-time at all. Now
+                the taps are here: arrive and depart at both stops, the status,
+                and the completion that captures the end odometer. The in-time
+                warning is gone because the Arrived button replaces it. */}
+            <LoadConsole
+              loads={loads}
+              freeHours={freeHours}
+              today={todayKey}
+              whenWord={whenWord}
+              onChanged={() => setRefreshKey((k) => k + 1)}
+            />
 
             {/* The gap. Red when the truck has nothing behind it, because that
                 is the state that costs money every hour it lasts. */}

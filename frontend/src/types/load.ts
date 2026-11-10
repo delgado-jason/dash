@@ -26,6 +26,13 @@ export interface Load {
   // scheduled appointment (end null) or window (end present).
   shipper_in?: string | null;
   shipper_out?: string | null;
+  // The full MOMENT a console tap stamped (migration 106). The time-only
+  // columns above are written alongside and keep every existing reader
+  // working; these are what a live clock can actually count from, because a
+  // bare time of day cannot be counted from without inventing its date.
+  // Absent on every row written before 2026-11-10.
+  shipper_in_at?: string | null;
+  shipper_out_at?: string | null;
   pickup_appt_start?: string | null;
   pickup_appt_end?: string | null;
   pickup_date: string;
@@ -37,6 +44,8 @@ export interface Load {
   receiver_facility_id?: string | null;
   receiver_in?: string | null;
   receiver_out?: string | null;
+  receiver_in_at?: string | null;
+  receiver_out_at?: string | null;
   delivery_appt_start?: string | null;
   delivery_appt_end?: string | null;
   delivery_date?: string | null;

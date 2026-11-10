@@ -1,6 +1,7 @@
 -- ============================================================
 -- 001_seed_users.sql
--- Password hash = 'password123' for all users
+-- Password = 'password' for all users (the hash below; was wrongly documented
+-- as 'password123' until 2026-11-10 -- verified by bcrypt compare)
 -- ============================================================
 
 INSERT INTO users (user_id, email, password_hash)

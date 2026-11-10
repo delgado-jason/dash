@@ -2300,14 +2300,34 @@ const GuidePage = () => {
 
           <Metric
             title="In / out times & dwell"
-            answers="Log when you arrived and left each stop; dwell is how long you sat."
+            answers="Log when you arrived and left each stop; dwell is how long the dock held you."
           >
-            <Formula>dwell = departed − arrived</Formula>
+            <Formula>
+              the clock starts at the LATER of (arrived, appointment start)
+              <br />
+              <span style={{ color: AMBER_HI }}>
+                dwell = departed − that moment
+              </span>
+            </Formula>
             <Eg>
-              Arrived 8:30a, left 10:45a →{" "}
-              <span className="text-light">2h 15m</span> at the dock. Overnight
+              Arrived 8:30a, left 10:45a against an 8:30a appointment →{" "}
+              <span className="text-light">2h 15m</span>. Same stop, but you
+              rolled in at 6:00a for a 9:00a appointment and left at 10:45a →{" "}
+              <span className="text-light">1h 45m</span>, not 4h 45m. Overnight
               stays are handled.
             </Eg>
+            <Why>
+              Dwell is a verdict on the{" "}
+              <span className="text-light">facility</span>, so it only counts
+              time that was theirs. Getting there three hours early is your
+              call, not theirs — charging them for it would make every dock you
+              arrive early at look slow. It starts on exactly the same moment
+              detention does, which is why the two numbers can be read side by
+              side. If a dock takes you early and lets you go before your
+              appointment even comes round, that is{" "}
+              <span className="text-light">0m</span> — they did you a favour, and
+              favours don't score against them.
+            </Why>
           </Metric>
 
           <Metric
@@ -2319,22 +2339,46 @@ const GuidePage = () => {
             ]}
           >
             <Formula>
-              free time ends at (appointment / window END) + your free hours
+              no appointment, or you arrived late →{" "}
+              <span style={{ color: AMBER_HI }}>nothing to claim</span>
+              <br />
+              otherwise free time ends at the LATER of (arrived, appointment
+              start) + your free hours
               <br />
               <span style={{ color: AMBER_HI }}>
                 detention = time released past that
               </span>
             </Formula>
             <Eg>
-              8:00 appointment, 3h free → clock runs out at 11:00; released
-              12:20 = <span className="text-light">1h 20m</span>. A window
-              8:00–11:00 runs out at 2:00 (3h past the window's end).
+              8:00 appointment, 3h free, rolled in at 6:00 → the clock still
+              starts at 8:00 and runs out at 11:00; released 12:20 ={" "}
+              <span className="text-light">1h 20m</span>. A window{" "}
+              <span className="text-light">8:00–23:00</span> that you back into
+              at 11:10 runs out at <span className="text-light">14:10</span> —
+              three hours from when you got there, not from when the window
+              closes. Released 20:15 ={" "}
+              <span className="text-light">6h 05m</span>.
             </Eg>
             <Why>
-              The clock starts at the{" "}
-              <span className="text-light">appointment</span> (window END if
-              it's a window), not when you arrived — so showing up early never
-              earns detention. Whether it actually pays is the shipper's call,
+              Two rules, and both are about what a shipper will actually pay.
+              First, <span className="text-light">late forfeits it</span> — miss
+              a hard appointment, or miss the end of your window, and there is
+              no claim however long you then sit. Same if the stop never had an
+              appointment at all: there was no clock to be held past. The load
+              says which of those it is, so you can tell a lost claim from a
+              missing appointment you can still go and set.
+              <br />
+              <br />
+              Second, the clock starts at the{" "}
+              <span className="text-light">later of your arrival and the
+              appointment's start</span>. Early never earns detention. But a{" "}
+              <span className="text-light">wide window does not cost you the
+              claim</span> — inside the window the three hours run from when you
+              arrived. (This is a correction: the clock used to start at the
+              window's END, which made a 7:00–23:45 window unclaimable no matter
+              how long you sat. One real load was holding{" "}
+              <span className="text-light">6h 05m</span> that read as zero.)
+              Whether it actually pays is the shipper's call,
               so the app doesn't auto-flag it: past free time a load shows a{" "}
               <span className="text-light">"Possible detention"</span> nudge (a
               faint "det?" in the loads table). Clear it with the agent, then
@@ -3982,15 +4026,46 @@ const GuidePage = () => {
               the same at a glance.
             </p>
             <p className="text-sm text-muted-text mt-3">
-              <span className="text-light">Now</span> is what is on the road:
-              each rolling load, where it is going, and when it delivers — the
-              appointment time when one is set, in the words that matter
-              (<span className="text-light">today</span>,{" "}
-              <span className="text-light">tomorrow</span>, then the weekday).
-              A rolling load with <span className="text-light">no in-time
-              logged at the shipper</span> is called out in red: that is not a
-              data-entry nicety, it is money that cannot be claimed later,
-              because the detention clock was never started.
+              <span className="text-light">Now</span> is the{" "}
+              <span className="text-light">load console</span>, and it is the
+              one part of the board you work rather than read. Each rolling load
+              is a card with both stops on it. Tap{" "}
+              <span className="text-light">Arrived</span> when you back in and{" "}
+              <span className="text-light">Departed</span> when they turn you
+              loose, and the stop's clock runs on the card from then on —
+              counting live, in hours and minutes, with the claimable part
+              called out separately in red the moment free time runs out. Tapping
+              Arrived at the shipper also flips a booked load to{" "}
+              <span className="text-light">in transit</span>, so you don't say
+              it twice. Mis-tapped? <span className="text-light">Undo
+              arrival</span> is right there.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              <span className="text-light">Mark delivered</span> finishes the
+              load without opening it: it asks for the end odometer — the one
+              moment that number is actually knowable — and shows the distance
+              beside it as you type, so a fat-fingered digit reads as a wrong
+              mileage before it is saved. A reading that would make the load
+              impossibly long is refused outright. That end odometer becomes the{" "}
+              <span className="text-light">next</span> load's start, so you never
+              type it twice. Once it saves, the load leaves the console, the next
+              one takes the floor, and{" "}
+              <span className="text-light">Undo</span> sits in the band for half
+              a minute in case it was the wrong load.
+            </p>
+            <p className="text-sm text-muted-text mt-3">
+              Why it matters: the stop times were always four clicks away on the
+              load page, and so they mostly didn't get logged —{" "}
+              <span className="text-light">28 loads out of 139</span> had an
+              in-time at the shipper. Everything downstream runs on those two
+              stamps: detention, dwell by facility, the agent scorecard, the
+              on-time read. A tap at the dock is also worth more than the same
+              time typed in on Friday: detention found at the week's end is a
+              claim, detention watched at hour two is a{" "}
+              <span className="text-light">phone call</span>, while the truck is
+              still on the dock and the agent can still do something about it.
+              The taps store the full moment, not just a time of day, which is
+              what lets a clock keep counting through midnight.
             </p>
             <p className="text-sm text-muted-text mt-3">
               <span className="text-light">Next</span> is the gap. It names the

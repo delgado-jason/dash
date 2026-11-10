@@ -385,6 +385,25 @@ const rules = {
     if (value === null || value === undefined) return;
     if (!isValidUUID(value)) errors.push("trailer_id must be a valid UUID");
   },
+  // The console's stop stamps (106) — the first timestamptz the loads writer
+  // accepts. Shape only: a string Postgres can parse as a moment. An
+  // unparseable one would otherwise reach the driver and come back a 500 with
+  // a Postgres parse error, which tells the caller nothing.
+  //
+  // ORDER is left to the DB: `loads_stop_stamps_forward` refuses a release
+  // before its arrival. The console cannot produce that pair (it stamps
+  // Date.now(), and time moves one way), and a constraint holds for every
+  // writer, forever, where a check here holds only for this one.
+  ...Object.fromEntries(
+    ["shipper_in_at", "shipper_out_at", "receiver_in_at", "receiver_out_at"].map((f) => [
+      f,
+      (value, errors) => {
+        if (value === null || value === undefined) return;
+        const t = new Date(String(value)).getTime();
+        if (Number.isNaN(t)) errors.push(`${f} must be a timestamp`);
+      },
+    ]),
+  ),
 };
 
 // ---- CROSS-FIELD: a load can't deliver before it picks up ----
