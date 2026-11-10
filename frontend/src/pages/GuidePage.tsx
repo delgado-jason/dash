@@ -740,9 +740,18 @@ const GuidePage = () => {
             </Why>
             <Why>
               <span className="text-light">The floors</span> are the Plan page's
-              interlock in fill order — Ops, Maintenance, Vault — each as its
+              three floors in fill order — Ops, Maintenance, Vault — each as its
               balance of its floor and the percent, with the tax set aside and
-              the date of the snapshot they read. <span className="text-light">
+              the date of the snapshot they read. On Plan itself that block is
+              the <span className="text-light">only</span> place those balances
+              are drawn: an Ops card and a Vault card used to repeat floors 1
+              and 3 in a bigger font, and a Reserves block repeated floor 2.
+              <span className="text-light"> The ladder</span> below it draws{" "}
+              <span className="text-light">compact</span> while any floor is
+              short — every rung still named and targeted, the one the next
+              dollar reaches still open — and every rung opens on its own the
+              week Ops holds its float. Nothing can move until then, and four
+              empty meters is the number 0% drawn four times. <span className="text-light">
               The stage</span> is the active rung of the plan's waterfall; for a
               loan it shows the balance left, the monthly draft and the payoff
               month — and when the balance has no as-of date it says the payoff
