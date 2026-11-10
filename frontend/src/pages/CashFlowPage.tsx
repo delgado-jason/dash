@@ -293,22 +293,35 @@ const CashFlowPage = () => {
     () => ({ fuelEntries, today: asOfKey, fuelPaceWeekly: fuelPace, fuelFallback: null, advanceDefault: numOrNull(assumptions?.weekly_fuel_advance), settlements, settlementDay: setlDay }),
     [fuelEntries, asOfKey, fuelPace, assumptions, settlements, setlDay],
   );
-  const fuelWeeks = useMemo(() => {
+  // The week just gone, whatever it held — a home week reading $0 across 0
+  // fills is a true and useful thing to print.
+  const lastPayWeek = useMemo(() => {
+    const w = payWeekOf(asOfKey);
+    const prev = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
+    const f = fuelForWeek(fuelCtx, prev);
+    return { week: prev, amount: f.soFar, fills: f.fills };
+  }, [fuelCtx, asOfKey]);
+  const thisPayWeekFuel = useMemo(() => fuelForWeek(fuelCtx, payWeekOf(asOfKey)), [fuelCtx, asOfKey]);
+  // The RANGE has to describe the same weeks the headline averages, or the
+  // tile contradicts itself (v1.268.0). `runningWeekPace` walks back up to 12
+  // weeks collecting only weeks that ran; this walked back exactly 4 calendar
+  // weeks and kept the zeros, so on Jason's book it printed "$1,445.84/wk"
+  // directly above "four weeks $0.00–$1,752.22" — the $0 being the home week
+  // the headline had deliberately excluded.
+  const runningWeeks = useMemo(() => {
     const out: { week: PayWeek; amount: number; fills: number }[] = [];
     let w = payWeekOf(asOfKey);
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 12 && out.length < 4; i++) {
       w = { start: addDays(w.start, -7), end: addDays(w.end, -7) };
       const f = fuelForWeek(fuelCtx, w);
-      out.push({ week: w, amount: f.soFar, fills: f.fills }); // a closed week's fills — its actual
+      if (f.soFar > 0) out.push({ week: w, amount: f.soFar, fills: f.fills });
     }
     return out;
   }, [fuelCtx, asOfKey]);
-  const lastPayWeek = fuelWeeks[0] ?? null;
-  const thisPayWeekFuel = useMemo(() => fuelForWeek(fuelCtx, payWeekOf(asOfKey)), [fuelCtx, asOfKey]);
   const fourWeekRange = useMemo(() => {
-    const amounts = fuelWeeks.slice(0, 4).map((x) => x.amount);
+    const amounts = runningWeeks.map((x) => x.amount);
     return amounts.length ? { lo: Math.min(...amounts), hi: Math.max(...amounts) } : null;
-  }, [fuelWeeks]);
+  }, [runningWeeks]);
 
   if (loading)
     return <div className="text-sm text-muted-text py-12 text-center">Loading the cash picture…</div>;
@@ -321,9 +334,14 @@ const CashFlowPage = () => {
         ? `WAITS FOR ${waitsFor(board.missing).toUpperCase()}`
       : board.clears == null
         ? "NO FLOAT LINE"
-        : board.clears
-          ? "CLEARS THE FLOAT"
-          : "UNDER THE FLOAT — HOLD";
+        : // Named for its own basis since v1.268.0. This badge judges the
+          // LOWEST DAY across both periods; the Ending rows judge where each
+          // period lands. Both said "clears the float", so a week that dipped
+          // when the bills drafted and recovered by Friday printed a HOLD over
+          // two rows that each read "clears".
+          board.clears
+          ? "EVERY DAY CLEARS"
+          : "A DAY UNDER THE FLOAT — HOLD";
   const badgeTone =
     board?.clears == null
       ? "var(--color-faint)"
@@ -344,16 +362,25 @@ const CashFlowPage = () => {
 
   // ---- the lines, by the day the money moves (2026-11-04, call 1 nodded) ----
   const revFallback = assumptions ? numOrNull(assumptions.weekly_revenue) : null;
-  const advanceDefault = assumptions ? numOrNull(assumptions.weekly_fuel_advance) : null;
   const inOps = " · in your number";
+  // Where the advance figure came from, on its own — no amount, so a caller
+  // that has already printed the number doesn't print it twice.
+  const advanceSrc = (s: DepositLine["advancesSource"]): string =>
+    s === "actual"
+      ? "the statement"
+      : s === "pace"
+        ? "your last four draws"
+        : s === "none"
+          ? "no loads, no advance"
+          : "assumed — fewer than four draws on file";
   const advanceWords = (d: { advances: number | null; advancesSource: DepositLine["advancesSource"] }): string =>
     d.advancesSource === "actual"
       ? `advances ${money(d.advances)} (the statement)`
-      : d.advancesSource === "fills"
-        ? `advance ${money(d.advances)} (the fills passed ${money(advanceDefault)})`
+      : d.advancesSource === "pace"
+        ? `advance ${money(d.advances)} (your last four draws)`
         : d.advancesSource === "none"
           ? "no loads, no advance"
-          : `advance ${money(d.advances)} (assumed)`;
+          : `advance ${money(d.advances)} (assumed — fewer than four draws on file)`;
   const depositStamp = (d: DepositLine): string | null =>
     d.source === "actual" ? "ACTUAL" : d.source === "override" ? "YOU SAID" : d.source === "fallback" ? "PROJECTED" : "EXPECTED";
   const depositWords = (d: DepositLine, own: boolean): string => {
@@ -435,21 +462,74 @@ const CashFlowPage = () => {
       out.push({ key: "acc", date: c.accrual.date, label: `Accrual · ${weekLabel(c.week)}`, note: `${c.accrual.words ?? ""}${c.accrual.counted ? "" : inOps}`, amount: negate(c.accrual.amount), missing: c.accrual.missing, stamp: c.accrual.source === "projected" ? "PROJECTED" : null, counted: c.accrual.counted, flag: c.accrual.flag, kind: "accrual" });
     if (c.catchUp && c.catchUp.amount !== 0)
       out.push({ key: "catchup", date: c.catchUp.date, label: c.catchUp.miles != null && c.catchUp.miles < 0 ? "Accrual hold-back · closed weeks re-trued" : "Accrual catch-up · closed weeks re-trued", note: `${c.catchUp.words ?? ""}${c.catchUp.counted ? "" : inOps}`, amount: negate(c.catchUp.amount), missing: c.catchUp.missing, stamp: "RE-TRUED", counted: c.catchUp.counted, kind: "accrual" });
-    if (c.fuel.advancesSource !== "none") {
+    // The row used to be hidden whenever no advance was drawn. With the clamp
+    // gone that would hide a REAL outflow: a week with no loads draws nothing,
+    // so fuel bought in it comes out of Ops in full — and the ending subtracts
+    // it either way (`ending += fuel.leftover.amount`). A line that moves the
+    // ending has to be on the screen (v1.268.0).
+    // No coalesce: a NULL amount is a refusal that needs to print its words,
+    // so `null !== 0` rendering the row is the behaviour we want. Treating
+    // null as zero here would hide the one line that explains itself.
+    if (c.fuel.advancesSource !== "none" || c.fuel.leftover.amount !== 0) {
       const f = c.fuel;
       const fuelWords =
         c.state === "open"
           ? `${f.fills === 0 ? "no fill logged yet" : `${fills(f.fills)} so far ${money(f.soFar)}`} · ${f.spentSource === "pace" ? "fuel at the pace of the last four running weeks" : "fuel actual"}`
           : "fuel at the pace of the last four running weeks";
-      out.push({ key: "left", date: f.leftover.date, label: "Card leftover → Ops", note: `${money(f.advances)} advanced (${advanceWords(f).replace(/^advances? /, "")}) − ${money(f.spent)} fuel · ${fuelWords}${f.leftover.counted ? "" : inOps}`, amount: f.leftover.amount, missing: f.leftover.missing, stamp: f.spentSource === "actual" ? null : "AT PACE", counted: f.leftover.counted, kind: "leftover" });
+      // The label says "fuel advance" in its own words now (v1.268.0). It read
+      // "Card leftover → Ops", which is why Jason could not find the advance on
+      // the board at all — the words lived only in this faint note. And it can
+      // go NEGATIVE: fuel bought past the advance came out of Ops, and the old
+      // `Math.max(0, …)` reported those weeks as $0.
+      const over = f.leftover.amount != null && f.leftover.amount < 0;
+      const noDraw = f.advancesSource === "none";
+      out.push({
+        key: "left", date: f.leftover.date,
+        label: noDraw ? "Fuel, no advance drawn → from Ops" : over ? "Fuel past the advance → from Ops" : "Fuel advance left → Ops",
+        // The amount once, then where it came from. This used to strip the
+        // leading word off `advanceWords` and re-wrap the remainder, which
+        // printed the figure twice inside nested brackets — "$1,259 advanced
+        // ($1,259 (your last four draws))".
+        note: `${money(f.advances)} advanced (${advanceSrc(f.advancesSource)}) − ${money(f.spent)} fuel · ${fuelWords}${over ? " · you fuelled past the draw, so the rest came out of Ops" : ""}${f.leftover.counted ? "" : inOps}`,
+        amount: f.leftover.amount, missing: f.leftover.missing,
+        stamp: f.spentSource === "actual" ? null : "AT PACE",
+        counted: f.leftover.counted, kind: "leftover",
+      });
     }
     out.push(...billLines(c.bills, c.key, null));
     for (const m of c.moneyDays) out.push({ key: `md-${m.date}`, date: m.date, label: m.label, note: `tax and the surplus that moved${m.counted ? "" : inOps}`, amount: negate(m.amount), missing: m.missing, stamp: null, counted: m.counted, kind: "money" });
     out.sort((x, y) => (x.kind === "ops" ? -1 : y.kind === "ops" ? 1 : x.date < y.date ? -1 : x.date > y.date ? 1 : KIND_ORDER[x.kind] - KIND_ORDER[y.kind]));
     const e = c.ending;
     const under = e != null && floatLine != null && e < floatLine;
+    // Jason, 2026-11-09: "the forecast ends on Thursday, just before my payroll
+    // comes out." He was right. The row borrowed the DEPOSIT's date while its
+    // amount already had Friday's payroll subtracted, and its sentence said
+    // "after this period's deposit lands" — so the number was Friday's and the
+    // label was Thursday's, and reconciling against the bank on Thursday came
+    // up a payroll short. It now carries the LAST counted line's date and
+    // names it. Not hard-coded to Friday: a bill drafting on the 10th lands
+    // after payroll, and then Friday would be wrong the other way.
+    const settled = out.filter((l) => l.counted && l.kind !== "ops" && l.date);
+    const last = settled.length
+      ? settled.reduce((a, b) => (b.date > a.date ? b : a))
+      : null;
+    const endDate = last?.date ?? c.deposit.date;
+    const afterWords =
+      last == null
+        ? "after this period’s lines"
+        : last.kind === "payroll"
+          ? `after ${weekdayLong(last.date)}’s payroll`
+          : last.kind === "bill"
+            ? `after ${dShort(last.date)}’s bills`
+            : last.kind === "accrual"
+              ? `after ${weekdayLong(last.date)}’s accrual`
+              : last.kind === "money"
+                ? "after the money day"
+                : last.kind === "leftover"
+                  ? "after the card settles"
+                  : "after the deposit lands";
     out.push({
-      key: "end", date: c.deposit.date, label: "Ending",
+      key: "end", date: endDate, label: "Ending",
       note:
         e == null
           ? c.missing.length > 0 || board!.missing.length > 0
@@ -458,7 +538,12 @@ const CashFlowPage = () => {
                 return `waits for ${waitsFor(why)} — ${blankInputs(why.length)}, no ending`;
               })()
             : "waits for the current period’s ending"
-          : `Ops after this period’s deposit lands${floatLine != null ? (under ? ` · under the ${money(floatLine)} float` : " · clears the float") : ""}${c.key === "current" ? " · opens the next period" : ""}`,
+          : // The float phrase is said ONE way here and another on the badge, on
+            // purpose (v1.268.0). The badge judges the LOWEST DAY across both
+            // periods; this judges where THIS period lands. They can disagree —
+            // a week that dips when bills draft and recovers by Friday — so
+            // they no longer share the words "clears the float".
+            `Ops ${afterWords}${floatLine != null ? (under ? ` · this period ends ${money(floatLine - e)} under the ${money(floatLine)} float` : ` · ends above the ${money(floatLine)} float`) : ""}${c.key === "current" ? " · opens the next period" : ""}`,
       amount: e, stamp: null, counted: true, kind: "ending", tone: e == null ? undefined : endTone(e),
     });
     return out;
@@ -738,7 +823,7 @@ const CashFlowPage = () => {
                     )}
                     this week <b className="text-dim tabular-nums">{money(thisPayWeekFuel.soFar)}</b> so far
                     {fourWeekRange && (
-                      <> · four weeks <b className="text-dim tabular-nums">{money(fourWeekRange.lo)}–{money(fourWeekRange.hi)}</b></>
+                      <> · those four weeks <b className="text-dim tabular-nums">{money(fourWeekRange.lo)}–{money(fourWeekRange.hi)}</b></>
                     )}
                     {" · "}on the pay week’s own {wdLong(setlDay)} statement, cash{" "}
                     {wdLong(setlDay + lag)}

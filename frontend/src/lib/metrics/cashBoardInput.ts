@@ -13,7 +13,7 @@ import type { MaintenanceService } from "@/types/maintenance";
 import type { PlanRow, AccountRow, SnapshotRow, OpsCheckRow } from "@/services/planService";
 import type { CashAssumptionsRow } from "@/services/cashflowService";
 import {
-  runningWeekPace, runningMilesPace,
+  runningWeekPace, runningMilesPace, runningAdvancePace,
   type CashBoard, type CashBoardInput, type CashCheck, type MoneyDayMove,
 } from "./cashBoard";
 import { deductionBuckets } from "./settlements";
@@ -54,7 +54,7 @@ const WAITS_FOR: Record<string, string> = {
   advanceDefault: "the fuel advance",
   deductionsFallback: "the deductions",
   weeklyRevenueFallback: "the revenue fallback",
-  fuelFallback: "the fuel fallback",
+  fuelFallback: "a fill on the fuel log",
   perMile: "the plan’s $ per mile",
 };
 export const waitsFor = (missing: MissingInput[]): string => {
@@ -233,8 +233,14 @@ export const assembleCashBoardInput = (parts: CashBoardParts): CashBoardInput =>
     perMile,
     fuelPaceWeekly,
     milesPaceWeekly,
-    fuelFallback: numOrNull(assumptions.weekly_fuel_advance),
+    // NOT the advance (v1.268.0). This is the fallback for how much fuel he
+    // BURNS; the advance is what Landstar FRONTS. Wiring both to
+    // `weekly_fuel_advance` made the board assume they were equal, which
+    // zeroed the leftover by construction. With no measurable pace the fuel
+    // line now refuses and says to log a fill — a blank is not a guess.
+    fuelFallback: null,
     advanceDefault: numOrNull(assumptions.weekly_fuel_advance),
+    advancePaceWeekly: runningAdvancePace(settlements, today),
     buckets,
     deductionsFallback: numOrNull(assumptions.weekly_settlement_deductions),
     weeklyRevenueFallback: numOrNull(assumptions.weekly_revenue),

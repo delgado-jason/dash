@@ -33,9 +33,26 @@ const FILES = [
   "src/pages/ExpensesPage.tsx",
   "src/pages/LoadDetailPage.tsx",
   "src/pages/ScoreLoadPage.tsx",
+  // Added v1.268.0 (C2a): the Plan page moved money and sat outside the
+  // ratchet while its sibling Cash Flow sat inside. Two bare
+  // `.catch(() => {})` swallowed the whole page load, so a dead request
+  // rendered "NO SNAPSHOT YET" — a confident claim built out of nothing.
+  "src/pages/StatusPage.tsx",
 ];
 
 // Fixed substrings, so the count is reproducible with grep -F.
+//
+// `Math.max(0,` was TRIED here in v1.268.0 and rejected, which is worth
+// recording so nobody tries it twice. The bug that prompted it was real —
+// `leftover = Math.max(0, advances - spent)` erased four statements of fuel
+// overspend as $0 — but the pattern caught **41 lines across the money files**
+// and all but one were correct: a distance to a floor (`Math.max(0, f - v)`),
+// a percentage clamp (`Math.min(1, Math.max(0, v / f))`), a week count, a
+// parser depth. Floors at zero are the right idiom for a distance or a ratio.
+// A ratchet that must allowlist forty correct lines to catch one wrong one
+// teaches nothing and dilutes the list it is supposed to shrink. The real
+// rule — a signed cash movement must stay signed — is pinned where it belongs,
+// as a case in cashBoard.test.ts.
 const PATTERNS = ["?? 0", "|| 0", "|| 2000", "?? 70", ".catch(() => {})"];
 
 type Hit = { file: string; line: number; text: string };
