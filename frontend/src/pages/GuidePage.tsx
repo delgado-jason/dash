@@ -328,6 +328,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Detention — a decision, not an auto-flag",
       "TONU — the dead-run fee",
       "The line above the table",
+      "The odometer carries itself",
       "The loads table, by color",
       "Paperwork on a load",
       "Facility & agent scorecards",
@@ -2386,6 +2387,47 @@ const GuidePage = () => {
               So "14 loads in this view · 12 earning" means two of the fourteen
               are dead runs, and the gross beside it is the twelve.
             </p>
+          </Section>
+
+          <Section title="The odometer carries itself">
+            <p className="text-sm text-muted-text mb-2">
+              A new load opens with its{" "}
+              <span className="text-light">start odometer already filled</span>,
+              carried from the last completed run — the load before it, or the
+              trip that ran after that load, whichever came later. Trips have
+              tiled onto the chain this way for a long time; loads only started
+              in v1.271.0, which is why they used to be filled in at the end of
+              the week from memory.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              It always says <span className="text-light">where the number came
+              from</span> — "from load 4333118's delivery", "from the Nov 3
+              trip" — so a wrong carry is obvious rather than trusted. It only
+              ever fills an <span className="text-light">empty</span> field;
+              it never corrects something you typed, and it never touches a
+              load you are editing.
+            </p>
+            <p className="text-sm text-muted-text mb-2">
+              Three things it will <span className="text-light">not</span> do.
+              It never carries from a <span className="text-light">fuel
+              stop</span> or a shop visit — those are points inside a run, not
+              the end of one, and a fill sitting mid-load would start the next
+              load before the current one finished. It never carries from a
+              TONU or a cancelled load, which never moved. And while anything is{" "}
+              <span className="text-light">still rolling</span> it leaves the
+              field blank and says so, because the end of the current run
+              isn't known yet. A blank gets filled in; a wrong number gets
+              trusted.
+            </p>
+            <Caveat title="Log the trip and the load will not swallow it">
+              The carry can only see what's in the book. Log a deadhead on the
+              Trips page <i>after</i> you've already created the next load and
+              that load's start will be too low — it will swallow the trip's
+              miles and count them twice. Integrity watches for exactly that
+              shape and raises it as{" "}
+              <span className="text-light">a trip running inside a load's
+              odometer window</span>, whatever put the number there.
+            </Caveat>
           </Section>
 
           <Section title="The loads table, by color">

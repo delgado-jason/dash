@@ -25,7 +25,9 @@ import { isDispatcher } from "@/lib/roles";
 export type Severity = "money" | "data";
 
 export interface IssueRecord {
-  kind: "load" | "period" | "month" | "snapshot" | "settlement" | "accessorial" | "obligation" | "setting";
+  // "trip" joined in v1.271.0 with INT-ODO-TRIP-INSIDE. Nothing switches on
+  // this union — it names the row for the reader — so adding to it is additive.
+  kind: "load" | "trip" | "period" | "month" | "snapshot" | "settlement" | "accessorial" | "obligation" | "setting";
   key: string; // the load number, the month, the snapshot's day…
   href: string; // where the record lives in dash
 }

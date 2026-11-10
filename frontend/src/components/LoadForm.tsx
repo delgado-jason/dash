@@ -49,6 +49,8 @@ import CityAutocomplete from "@/components/CityAutocomplete";
 import { Label } from "@/components/ui/label";
 import { formatPhone } from "@/lib/phone";
 import { numberFieldValue } from "@/lib/loads/numberField";
+import type { Trip } from "@/types/trip";
+import { nextLoadStart, carryWords } from "@/lib/metrics/odometerCarry";
 import { nameOf } from "@/lib/relationships/nameOf";
 import {
   Select,
@@ -62,6 +64,7 @@ import {
 // Stable empty fallback so an absent `loads` prop (the edit form) doesn't mint a
 // fresh array every render, which would loop useCityCoords's [loads] effect.
 const NO_LOADS: Load[] = [];
+const NO_TRIPS: Trip[] = [];
 
 // Interface for LoadFormProps
 interface LoadFormProps {
@@ -73,6 +76,9 @@ interface LoadFormProps {
   // Account load history — powers the market recommender. Optional: absent on the
   // edit page, where the market is already chosen and no suggestion is needed.
   loads?: Load[];
+  // Account trip history. With `loads` it decides the odometer carry — a trip
+  // that ran after the last load is where the next one starts (v1.271.0).
+  trips?: Trip[];
   facilities: Facility[];
   onSuccess: () => void;
   onAgencyCreated: () => void;
@@ -144,6 +150,7 @@ const LoadForm = ({
   agents,
   markets,
   loads = NO_LOADS,
+  trips = NO_TRIPS,
   facilities,
   onSuccess,
   onSubmit,
@@ -259,6 +266,32 @@ const LoadForm = ({
   const [agencyList, setAgencyList] = useState<Agency[]>(agencies);
   const [agentList, setAgentList] = useState<Agent[]>(agents);
   const [marketList, setMarketList] = useState<Market[]>(markets);
+
+  // --- The odometer carry (v1.271.0, Jason's rule) ----------------------------
+  // Trips already tiled onto the chain; loads never did, so every new load
+  // started blank and got reconstructed at the end of the run. It now carries
+  // from the last COMPLETED movement — a load or a trip, whichever ran later —
+  // and refuses outright while anything is still rolling, because then the end
+  // of the current span is not known and there is no honest answer.
+  //
+  // Deliberately NOT `getLatestOdometer()`, which the trip form uses: that
+  // takes GREATEST across loads, trips, FUEL and shop visits, and a fill is a
+  // point inside a run rather than the end of one. On 2026-11-10 it would have
+  // returned the Cisco fill at 612,828 while load 4493038 was still rolling
+  // from 612,773, and the missing miles would have landed in deadhead.
+  const carry = useMemo(() => nextLoadStart(loads, trips), [loads, trips]);
+  // Fills an EMPTY field only — a carry never corrects something typed, and
+  // never touches the edit form, where the number is already a fact.
+  useEffect(() => {
+    if (mode !== "create" || carry.reading == null) return;
+    // The carry is derived from `loads`/`trips`, which arrive after mount, and
+    // it lands in a field the user can then edit — so it has to become state.
+    // The updater only ever fills a null and returns `prev` otherwise, so it is
+    // idempotent and cannot cascade. TripForm does the same thing and escapes
+    // this rule only because its setState sits inside a promise callback.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFormData((prev) => (prev.odometer_start == null ? { ...prev, odometer_start: carry.reading } : prev));
+  }, [mode, carry.reading]);
 
   // --- Market recommender -----------------------------------------------------
   // History cities are already geocoded. Tiers 5-6 (nearest hub / regional) need
@@ -1594,6 +1627,12 @@ const LoadForm = ({
                 onChange={handleChange}
                 value={formData.odometer_start ?? ""}
               ></Input>
+              {/* The carry always says where it came from, so a wrong one is
+                  obvious instead of trusted (v1.271.0). On a refusal it says
+                  why the field is blank rather than leaving it unexplained. */}
+              {mode === "create" && (
+                <p className="font-condensed text-[11.5px] text-faint mt-1">{carryWords(carry)}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="odometer_end">Odometer End</Label>

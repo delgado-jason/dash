@@ -132,3 +132,55 @@ describe("INT-SETTING · an unknown rates list (the fetch failed) is skipped", (
     expect(runIntegrityChecks(empty({ perDiemRates: null })).filter((i) => i.id === "INT-SETTING")).toEqual([]);
   });
 });
+
+describe("INT-ODO-TRIP-INSIDE — a trip swallowed by a load's odometer window", () => {
+  // Jason, 2026-11-10: "I don't enter the trips on the load form. I enter the
+  // trips on the trips page." That is the risk this check exists for — a
+  // deadhead logged AFTER the load was created leaves the load's start carried
+  // from the load before it, so the load's window swallows the trip and the
+  // miles count twice. INT-ODO-OVERLAP never saw it: that one compares loads
+  // to LOADS only.
+  const load = (over = {}) =>
+    ({ load_id: "l1", load_number: "4333118", load_status: "delivered",
+       delivery_date: "2026-11-07", odometer_start: 611054, odometer_end: 612773, ...over }) as never;
+  const trip = (over = {}) =>
+    ({ trip_date: "2026-11-03", status: "completed", trip_type: "deadhead",
+       odometer_start: 611054, odometer_end: 611212, ...over }) as never;
+  const ids = (over: Partial<Parameters<typeof empty>[0]>) =>
+    runIntegrityChecks(empty(over)).map((i) => i.id);
+
+  it("fires when the trip's span sits inside the load's window", () => {
+    // load 611,054–612,773 swallowing a 611,054→611,212 trip is the stale
+    // carry exactly: the load should have started at 611,212.
+    expect(ids({ loads: [load()], trips: [trip({ odometer_start: 611100, odometer_end: 611212 })] }))
+      .toContain("INT-ODO-TRIP-INSIDE");
+  });
+
+  it("does NOT fire when the trip TILES onto the load — touching ends are correct", () => {
+    // The healthy shape from Jason's own book: the load ends where the trip
+    // begins. Flagging this would cry wolf on every well-kept week.
+    expect(ids({
+      loads: [load({ odometer_start: 610284, odometer_end: 611054 })],
+      trips: [trip({ odometer_start: 611054, odometer_end: 611212 })],
+    })).not.toContain("INT-ODO-TRIP-INSIDE");
+  });
+
+  it("does not fire for a trip entirely before or after the load", () => {
+    expect(ids({ loads: [load()], trips: [trip({ odometer_start: 609000, odometer_end: 610000 })] }))
+      .not.toContain("INT-ODO-TRIP-INSIDE");
+    expect(ids({ loads: [load()], trips: [trip({ odometer_start: 613000, odometer_end: 613500 })] }))
+      .not.toContain("INT-ODO-TRIP-INSIDE");
+  });
+
+  it("catches a PARTIAL overlap too, not only full containment", () => {
+    expect(ids({ loads: [load()], trips: [trip({ odometer_start: 612000, odometer_end: 613500 })] }))
+      .toContain("INT-ODO-TRIP-INSIDE");
+  });
+
+  it("ignores a cancelled trip and a half-logged one", () => {
+    expect(ids({ loads: [load()], trips: [trip({ status: "cancelled", odometer_start: 611100, odometer_end: 611212 })] }))
+      .not.toContain("INT-ODO-TRIP-INSIDE");
+    expect(ids({ loads: [load()], trips: [trip({ odometer_start: 611100, odometer_end: null })] }))
+      .not.toContain("INT-ODO-TRIP-INSIDE");
+  });
+});
