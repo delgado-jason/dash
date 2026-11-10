@@ -1691,8 +1691,14 @@ const GuidePage = () => {
               <span className="text-light">a day under the float</span> while
               each ending speaks only for its own period — the two can
               disagree, and now they no longer borrow each other’s words. Tap
-              either deposit to type the figure you know; it is kept on this
-              browser until the statement lands.
+              either deposit to type the figure you know — Landstar has told you
+              and the statement has not landed yet. It is{" "}
+              <span className="text-light">saved to your account</span>, so the
+              phone, the laptop and Brandie all read the same number, and it
+              stands until the real statement arrives and the board takes that
+              instead. Tap the ✕ to drop it. (Until v1.268.0 it was kept on
+              whichever browser typed it, which meant the laptop and the phone
+              could disagree and clearing site data lost it.)
             </Why>
           </Metric>
 

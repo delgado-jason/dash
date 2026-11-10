@@ -9,6 +9,9 @@ import {
   upsertFinancials,
   getAdjustments,
   setAdjustment,
+  getDepositOverrides,
+  setDepositOverride,
+  deleteDepositOverride,
 } from "../services/cashflowServices.js";
 
 const router = express.Router();
@@ -63,5 +66,12 @@ router.post("/financials", handle(async (req) => ({ status: 201, body: { financi
 
 router.get("/adjustments", handle(async (req) => ({ adjustments: await getAdjustments(req.user.user_id) })));
 router.put("/adjustments", handle(async (req) => ({ adjustment: await setAdjustment(req.user.user_id, req.body) })));
+
+// The deposit figure typed before the statement lands (migration 105). Scoped
+// to the ACCOUNT, like everything else here, so a dispatcher sees what the
+// owner typed instead of a different number on a different browser.
+router.get("/deposit-overrides", handle(async (req) => ({ overrides: await getDepositOverrides(req.user.user_id) })));
+router.put("/deposit-overrides", handle(async (req) => ({ override: await setDepositOverride(req.user.user_id, req.body) })));
+router.delete("/deposit-overrides/:statementDate", handle(async (req) => ({ deleted: await deleteDepositOverride(req.user.user_id, req.params.statementDate) })));
 
 export default router;

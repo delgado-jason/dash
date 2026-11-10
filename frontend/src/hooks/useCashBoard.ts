@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Load } from "@/types/load";
 import { buildCashBoard, type CashBoard, type CashBoardInput } from "@/lib/metrics/cashBoard";
-import { assembleCashBoardInput, readDepositOverrides } from "@/lib/metrics/cashBoardInput";
+import { assembleCashBoardInput, depositOverridesOf } from "@/lib/metrics/cashBoardInput";
+import { getDepositOverrides } from "@/services/cashflowService";
 import { useLocalTodayKey } from "./useLocalToday";
 import type { OwnerFeedsState } from "./useOwnerFeeds";
 
@@ -14,8 +15,20 @@ export const useCashBoard = (
   loads: Load[],
 ): { board: CashBoard | null; input: CashBoardInput | null; today: string } => {
   const today = useLocalTodayKey();
-  // The typed deposits live on this browser; read once per visit, like the page does.
-  const [overrides] = useState(readDepositOverrides);
+  // The typed deposits are the ACCOUNT's now, not this browser's (v1.268.0),
+  // so the plate and the Cash Flow page read the same figure whichever device
+  // typed it. A failed fetch is simply no overrides — the board falls back to
+  // its projection, which is what it did before any of them existed.
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let live = true;
+    getDepositOverrides()
+      .then((rows) => live && setOverrides(depositOverridesOf(rows)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const { plans, accounts, snapshots, opsChecks, periods, settlements, fuelEntries, trips, services, obligations, assumptions, schedule, loading } = feeds;
   const input = useMemo(() => {
     if (loading || !assumptions) return null;

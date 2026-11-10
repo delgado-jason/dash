@@ -17,6 +17,7 @@ import {
   getCashAssumptions, patchCashAssumptions,
   getMonthlyFinancials, upsertMonthlyFinancials,
   getForecastAdjustments, setForecastAdjustment,
+  getDepositOverrides, setDepositOverride, deleteDepositOverride,
 } from "@/services/cashflowService";
 import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
 import { buildForecast, pretaxMargin, archiveGaps } from "@/lib/metrics/cashflow";
@@ -44,7 +45,7 @@ import { payWeekOf, weekLabel, type PayWeek } from "@/lib/metrics/payWeeks";
 import type { MissingInput } from "@/lib/integrity/require";
 import { MissingInputLine } from "@/components/integrity/MissingInput";
 import {
-  assembleCashBoardInput, pickPlan, readDepositOverrides, numOrNull, waitsFor, blankInputs, OVERRIDES_KEY,
+  assembleCashBoardInput, pickPlan, depositOverridesOf, numOrNull, waitsFor, blankInputs,
 } from "@/lib/metrics/cashBoardInput";
 
 const LBL = "font-condensed font-semibold text-[11px] tracking-[.14em] uppercase text-faint";
@@ -98,16 +99,40 @@ const CashFlowPage = () => {
   const [loading, setLoading] = useState(true);
 
   // A typed deposit beats a projection but never the feed's actual; keyed by
-  // the STATEMENT date. Kept on this browser (2026-11-04) — it used to vanish
-  // on reload with nothing saying so.
-  const [netPayOverrides, setNetPayOverrides] = useState<Record<string, number>>(readDepositOverrides);
+  // the STATEMENT date. On the SERVER since v1.268.0 — it used to live in this
+  // browser's localStorage, so the laptop and the phone disagreed, clearing
+  // site data lost it, Brandie never saw it and no backup ever held it, while
+  // every other number on this page went to Postgres.
+  //
+  // Written through optimistically: the cell you just typed should not wait on
+  // a round trip. A failed write puts the old value back and says so, rather
+  // than leaving a figure on screen the server never took.
+  const [netPayOverrides, setNetPayOverrides] = useState<Record<string, number>>({});
+  const [overrideFailed, setOverrideFailed] = useState(false);
+  const loadOverrides = () =>
+    getDepositOverrides()
+      .then((rows) => {
+        setNetPayOverrides(depositOverridesOf(rows));
+        setOverrideFailed(false);
+      })
+      .catch(() => setOverrideFailed(true));
   useEffect(() => {
-    try {
-      window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(netPayOverrides));
-    } catch {
-      // a private window: the override lives for this visit only
-    }
-  }, [netPayOverrides]);
+    loadOverrides();
+  }, []);
+  const writeOverride = (statementDate: string, amount: number | null) => {
+    const before = netPayOverrides;
+    setNetPayOverrides((o) => {
+      const next = { ...o };
+      if (amount == null) delete next[statementDate];
+      else next[statementDate] = amount;
+      return next;
+    });
+    const call = amount == null ? deleteDepositOverride(statementDate) : setDepositOverride(statementDate, amount);
+    call.then(() => setOverrideFailed(false)).catch(() => {
+      setNetPayOverrides(before);
+      setOverrideFailed(true);
+    });
+  };
   const [editing, setEditing] = useState<string | null>(null); // which cell is an input
   const [showPaste, setShowPaste] = useState(false);
   const [showAssume, setShowAssume] = useState(false);
@@ -406,16 +431,8 @@ const CashFlowPage = () => {
       : {
           id: `dep-${d.statementDate}`,
           value: d.source === "override" ? (netPayOverrides[d.statementDate] ?? d.amount!) : d.amount!,
-          onCommit: (v: number) => setNetPayOverrides((prev) => ({ ...prev, [d.statementDate]: v })),
-          clear:
-            d.source === "override"
-              ? () =>
-                  setNetPayOverrides((prev) => {
-                    const next = { ...prev };
-                    delete next[d.statementDate];
-                    return next;
-                  })
-              : null,
+          onCommit: (v: number) => writeOverride(d.statementDate, v),
+          clear: d.source === "override" ? () => writeOverride(d.statementDate, null) : null,
         };
   const KIND_ORDER: Record<LedgerLine["kind"], number> = { ops: 0, deposit: 1, leftover: 2, payroll: 3, accrual: 4, bill: 5, money: 6, ending: 9 };
   // Bills that draft the same day read as one line.
@@ -606,6 +623,14 @@ const CashFlowPage = () => {
             detail="the odometer chain runs without them until it loads"
             onRetry={loadServices}
             className="mt-3"
+          />
+        )}
+        {overrideFailed && (
+          <FetchFailed
+            what="the deposits you typed"
+            detail="the board is reading its own projection until they load — anything you type now may not be saved"
+            onRetry={loadOverrides}
+            className="mt-2"
           />
         )}
         {adjustFailed && (

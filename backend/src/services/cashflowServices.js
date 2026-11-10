@@ -204,3 +204,53 @@ export async function setAdjustment(user_id, data) {
   );
   return result.rows[0];
 }
+
+// ---- the deposit you typed, before the statement landed (migration 105) ----
+//
+// Until v1.268.0 these lived in one browser's localStorage, so a figure typed
+// on the laptop was invisible on the phone, gone with cleared site data, never
+// seen by Brandie and never backed up. Keyed by the STATEMENT date — the
+// Wednesday the period settles — because that is what the board keys a deposit
+// by, not the Thursday the cash lands.
+export async function getDepositOverrides(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT to_char(statement_date, 'YYYY-MM-DD') AS statement_date, amount
+     FROM deposit_overrides WHERE user_id = $1 ORDER BY statement_date`,
+    [user_id],
+  );
+  return result.rows;
+}
+
+export async function setDepositOverride(user_id, data) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const { statement_date } = data;
+  if (typeof statement_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(statement_date))
+    throw new ValidationError("statement_date must be YYYY-MM-DD");
+  const a = Number(data.amount);
+  // A deposit can be zero (a home week's statement nets nothing) but never
+  // negative: Landstar carries a negative statement into the next one rather
+  // than taking money back out of the account.
+  if (!Number.isFinite(a) || a < 0) throw new ValidationError("amount must be zero or more");
+  const result = await db.query(
+    `INSERT INTO deposit_overrides (user_id, statement_date, amount)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, statement_date) DO UPDATE SET amount = EXCLUDED.amount, updated_at = NOW()
+     RETURNING to_char(statement_date, 'YYYY-MM-DD') AS statement_date, amount`,
+    [user_id, statement_date, a],
+  );
+  return result.rows[0];
+}
+
+// Taking it back: the board falls to the projection, or to the feed's actual
+// once the statement is in.
+export async function deleteDepositOverride(user_id, statement_date) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  if (typeof statement_date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(statement_date))
+    throw new ValidationError("statement_date must be YYYY-MM-DD");
+  await db.query(`DELETE FROM deposit_overrides WHERE user_id = $1 AND statement_date = $2`, [
+    user_id,
+    statement_date,
+  ]);
+  return { statement_date };
+}

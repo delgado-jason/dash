@@ -21,19 +21,20 @@ import { collectReadings } from "./odometer";
 import { getMoneyDay, monthName, type PlanStageInput } from "./planStatus";
 import type { MissingInput } from "@/lib/integrity/require";
 
-// Where the typed deposits live on this browser (keyed by statement date).
-export const OVERRIDES_KEY = "dash.cashboard.deposit-overrides";
-
-// A typed deposit beats a projection but never the feed's actual. Missing or
-// unreadable storage is simply no overrides.
-export const readDepositOverrides = (): Record<string, number> => {
-  try {
-    const raw = window.localStorage.getItem(OVERRIDES_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, number>) : {};
-  } catch {
-    return {};
-  }
+// The typed deposits, keyed by statement date. They lived in `localStorage`
+// under "dash.cashboard.deposit-overrides" until v1.268.0 — on ONE browser, so
+// a figure typed on the laptop was invisible on the phone, gone with cleared
+// site data, never seen by Brandie and never in any backup, while every other
+// number on this page went to Postgres. They are rows now (migration 105);
+// this only shapes them for the board.
+//
+// A typed deposit beats a projection and never beats the feed's actual.
+export const depositOverridesOf = (
+  rows: { statement_date: string; amount: number }[],
+): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.statement_date] = r.amount;
+  return out;
 };
 
 export const numOrNull = (v: string | number | null | undefined): number | null => {
