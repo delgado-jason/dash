@@ -28,12 +28,16 @@ export const facilityTimes = (loads: Load[], facilityId: string): FacilityTimes 
   for (const l of loads) {
     if (!happened(l)) continue;
     if (l.shipper_facility_id === facilityId) {
-      const m = dwellMinutes(l.shipper_in, l.shipper_out);
+      // The appointment is passed so an EARLY arrival is not charged to the
+      // facility (Jason's rule, 2026-11-10): the clock starts at the later of
+      // the arrival and the appointment. Rolling in three hours before the dock
+      // opens is his call, and this ledger is a verdict on them.
+      const m = dwellMinutes(l.shipper_in, l.shipper_out, l.pickup_appt_start);
       if (m != null) dwells.push(m);
       touch(l.pickup_date);
     }
     if (l.receiver_facility_id === facilityId) {
-      const m = dwellMinutes(l.receiver_in, l.receiver_out);
+      const m = dwellMinutes(l.receiver_in, l.receiver_out, l.delivery_appt_start);
       if (m != null) dwells.push(m);
       touch(l.delivery_date ?? l.pickup_date);
     }

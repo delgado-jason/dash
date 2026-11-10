@@ -2,7 +2,7 @@
 // vs its actual in/out times. Free-time is a per-user setting (hours). Pure — the
 // UI passes the load + freeHours in.
 import type { Load } from "@/types/load";
-import { fmtDuration } from "./stopTimes";
+import { fmtDuration, stopAnchorMin } from "./stopTimes";
 
 // The fallback ONLY for when no settlement schedule exists (or while it is
 // still loading). The live number is settlement_schedules.detention_free_hours,
@@ -36,11 +36,62 @@ export const onTimeStatus = (
   return "on-time";
 };
 
-// Billable detention minutes at ONE stop = time released past the free window.
-// The free clock starts at the SCHEDULED appointment — the window's END if it's a
-// window, else the set appointment time — NOT at arrival, so showing up early
-// never earns detention. Falls back to arrival only when no appointment is
-// recorded. Needs the out (release) time; 0 without it.
+// ---- WHETHER a claim is possible at all (Jason's rule, 2026-11-10) ----
+//
+// "A late arrival or missing an appointment time means I will not be able to
+// claim detention."
+//
+// So claimability is a gate, not a calculation: no appointment, no claim; late,
+// no claim. Early still claims — you were there and waiting. That is exactly
+// `onTimeStatus` being non-null and not "late", so the two definitions are one
+// function and cannot drift.
+//
+// The gate replaces the old `?? inT` fallback, which counted a no-appointment
+// stop's free time from arrival, and it adds the lateness test that was never
+// there. Both erred toward showing detention that could not be collected —
+// the worst direction for a number you take to an agent. On 2026-11-10 prod
+// held 55 stops with an arrival and a release, all 55 with an appointment and
+// none of them late, so no stored figure moves; what moves is what the code
+// will do the first time either case appears. One already waits in the data:
+// load 2194005's receiver, in at 09:44 against an 08:00 appointment, with no
+// out-time yet.
+// "no-arrival" is the same rule read from the other side: with no in-time there
+// is no way to know whether the truck was late, so there is nothing to claim.
+// The app already says this in Brandie's OWED band — "detention cannot be
+// counted on this load until it is" — and no stop in prod has a release without
+// an arrival, so writing it down changes no figure.
+export type NoClaim = "late" | "no-appointment" | "no-arrival";
+
+export const detentionBar = (
+  apptStart: string | null | undefined,
+  apptEnd: string | null | undefined,
+  arrival: string | null | undefined,
+): NoClaim | null => {
+  if (!apptStart) return "no-appointment";
+  if (!arrival) return "no-arrival";
+  if (onTimeStatus(apptStart, apptEnd, arrival) === "late") return "late";
+  return null;
+};
+
+// What to say on screen when a claim is barred. The reason is the useful part:
+// "no appointment" is fixable by setting one, "late" is not.
+export const NO_CLAIM_WORDS: Record<NoClaim, string> = {
+  late: "arrived late — not claimable",
+  "no-appointment": "no appointment set — not claimable",
+  "no-arrival": "no in-time logged — not claimable",
+};
+
+// Billable detention minutes at ONE stop: the time held past the free window,
+// measured from the SAME anchor as dwell (`stopAnchorMin` — the later of the
+// arrival and the appointment's START). Needs the out (release) time; 0 without
+// it. Gated by `detentionBar` above: a late arrival, or a stop with no
+// appointment, claims nothing however long the truck actually sat.
+//
+// The appointment's END does not anchor this clock — it only decides lateness.
+// It used to anchor it, and on a wide window that made detention mathematically
+// unclaimable: load 1045087's shipper ran a 07:00–23:45 "window", held the
+// truck from 11:10 to 20:15, and scored ZERO because free time was counted from
+// 23:45. Under the anchor it is 6h05m, which is what actually happened.
 export const stopDetentionMinutes = (
   inT: string | null | undefined,
   outT: string | null | undefined,
@@ -49,17 +100,18 @@ export const stopDetentionMinutes = (
   freeHours: number,
 ): number => {
   if (!outT) return 0;
-  const clock = apptEnd ?? apptStart ?? inT; // window end → appt → arrival
-  if (!clock) return 0;
-  const inMin = inT ? toMin(inT) : null;
+  if (detentionBar(apptStart, apptEnd, inT)) return 0;
+  // The bar guarantees both an appointment and an arrival by here.
+  const anchor = stopAnchorMin(inT, apptStart);
+  if (anchor == null) return 0;
+  const inMin = toMin(String(inT));
   let out = toMin(outT);
-  const start = toMin(clock);
   // Overnight only when the stop actually crossed midnight — the release reads
-  // earlier than the ARRIVAL. Anchoring on the arrival (not the appointment) is
-  // the fix: a truck released before the free window even closes is just an
-  // early/on-time departure (zero detention), NOT a midnight crossing.
-  if (inMin != null && out < inMin) out += 1440;
-  return Math.max(0, out - (start + freeHours * 60));
+  // earlier than the ARRIVAL. Judging the wrap on the arrival (not the
+  // appointment) is the fix: a truck released before the free window even
+  // closes is an early/on-time departure (zero detention), NOT a crossing.
+  if (out < inMin) out += 1440;
+  return Math.max(0, out - (anchor + freeHours * 60));
 };
 
 // Total billable-eligible detention across both stops (shipper + receiver).
