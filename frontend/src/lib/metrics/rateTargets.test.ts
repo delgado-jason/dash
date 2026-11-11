@@ -225,6 +225,164 @@ describe("getCostBasis", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// THE COMMITTED BASIS (migration 109)
+//
+// The floor used to be total cost ÷ the miles actually driven, which makes it
+// a function of the outcome it governs: a slow month spreads the same fixed
+// cost over fewer miles, so the floor RISES, which says quote higher, which
+// books less freight. October '26 would have quoted $5.15 purely because
+// October was slow. With a commitment the floor asks "what must a mile earn
+// if I run the miles I promised?" and holds still.
+// ---------------------------------------------------------------------------
+describe("getCostBasis — the committed basis", () => {
+  const now = new Date("2026-07-15T00:00:00Z"); // window: Apr, May, Jun
+
+  /** A month with a fixed/variable split and a known number of driven miles. */
+  const split = (month: string, fixed: number, variable: number): ExpensePeriod => ({
+    period_id: month,
+    period_month: month,
+    period_label: month,
+    income_total: null,
+    cogs_total: 0,
+    expense_total: fixed + variable,
+    fixed_total: fixed,
+    variable_total: variable,
+  });
+  // One load per month. The odometer must START above zero — monthMiles treats
+  // a zero reading as no reading at all, so a span from 0 contributes nothing.
+  const milesIn = (month: string, driven: number): Load =>
+    load({
+      load_id: `l-${month}`,
+      delivery_date: `${month.slice(0, 7)}-15`,
+      odometer_start: 100_000,
+      odometer_end: 100_000 + driven,
+      loaded_miles: driven,
+    });
+
+  const months = ["2026-04-01", "2026-05-01", "2026-06-01"];
+  // $3,000 fixed + $2,000 variable a month, 1,000 driven miles a month.
+  const periods = months.map((m) => split(m, 3000, 2000));
+  const loads = months.map((m) => milesIn(m, 1000));
+
+  it("divides fixed cost by the COMMITMENT, not by the miles actually driven", () => {
+    // fixed 3,000/mo + 0 notes, over a 2,000-mile commitment = $1.50/mi,
+    // plus variable 6,000 ÷ 3,000 driven miles = $2.00/mi → $3.50.
+    const b = getCostBasis(periods, 0, loads, now, 3, [], 2000);
+    expect(b.basisKind).toBe("committed");
+    expect(b.targetMiles).toBe(2000);
+    expect(b.fixedMonthly).toBeCloseTo(3000, 5);
+    expect(b.variablePerMile).toBeCloseTo(2, 5);
+    expect(b.costPerTotalMile).toBeCloseTo(3.5, 5);
+  });
+
+  it("the committed floor FALLS as the commitment rises — fixed cost spreads further", () => {
+    const at2k = getCostBasis(periods, 0, loads, now, 3, [], 2000).costPerTotalMile!;
+    const at3k = getCostBasis(periods, 0, loads, now, 3, [], 3000).costPerTotalMile!;
+    const at6k = getCostBasis(periods, 0, loads, now, 3, [], 6000).costPerTotalMile!;
+    expect(at2k).toBeCloseTo(3.5, 5); // 3000/2000 + 2
+    expect(at3k).toBeCloseTo(3, 5); // 3000/3000 + 2
+    expect(at6k).toBeCloseTo(2.5, 5); // 3000/6000 + 2
+    expect(at2k).toBeGreaterThan(at3k);
+    expect(at3k).toBeGreaterThan(at6k);
+  });
+
+  it("THE WHOLE POINT: a slow month no longer moves the floor", () => {
+    // Same costs, but the truck drove a third of the miles. Under the measured
+    // basis this inflates the floor; under a commitment it must not move.
+    const slowLoads = months.map((m) => milesIn(m, 333));
+    const committed = getCostBasis(periods, 0, loads, now, 3, [], 3000);
+    const committedSlow = getCostBasis(periods, 0, slowLoads, now, 3, [], 3000);
+    const measured = getCostBasis(periods, 0, loads, now, 3, [], null);
+    const measuredSlow = getCostBasis(periods, 0, slowLoads, now, 3, [], null);
+
+    // The measured basis triples when the miles collapse...
+    expect(measured.costPerTotalMile).toBeCloseTo(5, 5); // 15,000 / 3,000
+    expect(measuredSlow.costPerTotalMile).toBeCloseTo(15.015, 2); // 15,000 / 999
+    // ...the committed fixed half does not move at all.
+    expect(committed.fixedMonthly).toBeCloseTo(committedSlow.fixedMonthly!, 5);
+    expect(committed.targetMiles).toBe(committedSlow.targetMiles);
+  });
+
+  it("the notes join the FIXED half — they draft whether the truck moves or not", () => {
+    const withNotes = getCostBasis(periods, 1000, loads, now, 3, [], 2000);
+    expect(withNotes.fixedMonthly).toBeCloseTo(4000, 5); // 3,000 + 1,000
+    expect(withNotes.costPerTotalMile).toBeCloseTo(4, 5); // 4000/2000 + 2
+  });
+
+  it("falls back to the measured basis when no commitment is set", () => {
+    const b = getCostBasis(periods, 0, loads, now, 3, [], null);
+    expect(b.basisKind).toBe("measured");
+    expect(b.targetMiles).toBeNull();
+    expect(b.costPerTotalMile).toBeCloseTo(5, 5); // 15,000 cost / 3,000 miles
+  });
+
+  it("falls back when the months carry no fixed/variable split at all", () => {
+    // Pre-split months (no lines) must not silently read as $0 fixed.
+    const plain = months.map((m) => period(m, 0, 5000));
+    const b = getCostBasis(plain, 0, loads, now, 3, [], 2000);
+    expect(b.basisKind).toBe("measured");
+    expect(b.fixedMonthly).toBeNull();
+    expect(b.variablePerMile).toBeNull();
+    expect(b.costPerTotalMile).toBeCloseTo(5, 5);
+  });
+
+  it("a month missing its split is left out of the split, not counted as zero", () => {
+    // Apr and Jun carry lines; May does not. The averages must read TWO months,
+    // and May's miles must not land in the variable denominator either.
+    const mixed = [split("2026-04-01", 3000, 2000), period("2026-05-01", 0, 5000), split("2026-06-01", 3000, 2000)];
+    const b = getCostBasis(mixed, 0, loads, now, 3, [], 2000);
+    expect(b.basisKind).toBe("committed");
+    expect(b.fixedMonthly).toBeCloseTo(3000, 5); // 6,000 / 2 months, not / 3
+    expect(b.variablePerMile).toBeCloseTo(2, 5); // 4,000 / 2,000 miles, not / 3,000
+  });
+
+  it("refuses a zero or negative commitment rather than dividing by it", () => {
+    for (const bad of [0, -1, -5000]) {
+      const b = getCostBasis(periods, 0, loads, now, 3, [], bad);
+      expect(b.basisKind).toBe("measured");
+      expect(b.costPerTotalMile).toBeCloseTo(5, 5);
+      expect(Number.isFinite(b.costPerTotalMile!)).toBe(true);
+    }
+  });
+
+  it("a commitment with no miles driven still prices — that is the point", () => {
+    // No loads at all: the measured basis can say nothing, but the commitment
+    // still answers "what must a mile earn if I run the miles I promised?"
+    // using the fixed half alone.
+    const b = getCostBasis(periods, 0, [], now, 3, [], 2000);
+    expect(b.totalMiles).toBe(0);
+    expect(b.variablePerMile).toBeNull(); // no miles to spread variable over
+    expect(b.basisKind).toBe("measured"); // so it cannot be fully derived
+    expect(b.costPerTotalMile).toBeNull();
+  });
+
+  it("reproduces the real floor: $11,314 fixed + $1.59/mi over 7,500 = $3.099", () => {
+    // The May–Oct 2026 window: $9,354/mo fixed operating, $1,960 of notes, and
+    // $70,604 of variable over 44,404 driven miles.
+    //
+    // THE NOTES FIGURE IS PRINCIPAL ONLY ($1,960, obligations.amount), not the
+    // full bank draft ($2,409, draft_amount). The loans' interest is already a
+    // P&L expense, so adding the whole payment counts it twice — the exact
+    // double-count migration 062 was written to prevent. monthlyObligationCost
+    // reads `amount` for this reason and the basis must inherit it.
+    const real = [
+      { m: "2026-04-01", f: 9354, v: 11767 },
+      { m: "2026-05-01", f: 9354, v: 11767 },
+      { m: "2026-06-01", f: 9354, v: 11767 },
+    ].map((x) => split(x.m, x.f, x.v));
+    const realLoads = months.map((m) => milesIn(m, 7401));
+    const b = getCostBasis(real, 1960, realLoads, now, 3, [], 7500);
+    expect(b.fixedMonthly).toBeCloseTo(11314, 2);
+    expect(b.variablePerMile).toBeCloseTo(1.59, 2);
+    expect(b.costPerTotalMile).toBeCloseTo(3.099, 2);
+    // ÷ the measured 0.7593 keep = a $4.08 walk-away, and the minimum rung
+    // (+17.7%) is $4.80 — which is exactly the 15% margin goal.
+    expect(b.costPerTotalMile! / 0.7593).toBeCloseTo(4.08, 2);
+    expect((b.costPerTotalMile! / 0.7593) * 1.177).toBeCloseTo(4.8, 2);
+  });
+});
+
 describe("monthMiles — the trip log joins the odometer union (BASIS-07)", () => {
   const load = (n: number, start: number, end: number, loaded: number): Load =>
     ({ load_id: `l${n}`, load_number: `910000${n}`, load_status: "delivered", pickup_date: "2026-05-0" + n, delivery_date: "2026-05-0" + (n + 1), odometer_start: start, odometer_end: end, loaded_miles: loaded, linehaul: 1000, fuel_surcharge: 0, net_revenue: 730, gross_revenue: 1000 }) as unknown as Load;

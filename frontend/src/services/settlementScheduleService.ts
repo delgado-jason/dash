@@ -31,6 +31,10 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   rate_tier_spec_strong:
     s.rate_tier_spec_strong != null ? Number(s.rate_tier_spec_strong) : 0.6,
   margin_goal: s.margin_goal != null ? Number(s.margin_goal) : 0.26,
+  // No fallback figure: absent means "no commitment", and the rate basis is
+  // meant to fall back to measured miles rather than to a number nobody chose.
+  target_miles_per_month:
+    s.target_miles_per_month != null ? Number(s.target_miles_per_month) : null,
   // A weekday is 0–6 and a lag is 0–6 days; anything else (a bad column, NaN)
   // would spin the cash board's statement walk — the house defaults instead.
   settlement_day: dayInWeek(s.settlement_day, 3),

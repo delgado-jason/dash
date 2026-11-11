@@ -25,4 +25,14 @@ export interface SettlementSchedule {
   // Target profit margin (profit ÷ revenue) → weekly/daily REVENUE targets.
   // Independent of the rate tiers above.
   margin_goal: number;
+  /**
+   * Driven miles per month you COMMIT to (migration 109). The rate floor is
+   * fixed cost spread over this rather than over the miles you happened to
+   * drive — otherwise a slow month raises the floor, which says quote higher,
+   * which books less freight, which makes the month slower.
+   *
+   * `null` = no commitment, and every surface falls back to the measured blend.
+   * A blank in the UI clears it, which is a real answer here.
+   */
+  target_miles_per_month: number | null;
 }

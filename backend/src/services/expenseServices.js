@@ -142,11 +142,34 @@ export async function saveExpensePeriod(user_id, data) {
 // ---- GET ALL PERIODS ---- (newest first; feeds the YTD chart + month selector)
 export async function getExpensePeriods(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
+  // The fixed/variable split rides along with the LIST, not just with a single
+  // period's lines. The rate basis divides fixed cost by the committed monthly
+  // mileage (migration 109), and that basis is read by the Dashboard, the
+  // Market page, the Foreman and the Load Scorer — none of which fetch lines.
+  // Computing it here means one query answers all of them instead of each
+  // surface pulling every month's lines and re-summing them.
+  //
+  // Same read-through as the lines themselves (EXPTYPE-01): the CATEGORY's
+  // current type, never the one stored on the line.
+  //
+  // A month with no lines returns NULL for both, not 0 — a zero would read as
+  // a month that genuinely had no fixed cost and drag the whole blend down.
   const result = await db.query(
-    `SELECT period_id, period_month, period_label, income_total, cogs_total, expense_total, created_at AS filed_at
-     FROM expense_periods
-     WHERE user_id = $1
-     ORDER BY period_month DESC`,
+    `SELECT p.period_id, p.period_month, p.period_label,
+            p.income_total, p.cogs_total, p.expense_total,
+            p.created_at AS filed_at,
+            t.fixed_total, t.variable_total
+     FROM expense_periods p
+     LEFT JOIN LATERAL (
+       SELECT SUM(l.amount) FILTER (WHERE COALESCE(d.type, l.type) = 'fixed')    AS fixed_total,
+              SUM(l.amount) FILTER (WHERE COALESCE(d.type, l.type) = 'variable') AS variable_total
+         FROM expense_lines l
+         LEFT JOIN expense_category_defaults d
+                ON d.user_id = l.user_id AND d.category = l.category
+        WHERE l.period_id = p.period_id
+     ) t ON TRUE
+     WHERE p.user_id = $1
+     ORDER BY p.period_month DESC`,
     [user_id],
   );
   return result.rows;

@@ -26,6 +26,8 @@ import { DetentionCard } from "@/components/dashboard/pulse/DetentionCard";
 import { FloorsCard, LeaveCard, StageCard } from "@/components/dashboard/pulse/LongGame";
 import { useBasisWindow } from "@/hooks/useBasisWindow";
 import { burnFromPeriods } from "@/lib/metrics/sitCost";
+import { monthPace, floorAtMiles } from "@/lib/metrics/pace";
+import { PaceCard } from "@/components/dashboard/pulse/PaceCard";
 import { leaveReserve } from "@/lib/metrics/leaveReserve";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { isDelivered } from "@/lib/metrics/status";
@@ -113,6 +115,28 @@ export const PulseTab = ({
 
   // ---- BAND 2 · the instruments ----
   const deadhead = getMonthlyDeadhead(loads, trips, now).thisMonth;
+
+  // The commitment and its check (migration 109). The floor the ladder quotes
+  // is fixed cost over the miles PROMISED; this is whether the promise is
+  // being kept, and what floor the month is really tracking toward.
+  const pace = useMemo(
+    () =>
+      monthPace(
+        loads,
+        trips,
+        feeds.homeDays,
+        feeds.plannedHomeDays,
+        now,
+        targets.basis?.targetMiles ?? null,
+      ),
+    [loads, trips, feeds.homeDays, feeds.plannedHomeDays, now, targets.basis?.targetMiles],
+  );
+  const impliedFloor = floorAtMiles(
+    targets.basis?.fixedMonthly ?? null,
+    targets.basis?.variablePerMile ?? null,
+    targets.keep ?? 0,
+    pace.landsAt,
+  );
   const upcoming = getUpcomingLoads(loads);
 
   // Landing on the next weekly settlement: delivered, POD in, not yet paid —
@@ -279,8 +303,10 @@ export const PulseTab = ({
       </Band>
 
       <Band label="PRICED AND RUNNING RIGHT">
-        {/* rate vs floor — the one and only rate surface */}
-        <Board className="md:col-span-3 p-4">
+        {/* The price and the running, side by side — the two halves this band
+            is named for. The floor is derived from a commitment now, so the
+            card that watches the commitment belongs next to it, not buried. */}
+        <Board className="md:col-span-6 p-4">
           <h3 className="ds2-label flex justify-between">
             Rate vs your floor
             {cur != null && (
@@ -359,7 +385,15 @@ export const PulseTab = ({
             )}
           </p>
         </Board>
-        <Board className="md:col-span-3">
+
+        <PaceCard
+          pace={pace}
+          impliedFloor={impliedFloor}
+          committedFloor={ladder.walkAway ?? null}
+          className="md:col-span-6"
+        />
+
+        <Board className="md:col-span-4">
           <BoardCell
             label="Deadhead"
             value={deadhead != null ? `${Math.round(deadhead * 100)}%` : "—"}
@@ -369,7 +403,7 @@ export const PulseTab = ({
             go="trips"
           />
         </Board>
-        <Board className="md:col-span-3">
+        <Board className="md:col-span-4">
           <BoardCell
             label="Net $/loaded mi"
             value={targets.rollingRpm != null ? fmtRpm(targets.rollingRpm) : "—"}
@@ -382,7 +416,7 @@ export const PulseTab = ({
             go="cost basis"
           />
         </Board>
-        <Board className="md:col-span-3">
+        <Board className="md:col-span-4">
           <BoardCell
             label="On-time"
             value={onTime.onTimePct != null ? `${Math.round(onTime.onTimePct * 100)}%` : "—"}

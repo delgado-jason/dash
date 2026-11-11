@@ -596,6 +596,10 @@ export const syntheticBook = (): Book => {
     rate_tier_spec_target: 0.45,
     rate_tier_spec_strong: 0.6,
     margin_goal: 0.26,
+    // The book stands on the MEASURED basis so the existing ladder contracts
+    // keep testing the arithmetic they were written for. The committed basis
+    // has its own fixtures.
+    target_miles_per_month: null,
   };
   const payRates: AccessorialRate[] = PAY_RATES.map((r) => ({ ...r })); // no pass-through in the book — NET-02 is tested on its own fixtures
 

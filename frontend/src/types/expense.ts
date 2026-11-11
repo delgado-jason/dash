@@ -17,6 +17,16 @@ export interface ExpensePeriod {
   cogs_total: number | null;
   expense_total: number | null;
   filed_at?: string | null; // when the month was first filed (the row's created_at) — the Money tab's filing line
+  /**
+   * The month's cost split by the CATEGORY's current fixed/variable (EXPTYPE-01),
+   * summed server-side so the rate basis can divide fixed cost by the committed
+   * mileage without any caller fetching lines.
+   *
+   * `null` means the month has no lines at all — NOT that it had no fixed cost.
+   * A zero there would read as a free month and drag the blend down.
+   */
+  fixed_total?: number | null;
+  variable_total?: number | null;
   lines?: ExpenseLine[];
 }
 

@@ -96,6 +96,34 @@ export const validateSchedule = (data, current = null) => {
     );
   }
 
+  // The committed monthly mileage the rate floor is derived from.
+  //
+  // THE ONE FIELD WHERE A BLANK IS A REAL ANSWER. Everywhere else an empty
+  // numeric is refused because it would silently read as zero. Here null means
+  // "I have not committed to a figure", and the basis falls back to measured
+  // miles — so clearing it is a legitimate choice, not a mistake. Zero is still
+  // refused: it would divide the fixed cost by nothing and send the floor to
+  // infinity.
+  if (d.target_miles_per_month !== undefined) {
+    if (d.target_miles_per_month === null || d.target_miles_per_month === "") {
+      values.target_miles_per_month = null;
+    } else {
+      const n = toNumber(d.target_miles_per_month);
+      if (n == null) {
+        errors.push(
+          "target_miles_per_month needs a number — leave it empty to go back to measured miles",
+        );
+      } else {
+        set(
+          "target_miles_per_month",
+          n,
+          (x) => Number.isInteger(x) && x > 0 && x <= 40000,
+          "target_miles_per_month must be a whole number between 1 and 40000",
+        );
+      }
+    }
+  }
+
   if (d.operation !== undefined) {
     if (!OPERATIONS.includes(d.operation))
       errors.push(`operation must be one of: ${OPERATIONS.join(", ")}`);
