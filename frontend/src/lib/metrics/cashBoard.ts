@@ -57,6 +57,7 @@ import { expectedPayDate, nextDraftDate } from "./cashflow";
 import { isFirstOfMonth, type DeductionBuckets } from "./settlements";
 import { loadCashIn } from "./rateTargets";
 import { payWeekOf, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
+import { onRoadShare } from "./homePlan";
 import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type OdometerReading } from "./odometer";
 import { accrualFlagOf } from "./planStatus";
 import { accrualsByWeek, retrueAccrued, retrueWords, type AccrualRecord } from "./accrualTruth";
@@ -112,6 +113,11 @@ export interface CashBoardInput {
   buckets: DeductionBuckets;
   deductionsFallback: number | null;
   weeklyRevenueFallback: number | null; // when nothing is booked into a period yet
+  // The home days Jason has PLANNED (per_diem_days.planned, migration 107).
+  // Every projection in a week is scaled by how much of it he is still on the
+  // road; a fully planned week projects no revenue, no fuel and no advance.
+  // Absent → the board behaves exactly as it did before 107.
+  plannedHomeDays?: readonly string[];
   moneyDays: MoneyDayMove[];
   overrides: Record<string, number>; // statement date → deposit
   // The accruals the snapshots recorded (miles + the week they covered), so a
@@ -135,8 +141,9 @@ export interface FuelLine {
   soFar: number;
   advances: number | null; // drawn in the period — the statement's actual, else the measured pace, else the typed figure
   // actual = the statement · pace = the last four draws · assumed = the typed
-  // figure · none = no loads, no draw
-  advancesSource: "actual" | "pace" | "assumed" | "none";
+  // figure · none = no loads, no draw · home = planned home, nothing to draw
+  // against and no fuel to buy (107)
+  advancesSource: "actual" | "pace" | "assumed" | "none" | "home";
   // advances − spent → Ops, the Monday inside the period. SIGNED since
   // v1.268.0: a NEGATIVE leftover is fuel he bought past the advance, which
   // came out of Ops and is real. `Math.max(0, …)` used to erase it, and only
@@ -151,7 +158,9 @@ export interface DepositLine extends Line {
   source: "actual" | "override" | "projected" | "fallback";
   // An open period projects the larger of its loads and the planning fallback —
   // one small booking must not replace a whole week's expected revenue.
-  revenueSource: "loads" | "fallback" | "none";
+  // home = the week is planned home, so the planning fallback does not apply:
+  // a week he is not working must not be projected as a working week (107).
+  revenueSource: "loads" | "fallback" | "none" | "home";
   revenue: number | null; // delivered + expected (or the fallback) before the advance and the bucket; null when refused
   // Landstar carries a negative statement into the next one. carriedIn is what
   // earlier statements left owing (≤ 0, already applied to amount); carriedOut
@@ -412,17 +421,24 @@ export const runningAdvancePace = (
 // against (a closed period that earned nothing). What's left on the card
 // after the fills goes to Ops on the Monday inside the period.
 export const fuelForWeek = (
-  input: Pick<CashBoardInput, "fuelEntries" | "today" | "fuelPaceWeekly" | "fuelFallback" | "advanceDefault" | "advancePaceWeekly" | "settlements" | "settlementDay">,
+  input: Pick<CashBoardInput, "fuelEntries" | "today" | "fuelPaceWeekly" | "fuelFallback" | "advanceDefault" | "advancePaceWeekly" | "settlements" | "settlementDay" | "plannedHomeDays">,
   week: PayWeek,
   base?: CashCheck,
   noLoads = false,
 ): FuelLine => {
   const closed = week.end < input.today;
   const { total, count } = closed ? fillsIn(input.fuelEntries, week) : fillsIn(input.fuelEntries, week, input.today);
+  // How much of this week he is still on the road (107). A week fully planned
+  // home buys no fuel and draws no advance; a partial week scales. ACTUALS are
+  // never scaled — a statement's own advance and the fills he really made both
+  // win below, because a plan is a forecast and a receipt is a fact.
+  const onRoad = onRoadShare(week, input.plannedHomeDays ?? []);
+  const atHome = onRoad === 0;
   // The pace: the last four running weeks, else the fallback — which refuses
   // (spent null) when it isn't set. A closed period stands on its fills alone.
-  const paceMissing = !closed && input.fuelPaceWeekly == null ? missingIn(input, ["fuelFallback"]) : [];
-  const paceWeekly = Number(input.fuelPaceWeekly ?? input.fuelFallback);
+  // A week planned home needs no pace to refuse about.
+  const paceMissing = !closed && !atHome && input.fuelPaceWeekly == null ? missingIn(input, ["fuelFallback"]) : [];
+  const paceWeekly = round2(Number(input.fuelPaceWeekly ?? input.fuelFallback) * onRoad);
   const spent = closed ? total : paceMissing.length ? null : Math.max(paceWeekly, total);
   const spentSource: FuelLine["spentSource"] = closed || (paceMissing.length === 0 && total >= paceWeekly) ? "actual" : "pace";
   const statementDate = statementDateOf(week, input.settlementDay);
@@ -436,11 +452,21 @@ export const fuelForWeek = (
   // quarter of the statements did (v1.268.0).
   const advPace = input.advancePaceWeekly ?? null;
   const advMissing =
-    advancesActual == null && advPace == null && !noLoads ? missingIn(input, ["advanceDefault"]) : [];
+    advancesActual == null && advPace == null && !noLoads && !atHome
+      ? missingIn(input, ["advanceDefault"])
+      : [];
   const advances =
-    advancesActual ?? (noLoads ? 0 : advMissing.length ? null : advPace ?? Number(input.advanceDefault));
+    advancesActual ??
+    (noLoads || atHome
+      ? 0
+      : advMissing.length
+        ? null
+        : round2((advPace ?? Number(input.advanceDefault)) * onRoad));
+  // "home" before "none": a planned home week and a closed empty week both draw
+  // nothing, but only one of them is a decision he made, and the board should
+  // say which.
   const advancesSource: FuelLine["advancesSource"] =
-    advancesActual != null ? "actual" : noLoads ? "none" : advPace != null ? "pace" : "assumed";
+    advancesActual != null ? "actual" : atHome ? "home" : noLoads ? "none" : advPace != null ? "pace" : "assumed";
   const monday = nextDow(week.start, 1);
   const missing = dedupe([...advMissing, ...paceMissing]);
   const counted = countsIn(monday, base);
@@ -545,10 +571,19 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   // What this projection needs and doesn't have: the weekly advance (when no
   // statement gives it), the deductions (when no statement bucket does), and —
   // for an open or future period — the planning week it is measured against.
+  // How much of this week he is still on the road (107). The deposit is the
+  // BIGGER of the two home-time errors: with nothing booked, an open week falls
+  // back to the planning week — so a fortnight at home used to forecast about
+  // $9,300 of revenue that was never going to arrive. It ran opposite to the
+  // fuel error and partly cancelled it, which is why the ending looked almost
+  // reasonable while both halves were wrong.
+  const onRoad = onRoadShare(week, input.plannedHomeDays ?? []);
   const refused = dedupe([
     ...(fuel.advances == null ? missingIn(input, ["advanceDefault"]) : []),
     ...(bucket == null ? missingIn(input, ["deductionsFallback"]) : []),
-    ...(!closed ? missingIn(input, ["weeklyRevenueFallback"]) : []),
+    // A week planned fully home is not measured against a working week, so it
+    // has nothing to refuse about.
+    ...(!closed && onRoad > 0 ? missingIn(input, ["weeklyRevenueFallback"]) : []),
   ]);
   if (refused.length) {
     return {
@@ -556,7 +591,10 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
       revenueSource: closed ? (noLoads ? "none" : "loads") : "loads", revenue: null, carriedOut: 0,
     };
   }
-  const revFallback = Number(input.weeklyRevenueFallback);
+  // The planning week, scaled by how much of this week he is working. Loads
+  // still win when they say more: a week planned home that nonetheless
+  // delivers something gets credited for what it delivered.
+  const revFallback = round2(Number(input.weeklyRevenueFallback) * onRoad);
   let revenue: number;
   let revenueSource: DepositLine["revenueSource"];
   if (closed) {
@@ -564,9 +602,10 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
     revenueSource = noLoads ? "none" : "loads";
   } else if (fromLoads >= revFallback) {
     revenue = fromLoads;
-    revenueSource = "loads";
+    // Nothing booked and nothing projected, because the week is spoken for.
+    revenueSource = onRoad === 0 && fromLoads === 0 ? "home" : "loads";
   } else {
-    revenue = round2(revFallback);
+    revenue = revFallback;
     revenueSource = "fallback";
   }
   // A closed period that ran nothing drew nothing — but Landstar's recurring

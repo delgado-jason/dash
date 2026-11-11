@@ -4,6 +4,7 @@ import {
   getPerDiemDays,
   getLastHomeDay,
   getHomeDays,
+  getPlannedHomeDays,
   upsertPerDiemDay,
   deletePerDiemDay,
 } from "../services/perDiemServices.js";
@@ -92,6 +93,21 @@ router.get("/home-days", async (req, res) => {
   }
 });
 
+// ---- GET the home days still ahead (what the cash board forecasts against) ----
+// Before "/" so the literal path is not read as a year list.
+router.get("/planned", async (req, res) => {
+  try {
+    const days = await getPlannedHomeDays(req.user.user_id);
+    return res.status(200).json({ days });
+  } catch (err) {
+    if (err.type === "validation")
+      return res.status(err.statusCode).json({ error: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err.message });
+  }
+});
+
 // ---- GET a year's marked days ----
 router.get("/", async (req, res) => {
   try {
@@ -111,8 +127,8 @@ router.get("/", async (req, res) => {
 // ---- UPSERT a day ----
 router.put("/", async (req, res) => {
   try {
-    const { day, status } = req.body;
-    const saved = await upsertPerDiemDay(req.user.user_id, day, status);
+    const { day, status, planned } = req.body;
+    const saved = await upsertPerDiemDay(req.user.user_id, day, status, planned ?? false);
     return res.status(200).json({ message: "Per-diem day saved", day: saved });
   } catch (err) {
     if (err.type === "validation")
