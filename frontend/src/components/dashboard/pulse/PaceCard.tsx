@@ -17,7 +17,7 @@
 // thinner month is a judgement the software does not get to make.
 import { Board } from "@/components/ui/Board";
 import type { Pace } from "@/lib/metrics/pace";
-import { rpm as fmtRpm } from "@/lib/format";
+import { rpm as fmtRpm, money } from "@/lib/format";
 
 const int = (n: number): string => Math.round(n).toLocaleString("en-US");
 
@@ -27,10 +27,18 @@ interface Props {
   impliedFloor: number | null;
   /** The floor the ladder is actually quoting, for comparison. */
   committedFloor: number | null;
+  /** What a day with the truck moving earns after its own fuel and wear. */
+  dayWorth?: number | null;
   className?: string;
 }
 
-export const PaceCard = ({ pace, impliedFloor, committedFloor, className = "" }: Props) => {
+export const PaceCard = ({
+  pace,
+  impliedFloor,
+  committedFloor,
+  dayWorth = null,
+  className = "",
+}: Props) => {
   const { miles, target, pctOfTarget, daysOut, milesPerDayOut, trailingPerDayOut, landsAt } = pace;
 
   // Only worth warning when the gap is real money. A few cents either way is
@@ -130,6 +138,24 @@ export const PaceCard = ({ pace, impliedFloor, committedFloor, className = "" }:
             </b>
           </span>
         </div>
+
+        {/* The companion to rate per mile, which is a ratio and so punishes a
+            cheap repositioning mile even when it raises the month's profit.
+            This is a total: what a moving day actually earns after its own
+            fuel and wear — and therefore what a day at home gives up. */}
+        {dayWorth != null && dayWorth > 0 && (
+          <div className="flex items-baseline justify-between gap-3 py-[7px]">
+            <span className="font-condensed text-[13.5px] text-dim">
+              A day out is worth
+              <span className="text-faint"> · after fuel and wear</span>
+            </span>
+            <span className="font-condensed text-[13.5px] tabular-nums">
+              <b style={{ color: "var(--color-status-positive-text)" }}>
+                {money(dayWorth)}
+              </b>
+            </span>
+          </div>
+        )}
       </div>
 
       {warn ? (

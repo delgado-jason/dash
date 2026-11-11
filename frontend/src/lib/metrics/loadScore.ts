@@ -29,6 +29,12 @@ export const DEADHEAD_UNKNOWN = "deadhead unknown — needs the odometer";
 export interface ScoreBasis {
   costPerDrivenMile: number | null; // net cost ÷ total (driven) miles
   payTake: number | null; // net ÷ gross — your blended keep after the carrier
+  /**
+   * The cost a mile incurs by being driven — fuel, tyres, wear. Optional:
+   * without it the Scorer grades exactly as it always did, it simply cannot
+   * say whether a load below break-even still beats parking.
+   */
+  variablePerMile?: number | null;
 }
 
 export interface LoadScore {
@@ -42,6 +48,22 @@ export interface LoadScore {
   profit: number | null; // net − cost
   verdict: Verdict | null; // null when there's no cost basis yet, or an input is unknown
   missing: string[]; // what the Scorer refused to guess ("deadhead unknown — needs the odometer")
+  /**
+   * The gross rate per driven mile at which moving stops being worse than
+   * parking: the point where what a mile brings home covers what it burns.
+   *
+   * IT IS NOT A TARGET, and it is roughly HALF the walk-away. The walk-away
+   * answers "what must the month average?"; this answers the different and
+   * much narrower question "the alternative right now is sitting still — is
+   * this better than that?". Fixed cost is absent on purpose: it drafts
+   * whether the truck rolls or not, so it cannot decide a marginal load.
+   *
+   * Fill a month with freight at this rate and the month is a disaster. Take
+   * ONE to get out of a dead market and you are better off than idling.
+   */
+  beatsSittingRpm: number | null;
+  /** Whether this load clears that line. Null when it cannot be worked out. */
+  beatsSitting: boolean | null;
 }
 
 export const scoreLoad = (
@@ -60,7 +82,15 @@ export const scoreLoad = (
   const driven = loadedK != null && deadK != null ? loadedK + deadK : 0;
   const rate = rateK == null ? NaN : rateK; // not used while a rate is missing (we return before the math)
   const loadedRpm = rateK != null && loadedK != null && loadedK > 0 ? rateK / loadedK : null; // freight's own rate
-  const { costPerDrivenMile, payTake } = basis;
+  const { costPerDrivenMile, payTake, variablePerMile = null } = basis;
+
+  // Where moving stops being worse than parking: gross x keep must cover what
+  // the mile burns, so gross = variable / keep. Needs no rate and no miles, so
+  // it is known even when the load itself cannot be graded.
+  const beatsSittingRpm =
+    variablePerMile != null && variablePerMile > 0 && payTake != null && payTake > 0
+      ? variablePerMile / payTake
+      : null;
 
   const empty: LoadScore = {
     drivenMiles: driven,
@@ -73,6 +103,8 @@ export const scoreLoad = (
     profit: null,
     verdict: null,
     missing,
+    beatsSittingRpm,
+    beatsSitting: null,
   };
 
   // Unknown input → no grade, no numbers built on a guess.
@@ -112,6 +144,8 @@ export const scoreLoad = (
     profit,
     verdict,
     missing,
+    beatsSittingRpm,
+    beatsSitting: beatsSittingRpm == null ? null : allInRpm >= beatsSittingRpm,
   };
 };
 
