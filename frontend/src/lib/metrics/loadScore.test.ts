@@ -78,3 +78,69 @@ describe("counterRates", () => {
     expect(counterRates(4, 0)).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// BEATS SITTING — the other question entirely.
+//
+// The walk-away answers "what must the month average?". This answers the
+// narrower one that comes up in a dead market: "the alternative right now is
+// parking — is this better than that?". Fixed cost is absent on purpose; it
+// drafts whether the truck rolls or not, so it cannot decide a marginal load.
+// ---------------------------------------------------------------------------
+describe("scoreLoad — beats sitting", () => {
+  // Variable cost $1.59/mi at a 0.7593 keep → a gross mile must make $2.09
+  // before moving pays for itself. Break-even is $4.11, nearly double.
+  const b = { costPerDrivenMile: 3.119, payTake: 0.7593, variablePerMile: 1.59 };
+
+  it("is variable cost grossed up by the keep — about half the walk-away", () => {
+    const s = scoreLoad({ rate: 3000, loadedMiles: 600, deadheadMiles: 100 }, b, TIERS);
+    expect(s.beatsSittingRpm).toBeCloseTo(1.59 / 0.7593, 4); // $2.09
+    expect(s.beatsSittingRpm!).toBeLessThan(s.breakevenRpm! / 1.8);
+  });
+
+  it("a load can SCRAP and still beat parking — the case that matters", () => {
+    // $2.50 a driven mile: far under the $4.11 floor, comfortably over $2.09.
+    const s = scoreLoad({ rate: 1750, loadedMiles: 500, deadheadMiles: 200 }, b, TIERS);
+    expect(s.allInRpm).toBeCloseTo(2.5, 2);
+    expect(s.verdict).toBe("pass"); // still a bad month if repeated
+    expect(s.beatsSitting).toBe(true); // but better than idling right now
+  });
+
+  it("below the line it loses money faster than standing still", () => {
+    const s = scoreLoad({ rate: 1050, loadedMiles: 500, deadheadMiles: 200 }, b, TIERS);
+    expect(s.allInRpm).toBeCloseTo(1.5, 2);
+    expect(s.beatsSitting).toBe(false);
+  });
+
+  it("exactly on the line counts as beating it — the mile breaks even", () => {
+    const line = 1.59 / 0.7593;
+    const s = scoreLoad({ rate: line * 700, loadedMiles: 500, deadheadMiles: 200 }, b, TIERS);
+    expect(s.beatsSitting).toBe(true);
+  });
+
+  it("without a variable cost the Scorer grades exactly as before, and says nothing", () => {
+    const s = scoreLoad({ rate: 2900, loadedMiles: 460, deadheadMiles: 80 }, basis, TIERS);
+    expect(s.verdict).toBe("take"); // unchanged
+    expect(s.beatsSittingRpm).toBeNull();
+    expect(s.beatsSitting).toBeNull();
+  });
+
+  it("the line is known even when the load itself cannot be graded", () => {
+    // Deadhead unknown → no verdict, but the threshold needs no load at all.
+    const s = scoreLoad({ rate: 2000, loadedMiles: 500, deadheadMiles: null }, b, TIERS);
+    expect(s.verdict).toBeNull();
+    expect(s.beatsSittingRpm).toBeCloseTo(2.09, 2);
+    expect(s.beatsSitting).toBeNull(); // nothing to compare it against
+  });
+
+  it("refuses a nonsense variable cost rather than inventing a line", () => {
+    for (const bad of [0, -1.59, null]) {
+      const s = scoreLoad(
+        { rate: 2900, loadedMiles: 460, deadheadMiles: 80 },
+        { ...b, variablePerMile: bad },
+        TIERS,
+      );
+      expect(s.beatsSittingRpm).toBeNull();
+    }
+  });
+});

@@ -1117,6 +1117,56 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Beats sitting — the other line, about half the floor"
+            answers="The rate at which moving stops being worse than parking. It is not a target — it answers a different question from the walk-away."
+            sources={[
+              { label: "Score a Load", to: "/score" },
+              { label: "Dashboard", to: "/dashboard" },
+            ]}
+          >
+            <Formula>
+              beats sitting = variable cost per mile ÷ your keep · a day out is
+              worth = miles that day × (net per mile − variable per mile)
+            </Formula>
+            <Eg>
+              Your walk-away is about <span className="text-light">$4.11</span> a
+              driven mile. Moving pays for its own fuel and wear above{" "}
+              <span className="text-light">$2.09</span>. A $2.50 load is a bad
+              month if you repeat it — and still better than a day parked.
+            </Eg>
+            <Why>
+              <span className="text-light">Two numbers, two questions.</span> The
+              walk-away asks <em>what must the month average?</em> — it has to
+              carry the fixed cost, so it is high. This asks{" "}
+              <em>the alternative right now is sitting still; is this better
+              than that?</em> Fixed cost is left out because it drafts whether
+              the truck rolls or not, so it cannot decide a marginal load.
+              <br />
+              <br />
+              <span className="text-light">A cheap load is a repositioning
+              cost, never a revenue plan.</span> It is right when it carries you
+              to freight you can book properly, and wrong when it buries you
+              deeper in a soft market. Against <em>deadheading</em> the same
+              direction it is never close: empty miles cost the same fuel and
+              earn nothing.
+              <br />
+              <br />
+              Which is also why the dashboard shows{" "}
+              <span className="text-light">what a day out is worth</span> beside
+              your rate per mile. Rate per mile is a <em>ratio</em>; profit is a{" "}
+              <em>total</em>. Add a cheap repositioning mile and the ratio falls
+              while the total rises — so a month where you kept moving can look
+              worse per mile and bank more money. A metric you would improve by
+              turning down profitable work is measuring the wrong thing.
+              <br />
+              <br />
+              The Scorer only mentions this line on a load that already scores{" "}
+              <span className="text-light">SCRAP</span>, because that is the
+              only time it is the live question. It never appears as a rung.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Break-even — the rate to book"
             answers="The gross rate per mile you have to book to cover your cost."
             sources={[

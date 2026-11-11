@@ -26,7 +26,7 @@ import { DetentionCard } from "@/components/dashboard/pulse/DetentionCard";
 import { FloorsCard, LeaveCard, StageCard } from "@/components/dashboard/pulse/LongGame";
 import { useBasisWindow } from "@/hooks/useBasisWindow";
 import { burnFromPeriods } from "@/lib/metrics/sitCost";
-import { monthPace, floorAtMiles } from "@/lib/metrics/pace";
+import { monthPace, floorAtMiles, daysOutIn, contributionPerDayOut } from "@/lib/metrics/pace";
 import { PaceCard } from "@/components/dashboard/pulse/PaceCard";
 import { leaveReserve } from "@/lib/metrics/leaveReserve";
 import { money, rpm as fmtRpm } from "@/lib/format";
@@ -137,6 +137,21 @@ export const PulseTab = ({
     targets.keep ?? 0,
     pace.landsAt,
   );
+
+  // WHAT A DAY WITH THE TRUCK MOVING IS WORTH.
+  //
+  // Rate per mile is a RATIO and profit is a TOTAL, so adding a cheap
+  // repositioning mile lowers the ratio while raising the total — a metric you
+  // would optimise by refusing profitable work. Contribution per day out is
+  // the honest companion: miles covered × what each keeps after its own fuel
+  // and wear. It is also the real price of a day at home.
+  const dayWorth = useMemo(() => {
+    const b = targets.basis;
+    if (!b || b.totalMiles <= 0) return null;
+    const out = daysOutIn(b.monthsDetail, feeds.homeDays);
+    if (out <= 0) return null;
+    return contributionPerDayOut(b.totalMiles / out, b.netPerTotalMile, b.variablePerMile);
+  }, [targets.basis, feeds.homeDays]);
   const upcoming = getUpcomingLoads(loads);
 
   // Landing on the next weekly settlement: delivered, POD in, not yet paid —
@@ -390,6 +405,7 @@ export const PulseTab = ({
           pace={pace}
           impliedFloor={impliedFloor}
           committedFloor={ladder.walkAway ?? null}
+          dayWorth={dayWorth}
           className="md:col-span-6"
         />
 

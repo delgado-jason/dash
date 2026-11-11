@@ -370,7 +370,13 @@ const ScoreLoadPage = () => {
   const entered = rate !== "" && loaded !== "" && deadhead !== "";
   const score = scoreLoad(
     { rate: knownNumber(rate), loadedMiles: knownNumber(loaded), deadheadMiles: knownNumber(deadhead) },
-    { costPerDrivenMile: targets.basis.costPerTotalMile, payTake: targets.basis.payTake },
+    {
+      costPerDrivenMile: targets.basis.costPerTotalMile,
+      payTake: targets.basis.payTake,
+      // Lets the Scorer answer the separate question of whether a load below
+      // break-even still beats parking the truck.
+      variablePerMile: targets.basis.variablePerMile,
+    },
     activeTiers,
   );
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
@@ -653,6 +659,43 @@ const ScoreLoadPage = () => {
                     <span className="font-condensed font-semibold tabular-nums text-[19.5px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
                   </Well>
                 </div>
+
+                {/* THE OTHER QUESTION. The rungs above answer "what should the
+                    month average?". When a load already scores SCRAP the agent
+                    will not meet them, and the real choice becomes this load
+                    versus sitting still — a different, much lower line, because
+                    the fixed cost drafts either way and cannot decide a
+                    marginal load. Shown only where it is actually the live
+                    question, so it never reads as a target. */}
+                {score.verdict === "pass" && score.beatsSittingRpm != null && (
+                  <p className="font-condensed text-[12.5px] mt-3 leading-snug text-faint">
+                    {score.beatsSitting ? (
+                      <>
+                        <b style={{ color: "var(--color-amber-hi)" }}>
+                          It still beats sitting.
+                        </b>{" "}
+                        Moving pays for its own fuel and wear above{" "}
+                        <b className="text-dim">{fmtRpm(score.beatsSittingRpm)}</b> a
+                        driven mile, and this clears that. Worth taking to reach
+                        freight you can book properly —{" "}
+                        <span className="text-dim">
+                          a repositioning cost, never a plan
+                        </span>
+                        . Fill a month at this rate and the month is a disaster.
+                      </>
+                    ) : (
+                      <>
+                        <b style={{ color: "var(--color-status-negative-text)" }}>
+                          Worse than parking.
+                        </b>{" "}
+                        Below{" "}
+                        <b className="text-dim">{fmtRpm(score.beatsSittingRpm)}</b> a
+                        driven mile the miles cost more to run than they bring
+                        home, so this loses money faster than standing still.
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="ds2-board p-4 flex items-center justify-center text-center">
