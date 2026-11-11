@@ -2012,6 +2012,48 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Your assumptions, checked"
+            answers="The four numbers you typed once, measured against your own statements. It shows the gap and offers the swap — it never applies anything."
+            sources={[{ label: "Cash Flow", to: "/cashflow" }]}
+          >
+            <Formula>
+              a typed number is worth changing when the gap is BOTH ≥5% and ≥$50
+            </Formula>
+            <Eg>
+              Read off your last twelve statements: weekly revenue typed{" "}
+              <span className="text-light">$4,647</span> against a measured{" "}
+              <span className="text-light">$5,037</span> — the forecast has been
+              pessimistic about every deposit. The fuel advance typed{" "}
+              <span className="text-light">$2,000</span> against{" "}
+              <span className="text-light">$2,207</span>, over a range of $0 to
+              $4,000.
+            </Eg>
+            <Why>
+              The board already learns everywhere it has a feed — deposits
+              prefer the real statement, fuel runs on your last four running
+              weeks, deductions come off your statements, advances prefer the
+              statement's own figure. The four typed assumptions are the only
+              things that never change unless you change them.
+              <br />
+              <br />
+              <span className="text-light">Nothing is applied for you.</span> A
+              typed number you chose on purpose — a payroll you are about to
+              change, a revenue figure you are deliberately conservative about —
+              is not an error, and software that quietly overwrites your
+              judgement is worse than software that never asks.
+              <br />
+              <br />
+              Two details worth knowing. The <span className="text-light">
+              advance</span> is measured only over the weeks that actually
+              drew one: a week at home draws nothing, and averaging those zeroes
+              in would describe how often you were home rather than what you
+              draw when you go. <span className="text-light">Revenue</span> is
+              the opposite — every week counts, zeroes included, because the
+              assumption stands for a week, not for a working week.
+            </Why>
+          </Metric>
+
+          <Metric
             title="What a stretch at home costs — and what moving it costs"
             answers="Mark a home stretch on the calendar and the page prices it: the payroll and bills that draft anyway, plus what the same stretch would cost a week earlier or later."
             sources={[{ label: "Per Diem", to: "/per-diem" }]}

@@ -22,6 +22,7 @@ import {
 import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
 import { buildForecast, pretaxMargin, archiveGaps } from "@/lib/metrics/cashflow";
 import { weeksOffByMonth, weeksOffIsDerived } from "@/lib/metrics/homePlan";
+import { AssumptionCheck } from "@/components/cashflow/AssumptionCheck";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import { money as fmtMoney, moneyCents as fmtMoneyCents } from "@/lib/format";
@@ -1222,6 +1223,19 @@ const CashFlowPage = () => {
             </p>
           )}
         </div>
+
+        {/* Phase 1 of "Does the forecast hold?" — below the six-month road, on
+            the forecasting page, which is where he will be when he doubts a
+            number. It offers; it never applies. */}
+        <AssumptionCheck
+          settlements={settlements}
+          assumptions={assumptions}
+          onAdopt={async (key, value) => {
+            await patchCashAssumptions({ [key]: value } as Parameters<typeof patchCashAssumptions>[0]);
+            const fresh = await getCashAssumptions();
+            setAssumptions(fresh);
+          }}
+        />
 
         {showOpsNow && (
           <OpsNowPopup
