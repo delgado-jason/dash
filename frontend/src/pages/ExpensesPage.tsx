@@ -12,7 +12,7 @@ import {
 } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getExpenseMetrics, getTrueMonthly } from "@/lib/metrics/expenses";
-import { monthlyObligationCost } from "@/lib/metrics/rateTargets";
+import { monthlyObligationCost, basisCaption } from "@/lib/metrics/rateTargets";
 import { computeRateTargets } from "@/hooks/useRateTargets";
 import { monthMiles } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -176,6 +176,10 @@ const ExpensesPage = () => {
     [loads, periods, obligationsCost, schedule, trips, split],
   );
   const basisWord = targets.basis.windowLabel ?? "no P&L filed";
+  // Figures DERIVED from the commitment are named after the promise, not
+  // after a window of months they no longer blend (migration 109). Anything
+  // still measured over the window keeps naming its months.
+  const floorWord = basisCaption(targets.basis);
   // Full periods (with lines) for the basis months, so the sit/run burn blends
   // the fixed/variable split over the same window the per-mile figures blend.
   const windowIds = useMemo(() => {
@@ -341,7 +345,7 @@ const ExpensesPage = () => {
                   { v: costUnsure ? "—" : money(trueMonthly.trueWeeklyCost), l: "Weekly cost" },
                   {
                     v: basisUnsure || targets.basis.costPerTotalMile == null ? "—" : `$${targets.basis.costPerTotalMile.toFixed(2)}`,
-                    l: `Cost / total mi · ${basisWord}`,
+                    l: `Cost / total mi · ${floorWord}`,
                   },
                   {
                     v:
@@ -462,8 +466,11 @@ const ExpensesPage = () => {
                       RATE TO BOOK
                     </div>
                     <div className="font-condensed text-[12px] text-faint tracking-[.1em] uppercase mt-[3px]">
-                      gross $/mile driven · {basisWord} · {targets.basis.months} of{" "}
-                      {targets.basis.monthsWanted} months filed · the number that pays for everything
+                      gross $/mile driven · {floorWord}
+                      {targets.basis.basisKind === "committed"
+                        ? " · held until you change it"
+                        : ` · ${targets.basis.months} of ${targets.basis.monthsWanted} months filed`}{" "}
+                      · the number that pays for everything
                     </div>
                   </div>
                 </div>

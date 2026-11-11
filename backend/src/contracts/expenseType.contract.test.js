@@ -27,17 +27,28 @@ const source = readFileSync(
   "utf8",
 );
 
-// The lines query that feeds the Expenses page and, through it, the burn.
-const linesQuery = (() => {
-  const i = source.indexOf("FROM expense_lines l");
-  assert.notEqual(i, -1, "the period's lines query moved — re-point this contract");
-  return source.slice(i - 400, i + 400);
-})();
+/** The body of an exported function, by name — so a new query elsewhere in the
+ *  file can never silently become the one this contract is inspecting. */
+// The open paren matters: "getExpensePeriod" is a prefix of
+// "getExpensePeriods", so a bare name match finds the wrong function.
+const bodyOf = (name) => {
+  const i = source.indexOf(`export async function ${name}(`);
+  assert.notEqual(i, -1, `${name} moved or was renamed — re-point this contract`);
+  const end = source.indexOf("\nexport ", i + 1);
+  return source.slice(i, end === -1 ? source.length : end);
+};
 
+// TWO places read the type, and both must read it through the defaults:
+//   getExpensePeriod  — a month's own lines, which the ledger and burn use
+//   getExpensePeriods — the fixed/variable split carried on the LIST, which
+//                       the committed rate basis divides by the commitment
+// Missing either one reintroduces the drift on a different surface.
 describe("EXPTYPE-01 · the period's lines read their type from the defaults", () => {
+  const q = bodyOf("getExpensePeriod");
+
   test("the type column is COALESCEd through expense_category_defaults", () => {
     assert.match(
-      linesQuery,
+      q,
       /COALESCE\(\s*d\.type\s*,\s*l\.type\s*\)\s+AS\s+type/i,
       "a period's lines must return the CATEGORY's current type, not the line's stored one",
     );
@@ -47,9 +58,41 @@ describe("EXPTYPE-01 · the period's lines read their type from the defaults", (
     // LEFT, not inner: a category with no default row at all must still come
     // back, falling through to its stored type — the only answer available.
     assert.match(
-      linesQuery,
+      q,
       /LEFT JOIN expense_category_defaults d[\s\S]*?d\.user_id\s*=\s*l\.user_id[\s\S]*?d\.category\s*=\s*l\.category/i,
       "the defaults join must be LEFT and keyed on both user_id and category",
+    );
+  });
+});
+
+describe("EXPTYPE-01 · the LIST's fixed/variable split reads the same way", () => {
+  const q = bodyOf("getExpensePeriods");
+
+  test("both halves of the split filter on the CATEGORY's type", () => {
+    for (const half of ["fixed", "variable"]) {
+      assert.match(
+        q,
+        new RegExp(`FILTER \\(WHERE COALESCE\\(d\\.type, l\\.type\\) = '${half}'\\)`, "i"),
+        `the ${half} total must be summed on the category's current type`,
+      );
+    }
+  });
+
+  test("it joins the defaults LEFT, on user and category", () => {
+    assert.match(
+      q,
+      /LEFT JOIN expense_category_defaults d[\s\S]*?d\.user_id\s*=\s*l\.user_id[\s\S]*?d\.category\s*=\s*l\.category/i,
+    );
+  });
+
+  test("a month with no lines returns NULL, never 0", () => {
+    // SUM() over no rows is NULL in Postgres and must stay that way: a zero
+    // would read as a month that genuinely had no fixed cost and drag the
+    // committed basis down. A COALESCE(...,0) here would be the bug.
+    assert.doesNotMatch(
+      q,
+      /COALESCE\(\s*SUM\(l\.amount\)[\s\S]{0,40}?,\s*0\s*\)/i,
+      "the split must stay NULL for a month with no lines, not fall back to 0",
     );
   });
 });

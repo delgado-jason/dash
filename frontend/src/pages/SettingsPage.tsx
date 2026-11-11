@@ -36,6 +36,10 @@ const SettingsPage = () => {
   const [stdTiers, setStdTiers] = useState<Tier3>({ min: 10, target: 20, strong: 30 });
   const [specTiers, setSpecTiers] = useState<Tier3>({ min: 35, target: 45, strong: 60 });
   const [marginGoal, setMarginGoal] = useState(26);
+  // Held as the raw string so an empty box stays empty. Blank is a REAL answer
+  // here — it means "no commitment", and the rate floor falls back to measured
+  // miles. Coercing it to 0 would send the floor to infinity.
+  const [targetMiles, setTargetMiles] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -59,6 +63,9 @@ const SettingsPage = () => {
         setFreeHours(s.detention_free_hours);
         setPerDiemPct(Math.round(s.per_diem_deduct_pct * 100));
         setHometimeThresh(s.hometime_threshold_days);
+        setTargetMiles(
+          s.target_miles_per_month == null ? "" : String(s.target_miles_per_month),
+        );
         setOperation(s.operation);
         setStdTiers({
           min: pct(s.rate_tier_std_min),
@@ -113,6 +120,8 @@ const SettingsPage = () => {
         rate_tier_spec_target: specTiers.target / 100,
         rate_tier_spec_strong: specTiers.strong / 100,
         margin_goal: marginGoal / 100,
+        // Blank clears the commitment; the validator takes null for that.
+        target_miles_per_month: targetMiles.trim() === "" ? null : Number(targetMiles),
       });
       await updateMyName(displayName.trim());
       setMsg("Saved.");
@@ -356,6 +365,44 @@ const SettingsPage = () => {
             {weeklyTarget != null
               ? `weekly revenue target ≈ ${money(weeklyTarget)}`
               : "add a few months of P&L to preview your weekly target"}
+          </span>
+        </div>
+        <span className="text-xs text-muted-text mt-3 block">
+          Saved with the schedule above.
+        </span>
+      </Panel>
+
+      {/* The commitment the rate floor is derived from (migration 109). It sits
+          beside the margin goal and the hometime threshold because it is the
+          same kind of number — one you DECIDE, not one dash measures. */}
+      <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Monthly mileage commitment</h2>
+        <p className="text-sm text-muted-text mt-1">
+          The driven miles you commit to in a month. Your rate floor is your
+          fixed cost spread over <em>this</em> figure, not over whatever the
+          month happens to do — so a slow month warns you on the dashboard
+          instead of quietly telling you to quote higher.
+        </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={40000}
+              step={100}
+              value={targetMiles}
+              onChange={(e) => {
+                setMsg(null);
+                setTargetMiles(e.target.value);
+              }}
+              className="w-28 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+            />
+            <span className="text-muted-text">miles / month</span>
+          </label>
+          <span className="text-xs text-muted-text">
+            {targetMiles.trim() === ""
+              ? "empty — the floor falls back to the miles you actually drove"
+              : "held until you change it; re-set it once a quarter"}
           </span>
         </div>
         <span className="text-xs text-muted-text mt-3 block">

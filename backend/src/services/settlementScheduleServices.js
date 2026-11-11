@@ -24,6 +24,10 @@ export const DEFAULTS = {
   rate_tier_spec_target: 0.45,
   rate_tier_spec_strong: 0.6,
   margin_goal: 0.26,
+  // No invented commitment: null means "derive the floor from measured miles",
+  // which is what every user got before migration 109. The value is a business
+  // promise, not a schema default (GL-141, Jason, 2026-11-11).
+  target_miles_per_month: null,
 };
 
 const COLUMNS = [
@@ -36,6 +40,7 @@ const COLUMNS = [
   "operation",
   ...TIER_FIELDS,
   "margin_goal",
+  "target_miles_per_month",
 ];
 
 // ---- GET ---- (always returns a schedule; defaults if none saved yet)

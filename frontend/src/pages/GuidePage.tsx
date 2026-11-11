@@ -1059,6 +1059,64 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Your mileage commitment — and the pace that checks it"
+            answers="The miles you promise to run each month. Your rate floor is fixed cost spread over that promise, so a slow month warns you instead of quietly telling you to quote higher."
+            sources={[
+              { label: "Settings", to: "/settings" },
+              { label: "Dashboard", to: "/dashboard" },
+            ]}
+          >
+            <Formula>
+              floor = (fixed cost ÷ your committed miles + variable $/mile) ÷ your
+              keep · miles per day out = this month's miles ÷ days not at home
+            </Formula>
+            <Eg>
+              At <span className="text-light">7,500</span> a month your floor is{" "}
+              <span className="text-light">$4.08</span> and your minimum rung{" "}
+              <span className="text-light">$4.80</span>. Commit to 9,000 and the
+              floor falls to <span className="text-light">$3.75</span> — the same
+              fixed cost, spread further.
+            </Eg>
+            <Why>
+              The floor used to be your whole cost divided by the miles you{" "}
+              <span className="text-light">happened</span> to drive, which made
+              it a function of the thing it was meant to govern. A slow month
+              spread the same fixed cost over fewer miles, so the floor{" "}
+              <span className="text-light">rose</span> — telling you to quote
+              higher in the month you could least afford to. October ’26 would
+              have quoted <span className="text-light">$5.15</span> purely
+              because October was slow.
+              <br />
+              <br />
+              So the floor now asks a different question: <span className="text-light">
+              what must a mile earn if I run the miles I promised?</span> It
+              holds still until you change it. Re-set it once a quarter, not
+              mid-month.
+              <br />
+              <br />
+              <span className="text-light">The variance has to go somewhere
+              honest</span>, so it goes to the Pace card on the dashboard — not
+              "your floor moved" but "you are behind the miles you promised". If
+              the month is tracking well under, that card says what floor those
+              miles really imply. <b>It is a warning, never a price.</b> The
+              ladder keeps quoting the committed figure, and whether to chase the
+              miles or accept a thinner month stays your call.
+              <br />
+              <br />
+              Two readouts, kept apart on purpose.{" "}
+              <span className="text-light">Miles per day out</span> ignores home
+              time entirely, so a fortnight at home never makes the driving look
+              lazy. <span className="text-light">Lands at</span> counts the days,
+              including the ones you marked home-planned on Per Diem. They are
+              free to disagree — and when they do, that is the useful part.
+              <br />
+              <br />
+              Leave the setting empty and nothing breaks: the floor falls back to
+              the measured blend it always used.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Break-even — the rate to book"
             answers="The gross rate per mile you have to book to cover your cost."
             sources={[

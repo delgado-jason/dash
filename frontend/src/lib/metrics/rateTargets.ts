@@ -150,11 +150,34 @@ export interface CostBasis {
   // the basis (2026-11-01: October unfiled left break-even standing on two).
   missingLabel: string | null;
   monthsWanted: number; // the window the code asked for (BASIS_MONTHS)
+  // ---- the committed-pace basis (migration 109) ----
+  // What `costPerTotalMile` was actually derived from. "committed" divides the
+  // fixed cost by the miles the operator PROMISED; "measured" divides the whole
+  // cost by the miles they happened to drive, which is what every surface did
+  // before and is still the fallback when no commitment is set.
+  basisKind: "committed" | "measured";
+  targetMiles: number | null; // the commitment in force, when there is one
+  fixedMonthly: number | null; // avg monthly fixed operating cost + the notes
+  variablePerMile: number | null; // variable cost ÷ driven miles, over the window
   // Each included month on its own — its true cost, its driven miles and its
   // cost per driven mile — so a surface can show the spread the blend hides
   // ("months ran $2.68–$4.52") instead of one number pretending to be steady.
   monthsDetail: MonthDetail[];
 }
+
+/**
+ * What to call the basis on screen.
+ *
+ * Under a commitment the floor is no longer a blend of past months, so naming
+ * it after the window would be a lie — the honest caption is the promise. Only
+ * figures actually DERIVED from the commitment should use this; anything still
+ * measured over the window (the net break-even per loaded mile, the sit/run
+ * burn) keeps naming its months.
+ */
+export const basisCaption = (basis: CostBasis): string =>
+  basis.basisKind === "committed" && basis.targetMiles != null
+    ? `your ${basis.targetMiles.toLocaleString("en-US")} mi/mo commitment`
+    : (basis.windowLabel ?? "no P&L filed");
 
 export interface MonthDetail {
   year: number;
@@ -195,6 +218,7 @@ export const getCostBasis = (
   now: Date,
   monthsBack: number = BASIS_MONTHS,
   trips: Trip[] = [],
+  targetMilesPerMonth: number | null = null,
 ): CostBasis => {
   const byKey = new Map<string, ExpensePeriod>();
   for (const p of periods) {
@@ -208,6 +232,14 @@ export const getCostBasis = (
   let revenue = 0;
   let grossRev = 0;
   let n = 0;
+  // The fixed/variable split, accumulated only over months that HAVE lines.
+  // `splitMiles` has to track the same months as `variableSum` — mixing a
+  // numerator from four months with a denominator from six would quietly
+  // under-rate the variable cost per mile.
+  let fixedSum = 0;
+  let variableSum = 0;
+  let splitMiles = 0;
+  let splitMonths = 0;
   const included: { year: number; month: number }[] = [];
   const missing: { year: number; month: number }[] = [];
   const monthsDetail: MonthDetail[] = [];
@@ -230,6 +262,14 @@ export const getCostBasis = (
     total += m.total;
     revenue += m.revenue;
     grossRev += m.gross;
+    // Both halves or neither: a month missing its lines contributes to the
+    // measured blend above but must not pull the split's averages around.
+    if (p.fixed_total != null && p.variable_total != null) {
+      fixedSum += p.fixed_total;
+      variableSum += p.variable_total;
+      splitMiles += m.total;
+      splitMonths++;
+    }
     monthsDetail.push({
       year,
       month,
@@ -240,13 +280,44 @@ export const getCostBasis = (
     });
   }
 
+  // ---- THE COMMITTED BASIS ----
+  //
+  // Dividing the whole cost by the miles actually driven makes the floor a
+  // function of the outcome it governs: a slow month spreads the same fixed
+  // cost over fewer miles, the floor rises, that says quote higher, which
+  // books less freight, which makes the month slower. October ’26 would have
+  // quoted $5.15 purely because October was slow.
+  //
+  // So when a commitment exists the floor asks a different question — "what
+  // must a mile earn if I run the miles I promised?" — which is fixed cost
+  // spread over the TARGET, plus the variable cost a mile actually incurs.
+  // It holds still until the commitment is re-set.
+  //
+  // The split is required for this and only for this: the measured basis never
+  // needed to know which costs were fixed. A month without lines, or no
+  // commitment at all, falls back to exactly the old arithmetic.
+  const fixedMonthly = splitMonths > 0 ? fixedSum / splitMonths + obligationsMonthly : null;
+  const variablePerMile = splitMiles > 0 ? variableSum / splitMiles : null;
+  const measuredPerMile = total > 0 ? cost / total : null;
+  const committedPerMile =
+    targetMilesPerMonth != null &&
+    targetMilesPerMonth > 0 &&
+    fixedMonthly != null &&
+    variablePerMile != null
+      ? fixedMonthly / targetMilesPerMonth + variablePerMile
+      : null;
+
   return {
     trueMonthlyCost: n > 0 ? cost / n : null,
     loadedMiles: loaded,
     totalMiles: total,
     breakEvenRpm: loaded > 0 ? cost / loaded : null,
     windowRpm: loaded > 0 ? revenue / loaded : null,
-    costPerTotalMile: total > 0 ? cost / total : null,
+    costPerTotalMile: committedPerMile ?? measuredPerMile,
+    basisKind: committedPerMile != null ? "committed" : "measured",
+    targetMiles: committedPerMile != null ? targetMilesPerMonth : null,
+    fixedMonthly,
+    variablePerMile,
     grossPerTotalMile: total > 0 ? grossRev / total : null,
     payTake: grossRev > 0 ? revenue / grossRev : null,
     months: n,
@@ -497,7 +568,19 @@ export const computeRateTargets = (
   // not loaded; the schedule row no longer carries the split.
   split: SplitLike | null = null,
 ) => {
-  const basis = getCostBasis(periods, obligationsMonthly, loads, now, BASIS_MONTHS, trips);
+  // The commitment, if one is set (migration 109). With it the floor is fixed
+  // cost over the PROMISED miles; without it the old measured blend stands.
+  const targetMiles =
+    schedule?.target_miles_per_month == null ? null : Number(schedule.target_miles_per_month);
+  const basis = getCostBasis(
+    periods,
+    obligationsMonthly,
+    loads,
+    now,
+    BASIS_MONTHS,
+    trips,
+    Number.isFinite(targetMiles) ? targetMiles : null,
+  );
   // Your linehaul take (linehaul % + trailer %). 1 = own authority / unconfigured.
   const linehaulTake = split
     ? Number(split.linehaul_pct) + Number(split.trailer_pct)
