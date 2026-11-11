@@ -21,6 +21,7 @@ import {
 } from "@/services/cashflowService";
 import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflowService";
 import { buildForecast, pretaxMargin, archiveGaps } from "@/lib/metrics/cashflow";
+import { weeksOffByMonth, weeksOffIsDerived } from "@/lib/metrics/homePlan";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import { money as fmtMoney, moneyCents as fmtMoneyCents } from "@/lib/format";
@@ -28,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Obligation } from "@/types/obligation";
 import { getSettlements } from "@/services/settlementsService";
 import { getFuelEntries } from "@/services/fuelService";
-import { getPlannedHomeDays } from "@/services/perDiemService";
+import { getPlannedHomeDays, getHomeDays } from "@/services/perDiemService";
 import { getTrips } from "@/services/tripsService";
 import { getMaintenanceServices } from "@/services/maintenanceService";
 import type { MaintenanceService } from "@/types/maintenance";
@@ -108,6 +109,10 @@ const CashFlowPage = () => {
   // leaves the board forecasting exactly as it did before home time existed,
   // which is wrong in a known direction rather than blank.
   const [plannedHomeDays, setPlannedHomeDays] = useState<string[]>([]);
+  // The home days that HAPPENED. A past month's weeks-off is measured from
+  // these; a future month's from the plans above. Mixing them would let a plan
+  // rewrite history (call 3).
+  const [actualHomeDays, setActualHomeDays] = useState<string[]>([]);
 
   // A typed deposit beats a projection but never the feed's actual; keyed by
   // the STATEMENT date. On the SERVER since v1.268.0 — it used to live in this
@@ -162,9 +167,10 @@ const CashFlowPage = () => {
       getPlans(), getAccounts(), getSnapshots(),
       getSettlements(), getFuelEntries(),
       getOpsChecks(), getTrips(), getExpensePeriods(),
-      getPlannedHomeDays(),
+      getPlannedHomeDays(), getHomeDays(),
     ])
-      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per, home]) => {
+      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per, home, were]) => {
+        if (were.status === "fulfilled") setActualHomeDays(were.value);
         // Non-fatal, like the rest of this list: a failure leaves the board
         // forecasting every week as a working week, which is what it did
         // before 107 — wrong in a known direction rather than blank.
@@ -272,9 +278,39 @@ const CashFlowPage = () => {
     return null;
   };
 
+  // Weeks off, MEASURED from the calendar rather than typed (call 3). A past
+  // month counts the days he was home; a future month the days he plans to be;
+  // a month with neither keeps whatever he typed, so a plan made before the
+  // calendar existed is not silently dropped.
+  //
+  // This moves the baseline, and in the direction that flatters: read off prod
+  // 2026-11-10, July (1 home day), August (8) and October (18, against a typed
+  // 2.00) all ran fewer working weeks than the forecast assumed, so the same
+  // money comes from 22.13 weeks instead of 23.98 — weekly net $969 → $1,050,
+  // the monthly baseline $4,196 → $4,547. It is a correction, but a flattering
+  // one, which is the kind worth stating rather than slipping in.
+  const measuredWeeksOff = useMemo(() => {
+    const months = new Set<string>();
+    for (const f of financials) months.add(`${String(f.month).slice(0, 7)}-01`);
+    for (const k of adjustments.keys()) months.add(`${String(k).slice(0, 7)}-01`);
+    // The forecast runs six months past the last actual, and both calendars
+    // can carry marks out there.
+    for (const d of [...actualHomeDays, ...plannedHomeDays]) months.add(`${String(d).slice(0, 7)}-01`);
+    let m = asOfKey.slice(0, 7);
+    for (let i = 0; i < 14; i++) {
+      months.add(`${m}-01`);
+      const [y, mo] = m.split("-").map(Number);
+      m = mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
+    }
+    return weeksOffByMonth(actualHomeDays, plannedHomeDays, adjustments, [...months]);
+  }, [actualHomeDays, plannedHomeDays, adjustments, financials, asOfKey]);
+
   const forecast = useMemo(
-    () => (assumptions ? buildForecast(financials, assumptions, adjustments, 6, utc(asOfKey)) : null),
-    [financials, assumptions, adjustments, asOfKey],
+    () =>
+      assumptions
+        ? buildForecast(financials, assumptions, measuredWeeksOff, 6, utc(asOfKey))
+        : null,
+    [financials, assumptions, measuredWeeksOff, asOfKey],
   );
   // Where the archive doesn't chain (a month opening away from the previous ending).
   const archiveBreaks = useMemo(() => archiveGaps(financials), [financials]);
@@ -436,11 +472,14 @@ const CashFlowPage = () => {
           : s === "home"
             ? "you are home — nothing to draw against"
             : "assumed — fewer than four draws on file";
-  const advanceWords = (d: { advances: number | null; advancesSource: DepositLine["advancesSource"] }): string =>
+  // `homeDays` is required, not optional-with-a-default: both line types carry
+  // it, so defaulting a missing one would be a silent zero in a money file.
+  // The noSilentZero ratchet caught exactly that and was right to.
+  const advanceWords = (d: { advances: number | null; advancesSource: DepositLine["advancesSource"]; homeDays: number }): string =>
     d.advancesSource === "actual"
       ? `advances ${money(d.advances)} (the statement)`
       : d.advancesSource === "pace"
-        ? `advance ${money(d.advances)} (your last four draws)`
+        ? `advance ${money(d.advances)} (your last four draws${d.homeDays > 0 ? `, cut for ${d.homeDays} ${d.homeDays === 1 ? "day" : "days"} home` : ""})`
         : d.advancesSource === "none"
           ? "no loads, no advance"
           : d.advancesSource === "home"
@@ -474,6 +513,15 @@ const CashFlowPage = () => {
     }
     else body = `${delivered}${expected} − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}`;
     const carry: string[] = [];
+    // A week he marked home that still carries freight. The loads win the
+    // arithmetic — a booking is a fact and a plan is a forecast — but letting
+    // them win in SILENCE is how he marked Nov 11–15 home on prod, watched the
+    // deposit not move, and reasonably read it as nothing having happened.
+    // One of the two has to give, and only he can say which.
+    if (d.homeDays > 0 && d.loads + d.inTransit + d.booked > 0)
+      carry.push(
+        `you marked ${d.homeDays} ${d.homeDays === 1 ? "day" : "days"} home this week, but ${d.loads + d.inTransit + d.booked} ${d.loads + d.inTransit + d.booked === 1 ? "load is" : "loads are"} still on it — the freight is what is counted here`,
+      );
     if (d.carriedIn < 0) carry.push(`${moneyCents(d.carriedIn)} carried in from the statement before`);
     if (d.carriedOut < 0) carry.push(`nothing lands — ${moneyCents(d.carriedOut)} carries into the next statement`);
     return [head, body, ...carry, `${d.date < asOfKey ? "landed" : "lands"} ${dayFull(d.date)}`].join(" · ");
@@ -1084,7 +1132,7 @@ const CashFlowPage = () => {
                               input belongs on the months still being planned. */}
                           <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo text-faint">
                             {(() => {
-                              const w = adjustments.get(f.month.slice(0, 10));
+                              const w = measuredWeeksOff.get(f.month.slice(0, 10));
                               return w != null && w > 0 ? `${w}` : "—";
                             })()}
                           </td>
@@ -1109,6 +1157,21 @@ const CashFlowPage = () => {
                         <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{signed(fm.netChange)}</td>
                         <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">{moneyCents(fm.ending)}</td>
                         <td className="text-right px-3.5 py-1.5 border-b border-hairline-lo">
+                          {weeksOffIsDerived(fm.month, actualHomeDays, plannedHomeDays) ? (
+                            // Measured from the Per Diem calendar, so there is
+                            // nothing to type (call 3). The point of deriving
+                            // it was to stop him saying the same thing twice —
+                            // leaving the box editable beside a measured figure
+                            // would be exactly the disagreement the sheet
+                            // refused to keep.
+                            <span
+                              className="text-[13px] text-dim tabular-nums"
+                              title="Measured from the days marked on Per Diem"
+                            >
+                              {fm.weeksOff}
+                              <span className="ml-1 text-faint text-[11px]">measured</span>
+                            </span>
+                          ) : (
                           <input
                             // Key on the saved value: a failed save's reload
                             // snaps the input back instead of showing a number
@@ -1135,6 +1198,7 @@ const CashFlowPage = () => {
                               }
                             }}
                           />
+                          )}
                         </td>
                       </tr>
                     ))}

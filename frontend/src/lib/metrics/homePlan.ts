@@ -99,3 +99,66 @@ export const homeCost = (
     total: Math.round(rows.reduce((s, r) => s + r.out, 0) * 100) / 100,
   };
 };
+
+// ---- The six-month road's weeks-off, measured instead of typed (call 3) ----
+//
+// `forecast_adjustments.weeks_off` is a per-month decimal Jason types. The same
+// fact is now recorded day by day on the Per Diem calendar, so he was telling
+// dash the same thing twice — and the two disagree. Read off prod 2026-11-10:
+// October typed 2.00 against EIGHTEEN marked home days (2.57 weeks), and July
+// and August carry 1 and 8 home days with no typed figure at all, so the
+// baseline has been treating two part-months as full ones.
+//
+// WHICH DAYS COUNT DEPENDS ON WHICH WAY THE MONTH FACES, and the sheet did not
+// separate these. `weeksOffByMonth` does two different jobs in `buildForecast`:
+//   · a PAST month corrects the per-week baseline — how many weeks the money
+//     actually came from. That wants the days he WAS home: actual marks.
+//   · a FUTURE month reduces projected income. That wants the days he INTENDS
+//     to be home: planned marks.
+// Mixing them would let a plan rewrite history, or history forecast the future.
+//
+// The typed figure is not thrown away. A month with no marks at all keeps it —
+// Jason has 1.00 typed against December with nothing yet marked, and deriving
+// strictly would silently drop a plan he made. Measured beats typed; typed
+// beats nothing.
+export const weeksOffByMonth = (
+  actualHomeDays: readonly string[],
+  plannedHomeDays: readonly string[],
+  typed: ReadonlyMap<string, number>,
+  monthsOfInterest: readonly string[],
+): Map<string, number> => {
+  const count = (days: readonly string[]): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const d of days) {
+      const key = `${String(d).slice(0, 7)}-01`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  };
+  const actual = count(actualHomeDays);
+  const planned = count(plannedHomeDays);
+
+  const out = new Map<string, number>();
+  for (const month of monthsOfInterest) {
+    const key = `${String(month).slice(0, 7)}-01`;
+    // A month can hold both — the one he is living through right now has days
+    // behind it and days ahead. Both are days he is not earning, so both count.
+    const marked = (actual.get(key) ?? 0) + (planned.get(key) ?? 0);
+    if (marked > 0) out.set(key, Math.round((marked / 7) * 100) / 100);
+    else {
+      const t = typed.get(key);
+      if (t != null && t > 0) out.set(key, t);
+    }
+  }
+  return out;
+};
+
+/** Was this month's figure measured from the calendar, or typed by hand? */
+export const weeksOffIsDerived = (
+  month: string,
+  actualHomeDays: readonly string[],
+  plannedHomeDays: readonly string[],
+): boolean => {
+  const key = String(month).slice(0, 7);
+  return [...actualHomeDays, ...plannedHomeDays].some((d) => String(d).slice(0, 7) === key);
+};

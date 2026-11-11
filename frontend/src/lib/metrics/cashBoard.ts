@@ -57,7 +57,7 @@ import { expectedPayDate, nextDraftDate } from "./cashflow";
 import { isFirstOfMonth, type DeductionBuckets } from "./settlements";
 import { loadCashIn } from "./rateTargets";
 import { payWeekOf, milesInWeeks, weekLabel, type PayWeek } from "./payWeeks";
-import { onRoadShare } from "./homePlan";
+import { onRoadShare, daysOfWeek } from "./homePlan";
 import { weekOdometerMiles, addDays, readingWords, IMPLAUSIBLE_WEEK_MI, type OdometerReading } from "./odometer";
 import { accrualFlagOf } from "./planStatus";
 import { accrualsByWeek, retrueAccrued, retrueWords, type AccrualRecord } from "./accrualTruth";
@@ -150,6 +150,10 @@ export interface FuelLine {
   // ever in the direction that flatters Ops.
   leftover: Line;
   missing: MissingInput[]; // the planning inputs the advance / the pace needed and didn't have
+  // Days of this week he has PLANNED to be home (107). > 0 means the fuel and
+  // the advance above were reduced, and the line should say so rather than
+  // quietly printing a smaller number.
+  homeDays: number;
 }
 
 export interface DepositLine extends Line {
@@ -174,6 +178,10 @@ export interface DepositLine extends Line {
   expectedNet: number;
   advances: number | null;
   advancesSource: FuelLine["advancesSource"];
+  // Days of this week planned home. With loads booked into the same week this
+  // is a CONTRADICTION worth saying out loud — a plan and a booking cannot
+  // both be right, and the board used to let the loads win in silence.
+  homeDays: number;
   bucket: number | null;
   bucketKind: "first" | "standard" | "fallback";
   fuel: FuelLine; // the period's fuel, computed once
@@ -434,6 +442,9 @@ export const fuelForWeek = (
   // win below, because a plan is a forecast and a receipt is a fact.
   const onRoad = onRoadShare(week, input.plannedHomeDays ?? []);
   const atHome = onRoad === 0;
+  const homeDays = daysOfWeek(week).filter((d) =>
+    (input.plannedHomeDays ?? []).some((p) => String(p).slice(0, 10) === d),
+  ).length;
   // The pace: the last four running weeks, else the fallback — which refuses
   // (spent null) when it isn't set. A closed period stands on its fills alone.
   // A week planned home needs no pace to refuse about.
@@ -474,7 +485,7 @@ export const fuelForWeek = (
     advances == null || spent == null
       ? { amount: null, date: monday, counted, missing }
       : { amount: round2(advances - spent), date: monday, counted };
-  return { spent, spentSource, fills: count, soFar: total, advances, advancesSource, leftover, missing };
+  return { spent, spentSource, fills: count, soFar: total, advances, advancesSource, leftover, missing, homeDays };
 };
 
 // ---- a period's own deposit ----
@@ -552,6 +563,7 @@ export const depositForWeek = (input: CashBoardInput, week: PayWeek, base?: Cash
   const baseLine = {
     week, statementDate, date, counted, loads: count, loadsNet, inTransit, booked, expectedNet,
     advances: fuel.advances, advancesSource: fuel.advancesSource, bucket, bucketKind, fuel, carriedIn,
+    homeDays: fuel.homeDays,
   };
   // The statement itself: its net lands if positive; a negative net lands
   // nothing and is carried into the next statement.

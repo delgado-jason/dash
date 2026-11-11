@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { daysOfWeek, onRoadShare, isHomeWeek, homeCost } from "./homePlan";
+import { daysOfWeek, onRoadShare, isHomeWeek, homeCost, weeksOffByMonth, weeksOffIsDerived } from "./homePlan";
 import type { PayWeek } from "./payWeeks";
 
 // A pay week runs Wednesday to Tuesday, inclusive of both ends.
@@ -107,5 +107,64 @@ describe("homeCost — what a fortnight at home costs, by where it falls", () =>
 
   it("is zero over no weeks at all", () => {
     expect(homeCost([], PAYROLL, billsInWeek).total).toBe(0);
+  });
+});
+
+describe("weeksOffByMonth — measured beats typed, typed beats nothing", () => {
+  const MONTHS = ["2026-07-01", "2026-08-01", "2026-09-01", "2026-10-01", "2026-11-01", "2026-12-01"];
+  const days = (month: string, n: number): string[] =>
+    Array.from({ length: n }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+
+  it("measures a PAST month from the days he actually was home", () => {
+    // Prod, 2026-11-10: August carries 8 home marks and no typed figure at
+    // all, so the baseline has been counting it as a full working month.
+    const w = weeksOffByMonth(days("2026-08", 8), [], new Map(), MONTHS);
+    expect(w.get("2026-08-01")).toBeCloseTo(1.14, 2);
+  });
+
+  it("measures a FUTURE month from the days he plans to be home", () => {
+    const w = weeksOffByMonth([], days("2026-12", 14), new Map(), MONTHS);
+    expect(w.get("2026-12-01")).toBe(2);
+  });
+
+  it("the measured figure REPLACES a typed one that disagrees", () => {
+    // October: typed 2.00 against eighteen marked home days.
+    const w = weeksOffByMonth(days("2026-10", 18), [], new Map([["2026-10-01", 2]]), MONTHS);
+    expect(w.get("2026-10-01")).toBeCloseTo(2.57, 2);
+  });
+
+  it("keeps a typed figure for a month with nothing marked", () => {
+    // December is typed 1.00 with no days marked yet. Deriving strictly would
+    // silently drop a plan he made.
+    const w = weeksOffByMonth([], [], new Map([["2026-12-01", 1]]), MONTHS);
+    expect(w.get("2026-12-01")).toBe(1);
+  });
+
+  it("counts both halves of the month he is living through", () => {
+    // Two days already home, five more planned: one whole week, not two parts.
+    const w = weeksOffByMonth(
+      ["2026-11-02", "2026-11-03"],
+      ["2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29"],
+      new Map(),
+      MONTHS,
+    );
+    expect(w.get("2026-11-01")).toBe(1);
+  });
+
+  it("a month with neither marks nor a typed figure is simply absent", () => {
+    const w = weeksOffByMonth([], [], new Map(), MONTHS);
+    expect(w.has("2026-09-01")).toBe(false);
+  });
+
+  it("a typed ZERO does not mask the absence of data", () => {
+    // Jason has November typed 0.00. That is not a claim he was never home —
+    // it is the default. An absent entry reads the same to the forecast.
+    const w = weeksOffByMonth([], [], new Map([["2026-11-01", 0]]), MONTHS);
+    expect(w.get("2026-11-01") ?? 0).toBe(0);
+  });
+
+  it("says which months were measured and which were typed", () => {
+    expect(weeksOffIsDerived("2026-10-01", days("2026-10", 18), [])).toBe(true);
+    expect(weeksOffIsDerived("2026-12-01", days("2026-10", 18), [])).toBe(false);
   });
 });
