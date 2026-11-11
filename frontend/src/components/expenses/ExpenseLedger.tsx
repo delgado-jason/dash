@@ -4,6 +4,7 @@ import {
   patchExpenseLine,
   deleteExpenseLine,
   addExpenseLine,
+  setCategoryType,
 } from "@/services/expensesService";
 import { money, rpm } from "@/lib/format";
 
@@ -15,6 +16,9 @@ interface Props {
 }
 
 const pct = (n: number | null): string => (n == null ? "—" : `${(n * 100).toFixed(0)}%`);
+
+/** The classification a category would move to. */
+const other = (t: ExpenseType): ExpenseType => (t === "fixed" ? "variable" : "fixed");
 
 export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) => {
   const lines = period.lines ?? [];
@@ -75,7 +79,21 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
           </td>
           <td className="p-2 text-right">
             <div className="flex gap-3 justify-end text-faint">
-              <span aria-hidden>⇄</span>
+              {/* Fixed/variable is a property of the CATEGORY, not of this
+                  month's line — the server reads it through the category
+                  defaults. So this button settles every month at once, and
+                  says so rather than looking like a per-row switch. Before it
+                  existed there was no way to reclassify after upload at all,
+                  which is how four months came to disagree with six. */}
+              <button
+                className="font-condensed font-semibold text-[11.5px] tracking-[.08em] hover:text-amber-hi whitespace-nowrap disabled:opacity-40"
+                disabled={busy}
+                title={`Classify ${l.category} as ${other(l.type)} in every month`}
+                aria-label={`Classify ${l.category} as ${other(l.type)} in every month`}
+                onClick={() => !busy && run(() => setCategoryType(l.category, other(l.type)))}
+              >
+                ⇄ {other(l.type).toUpperCase()}
+              </button>
               {editing === l.line_id ? (
                 <button
                   className="font-condensed font-semibold text-[11.5px] tracking-[.08em] text-amber-hi"
@@ -210,6 +228,12 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
           )}
         </tbody>
       </table>
+      <p className="font-condensed text-[12px] text-faint mt-2 leading-snug">
+        <b className="text-dim">⇄</b> settles a category as fixed or variable in{" "}
+        <b className="text-dim">every month</b>, not just this one — fixed versus
+        variable is a property of the cost, not of the month it landed in. It is
+        what the sit-versus-run burn is built on.
+      </p>
       {error && <p className="text-destructive text-sm mt-2">{error}</p>}
     </>
   );
