@@ -2054,6 +2054,63 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Forecast against actual"
+            answers="What the board projected for a pay period — written down before it knew — scored against what actually landed. It is empty until a period closes."
+            sources={[{ label: "Cash Flow", to: "/cashflow" }]}
+          >
+            <Formula>
+              miss = the balance you keyed once the period closed − the ending
+              the board projected · positive means the board was pessimistic
+            </Formula>
+            <Eg>
+              A period projected to end at{" "}
+              <span className="text-light">$9,500</span> that read{" "}
+              <span className="text-light">$8,575</span> when it closed scores{" "}
+              <span className="text-light">−$925</span> — the board aimed about{" "}
+              <span className="text-light">11% high</span>. Average that across
+              eight closed periods and you have its standing bias.
+            </Eg>
+            <Why>
+              Everything else here is measured after the fact. This cannot be:
+              once a period closes the board reads real deposits and real fuel,
+              and whatever it was aiming at beforehand is gone. So the
+              projection is{" "}
+              <span className="text-light">captured while it is still a
+              projection</span> — written once, the first time the board looks
+              at a period, and never rewritten. A forecast re-saved on the last
+              day of the week would be scored against loads it had already
+              watched land, which is a transcript, not a forecast.
+              <br />
+              <br />
+              The four typed assumptions are stored alongside it. Without them
+              a projection made under a <span className="text-light">$4,647
+              </span> revenue assumption would be scored against whatever is
+              typed today, and the miss would be measuring your edits rather
+              than the board's aim.
+              <br />
+              <br />
+              The actual is the first balance you keyed{" "}
+              <span className="text-light">on or after</span> the day the
+              period closed — not the last one inside it. The board's Ending is
+              struck after that period's own bills have drafted, and a Friday
+              reading mid-week has not seen them yet. Nothing beyond ten days
+              counts either: by then a reading has absorbed another period's
+              money and is not this period's ending by any honest reading, so
+              the period is simply left unscored and says so.
+              <br />
+              <br />
+              <span className="text-light">Actuals are never stored.</span> They
+              are read live from your Ops checks, so correcting a balance
+              re-scores the whole history instead of freezing a wrong answer
+              into it. And the measured bias{" "}
+              <span className="text-light">does not feed back</span> into the
+              forecast: across weeks that swing from nothing to a full load,
+              auto-correcting by the last few misses would chase noise and call
+              it learning. It tells you; you decide.
+            </Why>
+          </Metric>
+
+          <Metric
             title="What a stretch at home costs — and what moving it costs"
             answers="Mark a home stretch on the calendar and the page prices it: the payroll and bills that draft anyway, plus what the same stretch would cost a week earlier or later."
             sources={[{ label: "Per Diem", to: "/per-diem" }]}
