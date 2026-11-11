@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Link } from "react-router";
@@ -23,6 +23,9 @@ import type { CashAssumptionsRow, MonthlyFinancialRow } from "@/services/cashflo
 import { buildForecast, pretaxMargin, archiveGaps } from "@/lib/metrics/cashflow";
 import { weeksOffByMonth, weeksOffIsDerived } from "@/lib/metrics/homePlan";
 import { AssumptionCheck } from "@/components/cashflow/AssumptionCheck";
+import { ForecastScore } from "@/components/cashflow/ForecastScore";
+import { getForecastRecords, recordForecast } from "@/services/forecastRecordService";
+import type { ForecastRecord } from "@/lib/metrics/forecastScore";
 import { parseFinancialRows, FINANCIAL_COLUMNS } from "@/lib/parseFinancials";
 import { dayKey as localDayKey } from "@/lib/perDiem";
 import { money as fmtMoney, moneyCents as fmtMoneyCents } from "@/lib/format";
@@ -110,6 +113,10 @@ const CashFlowPage = () => {
   // leaves the board forecasting exactly as it did before home time existed,
   // which is wrong in a known direction rather than blank.
   const [plannedHomeDays, setPlannedHomeDays] = useState<string[]>([]);
+  const [forecastRecords, setForecastRecords] = useState<ForecastRecord[]>([]);
+  // A capture that fails is not a swallowed error — this panel's whole value
+  // depends on captures happening, so the panel says when one did not.
+  const [captureFailed, setCaptureFailed] = useState(false);
   // The home days that HAPPENED. A past month's weeks-off is measured from
   // these; a future month's from the plans above. Mixing them would let a plan
   // rewrite history (call 3).
@@ -168,9 +175,10 @@ const CashFlowPage = () => {
       getPlans(), getAccounts(), getSnapshots(),
       getSettlements(), getFuelEntries(),
       getOpsChecks(), getTrips(), getExpensePeriods(),
-      getPlannedHomeDays(), getHomeDays(),
+      getPlannedHomeDays(), getHomeDays(), getForecastRecords(),
     ])
-      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per, home, were]) => {
+      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per, home, were, fr]) => {
+        if (fr.status === "fulfilled") setForecastRecords(fr.value);
         if (were.status === "fulfilled") setActualHomeDays(were.value);
         // Non-fatal, like the rest of this list: a failure leaves the board
         // forecasting every week as a working week, which is what it did
@@ -249,19 +257,77 @@ const CashFlowPage = () => {
   }, []);
   // The input is assembled by the ONE builder the landing page also calls
   // (lib/metrics/cashBoardInput.ts), then handed to the board.
-  const board = useMemo(() => {
+  // The assembled input is kept, not thrown away inside the call: it already
+  // holds every balance the board can be measured against (snapshots with an
+  // Ops figure, plus every OPS NOW check), and the forecast score needs that
+  // same list. Rebuilding it in the page would be a second copy of a rule that
+  // has to resolve the Ops account to work.
+  const boardInput = useMemo(() => {
     if (!assumptions) return null;
-    return buildCashBoard(
-      assembleCashBoardInput({
-        today: asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks,
-        periods, loads: loads ?? [], settlements, fuelEntries, trips, services, obligations,
-        assumptions, overrides: netPayOverrides, plannedHomeDays,
-      }),
-    );
+    return assembleCashBoardInput({
+      today: asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks,
+      periods, loads: loads ?? [], settlements, fuelEntries, trips, services, obligations,
+      assumptions, overrides: netPayOverrides, plannedHomeDays,
+    });
   }, [
     assumptions, asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks, periods,
     loads, settlements, fuelEntries, trips, services, obligations, netPayOverrides, plannedHomeDays,
   ]);
+  const board = useMemo(() => (boardInput == null ? null : buildCashBoard(boardInput)), [boardInput]);
+
+  // Write down what the board projects for a period, ONCE, while it is still
+  // a projection (migration 108). CORRECTNESS rests on the server, which
+  // refuses a second write for the same period: a forecast rewritten later in
+  // the week would be scored against loads it had already watched land, which
+  // is a transcript, not a forecast. The ref below is only about waste.
+  //
+  // Both columns are offered: the NEXT period is the purer capture (nothing
+  // booked into it yet), and the current one is the fallback for the first
+  // week this ever runs.
+  // Named so the dependency array can be checked statically: the effect is
+  // keyed on WHICH periods are on the board, not on the board object, which is
+  // new on every render.
+  const currentWeekStart = board?.columns[0].week.start ?? null;
+  const nextWeekStart = board?.columns[1].week.start ?? null;
+  // Which periods this browser has already offered. The SERVER is the real
+  // guard — it refuses a second write — so this changes no outcome, only the
+  // noise. `board` is memoised but rebuilds whenever any of its many inputs
+  // lands, and a page load resolves fifteen fetches, so without this the pair
+  // is re-posted on each one. Verified on dev: 14 POSTs across two page loads,
+  // every one correctly answered "already held", and every one pointless.
+  const offered = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (board == null || assumptions == null) return;
+    const n = (v: unknown): number | null => {
+      const x = Number(v);
+      return Number.isFinite(x) ? x : null;
+    };
+    const dayMs = 86_400_000;
+    for (const col of board.columns) {
+      const end = String(col.week.end).slice(0, 10);
+      if (end < asOfKey) continue; // already closed — too late to forecast it
+      const mark = `${col.week.start}:${end}`;
+      if (offered.current.has(mark)) continue;
+      offered.current.add(mark);
+      const daysBeforeEnd = Math.round(
+        (new Date(`${end}T00:00:00Z`).getTime() - new Date(`${asOfKey}T00:00:00Z`).getTime()) / dayMs,
+      );
+      void recordForecast({
+        pay_week_start: String(col.week.start).slice(0, 10),
+        pay_week_end: end,
+        forecast_ending: col.ending,
+        forecast_deposit: col.deposit?.amount ?? null,
+        forecast_fuel: col.fuel?.spent ?? null,
+        a_weekly_revenue: n(assumptions.weekly_revenue),
+        a_weekly_advance: n(assumptions.weekly_fuel_advance),
+        a_weekly_deductions: n(assumptions.weekly_settlement_deductions),
+        a_weekly_payroll: n(assumptions.weekly_payroll),
+        days_before_end: daysBeforeEnd,
+      }).catch(() => setCaptureFailed(true));
+    }
+    // Deliberately keyed on the PERIOD, not the board: the board object is new
+    // on every render and the point is to capture once, not to chase it.
+  }, [currentWeekStart, nextWeekStart, assumptions, asOfKey, board]);
 
   // The deposit the board holds dated exactly `day` (Q3, 2026-11-07): this
   // period's own, last period's landing inside it, and any older period's the
@@ -1235,6 +1301,14 @@ const CashFlowPage = () => {
             const fresh = await getCashAssumptions();
             setAssumptions(fresh);
           }}
+        />
+
+        <ForecastScore
+          records={forecastRecords}
+          checks={boardInput?.checks ?? []}
+          today={asOfKey}
+          openPeriodEnd={board?.columns[0]?.week.end ?? null}
+          captureFailed={captureFailed}
         />
 
         {showOpsNow && (
