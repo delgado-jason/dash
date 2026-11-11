@@ -706,7 +706,10 @@ const payrollLine = (input: CashBoardInput, date: string, base?: CashCheck): Lin
 
 // ---- bills ----
 
-const billsIn = (obligations: Obligation[], week: PayWeek, base?: CashCheck): BillLine[] => {
+// Exported since v1.274.2 so the fortnight planner prices a week with the SAME
+// placement rule the board uses. A second copy of "which bills draft in this
+// week" is how the planner and the board would quietly start disagreeing.
+export const billsIn = (obligations: Obligation[], week: PayWeek, base?: CashCheck): BillLine[] => {
   const out: BillLine[] = [];
   for (let d = week.start; d <= week.end; d = addDays(d, 1)) {
     for (const o of obligations) {

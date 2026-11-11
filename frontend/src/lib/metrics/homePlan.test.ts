@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { daysOfWeek, onRoadShare, isHomeWeek, homeCost, weeksOffByMonth, weeksOffIsDerived } from "./homePlan";
+import { daysOfWeek, onRoadShare, isHomeWeek, homeCost, weeksOffByMonth, weeksOffIsDerived, fortnightOptions, cheapest } from "./homePlan";
 import type { PayWeek } from "./payWeeks";
 
 // A pay week runs Wednesday to Tuesday, inclusive of both ends.
@@ -166,5 +166,60 @@ describe("weeksOffByMonth — measured beats typed, typed beats nothing", () => 
   it("says which months were measured and which were typed", () => {
     expect(weeksOffIsDerived("2026-10-01", days("2026-10", 18), [])).toBe(true);
     expect(weeksOffIsDerived("2026-12-01", days("2026-10", 18), [])).toBe(false);
+  });
+});
+
+describe("fortnightOptions — the same two weeks, priced where they fall", () => {
+  // December 2026 pay weeks (Wed–Tue) and Jason's real bill clusters.
+  const WEEKS: PayWeek[] = [
+    week("2026-12-02", "2026-12-08"),
+    week("2026-12-09", "2026-12-15"),
+    week("2026-12-16", "2026-12-22"),
+    week("2026-12-23", "2026-12-29"),
+  ];
+  const BILLS: Record<string, number> = {
+    "2026-12-02": 836.48, "2026-12-09": 115.0,
+    "2026-12-16": 619.4, "2026-12-23": 3291.19,
+  };
+  const billsInWeek = (w: PayWeek) => BILLS[w.start] ?? 0;
+  const PAYROLL = 1908;
+  // Chosen start = Dec 16, so shift −1 is Dec 9 and +1 is Dec 23.
+  const weekAt = (offset: number): PayWeek => WEEKS[2 + offset] ?? WEEKS[WEEKS.length - 1];
+
+  it("prices the chosen fortnight and both neighbours", () => {
+    const opts = fortnightOptions(weekAt, 2, PAYROLL, billsInWeek);
+    expect(opts.map((o) => o.shift)).toEqual([-1, 0, 1]);
+    // Dec 16–29, the one he picked: the bill-heavy fortnight.
+    expect(opts[1].cost.total).toBeCloseTo(7726.59, 2);
+    // A week earlier (Dec 9–22) dodges the cluster:
+    // (115.00 + 1908) + (619.40 + 1908) = 4550.40.
+    expect(opts[0].cost.total).toBeCloseTo(4550.4, 2);
+  });
+
+  it("the delta is what MOVING it costs, and is zero for the chosen one", () => {
+    const opts = fortnightOptions(weekAt, 2, PAYROLL, billsInWeek);
+    expect(opts[1].delta).toBe(0);
+    expect(opts[0].delta).toBeCloseTo(-3176.19, 2); // a week earlier saves this
+  });
+
+  it("names the cheapest option", () => {
+    const opts = fortnightOptions(weekAt, 2, PAYROLL, billsInWeek);
+    expect(cheapest(opts)?.shift).toBe(-1);
+  });
+
+  it("handles a one-week stretch", () => {
+    const opts = fortnightOptions(weekAt, 1, PAYROLL, billsInWeek);
+    expect(opts[1].weeks).toHaveLength(1);
+    expect(opts[1].cost.total).toBeCloseTo(2527.4, 2);
+  });
+
+  it("never asks for zero weeks", () => {
+    const opts = fortnightOptions(weekAt, 0, PAYROLL, billsInWeek);
+    expect(opts[1].weeks).toHaveLength(1);
+  });
+
+  it("is empty when no shifts are asked for", () => {
+    expect(fortnightOptions(weekAt, 2, PAYROLL, billsInWeek, [])).toEqual([]);
+    expect(cheapest([])).toBeNull();
   });
 });

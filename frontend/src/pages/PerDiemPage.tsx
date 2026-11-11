@@ -18,6 +18,10 @@ import type { PerDiemStatus } from "@/types/perDiem";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { money } from "@/lib/format";
 import { getPerDiemRates } from "@/services/perDiemRateService";
+import { getObligations } from "@/services/obligationsService";
+import { getCashAssumptions } from "@/services/cashflowService";
+import { FortnightCost } from "@/components/perdiem/FortnightCost";
+import type { Obligation } from "@/types/obligation";
 import type { PerDiemRate } from "@/types/perDiemRate";
 import { segmentWords, missingDaysWords, ratesWords } from "@/lib/perDiem/rates";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
@@ -87,6 +91,17 @@ const PerDiemPage = () => {
   // The days he has told dash he will be HOME (107). Kept apart from `manual`
   // so nothing that reads a status can mistake a plan for a day that happened.
   const [plannedDays, setPlannedDays] = useState<Set<string>>(new Set());
+  // What a planned stretch actually costs: the bills that draft on those dates
+  // and the payroll that drafts every week regardless (call 4). Both non-fatal
+  // — the readout simply does not appear without them.
+  const [obligations, setObligations] = useState<Obligation[]>([]);
+  const [weeklyPayroll, setWeeklyPayroll] = useState<number | null>(null);
+  useEffect(() => {
+    getObligations().then(setObligations).catch(() => {});
+    getCashAssumptions()
+      .then((a) => setWeeklyPayroll(a == null ? null : Number(a.weekly_payroll)))
+      .catch(() => {});
+  }, []);
   const [rates, setRates] = useState<PerDiemRate[] | null>(null); // null = not loaded yet
   const [ratesFailed, setRatesFailed] = useState(false);
   const [deductPct, setDeductPct] = useState(0.8);
@@ -383,6 +398,11 @@ const PerDiemPage = () => {
               </div>
             ))}
             </div>
+            <FortnightCost
+              plannedDays={[...plannedDays]}
+              obligations={obligations}
+              weeklyPayroll={weeklyPayroll}
+            />
             <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[12px] text-faint">
               {year >= flipYear && (
                 <Sw style={AUTO_FULL_STYLE} label="Full — automatic (unmarked)" />

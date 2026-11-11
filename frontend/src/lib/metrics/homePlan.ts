@@ -162,3 +162,53 @@ export const weeksOffIsDerived = (
   const key = String(month).slice(0, 7);
   return [...actualHomeDays, ...plannedHomeDays].some((d) => String(d).slice(0, 7) === key);
 };
+
+// ---- What a fortnight at home costs, and what moving it costs (call 4) ----
+//
+// The finding the sheet turned on, and the one Jason cannot get anywhere else:
+// his bills CLUSTER. The truck note (26th), the guarantee fee (27th), the
+// trailer (27th) and the phone (29th) all draft in the last week of the month.
+// So the same two weeks off cost $4,767 taken Dec 2–15 and $7,727 taken
+// Dec 16–29 — $2,959 for the identical fortnight, moved.
+//
+// It is a decision he makes several times a year and nothing in dash has ever
+// priced it.
+export interface FortnightOption {
+  /** How many weeks later than the chosen start, e.g. −1, 0, +1. */
+  shift: number;
+  weeks: PayWeek[];
+  cost: HomeCost;
+  /** Against the chosen fortnight. Negative = cheaper. */
+  delta: number;
+}
+
+/**
+ * Price a stretch of pay weeks, and the same stretch moved a week either way.
+ *
+ * `weekAt(n)` returns the pay week n weeks after the chosen start — the caller
+ * owns the calendar, so this stays pure and the pay-week rule lives in one
+ * place.
+ */
+export const fortnightOptions = (
+  weekAt: (offset: number) => PayWeek,
+  weeksLong: number,
+  weeklyPayroll: number | null,
+  billsInWeek: (week: PayWeek) => number,
+  shifts: readonly number[] = [-1, 0, 1],
+): FortnightOption[] => {
+  const priced = shifts.map((shift) => {
+    const weeks = Array.from({ length: Math.max(1, weeksLong) }, (_, i) => weekAt(shift + i));
+    return { shift, weeks, cost: homeCost(weeks, weeklyPayroll, billsInWeek) };
+  });
+  const chosen = priced.find((p) => p.shift === 0)?.cost.total ?? 0;
+  return priced.map((p) => ({
+    ...p,
+    delta: Math.round((p.cost.total - chosen) * 100) / 100,
+  }));
+};
+
+/** The cheapest of the options, for the one-line verdict. */
+export const cheapest = (options: readonly FortnightOption[]): FortnightOption | null =>
+  options.length === 0
+    ? null
+    : options.reduce((a, b) => (b.cost.total < a.cost.total ? b : a));
