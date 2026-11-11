@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Obligation } from "@/types/obligation";
 import { getSettlements } from "@/services/settlementsService";
 import { getFuelEntries } from "@/services/fuelService";
+import { getPlannedHomeDays } from "@/services/perDiemService";
 import { getTrips } from "@/services/tripsService";
 import { getMaintenanceServices } from "@/services/maintenanceService";
 import type { MaintenanceService } from "@/types/maintenance";
@@ -103,6 +104,10 @@ const CashFlowPage = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [loading, setLoading] = useState(true);
+  // The home days Jason has PLANNED (migration 107). Non-fatal: a failure here
+  // leaves the board forecasting exactly as it did before home time existed,
+  // which is wrong in a known direction rather than blank.
+  const [plannedHomeDays, setPlannedHomeDays] = useState<string[]>([]);
 
   // A typed deposit beats a projection but never the feed's actual; keyed by
   // the STATEMENT date. On the SERVER since v1.268.0 — it used to live in this
@@ -157,8 +162,13 @@ const CashFlowPage = () => {
       getPlans(), getAccounts(), getSnapshots(),
       getSettlements(), getFuelEntries(),
       getOpsChecks(), getTrips(), getExpensePeriods(),
+      getPlannedHomeDays(),
     ])
-      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per]) => {
+      .then(([o, a, f, adj, sched, p, acc, snaps, setl, fuel, oc, tr, per, home]) => {
+        // Non-fatal, like the rest of this list: a failure leaves the board
+        // forecasting every week as a working week, which is what it did
+        // before 107 — wrong in a known direction rather than blank.
+        if (home.status === "fulfilled") setPlannedHomeDays(home.value);
         if (setl.status === "fulfilled") setSettlements(setl.value);
         if (fuel.status === "fulfilled") setFuelEntries(fuel.value);
         if (o.status === "fulfilled") setObligations(o.value);
@@ -238,12 +248,12 @@ const CashFlowPage = () => {
       assembleCashBoardInput({
         today: asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks,
         periods, loads: loads ?? [], settlements, fuelEntries, trips, services, obligations,
-        assumptions, overrides: netPayOverrides,
+        assumptions, overrides: netPayOverrides, plannedHomeDays,
       }),
     );
   }, [
     assumptions, asOfKey, settlementDay, depositLag, plans, accounts, snapshots, opsChecks, periods,
-    loads, settlements, fuelEntries, trips, services, obligations, netPayOverrides,
+    loads, settlements, fuelEntries, trips, services, obligations, netPayOverrides, plannedHomeDays,
   ]);
 
   // The deposit the board holds dated exactly `day` (Q3, 2026-11-07): this
@@ -423,7 +433,9 @@ const CashFlowPage = () => {
         ? "your last four draws"
         : s === "none"
           ? "no loads, no advance"
-          : "assumed — fewer than four draws on file";
+          : s === "home"
+            ? "you are home — nothing to draw against"
+            : "assumed — fewer than four draws on file";
   const advanceWords = (d: { advances: number | null; advancesSource: DepositLine["advancesSource"] }): string =>
     d.advancesSource === "actual"
       ? `advances ${money(d.advances)} (the statement)`
@@ -431,7 +443,9 @@ const CashFlowPage = () => {
         ? `advance ${money(d.advances)} (your last four draws)`
         : d.advancesSource === "none"
           ? "no loads, no advance"
-          : `advance ${money(d.advances)} (assumed — fewer than four draws on file)`;
+          : d.advancesSource === "home"
+            ? "no advance, no fuel — you are home"
+            : `advance ${money(d.advances)} (assumed — fewer than four draws on file)`;
   const depositStamp = (d: DepositLine): string | null =>
     d.source === "actual" ? "ACTUAL" : d.source === "override" ? "YOU SAID" : d.source === "fallback" ? "PROJECTED" : "EXPECTED";
   const depositWords = (d: DepositLine, own: boolean): string => {
@@ -443,8 +457,21 @@ const CashFlowPage = () => {
     let body: string;
     if (d.source === "actual") body = "actual, from the feed";
     else if (d.source === "override") body = `you said ${money(d.amount)} · the loads say ${d.revenue == null || d.advances == null || d.bucket == null ? "—" : money(d.revenue - d.advances - d.bucket + d.carriedIn)}`;
-    else if (d.revenueSource === "fallback")
-      body = `${d.loads + d.inTransit + d.booked > 0 ? `${delivered}${expected} say less than a normal week — ` : "nothing booked yet — "}the ${money(revFallback)} planning week − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}`;
+    else if (d.revenueSource === "home")
+      // A week he has told dash he is taking off. Say what it would have
+      // brought in beside what it will not — that comparison is the whole
+      // reason to mark the week in the first place.
+      body = `you are home all week — no loads, and the ${money(revFallback)} planning week does not apply · ${bucketWord} ${money(d.bucket)} still posts`;
+    else if (d.revenueSource === "fallback") {
+      // The line's OWN revenue, not the page's raw assumption. Part of a week
+      // planned home scales the planning week down (107), and quoting the
+      // unscaled $4,647 beside a figure computed from $3,983 made the sentence
+      // contradict the number it was explaining — caught on dev, not in a test.
+      const scaled =
+        d.revenue != null && revFallback != null && revFallback > 0 && d.revenue < revFallback - 0.5;
+      const week = `the ${money(d.revenue)} planning week`;
+      body = `${d.loads + d.inTransit + d.booked > 0 ? `${delivered}${expected} say less than a normal week — ` : "nothing booked yet — "}${week}${scaled ? ` (${money(revFallback)} less the days you are home)` : ""} − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}`;
+    }
     else body = `${delivered}${expected} − ${advanceWords(d)} − ${bucketWord} ${money(d.bucket)}`;
     const carry: string[] = [];
     if (d.carriedIn < 0) carry.push(`${moneyCents(d.carriedIn)} carried in from the statement before`);

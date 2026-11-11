@@ -41,7 +41,18 @@ const cellStyle = (
   inferred: boolean,
   autoFull: boolean,
   future: boolean,
+  planned = false,
 ): CSSProperties => {
+  // A day he INTENDS to be home (107). Dashed, in the home colour: the dash
+  // says "not yet true", which is the same grammar the inferred-day mark uses.
+  // The deduction never counts it, so it can sit on the calendar honestly.
+  if (planned)
+    return {
+      background: "transparent",
+      border: "1.5px dashed var(--color-chart-blue)",
+      color: "var(--color-chart-blue)",
+      fontWeight: 600,
+    };
   if (future)
     return { background: "transparent", border: "1px dashed var(--color-hairline-lo)", color: "var(--color-faint)" };
   // Post-flip unmarked: counts FULL automatically — subdued amber so the wall
@@ -73,6 +84,9 @@ const PerDiemPage = () => {
 
   const [year, setYear] = useState(curYear);
   const [manual, setManual] = useState<Map<string, PerDiemStatus>>(new Map());
+  // The days he has told dash he will be HOME (107). Kept apart from `manual`
+  // so nothing that reads a status can mistake a plan for a day that happened.
+  const [plannedDays, setPlannedDays] = useState<Set<string>>(new Set());
   const [rates, setRates] = useState<PerDiemRate[] | null>(null); // null = not loaded yet
   const [ratesFailed, setRatesFailed] = useState(false);
   const [deductPct, setDeductPct] = useState(0.8);
@@ -80,7 +94,10 @@ const PerDiemPage = () => {
 
   useEffect(() => {
     getPerDiemDays(year)
-      .then((days) => setManual(new Map(days.map((d) => [d.day, d.status]))))
+      .then((days) => {
+        setManual(new Map(days.map((d) => [d.day, d.status])));
+        setPlannedDays(new Set(days.filter((d) => d.planned).map((d) => d.day)));
+      })
       .catch(() => {});
   }, [year]);
 
@@ -130,6 +147,24 @@ const PerDiemPage = () => {
   );
   const pctWords = Math.round(deductPct * 100);
   const deductibleText = summary && summary.deductible != null ? money(summary.deductible) : "—";
+
+  // A FUTURE day can only ever be a plan: "full" and "half" are tax marks for
+  // days that happened, and the table's own CHECK refuses a planned day that
+  // is not `home`. So a tap out there toggles the plan on and off, nothing
+  // else. Optimistic, reverting on failure like the cycle below.
+  const togglePlanned = async (key: string) => {
+    const was = plannedDays.has(key);
+    const next = new Set(plannedDays);
+    if (was) next.delete(key);
+    else next.add(key);
+    setPlannedDays(next);
+    try {
+      if (was) await clearPerDiemDay(key);
+      else await setPerDiemDay(key, "home", true);
+    } catch {
+      setPlannedDays(new Set(plannedDays));
+    }
+  };
 
   const cycle = async (key: string) => {
     const prev = manual;
@@ -323,15 +358,20 @@ const PerDiemPage = () => {
                         <button
                           key={key}
                           type="button"
-                          disabled={future}
-                          onClick={() => cycle(key)}
-                          title={autoFull ? `${key} — full day (automatic)` : key}
+                          onClick={() => (future ? togglePlanned(key) : cycle(key))}
+                          title={
+                            future
+                              ? `${key} — tap to plan a home day`
+                              : autoFull
+                                ? `${key} — full day (automatic)`
+                                : key
+                          }
                           className="rounded-[3px] text-[11px] flex items-center justify-center leading-none"
                           style={{
                             aspectRatio: "1",
-                            ...cellStyle(eff, isInferred, autoFull, future),
+                            ...cellStyle(eff, isInferred, autoFull, future, plannedDays.has(key)),
                             boxShadow: today ? "0 0 0 2px var(--color-amber-hi)" : undefined,
-                            cursor: future ? "default" : "pointer",
+                            cursor: "pointer",
                           }}
                         >
                           {d}

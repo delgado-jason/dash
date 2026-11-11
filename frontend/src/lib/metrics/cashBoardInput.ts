@@ -82,12 +82,16 @@ export interface CashBoardParts {
   obligations: Obligation[];
   assumptions: CashAssumptionsRow;
   overrides: Record<string, number>; // statement date → typed deposit
+  // The home days he has PLANNED (migration 107). Every projection in a week
+  // is scaled by how much of it he is still on the road. Absent → the board
+  // forecasts exactly as it did before 107.
+  plannedHomeDays?: readonly string[];
 }
 
 export const assembleCashBoardInput = (parts: CashBoardParts): CashBoardInput => {
   const {
     today, plans, accounts, snapshots, opsChecks, periods, loads, settlements,
-    fuelEntries, trips, services, obligations, assumptions, overrides,
+    fuelEntries, trips, services, obligations, assumptions, overrides, plannedHomeDays,
   } = parts;
   const plan = pickPlan(plans);
   const floatLine = plan ? Number(plan.float_line) : null;
@@ -248,6 +252,7 @@ export const assembleCashBoardInput = (parts: CashBoardParts): CashBoardInput =>
     moneyDays,
     overrides,
     accruals,
+    plannedHomeDays: plannedHomeDays ?? [],
   };
 };
 

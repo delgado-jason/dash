@@ -13,7 +13,7 @@ export async function getPerDiemDays(user_id, year) {
     throw new ValidationError("Invalid year");
 
   const result = await db.query(
-    `SELECT to_char(day, 'YYYY-MM-DD') AS day, status
+    `SELECT to_char(day, 'YYYY-MM-DD') AS day, status, planned
        FROM per_diem_days
       WHERE user_id = $1
         AND day >= make_date($2, 1, 1)
@@ -25,26 +25,52 @@ export async function getPerDiemDays(user_id, year) {
 }
 
 // ---- most recent "home" day on or before today ---- (drives the hometime
-// metric — "days since you were last home"). Future home marks are excluded so a
-// planned home day doesn't reset the count early. null when nothing's marked.
+// metric — "days since you were last home"). null when nothing's marked.
+//
+// This already excluded future marks by date, which was the old way of saying
+// "not a plan". Since 107 it can say it outright, which also catches a plan
+// recorded against a day that has already passed.
 export async function getLastHomeDay(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT to_char(max(day), 'YYYY-MM-DD') AS last_home
        FROM per_diem_days
-      WHERE user_id = $1 AND status = 'home' AND day <= CURRENT_DATE`,
+      WHERE user_id = $1 AND status = 'home' AND NOT planned
+        AND day <= CURRENT_DATE`,
     [user_id],
   );
   return { last_home: result.rows[0]?.last_home ?? null };
 }
 
-// ---- all "home" days ---- (for the truck utilization week breakdown)
+// ---- all "home" days that HAPPENED ---- (the truck utilization window)
+//
+// `NOT planned` is the important one in this file. Utilization is a verdict on
+// days that have been lived; a day Jason intends to take off is not a day the
+// truck sat, and counting one would mark the fleet idle for a week that has
+// not come round yet.
 export async function getHomeDays(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");
   const result = await db.query(
     `SELECT to_char(day, 'YYYY-MM-DD') AS day
        FROM per_diem_days
-      WHERE user_id = $1 AND status = 'home'
+      WHERE user_id = $1 AND status = 'home' AND NOT planned
+      ORDER BY day`,
+    [user_id],
+  );
+  return result.rows.map((r) => r.day);
+}
+
+// ---- the home days still ahead ---- (what the cash board forecasts against)
+//
+// The mirror of getHomeDays: only the plans, and only the ones that have not
+// been overtaken. A plan for a day already past is stale — either it happened,
+// in which case it should have been confirmed, or it did not.
+export async function getPlannedHomeDays(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT to_char(day, 'YYYY-MM-DD') AS day
+       FROM per_diem_days
+      WHERE user_id = $1 AND planned AND day >= CURRENT_DATE
       ORDER BY day`,
     [user_id],
   );
@@ -52,19 +78,26 @@ export async function getHomeDays(user_id) {
 }
 
 // ---- UPSERT a day's status ----
-export async function upsertPerDiemDay(user_id, day, status) {
+export async function upsertPerDiemDay(user_id, day, status, planned = false) {
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!isDay(day)) throw new ValidationError("day must be YYYY-MM-DD");
   if (!STATUSES.includes(status))
     throw new ValidationError("status must be full, half, or home");
+  if (typeof planned !== "boolean")
+    throw new ValidationError("planned must be true or false");
+  // The table's own CHECK says this too, but a 400 naming the rule beats a 500
+  // carrying a constraint name. A plan is always a plan to be HOME: planning a
+  // day away would be a future day inside the tax vocabulary.
+  if (planned && status !== "home")
+    throw new ValidationError("only a home day can be planned");
 
   const result = await db.query(
-    `INSERT INTO per_diem_days (user_id, day, status)
-     VALUES ($1, $2, $3)
+    `INSERT INTO per_diem_days (user_id, day, status, planned)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (user_id, day)
-     DO UPDATE SET status = EXCLUDED.status, updated_at = NOW()
-     RETURNING to_char(day, 'YYYY-MM-DD') AS day, status`,
-    [user_id, day, status],
+     DO UPDATE SET status = EXCLUDED.status, planned = EXCLUDED.planned, updated_at = NOW()
+     RETURNING to_char(day, 'YYYY-MM-DD') AS day, status, planned`,
+    [user_id, day, status, planned],
   );
   return result.rows[0];
 }

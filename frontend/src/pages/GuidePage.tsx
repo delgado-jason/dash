@@ -1964,6 +1964,54 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Planned home days — telling the forecast when you're off"
+            answers="Tap a future day on the Per Diem calendar to plan a home day. The cash board stops forecasting revenue, fuel and a fuel advance for the days you'll be off."
+            sources={[
+              { label: "Per Diem", to: "/per-diem" },
+              { label: "Cash Flow", to: "/cashflow" },
+            ]}
+          >
+            <Formula>
+              on the road = (days in the week − days you planned home) ÷ 7
+              <br />
+              <span style={{ color: AMBER_HI }}>
+                revenue, fuel and the advance are each projected × that
+              </span>
+            </Formula>
+            <Eg>
+              Plan the whole pay week home and the deposit reads{" "}
+              <span className="text-light">$0</span> —{" "}
+              <i>"you are home all week — no loads, and the $4,647 planning
+              week does not apply"</i> — and the advance reads{" "}
+              <i>"you are home — nothing to draw against"</i>. Plan one day of
+              it and the planning week scales to{" "}
+              <span className="text-light">$3,983</span>, six sevenths of
+              normal.
+            </Eg>
+            <Why>
+              Until now the board forecast every week as a working week,
+              because the only record of home time was a{" "}
+              <span className="text-light">tax</span> record and a deduction
+              cannot count a day that hasn't happened. So a fortnight off
+              projected about <span className="text-light">$9,300</span> of
+              revenue you were never going to earn, against fuel you were never
+              going to buy. The two errors ran opposite ways and partly
+              cancelled, which is why the ending always looked almost
+              reasonable while both halves were wrong.
+              <br />
+              <br />
+              A planned day is <span className="text-light">dashed blue</span>{" "}
+              on the calendar, and it is kept apart from a day you actually
+              were home. The deduction counts only days that happened, and so
+              does the fleet's utilization — a week you intend to take off must
+              never make the truck look idle before it comes round. What does{" "}
+              <span className="text-light">not</span> change is payroll and the
+              bills: they draft wherever the truck is, which is exactly what
+              makes a week at home cost money.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Per diem — the meal-allowance deduction"
             answers="Your days out, turned into the M&IE tax deduction. Unmarked days count as full days out — you only mark home time and half days."
             sources={[{ label: "Per Diem", to: "/per-diem" }]}
