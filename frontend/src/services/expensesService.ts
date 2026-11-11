@@ -111,6 +111,16 @@ export const setCuttability = async (
   await api.put("/expenses/cuttability", { category, cuttability });
 };
 
+// Settle a category as fixed or variable for EVERY month, past and future.
+// The server reads the type through this row rather than off each line, so one
+// write corrects the whole history instead of the one month you were looking at.
+export const setCategoryType = async (
+  category: string,
+  type: ExpenseType,
+): Promise<void> => {
+  await api.put("/expenses/category-type", { category, type });
+};
+
 export interface SaveExpenseLine {
   category: string;
   amount: number;

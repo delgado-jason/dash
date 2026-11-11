@@ -8,6 +8,7 @@ import {
   getCategoryDefaults,
   getCutTierData,
   setCuttability,
+  setCategoryType,
   addExpenseLine,
   patchExpenseLine,
   deleteExpenseLine,
@@ -53,6 +54,17 @@ router.put("/cuttability", async (req, res) => {
   try {
     const { category, cuttability } = req.body ?? {};
     await setCuttability(req.user.user_id, category, cuttability ?? null);
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// ---- SET A CATEGORY'S FIXED/VARIABLE ---- (settles every month at once)
+router.put("/category-type", async (req, res) => {
+  try {
+    const { category, type } = req.body ?? {};
+    await setCategoryType(req.user.user_id, category, type);
     return res.status(200).json({ ok: true });
   } catch (err) {
     return handleError(res, err);

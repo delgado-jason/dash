@@ -1018,6 +1018,47 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Fixed vs variable — and what a parked day costs"
+            answers="Which costs bleed whether the truck moves or not. It drives the sit-versus-run burn, and it belongs to the category, not to the month."
+            sources={[{ label: "Expenses", to: "/expenses" }]}
+          >
+            <Formula>
+              cost to sit = fixed costs + your monthly notes · cost to run = that
+              + the variable burn · the gap is what the road costs on top
+            </Formula>
+            <Eg>
+              Mark payroll <span className="text-light">fixed</span> and a parked
+              day costs <span className="text-light">$253</span>; mark it{" "}
+              <span className="text-light">variable</span> and the same day reads{" "}
+              <span className="text-light">$220</span> — the truck did not change,
+              only the label did.
+            </Eg>
+            <Why>
+              <span className="text-light">Fixed or variable is a property of
+              the cost, not of the month it landed in.</span> So the{" "}
+              <span className="text-light">⇄</span> button in the ledger settles a
+              category in <b>every</b> month at once, past and future — not just
+              the one on screen. dash reads each line's classification from the
+              category, never from what was ticked the day that month was
+              uploaded.
+              <br />
+              <br />
+              That used to drift. Four of ten months were classified one way and
+              six the other, because a month backfilled before a decision kept the
+              old answer and nothing reconciled them. While it was wrong,{" "}
+              <span className="text-light">cost to sit understated a parked day
+              by $293 a week</span> — on the very tile that exists to tell you
+              whether a cheap load beats sitting still.
+              <br />
+              <br />
+              <span className="text-light">Cost to run does not move</span> when
+              you reclassify something. The money only changes buckets. What moves
+              is the split between sitting and rolling — and therefore the leave
+              reserve on the landing page, which reads the same figure.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Break-even — the rate to book"
             answers="The gross rate per mile you have to book to cover your cost."
             sources={[

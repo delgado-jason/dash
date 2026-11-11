@@ -166,11 +166,32 @@ export async function getExpensePeriod(user_id, period_id) {
   if (periodRes.rowCount === 0)
     throw new NotFoundError("Expense period not found");
 
+  // THE TYPE IS READ THROUGH THE DEFAULTS, not off the line.
+  //
+  // `expense_lines.type` is whatever was true at upload time; the current
+  // answer lives in expense_category_defaults, one row per category. Nothing
+  // reconciled them, so they drifted: on 2026-07-09 four months were backfilled
+  // as `variable`, May was then flipped to `fixed`, and June was created in the
+  // same minute and kept the old value. Four of ten months disagreed with the
+  // other six, and nothing said so.
+  //
+  // That is not cosmetic. The fixed share feeds the sit/run burn, which feeds
+  // the landing page's leave reserve, so "cost to sit" was understating a
+  // parked day by $293 a week.
+  //
+  // COALESCE and not a join-or-fail: a category with no default row at all
+  // falls back to its stored type, which is the only answer available.
+  // `expense_lines.type` is still written on insert — it is simply no longer
+  // read, and is now a record of what was believed at upload time.
   const linesRes = await db.query(
-    `SELECT line_id, category, amount, type, section
-     FROM expense_lines
-     WHERE period_id = $1
-     ORDER BY section, amount DESC`,
+    `SELECT l.line_id, l.category, l.amount,
+            COALESCE(d.type, l.type) AS type,
+            l.section
+     FROM expense_lines l
+     LEFT JOIN expense_category_defaults d
+            ON d.user_id = l.user_id AND d.category = l.category
+     WHERE l.period_id = $1
+     ORDER BY l.section, l.amount DESC`,
     [period_id],
   );
 
@@ -311,6 +332,33 @@ export async function setCuttability(user_id, category, cuttability) {
      ON CONFLICT (user_id, category)
        DO UPDATE SET cuttability = EXCLUDED.cuttability, updated_at = NOW()`,
     [user_id, category, cuttability],
+  );
+}
+
+// ---- SET A CATEGORY'S FIXED/VARIABLE, EVERYWHERE ----
+//
+// The counterpart to reading the type through the defaults: one write that
+// settles a category for every month, past and future. Before this there was
+// no way to reclassify after upload at all — the only chance was the upload
+// review screen — which is exactly how four months came to disagree with six
+// and stayed that way for four months.
+//
+// Mirrors setCuttability: upsert the default row, inventing the other column
+// only when the category has none yet.
+export async function setCategoryType(user_id, category, type) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  if (!category || typeof category !== "string")
+    throw new ValidationError("category is required");
+  if (!isValidType(type))
+    throw new ValidationError("type must be fixed or variable");
+  await db.query(
+    `INSERT INTO expense_category_defaults (user_id, category, type, cuttability)
+     VALUES ($1::uuid, $2::varchar, $3::expense_type,
+       (SELECT cuttability FROM expense_category_defaults
+         WHERE user_id = $1::uuid AND category = $2::varchar))
+     ON CONFLICT (user_id, category)
+       DO UPDATE SET type = EXCLUDED.type, updated_at = NOW()`,
+    [user_id, category, type],
   );
 }
 
