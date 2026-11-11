@@ -45,13 +45,19 @@ export const ForecastScore = ({ records, checks, today, openPeriodEnd, captureFa
       <p className="ds2-label">
         Forecast against actual
         <span className="ml-2 normal-case tracking-normal text-faint font-normal">
-          {score.scored === 0
+          {score.periods.length === 0
             ? "nothing to score yet"
-            : `the last ${score.scored} closed ${score.scored === 1 ? "period" : "periods"}`}
+            : score.scored === 0
+              ? `${score.periods.length} closed · none scorable yet`
+              : `the last ${score.scored} closed ${score.scored === 1 ? "period" : "periods"}`}
         </span>
       </p>
 
-      {score.scored === 0 ? (
+      {/* The empty state is about having no RECORD, not about having no score.
+          A period that closed and could not be scored is a different thing and
+          has to say so: it is the one case the reader can act on, by keying
+          the balance. Branching on `scored` here hid those rows entirely. */}
+      {score.periods.length === 0 ? (
         <p className="font-condensed text-[13.5px] text-faint mt-2 leading-snug">
           Nothing to score yet. The board writes down what it projects for a
           period while it is still a projection, then compares it to what
@@ -62,26 +68,36 @@ export const ForecastScore = ({ records, checks, today, openPeriodEnd, captureFa
         </p>
       ) : (
         <>
-          <p className="font-condensed font-semibold tabular-nums text-[26px] mt-1"
-             style={{ color: score.averageMiss == null ? "var(--color-dim)" : tone(score.averageMiss) }}>
-            {score.averageMiss == null
-              ? "—"
-              : `${score.averageMiss >= 0 ? "+" : "−"}${money(Math.abs(score.averageMiss))}`}
-            <span className="text-[15px] text-faint"> average miss</span>
-          </p>
-          <p className="font-condensed text-[12.5px] text-faint mt-0.5">
-            {score.averagePct != null && (
-              <>
-                the forecast has run{" "}
-                <b className="text-dim">
-                  {Math.abs(Math.round(score.averagePct * 100))}%{" "}
-                  {score.averagePct >= 0 ? "low" : "high"}
-                </b>{" "}
-                on the ending ·{" "}
-              </>
-            )}
-            a positive miss means the board was pessimistic
-          </p>
+          {score.averageMiss == null ? (
+            <p className="font-condensed text-[13.5px] text-dim mt-1.5 leading-snug">
+              A period has closed with a projection on it, but there is nothing
+              to score it against yet. Key the balance for the day it closed —
+              the Friday reading or an{" "}
+              <span className="text-light">OPS NOW</span> check — and it scores
+              itself.
+            </p>
+          ) : (
+            <>
+              <p className="font-condensed font-semibold tabular-nums text-[26px] mt-1"
+                 style={{ color: tone(score.averageMiss) }}>
+                {`${score.averageMiss >= 0 ? "+" : "−"}${money(Math.abs(score.averageMiss))}`}
+                <span className="text-[15px] text-faint"> average miss</span>
+              </p>
+              <p className="font-condensed text-[12.5px] text-faint mt-0.5">
+                {score.averagePct != null && (
+                  <>
+                    the forecast has run{" "}
+                    <b className="text-dim">
+                      {Math.abs(Math.round(score.averagePct * 100))}%{" "}
+                      {score.averagePct >= 0 ? "low" : "high"}
+                    </b>{" "}
+                    on the ending ·{" "}
+                  </>
+                )}
+                a positive miss means the board was pessimistic
+              </p>
+            </>
+          )}
 
           <div className="mt-2.5 divide-y ds2-cell-rule">
             {score.periods.map((p) => (
