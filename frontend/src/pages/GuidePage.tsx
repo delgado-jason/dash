@@ -2215,15 +2215,17 @@ const GuidePage = () => {
             sources={[{ label: "Per Diem", to: "/per-diem" }]}
           >
             <Formula>
-              cost = Σ over the weeks (bills drafting that week + weekly payroll)
+              cost = the bills and payroll that draft anyway + the days off ×
+              what a day out earns after its own fuel and wear
             </Formula>
             <Eg>
-              Two weeks home <span className="text-light">Dec 16–29</span> costs{" "}
-              <span className="text-light">$7,727</span>. The same fortnight
-              taken a week earlier costs{" "}
-              <span className="text-light">$4,550</span> —{" "}
-              <span className="text-light">$3,176</span> less for the identical
-              two weeks.
+              Two weeks home <span className="text-light">Dec 16–29</span>:
+              about <span className="text-light">$7,727</span> drafts, and
+              roughly <span className="text-light">$9,500</span> of earning does
+              not happen — fourteen days at about{" "}
+              <span className="text-light">$682</span> each. The same fortnight
+              a week earlier drafts <span className="text-light">$3,176</span>{" "}
+              less; the earnings given up are identical either way.
             </Eg>
             <Why>
               Your bills <span className="text-light">cluster</span>. The truck
@@ -2234,13 +2236,30 @@ const GuidePage = () => {
               a year and nothing here ever priced it.
               <br />
               <br />
-              Only the money that drafts <span className="text-light">
-              wherever the truck is</span> appears: payroll and the bills.
-              Revenue, fuel and the fuel advance are already struck from a
-              planned home week on the Cash Flow board, so counting them here
-              would be counting them twice. The weeks are priced with the same
-              rule the cash board uses to place a bill, so the two cannot
-              drift.
+              <span className="text-light">The bills are the smaller half, and
+              for a while they were the only half shown.</span> Payroll and the
+              bills draft wherever the truck is — which means they are not what
+              a day at home costs you. They were leaving anyway. What it costs
+              is the <span className="text-light">contribution that does not
+              happen</span>: the miles a working day covers, times what each one
+              brings home after its own fuel and wear. On your figures that is
+              about <span className="text-light">$682</span> a day against
+              roughly <span className="text-light">$386</span> of drafts, so
+              pricing only the drafts showed home time at about a third of its
+              real price.
+              <br />
+              <br />
+              Fixed cost is deliberately left out of the daily figure. It leaves
+              whether you drive or not, so charging a home day for it would
+              count it twice. Revenue, fuel and the fuel advance are likewise
+              already struck from a planned home week on the Cash Flow board.
+              <br />
+              <br />
+              One thing the earnings half does <span className="text-light">not
+              </span> do is change which week is cheapest: the same days off
+              give up the same contribution whichever week they fall in. Only
+              the bills move, and they are placed with the same rule the cash
+              board uses, so the two cannot drift.
             </Why>
           </Metric>
 

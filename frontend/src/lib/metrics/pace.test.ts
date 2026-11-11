@@ -1,7 +1,15 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
 import type { Trip } from "@/types/trip";
-import { monthPace, perDayOutOver, floorAtMiles, daysInMonth } from "./pace";
+import {
+  monthPace,
+  perDayOutOver,
+  floorAtMiles,
+  daysInMonth,
+  daysOutIn,
+  contributionPerDayOut,
+  forgoneOverDays,
+} from "./pace";
 
 // Every date here is explicit — the module takes `today` as an argument rather
 // than reading a clock, so these never rot as the calendar advances.
@@ -173,6 +181,67 @@ describe("perDayOutOver — the trailing pace", () => {
     expect(perDayOutOver([], NO_TRIPS, [], [])).toBeNull();
     const allOct = Array.from({ length: 31 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`);
     expect(perDayOutOver([], NO_TRIPS, allOct, [{ year: 2026, month: 9 }])).toBeNull();
+  });
+});
+
+describe("daysOutIn", () => {
+  const SEP = { year: 2026, month: 8 }; // 30 days
+  const OCT = { year: 2026, month: 9 }; // 31 days
+
+  it("counts every day of every month that was not at home", () => {
+    expect(daysOutIn([SEP, OCT], [])).toBe(61);
+    expect(daysOutIn([SEP, OCT], ["2026-10-01", "2026-10-02", "2026-09-30"])).toBe(58);
+  });
+
+  it("ignores home days outside the months given", () => {
+    expect(daysOutIn([OCT], ["2026-09-15", "2026-11-01", "2026-10-05"])).toBe(30);
+  });
+
+  it("no months means no days", () => {
+    expect(daysOutIn([], ["2026-10-01"])).toBe(0);
+  });
+});
+
+describe("contributionPerDayOut — what a moving day is worth", () => {
+  it("is the day's miles times what each one keeps after fuel and wear", () => {
+    // Jason's real figures: 322 miles a day out, $3.71 net a mile, $1.59 of
+    // variable cost — about $682 a day.
+    expect(contributionPerDayOut(322, 3.71, 1.59)).toBeCloseTo(682.64, 2);
+  });
+
+  it("never goes negative — a losing mile does not make sitting profitable", () => {
+    expect(contributionPerDayOut(322, 1.0, 1.59)).toBe(0);
+  });
+
+  it("needs all three inputs, and a day that drove nothing is not measurable", () => {
+    expect(contributionPerDayOut(null, 3.71, 1.59)).toBeNull();
+    expect(contributionPerDayOut(322, null, 1.59)).toBeNull();
+    expect(contributionPerDayOut(322, 3.71, null)).toBeNull();
+    expect(contributionPerDayOut(0, 3.71, 1.59)).toBeNull();
+    expect(contributionPerDayOut(-10, 3.71, 1.59)).toBeNull();
+  });
+});
+
+describe("forgoneOverDays — the real price of a stretch at home", () => {
+  it("is the days off times what each one would have earned", () => {
+    expect(forgoneOverDays(14, 682)).toBeCloseTo(9548, 2);
+    expect(forgoneOverDays(46, 682)).toBeCloseTo(31372, 2); // six months of home time
+  });
+
+  it("is null when a day out cannot be priced, and zero days cost nothing", () => {
+    expect(forgoneOverDays(14, null)).toBeNull();
+    expect(forgoneOverDays(0, 682)).toBeNull();
+    expect(forgoneOverDays(-3, 682)).toBeNull();
+  });
+
+  it("DWARFS the money that merely drafts — the whole point of the change", () => {
+    // A fortnight: about $386/day of bills and payroll draft whether the truck
+    // moves or not; the earning that does not happen is roughly $682 a day.
+    const drafts = 14 * 386;
+    const forgone = forgoneOverDays(14, 682)!;
+    expect(forgone).toBeGreaterThan(drafts);
+    // Pricing only the drafts showed home time at roughly a third of its cost.
+    expect(drafts / (drafts + forgone)).toBeLessThan(0.4);
   });
 });
 

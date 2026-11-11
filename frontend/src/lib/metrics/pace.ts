@@ -80,6 +80,28 @@ export const perDayOutOver = (
 };
 
 /**
+ * Days across the given months that were NOT spent at home.
+ *
+ * Pairs with a mileage total covering the SAME months — the cost basis already
+ * sums its window's driven miles, so dividing one by the other gives miles per
+ * day out without re-walking the odometers.
+ */
+export const daysOutIn = (
+  months: readonly { year: number; month: number }[],
+  homeDays: readonly string[],
+): number => {
+  const home = new Set(homeDays.map((d) => String(d).slice(0, 10)));
+  let out = 0;
+  for (const { year, month } of months) {
+    const n = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    for (let day = 1; day <= n; day++) {
+      if (!home.has(dayKey(new Date(Date.UTC(year, month, day))))) out++;
+    }
+  }
+  return out;
+};
+
+/**
  * The month in progress, measured against the commitment.
  *
  * `homeDays` are the days that HAPPENED at home; `plannedHomeDays` are the ones
@@ -147,6 +169,46 @@ export const monthPace = (
     landsAtPctOfTarget: usableTarget == null || landsAt == null ? null : landsAt / usableTarget,
   };
 };
+
+/**
+ * What a day with the truck moving is actually worth — the miles it covers,
+ * times what each of those miles brings home after the fuel and wear it burns.
+ *
+ * THIS IS THE REAL PRICE OF A DAY AT HOME, and it is not the one the Per Diem
+ * planner used to show. That panel prices the payroll and bills that draft
+ * while you are home — about $386 a day — and stops there. But the bills draft
+ * whether the truck moves or not; they are not what a home day COSTS. What it
+ * costs is the contribution that does not happen: roughly $682 a day on
+ * Jason's figures, which made home time read about a third of its real price.
+ *
+ * Fixed cost is deliberately absent. It is sunk either way, so including it
+ * would charge a home day for money that was leaving regardless.
+ */
+export const contributionPerDayOut = (
+  milesPerDayOut: number | null,
+  netPerMile: number | null,
+  variablePerMile: number | null,
+): number | null => {
+  if (milesPerDayOut == null || netPerMile == null || variablePerMile == null) return null;
+  if (milesPerDayOut <= 0) return null;
+  // A mile that costs more to run than it brings home contributes nothing; it
+  // does not make staying home PROFITABLE, which a negative here would imply.
+  return Math.max(0, milesPerDayOut * (netPerMile - variablePerMile));
+};
+
+/**
+ * The earnings a stretch at home gives up. Constant across the shifted options
+ * in the fortnight planner — the same days off forgo the same contribution
+ * whichever week they fall in — so it changes the TOTAL without ever changing
+ * which week is cheapest. Only the bills do that.
+ */
+export const forgoneOverDays = (
+  days: number,
+  contributionPerDay: number | null,
+): number | null =>
+  contributionPerDay == null || days <= 0
+    ? null
+    : Math.round(days * contributionPerDay * 100) / 100;
 
 /**
  * The floor a given month's mileage implies — fixed cost spread over those

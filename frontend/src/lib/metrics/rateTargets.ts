@@ -139,6 +139,11 @@ export interface CostBasis {
   windowRpm: number | null; // net revenue ÷ loaded miles over the window
   costPerTotalMile: number | null; // true cost ÷ TOTAL miles — cost per mile driven
   grossPerTotalMile: number | null; // full gross ÷ TOTAL miles — your booked rate/mile
+  // NET revenue ÷ TOTAL miles — what a driven mile actually brings home. With
+  // variablePerMile this gives the CONTRIBUTION a mile earns, which is what a
+  // day not driving really costs: the bills draft either way, the contribution
+  // simply does not happen.
+  netPerTotalMile: number | null;
   payTake: number | null; // net ÷ gross — your blended keep after the carrier's cut
   months: number; // months with a P&L that were actually included
   // The included months, named — "Jun–Aug" (or "Mar, Apr, Jul" across a gap,
@@ -319,6 +324,7 @@ export const getCostBasis = (
     fixedMonthly,
     variablePerMile,
     grossPerTotalMile: total > 0 ? grossRev / total : null,
+    netPerTotalMile: total > 0 ? revenue / total : null,
     payTake: grossRev > 0 ? revenue / grossRev : null,
     months: n,
     windowLabel: windowLabelOf(included),
