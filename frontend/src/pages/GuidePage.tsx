@@ -2314,6 +2314,48 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Gaps that look like home time"
+            answers="Stretches where the truck stood still and nothing says why. dash shows them with whatever evidence it has and waits — it never marks a day for you."
+            sources={[{ label: "Per Diem", to: "/per-diem" }]}
+          >
+            <Formula>
+              a gap = the days between one delivery and the next pickup · offered
+              when it runs 3 to 21 days, longest first
+            </Formula>
+            <Eg>
+              Delivered <span className="text-light">Jun 1</span>, loaded again{" "}
+              <span className="text-light">Jun 9</span> — the 2nd through the
+              8th are candidates. The 1st and the 9th were worked, so they are
+              never offered.
+            </Eg>
+            <Why>
+              Home days only started being marked in{" "}
+              <span className="text-light">July 2026</span>, so every month
+              before that reads as if the truck was available every single day.
+              That flattens your utilization — miles per day out came out at{" "}
+              <span className="text-light">283</span> when the real figure, once
+              the unmarked weeks are allowed for, is{" "}
+              <span className="text-light">322</span>. Any comparison crossing
+              July was reading two different definitions of a working day.
+              <br />
+              <br />
+              <span className="text-light">A gap is not proof.</span> A quiet
+              week can be a breakdown, a soft market, or a load that fell
+              through — all days the truck was available and should stay in your
+              pace. So where the trip log has a <span className="text-light">
+              home</span> run inside the gap it says so, and where it has
+              nothing it says that too. Mark only the ones you remember.
+              <br />
+              <br />
+              Two bounds keep it useful. Nothing over{" "}
+              <span className="text-light">21 days</span> is offered: a stretch
+              that long is a hole in the records, not a holiday, and one click
+              would write dozens of wrong days. And only ten are shown, because
+              a list nobody finishes reading is a list nobody acts on.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Per diem — the meal-allowance deduction"
             answers="Your days out, turned into the M&IE tax deduction. Unmarked days count as full days out — you only mark home time and half days."
             sources={[{ label: "Per Diem", to: "/per-diem" }]}

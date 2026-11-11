@@ -22,6 +22,10 @@ import { getObligations } from "@/services/obligationsService";
 import { getCashAssumptions } from "@/services/cashflowService";
 import { FortnightCost } from "@/components/perdiem/FortnightCost";
 import { getHomeDays } from "@/services/perDiemService";
+import { HomeGaps } from "@/components/perdiem/HomeGaps";
+import { homeGapCandidates } from "@/lib/metrics/homeGaps";
+import { getTrips } from "@/services/tripsService";
+import type { Trip } from "@/types/trip";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import { daysOutIn, contributionPerDayOut } from "@/lib/metrics/pace";
 import type { Obligation } from "@/types/obligation";
@@ -113,6 +117,20 @@ const PerDiemPage = () => {
   // it burns. The basis already sums its window's driven miles, so dividing
   // those by the days NOT at home over the same months gives the daily pace
   // without re-walking a single odometer.
+  // Stretches where the truck stood still and nothing says why. Trips carry
+  // the strong evidence — a logged `home` run — so they are fetched here
+  // rather than inferred from the gap alone.
+  const [allTrips, setAllTrips] = useState<Trip[]>([]);
+  useEffect(() => {
+    getTrips()
+      .then(setAllTrips)
+      .catch(() => setAllTrips([]));
+  }, []);
+  const homeGaps = useMemo(
+    () => homeGapCandidates(loads, allTrips, allHomeDays),
+    [loads, allTrips, allHomeDays],
+  );
+
   const rateTargets = useRateTargets(loads);
   const dayWorth = useMemo(() => {
     const b = rateTargets?.basis;
@@ -428,6 +446,15 @@ const PerDiemPage = () => {
               obligations={obligations}
               weeklyPayroll={weeklyPayroll}
               contributionPerDayOut={dayWorth}
+            />
+            <HomeGaps
+              gaps={homeGaps}
+              onMark={async (days) => {
+                for (const d of days) await setPerDiemDay(d, "home");
+                const fresh = await getPerDiemDays(year);
+                setManual(new Map(fresh.map((x) => [x.day, x.status])));
+                setAllHomeDays(await getHomeDays());
+              }}
             />
             <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[12px] text-faint">
               {year >= flipYear && (
