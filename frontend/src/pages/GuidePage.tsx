@@ -2012,6 +2012,41 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="What a stretch at home costs — and what moving it costs"
+            answers="Mark a home stretch on the calendar and the page prices it: the payroll and bills that draft anyway, plus what the same stretch would cost a week earlier or later."
+            sources={[{ label: "Per Diem", to: "/per-diem" }]}
+          >
+            <Formula>
+              cost = Σ over the weeks (bills drafting that week + weekly payroll)
+            </Formula>
+            <Eg>
+              Two weeks home <span className="text-light">Dec 16–29</span> costs{" "}
+              <span className="text-light">$7,727</span>. The same fortnight
+              taken a week earlier costs{" "}
+              <span className="text-light">$4,550</span> —{" "}
+              <span className="text-light">$3,176</span> less for the identical
+              two weeks.
+            </Eg>
+            <Why>
+              Your bills <span className="text-light">cluster</span>. The truck
+              note (26th), the guarantee fee (27th), the trailer (27th) and the
+              phone (29th) all draft in the last week of the month, so a
+              fortnight that lands on them costs thousands more than the same
+              fortnight a week earlier. It is a decision you make several times
+              a year and nothing here ever priced it.
+              <br />
+              <br />
+              Only the money that drafts <span className="text-light">
+              wherever the truck is</span> appears: payroll and the bills.
+              Revenue, fuel and the fuel advance are already struck from a
+              planned home week on the Cash Flow board, so counting them here
+              would be counting them twice. The weeks are priced with the same
+              rule the cash board uses to place a bill, so the two cannot
+              drift.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Per diem — the meal-allowance deduction"
             answers="Your days out, turned into the M&IE tax deduction. Unmarked days count as full days out — you only mark home time and half days."
             sources={[{ label: "Per Diem", to: "/per-diem" }]}
