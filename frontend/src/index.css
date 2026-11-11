@@ -519,12 +519,24 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .ds2-cell-rule {
   border-color: var(--color-hairline-lo);
 }
-.ds2-label {
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-dim);
+/* The house panel heading. In `@layer components` ON PURPOSE: an unlayered
+ * rule beats every Tailwind utility, so `ds2-label text-amber-hi` rendered DIM
+ * and the override was silently ignored. Inside the components layer the
+ * utilities win, which is what every call site already assumed.
+ *
+ * It had been wrong on two older call sites (AgentDetailPage's "BEST LOAD
+ * TOGETHER", LoadDetailPage's "Fleet") without anyone noticing, because dim on
+ * a dark panel is only a little wrong. v1.273.1 put `ds2-label` on the amber
+ * BUTTONS, where dim-on-amber is unreadable — which is how Jason caught it on
+ * prod. The colour belongs to the call site; this class owns the type only. */
+@layer components {
+  .ds2-label {
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-dim);
+  }
 }
 .ds2-well {
   background: var(--color-well);
