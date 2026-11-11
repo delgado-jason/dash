@@ -21,6 +21,9 @@ import { getPerDiemRates } from "@/services/perDiemRateService";
 import { getObligations } from "@/services/obligationsService";
 import { getCashAssumptions } from "@/services/cashflowService";
 import { FortnightCost } from "@/components/perdiem/FortnightCost";
+import { getHomeDays } from "@/services/perDiemService";
+import { useRateTargets } from "@/hooks/useRateTargets";
+import { daysOutIn, contributionPerDayOut } from "@/lib/metrics/pace";
 import type { Obligation } from "@/types/obligation";
 import type { PerDiemRate } from "@/types/perDiemRate";
 import { segmentWords, missingDaysWords, ratesWords } from "@/lib/perDiem/rates";
@@ -96,6 +99,28 @@ const PerDiemPage = () => {
   // — the readout simply does not appear without them.
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [weeklyPayroll, setWeeklyPayroll] = useState<number | null>(null);
+  // Every home day marked, any year — the basis window can straddle a year
+  // boundary, and counting days out off the selected year alone would overstate
+  // them and so understate what a day out is worth.
+  const [allHomeDays, setAllHomeDays] = useState<string[]>([]);
+  useEffect(() => {
+    getHomeDays()
+      .then(setAllHomeDays)
+      .catch(() => setAllHomeDays([]));
+  }, []);
+
+  // What a day with the truck moving actually earns, after the fuel and wear
+  // it burns. The basis already sums its window's driven miles, so dividing
+  // those by the days NOT at home over the same months gives the daily pace
+  // without re-walking a single odometer.
+  const rateTargets = useRateTargets(loads);
+  const dayWorth = useMemo(() => {
+    const b = rateTargets?.basis;
+    if (!b || b.totalMiles <= 0) return null;
+    const out = daysOutIn(b.monthsDetail, allHomeDays);
+    if (out <= 0) return null;
+    return contributionPerDayOut(b.totalMiles / out, b.netPerTotalMile, b.variablePerMile);
+  }, [rateTargets, allHomeDays]);
   useEffect(() => {
     getObligations().then(setObligations).catch(() => {});
     getCashAssumptions()
@@ -402,6 +427,7 @@ const PerDiemPage = () => {
               plannedDays={[...plannedDays]}
               obligations={obligations}
               weeklyPayroll={weeklyPayroll}
+              contributionPerDayOut={dayWorth}
             />
             <div className="flex gap-x-4 gap-y-1 flex-wrap px-4 pb-2 font-condensed text-[12px] text-faint">
               {year >= flipYear && (

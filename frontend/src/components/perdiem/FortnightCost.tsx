@@ -15,6 +15,7 @@ import type { Obligation } from "@/types/obligation";
 import { payWeekOf, type PayWeek } from "@/lib/metrics/payWeeks";
 import { billsIn } from "@/lib/metrics/cashBoard";
 import { fortnightOptions, cheapest } from "@/lib/metrics/homePlan";
+import { forgoneOverDays } from "@/lib/metrics/pace";
 import { money } from "@/lib/format";
 import { Panel } from "@/components/ui/Panel";
 
@@ -34,9 +35,20 @@ interface Props {
   plannedDays: string[];
   obligations: Obligation[];
   weeklyPayroll: number | null;
+  /**
+   * What a day with the truck moving is worth, after the fuel and wear it
+   * burns. Null when the basis cannot supply it — the panel then shows only
+   * the money that drafts, and says that is what it is showing.
+   */
+  contributionPerDayOut?: number | null;
 }
 
-export const FortnightCost = ({ plannedDays, obligations, weeklyPayroll }: Props) => {
+export const FortnightCost = ({
+  plannedDays,
+  obligations,
+  weeklyPayroll,
+  contributionPerDayOut = null,
+}: Props) => {
   const view = useMemo(() => {
     if (plannedDays.length === 0) return null;
     const sorted = [...plannedDays].map((d) => String(d).slice(0, 10)).sort();
@@ -63,6 +75,18 @@ export const FortnightCost = ({ plannedDays, obligations, weeklyPayroll }: Props
   const chosen = view.options.find((o) => o.shift === 0);
   if (!chosen) return null;
 
+  // Keyed on the DAYS marked, not the weeks they span: a two-day stretch gives
+  // up two days of earning even though it touches a whole pay week. It is also
+  // identical across the shifted options below — the same days off forgo the
+  // same contribution whichever week they land in — so it moves the total
+  // without ever changing which week is cheapest. Only the bills do that.
+  // Zero is a real answer from the clamp — it means a mile currently costs more
+  // to run than it brings home, so a day at home forgoes nothing. True, and
+  // useless to print: "earnings you give up $0" is noise, not information. The
+  // panel falls back to saying it can only price the drafts.
+  const forgoneRaw = forgoneOverDays(plannedDays.length, contributionPerDayOut);
+  const forgone = forgoneRaw != null && forgoneRaw > 0 ? forgoneRaw : null;
+
   const word = view.span === 1 ? "week" : view.span === 2 ? "fortnight" : `${view.span} weeks`;
   // Only worth saying when moving actually saves something real. A few dollars
   // either way is not a reason to rearrange a fortnight at home.
@@ -77,9 +101,33 @@ export const FortnightCost = ({ plannedDays, obligations, weeklyPayroll }: Props
         </span>
       </p>
 
+      {/* WHAT THE STRETCH REALLY COSTS.
+          The bills and payroll draft whether the truck moves or not, so they
+          are not what a day at home costs you — they were leaving anyway. What
+          it costs is the contribution that does not happen. On Jason's figures
+          that is roughly $682 a day against about $386 of drafts, so pricing
+          only the drafts showed home time at about a third of its real price. */}
       <p className="font-condensed font-semibold tabular-nums text-[26px] text-amber-hi mt-1">
-        {money(chosen.cost.total)}
+        {money(forgone == null ? chosen.cost.total : chosen.cost.total + forgone)}
       </p>
+
+      {forgone != null && (
+        <div className="mt-1.5 font-condensed text-[13px] text-dim flex flex-wrap gap-x-4 gap-y-0.5">
+          <span>
+            <span className="text-faint">drafts anyway</span>{" "}
+            <b className="text-ink tabular-nums">{money(chosen.cost.total)}</b>
+          </span>
+          <span>
+            <span className="text-faint">+ earnings you give up</span>{" "}
+            <b className="text-ink tabular-nums">{money(forgone)}</b>
+            <span className="text-faint">
+              {" "}
+              · {plannedDays.length} {plannedDays.length === 1 ? "day" : "days"} ×{" "}
+              {money(contributionPerDayOut)}
+            </span>
+          </span>
+        </div>
+      )}
 
       <div className="mt-2.5 divide-y ds2-cell-rule">
         {chosen.cost.weeks.map((w) => (
@@ -135,9 +183,25 @@ export const FortnightCost = ({ plannedDays, obligations, weeklyPayroll }: Props
 
       <p className="font-condensed text-[12px] text-faint mt-2.5 leading-snug">
         Revenue, fuel and the fuel advance are already struck from these weeks on
-        the cash board. This is what still drafts: {chosen.cost.weeks.length}{" "}
-        {chosen.cost.weeks.length === 1 ? "week" : "weeks"} of payroll, plus
-        whatever bills land on those dates.
+        the cash board. What still drafts is {chosen.cost.weeks.length}{" "}
+        {chosen.cost.weeks.length === 1 ? "week" : "weeks"} of payroll plus
+        whatever bills land on those dates — and those would have drafted
+        anyway.{" "}
+        {forgone != null ? (
+          <>
+            The bigger half is the <b className="text-dim">contribution that
+            does not happen</b>: what a day out earns after the fuel and wear it
+            burns. Fixed cost is left out of it on purpose — it is leaving
+            either way, so charging a home day for it would be counting it
+            twice.
+          </>
+        ) : (
+          <>
+            This is only the money that drafts. What a day at home really costs
+            is the earning that does not happen, which needs a P&amp;L month and
+            some marked home days before it can be measured.
+          </>
+        )}
       </p>
     </Panel>
   );
