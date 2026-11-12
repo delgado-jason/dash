@@ -2,7 +2,12 @@ import { useState } from "react";
 import type { Agent } from "@/types/agent";
 import type { AgentPatchPayload } from "@/types/agentPatchPayload";
 import { patchAgent } from "@/services/patchAgentService";
-import { RATING_OPTIONS } from "@/lib/metrics/ratingLabels";
+import {
+  STANDING_OPTIONS,
+  standingOf,
+  standingPatch,
+  type Standing,
+} from "@/lib/agents/standing";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,34 +31,46 @@ interface RatingFormProps {
 
 const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
   // --- STATE ---
-  const [rating, setRating] = useState<number | null>(agent.rating ?? null);
+  // ONE control over two columns. "Parked" is the bottom of the rating scale
+  // rather than a separate switch, because marking a desk in two places is how
+  // four of Jason's parked agents ended up still carrying three stars — the
+  // same default as 39 active ones. See lib/agents/standing.ts.
+  const current = standingOf(agent);
+  const [standing, setStanding] = useState<Standing | null>(current);
   const [reason, setReason] = useState("");
   const [changedBy, setChangedBy] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Did the user actually change the rating from its current value?
-  const ratingChanged = rating !== (agent.rating ?? null);
+  const parking = standing === "parked";
+  const ratingChanged = standing !== current;
 
   // --- HANDLER ---
   const handleSubmit = async () => {
     setError(null);
 
-    // Client-side guard: a rating change needs a reason + initials.
+    // Client-side guard: a change needs a reason + initials.
     // (The backend enforces this too — this is just faster feedback.)
     if (ratingChanged && (!reason.trim() || !changedBy.trim())) {
-      setError("Rating changes require a reason and initials");
+      setError(
+        parking
+          ? "Parking a desk needs a reason and initials"
+          : "Rating changes require a reason and initials",
+      );
       return;
     }
 
-    // Nothing to do if the rating didn't change.
-    if (!ratingChanged) {
+    if (!ratingChanged || standing == null) {
       onClose();
       return;
     }
 
+    // The patch decides what actually moves: parking leaves the stored rating
+    // alone so un-parking restores it, and a plain re-rating never writes
+    // work_status. The park reason is the same sentence as the audit reason —
+    // asking for it twice is how the two drift apart again.
     const payload: AgentPatchPayload = {
-      rating,
+      ...standingPatch(agent, standing, reason),
       reason: reason.trim(),
       changed_by: changedBy.trim(),
     };
@@ -76,7 +93,7 @@ const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-foreground">
-          Edit Rating —{" "}
+          Edit standing —{" "}
           <span className="font-normal text-muted-foreground">
             {nameOf(agent)}
           </span>
@@ -93,24 +110,34 @@ const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
       <div className="grid gap-4">
         {/* Rating */}
         <div>
-          <Label htmlFor="rating">Rating</Label>
+          <Label htmlFor="rating">Standing</Label>
           <Select
-            value={rating !== null ? String(rating) : undefined}
-            onValueChange={(value) => setRating(Number(value))}
+            value={standing !== null ? String(standing) : undefined}
+            onValueChange={(value) =>
+              setStanding(value === "parked" ? "parked" : (Number(value) as Standing))
+            }
           >
             <SelectTrigger id="rating">
-              <SelectValue placeholder="Select a rating" />
+              <SelectValue placeholder="Select a standing" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {RATING_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={String(option.value)}>
+                {STANDING_OPTIONS.map((option) => (
+                  <SelectItem key={String(option.value)} value={String(option.value)}>
                     {option.label}
                   </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
+          {parking && (
+            <p className="text-muted-foreground text-sm mt-1.5">
+              The Load Scorer will refuse to quietly score a load from this desk.{" "}
+              {agent.rating != null && (
+                <>Its {agent.rating}-star rating is kept, so un-parking restores it.</>
+              )}
+            </p>
+          )}
         </div>
 
         {/* Reason — only meaningful when the rating changes */}
@@ -120,7 +147,7 @@ const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
           </Label>
           <Textarea
             id="reason"
-            placeholder="Why is the rating changing?"
+            placeholder={parking ? "Why are you parking this desk?" : "Why is the rating changing?"}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
@@ -150,7 +177,7 @@ const RatingForm = ({ agent, onSuccess, onClose }: RatingFormProps) => {
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Rating"}
+            {isSaving ? "Saving..." : parking ? "Park this desk" : "Save standing"}
           </Button>
         </div>
       </div>

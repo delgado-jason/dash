@@ -382,7 +382,7 @@ const AgentDetailPage = () => {
           ) : (
             <>
               <div className="flex flex-col sm:items-end gap-1">
-                <RatingLabel rating={agent.rating} size="lg" setOn={ratingSetOn} />
+                <RatingLabel rating={agent.rating} workStatus={agent.work_status} size="lg" setOn={ratingSetOn} />
                 <p className="text-[12.5px] text-faint" data-testid="agent-grade-line">
                   {allInGrade && allIn?.rpm != null ? (
                     <>

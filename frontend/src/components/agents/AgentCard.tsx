@@ -83,7 +83,7 @@ export const AgentCard = ({
       </div>
 
       <div className="flex items-center justify-between gap-2 mt-2.5">
-        <RatingLabel rating={agent.rating} />
+        <RatingLabel rating={agent.rating} workStatus={agent.work_status} />
         {goto && (
           <span
             className="text-[11px] font-bold px-2 py-0.5 rounded-md shrink-0"

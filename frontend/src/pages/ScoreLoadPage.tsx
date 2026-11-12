@@ -17,6 +17,11 @@ import { RATE_TIERS, marginAtMarkup, type RateTiers } from "@/lib/constants/targ
 import { getLoadMiles, type Place } from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
 import {
+  standingOf,
+  standingLabel,
+  standingIsContradictory,
+} from "@/lib/agents/standing";
+import {
   toInches,
   classifyOversize,
   freightCeilingLb,
@@ -460,7 +465,14 @@ const ScoreLoadPage = () => {
     activeTiers,
   );
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
-  const canScore = targets.ready && entered && !!meta;
+  // THE AGENCY CODE IS MANDATORY, and that is the point rather than a
+  // formality. You have ten parked agents, nine with a written reason, and an
+  // optional field is an optional check — the whole reason it exists is to
+  // stop a booking before it starts. A desk that resolves to nobody still
+  // counts as answered: typing a code for an agent you have never run with is
+  // a real answer ("New agent"), typing nothing is not.
+  const deskAnswered = agent != null || agentQuery.trim().length >= 2;
+  const canScore = targets.ready && entered && !!meta && deskAnswered;
 
   // Everything under the TARGET rung still has room to counter — `profit`
   // included. This was a list of verdicts, and leaving `profit` out of it is how
@@ -478,6 +490,9 @@ const ScoreLoadPage = () => {
       ? gradedRate * targets.basis.payTake -
         targets.basis.variablePerMile * score.drivenMiles
       : null;
+
+  const agentStanding = agent ? standingOf(agent) : null;
+  const agentParked = agentStanding === "parked";
 
   const belowTarget = !verdictAtLeast(score.verdict, "take");
   const counter =
@@ -550,6 +565,35 @@ const ScoreLoadPage = () => {
               </span>
             </div>
           </div>
+
+          {/* A PARKED DESK LEADS. You have ten parked agents and nine of them
+              carry a written reason — "Blacklisted agent", "He doesnt
+              dispatch", "Because he's an asshole" — and the Scorer showed none
+              of it, so Brandie could score a load from a man you refuse to
+              work with, get a PRIME verdict, and never know.
+
+              The score still runs underneath. Knowing what the freight was
+              worth is how you decide whether a park is still right; the
+              verdict simply cannot be the first thing she reads. */}
+          {agentParked && agent && (
+            <div
+              className="ds2-board p-3.5 mb-3"
+              style={{
+                borderLeft: "3px solid var(--color-status-negative-text)",
+                background: "var(--color-status-negative-bg)",
+              }}
+            >
+              <Lbl accent>⛔ Do not book</Lbl>
+              <p className="text-[15.5px] text-ink font-medium">
+                {agentLabel(agent)} is parked
+                {agent.park_reason?.trim() ? ` — "${agent.park_reason.trim()}"` : "."}
+              </p>
+              <p className="font-condensed text-[12.5px] text-dim mt-1">
+                The load is still scored below, because what the freight is worth is how
+                you judge whether the park still holds.
+              </p>
+            </div>
+          )}
 
           {underwaterBy != null && (
             <div
@@ -793,6 +837,27 @@ const ScoreLoadPage = () => {
                   <Link to={`/agents/${agent.agent_id}`} className="font-condensed text-[17.5px] text-amber hover:text-hot">
                     {agentLabel(agent)}
                   </Link>
+                  {/* The standing, on the page where the booking decision is
+                      made. One line, because the rating and the parked flag
+                      are now one field (lib/agents/standing.ts). */}
+                  {agentStanding != null && (
+                    <div
+                      className="text-[12.5px] font-condensed mt-0.5"
+                      style={{
+                        color:
+                          agentStanding === "parked"
+                            ? "var(--color-status-negative-text)"
+                            : agentStanding >= 4
+                              ? "var(--color-cat2)"
+                              : "var(--color-dim)",
+                      }}
+                    >
+                      {standingLabel(agentStanding)}
+                      {standingIsContradictory(agent) && (
+                        <span className="text-amber-hi"> · rated worst but not parked</span>
+                      )}
+                    </div>
+                  )}
                   {agentCard && agentCard.loadCount > 0 ? (
                     <div className="text-[13.5px] text-dim mt-1.5 leading-relaxed">
                       {agentCard.loadCount} load{agentCard.loadCount === 1 ? "" : "s"} together
@@ -803,6 +868,27 @@ const ScoreLoadPage = () => {
                     </div>
                   ) : (
                     <div className="text-[13.5px] text-dim mt-1.5">No delivered history yet with this agent.</div>
+                  )}
+                  {/* The phone, because she is scoring to decide whether to
+                      call back — and the notes, because going to another page
+                      to read them means reading them after the decision. */}
+                  {agent.phone && (
+                    <div className="text-[13px] text-ink mt-1.5 font-condensed">
+                      ☎ {agent.phone}
+                      {agent.best_time_to_call && (
+                        <span className="text-faint"> · {agent.best_time_to_call}</span>
+                      )}
+                    </div>
+                  )}
+                  {agent.notes?.trim() && (
+                    <div className="mt-2 pt-2 border-t border-hairline">
+                      <p className="font-condensed uppercase tracking-widest text-[10.5px] text-faint">
+                        Notes
+                      </p>
+                      <p className="text-[12.5px] text-dim mt-0.5 whitespace-pre-line line-clamp-4">
+                        {agent.notes.trim()}
+                      </p>
+                    </div>
                   )}
                 </>
               ) : isNewAgent ? (
@@ -978,8 +1064,16 @@ const ScoreLoadPage = () => {
           </div>
         </div>
       ) : (
-        /* ================= FORM VIEW — lean ================= */
-        <div className="ds2-board mx-auto p-4 sm:p-5" style={{ maxWidth: 440 }}>
+        /* ================= FORM VIEW — the board ================= */
+        /* Was a 440px ribbon down the middle of a laptop: mx-auto with a
+           hard maxWidth, a third of the page with empty space either side,
+           while the RESULT view below was already a full-width grid. Only
+           the input side was left narrow. Now the load is on the left and
+           the desk you are booking it against is on the right, so the brief
+           fills as the code resolves rather than after the decision. One
+           column on a phone, load first. */
+        <div className="mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3 items-start" style={{ maxWidth: 1040 }}>
+          <div className="ds2-board p-4 sm:p-5">
           <NumField label="Rate" value={rate} onChange={setRate} prefix="$" />
 
           <p className="font-condensed uppercase tracking-widest text-[11px] text-faint mt-4 mb-1.5">
@@ -989,18 +1083,6 @@ const ScoreLoadPage = () => {
           <PlaceRow label="Pickup" place={pickup} onChange={setPickup} />
           <PlaceRow label="Delivery" place={delivery} onChange={setDelivery} />
 
-          <div className="mt-3">
-            <Lbl accent>Agent</Lbl>
-            <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
-            {isNewAgent && (
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>
-                  NEW AGENT
-                </span>
-                <span className="text-[12px] text-dim">no history yet · not saved until you book</span>
-              </div>
-            )}
-          </div>
 
           <p className="font-condensed uppercase tracking-widest text-[11px] text-faint mt-4 mb-1.5">
             Load size <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— leave blank if legal</span>
@@ -1143,10 +1225,46 @@ const ScoreLoadPage = () => {
                 SCORE IT ▸
               </button>
               {!canScore && (
-                <p className="text-[12px] text-faint text-center mt-1.5">enter a rate, loaded miles, and deadhead to score — type 0 deadhead only if the truck is already there</p>
+                <p className="text-[12px] text-faint text-center mt-1.5">
+                  {entered && !deskAnswered
+                    ? "enter the agency code first — it's how a parked desk gets caught before you book"
+                    : "enter a rate, loaded miles, and deadhead to score — type 0 deadhead only if the truck is already there"}
+                </p>
               )}
             </>
           )}
+          </div>
+
+          {/* THE DESK — beside the load, not after it. */}
+          <div className="ds2-board p-4 sm:p-5 lg:sticky lg:top-3">
+            <div className="mt-3">
+              <Lbl accent>
+                Agency code <span style={{ color: "var(--color-status-negative-text)" }}>*</span>
+              </Lbl>
+              <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
+              {/* The parked warning fires HERE, as the code resolves, not after
+                  the score — a banner you read after deciding is decoration. */}
+              {agent && standingOf(agent) === "parked" && (
+                <div
+                  className="mt-1.5 px-2.5 py-1.5 rounded-md text-[12.5px]"
+                  style={{
+                    background: "var(--color-status-negative-bg)",
+                    color: "var(--color-status-negative-text)",
+                  }}
+                >
+                  ⛔ Parked{agent.park_reason?.trim() ? ` — "${agent.park_reason.trim()}"` : ""}
+                </div>
+              )}
+              {isNewAgent && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>
+                    NEW AGENT
+                  </span>
+                  <span className="text-[12px] text-dim">no history yet · not saved until you book</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
