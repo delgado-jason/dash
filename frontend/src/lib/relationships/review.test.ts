@@ -47,7 +47,7 @@ const NOW = new Date("2026-09-12T15:00:00Z");
 // tomorrow — which is what the seam cases below are for.
 const evening = (localDay: string): string =>
   `${new Date(Date.parse(`${localDay}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)}T01:00:00Z`;
-const LADDER: RateLadder = { walkAway: 2.0, minimum: 2.5, target: 3.0, strong: 3.5 };
+const LADDER: RateLadder = { breakEven: 2.0, minimum: 2.5, target: 3.0, prime: 3.5 };
 
 const agent = (id: string, tier: number | null, o: Partial<ReviewAgentLike> = {}): ReviewAgentLike => ({
   agent_id: id,
@@ -226,7 +226,7 @@ describe("RE-TIER SUGGESTIONS — the numbers disagreeing with the book", () => 
     expect(r.holdKey).toBe("3 loads · above Target");
   });
 
-  it("an established agent under walk-away is Losing money, and the button says Park?", () => {
+  it("an established agent under break-even is Losing money, and the button says Park?", () => {
     const loads = threeGood("a").map((l) => ({ ...l, gross_revenue: "1500" }) as Load);
     const [r] = suggestionsWithHolds([agent("a", 2)], loads, [], LADDER, [], NOW).rows;
     expect(r.suggestion).toBe("below");
@@ -306,7 +306,7 @@ describe("the HOLD — quiet until the evidence moves", () => {
     const strong = threeGood("a").map((l) => ({ ...l, gross_revenue: "4000" }) as Load);
     const s = suggestionsWithHolds([a], strong, [], LADDER, [hold("hold — $3.20 all-in on 3 loads · above Target")], NOW);
     expect(s.count).toBe(1);
-    expect(s.rows[0].band).toBe("above Strong");
+    expect(s.rows[0].band).toBe("above Prime");
   });
 
   it("a real tier move after the hold retires it — the latest row is what counts", () => {
@@ -355,10 +355,10 @@ describe("the HOLD — quiet until the evidence moves", () => {
   });
 
   it("the evidence sentence ALWAYS ends with the key the suppression compares", () => {
-    expect(evidenceOf(3.6, false, 3, "above Strong", true).endsWith(holdKeyOf(3, "above Strong", true))).toBe(true);
+    expect(evidenceOf(3.6, false, 3, "above Prime", true).endsWith(holdKeyOf(3, "above Prime", true))).toBe(true);
     expect(evidenceOf(null, false, 1, null, false).endsWith(holdKeyOf(1, null, false))).toBe(true);
     expect(evidenceOf(null, false, 3, null, true)).toBe("no RPM on 3 loads · no band");
-    expect(evidenceOf(3.6, true, 3, "above Strong", true)).toContain("all-in*"); // a load with no deadhead logged
+    expect(evidenceOf(3.6, true, 3, "above Prime", true)).toContain("all-in*"); // a load with no deadhead logged
     expect(evidenceOf(null, false, 1, null, false)).toBe("not yet established — 1 of 3 loads");
   });
 

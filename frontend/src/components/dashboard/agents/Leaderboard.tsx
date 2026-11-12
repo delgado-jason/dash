@@ -235,8 +235,8 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
   const ungraded = showAll ? ungradedAll : ungradedAll.filter((r) => r.loads !== 1);
 
   const ladderText =
-    ladder && ladder.walkAway != null
-      ? `walk-away ${rpm(ladder.walkAway)} · target ${rpm(ladder.target)} · strong ${rpm(ladder.strong)}`
+    ladder && ladder.breakEven != null
+      ? `break-even ${rpm(ladder.breakEven)} · target ${rpm(ladder.target)} · prime ${rpm(ladder.prime)}`
       : "not built yet — desks show a rate, not a grade";
 
   const bestLine = (

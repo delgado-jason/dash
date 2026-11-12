@@ -47,7 +47,7 @@ export const getDispatcherCard = (
 
   const driven = grossPerDrivenMile(mine);
   const avgBookedRate = driven.rpm;
-  const breakEven = ladder.walkAway;
+  const breakEven = ladder.breakEven;
   const overBreakEven =
     avgBookedRate != null && breakEven != null
       ? avgBookedRate - breakEven

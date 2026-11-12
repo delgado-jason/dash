@@ -122,7 +122,7 @@ const RateScatter = ({
           formatter={(value, name) => [rpm(Number(value)), name === "y" ? "rate/mi" : String(name)]}
           labelFormatter={(v) => new Date(v as number).toLocaleDateString("en-US", { timeZone: "UTC" })}
         />
-        {refLine(ladder.walkAway, BE, "break-even")}
+        {refLine(ladder.breakEven, BE, "break-even")}
         {refLine(ladder.target, "var(--color-status-info-text)", "std target")}
         {refLine(specLadder.target, "var(--color-cat4)", "spec target")}
         <Scatter name="standard" data={series("standard")} fill={COLOR.standard} fillOpacity={0.8} />
@@ -271,13 +271,13 @@ const MarketPage = () => {
   );
 
   // Is the WHOLE operation under break-even? Blended gross/driven mile < the
-  // break-even-to-book (walkAway). This — not a single cheap tier — is what
-  // makes "cut costs" the right call. (grossPerTotalMile ≥ walkAway exactly when
+  // break-even-to-book (breakEven). This — not a single cheap tier — is what
+  // makes "cut costs" the right call. (grossPerTotalMile ≥ breakEven exactly when
   // booked gross covers cost after your Landstar take.)
   const businessUnderwater =
     targets.basis.grossPerTotalMile != null &&
-    targets.bookingLadder.walkAway != null &&
-    targets.basis.grossPerTotalMile < targets.bookingLadder.walkAway;
+    targets.bookingLadder.breakEven != null &&
+    targets.basis.grossPerTotalMile < targets.bookingLadder.breakEven;
   // The call — one engine, one move per tier, each on its own freight type.
   const call = useMemo(
     () => buildMarketCall(points, targets.bookingLadder, targets.specLadder, signal, now, businessUnderwater),
@@ -291,9 +291,9 @@ const MarketPage = () => {
   const dialAdv = useMemo(() => {
     const bl = targets.bookingLadder;
     const sl = targets.specLadder;
-    if (!bl.walkAway || !bl.target || !sl.walkAway || !sl.target) return null; // 0 → NaN ratios
-    const stdM = markupToMargin(bl.target / bl.walkAway - 1);
-    const specM = markupToMargin(sl.target / sl.walkAway - 1);
+    if (!bl.breakEven || !bl.target || !sl.breakEven || !sl.target) return null; // 0 → NaN ratios
+    const stdM = markupToMargin(bl.target / bl.breakEven - 1);
+    const specM = markupToMargin(sl.target / sl.breakEven - 1);
     return dialAdvice(signal, targets.marginGoal, stdM, specM);
   }, [signal, targets]);
 
@@ -349,24 +349,24 @@ const MarketPage = () => {
   // The ladder as a distribution — where your RECENT loads landed, in the banded
   // ladder's zones. Windowed to the same trailing 90 days as the rate and gauge,
   // so old loads (booked against an older, lower ladder) don't pile into "below
-  // the floor" against today's break-even. Same zone colors, same walk-away.
+  // the floor" against today's break-even. Same zone colors, same break-even.
   const zones = (() => {
     const L = targets.bookingLadder;
-    if (L.walkAway == null || L.minimum == null || L.target == null) return null;
+    if (L.breakEven == null || L.minimum == null || L.target == null) return null;
     const wp = windowPoints(points, now, 90);
     const buckets = { below: 0, floor: 0, mid: 0, past: 0 };
     for (const pt of wp) {
-      if (pt.rate < L.walkAway) buckets.below++;
+      if (pt.rate < L.breakEven) buckets.below++;
       else if (pt.rate < L.minimum) buckets.floor++;
       else if (pt.rate < L.target) buckets.mid++;
       else buckets.past++;
     }
     const stdBelow = wp.filter(
-      (pt) => pt.bucket === "standard" && pt.rate < (L.walkAway as number),
+      (pt) => pt.bucket === "standard" && pt.rate < (L.breakEven as number),
     ).length;
     const stdTotal = wp.filter((pt) => pt.bucket === "standard").length;
     const specBelow = wp.filter(
-      (pt) => pt.bucket !== "standard" && pt.rate < (L.walkAway as number),
+      (pt) => pt.bucket !== "standard" && pt.rate < (L.breakEven as number),
     ).length;
     const specTotal = wp.filter((pt) => pt.bucket !== "standard").length;
     const max = Math.max(1, buckets.below, buckets.floor, buckets.mid, buckets.past);
@@ -496,10 +496,10 @@ const MarketPage = () => {
                 </span>
                 <span className="font-condensed text-[13px] text-faint">
                   · gross $/driven mile · break-even in red · today’s rungs drawn across every year
-                  {targets.bookingLadder.walkAway != null && (
+                  {targets.bookingLadder.breakEven != null && (
                     <>
                       {" "}· break-even{" "}
-                      <b className="font-semibold text-ink tabular-nums">{rpm(targets.bookingLadder.walkAway)}</b>
+                      <b className="font-semibold text-ink tabular-nums">{rpm(targets.bookingLadder.breakEven)}</b>
                       {" "}· cost ÷ your {targets.keepSource === "blended" ? "blended keep" : "linehaul take"}{" "}
                       <b className="font-semibold text-ink tabular-nums">{Math.round(targets.keep * 100)}%</b>
                       {" "}· {targets.basis.windowLabel ?? "no P&L filed"} · {targets.basis.months} of{" "}
@@ -566,7 +566,7 @@ const MarketPage = () => {
                     <>
                       <Barometer
                         data={baroData}
-                        breakEven={targets.bookingLadder.walkAway}
+                        breakEven={targets.bookingLadder.breakEven}
                         hasPpi={hasPpi}
                       />
                       <div className="flex gap-4 font-condensed text-[12px] text-faint mt-1 px-1">

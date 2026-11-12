@@ -47,7 +47,7 @@ const floorWords = (card: DispatcherCard): { sub: string; tone: string } => {
   }
   const over = card.overBreakEven >= 0;
   return {
-    sub: `${fmtRpm(Math.abs(card.overBreakEven))} ${over ? "over" : "under"} the ${fmtRpm(card.breakEven)} walk-away floor${left}`,
+    sub: `${fmtRpm(Math.abs(card.overBreakEven))} ${over ? "over" : "under"} the ${fmtRpm(card.breakEven)} break-even floor${left}`,
     tone: over ? "text-status-positive-text" : "text-status-negative-text",
   };
 };

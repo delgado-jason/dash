@@ -102,7 +102,7 @@ export const deliveredInWindow = (loads: readonly Load[], range: AgencyRange): L
 
 // Where an agency's all-in RPM sits on the live ladder, in the nod sheet's
 // words. Deliberately NOT lib/relationships/tierSuggestion's `bandLabel`: that
-// one says "above Walk-away" / "under Walk-away" for the bottom two steps,
+// one says "above Break-even" / "under Break-even" for the bottom two steps,
 // while the agency row says "under Minimum" and "losing money" (the mock's CPL
 // row reads "$4.66 under Minimum"). Same thresholds, the sheet's vocabulary.
 //
@@ -112,12 +112,12 @@ export const agencyBand = (
   ladder: RateLadder | null | undefined,
 ): string | null => {
   if (rpm == null || ladder == null) return null;
-  const { walkAway, minimum, target, strong } = ladder;
-  if (walkAway == null || minimum == null || target == null) return null;
-  if (strong != null && rpm >= strong) return "above Strong";
+  const { breakEven, minimum, target, prime } = ladder;
+  if (breakEven == null || minimum == null || target == null) return null;
+  if (prime != null && rpm >= prime) return "above Prime";
   if (rpm >= target) return "above Target";
   if (rpm >= minimum) return "above Minimum";
-  if (rpm >= walkAway) return "under Minimum";
+  if (rpm >= breakEven) return "under Minimum";
   return "losing money";
 };
 

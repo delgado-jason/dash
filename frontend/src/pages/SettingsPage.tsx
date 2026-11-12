@@ -18,7 +18,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 
-type Tier3 = { min: number; target: number; strong: number };
+type Tier3 = { min: number; target: number; prime: number };
 // Tiers are SET via the RateDial slider; this stored percent shape is unchanged.
 const pct = (x: number) => Math.round(x * 1000) / 10; // fraction → clean percent
 
@@ -33,8 +33,8 @@ const SettingsPage = () => {
   const [perDiemPct, setPerDiemPct] = useState(80); // stored as %, saved as fraction
   const [hometimeThresh, setHometimeThresh] = useState(42);
   const [operation, setOperation] = useState("flatbed");
-  const [stdTiers, setStdTiers] = useState<Tier3>({ min: 10, target: 20, strong: 30 });
-  const [specTiers, setSpecTiers] = useState<Tier3>({ min: 35, target: 45, strong: 60 });
+  const [stdTiers, setStdTiers] = useState<Tier3>({ min: 10, target: 20, prime: 30 });
+  const [specTiers, setSpecTiers] = useState<Tier3>({ min: 35, target: 45, prime: 60 });
   const [marginGoal, setMarginGoal] = useState(26);
   // Held as the raw string so an empty box stays empty. Blank is a REAL answer
   // here — it means "no commitment", and the rate floor falls back to measured
@@ -50,7 +50,7 @@ const SettingsPage = () => {
   // so it's independent of the tier values being edited).
   const { loads } = useLoads(0);
   const targets = useRateTargets(loads);
-  const be = targets.bookingLadder.walkAway;
+  const be = targets.bookingLadder.breakEven;
   const weeklyBE = targets.gross.weeklyBreakEven;
 
   useEffect(() => {
@@ -70,12 +70,12 @@ const SettingsPage = () => {
         setStdTiers({
           min: pct(s.rate_tier_std_min),
           target: pct(s.rate_tier_std_target),
-          strong: pct(s.rate_tier_std_strong),
+          prime: pct(s.rate_tier_std_strong),
         });
         setSpecTiers({
           min: pct(s.rate_tier_spec_min),
           target: pct(s.rate_tier_spec_target),
-          strong: pct(s.rate_tier_spec_strong),
+          prime: pct(s.rate_tier_spec_strong),
         });
         setMarginGoal(pct(s.margin_goal));
       })
@@ -92,11 +92,11 @@ const SettingsPage = () => {
       .catch(() => {});
   }, []);
 
-  const ascends = (t: Tier3) => t.min <= t.target && t.target <= t.strong;
+  const ascends = (t: Tier3) => t.min <= t.target && t.target <= t.prime;
   const tierErr = !ascends(stdTiers)
-    ? "Standard tiers must climb: min ≤ target ≤ strong."
+    ? "Standard tiers must climb: min ≤ target ≤ prime."
     : !ascends(specTiers)
-      ? "Specialized tiers must climb: min ≤ target ≤ strong."
+      ? "Specialized tiers must climb: min ≤ target ≤ prime."
       : null;
 
   const save = async () => {
@@ -115,10 +115,10 @@ const SettingsPage = () => {
         operation,
         rate_tier_std_min: stdTiers.min / 100,
         rate_tier_std_target: stdTiers.target / 100,
-        rate_tier_std_strong: stdTiers.strong / 100,
+        rate_tier_std_strong: stdTiers.prime / 100,
         rate_tier_spec_min: specTiers.min / 100,
         rate_tier_spec_target: specTiers.target / 100,
-        rate_tier_spec_strong: specTiers.strong / 100,
+        rate_tier_spec_strong: specTiers.prime / 100,
         margin_goal: marginGoal / 100,
         // Blank clears the commitment; the validator takes null for that.
         target_miles_per_month: targetMiles.trim() === "" ? null : Number(targetMiles),
@@ -332,7 +332,7 @@ const SettingsPage = () => {
           <p className="text-destructive text-xs mt-3">{tierErr}</p>
         ) : (
           <p className="text-xs text-muted-text mt-3">
-            Each set must climb: min ≤ target ≤ strong. Saved with the schedule
+            Each set must climb: min ≤ target ≤ prime. Saved with the schedule
             above.
           </p>
         )}

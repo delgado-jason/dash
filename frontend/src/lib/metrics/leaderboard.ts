@@ -45,10 +45,10 @@ export const classOfLoad = (l: Load): FreightClass =>
   isSpecializedLoadType(l.load_type) ? "Specialized" : "Standard";
 
 export const GRADE_WORD: Record<Grade, string> = {
-  strong: "STRONG",
+  prime: "PRIME",
   target: "TARGET",
-  minimum: "ABOVE FLOOR",
-  below: "UNDER WALK-AWAY",
+  minimum: "ABOVE MINIMUM",
+  below: "BELOW COST",
 };
 
 export type SortKey = "rate" | "gross" | "share" | "perDay" | "loads";
@@ -271,7 +271,7 @@ export const buildLeaderboard = (input: LeaderboardInput): Leaderboard => {
 
   const live = rollup.filter((r) => r.delivered > 0);
   const totalGross = live.reduce((s, r) => s + r.gross, 0);
-  const usable = ladder != null && ladder.walkAway != null ? ladder : null;
+  const usable = ladder != null && ladder.breakEven != null ? ladder : null;
 
   const rows: DeskRow[] = live.map((r) => {
     const windowed = deliveredInWindow(byAgency.get(r.agency.agency_id) ?? [], range);

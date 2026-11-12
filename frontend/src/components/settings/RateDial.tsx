@@ -8,7 +8,7 @@ import { markupToMargin, dialRungs } from "@/lib/metrics/rateDial";
 // GEOGRAPHY: the gap between your handle and the goal line is the cushion
 // you chose, never a hidden fudge factor.
 
-type Tier3 = { min: number; target: number; strong: number };
+type Tier3 = { min: number; target: number; prime: number };
 
 // The track PAINTS from −10 so the red zone is visible geography, but the
 // HANDLE floors at 0 — the dial never writes a below-break-even rung, so the
@@ -31,7 +31,7 @@ export const RateDial = ({
   dot: string;
   tiers: Tier3; // markup percentages — the stored settings shape
   onChange: (t: Tier3) => void;
-  be: number | null; // break-even (walk-away) gross $/mi
+  be: number | null; // break-even (break-even) gross $/mi
   marginGoalPct: number; // e.g. 15
   windowLabel: string | null; // e.g. "Jun–Aug" — the break-even's window
 }) => {
@@ -42,7 +42,7 @@ export const RateDial = ({
   // Cards and readout render the STORED columns — the truth the Scorer reads —
   // never a re-derivation. A legacy set (e.g. seeded +35/45/60) shows exactly
   // as saved until the first slide rewrites it into dial shape.
-  const stored = (["min", "target", "strong"] as const).map((k) => ({
+  const stored = (["min", "target", "prime"] as const).map((k) => ({
     key: k,
     markup: tiers[k] / 100,
     margin: markupToMargin(tiers[k] / 100),
@@ -53,7 +53,7 @@ export const RateDial = ({
     onChange({
       min: Math.round(r.markups.minimum * 1000) / 10,
       target: Math.round(r.markups.target * 1000) / 10,
-      strong: Math.round(r.markups.strong * 1000) / 10,
+      prime: Math.round(r.markups.prime * 1000) / 10,
     });
   };
 
@@ -143,7 +143,7 @@ export const RateDial = ({
         {stored.map((r, i) => (
           <div key={r.key} className="rounded px-2 py-1.5" style={{ background: "var(--color-panel)", border: "1px solid var(--color-hairline)" }}>
             <div className="text-[11px] uppercase tracking-wide text-muted-text">
-              {["Minimum", "Target", "Strong"][i]}
+              {["Minimum", "Target", "Prime"][i]}
             </div>
             <div className="text-sm tabular-nums font-semibold" style={{ color: ["var(--color-muted-text)", "var(--color-amber)", "var(--color-status-positive-text)"][i] }}>
               {at(r.markup)}
@@ -155,7 +155,7 @@ export const RateDial = ({
         ))}
       </div>
       <div className="text-[11.5px] text-muted-text mt-1.5">
-        walk-away {be != null ? `$${be.toFixed(2)}` : "—"} · cash{windowLabel ? ` · ${windowLabel}` : ""} · live — moves with your break-even
+        break-even {be != null ? `$${be.toFixed(2)}` : "—"} · cash{windowLabel ? ` · ${windowLabel}` : ""} · live — moves with your break-even
       </div>
     </div>
   );

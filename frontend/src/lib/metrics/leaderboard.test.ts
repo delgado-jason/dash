@@ -6,7 +6,7 @@ import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { buildLeaderboard, sortBy, order, bestByClass, GRADE_WORD } from "./leaderboard";
 
 const NOW = new Date("2026-09-13T15:00:00Z");
-const LADDER: RateLadder = { walkAway: 3.0, minimum: 3.3, target: 3.6, strong: 4.0 };
+const LADDER: RateLadder = { breakEven: 3.0, minimum: 3.3, target: 3.6, prime: 4.0 };
 
 const agency = (id: string, code: string, name: string | null = null): Agency => ({
   agency_id: id,
@@ -61,9 +61,9 @@ const book = (specialB = false) => {
   const agencies = [agency("A", "AAA", "Alpha"), agency("B", "BBB", "Bravo"), agency("C", "CCC", "Charlie"), agency("D", "DDD", "Delta")];
   const agents = [agent("a1", "A"), agent("b1", "B"), agent("c1", "C"), agent("d1", "D")];
   const loads = [
-    ...many("a", 3, "A", "a1", 4200, 1000), // 4.20 strong, 3 loads
+    ...many("a", 3, "A", "a1", 4200, 1000), // 4.20 prime, 3 loads
     ...many("b", 3, "B", "b1", 3100, 1000, specialB ? { load_type: "hazmat" } : {}), // 3.10 at the floor
-    ...many("c", 2, "C", "c1", 2000, 1000), // 2.00 under walk-away, only 2 loads
+    ...many("c", 2, "C", "c1", 2000, 1000), // 2.00 below cost, only 2 loads
     ...many("d", 3, "D", "d1", 1000, 0, { loaded_miles: 0 }), // no miles logged
   ];
   return { agencies, agents, loads };
@@ -82,13 +82,13 @@ describe("buildLeaderboard", () => {
 
   it("grades only at three delivered loads, in the ladder's words", () => {
     expect(by("Alpha").graded).toBe(true);
-    expect(by("Alpha").gradeWord).toBe("STRONG");
-    expect(by("Bravo").gradeWord).toBe("ABOVE FLOOR");
+    expect(by("Alpha").gradeWord).toBe("PRIME");
+    expect(by("Bravo").gradeWord).toBe("ABOVE MINIMUM");
     expect(by("Charlie").graded).toBe(false);
     expect(by("Charlie").grade).toBeNull();
     expect(by("Charlie").gradeWord).toBe("");
     expect(by("Charlie").allInRpm).toBeCloseTo(2.0, 5); // a rate, but no verdict yet
-    expect(GRADE_WORD.below).toBe("UNDER WALK-AWAY");
+    expect(GRADE_WORD.below).toBe("BELOW COST");
     expect(GRADE_WORD.target).toBe("TARGET");
   });
 

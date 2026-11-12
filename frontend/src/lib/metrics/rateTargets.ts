@@ -90,7 +90,7 @@ export const completeMonthsBefore = (
 // Delivered-load miles for one UTC month: total = the odometer windows as a
 // UNION of spans, loaded = loaded_miles. Two loads sharing a span — a start
 // copied from the previous load's start, as load 8126107 was in June ’26 —
-// used to count the shared miles twice and put the walk-away rate 6¢ low
+// used to count the shared miles twice and put the break-even rate 6¢ low
 // (DB-04, 2026-11-04). A reversed, equal or zero reading is no span at all.
 // The Expenses page reads this same function for its month tiles.
 //
@@ -337,28 +337,37 @@ export const getCostBasis = (
 export interface RateTiers {
   minimum: number;
   target: number;
-  strong: number;
+  prime: number;
 }
 
+/**
+ * The four rungs, renamed 2026-11-12 on Jason's call: break-even / minimum /
+ * target / prime, replacing walk-away / minimum / target / strong.
+ *
+ * "Walk-away" and "strong" were judgements dressed as measurements — they told
+ * you how to feel about a rate without saying what it earned. Each rung now
+ * carries its margin (see `marginAtMarkup`), which is the part that cannot be
+ * argued with.
+ */
 export interface RateLadder {
-  walkAway: number | null; // break-even per loaded mile — below this you lose money
+  breakEven: number | null; // your cost, recovered — below this you lose money
   minimum: number | null;
   target: number | null;
-  strong: number | null;
+  prime: number | null;
 }
 
-// Tiers are markups over the walk-away (break-even) rate.
+// Tiers are markups over the break-even rate.
 export const getRateLadder = (
   breakEvenRpm: number | null,
   tiers: RateTiers,
 ): RateLadder => {
   if (breakEvenRpm == null)
-    return { walkAway: null, minimum: null, target: null, strong: null };
+    return { breakEven: null, minimum: null, target: null, prime: null };
   return {
-    walkAway: breakEvenRpm,
+    breakEven: breakEvenRpm,
     minimum: breakEvenRpm * (1 + tiers.minimum),
     target: breakEvenRpm * (1 + tiers.target),
-    strong: breakEvenRpm * (1 + tiers.strong),
+    prime: breakEvenRpm * (1 + tiers.prime),
   };
 };
 

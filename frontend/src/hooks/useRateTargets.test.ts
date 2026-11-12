@@ -46,7 +46,7 @@ describe("computeRateTargets — one basis for every page", () => {
     expect(t.basis.costPerTotalMile).toBeCloseTo(8000 / 1200, 6);
     expect(t.keepSource).toBe("blended");
     expect(t.keep).toBeCloseTo(1960 / 2500, 6); // net ÷ gross
-    expect(t.bookingLadder.walkAway).toBeCloseTo(8000 / 1200 / 0.784, 6);
+    expect(t.bookingLadder.breakEven).toBeCloseTo(8000 / 1200 / 0.784, 6);
     expect(t.grossRate).toBeCloseTo(2500 / 1200, 6);
     expect(t.ready).toBe(true);
   });
@@ -63,7 +63,7 @@ describe("computeRateTargets — one basis for every page", () => {
     expect(t.keepSource).toBe("linehaul");
     expect(t.keep).toBeCloseTo(0.73, 6);
     expect(t.basis.costPerTotalMile).toBeNull(); // no miles → no $/mi
-    expect(t.bookingLadder.walkAway).toBeNull();
+    expect(t.bookingLadder.breakEven).toBeNull();
     expect(t.ready).toBe(false);
   });
 

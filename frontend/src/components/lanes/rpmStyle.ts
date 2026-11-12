@@ -2,28 +2,28 @@ import { BREAK_EVEN_RPM } from "@/lib/constants/targets";
 import { rpm } from "@/lib/format";
 import { PER_DAY_TONE_VAR, type PerDayTone } from "@/lib/metrics/perDay";
 
-// A rate is "strong" at or above the ladder's strong rung, "thin" between
-// walk-away and strong, "below" under walk-away. The LIVE ladder (the one
+// A rate is "prime" at or above the ladder's prime rung, "thin" between
+// break-even and prime, "below" under break-even. The LIVE ladder (the one
 // basis — computeRateTargets) decides when the caller has one; a rate in net
 // $/loaded mile is judged on the net ladder, a gross $/driven mile on the
 // booking ladder (2026-11-04, §5). The seed constants stand in only for a
 // surface that has no ladder yet — they had been the rule everywhere,
 // colouring a 2026 rate against a 2025 break-even.
-const STRONG_RPM = 3.2;
+const PRIME_RPM = 3.2;
 
 export interface RpmLadder {
-  walkAway: number | null;
-  strong: number | null;
+  breakEven: number | null;
+  prime: number | null;
 }
 
 export const fmtRpm = rpm;
 
 export const rpmTextClass = (n: number | null, ladder?: RpmLadder | null): string => {
   if (n === null) return "text-muted-text";
-  const walkAway = ladder?.walkAway ?? BREAK_EVEN_RPM;
-  const strong = ladder?.strong ?? STRONG_RPM;
-  if (n >= strong) return "text-status-positive-text";
-  if (n >= walkAway) return "text-status-aware-text";
+  const breakEven = ladder?.breakEven ?? BREAK_EVEN_RPM;
+  const prime = ladder?.prime ?? PRIME_RPM;
+  if (n >= prime) return "text-status-positive-text";
+  if (n >= breakEven) return "text-status-aware-text";
   return "text-status-negative-text";
 };
 

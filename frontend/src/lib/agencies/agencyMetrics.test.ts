@@ -79,7 +79,7 @@ const load = (load_id: string, over: Partial<Load> = {}): Load => ({
   ...over,
 });
 
-const LADDER: RateLadder = { walkAway: 4.0, minimum: 5.0, target: 6.0, strong: 7.0 };
+const LADDER: RateLadder = { breakEven: 4.0, minimum: 5.0, target: 6.0, prime: 7.0 };
 
 describe("agencyRange — the window", () => {
   it("12 months is the trailing 365 days, both ends inclusive", () => {
@@ -133,7 +133,7 @@ describe("agencyRange — the window", () => {
 
 describe("agencyBand — the ladder word", () => {
   it("names each step in the nod sheet's words", () => {
-    expect(agencyBand(7.5, LADDER)).toBe("above Strong");
+    expect(agencyBand(7.5, LADDER)).toBe("above Prime");
     expect(agencyBand(6.6, LADDER)).toBe("above Target");
     expect(agencyBand(5.1, LADDER)).toBe("above Minimum");
     expect(agencyBand(4.66, LADDER)).toBe("under Minimum");
@@ -141,7 +141,7 @@ describe("agencyBand — the ladder word", () => {
   });
 
   it("sits ON a step, not below it", () => {
-    expect(agencyBand(7.0, LADDER)).toBe("above Strong");
+    expect(agencyBand(7.0, LADDER)).toBe("above Prime");
     expect(agencyBand(6.0, LADDER)).toBe("above Target");
     expect(agencyBand(5.0, LADDER)).toBe("above Minimum");
     expect(agencyBand(4.0, LADDER)).toBe("under Minimum");
@@ -150,9 +150,9 @@ describe("agencyBand — the ladder word", () => {
   it("no ladder, no RPM, or a half-built ladder → no verdict at all", () => {
     expect(agencyBand(6.6, null)).toBeNull();
     expect(agencyBand(null, LADDER)).toBeNull();
-    expect(agencyBand(6.6, { walkAway: null, minimum: null, target: null, strong: null })).toBeNull();
+    expect(agencyBand(6.6, { breakEven: null, minimum: null, target: null, prime: null })).toBeNull();
     // Strong missing is survivable — the top step just folds into "above Target".
-    expect(agencyBand(9, { ...LADDER, strong: null })).toBe("above Target");
+    expect(agencyBand(9, { ...LADDER, prime: null })).toBe("above Target");
   });
 });
 

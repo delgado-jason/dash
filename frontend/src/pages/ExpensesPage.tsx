@@ -528,7 +528,7 @@ const ExpensesPage = () => {
             )}
 
             {/* rate to book — the crown jewel */}
-            {targets.bookingLadder.walkAway != null && !basisUnsure && (
+            {targets.bookingLadder.breakEven != null && !basisUnsure && (
               <div
                 className="ds2-board relative overflow-hidden mt-4"
               >
@@ -570,9 +570,9 @@ const ExpensesPage = () => {
                     style={{ background: "var(--color-well)", border: "1px solid color-mix(in srgb, var(--color-amber-hi) 55%, transparent)", boxShadow: "var(--shadow-inset)" }}
                   >
                     <b className="font-condensed font-semibold text-[24px] text-amber-hi tabular-nums">
-                      ${targets.bookingLadder.walkAway?.toFixed(2)}
+                      ${targets.bookingLadder.breakEven?.toFixed(2)}
                     </b>{" "}
-                    walk-away
+                    break-even
                   </span>
                 </div>
                 <div className="px-[18px] pb-[14px]">
@@ -580,7 +580,7 @@ const ExpensesPage = () => {
                   <BandedLadder ladder={targets.specLadder} rpm={targets.grossRate} label="Oversize / specialized" />
                 </div>
                 <div className="px-[18px] py-[9px] border-t ds2-cell-rule font-condensed text-[12.5px] text-faint">
-                  walk-away = your cost/mile ÷ your {Math.round(targets.keep * 100)}% keep — the share
+                  break-even = your cost/mile ÷ your {Math.round(targets.keep * 100)}% keep — the share
                   of an all-in dollar that reaches you (linehaul at your split, fuel surcharge and
                   accessorials in full). The same basis, keep and rungs as the Market page and the
                   Dashboard. Book above it with your deadhead folded into the miles and you clear cost.

@@ -86,8 +86,8 @@ describe("CONST-01 · the pinned business constants", () => {
     }).toEqual({
       BASIS_MONTHS: 6,
       MARGIN_GOAL: 0.26,
-      STD_TIERS: { minimum: 0.1, target: 0.2, strong: 0.3 },
-      SPEC_TIERS: { minimum: 0.35, target: 0.45, strong: 0.6 },
+      STD_TIERS: { minimum: 0.1, target: 0.2, prime: 0.3 },
+      SPEC_TIERS: { minimum: 0.35, target: 0.45, prime: 0.6 },
       WORKING_DAYS_PER_MONTH: 22,
       PAY_WEEK_START_DOW: 3,
       DEADHEAD_TARGET: 0.2,

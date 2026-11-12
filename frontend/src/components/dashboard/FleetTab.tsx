@@ -79,7 +79,7 @@ export const FleetTab = ({
   const pnlCostPerMile = targets.basis.costPerTotalMile;
   const pnlWindow = targets.basis.windowLabel;
   // The rate you actually book to — the chart's one dashed reference rule.
-  const bookingFloor = targets.bookingLadder?.walkAway ?? null;
+  const bookingFloor = targets.bookingLadder?.breakEven ?? null;
   const mileRows = useMemo(
     () =>
       milesHistory(

@@ -139,7 +139,7 @@ export const RateTargetsCard = ({ targets }: { targets: Targets }) => {
             <BandedLadder ladder={bookingLadder} rpm={grossRate} label="Standard flatbed" />
             <BandedLadder ladder={specLadder} rpm={grossRate} label="Oversize / specialized" />
             <p className="text-[12px] text-muted-text mt-2">
-              walk-away = your cost/mile ÷ your{" "}
+              break-even = your cost/mile ÷ your{" "}
               {Math.round(linehaulTake * 100)}% keep. Book above it — with your
               deadhead in the miles — and you clear cost.
             </p>

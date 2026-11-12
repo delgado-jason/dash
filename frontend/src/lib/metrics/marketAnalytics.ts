@@ -136,9 +136,9 @@ export const tierGauge = (
       : null;
   const rows = [
     row("Standard target", ladder.target, std),
-    row("Standard strong", ladder.strong, std),
+    row("Standard prime", ladder.prime, std),
     row("Specialized target", specLadder.target, spec),
-    row("Specialized strong", specLadder.strong, spec),
+    row("Specialized prime", specLadder.prime, spec),
   ].filter((r): r is TierGaugeRow => r !== null);
   return { rows, windowN: std.length + spec.length };
 };

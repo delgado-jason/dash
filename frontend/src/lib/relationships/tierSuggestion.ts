@@ -3,7 +3,7 @@
 // applies it — dash only draws the chip (decision 8).
 //   all-in RPM ≥ target   → Tier 1
 //              ≥ minimum  → Tier 2
-//              ≥ walkAway → Tier 3
+//              ≥ breakEven → Tier 3
 //              below      → "losing money — park?" (no tier)
 // Ladder null → suggestion null (not 3): no ladder means no verdict.
 import type { RateLadder } from "@/lib/metrics/rateTargets";
@@ -18,8 +18,8 @@ export type TierSuggestion = 1 | 2 | 3 | "below" | null;
 
 const ladderReady = (
   ladder: RateLadder | null | undefined,
-): ladder is RateLadder & { walkAway: number; minimum: number; target: number } =>
-  ladder != null && ladder.walkAway != null && ladder.minimum != null && ladder.target != null;
+): ladder is RateLadder & { breakEven: number; minimum: number; target: number } =>
+  ladder != null && ladder.breakEven != null && ladder.minimum != null && ladder.target != null;
 
 export const suggestTier = (
   rpm: number | null,
@@ -28,7 +28,7 @@ export const suggestTier = (
   if (rpm == null || !ladderReady(ladder)) return null;
   if (rpm >= ladder.target) return 1;
   if (rpm >= ladder.minimum) return 2;
-  if (rpm >= ladder.walkAway) return 3;
+  if (rpm >= ladder.breakEven) return 3;
   return "below";
 };
 
@@ -64,17 +64,17 @@ export const suggestBucket = (
 };
 
 // Where an RPM sits on the ladder, in words — the evidence beside a
-// suggestion ("$6.94 all-in · above Strong · 3 loads").
+// suggestion ("$6.94 all-in · above Prime · 3 loads").
 export const bandLabel = (
   rpm: number | null,
   ladder: RateLadder | null | undefined,
 ): string | null => {
   if (rpm == null || !ladderReady(ladder)) return null;
-  if (ladder.strong != null && rpm >= ladder.strong) return "above Strong";
+  if (ladder.prime != null && rpm >= ladder.prime) return "above Prime";
   if (rpm >= ladder.target) return "above Target";
   if (rpm >= ladder.minimum) return "above Minimum";
-  if (rpm >= ladder.walkAway) return "above Walk-away";
-  return "under Walk-away";
+  if (rpm >= ladder.breakEven) return "above Break-even";
+  return "under Break-even";
 };
 
 // The chip / button word for a suggestion.

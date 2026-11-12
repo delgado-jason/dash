@@ -23,7 +23,7 @@ export type TierKey = "standard" | "specialized";
 export type CallAction = "raise" | "hold" | "protect" | "under-floor" | "cut-costs" | "no-call";
 
 export interface Rung {
-  key: "strong" | "target" | "floor" | "breakEven";
+  key: "prime" | "target" | "floor" | "breakEven";
   label: string;
   rate: number; // gross $/driven mile
   deltaPct: number; // signed % move from your median to reach this rung
@@ -40,7 +40,7 @@ export interface TierCall {
   key: TierKey;
   label: string;
   yourRate: number | null; // your recent median (gross $/driven mile)
-  rungs: Rung[]; // strong → target → floor → break-even (high to low)
+  rungs: Rung[]; // prime → target → floor → break-even (high to low)
   action: CallAction;
   headline: string;
   why: string;
@@ -84,10 +84,10 @@ export const buildTierCall = (
 ): TierCall => {
   const n = rates.length;
   const yourRate = median(rates);
-  const be = ladder.walkAway;
+  const be = ladder.breakEven;
   const floor = ladder.minimum;
   const target = ladder.target;
-  const strong = ladder.strong;
+  const prime = ladder.prime;
   const lower = label.toLowerCase();
   const below = be != null ? rates.filter((r) => r < be).length : 0;
   const pctile = target != null && n >= MIN_LOADS_FOR_PCTILE ? percentileOf(rates, target) : null;
@@ -97,7 +97,7 @@ export const buildTierCall = (
     key, label, yourRate, rungs: [], action: "no-call", headline: "No call", why: "", movePct: null,
     recommendedRate: null, underwaterPerMile: null, evidence,
   };
-  if (be == null || floor == null || target == null || strong == null) {
+  if (be == null || floor == null || target == null || prime == null) {
     return {
       ...base,
       headline: "No cost basis yet",
@@ -107,7 +107,7 @@ export const buildTierCall = (
     };
   }
   const rungs: Rung[] = yourRate == null ? [] : [
-    { key: "strong", label: "Strong", rate: strong, deltaPct: pctMove(yourRate, strong) },
+    { key: "prime", label: "Prime", rate: prime, deltaPct: pctMove(yourRate, prime) },
     { key: "target", label: "Target", rate: target, deltaPct: pctMove(yourRate, target) },
     { key: "floor", label: "Floor", rate: floor, deltaPct: pctMove(yourRate, floor) },
     { key: "breakEven", label: "Break-even", rate: be, deltaPct: pctMove(yourRate, be) },
@@ -179,7 +179,7 @@ export const buildTierCall = (
       const move = pctMove(yourRate, target);
       return {
         ...withRungs, action: "raise", headline: `Raise ${signed(move)} to your target`,
-        why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}. One step: from ${usd(yourRate)} (${loadsWord}) to your target (${usd(target)}) — not to strong; the next step waits for the next held print.`,
+        why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}. One step: from ${usd(yourRate)} (${loadsWord}) to your target (${usd(target)}) — not to prime; the next step waits for the next held print.`,
         movePct: move, recommendedRate: target,
       };
     }
@@ -198,18 +198,18 @@ export const buildTierCall = (
 
   // At or above target.
   if (dir === "firming") {
-    if (yourRate >= strong) {
+    if (yourRate >= prime) {
       return {
         ...withRungs, action: "raise", headline: "Push the ceiling",
-        why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}, and you're already at your strong rung (${usd(strong)}) on ${loadsWord}. Quote higher and hold firm.`,
-        recommendedRate: strong,
+        why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}, and you're already at your prime rung (${usd(prime)}) on ${loadsWord}. Quote higher and hold firm.`,
+        recommendedRate: prime,
       };
     }
-    const move = pctMove(yourRate, strong);
+    const move = pctMove(yourRate, prime);
     return {
-      ...withRungs, action: "raise", headline: `Push ${signed(move)} to your strong rung`,
-      why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}. You're at or above target (${usd(yourRate)}, ${loadsWord}) — one step up is your strong rung (${usd(strong)}).`,
-      movePct: move, recommendedRate: strong,
+      ...withRungs, action: "raise", headline: `Push ${signed(move)} to your prime rung`,
+      why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}. You're at or above target (${usd(yourRate)}, ${loadsWord}) — one step up is your prime rung (${usd(prime)}).`,
+      movePct: move, recommendedRate: prime,
     };
   }
   if (dir === "softening") {

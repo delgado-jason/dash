@@ -347,7 +347,28 @@ export const theCall = (
     };
   }
 
-  const clears = verdict === "steal" ? "Clears your strong tier" : "Clears your target";
+  // `profit` clears the minimum rung — the margin goal — but not target, so it
+  // gets its own sentence. Folding it in with `meh` ("only fair on rate") made
+  // the call contradict the verdict printed beside it.
+  if (verdict === "profit") {
+    const room = "Clears your minimum — real margin, not your target";
+    if (grade === "soft")
+      return {
+        tone: "caution",
+        text: `${room}, and it strands you where the freight out doesn't cover your day${dist}. Counter toward target before you take it.`,
+      };
+    if (grade === "strong")
+      return {
+        tone: "good",
+        text: `${room}, and it drops you where a day of freight clears your target${keeper ? ", from a keeper agent" : ""}. Worth taking — counter toward target if there's room.`,
+      };
+    return {
+      tone: "good",
+      text: `${room}. Bookable as it stands${keeper ? ", and the agent's a keeper" : ""} — counter toward target if there's room.`,
+    };
+  }
+
+  const clears = verdict === "steal" ? "Clears your prime rung" : "Clears your target";
 
   if (verdict === "take" || verdict === "steal") {
     if (grade === "soft")

@@ -496,7 +496,7 @@ const FivePlate = ({ today, plate, onCopied }: PlateProps & { plate: Extract<Pla
         <Cell label="Agents contacted" value={five.contacted} sub={five.contactedUntimed ? "reached · (some untimed)" : "reached on a call"} />
         <Cell label="Footprints" value={five.footprints} sub="captured this week" />
         <Cell label="Inbound offers" value={five.inboundOffers} sub="the leading indicator" />
-        <Cell label="Above break-even" value={five.aboveBreakEven ? `${five.aboveBreakEven.n} of ${five.aboveBreakEven.m}` : "—"} sub={five.aboveBreakEven ? "booked this week, all-in ≥ walk-away" : "nothing booked, or no ladder"} />
+        <Cell label="Above break-even" value={five.aboveBreakEven ? `${five.aboveBreakEven.n} of ${five.aboveBreakEven.m}` : "—"} sub={five.aboveBreakEven ? "booked this week, all-in ≥ break-even" : "nothing booked, or no ladder"} />
         <Cell label="Days empty" value={five.daysEmpty} sub="so far this week" />
       </div>
       <div className="flex items-center gap-2.5 flex-wrap mt-3">

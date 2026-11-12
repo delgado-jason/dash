@@ -63,7 +63,7 @@ const mkPeriod = (
 describe("grades", () => {
   it("marginGrade bands derive from the margin goal: goal −5 / goal / goal +5", () => {
     // Jason's researched 15% (his Settings margin_goal) ⇒ 10 / 15 / 20.
-    expect(marginGrade(0.2, 0.15)).toBe("strong"); // band edges are inclusive
+    expect(marginGrade(0.2, 0.15)).toBe("prime"); // band edges are inclusive
     expect(marginGrade(0.199, 0.15)).toBe("target");
     expect(marginGrade(0.15, 0.15)).toBe("target");
     expect(marginGrade(0.149, 0.15)).toBe("minimum");
@@ -74,7 +74,7 @@ describe("grades", () => {
     expect(marginGrade(0.2, 0.25)).toBe("minimum");
     // No goal passed → the MARGIN_GOAL seed constant (0.26), same fallback
     // chain as every other settings-driven number.
-    expect(marginGrade(0.31)).toBe("strong");
+    expect(marginGrade(0.31)).toBe("prime");
     // A tiny goal can't push the minimum band below zero: a NEGATIVE margin
     // must still grade "below" (unclamped, minimum would be −0.03 and −0.01
     // would falsely pass as "minimum").
@@ -84,22 +84,22 @@ describe("grades", () => {
     expect(marginGrade(0.12, 0.17)).toBe("minimum");
   });
   it("rpmGrade rides the rate ladder", () => {
-    const ladder = { walkAway: 4, minimum: 4.6, target: 5.4, strong: 6.4 };
-    expect(rpmGrade(6.5, ladder)).toBe("strong");
+    const ladder = { breakEven: 4, minimum: 4.6, target: 5.4, prime: 6.4 };
+    expect(rpmGrade(6.5, ladder)).toBe("prime");
     expect(rpmGrade(5.5, ladder)).toBe("target");
     expect(rpmGrade(4.2, ladder)).toBe("minimum");
     expect(rpmGrade(3.5, ladder)).toBe("below");
     expect(rpmGrade(null, ladder)).toBeNull();
   });
   it("worseGrade takes the lower, tolerating nulls", () => {
-    expect(worseGrade("strong", "target")).toBe("target");
-    expect(worseGrade("below", "strong")).toBe("below");
+    expect(worseGrade("prime", "target")).toBe("target");
+    expect(worseGrade("below", "prime")).toBe("below");
     expect(worseGrade(null, "target")).toBe("target");
     expect(worseGrade(null, null)).toBeNull();
   });
 
   it("utilizationGrade maps to the 70/80/85 benchmark", () => {
-    expect(utilizationGrade(0.9)).toBe("strong");
+    expect(utilizationGrade(0.9)).toBe("prime");
     expect(utilizationGrade(0.82)).toBe("target");
     expect(utilizationGrade(0.73)).toBe("minimum");
     expect(utilizationGrade(0.6)).toBe("below");
@@ -110,7 +110,7 @@ describe("grades", () => {
     const levers = [
       { key: "rate", label: "Rate", grade: "target" as const },
       { key: "util", label: "Utilization", grade: "minimum" as const },
-      { key: "margin", label: "Op margin", grade: "strong" as const },
+      { key: "margin", label: "Op margin", grade: "prime" as const },
     ];
     const bn = bottleneckLevers(levers);
     expect(bn.map((l) => l.key)).toEqual(["util"]);
@@ -129,7 +129,7 @@ describe("grades", () => {
   it("flags no bottleneck when every lever is target or better", () => {
     const levers = [
       { key: "rate", label: "Rate", grade: "target" as const },
-      { key: "util", label: "Utilization", grade: "strong" as const },
+      { key: "util", label: "Utilization", grade: "prime" as const },
       { key: "margin", label: "Op margin", grade: "target" as const },
     ];
     expect(bottleneckLevers(levers)).toEqual([]);
@@ -196,11 +196,11 @@ describe("gradedMargin — one margin per page (2026-11-04, §5)", () => {
 
   it("falls back to the app's season estimate, labelled as the estimate it is", () => {
     const g = gradedMargin([], season, NOW, 0.26);
-    expect(g).toMatchObject({ source: "app", value: 0.31, grade: "strong", label: "Op margin", basis: "app est. · Apr–Jun 2026" });
+    expect(g).toMatchObject({ source: "app", value: 0.31, grade: "prime", label: "Op margin", basis: "app est. · Apr–Jun 2026" });
   });
 
   it("the medal and the lever cannot disagree: both read the same grade", () => {
-    expect(gradedMargin([], season, NOW, 0.26).grade).toBe("strong");
+    expect(gradedMargin([], season, NOW, 0.26).grade).toBe("prime");
     expect(gradedMargin([], { ...season, netMargin: 0.2 } as unknown as SeasonStats, NOW, 0.26).grade).toBe("below");
   });
 });
