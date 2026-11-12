@@ -138,10 +138,10 @@ describe("BASIS-02 · PNL-01/02/04 · 2026-11-01 · October saved NULL totals an
     const broken = targetsOf(book, [...book.periods.slice(0, 5), brokenPeriod(oct, { cogs_total: null })]);
     const removed = targetsOf(book, book.periods.slice(0, 5));
     expect(broken.basis.months).toBe(5);
-    expect(broken.bookingLadder.walkAway).not.toBeNull();
-    for (const k of ["walkAway", "minimum", "target", "strong"] as const)
+    expect(broken.bookingLadder.breakEven).not.toBeNull();
+    for (const k of ["breakEven", "minimum", "target", "prime"] as const)
       expect(broken.bookingLadder[k] as number).toBeCloseTo(removed.bookingLadder[k] as number, 6);
-    for (const k of ["walkAway", "minimum", "target", "strong"] as const)
+    for (const k of ["breakEven", "minimum", "target", "prime"] as const)
       expect(broken.specLadder[k] as number).toBeCloseTo(removed.specLadder[k] as number, 6);
   });
 
@@ -160,7 +160,7 @@ describe("BASIS-02 · PNL-01/02/04 · 2026-11-01 · October saved NULL totals an
       brokenPeriod(book.periods[5], { cogs_total: book.periods[5].cogs_total, expense_total: null }),
     ]);
     expect(nullExp.basis.missingLabel).toBe("Oct ’26");
-    expect(nullExp.bookingLadder.walkAway as number).toBeCloseTo(nullCogs.bookingLadder.walkAway as number, 6);
+    expect(nullExp.bookingLadder.breakEven as number).toBeCloseTo(nullCogs.bookingLadder.breakEven as number, 6);
   });
 
   it("control: the ladder is NOT what a free October would give (the incident's wrong answer)", () => {
@@ -170,7 +170,7 @@ describe("BASIS-02 · PNL-01/02/04 · 2026-11-01 · October saved NULL totals an
       { ...book.periods[5], cogs_total: 0, expense_total: 0 },
     ]);
     const filed = targetsOf(book);
-    expect(freeOct.bookingLadder.walkAway as number).toBeLessThan((filed.bookingLadder.walkAway as number) - 0.2);
+    expect(freeOct.bookingLadder.breakEven as number).toBeLessThan((filed.bookingLadder.breakEven as number) - 0.2);
   });
 });
 

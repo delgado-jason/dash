@@ -96,24 +96,24 @@ describe("BASIS-01/03/08/09/10 · NET-09 · the ladder's golden numbers (six mon
     expect(targetsOf(book, [inside]).basis.totalMiles).toBe(20177);
   });
 
-  it("BASIS-08/09 · the Standard ladder: walk-away = cost per driven mile ÷ keep, rungs = walkAway × (1 + tier)", () => {
-    // derived: walkAway = 3.77399 ÷ 0.759036 = 4.97208; tiers .10 / .20 / .30
+  it("BASIS-08/09 · the Standard ladder: break-even = cost per driven mile ÷ keep, rungs = breakEven × (1 + tier)", () => {
+    // derived: breakEven = 3.77399 ÷ 0.759036 = 4.97208; tiers .10 / .20 / .30
     const L = t.bookingLadder;
-    expect(L.walkAway).toBeCloseTo(4.9721, 4);
+    expect(L.breakEven).toBeCloseTo(4.9721, 4);
     expect(L.minimum).toBeCloseTo(5.4693, 4); // derived: 4.97208 × 1.10
     expect(L.target).toBeCloseTo(5.9665, 4); // derived: 4.97208 × 1.20
-    expect(L.strong).toBeCloseTo(6.4637, 4); // derived: 4.97208 × 1.30
-    expect(L.walkAway).toBeCloseTo((t.basis.costPerTotalMile as number) / t.keep, 10);
-    expect(t.tiers).toEqual({ minimum: 0.1, target: 0.2, strong: 0.3 });
+    expect(L.prime).toBeCloseTo(6.4637, 4); // derived: 4.97208 × 1.30
+    expect(L.breakEven).toBeCloseTo((t.basis.costPerTotalMile as number) / t.keep, 10);
+    expect(t.tiers).toEqual({ minimum: 0.1, target: 0.2, prime: 0.3 });
   });
 
-  it("BASIS-09 · the Specialized ladder: same walk-away, tiers .35 / .45 / .60", () => {
+  it("BASIS-09 · the Specialized ladder: same break-even, tiers .35 / .45 / .60", () => {
     const S = t.specLadder;
-    expect(S.walkAway).toBeCloseTo(4.9721, 4);
+    expect(S.breakEven).toBeCloseTo(4.9721, 4);
     expect(S.minimum).toBeCloseTo(6.7123, 4); // derived: 4.97208 × 1.35
     expect(S.target).toBeCloseTo(7.2095, 4); // derived: 4.97208 × 1.45
-    expect(S.strong).toBeCloseTo(7.9553, 4); // derived: 4.97208 × 1.60
-    expect(t.specTiers).toEqual({ minimum: 0.35, target: 0.45, strong: 0.6 });
+    expect(S.prime).toBeCloseTo(7.9553, 4); // derived: 4.97208 × 1.60
+    expect(t.specTiers).toEqual({ minimum: 0.35, target: 0.45, prime: 0.6 });
   });
 
   it("BASIS-10 · weekly break-even and target (gross): cost ÷ keep ÷ (52/12), then ÷ (1 − margin goal)", () => {
@@ -149,7 +149,7 @@ describe("BASIS-05 · on_pl obligations never join break-even", () => {
     if (row) row.amount = row.amount * 2;
     const t = targetsOf(book);
     expect(t.basis.costPerTotalMile).toBeCloseTo(base.basis.costPerTotalMile as number, 2);
-    expect(t.bookingLadder.walkAway).toBeCloseTo(base.bookingLadder.walkAway as number, 2);
+    expect(t.bookingLadder.breakEven).toBeCloseTo(base.bookingLadder.breakEven as number, 2);
   });
 
   it("removing it leaves the cost per mile unchanged to the cent", () => {
@@ -300,7 +300,7 @@ describe("SCORE-01 · DAY-03 · MKT-05/06 · the Scorer, the ledger grades and $
   const book = syntheticBook();
   const t = targetsOf(book);
 
-  it("scoreLoad on a book load reports a break-even equal to the ladder's walk-away", () => {
+  it("scoreLoad on a book load reports a break-even equal to the ladder's break-even", () => {
     const load = book.loads[0];
     const score = scoreLoad(
       {
@@ -310,8 +310,8 @@ describe("SCORE-01 · DAY-03 · MKT-05/06 · the Scorer, the ledger grades and $
       },
       { costPerDrivenMile: t.basis.costPerTotalMile, payTake: t.basis.payTake },
     );
-    expect(score.breakevenRpm).toBeCloseTo(t.bookingLadder.walkAway as number, 10);
-    expect(score.breakevenRpm).toBeCloseTo(4.9721, 4); // the trip-inclusive walk-away (BASIS-07)
+    expect(score.breakevenRpm).toBeCloseTo(t.bookingLadder.breakEven as number, 10);
+    expect(score.breakevenRpm).toBeCloseTo(4.9721, 4); // the trip-inclusive break-even (BASIS-07)
   });
 
   it("gradeCostsOf(targets) carries the ladder's calendar-day bars and the same cost per driven mile", () => {

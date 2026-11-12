@@ -14,7 +14,7 @@ import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
 import { buildLeaderboard, GRADE_WORD } from "@/lib/metrics/leaderboard";
 
 const now = new Date(`${TODAY}T00:00:00Z`);
-const LADDER: RateLadder = { walkAway: 3.0, minimum: 3.3, target: 3.6, strong: 4.0 };
+const LADDER: RateLadder = { breakEven: 3.0, minimum: 3.3, target: 3.6, prime: 4.0 };
 
 // The book's loads name an agency and five agents by id only; give them rows.
 const peopleOf = (loads: Load[]) => {
@@ -74,7 +74,7 @@ describe("leaderboard · the rules", () => {
     for (const r of lb.rows.filter((x) => x.graded && x.allInRpm != null)) {
       const rpm = r.allInRpm!;
       const want =
-        rpm >= 4.0 ? "strong" : rpm >= 3.6 ? "target" : rpm >= 3.0 ? "minimum" : "below";
+        rpm >= 4.0 ? "prime" : rpm >= 3.6 ? "target" : rpm >= 3.0 ? "minimum" : "below";
       expect(r.grade).toBe(want);
       expect(r.gradeWord).toBe(GRADE_WORD[want]);
     }

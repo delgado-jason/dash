@@ -5,7 +5,7 @@ import { useTrips } from "@/hooks/useTrips";
 import { windowLoads, DEFAULT_WINDOW } from "@/lib/metrics/marketLedger";
 import { useAgents } from "@/hooks/useAgents";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { scoreLoad, counterRates, knownNumber, VERDICT_META } from "@/lib/metrics/loadScore";
+import { scoreLoad, counterRates, knownNumber, verdictAtLeast, VERDICT_META, VERDICT_ORDER } from "@/lib/metrics/loadScore";
 import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
 import { emptyNextAnchor } from "@/lib/metrics/foreman";
 import { useCityCoords } from "@/hooks/useCityCoords";
@@ -13,7 +13,7 @@ import {
   destinationFactor,
   theCall,
   type MarketGrade, gradeCostsOf } from "@/lib/metrics/marketFactor";
-import { RATE_TIERS, type RateTiers } from "@/lib/constants/targets";
+import { RATE_TIERS, marginAtMarkup, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
 import { toInches, classifyOversize } from "@/lib/dimensions";
@@ -33,11 +33,19 @@ const markerPct = (
   tiers: RateTiers = RATE_TIERS,
 ): number => {
   if (pct == null || allIn == null || be == null) return 0;
-  if (allIn < be) return Math.max(0, Math.min(25, (allIn / be) * 25)); // SCRAP band
-  if (pct < tiers.target) return 25 + (pct / tiers.target) * 25; // THIN
-  if (pct < tiers.strong)
-    return 50 + ((pct - tiers.target) / (tiers.strong - tiers.target)) * 25; // SOLID
-  return 75 + Math.min(1, (pct - tiers.strong) / 0.4) * 25; // PRIME
+  // FIVE bands of 20, one per verdict, in VERDICT_ORDER. It was four of 25 and
+  // the middle one spanned break-even → target, so the needle sat in the "THIN"
+  // stripe while the headline said PROFITABLE (2026-11-12). A gauge that
+  // disagrees with the word above it is worse than no gauge.
+  const W = 100 / VERDICT_ORDER.length;
+  const seg = (i: number, frac: number) => i * W + Math.max(0, Math.min(1, frac)) * W;
+  if (allIn < be) return seg(0, allIn / be);
+  if (pct < tiers.minimum) return seg(1, pct / tiers.minimum);
+  if (pct < tiers.target)
+    return seg(2, (pct - tiers.minimum) / (tiers.target - tiers.minimum));
+  if (pct < tiers.prime)
+    return seg(3, (pct - tiers.target) / (tiers.prime - tiers.target));
+  return seg(4, (pct - tiers.prime) / 0.4);
 };
 
 // Destination market grade → the grade word.
@@ -382,7 +390,12 @@ const ScoreLoadPage = () => {
   const meta = score.verdict ? VERDICT_META[score.verdict] : null;
   const canScore = targets.ready && entered && !!meta;
 
-  const belowTarget = score.verdict === "pass" || score.verdict === "meh";
+  // Everything under the TARGET rung still has room to counter — `profit`
+  // included. This was a list of verdicts, and leaving `profit` out of it is how
+  // the page came to say "already clears your target" about a load 5 points
+  // short of it (caught on dev, 2026-11-12). Asked as a comparison it cannot
+  // go stale when a verdict is added.
+  const belowTarget = !verdictAtLeast(score.verdict, "take");
   const counter =
     belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
 
@@ -502,11 +515,18 @@ const ScoreLoadPage = () => {
               </div>
               <div className="flex-1 min-w-[220px]">
                 <Lbl>Where it lands</Lbl>
+                {/* The stripes and their words both come from VERDICT_META, so
+                    the gauge cannot name a band the verdict no longer uses. */}
                 <div className="flex rounded-[5px] overflow-hidden relative" style={{ height: 10 }}>
-                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-status-negative-text) 14%, transparent)" }} />
-                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-amber-hi) 14%, transparent)" }} />
-                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-cat2) 14%, transparent)" }} />
-                  <div style={{ flex: 1, background: "color-mix(in srgb, var(--color-hot) 14%, transparent)" }} />
+                  {VERDICT_ORDER.map((v) => (
+                    <div
+                      key={v}
+                      style={{
+                        flex: 1,
+                        background: `color-mix(in srgb, ${VERDICT_META[v].fg} 14%, transparent)`,
+                      }}
+                    />
+                  ))}
                   <div
                     style={{
                       position: "absolute",
@@ -518,11 +538,12 @@ const ScoreLoadPage = () => {
                     }}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] font-condensed tracking-wide mt-1">
-                  <span style={{ color: "var(--color-status-negative-text)" }}>SCRAP</span>
-                  <span style={{ color: "var(--color-amber-hi)" }}>THIN</span>
-                  <span style={{ color: "var(--color-cat2)" }}>SOLID</span>
-                  <span style={{ color: "var(--color-hot)" }}>PRIME</span>
+                <div className="flex justify-between gap-1 text-[10px] font-condensed tracking-[.02em] mt-1">
+                  {VERDICT_ORDER.map((v) => (
+                    <span key={v} style={{ color: VERDICT_META[v].fg }} className="whitespace-nowrap">
+                      {VERDICT_META[v].label}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -645,19 +666,39 @@ const ScoreLoadPage = () => {
             {counter ? (
               <div className="ds2-board p-4">
                 <Lbl>What to ask the agent</Lbl>
+                {/* EVERY rung, named for the rung and not the verdict, with the
+                    margin it earns. It showed three — floor, target, prime —
+                    and skipped `minimum`, which is the one the verdict grades
+                    against and the one that IS the margin goal. Jason's ask, in
+                    his words: "if the rate is lower, I know what to ask for to
+                    be right where I want to be on that load." A rung with a
+                    percentage beside it answers that; a word does not. */}
                 <div className="mt-2 flex flex-col gap-2">
-                  <Well className="flex items-baseline justify-between px-3 py-1.5">
-                    <span className="font-condensed text-[12px]" style={{ color: "var(--color-status-negative-text)" }}>FLOOR</span>
-                    <span className="font-condensed font-semibold tabular-nums text-[19.5px] text-ink">{money(counter.floor)}</span>
-                  </Well>
-                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-cat2) 45%, transparent)" }}>
-                    <span className="font-condensed text-[12px]" style={{ color: "var(--color-cat2)" }}>SOLID</span>
-                    <span className="font-condensed font-semibold tabular-nums text-[19.5px]" style={{ color: "var(--color-cat2)" }}>{money(counter.take)}</span>
-                  </Well>
-                  <Well className="flex items-baseline justify-between px-3 py-1.5" style={{ borderColor: "color-mix(in srgb, var(--color-hot) 45%, transparent)" }}>
-                    <span className="font-condensed text-[12px]" style={{ color: "var(--color-hot)" }}>PRIME</span>
-                    <span className="font-condensed font-semibold tabular-nums text-[19.5px]" style={{ color: "var(--color-hot)" }}>{money(counter.steal)}</span>
-                  </Well>
+                  {([
+                    ["Break-even", counter.floor, 0, "var(--color-status-negative-text)"],
+                    ["Minimum", counter.minimum, activeTiers.minimum, "var(--color-amber-hi)"],
+                    ["Target", counter.take, activeTiers.target, "var(--color-cat2)"],
+                    ["Prime", counter.steal, activeTiers.prime, "var(--color-hot)"],
+                  ] as const).map(([label, amount, markup, color]) => (
+                    <Well
+                      key={label}
+                      className="flex items-baseline justify-between px-3 py-1.5"
+                      style={{ borderColor: `color-mix(in srgb, ${color} 45%, transparent)` }}
+                    >
+                      <span className="font-condensed text-[12px]" style={{ color }}>
+                        {label.toUpperCase()}
+                        <span className="text-faint ml-1.5">
+                          {markup > 0 ? `${Math.round(marginAtMarkup(markup) * 100)}% margin` : "no margin"}
+                        </span>
+                      </span>
+                      <span
+                        className="font-condensed font-semibold tabular-nums text-[19.5px]"
+                        style={{ color: markup > 0 ? color : "var(--color-ink)" }}
+                      >
+                        {money(amount)}
+                      </span>
+                    </Well>
+                  ))}
                 </div>
 
                 {/* THE OTHER QUESTION. The rungs above answer "what should the

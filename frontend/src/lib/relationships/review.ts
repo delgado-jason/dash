@@ -283,7 +283,7 @@ const ON = " on ";
 
 const money2 = (n: number): string => `$${n.toFixed(2)}`;
 
-// The stable tail: "3 loads · above Strong", or "2 of 3 loads" for an agent
+// The stable tail: "3 loads · above Prime", or "2 of 3 loads" for an agent
 // holding a tier without the footprint to earn one.
 export const holdKeyOf = (delivered: number, band: string | null, established: boolean): string =>
   established ? `${delivered} load${delivered === 1 ? "" : "s"} · ${band ?? "no band"}` : `${delivered} of ${ESTABLISHED_AT} loads`;
@@ -361,7 +361,7 @@ export interface SuggestionRow<A> {
   partial: boolean;
   band: string | null;
   established: boolean;
-  losing: boolean; // established and under walk-away — the Park? row
+  losing: boolean; // established and under break-even — the Park? row
   needsTier: boolean; // established, no owner-set tier
   evidence: string; // what the row says and what a hold would store
   holdKey: string; // the stable tail the suppression compares

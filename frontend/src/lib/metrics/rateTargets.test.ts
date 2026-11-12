@@ -109,7 +109,7 @@ describe("getCostBasis", () => {
     expect(b.trueMonthlyCost).toBeCloseTo(12000, 5);
     expect(b.loadedMiles).toBe(6000); // 3 × 2000
     expect(b.totalMiles).toBe(7500); // 3 × 2500
-    // walk-away = total true cost (36k) / loaded (6000) = 6.00
+    // break-even = total true cost (36k) / loaded (6000) = 6.00
     expect(b.breakEvenRpm).toBeCloseTo(6.0, 5);
     // your rate = revenue (24k) / loaded (6000) = 4.00
     expect(b.windowRpm).toBeCloseTo(4.0, 5);
@@ -376,7 +376,7 @@ describe("getCostBasis — the committed basis", () => {
     expect(b.fixedMonthly).toBeCloseTo(11314, 2);
     expect(b.variablePerMile).toBeCloseTo(1.59, 2);
     expect(b.costPerTotalMile).toBeCloseTo(3.099, 2);
-    // ÷ the measured 0.7593 keep = a $4.08 walk-away, and the minimum rung
+    // ÷ the measured 0.7593 keep = a $4.08 break-even, and the minimum rung
     // (+17.7%) is $4.80 — which is exactly the 15% margin goal.
     expect(b.costPerTotalMile! / 0.7593).toBeCloseTo(4.08, 2);
     expect((b.costPerTotalMile! / 0.7593) * 1.177).toBeCloseTo(4.8, 2);
@@ -403,28 +403,28 @@ describe("monthMiles — the trip log joins the odometer union (BASIS-07)", () =
 });
 
 describe("booking ladder (gross rate to book per mile driven)", () => {
-  it("walk-away = cost per total mile ÷ keep; tiers scale from there", () => {
+  it("break-even = cost per total mile ÷ keep; tiers scale from there", () => {
     // Jason: $3.17 cost/total mile ÷ 0.73 keep = $4.34 gross to book
-    const walkAway = 3.165 / 0.73;
-    const l = getRateLadder(walkAway, { minimum: 0.15, target: 0.35, strong: 0.6 });
-    expect(l.walkAway).toBeCloseTo(4.34, 2);
+    const breakEven = 3.165 / 0.73;
+    const l = getRateLadder(breakEven, { minimum: 0.15, target: 0.35, prime: 0.6 });
+    expect(l.breakEven).toBeCloseTo(4.34, 2);
     expect(l.target).toBeCloseTo(4.34 * 1.35, 1);
-    expect(l.strong).toBeCloseTo(4.34 * 1.6, 1);
+    expect(l.prime).toBeCloseTo(4.34 * 1.6, 1);
   });
 });
 
 describe("getRateLadder", () => {
-  it("marks up the walk-away by each tier", () => {
-    const l = getRateLadder(4, { minimum: 0.15, target: 0.35, strong: 0.6 });
-    expect(l.walkAway).toBe(4);
+  it("marks up the break-even by each tier", () => {
+    const l = getRateLadder(4, { minimum: 0.15, target: 0.35, prime: 0.6 });
+    expect(l.breakEven).toBe(4);
     expect(l.minimum).toBeCloseTo(4.6, 5);
     expect(l.target).toBeCloseTo(5.4, 5);
-    expect(l.strong).toBeCloseTo(6.4, 5);
+    expect(l.prime).toBeCloseTo(6.4, 5);
   });
 
   it("all null when break-even is unknown", () => {
-    const l = getRateLadder(null, { minimum: 0.15, target: 0.35, strong: 0.6 });
-    expect(l.walkAway).toBeNull();
+    const l = getRateLadder(null, { minimum: 0.15, target: 0.35, prime: 0.6 });
+    expect(l.breakEven).toBeNull();
     expect(l.target).toBeNull();
   });
 });

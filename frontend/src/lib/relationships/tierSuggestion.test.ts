@@ -3,17 +3,17 @@ import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { suggestTier, suggestBucket, bandLabel, isEstablished, suggestionLabel } from "./tierSuggestion";
 
 // July's marks from the nod sheet.
-const LADDER: RateLadder = { walkAway: 4.1, minimum: 4.71, target: 5.53, strong: 6.55 };
+const LADDER: RateLadder = { breakEven: 4.1, minimum: 4.71, target: 5.53, prime: 6.55 };
 
 describe("suggestTier — the ladder's own steps", () => {
   it("grades the four established agents the way the nod sheet drew them", () => {
-    expect(suggestTier(8.16, LADDER)).toBe(1); // Brian — above Strong
-    expect(suggestTier(6.94, LADDER)).toBe(1); // Eric — above Strong (still Tier 1: Tier 1 ≥ Target)
+    expect(suggestTier(8.16, LADDER)).toBe(1); // Brian — above Prime
+    expect(suggestTier(6.94, LADDER)).toBe(1); // Eric — above Prime (still Tier 1: Tier 1 ≥ Target)
     expect(suggestTier(5.01, LADDER)).toBe(2); // Mike — above Minimum, under Target
-    expect(suggestTier(4.51, LADDER)).toBe(3); // Drew — above Walk-away, under Minimum
+    expect(suggestTier(4.51, LADDER)).toBe(3); // Drew — above Break-even, under Minimum
   });
 
-  it("under walk-away is 'below' — a red flag, not a tier", () => {
+  it("under break-even is 'below' — a red flag, not a tier", () => {
     expect(suggestTier(4.0, LADDER)).toBe("below");
   });
 
@@ -28,7 +28,7 @@ describe("suggestTier — the ladder's own steps", () => {
     expect(suggestTier(null, LADDER)).toBeNull();
     expect(suggestTier(6, null)).toBeNull();
     expect(suggestTier(6, undefined)).toBeNull();
-    expect(suggestTier(6, { walkAway: null, minimum: null, target: null, strong: null })).toBeNull();
+    expect(suggestTier(6, { breakEven: null, minimum: null, target: null, prime: null })).toBeNull();
   });
 });
 
@@ -42,7 +42,7 @@ describe("suggestBucket — established → band, otherwise Prospect / Parked", 
     expect(suggestBucket(active, { deliveredCount: 2, rpm: 8.0, ladder: LADDER, dormant: false })).toBe("prospect");
   });
 
-  it("an established agent under walk-away is 'below'; with no ladder there is no verdict", () => {
+  it("an established agent under break-even is 'below'; with no ladder there is no verdict", () => {
     expect(suggestBucket(active, { deliveredCount: 4, rpm: 3.9, ladder: LADDER, dormant: false })).toBe("below");
     expect(suggestBucket(active, { deliveredCount: 4, rpm: 3.9, ladder: null, dormant: false })).toBeNull();
     expect(suggestBucket(active, { deliveredCount: 4, rpm: null, ladder: LADDER, dormant: false })).toBeNull();
@@ -59,17 +59,17 @@ describe("suggestBucket — established → band, otherwise Prospect / Parked", 
 
 describe("bandLabel / suggestionLabel — the evidence in words", () => {
   it("names the step the RPM cleared", () => {
-    expect(bandLabel(6.94, LADDER)).toBe("above Strong");
+    expect(bandLabel(6.94, LADDER)).toBe("above Prime");
     expect(bandLabel(5.6, LADDER)).toBe("above Target");
     expect(bandLabel(5.01, LADDER)).toBe("above Minimum");
-    expect(bandLabel(4.51, LADDER)).toBe("above Walk-away");
-    expect(bandLabel(4.0, LADDER)).toBe("under Walk-away");
+    expect(bandLabel(4.51, LADDER)).toBe("above Break-even");
+    expect(bandLabel(4.0, LADDER)).toBe("under Break-even");
     expect(bandLabel(null, LADDER)).toBeNull();
     expect(bandLabel(5, null)).toBeNull();
   });
 
   it("a ladder with no Strong mark still grades — the top band is 'above Target'", () => {
-    const noStrong: RateLadder = { ...LADDER, strong: null };
+    const noStrong: RateLadder = { ...LADDER, prime: null };
     expect(bandLabel(8.16, noStrong)).toBe("above Target");
     expect(bandLabel(5.01, noStrong)).toBe("above Minimum");
     expect(suggestTier(8.16, noStrong)).toBe(1);

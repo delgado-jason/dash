@@ -176,16 +176,16 @@ export const PulseTab = ({
   const ladder = targets.bookingLadder ?? {};
   const cur: number | null = targets.grossRate ?? null;
   // Floor-anchored scale, per the approved mockup: the track starts a step
-  // below walk-away and ends a step past the top, so the ladder spreads the
+  // below break-even and ends a step past the top, so the ladder spreads the
   // full width. Padding keeps centered labels from clipping at either edge.
-  const gaugeHi = Math.max(ladder.strong ?? 0, cur ?? 0, ladder.target ?? 0) || 1;
-  const gaugeLo = Math.min(ladder.walkAway ?? gaugeHi, cur ?? gaugeHi);
+  const gaugeHi = Math.max(ladder.prime ?? 0, cur ?? 0, ladder.target ?? 0) || 1;
+  const gaugeLo = Math.min(ladder.breakEven ?? gaugeHi, cur ?? gaugeHi);
   const span = Math.max(gaugeHi - gaugeLo, gaugeHi * 0.1);
   const lo = gaugeLo - span * 0.16;
   const hi = gaugeHi + span * 0.1;
   const pos = (v: number | null | undefined) =>
     v == null ? 0 : Math.min(100, Math.max(0, ((v - lo) / (hi - lo)) * 100));
-  const overFloor = cur != null && ladder.walkAway != null ? cur - ladder.walkAway : null;
+  const overFloor = cur != null && ladder.breakEven != null ? cur - ladder.breakEven : null;
 
   // ---- BAND 3 · on the clock ----
   const freeHours = feeds.schedule?.detention_free_hours ?? DEFAULT_DETENTION_FREE_HOURS;
@@ -332,17 +332,17 @@ export const PulseTab = ({
           </h3>
           <div className="relative h-[48px] mt-3">
             <div className="absolute left-0 right-0 top-[30px] h-[2px] bg-hairline" />
-            {ladder.walkAway != null && (
+            {ladder.breakEven != null && (
               <div
                 className="absolute left-0 top-[30px] h-[2px] bg-status-negative-text opacity-55"
-                style={{ width: `${pos(ladder.walkAway)}%` }}
+                style={{ width: `${pos(ladder.breakEven)}%` }}
               />
             )}
             {(
               [
-                ["walkAway", "Walk-away"],
+                ["breakEven", "Break-even"],
                 ["target", "Target"],
-                ["strong", "Strong"],
+                ["prime", "Prime"],
               ] as const
             ).map(([k, name]) =>
               ladder[k] != null ? (
@@ -367,9 +367,9 @@ export const PulseTab = ({
           <p className="text-[11.5px] text-faint mt-1.5 font-condensed tracking-[.04em] tabular-nums">
             {(
               [
-                ["walkAway", "walk-away"],
+                ["breakEven", "break-even"],
                 ["target", "target"],
-                ["strong", "strong"],
+                ["prime", "prime"],
               ] as const
             )
               .filter(([k]) => ladder[k] != null)
@@ -404,7 +404,7 @@ export const PulseTab = ({
         <PaceCard
           pace={pace}
           impliedFloor={impliedFloor}
-          committedFloor={ladder.walkAway ?? null}
+          committedFloor={ladder.breakEven ?? null}
           dayWorth={dayWorth}
           className="md:col-span-6"
         />

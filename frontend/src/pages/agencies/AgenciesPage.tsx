@@ -86,7 +86,7 @@ const ListSkeleton = () => (
   </div>
 );
 
-// "$1,7xx /day · above Strong" — the $/day first, in the ladder's colour,
+// "$1,7xx /day · above Prime" — the $/day first, in the ladder's colour,
 // then whatever band the row already carried. Nothing to say on either side
 // draws nothing rather than a lone separator. A plain function, not a
 // component: it is called inline for a prop, so nothing remounts.

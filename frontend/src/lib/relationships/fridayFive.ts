@@ -8,7 +8,7 @@
 //   inbound load offers     inbound contacts of type inbound_inquiry — the
 //                           leading indicator; everything else follows it
 //   above break-even        loads booked (created) this week whose all-in RPM
-//                           clears the ladder's walk-away, "n of m"
+//                           clears the ladder's break-even, "n of m"
 //   days empty              calendar days so far this week with no load in
 //                           transit and no pickup
 // plus the record hygiene the Friday afternoon completes. Pure; clock injected.
@@ -62,7 +62,7 @@ export interface FridayFive {
   contactedUntimed: boolean; // some of the count came from outbound touches with no outcome on file
   footprints: number;
   inboundOffers: number;
-  // null when nothing was booked this week or the ladder has no walk-away —
+  // null when nothing was booked this week or the ladder has no break-even —
   // the UI prints "—", never "0 of 0".
   aboveBreakEven: AboveBreakEven | null;
   daysEmpty: number;
@@ -98,7 +98,7 @@ export const daysEmpty = (loads: Load[], week: FiveWeek): number => {
   return empty;
 };
 
-export const fridayFive = (contacts: FiveContactLike[], loads: Load[], walkAway: number | null, now: Date): FridayFive => {
+export const fridayFive = (contacts: FiveContactLike[], loads: Load[], breakEven: number | null, now: Date): FridayFive => {
   const week = fiveWeek(now);
   const reached = new Set<string>();
   const untimed = new Set<string>();
@@ -119,10 +119,10 @@ export const fridayFive = (contacts: FiveContactLike[], loads: Load[], walkAway:
 
   const booked = loads.filter((l) => l.load_status !== "cancelled" && l.created_at && inWeek(contactDay(l.created_at), week));
   let aboveBreakEven: AboveBreakEven | null = null;
-  if (booked.length > 0 && walkAway != null) {
+  if (booked.length > 0 && breakEven != null) {
     const n = booked.filter((l) => {
       const rpm = loadAllInRpm(l);
-      return rpm != null && rpm >= walkAway;
+      return rpm != null && rpm >= breakEven;
     }).length;
     aboveBreakEven = { n, m: booked.length };
   }

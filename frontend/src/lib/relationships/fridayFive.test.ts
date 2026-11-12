@@ -91,7 +91,7 @@ describe("fridayFive — the five numbers over the week", () => {
     expect(f.contacted).toBe(1); // inbound never counts as contacted
   });
 
-  it("above break-even = booked-this-week loads at or over the walk-away, all-in", () => {
+  it("above break-even = booked-this-week loads at or over the break-even, all-in", () => {
     const loads = [
       load({ load_id: "ok" }), // 3500 / 600 = 5.83
       load({ load_id: "low", linehaul: "2000", fuel_surcharge: "0" }), // 2000 / 600 = 3.33

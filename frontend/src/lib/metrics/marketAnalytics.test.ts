@@ -101,7 +101,7 @@ describe("windowRates", () => {
 });
 
 describe("tierGauge — your rungs among your own accepted loads, per type", () => {
-  const ladder = (target: number, strong: number): RateLadder => ({ walkAway: 3, minimum: target - 0.5, target, strong });
+  const ladder = (target: number, prime: number): RateLadder => ({ breakEven: 3, minimum: target - 0.5, target, prime });
   const now = new Date("2026-06-15T12:00:00Z");
   // ten standard loads $3–7.5 and two oversize at $9 and $10
   const recent = ratePoints([
@@ -127,7 +127,7 @@ describe("tierGauge — your rungs among your own accepted loads, per type", () 
   });
 
   it("no rows without a ladder", () => {
-    const empty: RateLadder = { walkAway: null, minimum: null, target: null, strong: null };
+    const empty: RateLadder = { breakEven: null, minimum: null, target: null, prime: null };
     expect(tierGauge(recent, empty, empty, now).rows).toHaveLength(0);
   });
 });

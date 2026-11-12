@@ -229,9 +229,9 @@ const MiniLadder = ({ ladder, spec }: { ladder?: RateLadder | null; spec?: RateL
     </div>
     <div className="relative h-9 mt-1 text-xs text-muted-text">
       <span className="absolute left-0">
-        walk-away
+        break-even
         <br />
-        <span className="text-light">{rpm(ladder?.walkAway)}</span>
+        <span className="text-light">{rpm(ladder?.breakEven)}</span>
       </span>
       <span className="absolute left-[67%] -translate-x-1/2 text-center">
         target
@@ -239,9 +239,9 @@ const MiniLadder = ({ ladder, spec }: { ladder?: RateLadder | null; spec?: RateL
         <span className="text-light">{rpm(ladder?.target)}</span>
       </span>
       <span className="absolute right-0 text-right">
-        strong
+        prime
         <br />
-        <span className="text-light">{rpm(ladder?.strong)}</span>
+        <span className="text-light">{rpm(ladder?.prime)}</span>
       </span>
     </div>
     <div
@@ -257,8 +257,8 @@ const MiniLadder = ({ ladder, spec }: { ladder?: RateLadder | null; spec?: RateL
       </span>
       <span className="text-[12px] text-muted-text">oversize · hazmat · heavy</span>
       <span className="ml-auto text-muted-text">
-        target <span style={{ color: AMBER }}>{rpm(spec?.target)}</span> · strong{" "}
-        <span style={{ color: "var(--color-status-positive-text)" }}>{rpm(spec?.strong)}</span>
+        target <span style={{ color: AMBER }}>{rpm(spec?.target)}</span> · prime{" "}
+        <span style={{ color: "var(--color-status-positive-text)" }}>{rpm(spec?.prime)}</span>
       </span>
     </div>
   </div>
@@ -502,7 +502,7 @@ const GuidePage = () => {
     cpm: rpm(basis.costPerTotalMile),
     keep: targets.keep > 0 ? `÷ ${Math.round(targets.keep * 100)}%` : "÷ —",
     keepPct: targets.keep > 0 ? `${Math.round(targets.keep * 100)}%` : "—",
-    book: rpm(targets.bookingLadder.walkAway),
+    book: rpm(targets.bookingLadder.breakEven),
     window: basis.windowLabel ?? "no P&L filed",
     eg:
       basis.trueMonthlyCost != null && basis.months > 0 && basis.costPerTotalMile != null
@@ -1168,7 +1168,7 @@ const GuidePage = () => {
 
           <Metric
             title="Beats sitting — the other line, about half the floor"
-            answers="The rate at which moving stops being worse than parking. It is not a target — it answers a different question from the walk-away."
+            answers="The rate at which moving stops being worse than parking. It is not a target — it answers a different question from the break-even."
             sources={[
               { label: "Score a Load", to: "/score" },
               { label: "Dashboard", to: "/dashboard" },
@@ -1179,14 +1179,14 @@ const GuidePage = () => {
               worth = miles that day × (net per mile − variable per mile)
             </Formula>
             <Eg>
-              Your walk-away is about <span className="text-light">$4.11</span> a
+              Your break-even is about <span className="text-light">$4.11</span> a
               driven mile. Moving pays for its own fuel and wear above{" "}
               <span className="text-light">$2.09</span>. A $2.50 load is a bad
               month if you repeat it — and still better than a day parked.
             </Eg>
             <Why>
               <span className="text-light">Two numbers, two questions.</span> The
-              walk-away asks <em>what must the month average?</em> — it has to
+              break-even asks <em>what must the month average?</em> — it has to
               carry the fixed cost, so it is high. This asks{" "}
               <em>the alternative right now is sitting still; is this better
               than that?</em> Fixed cost is left out because it drafts whether
@@ -1211,7 +1211,7 @@ const GuidePage = () => {
               <br />
               <br />
               The Scorer only mentions this line on a load that already scores{" "}
-              <span className="text-light">SCRAP</span>, because that is the
+              <span className="text-light">BELOW COST</span>, because that is the
               only time it is the live question. It never appears as a rung.
             </Why>
           </Metric>
@@ -1277,8 +1277,8 @@ const GuidePage = () => {
           >
             <MiniLadder ladder={targets.bookingLadder} spec={targets.specLadder} />
             <Formula>
-              walk-away = break-even · minimum / target / strong = break-even ×
-              (1 + your tier %)
+              break-even = your cost ÷ your keep · minimum / target / prime =
+              break-even × (1 + your tier %) · margin = markup ÷ (1 + markup)
             </Formula>
             <Why>
               The rungs are SET with{" "}
@@ -1299,8 +1299,25 @@ const GuidePage = () => {
               marker. <span className="text-light">Specialized</span> (seeded +35 / 45 /
               60%) is the higher bar for oversize, hazmat, and heavy-haul loads —
               they command a real premium — shown as the compact row beneath (same
-              walk-away, higher target and strong). The marker is your actual gross
+              break-even, higher target and prime). The marker is your actual gross
               rate per mile, against the Standard bar.
+            </Why>
+            <Why>
+              <span className="text-light">The rungs were renamed</span> in
+              November 2026 — break-even, minimum, target and prime, replacing
+              walk-away, minimum, target and strong. "Walk-away" and "strong"
+              told you how to feel about a rate without saying what it earned,
+              and the point of a rung is the number. So{" "}
+              <span className="text-light">every rung now carries its margin</span>:
+              on the current dials Standard runs{" "}
+              <span className="text-light">15 / 20 / 25%</span> and Specialized{" "}
+              <span className="text-light">28 / 33 / 38%</span>. Those are not
+              round by luck — the markups were chosen to land on them, and your{" "}
+              <span className="text-light">Standard minimum is your margin goal</span>{" "}
+              to within five hundredths of a point. The margin depends on the
+              markup and nothing else: cost and the carrier's cut cancel out of
+              the arithmetic, so the percentage beside a rung stays true whatever
+              diesel does.
             </Why>
           </Metric>
 
@@ -1330,12 +1347,13 @@ const GuidePage = () => {
               the spread between them, and a warning when a month is unfiled. The
               Dashboard's <span className="text-light">net break-even</span> is
               a different number on purpose: cost per loaded mile, in net
-              dollars, beside your net $/mi. The verdict maps to whichever tier set fits the load:{" "}
-              <span style={{ color: "var(--color-status-negative-text)" }}>SCRAP</span> below break-even,{" "}
-              <span style={{ color: "var(--color-amber-hi)" }}>THIN</span> under target,{" "}
+              dollars, beside your net $/mi. The verdict maps to whichever tier set fits the load, one word per rung:{" "}
+              <span style={{ color: "var(--color-status-negative-text)" }}>BELOW COST</span> under break-even,{" "}
+              <span style={{ color: "var(--color-amber-hi)" }}>THIN</span> between break-even and minimum,{" "}
+              <span style={{ color: "var(--color-cat2)" }}>PROFITABLE</span> at minimum,{" "}
               <span style={{ color: "var(--color-cat2)" }}>SOLID</span> at target,{" "}
-              <span style={{ color: "var(--color-hot)" }}>PRIME</span> at strong. A legal
-              load hits those at your Standard tiers (target / strong — whatever your dial derives); an
+              <span style={{ color: "var(--color-hot)" }}>PRIME</span> at prime. A legal
+              load hits those at your Standard tiers (minimum / target / prime — whatever your dial derives); an
               oversize, hazmat, or heavy load has to reach the Specialized ones
               (the Specialized dial’s). A line under the verdict names which set graded it.
             </Why>
@@ -1387,9 +1405,10 @@ const GuidePage = () => {
               <span className="text-light">estimated tolls</span> — a reminder to
               bill them as an accessorial (Landstar pays 100%), not eat them. And
               when a load comes in under target, it lays out{" "}
-              <span className="text-light">what to ask the agent</span>: the floor
-              (break-even), the SOLID rate, and the PRIME rate for that load's
-              miles — so you know the room to bargain.
+              <span className="text-light">what to ask the agent</span>: every rung
+              priced on that load's own miles — break-even, minimum, target and
+              prime — so you know both the room to bargain and the number that
+              puts you where you meant to be.
             </Why>
           </Metric>
 
@@ -1474,7 +1493,7 @@ const GuidePage = () => {
               There's no national oversize spot price to book against, so the
               call doesn't invent one. It reads two things: where your own recent
               median for that freight type sits against that tier's rungs —
-              break-even, floor, target, strong — and what the{" "}
+              break-even, floor, target, prime — and what the{" "}
               <span className="text-light">FRED freight index</span> is allowed
               to say. The index's three-month move must pass 2.5% (the series'
               own noise is 1.2%), hold the same read on{" "}
@@ -1490,7 +1509,7 @@ const GuidePage = () => {
               held firming signal says <span className="text-light">raise one
               step</span>, to your target; a held softening signal says hold with
               your cushion to the floor shown; anything else holds. At or above
-              target, a held firming signal pushes one step to your strong rung.
+              target, a held firming signal pushes one step to your prime rung.
               Fewer than five loads of a type in 90 days: not enough to call,
               with the count. And when the index and your own loads disagree —
               firming while your target already sits at the 70th percentile or
@@ -2996,7 +3015,7 @@ const GuidePage = () => {
             <Why>
               The row is three figures, each with its grade word —{" "}
               <span className="text-light">
-                BELOW · MINIMUM · TARGET · STRONG
+                BELOW · MINIMUM · TARGET · PRIME
               </span>{" "}
               — and the basis it stands on printed under it:{" "}
               <span className="text-light">Rate</span> — your gross rate per
@@ -3523,8 +3542,8 @@ const GuidePage = () => {
               grade word, from the same engine as the agents leaderboard: all-in
               gross ÷ every mile driven, for their delivered loads picked up in
               the last 12 months, graded on your booking ladder —{" "}
-              <span className="text-light">STRONG · TARGET · ABOVE FLOOR ·
-              UNDER WALK-AWAY</span>. The grade waits for three delivered loads
+              <span className="text-light">PRIME · TARGET · ABOVE MINIMUM ·
+              BELOW COST</span>. The grade waits for three delivered loads
               lifetime; until then it reads "not yet graded · 2 of 3 loads".
             </p>
           </Section>
@@ -3614,11 +3633,11 @@ const GuidePage = () => {
                 A desk needs <span className="text-light">three delivered
                 loads</span> before it is graded; until then it sits under
                 "Not yet graded" and shows its rate without a verdict. The grade
-                is your booking ladder's: <span className="text-light">STRONG</span>{" "}
-                at the strong bar, <span className="text-light">TARGET</span> at
-                the target bar, <span className="text-light">ABOVE FLOOR</span>{" "}
-                between walk-away and target, and{" "}
-                <span className="text-light">UNDER WALK-AWAY</span> below your
+                is your booking ladder's: <span className="text-light">PRIME</span>{" "}
+                at the prime bar, <span className="text-light">TARGET</span> at
+                the target bar, <span className="text-light">ABOVE MINIMUM</span>{" "}
+                between minimum and target, and{" "}
+                <span className="text-light">BELOW COST</span> below your
                 break-even. It is a ranking of who pays, not a race.
               </Why>
               <Why>
@@ -3658,8 +3677,8 @@ const GuidePage = () => {
               over every mile, loaded and deadhead, trailing twelve months)
               against the same rate ladder the Scorer holds a load to:{" "}
               <span className="text-light">Tier 1 at or above Target · Tier 2
-              at or above Minimum · Tier 3 at or above Walk-away</span>. An
-              established agent under walk-away wears a red LOSING MONEY chip —
+              at or above Minimum · Tier 3 at or above Break-even</span>. An
+              established agent under break-even wears a red LOSING MONEY chip —
               no tier, and a park suggestion. The bands are the ladder’s own
               steps, so when your costs move the bands move with them; nothing
               is stored. <span className="text-light">Prospects</span> are
@@ -3686,7 +3705,7 @@ const GuidePage = () => {
               <span className="text-light">SUGGEST → TIER 1</span> chip (or
               SUGGEST → PROSPECT for a tiered agent under three loads), the
               section head counts how many are suggested in, and the sheet
-              shows the evidence — “$6.94 all-in · above Strong · 3 loads” —
+              shows the evidence — “$6.94 all-in · above Prime · 3 loads” —
               with the recommended button pre-lit and the reason prefilled.
               Dispatch sees the tier with a lock, nothing to press.
               <br />
@@ -3786,8 +3805,8 @@ const GuidePage = () => {
               <span className="text-light">RE-TIER SUGGESTIONS</span> lists
               every agent whose all-in RPM band on the live ladder disagrees
               with the tier they hold, the evidence on the row (“$6.94 all-in
-              on 3 loads · above Strong”), an established agent still without a
-              tier under NEEDS A TIER, and an established agent under walk-away
+              on 3 loads · above Prime”), an established agent still without a
+              tier under NEEDS A TIER, and an established agent under break-even
               as LOSING MONEY with a park suggestion.{" "}
               <span className="text-light">APPROVE</span> writes the tier with
               the reason prefilled from the evidence — editable, never empty —
@@ -3901,7 +3920,7 @@ const GuidePage = () => {
               row carries what that desk{" "}
               <span className="text-light">delivered</span> and what it grossed,
               its <span className="text-light">all-in RPM</span> with the rate
-              ladder's word under it (above Strong, above Target, above Minimum,
+              ladder's word under it (above Prime, above Target, above Minimum,
               under Minimum, losing money), how many agents work there and how
               many of them you have tiered, and how long since its last load.
               Beside that RPM sits the desk's{" "}
@@ -4576,7 +4595,7 @@ const GuidePage = () => {
               <span className="text-light">gross booked</span>,{" "}
               <span className="text-light">booked over the floor</span> (her
               average booked rate, gross per driven mile, against your
-              walk-away floor),{" "}
+              break-even floor),{" "}
               <span className="text-light">detention collected</span>, and{" "}
               <span className="text-light">on-time</span>. Under them, a{" "}
               <span className="text-light">Season</span> card with Month,

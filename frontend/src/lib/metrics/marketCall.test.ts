@@ -4,9 +4,9 @@ import type { MarketSignal } from "./marketSignal";
 import { buildTierCall, buildMarketCall, MIN_LOADS_TO_CALL, indexWord } from "./marketCall";
 import type { RatePoint } from "./marketAnalytics";
 
-// break-even 4.34, floor 4.75, target 5.60, strong 6.50 (gross $/driven mile).
-const LADDER: RateLadder = { walkAway: 4.34, minimum: 4.75, target: 5.6, strong: 6.5 };
-const EMPTY: RateLadder = { walkAway: null, minimum: null, target: null, strong: null };
+// break-even 4.34, floor 4.75, target 5.60, prime 6.50 (gross $/driven mile).
+const LADDER: RateLadder = { breakEven: 4.34, minimum: 4.75, target: 5.6, prime: 6.5 };
+const EMPTY: RateLadder = { breakEven: null, minimum: null, target: null, prime: null };
 const sig = (over: Partial<MarketSignal> = {}): MarketSignal => ({
   direction: "firming", raw: "firming", pctChange: 0.032, prints: 2, holds: true, dieselPct: 0.01, fuelDriven: false,
   latestMonth: "2026-09", windowStart: "2026-06", ...over,
@@ -56,14 +56,14 @@ describe("the call — one move per tier", () => {
     expect(c.recommendedRate).toBe(4.75);
   });
 
-  it("between floor and target: a held firming signal raises ONE step — to target, never to strong", () => {
+  it("between floor and target: a held firming signal raises ONE step — to target, never to prime", () => {
     const c = call(five(5), HELD);
     expect(c.action).toBe("raise");
     expect(c.headline).toBe("Raise +12% to your target");
     expect(c.recommendedRate).toBe(5.6);
     expect(c.movePct).toBeCloseTo(0.12, 4);
     expect(c.why).toMatch(/firming for 2 prints running/);
-    expect(c.why).toMatch(/not to strong/);
+    expect(c.why).toMatch(/not to prime/);
   });
 
   it("between floor and target: a held softening signal protects, with the cushion to the floor", () => {
@@ -83,10 +83,10 @@ describe("the call — one move per tier", () => {
     expect(call(five(5), null).why).toMatch(/no index read/);
   });
 
-  it("at or above target: a held firming signal pushes one step to strong; at strong, push the ceiling", () => {
+  it("at or above target: a held firming signal pushes one step to prime; at prime, push the ceiling", () => {
     const c = call(five(6), HELD);
     expect(c.action).toBe("raise");
-    expect(c.headline).toBe("Push +8% to your strong rung");
+    expect(c.headline).toBe("Push +8% to your prime rung");
     expect(c.recommendedRate).toBe(6.5);
     expect(call(five(6.8), HELD)).toMatchObject({ action: "raise", headline: "Push the ceiling" });
     expect(call(five(6), SOFT)).toMatchObject({ action: "hold", headline: "Hold — above target" });
@@ -127,7 +127,7 @@ describe("buildMarketCall — each tier on its own freight", () => {
       ...[7, 7.5, 8].map((r, i) => pt(`2026-09-1${i}`, r, i === 0 ? "hazmat" : "specialized")),
       pt("2026-05-01", 2, "standard"), // out of the window
     ];
-    const spec: RateLadder = { walkAway: 4.34, minimum: 5.86, target: 6.29, strong: 6.94 };
+    const spec: RateLadder = { breakEven: 4.34, minimum: 5.86, target: 6.29, prime: 6.94 };
     const mc = buildMarketCall(pts, LADDER, spec, HELD, now);
     expect(mc.tiers[0]).toMatchObject({ key: "standard", action: "raise", headline: "Raise +8% to your target" });
     expect(mc.tiers[0].evidence.n).toBe(5);

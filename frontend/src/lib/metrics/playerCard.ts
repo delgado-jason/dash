@@ -19,8 +19,8 @@ import { isDelivered } from "./status";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export type Grade = "below" | "minimum" | "target" | "strong";
-const ORDER: Grade[] = ["below", "minimum", "target", "strong"];
+export type Grade = "below" | "minimum" | "target" | "prime";
+const ORDER: Grade[] = ["below", "minimum", "target", "prime"];
 
 // The lower of two grades (a weakness in either dimension caps the season).
 export const worseGrade = (a: Grade | null, b: Grade | null): Grade | null => {
@@ -41,7 +41,7 @@ const r4 = (n: number) => Math.round(n * 10000) / 10000;
 export const marginBandsFrom = (goal: number = MARGIN_GOAL) => ({
   minimum: Math.max(0, r4(goal - 0.05)),
   target: r4(goal),
-  strong: r4(goal + 0.05),
+  prime: r4(goal + 0.05),
 });
 
 export const marginGrade = (
@@ -50,7 +50,7 @@ export const marginGrade = (
 ): Grade | null => {
   if (pct == null) return null;
   const bands = marginBandsFrom(goal);
-  if (pct >= bands.strong) return "strong";
+  if (pct >= bands.prime) return "prime";
   if (pct >= bands.target) return "target";
   if (pct >= bands.minimum) return "minimum";
   return "below";
@@ -58,17 +58,17 @@ export const marginGrade = (
 
 // Where your rate lands on your own break-even ladder.
 export const rpmGrade = (rpm: number | null, ladder: RateLadder): Grade | null => {
-  if (rpm == null || ladder.walkAway == null) return null;
-  if (ladder.strong != null && rpm >= ladder.strong) return "strong";
+  if (rpm == null || ladder.breakEven == null) return null;
+  if (ladder.prime != null && rpm >= ladder.prime) return "prime";
   if (ladder.target != null && rpm >= ladder.target) return "target";
-  return rpm >= ladder.walkAway ? "minimum" : "below";
+  return rpm >= ladder.breakEven ? "minimum" : "below";
 };
 
 // THE graded margin — one definition per page (Nod Sheet 2026-11-04, §5):
 // the QBO pretax margin over the last three CLOSED months when the archive
 // has them (accountant-grade, depreciation included), else the app's season
 // operating margin, labelled as the estimate it is. The lever, the medal and
-// the Trophy Hall all read this one, so a medal can't say "strong" while the
+// the Trophy Hall all read this one, so a medal can't say "prime" while the
 // lever two inches above it says BELOW.
 export interface GradedMargin {
   value: number | null;
@@ -99,7 +99,7 @@ export const gradedMargin = (
 // Utilization graded on the industry benchmark (70 / 80 / 85%).
 export const utilizationGrade = (u: number | null): Grade | null => {
   if (u == null) return null;
-  if (u >= 0.85) return "strong";
+  if (u >= 0.85) return "prime";
   if (u >= 0.8) return "target";
   if (u >= 0.7) return "minimum";
   return "below";
@@ -116,7 +116,7 @@ const GRADE_RANK: Record<Grade, number> = {
   below: 0,
   minimum: 1,
   target: 2,
-  strong: 3,
+  prime: 3,
 };
 
 // The weakest lever(s) worth flagging — only when the weakest is below/minimum.

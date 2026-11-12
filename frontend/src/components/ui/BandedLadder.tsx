@@ -1,6 +1,7 @@
+import { marginAtMarkup } from "@/lib/constants/targets";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 
-// The mockup's banded ladder: one bar scaled walk-away → past-strong, cells
+// The mockup's banded ladder: one bar scaled break-even → past-prime, cells
 // tinted by the zone their value lands in, with the live booking rate as the
 // YOU BOOK HERE marker. Presentation of getRateLadder — no tier math here.
 export const BandedLadder = ({
@@ -13,20 +14,20 @@ export const BandedLadder = ({
   label?: string;
 }) => {
   if (
-    ladder.walkAway == null ||
-    ladder.walkAway <= 0 || // a zero walk-away would print NaN captions
+    ladder.breakEven == null ||
+    ladder.breakEven <= 0 || // a zero break-even would print NaN captions
     ladder.minimum == null ||
     ladder.target == null ||
-    ladder.strong == null
+    ladder.prime == null
   )
     return null;
-  const lo = ladder.walkAway * 0.92;
-  const hi = Math.max(ladder.strong * 1.12, rpm ?? 0);
+  const lo = ladder.breakEven * 0.92;
+  const hi = Math.max(ladder.prime * 1.12, rpm ?? 0);
   const span = Math.max(0.0001, hi - lo);
   const at = (v: number) => Math.min(1, Math.max(0, (v - lo) / span));
   const CELLS = 14;
   const zone = (v: number): React.CSSProperties => {
-    if (v < ladder.walkAway!)
+    if (v < ladder.breakEven!)
       return { background: "color-mix(in srgb, var(--color-status-negative-text) 25%, transparent)", border: "1px solid color-mix(in srgb, var(--color-status-negative-text) 40%, transparent)" };
     if (v < ladder.minimum!)
       return { background: "color-mix(in srgb, var(--color-amber) 28%, transparent)", border: "1px solid color-mix(in srgb, var(--color-amber) 40%, transparent)" };
@@ -62,22 +63,23 @@ export const BandedLadder = ({
         })}
       </div>
       <div className="flex justify-between font-condensed text-[11.5px] text-faint mt-[6px] tabular-nums">
-        <span>${ladder.walkAway.toFixed(2)} walk-away</span>
+        <span>${ladder.breakEven.toFixed(2)} break-even</span>
         <span>minimum · ${ladder.minimum.toFixed(2)}</span>
         <span>target · ${ladder.target.toFixed(2)}</span>
-        <span>strong · ${ladder.strong.toFixed(2)}</span>
+        <span>prime · ${ladder.prime.toFixed(2)}</span>
       </div>
       {/* Both currencies, always: markup for the negotiation, margin for the
           goal — a +15% markup is only a 13% margin, and this line is where
-          that stops being a surprise. */}
+          that stops being a surprise. The margin comes from the shared
+          marginAtMarkup so this caption cannot drift from the rung labels the
+          Scorer and the Guide print. */}
       <div className="flex justify-between font-condensed text-[11px] text-faint mt-[2px] tabular-nums opacity-80">
         <span>0% margin</span>
-        {(["minimum", "target", "strong"] as const).map((k) => {
-          const markup = ladder[k]! / ladder.walkAway! - 1;
-          const margin = markup / (1 + markup);
+        {(["minimum", "target", "prime"] as const).map((k) => {
+          const markup = ladder[k]! / ladder.breakEven! - 1;
           return (
             <span key={k}>
-              +{(markup * 100).toFixed(0)}% ⇒ ~{(margin * 100).toFixed(0)}% margin
+              +{(markup * 100).toFixed(0)}% ⇒ ~{(marginAtMarkup(markup) * 100).toFixed(0)}% margin
             </span>
           );
         })}

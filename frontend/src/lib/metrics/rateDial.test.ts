@@ -15,10 +15,10 @@ describe("margin ↔ markup — two currencies, one number", () => {
 describe("dialRungs — one handle, three rungs", () => {
   it("Jason's standard dial at 20% reproduces his calibration", () => {
     const r = dialRungs(0.2);
-    expect(r.margins).toEqual({ minimum: 0.15, target: 0.2, strong: 0.25 });
+    expect(r.margins).toEqual({ minimum: 0.15, target: 0.2, prime: 0.25 });
     expect(r.markups.minimum).toBeCloseTo(0.1765, 4);
     expect(r.markups.target).toBeCloseTo(0.25, 4);
-    expect(r.markups.strong).toBeCloseTo(0.3333, 4);
+    expect(r.markups.prime).toBeCloseTo(0.3333, 4);
   });
 
   it("the minimum rung floors at break-even — the dial never writes a losing tier", () => {
@@ -31,7 +31,7 @@ describe("dialRungs — one handle, three rungs", () => {
     for (const t of [0.0, 0.1, 0.2, 0.33, 0.45]) {
       const { markups } = dialRungs(t);
       expect(markups.minimum).toBeLessThanOrEqual(markups.target);
-      expect(markups.target).toBeLessThanOrEqual(markups.strong);
+      expect(markups.target).toBeLessThanOrEqual(markups.prime);
     }
   });
 });

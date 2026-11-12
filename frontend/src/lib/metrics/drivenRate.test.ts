@@ -3,7 +3,7 @@ import type { Load } from "@/types/load";
 import type { RateLadder } from "./rateTargets";
 import { gradeGrossPerDrivenMile, grossPerDrivenMile, loadDrivenMiles } from "./drivenRate";
 
-const ladder: RateLadder = { walkAway: 4.0, minimum: 4.5, target: 5.0, strong: 6.0 };
+const ladder: RateLadder = { breakEven: 4.0, minimum: 4.5, target: 5.0, prime: 6.0 };
 const mk = (o: Record<string, unknown>): Load =>
   ({ load_status: "delivered", loaded_miles: 1000, deadhead_miles: 0, gross_revenue: "5000", odometer_start: null, odometer_end: null, ...o }) as unknown as Load;
 
@@ -40,7 +40,7 @@ describe("grossPerDrivenMile", () => {
 
 describe("gradeGrossPerDrivenMile", () => {
   it("grades on the booking ladder", () => {
-    expect(gradeGrossPerDrivenMile([mk({ gross_revenue: "6500" })], ladder)).toBe("strong");
+    expect(gradeGrossPerDrivenMile([mk({ gross_revenue: "6500" })], ladder)).toBe("prime");
     expect(gradeGrossPerDrivenMile([mk({ gross_revenue: "5000" })], ladder)).toBe("target");
     expect(gradeGrossPerDrivenMile([mk({ gross_revenue: "4200" })], ladder)).toBe("minimum");
     expect(gradeGrossPerDrivenMile([mk({ gross_revenue: "3000" })], ladder)).toBe("below");

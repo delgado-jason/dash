@@ -42,7 +42,7 @@ describe("SCORE-02 · a null deadhead is unknown, never zero-empty", () => {
     const s = scoreLoad(input, basis);
     expect(s.missing).toEqual([]);
     // derived: $3,790 over 650 loaded + 25 empty (500,675 − 500,000 − 650) = 675 driven mi → $5.6148/mi;
-    // ÷ the walk-away $5.1113 − 1 = +9.85% over break-even — above 0, under the 20% target tier → "meh" (THIN)
+    // ÷ the break-even $5.1113 − 1 = +9.85% over break-even — above 0, under the 20% target tier → "meh" (THIN)
     expect(s.breakevenRpm).toBeCloseTo(5.1113, 4);
     expect(s.drivenMiles).toBe(675);
     expect(s.pctOverBreakeven).toBeCloseTo(0.0985, 4);

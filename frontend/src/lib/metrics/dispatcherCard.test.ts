@@ -41,10 +41,10 @@ const baseLoad: Load = {
 const mk = (o: Partial<Load>): Load => ({ ...baseLoad, ...o });
 
 const ladder: RateLadder = {
-  walkAway: 4.0,
+  breakEven: 4.0,
   minimum: 4.5,
   target: 5.0,
-  strong: 6.0,
+  prime: 6.0,
 };
 
 beforeEach(() => {
@@ -89,7 +89,7 @@ describe("getDispatcherCard", () => {
 
   it("grades GROSS per DRIVEN mile on the one ladder (GL-146): deadhead counts, unknown is left out", () => {
     const loads = [
-      // 1000 loaded + 250 empty, $5,000 → $4.00 driven (walk-away), $5.00 loaded
+      // 1000 loaded + 250 empty, $5,000 → $4.00 driven (break-even), $5.00 loaded
       mk({ load_id: "A", loaded_miles: 1000, deadhead_miles: 250, linehaul: "5000" }),
       // deadhead unknown, no odometer → left out, never driven as 0
       mk({ load_id: "B", loaded_miles: 1000, deadhead_miles: null as unknown as number, linehaul: "9999" }),
@@ -97,7 +97,7 @@ describe("getDispatcherCard", () => {
     const card = getDispatcherCard(loads, "me", ladder, 2, new Date());
     expect(card.avgBookedRate).toBeCloseTo(4.0, 5);
     expect(card.drivenUnknown).toBe(1);
-    expect(card.seasonGrade).toBe("minimum"); // 4.00 ≥ walk-away 4.00, under target 5.00
+    expect(card.seasonGrade).toBe("minimum"); // 4.00 ≥ break-even 4.00, under target 5.00
   });
 
   it("detention collected counts only confirmed + paid detention", () => {

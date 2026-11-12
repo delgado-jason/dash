@@ -18,16 +18,31 @@ export const DEADHEAD_TARGET = 0.2; // 20%
 export interface RateTiers {
   minimum: number;
   target: number;
-  strong: number;
+  prime: number;
 }
 
-// Rate tiers = markup OVER the break-even (walk-away) rate, per driven mile — a
-// load at break-even makes $0; each tier adds margin on top. TWO sets: the load
+// Rate tiers = markup OVER the break-even rate, per driven mile — a load at
+// break-even makes $0; each tier adds margin on top. TWO sets: the load
 // Scorer picks by type — Specialized (oversize / hazmat / heavy haul) vs Standard
 // (everything else). Seeds are calibrated from Jason's own delivered history
 // (2026-07): standard freight medians ~break-even, specialized medians ~+40%.
-export const STD_TIERS: RateTiers = { minimum: 0.1, target: 0.2, strong: 0.3 };
-export const SPEC_TIERS: RateTiers = { minimum: 0.35, target: 0.45, strong: 0.6 };
+export const STD_TIERS: RateTiers = { minimum: 0.1, target: 0.2, prime: 0.3 };
+export const SPEC_TIERS: RateTiers = { minimum: 0.35, target: 0.45, prime: 0.6 };
+
+/**
+ * The profit margin a rung delivers — and it depends on NOTHING but the markup.
+ *
+ * At a markup `m` over break-even, gross = breakEvenGross × (1 + m). Break-even
+ * gross is cost ÷ keep by definition, so net = gross × keep = cost × (1 + m),
+ * and margin = (net − cost) ÷ net = m ÷ (1 + m). **The cost and the carrier's
+ * keep cancel out.** That is why a rung can be labelled with its margin on any
+ * page, with no basis in hand and nothing to go stale: Jason's +17.7% standard
+ * minimum is a 15% margin whatever diesel does.
+ *
+ * This is the answer to "no misconceptions about whether a load is profitable"
+ * (Jason, 2026-11-12): a word is arguable, a percentage is not.
+ */
+export const marginAtMarkup = (markup: number): number => markup / (1 + markup);
 
 // Back-compat default = the standard set (the app-wide baseline). Used as the
 // fallback when a metric isn't handed an explicit set.
@@ -44,6 +59,11 @@ const num = (v: unknown, d: number) =>
 
 // A user's saved STANDARD markup tiers (settlement schedule) → RateTiers, with
 // the seed defaults filling anything missing. The app-wide baseline set.
+// NOTE ON THE COLUMN NAME: the rung is called `prime` in the app and
+// `rate_tier_*_strong` in Postgres. The rename of 2026-11-12 deliberately
+// stopped at this boundary — renaming a column is a migration against live data
+// to no user-visible end, and this function is the one place the two names have
+// to meet. Same for `rate_tier_spec_strong` below.
 export const tiersFrom = (
   s?: {
     rate_tier_std_min?: number | null;
@@ -53,7 +73,7 @@ export const tiersFrom = (
 ): RateTiers => ({
   minimum: num(s?.rate_tier_std_min, STD_TIERS.minimum),
   target: num(s?.rate_tier_std_target, STD_TIERS.target),
-  strong: num(s?.rate_tier_std_strong, STD_TIERS.strong),
+  prime: num(s?.rate_tier_std_strong, STD_TIERS.prime),
 });
 
 // The SPECIALIZED markup tiers — the Scorer uses these for oversize/hazmat/heavy.
@@ -66,7 +86,7 @@ export const specTiersFrom = (
 ): RateTiers => ({
   minimum: num(s?.rate_tier_spec_min, SPEC_TIERS.minimum),
   target: num(s?.rate_tier_spec_target, SPEC_TIERS.target),
-  strong: num(s?.rate_tier_spec_strong, SPEC_TIERS.strong),
+  prime: num(s?.rate_tier_spec_strong, SPEC_TIERS.prime),
 });
 
 // The target profit margin (0–0.95) → drives weekly/daily revenue targets.

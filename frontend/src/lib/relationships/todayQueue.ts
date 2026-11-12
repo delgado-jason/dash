@@ -426,7 +426,7 @@ export const buildToday = (input: TodayInput): TodayModel => {
       break;
     }
     case "five":
-      plate = { kind: "five", five: fridayFive(contacts, loads, ladder?.walkAway ?? null, now), hygiene: hygiene(active, loads, coverage) };
+      plate = { kind: "five", five: fridayFive(contacts, loads, ladder?.breakEven ?? null, now), hygiene: hygiene(active, loads, coverage) };
       break;
     default:
       plate = { kind: "none", anchor, anchorResolved: capacity.anchorResolved, within: capacity.rows.length + capacity.touched.length };

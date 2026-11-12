@@ -190,7 +190,7 @@ const AgentDetailPage = () => {
   if (!agent) return null;
 
   const usableLadder =
-    overallTargets.bookingLadder && overallTargets.bookingLadder.walkAway != null
+    overallTargets.bookingLadder && overallTargets.bookingLadder.breakEven != null
       ? overallTargets.bookingLadder
       : null;
   const established = lifetimeDelivered >= ESTABLISHED_AT;

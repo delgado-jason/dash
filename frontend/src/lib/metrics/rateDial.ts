@@ -19,9 +19,9 @@ export const markupToMargin = (markup: number): number =>
 
 export interface DialRungs {
   // Margins (0–1): what each rung yields on revenue.
-  margins: { minimum: number; target: number; strong: number };
+  margins: { minimum: number; target: number; prime: number };
   // Markups (0–1): what gets WRITTEN to the rate_tier_* columns.
-  markups: { minimum: number; target: number; strong: number };
+  markups: { minimum: number; target: number; prime: number };
 }
 
 // Rungs from the slider's target margin. The minimum rung floors at 0%
@@ -31,14 +31,14 @@ export const dialRungs = (targetMargin: number): DialRungs => {
   const margins = {
     minimum: Math.max(0, r4(targetMargin - 0.05)),
     target: r4(targetMargin),
-    strong: r4(targetMargin + 0.05),
+    prime: r4(targetMargin + 0.05),
   };
   return {
     margins,
     markups: {
       minimum: marginToMarkup(margins.minimum),
       target: marginToMarkup(margins.target),
-      strong: marginToMarkup(margins.strong),
+      prime: marginToMarkup(margins.prime),
     },
   };
 };
