@@ -1,6 +1,7 @@
 import api from "./api";
 import { dedupe } from "@/lib/dedupe";
 import type { CutTier } from "@/lib/metrics/cutPlanner";
+import type { CategoryMonth } from "@/lib/metrics/monthDiagnosis";
 import type {
   ExpensePeriod,
   ExpenseLine,
@@ -177,5 +178,18 @@ export const deleteExpenseLine = async (lineId: string): Promise<void> => {
     await api.delete(`/expenses/lines/${lineId}`);
   } catch {
     throw new Error("Unable to delete the expense");
+  }
+};
+
+// Per-category spend, one row per (category, month) that has any. The caller
+// fills the zeros, because only it knows which months are FILED — a category
+// absent from a filed month genuinely spent $0 there, while a month with no
+// P&L at all says nothing and must never be read as a zero.
+export const getCategoryHistory = async (): Promise<CategoryMonth[]> => {
+  try {
+    const res = await api.get("/expenses/category-history");
+    return (res.data.categories ?? []) as CategoryMonth[];
+  } catch {
+    throw new Error("Unable to fetch category history");
   }
 };
