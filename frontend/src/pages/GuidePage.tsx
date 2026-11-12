@@ -1018,6 +1018,56 @@ const GuidePage = () => {
           </Metric>
 
           <Metric
+            title="Why this month — revenue or cost"
+            answers="Which of the two levers moved. A red margin is a result; this says whether to go book freight or stop spending."
+            sources={[{ label: "Expenses", to: "/expenses" }]}
+          >
+            <Formula>
+              shortfall = this month's profit − the average of the OTHER filed
+              months · revenue effect + cost effect = that shortfall, exactly
+            </Formula>
+            <Eg>
+              <span className="text-light">October</span> fell $7,991 short:
+              revenue <span className="text-light">−$7,736</span>, cost{" "}
+              <span className="text-light">−$255</span>. A freight month.{" "}
+              <span className="text-light">August</span> fell $7,083 short:
+              revenue <span className="text-light">−$1,607</span>, cost{" "}
+              <span className="text-light">−$5,476</span>. A spending month.
+            </Eg>
+            <Why>
+              Two of your ten months lost money and the page drew both the same
+              way — a red margin and nothing else. They had{" "}
+              <span className="text-light">opposite causes</span>, and the
+              responses are opposite too. A result is not a diagnosis.
+              <br />
+              <br />
+              <span className="text-light">Two levers, not three, and the
+              reason matters.</span> Revenue and cost <b>sum exactly</b> to the
+              month's shortfall. Splitting revenue further into miles × rate
+              does not: those multiply, so a three-way split leaves a
+              cross-term belonging to neither and October's three come to
+              −$9,773 against a real −$7,991. Miles and rate therefore appear
+              as the sentence underneath, describing the revenue lever rather
+              than pretending to divide it.
+              <br />
+              <br />
+              The month is <span className="text-light">excluded from its own
+              baseline</span>. Comparing October against an average containing
+              October drags the average toward it and understates every
+              effect — worst at exactly the extremes you are trying to explain.
+              <br />
+              <br />
+              <span className="text-light">What ran over is judged on spread,
+              not dollars.</span> Repairs swing $432 to $4,990 as a matter of
+              course, so a big month for them is not news. Office expenses sit
+              near $613 and read $2,879 once — a quarter of the dollars and the
+              only thing worth knowing. A category absent from a month that has
+              line items genuinely spent $0 there; a month with no line items
+              at all says nothing and is left out entirely.
+            </Why>
+          </Metric>
+
+          <Metric
             title="Fixed vs variable — and what a parked day costs"
             answers="Which costs bleed whether the truck moves or not. It drives the sit-versus-run burn, and it belongs to the category, not to the month."
             sources={[{ label: "Expenses", to: "/expenses" }]}

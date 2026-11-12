@@ -7,6 +7,8 @@ import {
   setCategoryType,
 } from "@/services/expensesService";
 import { money, rpm } from "@/lib/format";
+import { Link } from "react-router-dom";
+import { vendorCategoryFor } from "@/lib/metrics/vendorCategories";
 
 interface Props {
   period: ExpensePeriod;
@@ -59,7 +61,21 @@ export const ExpenseLedger = ({ period, totalMiles, income, onChange }: Props) =
       </tr>
       {group(type).map((l) => (
         <tr key={l.line_id} className="border-t border-hairline-lo">
-          <td className="p-2">{l.category}</td>
+          <td className="p-2">
+            {l.category}
+            {/* Where a category is money paid to someone you rate, the ledger
+                reaches the directory. Repairs & maintenance is the third-
+                largest cost on this page and these two surfaces never
+                mentioned each other. */}
+            {vendorCategoryFor(l.category) && (
+              <Link
+                to="/vendors"
+                className="ml-2 font-condensed text-[11.5px] tracking-[.08em] uppercase text-status-info-text hover:underline whitespace-nowrap"
+              >
+                → {vendorCategoryFor(l.category)!.toLowerCase()}
+              </Link>
+            )}
+          </td>
           <td className="p-2 text-right">
             {editing === l.line_id ? (
               <input

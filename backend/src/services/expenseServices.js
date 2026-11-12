@@ -247,6 +247,35 @@ export async function getExpenseCategoryRollup(user_id, year) {
   return result.rows;
 }
 
+// ---- GET PER-CATEGORY MONTHLY HISTORY ----
+//
+// One row per (category, month) that actually has spend. The caller fills the
+// zeros, because only it knows which months are FILED — and the distinction
+// matters: a month where a category is absent genuinely spent $0 on it, while
+// a month with no P&L at all says nothing and must not drag an average down.
+//
+// This exists because "is this month unusual?" cannot be answered by an
+// average alone. Repairs & maintenance swings $432–$4,990 as a matter of
+// course; office expenses sit near $613 and then one month reads $2,879. Both
+// are "over the average", and only the SPREAD tells you which one is news.
+export async function getCategoryHistory(user_id) {
+  if (!user_id) throw new ValidationError("Missing user_id");
+  const result = await db.query(
+    `SELECT l.category, l.section,
+            to_char(p.period_month, 'YYYY-MM-DD') AS period_month,
+            SUM(l.amount)::float8 AS amount
+       FROM expense_lines l
+       JOIN expense_periods p ON p.period_id = l.period_id
+      WHERE l.user_id = $1
+        AND p.cogs_total IS NOT NULL
+        AND p.expense_total IS NOT NULL
+      GROUP BY l.category, l.section, p.period_month
+      ORDER BY l.category, p.period_month`,
+    [user_id],
+  );
+  return result.rows;
+}
+
 // ---- GET CATEGORY DEFAULTS ---- (category → type, for upload auto-classify)
 export async function getCategoryDefaults(user_id) {
   if (!user_id) throw new ValidationError("Missing user_id");

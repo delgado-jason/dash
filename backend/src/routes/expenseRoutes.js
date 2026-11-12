@@ -9,6 +9,7 @@ import {
   getCutTierData,
   setCuttability,
   setCategoryType,
+  getCategoryHistory,
   addExpenseLine,
   patchExpenseLine,
   deleteExpenseLine,
@@ -55,6 +56,16 @@ router.put("/cuttability", async (req, res) => {
     const { category, cuttability } = req.body ?? {};
     await setCuttability(req.user.user_id, category, cuttability ?? null);
     return res.status(200).json({ ok: true });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// ---- PER-CATEGORY MONTHLY HISTORY ---- (before "/:period_id")
+router.get("/category-history", async (req, res) => {
+  try {
+    const rows = await getCategoryHistory(req.user.user_id);
+    return res.status(200).json({ categories: rows });
   } catch (err) {
     return handleError(res, err);
   }

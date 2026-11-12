@@ -9,10 +9,14 @@ import type { Obligation } from "@/types/obligation";
 import {
   getExpensePeriods,
   getExpensePeriod,
+  getCategoryHistory,
 } from "@/services/expensesService";
 import { getObligations } from "@/services/obligationsService";
 import { getExpenseMetrics, getTrueMonthly } from "@/lib/metrics/expenses";
 import { monthlyObligationCost, basisCaption } from "@/lib/metrics/rateTargets";
+import { whyThisMonth, categoryOutliers, type CategoryMonth } from "@/lib/metrics/monthDiagnosis";
+import { WhyThisMonth } from "@/components/expenses/WhyThisMonth";
+import { CostPerMileTrend } from "@/components/expenses/CostPerMileTrend";
 import { computeRateTargets } from "@/hooks/useRateTargets";
 import { monthMiles } from "@/lib/metrics/rateTargets";
 import { getSettlementSchedule } from "@/services/settlementScheduleService";
@@ -148,6 +152,61 @@ const ExpensesPage = () => {
   const metrics = selected
     ? getExpenseMetrics(selected, miles.totalMiles, miles.loadedMiles)
     : null;
+
+  // ---- WHY THIS MONTH (C3b) ----
+  //
+  // Revenue and cost, measured against the OTHER filed months — the two levers
+  // that sum to the month's shortfall. October lost money on freight and August
+  // on spending, and until now the page drew both as the same red number.
+  const [catHistory, setCatHistory] = useState<CategoryMonth[]>([]);
+  useEffect(() => {
+    getCategoryHistory()
+      .then(setCatHistory)
+      .catch(() => setCatHistory([]));
+  }, [refreshKey]);
+
+  const why = useMemo(
+    () => (selected ? whyThisMonth(periods, selected.period_month) : null),
+    [periods, selected],
+  );
+  const outliers = useMemo(
+    () =>
+      selected ? categoryOutliers(catHistory, selected.period_month) : [],
+    [catHistory, selected],
+  );
+  // The revenue lever, described: miles and income per mile against the same
+  // months the comparison stands on. Measured here rather than taken from the
+  // basis window, which covers only six months and may not hold this one.
+  const whyMiles = useMemo(() => {
+    if (!selected) return { mine: null, usual: null, perMile: null, usualPerMile: null };
+    const key = String(selected.period_month).slice(0, 10);
+    // flatMap rather than filter-then-map: a month without an income figure is
+    // DROPPED, never read as $0. A zero here would be a month that earned
+    // nothing, which is a different claim from one that never filed.
+    const withMiles = periods.flatMap((p) => {
+      const inc = p.income_total;
+      if (inc == null || String(p.period_month).slice(0, 10) === key) return [];
+      const mi = monthMilesOf(loads, p.period_month, trips).totalMiles;
+      return mi > 0 ? [{ mi, inc }] : [];
+    });
+    const usual =
+      withMiles.length === 0
+        ? null
+        : withMiles.reduce((s, x) => s + x.mi, 0) / withMiles.length;
+    const usualPerMile =
+      withMiles.length === 0
+        ? null
+        : withMiles.reduce((s, x) => s + x.inc, 0) / withMiles.reduce((s, x) => s + x.mi, 0);
+    return {
+      mine: miles.totalMiles > 0 ? miles.totalMiles : null,
+      usual,
+      perMile:
+        miles.totalMiles > 0 && selected.income_total != null
+          ? selected.income_total / miles.totalMiles
+          : null,
+      usualPerMile,
+    };
+  }, [selected, periods, loads, trips, miles.totalMiles]);
 
 
   // Obligations folded into every headline number. Dollar figures use this
@@ -396,6 +455,21 @@ const ExpensesPage = () => {
               )}
             </div>
 
+            {/* The result is above; this is why it came out that way. It sits
+                here rather than further down because a red margin with no
+                diagnosis is the thing C3b exists to fix. */}
+            {why && (
+              <WhyThisMonth
+                why={why}
+                label={selected.period_label ?? "this month"}
+                outliers={outliers}
+                miles={whyMiles.mine}
+                usualMiles={whyMiles.usual}
+                perMile={whyMiles.perMile}
+                usualPerMile={whyMiles.usualPerMile}
+              />
+            )}
+
             {windowFailed && !costUnsure && (
               <FetchFailed className="mt-4" what="the P&L months behind the burn" onRetry={refresh} />
             )}
@@ -517,6 +591,11 @@ const ExpensesPage = () => {
             {periods.length > 1 && !costUnsure && (
               <ExpenseYtdChart periods={periods} obligationsTotal={obligationsTotal} />
             )}
+
+            <CostPerMileTrend
+              months={targets.basis.monthsDetail}
+              targetMiles={targets.basis.targetMiles}
+            />
 
             {/* fixed vs variable */}
             <div className="ds2-board overflow-hidden mt-4">
