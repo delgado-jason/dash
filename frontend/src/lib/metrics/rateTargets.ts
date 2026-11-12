@@ -658,6 +658,19 @@ export const computeRateTargets = (
     weekEnd: end,
     tiers, // standard markup tiers (Scorer default + downstream)
     specTiers, // specialized markup tiers (Scorer, for specialized loads)
+    // Equipment & permits (migration 110), carried through so the Scorer needs
+    // one hook rather than its own fetch of the same row. Nulls pass straight
+    // through: no invented tare, no invented permit cost.
+    equipment: {
+      emptyWeightLb:
+        schedule?.empty_weight_lb == null ? null : Number(schedule.empty_weight_lb),
+      permitCostUsd:
+        schedule?.permit_cost_usd == null ? null : Number(schedule.permit_cost_usd),
+      escortCostPerLoadedMile:
+        schedule?.escort_cost_per_loaded_mile == null
+          ? null
+          : Number(schedule.escort_cost_per_loaded_mile),
+    },
     ready: basis.breakEvenRpm != null,
   };
 };

@@ -16,7 +16,18 @@ import {
 import { RATE_TIERS, marginAtMarkup, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
-import { toInches, classifyOversize } from "@/lib/dimensions";
+import {
+  toInches,
+  classifyOversize,
+  freightCeilingLb,
+  grossFromFreight,
+} from "@/lib/dimensions";
+import {
+  passThroughCost,
+  passThroughAsk,
+  grossUpPremium,
+  rateNetOfPassThrough,
+} from "@/lib/metrics/passThrough";
 import CityAutocomplete from "@/components/CityAutocomplete";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Panel } from "@/components/ui/Panel";
@@ -278,6 +289,12 @@ const ScoreLoadPage = () => {
   const [deadhead, setDeadhead] = useState("");
   const [deadheadUnrouted, setDeadheadUnrouted] = useState(false);
   const [hazmat, setHazmat] = useState(false);
+  const [permits, setPermits] = useState("");
+  const [escorts, setEscorts] = useState("");
+  // A reposition is not competing with a good load, it is competing with an
+  // empty trailer and a parking brake — so it gets a different ruler, not a
+  // softer rung on the same one. See the beats-parking floor below.
+  const [reposition, setReposition] = useState(false);
   const [routing, setRouting] = useState(false);
   const [routeErr, setRouteErr] = useState(false);
   const [toll, setToll] = useState<number | null>(null);
@@ -310,24 +327,74 @@ const ScoreLoadPage = () => {
     };
   }, []);
 
+  // THE WEIGHT BOX ASKS FOR FREIGHT NOW, not gross.
+  //
+  // It was labelled "Gross wt" and tested against the 80,000 legal gross, but
+  // an agent says "it's a 52,000 pound load" — the freight. Jason's own records
+  // agree: of 54 loads carrying a weight the max is 50,000 and none exceeds
+  // 80,000, so the column always held freight. A heavy load therefore read as
+  // legal and priced on the Standard ladder: 85¢ a driven mile under-asked.
+  //
+  // Gross is freight + what the truck scales empty, from Settings. No empty
+  // weight set → NO GROSS, deliberately: a guessed tare is the original bug,
+  // and the Scorer then grades exactly as it did before.
+  const emptyWeightLb = targets.equipment.emptyWeightLb;
+  const freightLb = wt === "" ? null : Number(wt) || null;
+  const ceilingLb = freightCeilingLb(emptyWeightLb);
+  const grossLb = grossFromFreight(freightLb, emptyWeightLb);
+
   const dims = useMemo(
     () => ({
       widthIn: dimToIn(wid),
       heightIn: dimToIn(hgt),
       lengthIn: dimToIn(len),
-      grossWeightLb: wt === "" ? null : Number(wt) || null,
+      grossWeightLb: grossLb,
     }),
-    [wid, hgt, len, wt],
+    [wid, hgt, len, grossLb],
   );
   const dimsKey = JSON.stringify(dims);
   const anyDim =
     dims.widthIn != null ||
     dims.heightIn != null ||
     dims.lengthIn != null ||
-    dims.grossWeightLb != null;
+    freightLb != null;
   const oversize = useMemo(() => classifyOversize(dims), [dims]);
   const specialized = oversize.oversize || hazmat;
   const activeTiers = specialized ? targets.specTiers : targets.tiers;
+
+  // Permits and escorts: money you lay out and are not reimbursed for. The
+  // block only exists once the load is over legal, so a plain flatbed run sees
+  // the form it always saw.
+  const permitted = oversize.oversize;
+  const ptCost = useMemo(
+    () =>
+      passThroughCost({
+        permitCount: permitted && permits !== "" ? Number(permits) || null : null,
+        escortCount: permitted && escorts !== "" ? Number(escorts) || null : null,
+        loadedMiles: loaded === "" ? null : Number(loaded) || null,
+        permitCostUsd: targets.equipment.permitCostUsd,
+        escortCostPerLoadedMile: targets.equipment.escortCostPerLoadedMile,
+      }),
+    [permitted, permits, escorts, loaded, targets.equipment],
+  );
+  // What the load must carry to leave you whole — cost ÷ your linehaul take,
+  // because Landstar pays the deducted charge back at the same 73% split (see
+  // lib/metrics/passThrough.ts for the settlement it was read off).
+  const ptAsk = passThroughAsk(ptCost.total, targets.linehaulTake) ?? ptCost.total;
+  const ptPremium = grossUpPremium(ptCost.total, targets.linehaulTake);
+  // The offer, less the money that passes straight through you. THIS is what
+  // gets graded: $7,800 over 750 driven reads $10.40 a mile, and with $3,452 of
+  // escorts inside it what actually pays you is $5.80.
+  const rateNum = rate === "" ? null : Number(rate) || null;
+  const gradedRate = rateNetOfPassThrough(rateNum, ptAsk);
+  // THE OFFER DOES NOT COVER ITS OWN PERMIT BILL. rateNetOfPassThrough clamps
+  // at zero rather than returning a negative rate, which is right for the
+  // arithmetic and wrong to leave unsaid: the grading below would quietly
+  // report "$0 net" on a load that is actually several hundred dollars in the
+  // hole before a wheel turns. Found by scoring a $900 reposition while a
+  // previous load's escorts were still on the form.
+  const underwaterBy =
+    rateNum != null && ptAsk > rateNum ? ptAsk - rateNum : null;
 
   const pickupReady = !!(pickup.city && pickup.state);
   const deliveryReady = !!(delivery.city && delivery.state);
@@ -376,8 +443,13 @@ const ScoreLoadPage = () => {
   // miles, and unknown-as-zero flatters every verdict. Sitting at the shipper?
   // Type 0 and mean it.
   const entered = rate !== "" && loaded !== "" && deadhead !== "";
+  // GRADED ON THE RATE NET OF PASS-THROUGHS. A permitted load's headline is
+  // close to fiction otherwise: $7,800 over 750 driven miles reads $10.40, and
+  // with $3,452 of grossed-up escorts and permits inside it what actually
+  // reaches you is $5.80. Subtracting first mirrors the settlement statement,
+  // so the number on the page is the number that hits the account.
   const score = scoreLoad(
-    { rate: knownNumber(rate), loadedMiles: knownNumber(loaded), deadheadMiles: knownNumber(deadhead) },
+    { rate: gradedRate, loadedMiles: knownNumber(loaded), deadheadMiles: knownNumber(deadhead) },
     {
       costPerDrivenMile: targets.basis.costPerTotalMile,
       payTake: targets.basis.payTake,
@@ -395,6 +467,18 @@ const ScoreLoadPage = () => {
   // the page came to say "already clears your target" about a load 5 points
   // short of it (caught on dev, 2026-11-12). Asked as a comparison it cannot
   // go stale when a verdict is added.
+  // What a reposition is worth against sitting: the net it brings home less
+  // the fuel, tyres and wear those miles burn. Sitting contributes zero — the
+  // fixed costs draft either way, which is exactly why they are absent here.
+  const repositionGain =
+    gradedRate != null &&
+    targets.basis.payTake != null &&
+    targets.basis.variablePerMile != null &&
+    score.drivenMiles > 0
+      ? gradedRate * targets.basis.payTake -
+        targets.basis.variablePerMile * score.drivenMiles
+      : null;
+
   const belowTarget = !verdictAtLeast(score.verdict, "take");
   const counter =
     belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
@@ -467,6 +551,20 @@ const ScoreLoadPage = () => {
             </div>
           </div>
 
+          {underwaterBy != null && (
+            <div
+              className="ds2-board p-3.5 mb-3"
+              style={{ borderLeft: "3px solid var(--color-status-negative-text)" }}
+            >
+              <Lbl accent>Under its own costs</Lbl>
+              <p className="text-[15.5px] text-ink font-medium">
+                The permits and escorts alone need {money(ptAsk)} of this load, and it
+                pays {money(rateNum!)}. You would be {money(underwaterBy)} down before a
+                wheel turns — nothing below is a rate you can book.
+              </p>
+            </div>
+          )}
+
           {/* the call — verdict + destination + agent, weighed */}
           {call && (
             <div
@@ -483,26 +581,80 @@ const ScoreLoadPage = () => {
           {/* verdict hero */}
           <Panel className="p-4 sm:p-5">
             <div className="flex items-center gap-5 flex-wrap">
+              {/* REPOSITION SWAPS THE RULER. The ladder asks "what must the
+                  month average?"; a reposition asks the different and much
+                  narrower question "the alternative right now is sitting still
+                  — is this better than that?". Fixed cost is absent from the
+                  second because it drafts whether the truck rolls or not. The
+                  ladder stays visible underneath: swapping one ruler for the
+                  other is how you reposition at $2.10 all year. */}
               <div className="flex-shrink-0">
-                <Lbl accent>Verdict</Lbl>
-                <div className="font-condensed font-bold uppercase leading-none tracking-[.04em]" style={{ fontSize: 50, color: meta.fg }}>{meta.label}</div>
+                <Lbl accent>{reposition ? "Reposition" : "Verdict"}</Lbl>
+                {reposition ? (
+                  <div
+                    className="font-condensed font-bold uppercase leading-none tracking-[.04em]"
+                    style={{
+                      fontSize: 50,
+                      color: score.beatsSitting
+                        ? "var(--color-cat2)"
+                        : "var(--color-status-negative-text)",
+                    }}
+                  >
+                    {score.beatsSitting == null
+                      ? "NO BASIS"
+                      : score.beatsSitting
+                        ? "BEATS PARKING"
+                        : "WORSE THAN PARKING"}
+                  </div>
+                ) : (
+                  <div className="font-condensed font-bold uppercase leading-none tracking-[.04em]" style={{ fontSize: 50, color: meta.fg }}>{meta.label}</div>
+                )}
               </div>
               <div className="pl-5" style={{ borderLeft: "1px solid color-mix(in srgb, var(--color-ink) 8%, transparent)" }}>
                 <div className="flex items-baseline gap-2">
                   <span className="font-condensed font-semibold tabular-nums text-[36.5px] text-ink">{fmtRpm(score.allInRpm)}</span>
-                  <span className="font-condensed text-[14px] text-dim">/ driven mi (all-in)</span>
+                  <span className="font-condensed text-[14px] text-dim">
+                    / driven mi {ptAsk > 0 ? "(after permits & escorts)" : "(all-in)"}
+                  </span>
                 </div>
+                {/* The headline the offer WOULD have claimed, named as the
+                    fiction it is. $10.40 a mile with a third of it going to an
+                    escort company is not $10.40 a mile. */}
+                {ptAsk > 0 && rateNum != null && score.drivenMiles > 0 && (
+                  <div className="font-condensed text-[13px] text-faint mt-0.5">
+                    {fmtRpm(rateNum / score.drivenMiles)} before the pass-throughs —{" "}
+                    {money(ptAsk)} of this load is not yours
+                  </div>
+                )}
                 <div className="font-condensed text-[14px] text-dim mt-0.5">
-                  {score.pctOverBreakeven != null && (
+                  {reposition ? (
                     <>
-                      {score.pctOverBreakeven >= 0 ? "+" : ""}
-                      {Math.round(score.pctOverBreakeven * 100)}% over break-even ·{" "}
+                      vs your <b className="text-ink">{fmtRpm(score.beatsSittingRpm)}</b> absolute
+                      minimum · break-even {fmtRpm(score.breakevenRpm)}{" "}
+                      <span className="text-faint">— not the ruler here</span>
+                    </>
+                  ) : (
+                    <>
+                      {score.pctOverBreakeven != null && (
+                        <>
+                          {score.pctOverBreakeven >= 0 ? "+" : ""}
+                          {Math.round(score.pctOverBreakeven * 100)}% over break-even ·{" "}
+                        </>
+                      )}
+                      <span style={{ color: specialized ? "var(--color-amber-hi)" : "var(--color-cat2)" }}>
+                        {specialized ? "Specialized" : "Standard"}
+                      </span>{" "}
+                      tiers, target +{Math.round(activeTiers.target * 100)}%
+                      {/* The margin THIS load earns, not the rung's — and only
+                          when the markup is actually known. Defaulting a null
+                          markup to zero would print "0% margin" for a load we
+                          simply could not grade, which is a different and much
+                          worse claim than saying nothing. */}
+                      {score.verdict !== "pass" && score.pctOverBreakeven != null && (
+                        <> · <b className="text-ink">{Math.round(marginAtMarkup(score.pctOverBreakeven) * 100)}% margin</b></>
+                      )}
                     </>
                   )}
-                  <span style={{ color: specialized ? "var(--color-amber-hi)" : "var(--color-cat2)" }}>
-                    {specialized ? "Specialized" : "Standard"}
-                  </span>{" "}
-                  tiers, target +{Math.round(activeTiers.target * 100)}%
                 </div>
                 <div className="font-condensed text-[13px] text-faint mt-1">
                   basis · cash · {targets.basis.windowLabel ?? "no P&L filed"} · {targets.basis.months} of{" "}
@@ -663,7 +815,57 @@ const ScoreLoadPage = () => {
               )}
             </div>
 
-            {counter ? (
+            {reposition ? (
+              <div className="ds2-board p-4">
+                <Lbl>Against parking</Lbl>
+                {repositionGain != null ? (
+                  <>
+                    <div className="mt-2 flex flex-col gap-2">
+                      <Well className="flex items-baseline justify-between px-3 py-1.5">
+                        <span className="font-condensed text-[12px] text-dim">YOUR NET, AFTER LANDSTAR</span>
+                        <span className="font-condensed font-semibold tabular-nums text-[17px] text-ink">
+                          {money(gradedRate! * targets.basis.payTake!)}
+                        </span>
+                      </Well>
+                      <Well className="flex items-baseline justify-between px-3 py-1.5">
+                        <span className="font-condensed text-[12px] text-dim">
+                          FUEL, TYRES, WEAR ON {score.drivenMiles.toLocaleString("en-US")} MI
+                        </span>
+                        <span className="font-condensed font-semibold tabular-nums text-[17px]" style={{ color: "var(--color-status-negative-text)" }}>
+                          −{money(targets.basis.variablePerMile! * score.drivenMiles)}
+                        </span>
+                      </Well>
+                      <Well
+                        className="flex items-baseline justify-between px-3 py-1.5"
+                        style={{
+                          borderColor: `color-mix(in srgb, ${repositionGain >= 0 ? "var(--color-cat2)" : "var(--color-status-negative-text)"} 45%, transparent)`,
+                        }}
+                      >
+                        <span className="font-condensed text-[12px]" style={{ color: repositionGain >= 0 ? "var(--color-cat2)" : "var(--color-status-negative-text)" }}>
+                          {repositionGain >= 0 ? "BETTER THAN PARKING BY" : "WORSE THAN PARKING BY"}
+                        </span>
+                        <span className="font-condensed font-semibold tabular-nums text-[19.5px]" style={{ color: repositionGain >= 0 ? "var(--color-cat2)" : "var(--color-status-negative-text)" }}>
+                          {repositionGain >= 0 ? "+" : "−"}{money(Math.abs(repositionGain))}
+                        </span>
+                      </Well>
+                    </div>
+                    {/* The assumption said out loud. "Better than parking" is
+                        only true if parking was the alternative — if a real
+                        load would have come along, the reposition cost you the
+                        good one. A green number must not imply certainty. */}
+                    <p className="font-condensed text-[12.5px] mt-3 leading-snug text-faint">
+                      Assumes nothing better turns up for those days. If something might,
+                      this is the number to beat — not a reason to take it.
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-condensed text-[13px] text-faint mt-2">
+                    Needs a cost basis and a variable cost per mile before this can be
+                    answered.
+                  </p>
+                )}
+              </div>
+            ) : counter ? (
               <div className="ds2-board p-4">
                 <Lbl>What to ask the agent</Lbl>
                 {/* EVERY rung, named for the rung and not the verdict, with the
@@ -695,11 +897,39 @@ const ScoreLoadPage = () => {
                         className="font-condensed font-semibold tabular-nums text-[19.5px]"
                         style={{ color: markup > 0 ? color : "var(--color-ink)" }}
                       >
-                        {money(amount)}
+                        {money(amount + ptAsk)}
                       </span>
                     </Well>
                   ))}
                 </div>
+
+                {/* Each quote already CONTAINS the pass-through, because that
+                    is the number you say out loud — not a base to do mental
+                    arithmetic on while the agent waits. The breakdown shows
+                    where it came from, and what a 100% line would save: load
+                    1264478 was billed `PERMITS 150.00 100.0%` and kept whole,
+                    while every permitted load with real money in it went
+                    through the 73% split. That gap is worth a phone call. */}
+                {ptAsk > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-hairline">
+                    <p className="font-condensed text-[12px] text-faint leading-snug">
+                      Each quote = the rung on {score.drivenMiles.toLocaleString("en-US")} driven
+                      mi + {money(ptCost.total)} of permits and escorts
+                      {ptPremium != null && ptPremium > 0 && (
+                        <> grossed up by {money(ptPremium)}, because the deduction is paid
+                        back at your linehaul split, not at 100%</>
+                      )}
+                      .
+                    </p>
+                    {ptPremium != null && ptPremium > 0 && (
+                      <p className="font-condensed text-[12px] mt-1 leading-snug" style={{ color: "var(--color-amber-hi)" }}>
+                        Billed as a 100% line, minimum would ask{" "}
+                        {money(counter.minimum + ptCost.total)} instead of{" "}
+                        {money(counter.minimum + ptAsk)}.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* THE OTHER QUESTION. The rungs above answer "what should the
                     month average?". When a load already scores SCRAP the agent
@@ -776,7 +1006,31 @@ const ScoreLoadPage = () => {
             Load size <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— leave blank if legal</span>
           </p>
           <div className="mb-2">
-            <NumField label="Gross wt" value={wt} onChange={setWt} suffix="lb" />
+            {/* FREIGHT, which is what an agent actually quotes. Gross is
+                computed from your empty weight and shown underneath, labelled
+                as computed — so Brandie can see the scale ticket she'd get. */}
+            <NumField label="Freight weight" value={wt} onChange={setWt} suffix="lb" />
+            {freightLb != null && (
+              <p className="text-[11.5px] mt-1 font-condensed">
+                {grossLb != null ? (
+                  <span className={grossLb > 80000 ? "text-amber-hi" : "text-faint"}>
+                    + {emptyWeightLb!.toLocaleString("en-US")} empty ={" "}
+                    <b className="text-ink">{grossLb.toLocaleString("en-US")} lb gross</b>
+                    {ceilingLb != null && freightLb > ceilingLb && (
+                      <> · over your {ceilingLb.toLocaleString("en-US")} lb ceiling → <b>specialized</b></>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-faint">
+                    Set your empty weight in{" "}
+                    <Link to="/settings" className="text-amber-hi underline underline-offset-2">
+                      Settings
+                    </Link>{" "}
+                    and a heavy load will price on your specialized tiers.
+                  </span>
+                )}
+              </p>
+            )}
           </div>
           <div className="flex gap-2 mb-2.5">
             <DimField label="Length" val={len} onChange={setLen} />
@@ -790,6 +1044,61 @@ const ScoreLoadPage = () => {
             <input type="checkbox" checked={hazmat} onChange={(e) => setHazmat(e.target.checked)} className="accent-amber" />
             <span className="text-[13.5px] text-ink">Hazmat</span>
             <span className="ml-auto text-[11px] text-faint">premium · specialized tiers</span>
+          </label>
+
+          {/* PERMITS & ESCORTS — only once the load is over legal, so a plain
+              flatbed run sees the form it always saw. These are bills you pay
+              and are not reimbursed for: Landstar deducts the charge from the
+              linehaul and pays it back at the same 73% split, so the load has
+              to carry cost ÷ 0.73 for you to break even on it. */}
+          {permitted && (
+            <div className="mt-2.5 pt-2.5 border-t border-hairline">
+              <p className="font-condensed uppercase tracking-widest text-[11px] text-faint mb-1.5">
+                Permits &amp; escorts{" "}
+                <span className="normal-case tracking-normal text-faint">
+                  — this load is over legal
+                </span>
+              </p>
+              <div className="flex gap-2">
+                <NumField label="Permits (states)" value={permits} onChange={setPermits} />
+                <NumField label="Escorts" value={escorts} onChange={setEscorts} />
+              </div>
+              {ptCost.total > 0 ? (
+                <p className="text-[11.5px] font-condensed text-dim mt-1.5">
+                  {ptCost.permits > 0 && <>{money(ptCost.permits)} permits</>}
+                  {ptCost.permits > 0 && ptCost.escorts > 0 && " + "}
+                  {ptCost.escorts > 0 && <>{money(ptCost.escorts)} escorts</>} ={" "}
+                  <b className="text-ink">{money(ptCost.total)}</b> out of pocket · the load
+                  must carry <b className="text-amber-hi">{money(ptAsk)}</b>
+                </p>
+              ) : (
+                (permits !== "" || escorts !== "") && (
+                  <p className="text-[11.5px] font-condensed text-faint mt-1.5">
+                    Set your permit and escort costs in{" "}
+                    <Link to="/settings" className="text-amber-hi underline underline-offset-2">
+                      Settings
+                    </Link>{" "}
+                    to price these in.
+                  </p>
+                )
+              )}
+            </div>
+          )}
+
+          {/* REPOSITION — a different ruler, not a softer rung. When you are
+              going to run the miles anyway the fixed cost is sunk, so the only
+              money the decision turns on is what driving itself burns. */}
+          <label
+            className={`flex items-center gap-2 px-3 py-2 mt-2.5 rounded-lg cursor-pointer select-none bg-well border ${reposition ? "border-amber/60" : "border-hairline"}`}
+          >
+            <input
+              type="checkbox"
+              checked={reposition}
+              onChange={(e) => setReposition(e.target.checked)}
+              className="accent-amber"
+            />
+            <span className="text-[13.5px] text-ink">Reposition load</span>
+            <span className="ml-auto text-[11px] text-faint">grade against my absolute minimum</span>
           </label>
 
           {anyDim &&
