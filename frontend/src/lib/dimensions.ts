@@ -60,6 +60,43 @@ export const SPECIALIZED_LOAD_TYPES = ["oversize", "hazmat", "heavy haul"];
 export const isSpecializedLoadType = (t?: string | null): boolean =>
   t != null && SPECIALIZED_LOAD_TYPES.includes(t);
 
+/**
+ * The freight you can carry before the combination is overweight, given what
+ * it scales empty.
+ *
+ * THE BOX WAS ASKING THE WRONG QUESTION. The Scorer's weight field was
+ * labelled "Gross wt" and tested against LEGAL_GROSS_LB, but no agent quotes
+ * gross vehicle weight — he says "it's a 52,000 pound load", meaning the
+ * FREIGHT. Jason's own records agree: across 54 loads carrying a weight the
+ * maximum is 50,000 and not one exceeds 80,000. So a heavy load read as legal
+ * and priced on the Standard ladder instead of Specialized.
+ *
+ * His "anything over 48,000 is heavy" rule and the 80,000 legal gross are the
+ * same line said twice — a tractor and flatbed scale about 32,000. Deriving it
+ * means the line follows the equipment instead of going stale in this file.
+ *
+ * Null empty weight → null ceiling, and the caller must not invent one: a
+ * guessed tare is how the original bug priced heavy freight cheap.
+ */
+export const freightCeilingLb = (emptyWeightLb: number | null | undefined): number | null =>
+  emptyWeightLb != null && emptyWeightLb > 0 && emptyWeightLb < LEGAL_GROSS_LB
+    ? LEGAL_GROSS_LB - emptyWeightLb
+    : null;
+
+/**
+ * Gross vehicle weight from the freight weight an agent quoted.
+ *
+ * Null when either half is missing — the routing API wants a true gross for
+ * permit routing and would rather have nothing than a number built on a guess.
+ */
+export const grossFromFreight = (
+  freightLb: number | null | undefined,
+  emptyWeightLb: number | null | undefined,
+): number | null =>
+  freightLb != null && freightLb > 0 && emptyWeightLb != null && emptyWeightLb > 0
+    ? freightLb + emptyWeightLb
+    : null;
+
 export interface TravelDims {
   widthIn?: number | null;
   heightIn?: number | null; // total travel height (deck + load)

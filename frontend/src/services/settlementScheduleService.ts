@@ -35,6 +35,18 @@ const coerce = (s: Record<string, unknown>): SettlementSchedule => ({
   // meant to fall back to measured miles rather than to a number nobody chose.
   target_miles_per_month:
     s.target_miles_per_month != null ? Number(s.target_miles_per_month) : null,
+  // Equipment & permits (migration 110). Two of the three are Postgres
+  // `numeric`, which arrives over JSON as a STRING — coerced here so nothing
+  // downstream multiplies "2.00" by a mileage and gets a concatenation. Null
+  // stays null in all three: no invented tare, no invented permit cost.
+  empty_weight_lb:
+    s.empty_weight_lb != null ? Number(s.empty_weight_lb) : null,
+  permit_cost_usd:
+    s.permit_cost_usd != null ? Number(s.permit_cost_usd) : null,
+  escort_cost_per_loaded_mile:
+    s.escort_cost_per_loaded_mile != null
+      ? Number(s.escort_cost_per_loaded_mile)
+      : null,
   // A weekday is 0–6 and a lag is 0–6 days; anything else (a bad column, NaN)
   // would spin the cash board's statement walk — the house defaults instead.
   settlement_day: dayInWeek(s.settlement_day, 3),

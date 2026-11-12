@@ -124,6 +124,46 @@ export const validateSchedule = (data, current = null) => {
     }
   }
 
+  // Equipment & permits (migration 110). All three take the same shape as
+  // target_miles_per_month: A BLANK IS A REAL ANSWER meaning "I have not said",
+  // and every consumer falls back to the behaviour it had before the field
+  // existed. That matters most for the empty weight — guessing a tare would
+  // silently reclassify heavy freight onto the Standard ladder, which is the
+  // bug this whole field exists to kill, so "unset" has to stay reachable.
+  //
+  // Zero is accepted for the two costs and refused for the weight. "Permits
+  // cost me nothing" is a coherent claim; "my truck weighs nothing" is not.
+  const optionalNumber = (field, validate, message, { integer = false } = {}) => {
+    if (d[field] === undefined) return;
+    if (d[field] === null || d[field] === "") {
+      values[field] = null;
+      return;
+    }
+    const n = toNumber(d[field]);
+    if (n == null) {
+      errors.push(`${field} needs a number — leave it empty to unset it`);
+      return;
+    }
+    set(field, n, (x) => (integer ? Number.isInteger(x) : true) && validate(x), message);
+  };
+
+  optionalNumber(
+    "empty_weight_lb",
+    (x) => x > 0 && x < 80000,
+    "empty_weight_lb must be a whole number of pounds between 1 and 79,999",
+    { integer: true },
+  );
+  optionalNumber(
+    "permit_cost_usd",
+    (x) => x >= 0 && x <= 5000,
+    "permit_cost_usd must be between 0 and 5000",
+  );
+  optionalNumber(
+    "escort_cost_per_loaded_mile",
+    (x) => x >= 0 && x <= 100,
+    "escort_cost_per_loaded_mile must be between 0 and 100",
+  );
+
   if (d.operation !== undefined) {
     if (!OPERATIONS.includes(d.operation))
       errors.push(`operation must be one of: ${OPERATIONS.join(", ")}`);

@@ -600,6 +600,12 @@ export const syntheticBook = (): Book => {
     // keep testing the arithmetic they were written for. The committed basis
     // has its own fixtures.
     target_miles_per_month: null,
+    // Unset on the synthetic book, deliberately: the contract tests assert what
+    // the app does for a user who has configured nothing, and the Scorer must
+    // keep grading freight weight without inventing a tare.
+    empty_weight_lb: null,
+    permit_cost_usd: null,
+    escort_cost_per_loaded_mile: null,
   };
   const payRates: AccessorialRate[] = PAY_RATES.map((r) => ({ ...r })); // no pass-through in the book — NET-02 is tested on its own fixtures
 

@@ -28,6 +28,14 @@ export const DEFAULTS = {
   // which is what every user got before migration 109. The value is a business
   // promise, not a schema default (GL-141, Jason, 2026-11-11).
   target_miles_per_month: null,
+  // Equipment & permits (migration 110). All null for the same reason: what you
+  // scale empty and what a permit costs you are facts about YOUR operation, and
+  // a guessed tare silently reclassifies heavy freight onto the wrong ladder.
+  // Null → the Scorer grades freight weight with no gross and shows no permit
+  // block, exactly as it did before.
+  empty_weight_lb: null,
+  permit_cost_usd: null,
+  escort_cost_per_loaded_mile: null,
 };
 
 const COLUMNS = [
@@ -41,6 +49,9 @@ const COLUMNS = [
   ...TIER_FIELDS,
   "margin_goal",
   "target_miles_per_month",
+  "empty_weight_lb",
+  "permit_cost_usd",
+  "escort_cost_per_loaded_mile",
 ];
 
 // ---- GET ---- (always returns a schedule; defaults if none saved yet)
