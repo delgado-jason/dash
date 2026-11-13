@@ -12,24 +12,75 @@ import {
   TREND_META,
 } from "./agentDisplay";
 import { nameOf } from "@/lib/relationships/nameOf";
+import { standingOf } from "@/lib/agents/standing";
+import type { Book, BookRate, RateVerdict, SecondCall } from "@/lib/metrics/agentByType";
 
 export interface AgentRow {
   agent: Agent;
   card: AgentScorecard;
 }
 
-type SortKey = "goto" | "rate" | "dwell" | "loads" | "revenue" | "book" | "last" | "rating";
+type SortKey =
+  | "goto"
+  | "standard"
+  | "specialized"
+  | "dwell"
+  | "loads"
+  | "revenue"
+  | "book"
+  | "last"
+  | "rating";
 
+// TWO RATE COLUMNS, not one. A desk posts standard freight and it posts
+// oversize, they are held to different rungs, and the same desk can be
+// excellent at one and dreadful at the other — ROR is $6.05 standard and
+// $2.46 oversize. Pooled into a single $/mi both halves disappear into a
+// middling number and the list ranks two opposites the same.
 const COLS: { key: SortKey; label: string; l?: boolean }[] = [
   { key: "rating", label: "Rating" },
   { key: "goto", label: "Go-to" },
-  { key: "rate", label: "$/mi" },
+  { key: "standard", label: "Standard" },
+  { key: "specialized", label: "Specialized" },
   { key: "dwell", label: "Dwell" },
   { key: "loads", label: "Loads" },
   { key: "revenue", label: "Rev" },
   { key: "book", label: "% book" },
   { key: "last", label: "Last" },
 ];
+
+// The Scorer's own words, so a desk's rate reads the same here as a load's
+// does there. Colour carries the meaning and nothing else.
+const VERDICT_META: Record<RateVerdict, { label: string; fg: string }> = {
+  "below-cost": { label: "below cost", fg: "var(--color-status-negative-text)" },
+  thin: { label: "thin", fg: "var(--color-amber-hi)" },
+  profitable: { label: "profitable", fg: "var(--color-cat2)" },
+  solid: { label: "solid", fg: "var(--color-cat2)" },
+  prime: { label: "prime", fg: "var(--color-hot)" },
+};
+
+/** One book's cell: the rate, and either its verdict or its load count. */
+const RateCell = ({ r }: { r: BookRate | undefined }) => {
+  if (!r || r.rpm == null)
+    // Never a zero here: on a rate column a 0 reads as "they pay nothing",
+    // when the truth is they have never sent you this kind of freight.
+    return <span className="text-faint">—</span>;
+  const v = r.verdict ? VERDICT_META[r.verdict] : null;
+  return (
+    <span className="whitespace-nowrap">
+      <span style={{ color: v?.fg }} className="tabular-nums">
+        {fmtRpm(r.rpm)}
+      </span>{" "}
+      {v ? (
+        <span className="text-[11.5px]" style={{ color: v.fg }}>
+          {v.label}
+        </span>
+      ) : (
+        /* One load is a number, not a grade. */
+        <span className="text-[11.5px] text-faint">{r.loads} load</span>
+      )}
+    </span>
+  );
+};
 
 const stars = (r: number | null | undefined): string =>
   r == null ? "—" : "★".repeat(r) + "☆".repeat(5 - r);
@@ -43,12 +94,21 @@ const shortDate = (d: string | null): string =>
       })
     : "—";
 
-const compare = (a: AgentRow, b: AgentRow, key: SortKey): number => {
+const compare = (
+  a: AgentRow,
+  b: AgentRow,
+  key: SortKey,
+  rates?: Map<string, Record<Book, BookRate>>,
+): number => {
   const A = a.card;
   const B = b.card;
+  const rate = (row: AgentRow, book: Book) =>
+    rates?.get(row.agent.agent_id)?.[book]?.rpm ?? -1;
   switch (key) {
-    case "rate":
-      return (B.medianRpm ?? -1) - (A.medianRpm ?? -1);
+    case "standard":
+      return rate(b, "standard") - rate(a, "standard");
+    case "specialized":
+      return rate(b, "specialized") - rate(a, "specialized");
     case "dwell":
       return B.moneyLostLoads - A.moneyLostLoads; // worst (most money lost) first
     case "loads":
@@ -68,9 +128,13 @@ const compare = (a: AgentRow, b: AgentRow, key: SortKey): number => {
 export const AgentTable = ({
   rows,
   shareByAgent,
+  ratesByAgent,
+  secondCall,
 }: {
   rows: AgentRow[];
   shareByAgent?: Map<string, number>;
+  ratesByAgent?: Map<string, Record<Book, BookRate>>;
+  secondCall?: Map<string, SecondCall>;
 }) => {
   const navigate = useNavigate();
   const [sort, setSort] = useState<SortKey>("goto");
@@ -82,9 +146,9 @@ export const AgentTable = ({
         sort === "book"
           ? (shareByAgent?.get(b.agent.agent_id) ?? 0) -
             (shareByAgent?.get(a.agent.agent_id) ?? 0)
-          : compare(a, b, sort),
+          : compare(a, b, sort, ratesByAgent),
       ),
-    [rows, sort, shareByAgent],
+    [rows, sort, shareByAgent, ratesByAgent],
   );
 
   return (
@@ -146,8 +210,25 @@ export const AgentTable = ({
                     )}
                   </div>
                 </td>
+                {/* ARCHIVED BEATS THE STARS. This table used to print
+                    ★★☆☆☆ for a desk the cards were calling PARKED — the same
+                    row, one toggle apart — because it rolled its own stars()
+                    and never read work_status. One view now, and the standing
+                    is read from one place. */}
                 <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: "var(--color-amber-hi)" }}>
-                  {stars(agent.rating)}
+                  {standingOf(agent) === "parked" ? (
+                    <span
+                      className="text-[11.5px] font-semibold"
+                      style={{ color: "var(--color-status-negative-text)" }}
+                    >
+                      ARCHIVED
+                      {agent.rating != null && (
+                        <span className="text-faint font-normal"> · was {agent.rating}</span>
+                      )}
+                    </span>
+                  ) : (
+                    stars(agent.rating)
+                  )}
                 </td>
                 <td className="text-right py-2 px-2">
                   <span
@@ -157,11 +238,11 @@ export const AgentTable = ({
                     {tier.label}
                   </span>
                 </td>
-                <td
-                  className="text-right py-2 px-2 tabular-nums"
-                  style={{ color: card.medianRpm != null && card.tier === "call-first" ? "var(--color-status-positive-text)" : undefined }}
-                >
-                  {card.medianRpm != null ? fmtRpm(card.medianRpm) : "—"}
+                <td className="text-right py-2 px-2">
+                  <RateCell r={ratesByAgent?.get(agent.agent_id)?.standard} />
+                </td>
+                <td className="text-right py-2 px-2">
+                  <RateCell r={ratesByAgent?.get(agent.agent_id)?.specialized} />
                 </td>
                 <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: DWELL_TONE[dwell.tone] }}>
                   {dwell.label}
@@ -176,8 +257,28 @@ export const AgentTable = ({
                   {shareOf(agent.agent_id) > 0 ? `${Math.round(shareOf(agent.agent_id) * 100)}%` : "—"}
                 </td>
                 <td className="text-right py-2 px-2 whitespace-nowrap">
-                  {trend ? <span style={{ color: trend.fg }}>{trend.glyph}</span> : <span className="text-dim">·</span>}{" "}
-                  <span className="text-dim text-xs">{shortDate(card.lastWorked)}</span>
+                  {/* A desk worked ONCE that cleared its own book's rung.
+                      Forty-five of fifty-six desks have a single load and no
+                      tier can rank them; this marks the ten that already
+                      showed one good number and were never called back. */}
+                  {secondCall?.has(agent.agent_id) ? (
+                    <span
+                      className="text-[11.5px] font-semibold"
+                      style={{ color: "var(--color-cat2)" }}
+                      title={`One load at ${fmtRpm(secondCall.get(agent.agent_id)!.rpm)} — above its ${fmtRpm(secondCall.get(agent.agent_id)!.minimum)} rung`}
+                    >
+                      second call
+                    </span>
+                  ) : (
+                    <>
+                      {trend ? (
+                        <span style={{ color: trend.fg }}>{trend.glyph}</span>
+                      ) : (
+                        <span className="text-dim">·</span>
+                      )}{" "}
+                      <span className="text-dim text-xs">{shortDate(card.lastWorked)}</span>
+                    </>
+                  )}
                 </td>
               </tr>
             );

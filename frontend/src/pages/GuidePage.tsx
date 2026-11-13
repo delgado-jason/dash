@@ -823,6 +823,54 @@ const GuidePage = () => {
               Agents page.
             </p>
 
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Two rates per desk, not one
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              A desk posts standard freight and it posts oversize, those are held
+              to <span className="text-light">different rungs</span>, and the same
+              desk is often good at one and dreadful at the other — one of yours
+              pays $6.05 on standard and $2.46 on oversize; another is the exact
+              reverse. Pooled into a single $/mi both halves vanish into a middling
+              number and the list ranks two opposites the same. So the list and the
+              dossier each carry a rate per book, graded against{" "}
+              <span className="text-light">its own</span> rung in the Load Scorer's
+              words. A book a desk has never sent reads "—", never $0.00. One load
+              shows the rate and the count but no verdict: one load is a fact about
+              one load.
+            </p>
+
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Archived, and worth a second call
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              <span className="text-light">Archived</span> is not a bad rating — it
+              means the record is not a working contact. Most of yours are a dead
+              number, someone who left the company, or the wrong person at the desk,
+              and none of that says how they treat you. They sit behind their own
+              chip, out of the list you scan to decide who to ring, with their rating
+              kept as whatever it was.
+              <br />
+              <br />
+              <span className="text-light">Worth a second call</span> is the other
+              end of the same thought. Most of your desks have given you exactly one
+              load — the header says how many — so there is nothing to rank them on.
+              This marks the ones whose single load{" "}
+              <span className="text-light">cleared the rung for its own freight</span>:
+              people who paid properly once and were never called back. Best first,
+              and deliberately not a ranking.
+            </p>
+
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Logging a call
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              The agent's page can record a touch — call, email or text, with the
+              outcome and what was said. It lands in the same contact log The Foreman
+              reads to work out who has gone quiet, so a call logged here is a desk
+              that stops being counted as dormant. Dated the moment you save it.
+            </p>
+
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
               Proved or claimed — where an agent's freight sits
             </p>
