@@ -33,6 +33,7 @@ import { GRADE_META } from "@/components/agents/gradeMeta";
 import { agentAllInRpm, deliveredCount } from "@/lib/relationships/agentRpm";
 import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
 import { rpmGrade } from "@/lib/metrics/playerCard";
+import { isDelivered } from "@/lib/metrics/status";
 import { GRADE_WORD } from "@/lib/metrics/leaderboard";
 import { fmtRpm, perDayTextClass } from "@/components/lanes/rpmStyle";
 import { fmtPerDay, perDayOver, perDayTone, perDayToneWord } from "@/lib/metrics/perDay";
@@ -89,6 +90,25 @@ const DETAIL_VERDICT: Record<RateVerdict, { label: string; fg: string }> = {
   solid: { label: "solid", fg: "var(--color-cat2)" },
   prime: { label: "prime", fg: "var(--color-hot)" },
 };
+// Each part of the file, headed by the question it answers. A heading that
+// names the question rather than the contents is most of what makes this read
+// as a file instead of a dashboard: "Activity" tells you what is in the box,
+// "What was said" tells you why you would read it.
+//
+// Numbered and ruled so the page is five things in an order rather than a pile
+// of panels — and so a part that collapses on a thin desk is visibly short
+// rather than silently missing.
+const Part = ({ n, title, hint }: { n: number; title: string; hint?: string }) => (
+  <div className="flex items-baseline gap-2.5 mt-7 mb-2 pt-3 border-t border-hairline">
+    <span className="font-condensed text-[11px] text-faint tabular-nums">
+      {String(n).padStart(2, "0")}
+    </span>
+    <h2 className="font-condensed font-semibold text-[15px] tracking-[.06em] uppercase text-ink">
+      {title}
+    </h2>
+    {hint && <span className="text-[12px] text-faint">{hint}</span>}
+  </div>
+);
 
 const AgentDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -283,6 +303,37 @@ const AgentDetailPage = () => {
   const perDay = perDayOver(loads ?? []).perDay;
   const perDayT = perDayTone(perDay, overallTargets.gross);
   const lastWorked = getLastLoadDate(loads);
+
+  // ── THE FILE IS AS LONG AS THE EVIDENCE ──────────────────────────────────
+  // A desk with one load or none has nothing to lay out: the dock clock wants
+  // three stamped stops it will never have, and "every load together" is a
+  // single row under a heading that promises a pattern. Both collapse to a
+  // sentence. What they pay, what was said and how to reach them still mean
+  // something on one load, so those parts stay whole.
+  //
+  // Forty-five of Jason's fifty-six desks have exactly one delivered load, so
+  // this is the shape most of the book takes, not an edge case.
+  //
+  // The count is EVERY load, not just the delivered ones. That table carries a
+  // status column, so a desk with one delivered load and two in flight has
+  // live work on it — collapsing on `lifetimeDelivered` would hide the loads
+  // currently under way, which is the opposite of the point.
+  const fileLoads = loads ?? [];
+  const thinFile = fileLoads.length <= 1;
+  const onlyLoad = thinFile ? (fileLoads[0] ?? null) : null;
+
+  // The best load they have ACTUALLY PAID OUT. Delivered only: "the one to
+  // beat" is a claim about record, and a booked load is an agreement that can
+  // still cancel. Every other number in this file is delivered-only, so this
+  // one is too.
+  const deliveredHere = fileLoads.filter(isDelivered);
+  const bestLoad = deliveredHere.reduce<(typeof deliveredHere)[number] | null>(
+    (b, l) => (!b || loadRevenue(l) > loadRevenue(b) ? l : b),
+    null,
+  );
+  // With one load on record there is no "best" and nothing to beat — saying so
+  // on four fifths of the book would be a boast about a sample of one.
+  const soleDelivered = deliveredHere.length === 1;
 
   const logs = buildTimeline(notes, ratingHistory, touches);
   const visibleLogs = activityExpanded
@@ -520,7 +571,7 @@ const AgentDetailPage = () => {
 
           Now: a row per book against its own rung, then the lifetime money
           on one line that names its own window. */}
-      <p className="ds2-label mt-5">Do they pay</p>
+      <Part n={1} title="Do they pay" hint="each book against its own rung" />
       <div className="ds2-board overflow-hidden mt-2">
         <table className="w-full font-condensed text-[13.5px] tabular-nums">
           <thead>
@@ -578,121 +629,177 @@ const AgentDetailPage = () => {
         </p>
       </div>
 
-      {(() => {
-        const best = loads.reduce<(typeof loads)[number] | null>(
-          (b, l) => (!b || loadRevenue(l) > loadRevenue(b) ? l : b),
-          null,
-        );
-        if (!best) return null;
-        return (
-          <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap bg-well border border-hairline">
-            <span className="ds2-label text-amber-hi">BEST LOAD TOGETHER</span>
-            <span className="font-condensed font-semibold text-[14.5px] text-ink tabular-nums">
-              {money(loadRevenue(best))} · {best.origin_city}, {best.origin_state} → {best.destination_city}, {best.destination_state}
-            </span>
+      <Part
+        n={2}
+        title="What they haul"
+        hint={
+          soleDelivered
+            ? "their one load, and where they say they cover"
+            : "their best load, and where they say they cover"
+        }
+      />
+
+      {bestLoad && (
+        <div className="mt-3 px-4 py-2.5 rounded-[9px] flex items-baseline gap-2.5 flex-wrap bg-well border border-hairline">
+          <span className="ds2-label text-amber-hi">
+            {soleDelivered ? "THEIR ONE LOAD" : "BEST LOAD TOGETHER"}
+          </span>
+          <Link
+            to={`/loads/${bestLoad.load_id}`}
+            className="font-condensed font-semibold text-[14.5px] text-ink tabular-nums hover:text-amber-light hover:underline"
+          >
+            {money(loadRevenue(bestLoad))} · {bestLoad.origin_city},{" "}
+            {bestLoad.origin_state} → {bestLoad.destination_city},{" "}
+            {bestLoad.destination_state}
+          </Link>
+          {!soleDelivered && (
             <span className="text-[12px] text-faint">the one to beat</span>
-          </div>
-        );
-      })()}
+          )}
+        </div>
+      )}
 
-      <Panel className="p-4 mt-4">
-        <p className="text-xs text-dim uppercase tracking-wider mb-3">
-          Time on the dock · this agent's freight
+      <Panel className="p-4">
+        <p className="text-xs text-dim uppercase tracking-wider mb-1">
+          Footprint
         </p>
-        <StopScorecard
-          score={timeScore}
-          countLabel="Loads"
-          countValue={getLoadCount(loads)}
+        <p className="text-[12.5px] text-faint mb-3 leading-snug">
+          Markets they say they cover. A dashed chip is a claim; it turns
+          solid once a load comes out of that city.
+        </p>
+        <CoverageEditor
+          agentId={agent.agent_id}
+          rows={coverage}
+          onChanged={() => setRefreshKey((p) => p + 1)}
+          emptyText="No markets captured yet"
         />
-        {det.claimable > 0 && (
-          <div className="mt-3 pt-3 border-t border-hairline flex items-baseline gap-2 flex-wrap">
-            <span
-              className="font-condensed text-lg"
-              style={{ color: "var(--color-hot)" }}
-            >
-              {det.paid} / {det.claimable}
-            </span>
-            <span className="text-xs text-dim">
-              detention loads collected vs claimable
-              {det.claimable - det.paid > 0 && (
-                <>
-                  {" · "}
-                  <span style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
-                    {det.claimable - det.paid} held you up with no detention
-                    paid
-                  </span>
-                </>
-              )}
-            </span>
-          </div>
-        )}
       </Panel>
 
-      <Panel className="p-4 mt-4">
-        <p className="text-xs text-dim uppercase tracking-wider mb-3">
-          Loads with this agent
+      <Part n={3} title="What happened" hint={thinFile ? undefined : "time on the dock, and every load together"} />
+      {thinFile ? (
+        <p className="font-condensed text-[13.5px] text-dim mt-1">
+          {onlyLoad == null ? (
+            "No loads together yet."
+          ) : isDelivered(onlyLoad) ? (
+            // The load itself is the linked chip in part 02 — repeating it
+            // here would make a one-load desk read as two.
+            "That load above is the whole file. No dock history, no pattern to read yet."
+          ) : (
+            <>
+              One load on the board with them —{" "}
+              <Link
+                to={`/loads/${onlyLoad.load_id}`}
+                className="text-amber-light hover:underline font-medium"
+              >
+                {onlyLoad.load_number}
+              </Link>
+              , {onlyLoad.load_status}. Nothing delivered yet.
+            </>
+          )}
         </p>
-        {agentLoads.length === 0 ? (
-          <p className="text-sm text-dim">No loads yet.</p>
-        ) : (
-          <div className="overflow-x-auto max-h-96 overflow-y-auto">
-            <table className="w-full text-sm min-w-[720px]">
-              <thead>
-                <tr className="text-xs text-dim text-left">
-                  <th className="font-normal pb-2 pr-4">Load #</th>
-                  <th className="font-normal pb-2 pr-4">Status</th>
-                  <th className="font-normal pb-2 pr-4">Lane</th>
-                  <th className="font-normal pb-2 pr-4">Pickup</th>
-                  <th className="font-normal pb-2 pr-4">Delivery</th>
-                  <th className="font-normal pb-2 pr-4 text-right">Days</th>
-                  <th className="font-normal pb-2 pr-4 text-right">Gross</th>
-                  <th className="font-normal pb-2">Payment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentLoads.map((load) => (
-                  <tr key={load.load_id} className="border-t ds2-cell-rule">
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      <Link
-                        to={`/loads/${load.load_id}`}
-                        className="text-amber-light hover:underline font-medium"
-                      >
-                        {load.load_number}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <StatusBadge value={load.load_status} />
-                    </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      {load.origin_city}, {load.origin_state}{" "}
-                      <span className="text-dim">→</span>{" "}
-                      {load.destination_city}, {load.destination_state}
-                    </td>
-                    <td className="py-2 pr-4 text-dim whitespace-nowrap">
-                      {fmtDate(load.pickup_date)}
-                    </td>
-                    <td className="py-2 pr-4 text-dim whitespace-nowrap">
-                      {fmtDate(load.delivery_date)}
-                    </td>
-                    <td className="py-2 pr-4 text-dim text-right tabular-nums whitespace-nowrap">
-                      {fmtDays(daysBetween(load.pickup_date, load.delivery_date))}
-                    </td>
-                    <td className="py-2 pr-4 text-right whitespace-nowrap">
-                      {money(loadRevenue(load))}
-                    </td>
-                    <td className="py-2">
-                      <StatusBadge value={load.payment_status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Panel>
+      ) : (
+        <>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <Panel className="md:col-span-2 p-4">
+        <Panel className="p-4 mt-4">
+          <p className="text-xs text-dim uppercase tracking-wider mb-3">
+            Time on the dock · this agent's freight
+          </p>
+          <StopScorecard
+            score={timeScore}
+            countLabel="Loads"
+            countValue={getLoadCount(loads)}
+          />
+          {det.claimable > 0 && (
+            <div className="mt-3 pt-3 border-t border-hairline flex items-baseline gap-2 flex-wrap">
+              <span
+                className="font-condensed text-lg"
+                style={{ color: "var(--color-hot)" }}
+              >
+                {det.paid} / {det.claimable}
+              </span>
+              <span className="text-xs text-dim">
+                detention loads collected vs claimable
+                {det.claimable - det.paid > 0 && (
+                  <>
+                    {" · "}
+                    <span style={{ color: "color-mix(in srgb, var(--color-status-negative-text) 70%, transparent)" }}>
+                      {det.claimable - det.paid} held you up with no detention
+                      paid
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+        </Panel>
+
+        <Panel className="p-4 mt-4">
+          <p className="text-xs text-dim uppercase tracking-wider mb-3">
+            Loads with this agent
+          </p>
+          {agentLoads.length === 0 ? (
+            <p className="text-sm text-dim">No loads yet.</p>
+          ) : (
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full text-sm min-w-[720px]">
+                <thead>
+                  <tr className="text-xs text-dim text-left">
+                    <th className="font-normal pb-2 pr-4">Load #</th>
+                    <th className="font-normal pb-2 pr-4">Status</th>
+                    <th className="font-normal pb-2 pr-4">Lane</th>
+                    <th className="font-normal pb-2 pr-4">Pickup</th>
+                    <th className="font-normal pb-2 pr-4">Delivery</th>
+                    <th className="font-normal pb-2 pr-4 text-right">Days</th>
+                    <th className="font-normal pb-2 pr-4 text-right">Gross</th>
+                    <th className="font-normal pb-2">Payment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agentLoads.map((load) => (
+                    <tr key={load.load_id} className="border-t ds2-cell-rule">
+                      <td className="py-2 pr-4 whitespace-nowrap">
+                        <Link
+                          to={`/loads/${load.load_id}`}
+                          className="text-amber-light hover:underline font-medium"
+                        >
+                          {load.load_number}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <StatusBadge value={load.load_status} />
+                      </td>
+                      <td className="py-2 pr-4 whitespace-nowrap">
+                        {load.origin_city}, {load.origin_state}{" "}
+                        <span className="text-dim">→</span>{" "}
+                        {load.destination_city}, {load.destination_state}
+                      </td>
+                      <td className="py-2 pr-4 text-dim whitespace-nowrap">
+                        {fmtDate(load.pickup_date)}
+                      </td>
+                      <td className="py-2 pr-4 text-dim whitespace-nowrap">
+                        {fmtDate(load.delivery_date)}
+                      </td>
+                      <td className="py-2 pr-4 text-dim text-right tabular-nums whitespace-nowrap">
+                        {fmtDays(daysBetween(load.pickup_date, load.delivery_date))}
+                      </td>
+                      <td className="py-2 pr-4 text-right whitespace-nowrap">
+                        {money(loadRevenue(load))}
+                      </td>
+                      <td className="py-2">
+                        <StatusBadge value={load.payment_status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+        </>
+      )}
+
+      <Part n={4} title="What was said" hint="your notes and the rating history" />
+
+      <Panel className="p-4 mt-1">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-dim uppercase tracking-wider">Activity</p>
             <button
@@ -870,9 +977,11 @@ const AgentDetailPage = () => {
               )}
             </div>
           )}
-        </Panel>
+      </Panel>
 
-        <Panel className="p-4">
+      <Part n={5} title="How to reach them" hint="and what they prefer" />
+
+      <Panel className="p-4 mt-1">
           <p className="text-xs text-dim uppercase tracking-wider mb-3">
             Contact
           </p>
@@ -956,24 +1065,7 @@ const AgentDetailPage = () => {
               </button>
             </>
           )}
-        </Panel>
-
-        <Panel className="md:col-span-3 p-4">
-          <p className="text-xs text-dim uppercase tracking-wider mb-1">
-            Footprint
-          </p>
-          <p className="text-[12.5px] text-faint mb-3 leading-snug">
-            Markets they say they cover. A dashed chip is a claim; it turns
-            solid once a load comes out of that city.
-          </p>
-          <CoverageEditor
-            agentId={agent.agent_id}
-            rows={coverage}
-            onChanged={() => setRefreshKey((p) => p + 1)}
-            emptyText="No markets captured yet"
-          />
-        </Panel>
-      </div>
+      </Panel>
       </div>
     </div>
   );

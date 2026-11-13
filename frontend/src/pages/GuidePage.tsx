@@ -862,6 +862,34 @@ const GuidePage = () => {
             </p>
 
             <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              The agent's page is a file, not a dashboard
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              Open a desk and you get five numbered parts, meant to be read down
+              the page rather than scanned like a grid of tiles.{" "}
+              <span className="text-light">01 do they pay</span> — their rate in
+              each book against its own rung.{" "}
+              <span className="text-light">02 what they haul</span> — their best
+              load with you, which clicks through to that load, and the markets
+              they cover. <span className="text-light">03 what happened</span> —
+              time on the dock, and every load together.{" "}
+              <span className="text-light">04 what was said</span> — your notes
+              and the rating history.{" "}
+              <span className="text-light">05 how to reach them</span>, with
+              whatever they prefer.
+              <br />
+              <br />
+              The file is as long as the evidence. A desk you have worked once
+              has no dock history and no pattern to read, so part 03 says so in
+              a sentence instead of showing a clock that needs three stamped
+              stops and a table with one row in it. Part 02 calls their load{" "}
+              <span className="text-light">their one load</span> rather than
+              their best, because with a sample of one there is nothing to beat.
+              Most of your book is that shape, so most files are short ones —
+              that is the page being honest, not the page being broken.
+            </p>
+
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
               Logging a call
             </p>
             <p className="text-sm text-muted-text mb-3">
