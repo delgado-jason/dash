@@ -21,21 +21,25 @@ import {
 
 import RatingForm from "@/components/RatingForm";
 import { StopScorecard } from "@/components/StopScorecard";
-import { Kpi } from "@/components/Kpi";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RatingLabel } from "@/components/agents/RatingLabel";
+import { agentByType, type RateVerdict } from "@/lib/metrics/agentByType";
+import {
+  createAgentContact,
+  type ContactMethod,
+  type ContactOutcome,
+} from "@/services/agentContactsService";
 import { GRADE_META } from "@/components/agents/gradeMeta";
 import { agentAllInRpm, deliveredCount } from "@/lib/relationships/agentRpm";
 import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
 import { rpmGrade } from "@/lib/metrics/playerCard";
 import { GRADE_WORD } from "@/lib/metrics/leaderboard";
-import { fmtRpm, rpmTextClass, perDayTextClass } from "@/components/lanes/rpmStyle";
+import { fmtRpm, perDayTextClass } from "@/components/lanes/rpmStyle";
 import { fmtPerDay, perDayOver, perDayTone, perDayToneWord } from "@/lib/metrics/perDay";
 
 import {
   getLoadCount,
   getGrossRevenue,
-  getAverageRPM,
   getCancelledCount,
   getLastLoadDate,
   buildTimeline,
@@ -58,7 +62,6 @@ import {
   type AgentEditDraft,
 } from "@/lib/agents/agentEdit";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { getRateLadder } from "@/lib/metrics/rateTargets";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCardsSkeleton, BlockSkeleton } from "@/components/ui/PageSkeletons";
 import { money, daysBetween } from "@/lib/format";
@@ -76,6 +79,16 @@ const fmtDate = (d?: string | null) =>
     : "—";
 
 const fmtDays = (d: number | null) => (d == null ? "—" : String(d));
+
+// The Scorer's words, so a desk's rate reads the same on the dossier as a
+// load's does when it is scored. Colour carries the meaning and nothing else.
+const DETAIL_VERDICT: Record<RateVerdict, { label: string; fg: string }> = {
+  "below-cost": { label: "below cost", fg: "var(--color-status-negative-text)" },
+  thin: { label: "thin — covers the truck", fg: "var(--color-amber-hi)" },
+  profitable: { label: "profitable", fg: "var(--color-cat2)" },
+  solid: { label: "solid", fg: "var(--color-cat2)" },
+  prime: { label: "prime", fg: "var(--color-hot)" },
+};
 
 const AgentDetailPage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -172,6 +185,68 @@ const AgentDetailPage = () => {
       .catch(() => {});
   }, [agentId, refreshKey]);
 
+  // ABOVE THE GUARDS ON PURPOSE. Hooks must run in the same order on every
+  // render, and an early return between them changes it — eslint's
+  // rules-of-hooks caught this when they sat below.
+  // A rate per book, each against its own rung. The old single figure
+  // blended a desk's standard and oversize freight into one number that
+  // described neither.
+  const byType = useMemo(
+    () =>
+      agentByType(loads ?? [], {
+        standard: overallTargets.bookingLadder,
+        specialized: overallTargets.specLadder,
+      }),
+    [loads, overallTargets.bookingLadder, overallTargets.specLadder],
+  );
+
+  // LOG A CALL, on the page where you are already looking at the person.
+  //
+  // The only three places in dash that could write a contact were inside the
+  // Relationships feature — AgentSheet, CallScreen and TodayView — and the
+  // Foreman READS that log to work out who has gone quiet. 137 contacts are
+  // in it, the most recent a month ago. Deleting those pages without moving
+  // the write path first would leave the Foreman reading a log nobody could
+  // add to, and "165d quiet" would quietly become "quiet since the day the
+  // page that recorded calls was deleted" — with nothing saying so.
+  //
+  // Relationships is NOT touched in this build. This is here so that when it
+  // goes, nothing has to be built in a hurry.
+  const [callOpen, setCallOpen] = useState(false);
+  const [callMethod, setCallMethod] = useState<ContactMethod>("call");
+  const [callOutcome, setCallOutcome] = useState<ContactOutcome>("reached");
+  const [callNote, setCallNote] = useState("");
+  const [callSaving, setCallSaving] = useState(false);
+  const [callErr, setCallErr] = useState<string | null>(null);
+
+  const logCall = async () => {
+    if (!agent) return;
+    setCallErr(null);
+    setCallSaving(true);
+    try {
+      await createAgentContact({
+        agent_id: agent.agent_id,
+        direction: "outbound",
+        method: callMethod,
+        // `check_in` is the honest default for a call made from here: it says
+        // a touch happened without claiming a reason nobody typed.
+        type: "check_in",
+        outcome: callMethod === "call" ? callOutcome : null,
+        note: callNote.trim() || null,
+      });
+      setCallNote("");
+      setCallOpen(false);
+      setRefreshKey((k) => k + 1);
+    } catch (e) {
+      setCallErr(
+        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+          "Couldn't log that — try again.",
+      );
+    } finally {
+      setCallSaving(false);
+    }
+  };
+
   if (isLoading)
     return (
       <div className="p-6 text-ink min-h-screen font-body">
@@ -202,13 +277,13 @@ const AgentDetailPage = () => {
       ? ratingHistory.reduce((m, h) => (h.changed_at > m ? h.changed_at : m), ratingHistory[0].changed_at)
       : null;
   const grossRev = getGrossRevenue(loads);
-  const rpm = getAverageRPM(loads);
   // What their freight pays per DAY of the truck — weighted Σgross ÷ Σdays
   // over the same delivered loads the RPM stat reads (perDayOver keeps only
   // the delivered, dated ones). Graded against the ladder's daily target.
   const perDay = perDayOver(loads ?? []).perDay;
   const perDayT = perDayTone(perDay, overallTargets.gross);
   const lastWorked = getLastLoadDate(loads);
+
   const logs = buildTimeline(notes, ratingHistory, touches);
   const visibleLogs = activityExpanded
     ? logs
@@ -394,6 +469,13 @@ const AgentDetailPage = () => {
                       </span>
                       {" · "}
                       {fmtRpm(allIn.rpm)}/mi all-in{allIn.partial ? "*" : ""} · 12 mo · {allIn.loads} load{allIn.loads === 1 ? "" : "s"}
+                      {/* The window is named here and the lifetime figures
+                          name theirs, because "Loads 11" used to sit inches
+                          from "12 mo · 4 loads" with nothing saying which
+                          was which. */}
+                      {lastWorked && (
+                        <span className="text-faint"> · last worked {fmtDate(lastWorked)}</span>
+                      )}
                     </>
                   ) : !established ? (
                     `not yet graded · ${lifetimeDelivered} of ${ESTABLISHED_AT} delivered loads`
@@ -423,35 +505,77 @@ const AgentDetailPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        <Kpi label="Loads" value={String(getLoadCount(loads))} />
-        <Kpi
-          label="Gross revenue"
-          value={grossRev == null ? "—" : money(grossRev)}
-        />
-        <Kpi
-          label="Avg net $/loaded mi"
-          value={fmtRpm(rpm)}
-          valueClass={rpmTextClass(rpm, getRateLadder(overallTargets.basis.breakEvenRpm, overallTargets.tiers))}
-          sub={
-            rpm != null && overallTargets.rollingRpm != null
-              ? `${rpm >= overallTargets.rollingRpm ? "▲" : "▼"} ${fmtRpm(Math.abs(rpm - overallTargets.rollingRpm))} vs your overall`
-              : undefined
-          }
-        />
-        <Kpi
-          label="$ / day"
-          value={fmtPerDay(perDay)}
-          // No ladder yet (no P&L) is no verdict — the figure still prints,
-          // in the strip's own colour, rather than wearing a fake grade.
-          valueClass={perDayT ? perDayTextClass(perDayT) : undefined}
-          sub={perDayToneWord(perDayT) ?? undefined}
-        />
-        <Kpi label="Cancelled" value={String(getCancelledCount(loads))} />
-        <Kpi
-          label="Last worked"
-          value={lastWorked ? fmtDate(lastWorked) : "Never"}
-        />
+      {/* ── DO THEY PAY ──────────────────────────────────────────────────
+          The six-tile KPI grid became a section with an argument. Three
+          things were wrong with the grid and all three are structural rather
+          than cosmetic:
+
+          · it printed ONE blended rate, when a desk posts standard freight
+            and oversize and is often good at one and dreadful at the other;
+          · the tile was labelled "Avg NET $/loaded mi" and `getAverageRPM`
+            is GROSS over loaded miles — its own comment says so, and the
+            money audit ruled RPM is gross;
+          · "Loads 11" sat inches from a header reading "12 mo · 4 loads",
+            two true counts over different windows with nothing saying which.
+
+          Now: a row per book against its own rung, then the lifetime money
+          on one line that names its own window. */}
+      <p className="ds2-label mt-5">Do they pay</p>
+      <div className="ds2-board overflow-hidden mt-2">
+        <table className="w-full font-condensed text-[13.5px] tabular-nums">
+          <thead>
+            <tr className="text-faint text-[11px] tracking-[.1em] uppercase">
+              <th className="text-left font-semibold px-4 pt-2.5 pb-1.5">Freight</th>
+              <th className="text-right font-semibold px-3 pt-2.5 pb-1.5">Loads</th>
+              <th className="text-right font-semibold px-3 pt-2.5 pb-1.5">Their rate</th>
+              <th className="text-right font-semibold px-3 pt-2.5 pb-1.5">Your rung</th>
+              <th className="text-left font-semibold px-4 pt-2.5 pb-1.5">Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(["standard", "specialized"] as const).map((book) => {
+              const r = byType[book];
+              const v = r.verdict ? DETAIL_VERDICT[r.verdict] : null;
+              return (
+                <tr key={book} className="border-t ds2-cell-rule">
+                  <td className="px-4 py-2 text-dim capitalize">{book}</td>
+                  <td className="px-3 py-2 text-right text-dim">{r.loads || "—"}</td>
+                  <td className="px-3 py-2 text-right" style={{ color: v?.fg }}>
+                    {r.rpm == null ? <span className="text-faint">—</span> : fmtRpm(r.rpm)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-faint">
+                    {r.minimum == null ? "—" : `${fmtRpm(r.minimum)} min`}
+                  </td>
+                  <td className="px-4 py-2" style={{ color: v?.fg }}>
+                    {v ? (
+                      v.label
+                    ) : r.loads === 1 ? (
+                      /* One load is a fact about one load. */
+                      <span className="text-faint">one load — no verdict yet</span>
+                    ) : (
+                      <span className="text-faint">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="px-4 py-2.5 border-t ds2-cell-rule font-condensed text-[13px] text-dim">
+          <b className="text-ink">{getLoadCount(loads)}</b> delivered loads ·{" "}
+          <b className="text-ink">{grossRev == null ? "—" : money(grossRev)}</b> gross ·{" "}
+          <b className="text-ink">{fmtPerDay(perDay)}</b> a day of truck
+          {perDayToneWord(perDayT) ? (
+            <span className={perDayT ? perDayTextClass(perDayT) : undefined}>
+              {" "}
+              ({perDayToneWord(perDayT)})
+            </span>
+          ) : null}
+          {getCancelledCount(loads) > 0 && (
+            <> · <b className="text-status-negative-text">{getCancelledCount(loads)} cancelled</b></>
+          )}
+          <span className="text-faint"> · lifetime, not the 12 months the grade above reads</span>
+        </p>
       </div>
 
       {(() => {
@@ -569,9 +693,66 @@ const AgentDetailPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <Panel className="md:col-span-2 p-4">
-          <p className="text-xs text-dim uppercase tracking-wider mb-3">
-            Activity
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-dim uppercase tracking-wider">Activity</p>
+            <button
+              type="button"
+              onClick={() => setCallOpen((v) => !v)}
+              className="text-[12.5px] font-condensed font-semibold px-2.5 py-1 rounded-md border border-hairline text-dim hover:text-ink"
+            >
+              {callOpen ? "Cancel" : "Log a call"}
+            </button>
+          </div>
+          {callOpen && (
+            <div className="bg-well rounded p-3 mb-4 border border-hairline">
+              <div className="flex flex-wrap gap-2 items-center">
+                <select
+                  value={callMethod}
+                  onChange={(e) => setCallMethod(e.target.value as ContactMethod)}
+                  className="bg-steel rounded px-2 py-1.5 text-sm text-light"
+                >
+                  <option value="call">Call</option>
+                  <option value="email">Email</option>
+                  <option value="text">Text</option>
+                </select>
+                {/* An outcome only means something for a call — an email has
+                    no voicemail. */}
+                {callMethod === "call" && (
+                  <select
+                    value={callOutcome}
+                    onChange={(e) => setCallOutcome(e.target.value as ContactOutcome)}
+                    className="bg-steel rounded px-2 py-1.5 text-sm text-light"
+                  >
+                    <option value="reached">Reached them</option>
+                    <option value="voicemail">Voicemail</option>
+                    <option value="no_answer">No answer</option>
+                    <option value="bad_number">Bad number</option>
+                  </select>
+                )}
+              </div>
+              <textarea
+                className="bg-steel rounded px-2 py-1.5 text-sm w-full text-light placeholder:text-dim mt-2"
+                placeholder="What was said? (optional)"
+                rows={2}
+                value={callNote}
+                onChange={(e) => setCallNote(e.target.value)}
+              />
+              {callErr && <p className="text-destructive text-xs mt-1.5">{callErr}</p>}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={logCall}
+                  disabled={callSaving}
+                  className="text-[13px] font-condensed font-semibold px-3 py-1.5 rounded-md bg-amber text-on-amber disabled:opacity-60"
+                >
+                  {callSaving ? "Logging…" : "Log it"}
+                </button>
+                <span className="text-[11.5px] text-faint">
+                  Dated now. The Foreman reads this to work out who has gone quiet.
+                </span>
+              </div>
+            </div>
+          )}
           <div className="bg-well rounded p-3 mb-4">
             <textarea
               className="bg-well rounded px-2 py-1.5 text-sm w-full text-ink placeholder:text-dim"
