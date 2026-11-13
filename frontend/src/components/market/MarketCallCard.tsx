@@ -6,7 +6,7 @@ const ACTION_COLOR: Record<TierCall["action"], string> = {
   raise: "var(--color-cat2)",
   hold: "var(--color-amber-hi)",
   protect: "var(--color-amber-hi)",
-  "under-floor": "var(--color-amber)", // caution — below break-even, but not a loss
+  "below-breakeven": "var(--color-amber)", // caution — below break-even, but not a loss
   "cut-costs": "var(--color-status-negative-text)",
   "no-call": "var(--color-dim)",
 };
@@ -14,13 +14,13 @@ const ACTION_COLOR: Record<TierCall["action"], string> = {
 const RUNG_COLOR: Record<string, string> = {
   strong: "var(--color-cat2)",
   target: "var(--color-amber-hi)",
-  floor: "var(--color-dim)",
+  minimum: "var(--color-dim)",
   breakEven: "var(--color-status-negative-text)",
   you: "var(--color-amber-hi)",
 };
 
 const RUNG_TAG: Record<string, string> = {
-  floor: "don't chase below",
+  minimum: "don't chase below",
   breakEven: "lose money below",
 };
 

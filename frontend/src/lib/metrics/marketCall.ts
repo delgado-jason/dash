@@ -20,10 +20,13 @@ export const PCTILE_EASY = 0.45;
 export const PCTILE_HARD = 0.7;
 
 export type TierKey = "standard" | "specialized";
-export type CallAction = "raise" | "hold" | "protect" | "under-floor" | "cut-costs" | "no-call";
+export type CallAction = "raise" | "hold" | "protect" | "below-breakeven" | "cut-costs" | "no-call";
 
 export interface Rung {
-  key: "prime" | "target" | "floor" | "breakEven";
+  // The ladder's own words since 2026-11-12. This rung was called "floor"
+  // here and "minimum" everywhere else in dash — one number, two names, on
+  // pages that link to each other.
+  key: "prime" | "target" | "minimum" | "breakEven";
   label: string;
   rate: number; // gross $/driven mile
   deltaPct: number; // signed % move from your median to reach this rung
@@ -40,13 +43,13 @@ export interface TierCall {
   key: TierKey;
   label: string;
   yourRate: number | null; // your recent median (gross $/driven mile)
-  rungs: Rung[]; // prime → target → floor → break-even (high to low)
+  rungs: Rung[]; // prime → target → minimum → break-even (high to low)
   action: CallAction;
   headline: string;
   why: string;
   movePct: number | null; // the recommended move (signed); null when there isn't one
   recommendedRate: number | null;
-  underwaterPerMile: number | null; // action "cut-costs" / "under-floor": $/mi below break-even
+  underwaterPerMile: number | null; // action "cut-costs" / "below-breakeven": $/mi below break-even
   evidence: TierEvidence;
 }
 
@@ -85,7 +88,7 @@ export const buildTierCall = (
   const n = rates.length;
   const yourRate = median(rates);
   const be = ladder.breakEven;
-  const floor = ladder.minimum;
+  const minimum = ladder.minimum;
   const target = ladder.target;
   const prime = ladder.prime;
   const lower = label.toLowerCase();
@@ -97,7 +100,7 @@ export const buildTierCall = (
     key, label, yourRate, rungs: [], action: "no-call", headline: "No call", why: "", movePct: null,
     recommendedRate: null, underwaterPerMile: null, evidence,
   };
-  if (be == null || floor == null || target == null || prime == null) {
+  if (be == null || minimum == null || target == null || prime == null) {
     return {
       ...base,
       headline: "No cost basis yet",
@@ -109,7 +112,7 @@ export const buildTierCall = (
   const rungs: Rung[] = yourRate == null ? [] : [
     { key: "prime", label: "Prime", rate: prime, deltaPct: pctMove(yourRate, prime) },
     { key: "target", label: "Target", rate: target, deltaPct: pctMove(yourRate, target) },
-    { key: "floor", label: "Floor", rate: floor, deltaPct: pctMove(yourRate, floor) },
+    { key: "minimum", label: "Minimum", rate: minimum, deltaPct: pctMove(yourRate, minimum) },
     { key: "breakEven", label: "Break-even", rate: be, deltaPct: pctMove(yourRate, be) },
   ];
   const withRungs = { ...base, rungs };
@@ -140,18 +143,18 @@ export const buildTierCall = (
       };
     }
     return {
-      ...withRungs, action: "under-floor", headline: "Below break-even — don't chase lower",
-      why: `Your ${lower} median (${usd(yourRate)}, ${loadsWord}) runs under break-even (${usd(be)}) — ${below} of them did. These loads lean on your richer freight; they aren't losing you money. Lift this tier toward your floor (${usd(floor)}) or fill the miles with better freight.`,
-      movePct: pctMove(yourRate, floor), recommendedRate: floor, underwaterPerMile: be - yourRate,
+      ...withRungs, action: "below-breakeven", headline: "Below break-even — don't chase lower",
+      why: `Your ${lower} median (${usd(yourRate)}, ${loadsWord}) runs under break-even (${usd(be)}) — ${below} of them did. These loads lean on your richer freight; they aren't losing you money. Lift this tier toward your minimum (${usd(minimum)}) or fill the miles with better freight.`,
+      movePct: pctMove(yourRate, minimum), recommendedRate: minimum, underwaterPerMile: be - yourRate,
     };
   }
 
-  // Between break-even and your floor: hold the line, whatever the index says.
-  if (yourRate < floor) {
+  // Between break-even and your minimum: hold the line, whatever the index says.
+  if (yourRate < minimum) {
     return {
-      ...withRungs, action: "protect", headline: `Hold the line at your floor (${usd(floor)})`,
-      why: `Your median (${usd(yourRate)}, ${loadsWord}) sits between break-even (${usd(be)}) and your floor — ${absPct(pctMove(yourRate, be))} above break-even. Book to the floor; ${idx}.`,
-      recommendedRate: floor,
+      ...withRungs, action: "protect", headline: `Hold the line at your minimum (${usd(minimum)})`,
+      why: `Your median (${usd(yourRate)}, ${loadsWord}) sits between break-even (${usd(be)}) and your minimum — ${absPct(pctMove(yourRate, be))} above break-even. Book to the minimum; ${idx}.`,
+      recommendedRate: minimum,
     };
   }
 
@@ -184,15 +187,15 @@ export const buildTierCall = (
       };
     }
     if (dir === "softening") {
-      const cushion = pctMove(yourRate, floor); // negative
+      const cushion = pctMove(yourRate, minimum); // negative
       return {
-        ...withRungs, action: "protect", headline: `Hold — ${absPct(cushion)} cushion to your floor`,
-        why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}. Hold as high as you can; you've got ${absPct(cushion)} down to your floor (${usd(floor)}) before the edge — never below it.`,
+        ...withRungs, action: "protect", headline: `Hold — ${absPct(cushion)} cushion to your minimum`,
+        why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}. Hold as high as you can; you've got ${absPct(cushion)} down to your minimum (${usd(minimum)}) before the edge — never below it.`,
       };
     }
     return {
-      ...withRungs, action: "hold", headline: "Hold — between floor and target",
-      why: `Your median (${usd(yourRate)}, ${loadsWord}) sits between your floor (${usd(floor)}) and target (${usd(target)}); ${idx}. Quote to target where the load allows; the engine moves the rung only on a held signal.`,
+      ...withRungs, action: "hold", headline: "Hold — between minimum and target",
+      why: `Your median (${usd(yourRate)}, ${loadsWord}) sits between your minimum (${usd(minimum)}) and target (${usd(target)}); ${idx}. Quote to target where the load allows; the engine moves the rung only on a held signal.`,
     };
   }
 
@@ -215,7 +218,7 @@ export const buildTierCall = (
   if (dir === "softening") {
     return {
       ...withRungs, action: "hold", headline: "Hold — above target",
-      why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}, but you're at or above target (${usd(yourRate)}, ${loadsWord}). Don't chase it down; your floor is ${usd(floor)}.`,
+      why: `${idx.charAt(0).toUpperCase()}${idx.slice(1)}, but you're at or above target (${usd(yourRate)}, ${loadsWord}). Don't chase it down; your minimum is ${usd(minimum)}.`,
     };
   }
   return {

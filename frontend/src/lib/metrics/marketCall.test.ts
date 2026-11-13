@@ -39,7 +39,7 @@ describe("the call — one move per tier", () => {
 
   it("below break-even beats every direction: subsidized freight when the business is fine, cut costs when it's under water", () => {
     const sub = call(five(4.1), HELD);
-    expect(sub.action).toBe("under-floor");
+    expect(sub.action).toBe("below-breakeven");
     expect(sub.headline).toMatch(/Below break-even/);
     expect(sub.evidence.below).toBe(5);
     expect(sub.recommendedRate).toBe(4.75);
@@ -48,15 +48,15 @@ describe("the call — one move per tier", () => {
     expect(cut).toMatchObject({ action: "cut-costs", headline: "Cut costs" });
   });
 
-  it("between break-even and the floor: hold the line at the floor, whatever the index says", () => {
+  it("between break-even and the minimum: hold the line at the minimum, whatever the index says", () => {
     const c = call(five(4.5), HELD);
     expect(c.action).toBe("protect");
-    expect(c.headline).toBe("Hold the line at your floor ($4.75)");
+    expect(c.headline).toBe("Hold the line at your minimum ($4.75)");
     expect(c.why).toMatch(/4% above break-even/);
     expect(c.recommendedRate).toBe(4.75);
   });
 
-  it("between floor and target: a held firming signal raises ONE step — to target, never to prime", () => {
+  it("between minimum and target: a held firming signal raises ONE step — to target, never to prime", () => {
     const c = call(five(5), HELD);
     expect(c.action).toBe("raise");
     expect(c.headline).toBe("Raise +12% to your target");
@@ -66,15 +66,15 @@ describe("the call — one move per tier", () => {
     expect(c.why).toMatch(/not to prime/);
   });
 
-  it("between floor and target: a held softening signal protects, with the cushion to the floor", () => {
+  it("between minimum and target: a held softening signal protects, with the cushion to the minimum", () => {
     const c = call(five(5), SOFT);
     expect(c.action).toBe("protect");
-    expect(c.headline).toBe("Hold — 5% cushion to your floor");
+    expect(c.headline).toBe("Hold — 5% cushion to your minimum");
     expect(c.why).toMatch(/softening for 3 prints running/);
   });
 
   it("one print is not a call; a fuel move is named; a steady index holds", () => {
-    expect(call(five(5), ONE)).toMatchObject({ action: "hold", headline: "Hold — between floor and target" });
+    expect(call(five(5), ONE)).toMatchObject({ action: "hold", headline: "Hold — between minimum and target" });
     expect(call(five(5), ONE).why).toMatch(/not yet a call/);
     const fuel = call(five(5), FUEL);
     expect(fuel.action).toBe("hold");
@@ -119,7 +119,12 @@ describe("the call — one move per tier", () => {
 });
 
 describe("buildMarketCall — each tier on its own freight", () => {
-  const pt = (date: string, rate: number, bucket: RatePoint["bucket"] = "standard"): RatePoint => ({ date, rate, bucket, loadNumber: null });
+  // driven/gross/loaded are kept consistent with the rate so a fixture can
+  // never imply a $/mile its own dollars disagree with.
+  const pt = (date: string, rate: number, bucket: RatePoint["bucket"] = "standard"): RatePoint => ({
+    date, rate, bucket, loadNumber: null,
+    driven: 1000, gross: rate * 1000, loaded: 800,
+  });
   const now = new Date("2026-10-01T12:00:00Z");
   it("standard loads judge the Standard tier; specialized and hazmat judge the Specialized tier; old loads stay out", () => {
     const pts = [

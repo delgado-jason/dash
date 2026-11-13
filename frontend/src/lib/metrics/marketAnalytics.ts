@@ -16,6 +16,12 @@ export interface RatePoint {
   rate: number; // gross $ per DRIVEN mile (loaded + deadhead)
   bucket: RateBucket;
   loadNumber: string | null;
+  // The two halves the rate was made from. Carried so a reader can price the
+  // gap to a rung in DOLLARS without re-deriving driven miles from the load —
+  // which is where the two definitions of "driven" would drift apart.
+  driven: number;
+  gross: number;
+  loaded: number; // for the deadhead share; 0 when a load logs none
 }
 
 // Driven miles = the odometer window when present (truth), else the planning
@@ -47,6 +53,9 @@ export const ratePoints = (loads: Load[]): RatePoint[] =>
         rate,
         bucket: bucketOf(l),
         loadNumber: l.load_number ?? null,
+        driven: d,
+        gross: loadGross(l),
+        loaded: Number(l.loaded_miles || 0),
       };
     })
     .filter((p): p is RatePoint => p !== null)
