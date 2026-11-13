@@ -197,3 +197,86 @@ export const deadheadLever = (
     gainPerMile: rateAtTarget == null ? null : rateAtTarget - rateNow,
   };
 };
+
+// ──────────────────────────────────────────────────────────────────────────
+// THE BAROMETER, IN ONE UNIT
+//
+// The FRED series is an INDEX — a number whose only meaning is relative to its
+// own base year. The other line is dollars per driven mile. Drawn on two axes
+// the eye reads a crossing or a gap that means nothing at all, and the only
+// honest read is "do the two wiggles have the same shape", which is a lot to
+// ask of a chart. Jason's words: "it's a little tough to read because it's
+// measuring two different metrics against each other."
+//
+// Rebasing fixes it and turns a shape into a number. Express the index as the
+// path YOUR OWN RATE would have taken had it moved with the industry:
+//
+//     line(m) = your base $/mi × ( index[m] ÷ index[base] )
+//
+// Both lines are then $/driven mile on one axis, from the same starting point,
+// and the distance between them is a sentence: "I'm 47¢ a mile below where the
+// index has gone since March."
+//
+// WHAT IT IS NOT, and the caption must say so: not a market price for his
+// freight. There is no oversize spot feed — that search was validated and
+// killed twice. It is his own rate moved by the industry's percentage change,
+// and the moment it reads as an external benchmark it becomes a number he
+// learns to ignore.
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface BaroMonth {
+  month: string;
+  median: number | null;
+  ppi: number | null;
+}
+
+export interface RebasedBaro {
+  months: Array<{ month: string; median: number | null; indexPath: number | null }>;
+  /** the months averaged to anchor both lines. */
+  baseMonths: string[];
+  baseRate: number;
+  baseIndex: number;
+  /** latest month where both lines have a value — where the gap is read. */
+  latest: { month: string; median: number; indexPath: number; gap: number } | null;
+}
+
+/**
+ * Both series as $/driven mile, anchored on the first `baseN` months that have
+ * BOTH a rate and an index.
+ *
+ * The base is an average, not a single print: anchor on one noisy month and
+ * the whole line shifts, which would make the gap an artefact of where the
+ * window happens to start.
+ *
+ * Null when there is no overlap to anchor on — a rebase needs both series.
+ */
+export const rebaseBarometer = (rows: BaroMonth[], baseN = 3): RebasedBaro | null => {
+  const sorted = [...rows].sort((a, b) => (a.month < b.month ? -1 : 1));
+  const both = sorted.filter(
+    (r) => r.median != null && r.median > 0 && r.ppi != null && r.ppi > 0,
+  );
+  if (both.length === 0) return null;
+  const base = both.slice(0, Math.max(1, Math.min(baseN, both.length)));
+  const baseRate = base.reduce((s, r) => s + r.median!, 0) / base.length;
+  const baseIndex = base.reduce((s, r) => s + r.ppi!, 0) / base.length;
+  if (!(baseRate > 0) || !(baseIndex > 0)) return null;
+
+  const months = sorted.map((r) => ({
+    month: r.month,
+    median: r.median,
+    indexPath: r.ppi != null && r.ppi > 0 ? baseRate * (r.ppi / baseIndex) : null,
+  }));
+  // The gap is only meaningful where BOTH lines exist.
+  let latest: RebasedBaro["latest"] = null;
+  for (const m of months) {
+    if (m.median != null && m.indexPath != null) {
+      latest = {
+        month: m.month,
+        median: m.median,
+        indexPath: m.indexPath,
+        gap: m.median - m.indexPath,
+      };
+    }
+  }
+  return { months, baseMonths: base.map((b) => b.month), baseRate, baseIndex, latest };
+};

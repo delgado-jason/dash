@@ -5,6 +5,7 @@ import {
   carryingTheRate,
   deadheadLever,
   CARRIER_MIN_LOADS,
+  rebaseBarometer,
   RUNG_ORDER,
   type BookLoad,
 } from "./bookStanding";
@@ -187,5 +188,62 @@ describe("deadheadLever", () => {
     expect(deadheadLever([{ driven: 0, loaded: 0, gross: 0 }], 0.2)).toBeNull();
     expect(deadheadLever(REAL, 0)).toBeNull();
     expect(deadheadLever(REAL, 1)).toBeNull();
+  });
+});
+
+describe("rebaseBarometer — both lines in dollars", () => {
+  const row = (month: string, median: number | null, ppi: number | null) => ({ month, median, ppi });
+
+  it("ANCHORS ON AN AVERAGE, not a single print", () => {
+    // A noisy first month would otherwise shift the whole line, making the gap
+    // an artefact of where the window starts.
+    const r = rebaseBarometer([
+      row("2026-01", 4.0, 100), row("2026-02", 5.0, 110), row("2026-03", 6.0, 120),
+      row("2026-04", 5.0, 130),
+    ])!;
+    expect(r.baseMonths).toEqual(["2026-01", "2026-02", "2026-03"]);
+    expect(r.baseRate).toBeCloseTo(5.0, 6);
+    expect(r.baseIndex).toBeCloseTo(110, 6);
+    // April: the index is 130/110 above base, so the path is 5.00 x that
+    expect(r.months.at(-1)!.indexPath).toBeCloseTo(5 * (130 / 110), 6);
+  });
+
+  it("both lines start from the same point, so the gap is readable from zero", () => {
+    const r = rebaseBarometer([row("2026-01", 4, 100), row("2026-02", 4, 100)], 2)!;
+    for (const m of r.months) expect(m.indexPath).toBeCloseTo(m.median!, 6);
+    expect(r.latest!.gap).toBeCloseTo(0, 6);
+  });
+
+  it("A RATE THAT LAGGED THE INDEX SHOWS A NEGATIVE GAP, in dollars", () => {
+    // index +20%, his rate flat — he is behind by 20% of the base rate.
+    const r = rebaseBarometer([
+      row("2026-01", 5, 100), row("2026-02", 5, 100), row("2026-03", 5, 100),
+      row("2026-04", 5, 120),
+    ])!;
+    expect(r.latest!.gap).toBeCloseTo(-1.0, 6);
+    expect(r.latest!.indexPath).toBeCloseTo(6, 6);
+  });
+
+  it("the index line is drawn wherever the index exists, even with no rate that month", () => {
+    const r = rebaseBarometer([
+      row("2026-01", 5, 100), row("2026-02", null, 110), row("2026-03", 5.5, 120),
+    ], 1)!;
+    expect(r.months[1].median).toBeNull();
+    expect(r.months[1].indexPath).toBeCloseTo(5 * 1.1, 6);
+    // ...but the GAP only reads where both exist
+    expect(r.latest!.month).toBe("2026-03");
+  });
+
+  it("sorts, so a caller cannot anchor on the wrong end by passing rows out of order", () => {
+    const r = rebaseBarometer([row("2026-05", 9, 200), row("2026-01", 4, 100)], 1)!;
+    expect(r.baseMonths).toEqual(["2026-01"]);
+    expect(r.baseRate).toBe(4);
+  });
+
+  it("NO OVERLAP, NO REBASE — null rather than a line anchored on nothing", () => {
+    expect(rebaseBarometer([])).toBeNull();
+    expect(rebaseBarometer([row("2026-01", 5, null), row("2026-02", null, 100)])).toBeNull();
+    expect(rebaseBarometer([row("2026-01", 0, 100)])).toBeNull();
+    expect(rebaseBarometer([row("2026-01", 5, 0)])).toBeNull();
   });
 });

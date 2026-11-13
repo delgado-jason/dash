@@ -37,6 +37,7 @@ import {
   carryingTheRate,
   deadheadLever,
   RUNG_LABEL,
+  rebaseBarometer,
 } from "@/lib/metrics/bookStanding";
 import { VERDICT_META, VERDICT_ORDER } from "@/lib/metrics/loadScore";
 
@@ -140,13 +141,23 @@ const RateScatter = ({
   );
 };
 
-// ---- Barometer: your monthly median rate vs break-even, with the FRED macro
-// index overlaid on a second axis (units differ — $/mile vs index points — so
-// the read is "do the two trends move together", not absolute levels). ----
+// ---- Barometer: your monthly median against the index — BOTH IN DOLLARS.
+//
+// It used to draw the FRED index on a second axis in points. An index is a
+// number whose only meaning is relative to its own base year, so points beside
+// dollars let the eye read a crossing or a gap that means nothing at all, and
+// the only honest read was "do the two wiggles have the same shape". Jason:
+// "it's a little tough to read because it's measuring two different metrics."
+//
+// Rebased through his own rate (see rebaseBarometer), the index becomes the
+// path HIS rate would have taken had it moved with the industry — one axis,
+// one unit, and the distance between the lines is a number he can say out
+// loud. It is NOT a market price for his freight; the caption says so, because
+// the moment it reads as an external benchmark it stops being true.
 interface BaroPoint {
   month: string;
   median: number | null;
-  ppi: number | null;
+  indexPath: number | null;
 }
 const Barometer = ({
   data,
@@ -158,7 +169,7 @@ const Barometer = ({
   hasPpi: boolean;
 }) => (
   <ResponsiveContainer width="100%" height={240}>
-    <LineChart data={data} margin={{ top: 10, right: hasPpi ? 6 : 84, bottom: 0, left: 4 }}>
+    <LineChart data={data} margin={{ top: 10, right: 84, bottom: 0, left: 4 }}>
       <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
       <XAxis
         dataKey="month"
@@ -168,6 +179,7 @@ const Barometer = ({
         tickLine={false}
         axisLine={{ stroke: GRID }}
       />
+      {/* ONE axis. Both series are now $/driven mile. */}
       <YAxis
         yAxisId="rate"
         domain={[0, "auto"]}
@@ -177,24 +189,13 @@ const Barometer = ({
         tickLine={false}
         axisLine={false}
       />
-      {hasPpi && (
-        <YAxis
-          yAxisId="ppi"
-          orientation="right"
-          domain={[0, "auto"]} // from zero like the rate axis — an index that moved 3% reads as 3%, not as a cliff
-          tickFormatter={(v) => `${Math.round(Number(v))}`}
-          stroke={MACRO}
-          fontSize={11}
-          tickLine={false}
-          axisLine={false}
-          width={40}
-        />
-      )}
       <Tooltip
         contentStyle={{ background: "var(--color-iron)", border: "1px solid var(--color-plate)", borderRadius: 8, fontSize: 12 }}
         labelFormatter={(m) => monthTick(m as string)}
         formatter={(v, name) =>
-          name === "ppi" ? [`${Number(v).toFixed(1)} idx`, "FRED PPI"] : [rpm(Number(v)), "your median"]
+          name === "indexPath"
+            ? [rpm(Number(v)), "if you'd tracked the index"]
+            : [rpm(Number(v)), "your median"]
         }
       />
       {breakEven != null && (
@@ -210,9 +211,9 @@ const Barometer = ({
       )}
       {hasPpi && (
         <Line
-          yAxisId="ppi"
+          yAxisId="rate"
           type="monotone"
-          dataKey="ppi"
+          dataKey="indexPath"
           stroke={MACRO}
           strokeWidth={1.8}
           strokeDasharray="5 3"
@@ -257,18 +258,28 @@ const MarketPage = () => {
   // against the three before — the same months on both sides, counts printed.
   const yvm = useMemo(() => youVsMarket(points, freightIndex), [points, freightIndex]);
 
-  // Merge the owner's monthly median with the FRED macro index on a shared month
-  // axis (union of months). Either line can gap where the other has no value.
-  const baroData = useMemo(() => {
-    const map = new Map<string, BaroPoint>();
+  // Merge the owner's monthly median with the FRED index on a shared month
+  // axis, then REBASE so both are $/driven mile. Either line can still gap
+  // where the other has no value; the gap sentence only reads where both do.
+  const baro = useMemo(() => {
+    const map = new Map<string, { month: string; median: number | null; ppi: number | null }>();
     for (const m of monthly) map.set(m.month, { month: m.month, median: m.median, ppi: null });
     for (const f of freightIndex) {
       const e = map.get(f.month) ?? { month: f.month, median: null, ppi: null };
       e.ppi = f.value;
       map.set(f.month, e);
     }
-    return [...map.values()].sort((a, b) => (a.month < b.month ? -1 : 1));
+    return rebaseBarometer([...map.values()]);
   }, [monthly, freightIndex]);
+  // Without an index there is nothing to rebase against, so the chart falls
+  // back to the owner's own line alone — the degraded state that was already
+  // here and is still right.
+  const baroData: BaroPoint[] = useMemo(
+    () =>
+      baro?.months ??
+      monthly.map((m) => ({ month: m.month, median: m.median, indexPath: null })),
+    [baro, monthly],
+  );
   const hasPpi = freightIndex.length > 0;
 
   // Is the WHOLE operation under break-even? Blended gross/driven mile < the
@@ -609,12 +620,49 @@ const MarketPage = () => {
                         <span>
                           <span style={{ color: "var(--color-amber-hi)" }}>▬</span> you (median $/mi)
                         </span>
-                        {hasPpi && (
+                        {hasPpi && baro && (
                           <span>
-                            <span style={{ color: MACRO }}>╌</span> PPI specialized freight (FRED)
+                            <span style={{ color: MACRO }}>╌</span> if you'd tracked the index
                           </span>
                         )}
                       </div>
+                      {/* THE CAPTION IS LOAD-BEARING. The dashed line is not a
+                          market price for his freight — there is no oversize
+                          spot feed, and that search was validated and killed
+                          twice. It is his own rate moved by the industry's
+                          percentage change, anchored on an average of the
+                          first months both series share. Said plainly, it is
+                          useful; read as an external benchmark, it is a number
+                          he learns to ignore. */}
+                      {baro && (
+                        <p className="font-condensed text-[12px] text-faint mt-1.5 px-1 leading-snug">
+                          Both lines are $/driven mile. The dashed one is{" "}
+                          <span className="text-dim">
+                            where your rate would sit if it had tracked the index
+                          </span>{" "}
+                          since {monthTick(baro.baseMonths[0])}
+                          {baro.baseMonths.length > 1 && <>–{monthTick(baro.baseMonths.at(-1)!)}</>}{" "}
+                          — your own rate moved by the industry's percentage change, not a
+                          market price for your freight.
+                          {baro.latest && (
+                            <>
+                              {" "}
+                              You are{" "}
+                              <b
+                                style={{
+                                  color:
+                                    baro.latest.gap >= 0
+                                      ? "var(--color-status-positive-text)"
+                                      : "var(--color-amber-hi)",
+                                }}
+                              >
+                                {rpm(Math.abs(baro.latest.gap))} {baro.latest.gap >= 0 ? "above" : "below"}
+                              </b>{" "}
+                              it as of {monthTick(baro.latest.month)}.
+                            </>
+                          )}
+                        </p>
+                      )}
                       {yvm && !yvm.ok && (
                         <p className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3 font-condensed text-[12.5px] text-faint">
                           You vs the market · not enough standard loads to compare — {yvm.recent.n} in {yvm.recent.label}, {yvm.prior.n} in {yvm.prior.label}; {yvm.need} on each side needed.
