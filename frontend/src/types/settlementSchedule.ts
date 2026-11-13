@@ -35,4 +35,24 @@ export interface SettlementSchedule {
    * A blank in the UI clears it, which is a real answer here.
    */
   target_miles_per_month: number | null;
+  /**
+   * Truck and trailer scaled EMPTY (migration 110).
+   *
+   * One number, not a tractor figure and a trailer figure — Jason's call: he
+   * replaces them separately but only ever needs the sum, and two fields is
+   * two chances to update half of it. Your freight ceiling is 80,000 minus
+   * this, so the heavy line moves on its own when the equipment does.
+   *
+   * `null` = not set. The Scorer then grades freight weight with no gross
+   * rather than guessing a tare, because a guessed tare puts heavy freight on
+   * the Standard ladder — 85¢ a driven mile under-asked, silently.
+   */
+  empty_weight_lb: number | null;
+  /** Your average cost of ONE state permit. `null` = not set. */
+  permit_cost_usd: number | null;
+  /**
+   * Cost per escort per LOADED mile. Escorts meet you at the pickup, so they
+   * never ride the deadhead — loaded miles, never driven. `null` = not set.
+   */
+  escort_cost_per_loaded_mile: number | null;
 }

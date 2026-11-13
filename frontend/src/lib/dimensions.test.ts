@@ -6,6 +6,8 @@ import {
   formatLoadDims,
   isOverWidth,
   classifyOversize,
+  freightCeilingLb,
+  grossFromFreight,
 } from "./dimensions";
 
 describe("toInches / toFeetInches", () => {
@@ -98,5 +100,48 @@ describe("classifyOversize", () => {
   it("is exclusive at the limit — exactly legal is not oversize", () => {
     expect(classifyOversize({ widthIn: 102, grossWeightLb: 80000 }).oversize).toBe(false);
     expect(classifyOversize({ widthIn: 103 }).oversize).toBe(true);
+  });
+});
+
+describe("freightCeilingLb / grossFromFreight — the weight box's real question", () => {
+  it("JASON'S 48,000 RULE IS 80,000 MINUS WHAT HE SCALES EMPTY", () => {
+    // His "anything over 48,000 is heavy" and the legal 80,000 gross are the
+    // same line said twice. Derived, it follows the equipment instead of
+    // sitting stale in a constant.
+    expect(freightCeilingLb(32000)).toBe(48000);
+    // Hook a heavier trailer and the heavy line moves on its own.
+    expect(freightCeilingLb(34500)).toBe(45500);
+  });
+
+  it("NO TARE, NO CEILING — a guess here is the original bug", () => {
+    // Guessing a tare is how a 52,000 lb load read as legal and got priced on
+    // the Standard ladder: 85c a driven mile under-asked, silently.
+    expect(freightCeilingLb(null)).toBeNull();
+    expect(freightCeilingLb(undefined)).toBeNull();
+    expect(freightCeilingLb(0)).toBeNull();
+    expect(freightCeilingLb(-100)).toBeNull();
+    expect(freightCeilingLb(80000)).toBeNull(); // no room for freight at all
+  });
+
+  it("the agent's number plus your tare is the gross the routing API wants", () => {
+    expect(grossFromFreight(52000, 32000)).toBe(84000);
+    // and it IS over legal, which is the whole point
+    expect(classifyOversize({ grossWeightLb: grossFromFreight(52000, 32000) }).oversize).toBe(true);
+  });
+
+  it("a half-known gross is no gross — null rather than a number built on a guess", () => {
+    expect(grossFromFreight(52000, null)).toBeNull();
+    expect(grossFromFreight(null, 32000)).toBeNull();
+    expect(grossFromFreight(0, 32000)).toBeNull();
+  });
+
+  it("the ceiling and the gross agree about what is heavy", () => {
+    const empty = 32000;
+    const ceiling = freightCeilingLb(empty)!;
+    for (const freight of [10000, 47999, 48000, 48001, 52000]) {
+      const overByCeiling = freight > ceiling;
+      const overByGross = grossFromFreight(freight, empty)! > 80000;
+      expect(overByCeiling).toBe(overByGross);
+    }
   });
 });

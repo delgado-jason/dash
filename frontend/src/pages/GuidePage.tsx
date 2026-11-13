@@ -919,6 +919,23 @@ const GuidePage = () => {
             </p>
 
             <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Rating and parked are one control
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              An agent has one <span className="text-light">standing</span>: five
+              stars down to one, and then{" "}
+              <span className="text-light">Parked — do not book</span> at the
+              bottom. They used to be two fields and they had already drifted —
+              four parked desks were still carrying three stars, the same default
+              as thirty-nine active ones, because nobody re-rates a desk they have
+              stopped calling. One control means they cannot disagree again, and
+              it is why the Load Scorer can report the desk in a single line.
+              Parking asks for a reason and{" "}
+              <span className="text-light">keeps the stars</span>, so un-parking
+              restores the rating the desk had rather than resetting it.
+            </p>
+
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
               Parked agents within 75 miles
             </p>
             <p className="text-sm text-muted-text mb-3">
@@ -1409,6 +1426,53 @@ const GuidePage = () => {
               priced on that load's own miles — break-even, minimum, target and
               prime — so you know both the room to bargain and the number that
               puts you where you meant to be.
+            </Why>
+            <Why>
+              <span className="text-light">Weight is the FREIGHT weight</span> — the
+              number an agent actually says. Gross is worked out from the empty
+              weight on Settings and shown beside the box, and anything over your
+              freight ceiling (80,000 less what you scale) prices on the
+              Specialized tiers. Leave the empty weight blank and the Scorer does
+              without a gross rather than guessing one: a guessed tare is how a
+              52,000 lb load used to read as legal and get priced 85¢ a mile light.
+            </Why>
+            <Why>
+              <span className="text-light">Permits and escorts</span> appear once a
+              load is over legal, priced from Settings — escorts on{" "}
+              <span className="text-light">loaded</span> miles, because they meet you
+              at the pickup and never ride the deadhead. They are money you lay out
+              and are not reimbursed for: Landstar deducts the charge from the
+              linehaul and pays it back at the <span className="text-light">same
+              65/8 split</span>, not at 100%, so the load has to carry the cost
+              divided by your take for you to break even on it. The Scorer grades
+              the rate <span className="text-light">net</span> of all that — a
+              $7,800 load with $3,452 of escorts in it reads $5.80 a driven mile,
+              not $10.40 — and prints what the same load would ask if the charge
+              were billed as a 100% line, which is worth asking your agency about.
+            </Why>
+            <Why>
+              <span className="text-light">Reposition</span> swaps the ruler rather
+              than softening a rung. A reposition is not competing with a good load,
+              it is competing with an empty trailer: the fixed costs draft whether
+              you move or not, so the only money the decision turns on is what
+              driving itself burns. It grades against your{" "}
+              <span className="text-light">absolute minimum</span> — variable cost
+              per mile over your keep, roughly half your break-even — and reports
+              the dollars against sitting still. Break-even stays on screen in grey,
+              because swapping one ruler for the other is how you end up
+              repositioning all year and wondering where the money went. The panel
+              says the assumption out loud: "better than parking" is only true if
+              parking was the alternative.
+            </Why>
+            <Why>
+              <span className="text-light">The agency code is required</span>, and
+              that is the point rather than a formality. The desk fills in beside
+              the load as the code resolves — standing, phone, your notes, your
+              history — and a <span className="text-light">parked</span> desk says
+              so before anything is scored, with the reason you wrote. The load is
+              still scored underneath, because what the freight is worth is how you
+              judge whether a park still holds. An optional field is an optional
+              check, and the whole reason this one exists is to stop a booking.
             </Why>
           </Metric>
 

@@ -16,6 +16,7 @@ import { FscScheduleBox } from "@/components/settings/FscScheduleBox";
 import { TeamCard } from "@/components/settings/TeamCard";
 import { useTheme } from "@/hooks/useTheme";
 import { Panel } from "@/components/ui/Panel";
+import { freightCeilingLb } from "@/lib/dimensions";
 import { money } from "@/lib/format";
 
 type Tier3 = { min: number; target: number; prime: number };
@@ -40,6 +41,17 @@ const SettingsPage = () => {
   // here — it means "no commitment", and the rate floor falls back to measured
   // miles. Coercing it to 0 would send the floor to infinity.
   const [targetMiles, setTargetMiles] = useState("");
+  // Equipment & permits. Strings, not numbers, because "" has to stay a
+  // reachable answer meaning "not set" — a guessed tare is the bug this panel
+  // exists to kill, so it must never be typed into by a default.
+  const [emptyWeight, setEmptyWeight] = useState("");
+  const [permitCost, setPermitCost] = useState("");
+  const [escortCost, setEscortCost] = useState("");
+  // Shown live under the empty-weight box so the consequence of the number is
+  // visible while it is being typed, rather than only on the Scorer later.
+  const ceiling = freightCeilingLb(
+    emptyWeight.trim() === "" ? null : Number(emptyWeight),
+  );
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -65,6 +77,11 @@ const SettingsPage = () => {
         setHometimeThresh(s.hometime_threshold_days);
         setTargetMiles(
           s.target_miles_per_month == null ? "" : String(s.target_miles_per_month),
+        );
+        setEmptyWeight(s.empty_weight_lb == null ? "" : String(s.empty_weight_lb));
+        setPermitCost(s.permit_cost_usd == null ? "" : String(s.permit_cost_usd));
+        setEscortCost(
+          s.escort_cost_per_loaded_mile == null ? "" : String(s.escort_cost_per_loaded_mile),
         );
         setOperation(s.operation);
         setStdTiers({
@@ -122,6 +139,12 @@ const SettingsPage = () => {
         margin_goal: marginGoal / 100,
         // Blank clears the commitment; the validator takes null for that.
         target_miles_per_month: targetMiles.trim() === "" ? null : Number(targetMiles),
+        // Same for all three of these: blank is "I have not said", which every
+        // consumer falls back from rather than guessing.
+        empty_weight_lb: emptyWeight.trim() === "" ? null : Number(emptyWeight),
+        permit_cost_usd: permitCost.trim() === "" ? null : Number(permitCost),
+        escort_cost_per_loaded_mile:
+          escortCost.trim() === "" ? null : Number(escortCost),
       });
       await updateMyName(displayName.trim());
       setMsg("Saved.");
@@ -411,6 +434,93 @@ const SettingsPage = () => {
       </Panel>
 
       <Panel className="mt-6 max-w-[680px] p-5">
+        <h2 className="text-lg font-medium text-light">Equipment &amp; permits</h2>
+        <p className="text-sm text-muted-text mt-1">
+          What you scale empty, and what permitted freight costs you. The Load
+          Scorer reads all three — leave any of them blank and it simply does
+          without, rather than guessing.
+        </p>
+
+        <label className="block mt-4">
+          <span className="text-sm text-light">Empty weight — truck + trailer</span>
+          <span className="flex items-center gap-2 mt-1">
+            <input
+              type="number"
+              min={1}
+              max={79999}
+              step={100}
+              value={emptyWeight}
+              onChange={(e) => {
+                setMsg(null);
+                setEmptyWeight(e.target.value);
+              }}
+              className="w-28 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+            />
+            <span className="text-muted-text">lb</span>
+          </span>
+          <span className="text-xs text-muted-text mt-1 block">
+            {ceiling != null ? (
+              <>
+                Your freight ceiling is{" "}
+                <span className="text-light tabular-nums">
+                  {ceiling.toLocaleString("en-US")} lb
+                </span>{" "}
+                — 80,000 legal gross less what you scale. Heavier than that and a
+                load is priced on your Specialized tiers.
+              </>
+            ) : (
+              "Empty — the Scorer grades the freight weight an agent quotes you, but can't work out your gross or flag a heavy load."
+            )}
+          </span>
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <label className="block">
+            <span className="text-sm text-light">Permit — per state</span>
+            <span className="flex items-center gap-2 mt-1">
+              <span className="text-muted-text">$</span>
+              <input
+                type="number"
+                min={0}
+                max={5000}
+                step={5}
+                value={permitCost}
+                onChange={(e) => {
+                  setMsg(null);
+                  setPermitCost(e.target.value);
+                }}
+                className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+              />
+            </span>
+          </label>
+          <label className="block">
+            <span className="text-sm text-light">Escort — per loaded mile</span>
+            <span className="flex items-center gap-2 mt-1">
+              <span className="text-muted-text">$</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.25}
+                value={escortCost}
+                onChange={(e) => {
+                  setMsg(null);
+                  setEscortCost(e.target.value);
+                }}
+                className="w-24 bg-steel rounded px-2 py-1.5 text-light text-right tabular-nums"
+              />
+            </span>
+            <span className="text-xs text-muted-text mt-1 block">
+              Per escort. Loaded miles only — they meet you at the pickup.
+            </span>
+          </label>
+        </div>
+        <span className="text-xs text-muted-text mt-3 block">
+          Saved with the schedule above.
+        </span>
+      </Panel>
+
+      <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Detention</h2>
         <p className="text-sm text-muted-text mt-1">
           Free time at a stop before detention starts accruing, applied to the
@@ -487,9 +597,8 @@ const SettingsPage = () => {
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Operation</h2>
         <p className="text-sm text-muted-text mt-1">
-          Your equipment and discipline. It tailors your achievements — open-deck
-          operations (flatbed, heavy haul, oversize) earn the oversize badge set;
-          others keep the universal badges.
+          What you haul. It sets the default freight type on a new load and
+          tunes the oversize language around the app.
         </p>
         <label className="block mt-4">
           <span className="text-sm text-light">Operation type</span>
