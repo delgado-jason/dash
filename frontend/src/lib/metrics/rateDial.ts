@@ -60,7 +60,7 @@ export interface DialAdvice {
 // dial only after two to three agreeing months"). A documented rule, not a
 // feed: when the signal HOLDS (two prints running, not a fuel move) it nudges
 // the Standard dial ONE STEP — two points — from where it sits; otherwise it
-// says hold and why. It never points under goal + 5, so the floor rung (target
+// says hold and why. It never points under goal + 5, so the minimum rung (target
 // − 5) never lands under the goal the copy promises to protect, and never past
 // the slider's range. Specialized keeps your risk premium (current spec − std,
 // floored at 5 pts) on top.
@@ -75,18 +75,21 @@ export const dialAdvice = (
   currentStdMargin: number,
   currentSpecMargin: number,
 ): DialAdvice => {
-  const floor = r4(marginGoal + 0.05);
+  // The lowest margin the dial may point at. NOT the ladder's minimum rung:
+  // this is a dialFloor on the DIAL, the rung is a price. They were both called
+  // 'dialFloor' and the advice below conflated them in so many words.
+  const dialFloor = r4(marginGoal + 0.05);
   const premium = Math.max(0.05, r4(currentSpecMargin - currentStdMargin));
   const direction: MarketDirection = signal?.direction ?? "flat";
   const prints = signal?.prints ?? 0;
   const fuelDriven = signal?.fuelDriven ?? false;
 
-  // The dial parked under goal + 5 is a correction, not a nudge: its floor
+  // The dial parked under goal + 5 is a correction, not a nudge: its minimum
   // rung sits under the goal. That reads first, whatever the index says.
-  const underFloor = currentStdMargin < floor - 0.0001;
-  let std = underFloor ? floor : currentStdMargin;
-  if (direction === "firming") std = Math.max(floor, currentStdMargin + DIAL_STEP);
-  if (direction === "softening") std = Math.max(floor, currentStdMargin - DIAL_STEP);
+  const underDialFloor = currentStdMargin < dialFloor - 0.0001;
+  let std = underDialFloor ? dialFloor : currentStdMargin;
+  if (direction === "firming") std = Math.max(dialFloor, currentStdMargin + DIAL_STEP);
+  if (direction === "softening") std = Math.max(dialFloor, currentStdMargin - DIAL_STEP);
   std = r4(Math.min(DIAL_MAX_MARGIN, std));
   const spec = r4(Math.min(DIAL_MAX_MARGIN, std + premium));
   const stdDelta = r4(std - currentStdMargin);
@@ -96,9 +99,9 @@ export const dialAdvice = (
   const printsWord = `${prints} print${prints === 1 ? "" : "s"}`;
   let headline: string;
   let why: string;
-  if (underFloor && direction !== "firming") {
+  if (underDialFloor && direction !== "firming") {
     headline = `Under goal + 5 — lift Standard to ${pct(std)}`;
-    why = `Your Standard dial sits at ${pct(currentStdMargin)}, under goal + 5 (${pct(floor)}), so its floor rung lands under your ${pct(marginGoal)} goal. Lift it to ${pct(floor)} first; the index's nudges start from there.`;
+    why = `Your Standard dial sits at ${pct(currentStdMargin)}, under goal + 5 (${pct(dialFloor)}), so its minimum rung lands under your ${pct(marginGoal)} goal. Lift it to ${pct(dialFloor)} first; the index's nudges start from there.`;
   } else if (!signal) {
     headline = "Hold your dials — no index read";
     why = "No freight-index read to lean on. Your dials stay where you set them.";
@@ -119,7 +122,7 @@ export const dialAdvice = (
     why = `Two points, not a leap: the rule moves one step per held signal. Specialized keeps your ${pct(premium)} premium on top.`;
   } else {
     headline = `Softening for ${printsWord} — one step down: Standard to ${pct(std)}`;
-    why = `Thin the padding by one step, never under goal + 5 (${pct(floor)}) so your floor rung stays at your ${pct(marginGoal)} goal. Win a slow market on volume, not on losses.`;
+    why = `Thin the padding by one step, never under goal + 5 (${pct(dialFloor)}) so your minimum rung stays at your ${pct(marginGoal)} goal. Win a slow market on volume, not on losses.`;
   }
   return { direction, std, spec, stdDelta, specDelta, hold, prints, fuelDriven, headline, why };
 };

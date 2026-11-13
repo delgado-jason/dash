@@ -21,7 +21,6 @@ import type { RateLadder } from "@/lib/metrics/rateTargets";
 import {
   ratePoints,
   monthlyMedianRate,
-  tierGauge,
   windowPoints,
   type RatePoint,
 } from "@/lib/metrics/marketAnalytics";
@@ -31,7 +30,16 @@ import { buildCutPlan, toCutCategories } from "@/lib/metrics/cutPlanner";
 import { MarketCallCard } from "@/components/market/MarketCallCard";
 import { CutPanel } from "@/components/market/CutPanel";
 import { getCutTierData, type CutTierRow } from "@/services/expensesService";
-import { rpm } from "@/lib/format";
+import { rpm, money } from "@/lib/format";
+import { DEADHEAD_TARGET } from "@/lib/constants/targets";
+import {
+  bookStanding,
+  carryingTheRate,
+  deadheadLever,
+  RUNG_LABEL,
+  rebaseBarometer,
+} from "@/lib/metrics/bookStanding";
+import { VERDICT_META, VERDICT_ORDER } from "@/lib/metrics/loadScore";
 
 const MACRO = "var(--color-chart-blue)"; // FRED PPI overlay line — the house chart blue
 
@@ -133,13 +141,23 @@ const RateScatter = ({
   );
 };
 
-// ---- Barometer: your monthly median rate vs break-even, with the FRED macro
-// index overlaid on a second axis (units differ — $/mile vs index points — so
-// the read is "do the two trends move together", not absolute levels). ----
+// ---- Barometer: your monthly median against the index — BOTH IN DOLLARS.
+//
+// It used to draw the FRED index on a second axis in points. An index is a
+// number whose only meaning is relative to its own base year, so points beside
+// dollars let the eye read a crossing or a gap that means nothing at all, and
+// the only honest read was "do the two wiggles have the same shape". Jason:
+// "it's a little tough to read because it's measuring two different metrics."
+//
+// Rebased through his own rate (see rebaseBarometer), the index becomes the
+// path HIS rate would have taken had it moved with the industry — one axis,
+// one unit, and the distance between the lines is a number he can say out
+// loud. It is NOT a market price for his freight; the caption says so, because
+// the moment it reads as an external benchmark it stops being true.
 interface BaroPoint {
   month: string;
   median: number | null;
-  ppi: number | null;
+  indexPath: number | null;
 }
 const Barometer = ({
   data,
@@ -151,7 +169,7 @@ const Barometer = ({
   hasPpi: boolean;
 }) => (
   <ResponsiveContainer width="100%" height={240}>
-    <LineChart data={data} margin={{ top: 10, right: hasPpi ? 6 : 84, bottom: 0, left: 4 }}>
+    <LineChart data={data} margin={{ top: 10, right: 84, bottom: 0, left: 4 }}>
       <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
       <XAxis
         dataKey="month"
@@ -161,6 +179,7 @@ const Barometer = ({
         tickLine={false}
         axisLine={{ stroke: GRID }}
       />
+      {/* ONE axis. Both series are now $/driven mile. */}
       <YAxis
         yAxisId="rate"
         domain={[0, "auto"]}
@@ -170,24 +189,13 @@ const Barometer = ({
         tickLine={false}
         axisLine={false}
       />
-      {hasPpi && (
-        <YAxis
-          yAxisId="ppi"
-          orientation="right"
-          domain={[0, "auto"]} // from zero like the rate axis — an index that moved 3% reads as 3%, not as a cliff
-          tickFormatter={(v) => `${Math.round(Number(v))}`}
-          stroke={MACRO}
-          fontSize={11}
-          tickLine={false}
-          axisLine={false}
-          width={40}
-        />
-      )}
       <Tooltip
         contentStyle={{ background: "var(--color-iron)", border: "1px solid var(--color-plate)", borderRadius: 8, fontSize: 12 }}
         labelFormatter={(m) => monthTick(m as string)}
         formatter={(v, name) =>
-          name === "ppi" ? [`${Number(v).toFixed(1)} idx`, "FRED PPI"] : [rpm(Number(v)), "your median"]
+          name === "indexPath"
+            ? [rpm(Number(v)), "if you'd tracked the index"]
+            : [rpm(Number(v)), "your median"]
         }
       />
       {breakEven != null && (
@@ -203,9 +211,9 @@ const Barometer = ({
       )}
       {hasPpi && (
         <Line
-          yAxisId="ppi"
+          yAxisId="rate"
           type="monotone"
-          dataKey="ppi"
+          dataKey="indexPath"
           stroke={MACRO}
           strokeWidth={1.8}
           strokeDasharray="5 3"
@@ -250,25 +258,29 @@ const MarketPage = () => {
   // against the three before — the same months on both sides, counts printed.
   const yvm = useMemo(() => youVsMarket(points, freightIndex), [points, freightIndex]);
 
-  // Merge the owner's monthly median with the FRED macro index on a shared month
-  // axis (union of months). Either line can gap where the other has no value.
-  const baroData = useMemo(() => {
-    const map = new Map<string, BaroPoint>();
+  // Merge the owner's monthly median with the FRED index on a shared month
+  // axis, then REBASE so both are $/driven mile. Either line can still gap
+  // where the other has no value; the gap sentence only reads where both do.
+  const baro = useMemo(() => {
+    const map = new Map<string, { month: string; median: number | null; ppi: number | null }>();
     for (const m of monthly) map.set(m.month, { month: m.month, median: m.median, ppi: null });
     for (const f of freightIndex) {
       const e = map.get(f.month) ?? { month: f.month, median: null, ppi: null };
       e.ppi = f.value;
       map.set(f.month, e);
     }
-    return [...map.values()].sort((a, b) => (a.month < b.month ? -1 : 1));
+    return rebaseBarometer([...map.values()]);
   }, [monthly, freightIndex]);
-  const hasPpi = freightIndex.length > 0;
-  // Where your rungs sit among your own accepted loads, per type — evidence
-  // beside the call, never a call of its own.
-  const gauge = useMemo(
-    () => tierGauge(points, targets.bookingLadder, targets.specLadder, now, 90),
-    [points, targets.bookingLadder, targets.specLadder, now],
+  // Without an index there is nothing to rebase against, so the chart falls
+  // back to the owner's own line alone — the degraded state that was already
+  // here and is still right.
+  const baroData: BaroPoint[] = useMemo(
+    () =>
+      baro?.months ??
+      monthly.map((m) => ({ month: m.month, median: m.median, indexPath: null })),
+    [baro, monthly],
   );
+  const hasPpi = freightIndex.length > 0;
 
   // Is the WHOLE operation under break-even? Blended gross/driven mile < the
   // break-even-to-book (breakEven). This — not a single cheap tier — is what
@@ -346,43 +358,78 @@ const MarketPage = () => {
     : null;
   const yvmColor = ok?.verdict === "beating" ? "var(--color-status-positive-text)" : ok?.verdict === "lagging" ? "var(--color-amber-hi)" : "var(--color-dim)";
 
-  // The ladder as a distribution — where your RECENT loads landed, in the banded
-  // ladder's zones. Windowed to the same trailing 90 days as the rate and gauge,
-  // so old loads (booked against an older, lower ladder) don't pile into "below
-  // the floor" against today's break-even. Same zone colors, same break-even.
-  const zones = (() => {
+  // ---- Where your loads landed, and how each book is doing on its own rungs.
+  //
+  // FIVE bands, not four. It drew below / break-even→minimum / minimum→target
+  // / "target and past", so PRIME was a rung the call card named and the chart
+  // never counted — a month of three loads above prime looked identical to
+  // three barely at target. These are the Scorer's own bands and colours, so a
+  // load graded PRIME on Monday shows in the PRIME bar on Friday.
+  //
+  // Windowed to the same trailing 90 days as the rate and the gauge, so old
+  // loads booked against an older ladder don't pile up under today's.
+  const standing = (() => {
     const L = targets.bookingLadder;
-    if (L.breakEven == null || L.minimum == null || L.target == null) return null;
+    const S = targets.specLadder;
+    if (L.breakEven == null || L.minimum == null || L.target == null || L.prime == null)
+      return null;
     const wp = windowPoints(points, now, 90);
-    const buckets = { below: 0, floor: 0, mid: 0, past: 0 };
+    const toBook = (pt: (typeof wp)[number]) => ({
+      rpm: pt.rate,
+      driven: pt.driven,
+      gross: pt.gross,
+      loadType: pt.bucket,
+    });
+    const std = bookStanding(wp.filter((pt) => pt.bucket === "standard").map(toBook), L);
+    const spec = bookStanding(wp.filter((pt) => pt.bucket !== "standard").map(toBook), S);
+
+    // Each load against ITS OWN ladder, so a $5.00 standard load reads
+    // PROFITABLE while a $5.00 oversize load reads THIN. Pooling them against
+    // one ladder is the same mistake as the sentence this panel replaces.
+    const bands = { pass: 0, meh: 0, profit: 0, take: 0, steal: 0 };
     for (const pt of wp) {
-      if (pt.rate < L.breakEven) buckets.below++;
-      else if (pt.rate < L.minimum) buckets.floor++;
-      else if (pt.rate < L.target) buckets.mid++;
-      else buckets.past++;
+      const d = pt.bucket === "standard" ? L : S;
+      const be = d.breakEven ?? L.breakEven!;
+      const mn = d.minimum ?? L.minimum!;
+      const tg = d.target ?? L.target!;
+      const pr = d.prime ?? L.prime!;
+      if (pt.rate < be) bands.pass++;
+      else if (pt.rate < mn) bands.meh++;
+      else if (pt.rate < tg) bands.profit++;
+      else if (pt.rate < pr) bands.take++;
+      else bands.steal++;
     }
-    const stdBelow = wp.filter(
-      (pt) => pt.bucket === "standard" && pt.rate < (L.breakEven as number),
-    ).length;
-    const stdTotal = wp.filter((pt) => pt.bucket === "standard").length;
-    const specBelow = wp.filter(
-      (pt) => pt.bucket !== "standard" && pt.rate < (L.breakEven as number),
-    ).length;
-    const specTotal = wp.filter((pt) => pt.bucket !== "standard").length;
-    const max = Math.max(1, buckets.below, buckets.floor, buckets.mid, buckets.past);
-    // Which freight carries the rate — said only when the counts say it, never
-    // as a fixed sentence (the audit found it printed regardless).
-    const stdShare = stdTotal > 0 ? stdBelow / stdTotal : null;
-    const specShare = specTotal > 0 ? specBelow / specTotal : null;
-    const carrier =
-      stdShare == null || specShare == null
-        ? null
-        : specShare < stdShare
-          ? "The specialized freight carries the rate."
-          : stdShare < specShare
-            ? "The standard freight carries the rate."
-            : null;
-    return { ...buckets, max, stdBelow, stdTotal, specBelow, specTotal, total: wp.length, carrier };
+
+    // Hazmat and oversize run 93¢ apart on one rung; pooled they average to a
+    // single mediocre number and neither case is visible. Split for DISPLAY
+    // only — both are still graded on the specialized ladder, because
+    // inventing a third tier set off seven loads would be worse than pooling.
+    const haz = wp.filter((pt) => pt.bucket === "hazmat");
+    const ovr = wp.filter((pt) => pt.bucket === "specialized");
+    const split =
+      haz.length > 0 && ovr.length > 0
+        ? { hazmat: bookStanding(haz.map(toBook), S), oversize: bookStanding(ovr.map(toBook), S) }
+        : null;
+
+    return {
+      bands,
+      max: Math.max(1, ...Object.values(bands)),
+      total: wp.length,
+      std,
+      spec,
+      split,
+      money:
+        std.shortBy != null && spec.shortBy != null
+          ? { std: std.shortBy, spec: spec.shortBy, total: std.shortBy + spec.shortBy }
+          : null,
+      carrier: carryingTheRate(std, spec),
+      deadhead: deadheadLever(
+        wp
+          .filter((pt) => pt.loaded > 0)
+          .map((pt) => ({ driven: pt.driven, loaded: pt.loaded, gross: pt.gross })),
+        DEADHEAD_TARGET,
+      ),
+    };
   })();
 
   const lastMedian = monthly.length > 0 ? monthly[monthly.length - 1].median : null;
@@ -573,12 +620,49 @@ const MarketPage = () => {
                         <span>
                           <span style={{ color: "var(--color-amber-hi)" }}>▬</span> you (median $/mi)
                         </span>
-                        {hasPpi && (
+                        {hasPpi && baro && (
                           <span>
-                            <span style={{ color: MACRO }}>╌</span> PPI specialized freight (FRED)
+                            <span style={{ color: MACRO }}>╌</span> if you'd tracked the index
                           </span>
                         )}
                       </div>
+                      {/* THE CAPTION IS LOAD-BEARING. The dashed line is not a
+                          market price for his freight — there is no oversize
+                          spot feed, and that search was validated and killed
+                          twice. It is his own rate moved by the industry's
+                          percentage change, anchored on an average of the
+                          first months both series share. Said plainly, it is
+                          useful; read as an external benchmark, it is a number
+                          he learns to ignore. */}
+                      {baro && (
+                        <p className="font-condensed text-[12px] text-faint mt-1.5 px-1 leading-snug">
+                          Both lines are $/driven mile. The dashed one is{" "}
+                          <span className="text-dim">
+                            where your rate would sit if it had tracked the index
+                          </span>{" "}
+                          since {monthTick(baro.baseMonths[0])}
+                          {baro.baseMonths.length > 1 && <>–{monthTick(baro.baseMonths.at(-1)!)}</>}{" "}
+                          — your own rate moved by the industry's percentage change, not a
+                          market price for your freight.
+                          {baro.latest && (
+                            <>
+                              {" "}
+                              You are{" "}
+                              <b
+                                style={{
+                                  color:
+                                    baro.latest.gap >= 0
+                                      ? "var(--color-status-positive-text)"
+                                      : "var(--color-amber-hi)",
+                                }}
+                              >
+                                {rpm(Math.abs(baro.latest.gap))} {baro.latest.gap >= 0 ? "above" : "below"}
+                              </b>{" "}
+                              it as of {monthTick(baro.latest.month)}.
+                            </>
+                          )}
+                        </p>
+                      )}
                       {yvm && !yvm.ok && (
                         <p className="mt-3 pt-3 border-t ds2-cell-rule px-1 pb-3 font-condensed text-[12.5px] text-faint">
                           You vs the market · not enough standard loads to compare — {yvm.recent.n} in {yvm.recent.label}, {yvm.prior.n} in {yvm.prior.label}; {yvm.need} on each side needed.
@@ -639,110 +723,154 @@ const MarketPage = () => {
                 </div>
               </div>
 
-              {/* tier gauge */}
-              <div className="ds2-board overflow-hidden">
-                <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
-                    Your accepted loads · where your rungs sit
-                  </span>
-                  <span className="font-condensed text-[13px] text-faint">
-                    · last 90 days · {gauge.windowN} loads · a rung ranks among eight or more of its type · evidence for the call, not the market
-                  </span>
+            </div>
+
+            {/* the ladder as a distribution, each book on its own rungs */}
+            {standing && (
+              <div className="ds2-board overflow-hidden mt-4">
+                <div className="px-4 py-3 border-b ds2-cell-rule">
+                  <p className="ds2-label">Where your loads land</p>
+                  <p className="font-condensed text-[13px] text-faint mt-0.5">
+                    · {standing.total} loads · last 90 days · each load against ITS OWN ladder,
+                    in the Scorer's words
+                  </p>
                 </div>
-                <div className="px-4 py-3">
-                  {gauge.rows.length > 0 ? (
-                    <>
-                      <div className="space-y-3">
-                        {gauge.rows.map((r) => (
-                          <div key={r.label}>
-                            <div className="flex justify-between font-condensed text-xs">
-                              <span className="text-ink">
-                                {r.label} <span className="text-faint">{rpm(r.value)}</span>
-                              </span>
-                              <span className="tabular-nums text-dim">
-                                {r.pctile == null ? (
-                                  <span className="text-faint">{r.n} loads · fewer than 8 to rank</span>
-                                ) : (
-                                  <>
-                                    {Math.round(r.pctile * 100)}
-                                    <span className="text-faint text-[11px]">th pctile · {r.n} loads</span>
-                                  </>
-                                )}
-                              </span>
-                            </div>
-                            <div
-                              className="mt-1 h-[7px] rounded-[3px] overflow-hidden"
-                              style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
-                            >
-                              <div
-                                className="h-full"
-                                style={{ width: `${Math.round((r.pctile ?? 0) * 100)}%`, background: "var(--color-amber-hi)" }}
-                              />
-                            </div>
-                          </div>
-                        ))}
+
+                <div className="px-4 py-3 flex flex-col gap-2">
+                  {VERDICT_ORDER.map((v) => {
+                    const n = standing.bands[v];
+                    const meta = VERDICT_META[v];
+                    return (
+                      <div key={v} className="grid grid-cols-[132px_1fr_104px] gap-3 items-center">
+                        <span
+                          className="font-condensed text-[12px] tracking-[.06em]"
+                          style={{ color: meta.fg }}
+                        >
+                          {meta.label}
+                        </span>
+                        <span className="h-[16px] rounded-[4px] bg-hairline/40 relative overflow-hidden">
+                          <span
+                            className="absolute inset-y-0 left-0 rounded-[4px]"
+                            style={{
+                              width: `${(n / standing.max) * 100}%`,
+                              background: `color-mix(in srgb, ${meta.fg} 45%, transparent)`,
+                            }}
+                          />
+                        </span>
+                        <span className="font-condensed text-[12.5px] text-dim text-right tabular-nums">
+                          {n} load{n === 1 ? "" : "s"} ·{" "}
+                          {standing.total > 0 ? Math.round((n / standing.total) * 100) : 0}%
+                        </span>
                       </div>
-                    </>
-                  ) : (
-                    <p className="font-condensed text-[13.5px] text-faint py-6 text-center">
-                      Needs your break-even (Expenses P&L) to place the tiers.
+                    );
+                  })}
+                </div>
+
+                {/* HOW OFTEN YOU GET IT — what replaced the percentile card. A
+                    percentile of a rung is two abstractions stacked, and most
+                    rows read "fewer than 8 to rank" anyway. This counts. */}
+                <div className="px-4 py-3 border-t ds2-cell-rule">
+                  <p className="ds2-label">How often you get it</p>
+                  <table className="w-full mt-2 font-condensed text-[13.5px] tabular-nums">
+                    <thead>
+                      <tr className="text-faint text-[11px] tracking-[.1em] uppercase">
+                        <th className="text-left font-semibold pb-1.5">Rung</th>
+                        <th className="text-right font-semibold pb-1.5">
+                          Standard · {standing.std.loads}
+                        </th>
+                        <th className="text-right font-semibold pb-1.5">
+                          Specialized · {standing.spec.loads}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standing.std.hits.map((h, i) => {
+                        // EACH COLUMN CARRIES ITS OWN RATE. One rung price
+                        // beside two columns reads as though both books were
+                        // measured against it, and they are not — the whole
+                        // point is that specialized is held higher.
+                        const cell = (
+                          x: { rate: number; hit: number; of: number; share: number | null } | undefined,
+                        ) =>
+                          x == null || x.share == null ? (
+                            <span className="text-faint">—</span>
+                          ) : (
+                            <>
+                              <span className="text-faint">{rpm(x.rate)}</span> {x.hit}/{x.of}{" "}
+                              <span className="text-faint">· {Math.round(x.share * 100)}%</span>
+                            </>
+                          );
+                        const isMin = h.rung === "minimum";
+                        return (
+                          <tr key={h.rung} className={isMin ? "text-ink" : "text-dim"}>
+                            <td className={`py-1 ${isMin ? "font-semibold" : ""}`}>
+                              {RUNG_LABEL[h.rung]}
+                            </td>
+                            <td className={`py-1 text-right ${isMin ? "font-semibold" : ""}`}>
+                              {cell(h)}
+                            </td>
+                            <td className={`py-1 text-right ${isMin ? "font-semibold" : ""}`}>
+                              {cell(standing.spec.hits[i])}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* Each book against ITS OWN minimum. The sentence this
+                      replaces counted loads below a SHARED break-even and so
+                      named the weaker book the winner. */}
+                  <p className="font-condensed text-[13.5px] text-dim mt-2.5">
+                    <b className="text-ink">{standing.carrier.why}</b>
+                  </p>
+
+                  {standing.split && (
+                    <p className="font-condensed text-[13px] text-faint mt-1.5">
+                      Inside specialized:{" "}
+                      <span className="text-dim">
+                        hazmat {rpm(standing.split.hazmat.median)} on {standing.split.hazmat.loads},
+                        oversize {rpm(standing.split.oversize.median)} on{" "}
+                        {standing.split.oversize.loads}
+                      </span>{" "}
+                      — both held to the same {rpm(targets.specLadder.minimum)} rung.
                     </p>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* the ladder as a distribution */}
-            {zones && (
-              <div className="ds2-board overflow-hidden mt-4">
-                <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule">
-                  <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
-                    Where your loads land · the ladder as a distribution
-                  </span>
-                  <span className="font-condensed text-[13px] text-faint">
-                    · {zones.total} loads · last 90 days · zone colors = the banded ladder's
-                  </span>
-                </div>
-                {[
-                  { n: "Below break-even", c: "var(--color-status-negative-text)", bg: "color-mix(in srgb, var(--color-status-negative-text) 45%, transparent)", v: zones.below },
-                  { n: "Break-even → floor", c: "var(--color-amber-hi)", bg: "color-mix(in srgb, var(--color-amber) 50%, transparent)", v: zones.floor },
-                  { n: "Floor → target", c: "var(--color-status-positive-text)", bg: "color-mix(in srgb, var(--color-status-positive-text) 45%, transparent)", v: zones.mid },
-                  {
-                    n: "Target and past",
-                    c: "var(--color-hot)",
-                    bg: "var(--color-amber)",
-                    v: zones.past,
-                  },
-                ].map((z) => (
-                  <div
-                    key={z.n}
-                    className="flex items-center gap-3 px-4 py-[10px] border-t ds2-cell-rule first:border-t-0 font-condensed"
-                  >
-                    <span className="w-[150px] font-bold text-[12px] tracking-[.1em] uppercase" style={{ color: z.c }}>
-                      {z.n}
-                    </span>
-                    <span
-                      className="flex-1 h-[10px] rounded-[3px] overflow-hidden"
-                      style={{ background: "var(--color-well)", boxShadow: "var(--shadow-inset)" }}
-                    >
-                      <i className="block h-full" style={{ width: `${(z.v / zones.max) * 100}%`, background: z.bg }} />
-                    </span>
-                    <span className="w-[120px] text-right text-[14px] text-dim tabular-nums">
-                      {z.v} load{z.v === 1 ? "" : "s"} · {Math.round((z.v / Math.max(1, zones.total)) * 100)}%
-                    </span>
+                {/* THE MONEY. The cut planner ends by saying the last stretch
+                    has to come from rate and then stops, because it has no
+                    business saying where rate comes from. This page does. */}
+                {standing.money && standing.money.total > 0 && (
+                  <div className="px-4 py-3 border-t ds2-cell-rule">
+                    <p className="ds2-label">What the gap is worth</p>
+                    <p className="font-condensed text-[13.5px] text-dim mt-1.5">
+                      Priced at each book's own minimum, the last 90 days would have paid{" "}
+                      <b className="text-ink">{money(standing.money.total)}</b> more —{" "}
+                      <b className="text-ink">{money(standing.money.spec)}</b> of it specialized,
+                      or about <b className="text-amber-hi">{money(standing.money.spec / 3)}</b> a
+                      month.
+                    </p>
                   </div>
-                ))}
-                {zones.stdTotal > 0 && (
-                  <div className="px-4 py-[10px] border-t ds2-cell-rule font-condensed text-[13.5px] text-faint">
-                    <b className="text-dim">the straight read:</b> {zones.stdBelow} of your{" "}
-                    {zones.stdTotal} standard-flatbed loads ran below break-even —{" "}
-                    {zones.specBelow} of {zones.specTotal} specialized did.
-                    {zones.carrier && <> {zones.carrier}</>} Same zones, same colors as RATE TO BOOK.
+                )}
+
+                {/* The one rate lever that isn't a negotiation. */}
+                {standing.deadhead?.gainPerMile != null && (
+                  <div className="px-4 py-3 border-t ds2-cell-rule">
+                    <p className="ds2-label">Deadhead — the lever nobody has to agree to</p>
+                    <p className="font-condensed text-[13.5px] text-dim mt-1.5">
+                      <b className="text-ink">{Math.round(standing.deadhead.share * 1000) / 10}%</b>{" "}
+                      of your driven miles were empty, against your{" "}
+                      {Math.round(standing.deadhead.target * 100)}% target. The same freight at
+                      target pays <b className="text-ink">{rpm(standing.deadhead.rateAtTarget)}</b>{" "}
+                      instead of {rpm(standing.deadhead.rateNow)} —{" "}
+                      <b className="text-amber-hi">{rpm(standing.deadhead.gainPerMile)} a driven mile</b>
+                      , from the same agents, without anyone agreeing to anything.
+                    </p>
                   </div>
                 )}
               </div>
-            )}
-          </>
+            )}          </>
         )}
       </div>
     </div>

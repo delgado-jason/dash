@@ -1518,19 +1518,47 @@ const GuidePage = () => {
             </Why>
             <Why>
               The <span className="text-light">barometer</span> is your own median
-              rate per driven mile by month — your personal read on where the
-              market is — with the national{" "}
+              rate per driven mile by month against the national{" "}
               <span className="text-light">PPI for specialized freight trucking</span>{" "}
-              (from the Fed's FRED data) overlaid on a second axis, both from zero so
-              a 3% index move reads as 3%. Beside the call,{" "}
-              <span className="text-light">your accepted loads</span> shows
-              where your rungs sit among your own recent loads of the same type
-              — a Standard rung among standard loads, a Specialized rung among
-              oversize and hazmat — and only once eight or more of that type are
-              in the window. It is evidence, never "the market": only loads you
-              took are in it, so it reads your discipline as much as the market.
-              The call reads that percentile; nothing here suggests a move on its
-              own.
+              (from the Fed's FRED data) — and since November 2026{" "}
+              <span className="text-light">both lines are in dollars</span>. The
+              index used to sit on a second axis in points, which is a number
+              whose only meaning is relative to its own base year, so the eye
+              could read a crossing or a gap that meant nothing. It is now
+              rebased through your own rate: the dashed line is{" "}
+              <span className="text-light">
+                where your rate would sit if it had tracked the index
+              </span>{" "}
+              since the first months both series share, averaged over three so
+              one noisy month can't shift the whole line. The distance between
+              them is a number — "you are 47¢ below it" — instead of a shape.
+              <br />
+              <br />
+              It is <span className="text-light">not</span> a market price for
+              your freight. There is no oversize spot feed, so the dashed line
+              is your own rate moved by the industry's percentage change and
+              nothing more. Read as an outside benchmark it would be a number
+              worth ignoring, so the caption says what it is every time.
+            </Why>
+            <Why>
+              <span className="text-light">How often you get it</span> replaced
+              the percentile card. A percentile of a rung is two abstractions
+              stacked — a price that ranks in a distribution of prices — and
+              most rows just read "fewer than 8 to rank". It now counts: for
+              each rung, in each book, how many of your last 90 days' loads
+              reached it. Standard and specialized each carry{" "}
+              <span className="text-light">their own rung price</span> in their
+              own column, because they are held to different ladders and one
+              price beside two columns would imply they aren't.
+              <br />
+              <br />
+              Underneath, <span className="text-light">which book is carrying
+              the rate</span> — judged against each book's own minimum, not a
+              shared break-even. That distinction is the whole point of keeping
+              two tier sets, and measuring both against one line is how the page
+              used to name the weaker book the winner. It stays silent until
+              there are five loads in each; the rest of this page refuses to
+              rank on thin evidence and so does this.
             </Why>
             <Why>
               <span className="text-light">You vs. the market</span> (under the

@@ -323,7 +323,7 @@ export const PulseTab = ({
             card that watches the commitment belongs next to it, not buried. */}
         <Board className="md:col-span-6 p-4">
           <h3 className="ds2-label flex justify-between">
-            Rate vs your floor
+            Rate vs your ladder
             {cur != null && (
               <span className="font-condensed font-semibold text-[16px] tracking-normal normal-case text-amber-hi tabular-nums">
                 {fmtRpm(cur)}
@@ -339,8 +339,13 @@ export const PulseTab = ({
               />
             )}
             {(
+              // `minimum` joined these on 2026-11-12. The dashboard drew
+              // break-even, target and prime and skipped the rung the Scorer
+              // actually grades against — the same omission the Market page
+              // had, and the one that decides whether a load earns anything.
               [
                 ["breakEven", "Break-even"],
+                ["minimum", "Minimum"],
                 ["target", "Target"],
                 ["prime", "Prime"],
               ] as const
