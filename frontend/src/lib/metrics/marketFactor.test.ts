@@ -174,3 +174,50 @@ describe("theCall", () => {
     expect(c.text).toMatch(/reposition/i);
   });
 });
+
+describe("theCall — the extras the Score a Load sheet drew", () => {
+  const softDest = destinationFactor(world(), { city: "Houston", state: "TX" }, COORDS, COSTS);
+  const strongDest = destinationFactor(world(), { city: "Reading", state: "PA" }, COORDS, COSTS);
+
+  it("a reposition that beats parking says take it as a reposition, not as freight", () => {
+    const c = theCall("pass", strongDest, null, false, { reposition: { beatsSitting: true, gain: 214 } })!;
+    expect(c.tone).toBe("good");
+    expect(c.text).toMatch(/\$214 better than parking/);
+    expect(c.text).toMatch(/clears your target/i);
+    expect(c.text).not.toMatch(/loses money/i);
+  });
+
+  it("a reposition worse than parking says sit", () => {
+    const c = theCall("pass", softDest, null, false, { reposition: { beatsSitting: false, gain: -120 } })!;
+    expect(c.tone).toBe("bad");
+    expect(c.text).toMatch(/worse than parking by \$120/i);
+  });
+
+  it("a reposition with no basis says so instead of guessing", () => {
+    const c = theCall("pass", softDest, null, false, { reposition: { beatsSitting: null, gain: null } })!;
+    expect(c.tone).toBe("caution");
+    expect(c.text).toMatch(/no cost basis/i);
+  });
+
+  it("below target the call carries the counter that reaches it, in dollars", () => {
+    const c = theCall("profit", softDest, null, false, { counterAtTarget: 7970 })!;
+    expect(c.text).toMatch(/counter at \$7,970 to reach target/i);
+  });
+
+  it("above target there is nothing to counter", () => {
+    const c = theCall("take", strongDest, null, false, { counterAtTarget: 7970 })!;
+    expect(c.text).not.toMatch(/counter at/i);
+  });
+
+  it("permits and escorts add the caveat with their gross-up", () => {
+    const c = theCall("take", strongDest, null, false, { passThroughAsk: 3452 })!;
+    expect(c.text).toMatch(/\$3,452 of whatever you agree/);
+    const none = theCall("take", strongDest, null, false, { passThroughAsk: 0 })!;
+    expect(none.text).not.toMatch(/whatever you agree/);
+  });
+
+  it("without extras the old sentences are untouched", () => {
+    expect(theCall("pass", softDest, null, false)!.text).toMatch(/loses money/i);
+    expect(theCall("take", strongDest, null, false)!.text).toMatch(/take it/i);
+  });
+});

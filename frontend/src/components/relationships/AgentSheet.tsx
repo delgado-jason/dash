@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, Mail, MessageSquare, Phone } from "lucide-react";
+import { Mail, MessageSquare, Phone } from "lucide-react";
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import type { AgentPatchPayload } from "@/types/agentPatchPayload";
@@ -20,14 +20,6 @@ import { originMarketsByAgent } from "@/lib/metrics/agentTouches";
 import { bucketLabel, bucketOf, isDormant } from "@/lib/relationships/buckets";
 import { agentAllInRpm, deliveredCount } from "@/lib/relationships/agentRpm";
 import { daysSinceMeaningful } from "@/lib/relationships/meaningfulContact";
-import {
-  ESTABLISHED_AT,
-  bandLabel,
-  isEstablished,
-  suggestBucket,
-  suggestionLabel,
-  type BucketSuggestion,
-} from "@/lib/relationships/tierSuggestion";
 import { contactTypeLabel } from "@/lib/relationships/contactTypes";
 import { PREFERRED } from "@/lib/agents/agentEdit";
 import { formatPhone, smsHref, telHref } from "@/lib/phone";
@@ -48,15 +40,17 @@ import {
 
 // The agent sheet — everything about one agent Brandie needs on the phone:
 // reach them, log the touch, see their markets, fix their contact details;
-// and for the owner, set the tier (with the suggestion and its evidence) and
-// park / unpark. Every write shows its error by name; nothing closes on a
-// failure.
+// and for the owner, park / unpark (the tier picker came off on 2026-11-15 —
+// a desk is measured by its rating alone). Every write shows its error by
+// name; nothing closes on a failure.
 
 interface Props {
   agent: Agent;
   loads: Load[];
   contacts: AgentContact[];
   coverage: AgentCoverage[];
+  // Unused since the tier picker came off (2026-11-15); kept so the callers
+  // need no change while the Relationships page is retired as a whole.
   ladder: RateLadder | null;
   now: Date;
   // false when the loads slice didn't come through: no load count, RPM,
@@ -70,8 +64,8 @@ interface Props {
   notify: (message: string, action?: { label: string; run: () => void | Promise<void> }) => void;
 }
 
-type Busy = null | "log" | "fold" | "tier" | "park" | "unpark" | "contact";
-type ErrWhere = "log" | "class" | "fold" | "tier" | "park" | "contact";
+type Busy = null | "log" | "fold" | "park" | "unpark" | "contact";
+type ErrWhere = "log" | "class" | "fold" | "park" | "contact";
 
 const weekdayOf = (iso: string): string => new Date(iso).toLocaleDateString("en-US", { weekday: "short" });
 
@@ -79,23 +73,12 @@ const weekdayOf = (iso: string): string => new Date(iso).toLocaleDateString("en-
 const prefersWord = (v: string | null): string | null =>
   v === "phone" ? "call" : v === "text" ? "text" : v === "email" ? "email" : null;
 
-type TierPick = 1 | 2 | 3 | "none";
-const TIER_TABS: { value: TierPick; label: string }[] = [
-  { value: 1, label: "Tier 1" },
-  { value: 2, label: "Tier 2" },
-  { value: 3, label: "Tier 3" },
-  { value: "none", label: "Prospect (no tier)" },
-];
-const tierOfSuggestion = (s: BucketSuggestion): TierPick | null =>
-  s === "tier1" ? 1 : s === "tier2" ? 2 : s === "tier3" ? 3 : s === "prospect" ? "none" : null;
-const tierPickOf = (tier: number | null): TierPick => (tier === 1 || tier === 2 || tier === 3 ? tier : "none");
 
 export const AgentSheet = ({
   agent,
   loads,
   contacts,
   coverage,
-  ladder,
   now,
   loadsReady = true,
   isAdmin,
@@ -125,10 +108,6 @@ export const AgentSheet = ({
   );
   const delivered = useMemo(() => deliveredCount(loads, agent.agent_id), [loads, agent.agent_id]);
   const rpm = useMemo(() => agentAllInRpm(loads, agent.agent_id, now), [loads, agent.agent_id, now]);
-  const suggestion = useMemo(
-    () => (loadsReady ? suggestBucket(agent, { deliveredCount: delivered, rpm: rpm.rpm, ladder, dormant }) : null),
-    [agent, loadsReady, delivered, rpm.rpm, ladder, dormant],
-  );
   const daysSince = useMemo(
     () => daysSinceMeaningful(agent.agent_id, contacts, loads, now),
     [agent.agent_id, contacts, loads, now],
@@ -139,20 +118,6 @@ export const AgentSheet = ({
   );
   const stated = useMemo(() => coverage.filter((c) => c.agent_id === agent.agent_id), [coverage, agent.agent_id]);
 
-  // The owner block's evidence line and the pre-highlighted button.
-  const established = loadsReady && isEstablished(delivered);
-  const evidence = !loadsReady
-    ? "loads didn't come through — no suggestion until they do"
-    : established
-      ? [rpm.rpm != null ? `${fmtRpm(rpm.rpm)} all-in${rpm.partial ? " (partial miles)" : ""}` : "no RPM yet", bandLabel(rpm.rpm, ladder), `${delivered} loads`]
-          .filter(Boolean)
-          .join(" · ")
-      : `${delivered} of ${ESTABLISHED_AT} loads — not yet established`;
-  const recommended = tierOfSuggestion(suggestion);
-  const [pendingTier, setPendingTier] = useState<TierPick>(recommended ?? tierPickOf(agent.relationship_tier));
-  // The reason prefills from the evidence — never from a failed fetch.
-  const [reason, setReason] = useState(loadsReady ? evidence : "");
-  const currentPick = tierPickOf(agent.relationship_tier);
 
   const name = nameOf(agent);
   const isProspect = agent.relationship_tier == null;
@@ -237,14 +202,6 @@ export const AgentSheet = ({
     await finishContactWrite(p.classPin, "Folded");
   };
 
-  const applyTier = () =>
-    run("tier", "tier", async () => {
-      const relationship_tier = pendingTier === "none" ? null : pendingTier;
-      await patchAgent(agent.agent_id, { relationship_tier, reason: reason.trim() });
-      notify(`Tier set · ${name} · ${pendingTier === "none" ? "Prospect" : `Tier ${pendingTier}`}`);
-      await reload();
-    });
-
   const park = () =>
     run("park", "park", async () => {
       await patchAgent(agent.agent_id, {
@@ -279,11 +236,11 @@ export const AgentSheet = ({
 
   const errFor = (where: ErrWhere) => (err?.where === where ? err.message : null);
   const prefers = prefersWord(agent.preferred_contact);
-  // Where an unpark lands them: their tier; a Prospect; or — dormant — still
-  // Parked by derivation until a two-way contact.
+  // Where an unpark lands them: back in the book, or — dormant — still Parked
+  // by derivation until a two-way contact.
   const unparkLabel = dormant
     ? "Unpark — dormant; stays Parked until a two-way contact"
-    : `Unpark — back into the book as ${agent.relationship_tier != null ? `Tier ${agent.relationship_tier}` : "a Prospect"}`;
+    : "Unpark — back into the book";
 
   return (
     <RelSheetShell open onClose={onClose} title={name} description={`${bucketLabel(bucket)} · agent sheet`}>
@@ -444,52 +401,6 @@ export const AgentSheet = ({
             <dt className="text-faint">Best time</dt>
             <dd className="text-ink">{agent.best_time_to_call || <span className="text-faint">—</span>}</dd>
           </dl>
-        )}
-      </div>
-
-      {/* ---- tier — the owner's block ---- */}
-      <SectionHead>Tier</SectionHead>
-      <div className="px-5 pb-4">
-        {isAdmin ? (
-          <>
-            <p className="font-condensed text-[14.5px] text-dim">
-              Now <b className="text-ink">{bucketLabel(bucket)}</b>
-              {suggestion && suggestion !== "parked" ? (
-                <>
-                  {" · "}dash suggests{" "}
-                  <b className={suggestion === "below" ? "text-status-negative-text" : "text-ink"}>
-                    {suggestion === "below" ? "no tier — losing money, consider parking" : suggestionLabel(suggestion)}
-                  </b>
-                </>
-              ) : !loadsReady ? (
-                <> · no suggestion — loads didn't come through</>
-              ) : suggestion == null && established ? (
-                <> · no suggestion — the rate ladder isn't ready</>
-              ) : null}
-            </p>
-            <p className="font-condensed text-[13px] text-faint mt-0.5">{evidence}</p>
-            <div className="mt-2.5">
-              <SegmentedTabs tabs={TIER_TABS} value={pendingTier} onChange={setPendingTier} size="sm" ariaLabel="Tier" />
-            </div>
-            <div className="mt-2.5">
-              <FieldLabel htmlFor="sheet-reason">Reason — required</FieldLabel>
-              <input id="sheet-reason" value={reason} onChange={(e) => setReason(e.target.value)} className="ds-input" />
-            </div>
-            <ErrorLine>{errFor("tier")}</ErrorLine>
-            <PrimaryButton
-              size="md"
-              className="mt-3"
-              disabled={busy === "tier" || pendingTier === currentPick || reason.trim().length === 0}
-              title={pendingTier === currentPick ? "Pick a different tier to apply" : reason.trim().length === 0 ? "A tier change needs a reason" : undefined}
-              onClick={() => void applyTier()}
-            >
-              {busy === "tier" ? "Applying…" : "Apply"}
-            </PrimaryButton>
-          </>
-        ) : (
-          <p className="flex items-center gap-2 font-condensed text-[14.5px] text-dim">
-            <Lock size={13} className="text-faint" /> {bucketLabel(bucket)} — the owner sets tiers
-          </p>
         )}
       </div>
 

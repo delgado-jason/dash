@@ -5,7 +5,8 @@ import { useTrips } from "@/hooks/useTrips";
 import { windowLoads, DEFAULT_WINDOW } from "@/lib/metrics/marketLedger";
 import { useAgents } from "@/hooks/useAgents";
 import { useRateTargets } from "@/hooks/useRateTargets";
-import { scoreLoad, counterRates, knownNumber, verdictAtLeast, VERDICT_META, VERDICT_ORDER } from "@/lib/metrics/loadScore";
+import { scoreLoad, knownNumber, verdictAtLeast, VERDICT_META, VERDICT_ORDER } from "@/lib/metrics/loadScore";
+import { quoteTable, quoteSentence } from "@/lib/metrics/quoteTable";
 import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
 import { emptyNextAnchor } from "@/lib/metrics/foreman";
 import { useCityCoords } from "@/hooks/useCityCoords";
@@ -16,11 +17,10 @@ import {
 import { RATE_TIERS, marginAtMarkup, type RateTiers } from "@/lib/constants/targets";
 import { getLoadMiles, type Place } from "@/services/routingService";
 import { getLastKnownLocation } from "@/services/tripsService";
-import {
-  standingOf,
-  standingLabel,
-  standingIsContradictory,
-} from "@/lib/agents/standing";
+import { standingOf } from "@/lib/agents/standing";
+import { getAgent } from "@/services/agentService";
+import { DeskBrief, type DeskNotes } from "@/components/scorer/DeskBrief";
+import { QuoteTablePanel } from "@/components/scorer/QuoteTablePanel";
 import {
   toInches,
   classifyOversize,
@@ -71,6 +71,16 @@ const GRADE_META: Record<MarketGrade, { label: string; color: string }> = {
   soft: { label: "SOFT", color: "var(--color-amber)" },
   thin: { label: "THIN", color: "var(--color-faint)" },
 };
+
+// One of the four result tiles — a figure with its question above and its
+// basis below, on the one flat surface.
+const Tile = ({ h, n, p }: { h: string; n: string; p: string }) => (
+  <div className="bg-panel px-4 py-3">
+    <p className="ds2-label">{h}</p>
+    <p className="font-condensed font-semibold tabular-nums text-[26px] leading-[1.1] text-ink mt-1">{n}</p>
+    <p className="text-[12.5px] text-dim mt-0.5">{p}</p>
+  </div>
+);
 
 // ---- inputs ----
 const Lbl = ({ children, accent }: { children: ReactNode; accent?: boolean }) => (
@@ -211,6 +221,22 @@ const AgentField = ({
   const matches = useMemo(() => matchAgents(agents, query), [agents, query]);
   const showList = open && !selected && matches.length > 0;
 
+  // A code that matches exactly one desk resolves on its own — Brandie types
+  // EWT and the desk fills in. A code that matches TWO (six of the 66 codes
+  // carry two agents, one of them a parked desk beside an active one) stays
+  // unresolved until she picks, and the score gate refuses until she has;
+  // the parked one is marked in the list for exactly that moment.
+  useEffect(() => {
+    if (selected) return;
+    const q = query.trim().toUpperCase();
+    if (q.length < 2) return;
+    const exact = agents.filter((a) => agentCode(a).toUpperCase() === q);
+    if (exact.length === 1) {
+      onPick(exact[0]);
+      onQuery(agentLabel(exact[0]));
+    }
+  }, [query, agents, selected, onPick, onQuery]);
+
   return (
     <div className="relative">
       <input
@@ -251,6 +277,14 @@ const AgentField = ({
               <span className="font-condensed font-semibold text-amber">{agentCode(a) || "—"}</span>
               <span className="text-dim">·</span>
               <span>{agentFullName(a)}</span>
+              {standingOf(a) === "parked" && (
+                <span
+                  className="ml-auto font-condensed font-semibold text-[11px] uppercase tracking-[.06em]"
+                  style={{ color: "var(--color-status-negative-text)" }}
+                >
+                  parked
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -304,6 +338,10 @@ const ScoreLoadPage = () => {
   const [routeErr, setRouteErr] = useState(false);
   const [toll, setToll] = useState<number | null>(null);
   const [scored, setScored] = useState(false);
+  // The desk's dated notes, fetched AS THE CODE RESOLVES (GET /agents/:id
+  // returns them beside the rating history). null while loading; a failed
+  // fetch is said on the brief, never shown as "no notes".
+  const [desk, setDesk] = useState<DeskNotes>({ notes: null, failed: false });
   const truckTouched = useRef(false);
 
   const setTruck = (p: Place) => {
@@ -331,6 +369,25 @@ const ScoreLoadPage = () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!agent) {
+      setDesk({ notes: null, failed: false });
+      return;
+    }
+    let active = true;
+    setDesk({ notes: null, failed: false });
+    getAgent(agent.agent_id)
+      .then((r) => {
+        if (active) setDesk({ notes: r.notes, failed: false });
+      })
+      .catch(() => {
+        if (active) setDesk({ notes: null, failed: true });
+      });
+    return () => {
+      active = false;
+    };
+  }, [agent]);
 
   // THE WEIGHT BOX ASKS FOR FREIGHT NOW, not gross.
   //
@@ -471,14 +528,18 @@ const ScoreLoadPage = () => {
   // stop a booking before it starts. A desk that resolves to nobody still
   // counts as answered: typing a code for an agent you have never run with is
   // a real answer ("New agent"), typing nothing is not.
-  const deskAnswered = agent != null || agentQuery.trim().length >= 2;
+  //
+  // A code that matches a desk but was never PICKED is not an answer either:
+  // six codes carry two agents, one of them a parked desk beside an active
+  // one, and scoring on the unresolved code was the exact hole that let a
+  // parked agent through unmarked (the sheet named the case; the first build
+  // kept the general path).
+  const deskMatches =
+    !agent && agentQuery.trim().length >= 2 ? matchAgents(agents ?? [], agentQuery).length : 0;
+  const isNewAgent = !agent && agentQuery.trim().length >= 2 && deskMatches === 0;
+  const deskAnswered = agent != null || isNewAgent;
   const canScore = targets.ready && entered && !!meta && deskAnswered;
 
-  // Everything under the TARGET rung still has room to counter — `profit`
-  // included. This was a list of verdicts, and leaving `profit` out of it is how
-  // the page came to say "already clears your target" about a load 5 points
-  // short of it (caught on dev, 2026-11-12). Asked as a comparison it cannot
-  // go stale when a verdict is added.
   // What a reposition is worth against sitting: the net it brings home less
   // the fuel, tyres and wear those miles burn. Sitting contributes zero — the
   // fixed costs draft either way, which is exactly why they are absent here.
@@ -495,16 +556,26 @@ const ScoreLoadPage = () => {
   const agentParked = agentStanding === "parked";
 
   const belowTarget = !verdictAtLeast(score.verdict, "take");
-  const counter =
-    belowTarget ? counterRates(score.breakevenRpm, score.drivenMiles, activeTiers) : null;
+  // THE WHOLE LADDER IN DOLLARS, ON EVERY RESULT — the pass-throughs folded
+  // in, the offer's gap to each rung, the rung it cleared marked. Above target
+  // it says what the offer clears by; it never hides (the sheet's Call 7.2).
+  const table = useMemo(
+    () => quoteTable(score.breakevenRpm, score.drivenMiles, activeTiers, ptAsk, rateNum),
+    [score.breakevenRpm, score.drivenMiles, activeTiers, ptAsk, rateNum],
+  );
+  const quoteLine = quoteSentence(table, specialized ? "specialized" : "standard");
+  const headlineRpm = rateNum != null && score.drivenMiles > 0 ? rateNum / score.drivenMiles : null;
+  // What reaches the account: the graded rate (the offer less the grossed-up
+  // pass-throughs) at your blended keep — the SAME keep the verdict is graded
+  // on, so the tile and the word above it cannot disagree.
+  const netDollars =
+    gradedRate != null && targets.basis.payTake != null ? gradedRate * targets.basis.payTake : null;
 
   // A blank deadhead box is unknown, not 0 empty miles (SCORE-02).
   const deadMi = knownNumber(deadhead);
   const deadShare = deadMi != null && score.drivenMiles > 0 ? deadMi / score.drivenMiles : null;
   const freightDrag = deadShare != null && deadShare >= 0.12 && belowTarget;
 
-  const isNewAgent =
-    !agent && agentQuery.trim().length >= 2 && matchAgents(agents ?? [], agentQuery).length === 0;
   const agentCard = agent ? scorecards.get(agent.agent_id) : undefined;
 
   // The delivery's place alone — the factor re-reads only when the city or
@@ -517,7 +588,11 @@ const ScoreLoadPage = () => {
     () => destinationFactor(windowLoads(loads ?? [], DEFAULT_WINDOW, now), deliveryPlace, coords, gradeCostsOf(targets)),
     [loads, deliveryPlace, coords, now, targets],
   );
-  const call = theCall(score.verdict, destFactor, agentCard, isNewAgent);
+  const call = theCall(score.verdict, destFactor, agentCard, isNewAgent, {
+    counterAtTarget: table?.rows.find((r) => r.rung === "target")?.quote ?? null,
+    passThroughAsk: ptAsk,
+    reposition: reposition ? { beatsSitting: score.beatsSitting, gain: repositionGain } : null,
+  });
 
   const routeNote = routing
     ? "routing…"
@@ -679,23 +754,26 @@ const ScoreLoadPage = () => {
                     </>
                   ) : (
                     <>
-                      {score.pctOverBreakeven != null && (
-                        <>
-                          {score.pctOverBreakeven >= 0 ? "+" : ""}
-                          {Math.round(score.pctOverBreakeven * 100)}% over break-even ·{" "}
-                        </>
-                      )}
-                      <span style={{ color: specialized ? "var(--color-amber-hi)" : "var(--color-cat2)" }}>
-                        {specialized ? "Specialized" : "Standard"}
-                      </span>{" "}
-                      tiers, target +{Math.round(activeTiers.target * 100)}%
                       {/* The margin THIS load earns, not the rung's — and only
                           when the markup is actually known. Defaulting a null
                           markup to zero would print "0% margin" for a load we
                           simply could not grade, which is a different and much
-                          worse claim than saying nothing. */}
+                          worse claim than saying nothing. Then the sentence the
+                          sheet drew — where the offer fell on the ladder, in
+                          dollars: "clears your specialized minimum by $145 ·
+                          ask $170 more to hit target". */}
                       {score.verdict !== "pass" && score.pctOverBreakeven != null && (
-                        <> · <b className="text-ink">{Math.round(marginAtMarkup(score.pctOverBreakeven) * 100)}% margin</b></>
+                        <>
+                          <b className="text-ink">{Math.round(marginAtMarkup(score.pctOverBreakeven) * 100)}% margin</b> ·{" "}
+                        </>
+                      )}
+                      {quoteLine ?? (
+                        <>
+                          <span style={{ color: specialized ? "var(--color-amber-hi)" : "var(--color-cat2)" }}>
+                            {specialized ? "Specialized" : "Standard"}
+                          </span>{" "}
+                          tiers, target +{Math.round(activeTiers.target * 100)}%
+                        </>
                       )}
                     </>
                   )}
@@ -745,8 +823,75 @@ const ScoreLoadPage = () => {
             </div>
           </Panel>
 
+          {/* THE FOUR TILES the sheet drew on every result: what the load pays
+              you per driven mile, the headline it would have claimed, what
+              reaches the account, and the beats-parking line — the last two
+              used to show only in reposition mode or on a BELOW COST load. */}
+          {!reposition && (
+            <div
+              className="grid grid-cols-2 xl:grid-cols-4 gap-px bg-hairline border border-hairline rounded-[10px] overflow-hidden mt-3"
+              data-testid="result-tiles"
+            >
+              <Tile
+                h="Pays you"
+                n={fmtRpm(score.allInRpm)}
+                p={ptAsk > 0 ? "per driven mile, after permits and escorts" : "per driven mile, all-in"}
+              />
+              <Tile
+                h="Headline"
+                n={fmtRpm(headlineRpm)}
+                p={ptAsk > 0 ? "before the pass-throughs" : "no pass-throughs on this load"}
+              />
+              <Tile
+                h="Your net"
+                n={netDollars == null ? "—" : money(netDollars)}
+                p={ptAsk > 0 ? "after Landstar's cut and the escorts" : "after Landstar's cut"}
+              />
+              <Tile h="Beats parking" n={fmtRpm(score.beatsSittingRpm)} p="absolute minimum · per driven mile" />
+            </div>
+          )}
+
+          {!reposition && table && (
+            <div className="mt-3">
+              <QuoteTablePanel
+                table={table}
+                offer={rateNum}
+                drivenMiles={score.drivenMiles}
+                ptCost={ptCost}
+                ptAsk={ptAsk}
+                ptPremium={ptPremium}
+              />
+            </div>
+          )}
+
+          {/* THE OTHER QUESTION, on a BELOW COST load only. The rungs above
+              answer "what should the month average?"; when the agent will not
+              meet them, the real choice becomes this load versus sitting still
+              — a different, much lower line, because the fixed cost drafts
+              either way. Shown only where it is the live question, so it never
+              reads as a target. */}
+          {!reposition && score.verdict === "pass" && score.beatsSittingRpm != null && (
+            <p className="font-condensed text-[12.5px] mt-3 px-1 leading-snug text-faint">
+              {score.beatsSitting ? (
+                <>
+                  <b style={{ color: "var(--color-amber-hi)" }}>It still beats sitting.</b> Moving pays for its
+                  own fuel and wear above <b className="text-dim">{fmtRpm(score.beatsSittingRpm)}</b> a driven
+                  mile, and this clears that. Worth taking to reach freight you can book properly —{" "}
+                  <span className="text-dim">a repositioning cost, never a plan</span>. Fill a month at this
+                  rate and the month is a disaster.
+                </>
+              ) : (
+                <>
+                  <b style={{ color: "var(--color-status-negative-text)" }}>Worse than parking.</b> Below{" "}
+                  <b className="text-dim">{fmtRpm(score.beatsSittingRpm)}</b> a driven mile the miles cost more
+                  to run than they bring home, so this loses money faster than standing still.
+                </>
+              )}
+            </p>
+          )}
+
           {/* factor grid — full width */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${reposition ? "xl:grid-cols-4" : "xl:grid-cols-3"} gap-3 mt-3`}>
             <div className="ds2-board p-4">
               <Lbl>Freight vs deadhead</Lbl>
               <div className="grid grid-cols-2 gap-2.5 mt-2 mb-2.5">
@@ -831,77 +976,13 @@ const ScoreLoadPage = () => {
             </div>
 
             <div className="ds2-board p-4">
-              <Lbl>Agent</Lbl>
-              {agent ? (
-                <>
-                  <Link to={`/agents/${agent.agent_id}`} className="font-condensed text-[17.5px] text-amber hover:text-hot">
-                    {agentLabel(agent)}
-                  </Link>
-                  {/* The standing, on the page where the booking decision is
-                      made. One line, because the rating and the parked flag
-                      are now one field (lib/agents/standing.ts). */}
-                  {agentStanding != null && (
-                    <div
-                      className="text-[12.5px] font-condensed mt-0.5"
-                      style={{
-                        color:
-                          agentStanding === "parked"
-                            ? "var(--color-status-negative-text)"
-                            : agentStanding >= 4
-                              ? "var(--color-cat2)"
-                              : "var(--color-dim)",
-                      }}
-                    >
-                      {standingLabel(agentStanding)}
-                      {standingIsContradictory(agent) && (
-                        <span className="text-amber-hi"> · rated worst but not parked</span>
-                      )}
-                    </div>
-                  )}
-                  {agentCard && agentCard.loadCount > 0 ? (
-                    <div className="text-[13.5px] text-dim mt-1.5 leading-relaxed">
-                      {agentCard.loadCount} load{agentCard.loadCount === 1 ? "" : "s"} together
-                      {agentCard.medianRpm != null ? ` · ${fmtRpm(agentCard.medianRpm)}/mi avg` : ""}
-                      <br />
-                      {agentCard.moneyLostLoads > 0 ? "detention owed" : "low dwell"}
-                      {agentCard.daysSince != null ? ` · last ${agentCard.daysSince}d ago` : ""}
-                    </div>
-                  ) : (
-                    <div className="text-[13.5px] text-dim mt-1.5">No delivered history yet with this agent.</div>
-                  )}
-                  {/* The phone, because she is scoring to decide whether to
-                      call back — and the notes, because going to another page
-                      to read them means reading them after the decision. */}
-                  {agent.phone && (
-                    <div className="text-[13px] text-ink mt-1.5 font-condensed">
-                      ☎ {agent.phone}
-                      {agent.best_time_to_call && (
-                        <span className="text-faint"> · {agent.best_time_to_call}</span>
-                      )}
-                    </div>
-                  )}
-                  {agent.notes?.trim() && (
-                    <div className="mt-2 pt-2 border-t border-hairline">
-                      <p className="font-condensed uppercase tracking-widest text-[10.5px] text-faint">
-                        Notes
-                      </p>
-                      <p className="text-[12.5px] text-dim mt-0.5 whitespace-pre-line line-clamp-4">
-                        {agent.notes.trim()}
-                      </p>
-                    </div>
-                  )}
-                </>
-              ) : isNewAgent ? (
-                <div className="text-[13.5px] text-dim mt-1">
-                  <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase mr-1.5" style={{ color: "var(--color-cat2)" }}>NEW</span>
-                  No history yet — the rate scores on its own; the relationship builds once you book.
-                </div>
-              ) : (
-                <div className="text-[13.5px] text-faint mt-1">No agent entered.</div>
-              )}
+              <Lbl>The desk</Lbl>
+              <div className="mt-1">
+                <DeskBrief agent={agent} isNew={isNewAgent} card={agentCard} desk={desk} />
+              </div>
             </div>
 
-            {reposition ? (
+            {reposition && (
               <div className="ds2-board p-4">
                 <Lbl>Against parking</Lbl>
                 {repositionGain != null ? (
@@ -951,115 +1032,6 @@ const ScoreLoadPage = () => {
                   </p>
                 )}
               </div>
-            ) : counter ? (
-              <div className="ds2-board p-4">
-                <Lbl>What to ask the agent</Lbl>
-                {/* EVERY rung, named for the rung and not the verdict, with the
-                    margin it earns. It showed three — floor, target, prime —
-                    and skipped `minimum`, which is the one the verdict grades
-                    against and the one that IS the margin goal. Jason's ask, in
-                    his words: "if the rate is lower, I know what to ask for to
-                    be right where I want to be on that load." A rung with a
-                    percentage beside it answers that; a word does not. */}
-                <div className="mt-2 flex flex-col gap-2">
-                  {([
-                    ["Break-even", counter.floor, 0, "var(--color-status-negative-text)"],
-                    ["Minimum", counter.minimum, activeTiers.minimum, "var(--color-amber-hi)"],
-                    ["Target", counter.take, activeTiers.target, "var(--color-cat2)"],
-                    ["Prime", counter.steal, activeTiers.prime, "var(--color-hot)"],
-                  ] as const).map(([label, amount, markup, color]) => (
-                    <Well
-                      key={label}
-                      className="flex items-baseline justify-between px-3 py-1.5"
-                      style={{ borderColor: `color-mix(in srgb, ${color} 45%, transparent)` }}
-                    >
-                      <span className="font-condensed text-[12px]" style={{ color }}>
-                        {label.toUpperCase()}
-                        <span className="text-faint ml-1.5">
-                          {markup > 0 ? `${Math.round(marginAtMarkup(markup) * 100)}% margin` : "no margin"}
-                        </span>
-                      </span>
-                      <span
-                        className="font-condensed font-semibold tabular-nums text-[19.5px]"
-                        style={{ color: markup > 0 ? color : "var(--color-ink)" }}
-                      >
-                        {money(amount + ptAsk)}
-                      </span>
-                    </Well>
-                  ))}
-                </div>
-
-                {/* Each quote already CONTAINS the pass-through, because that
-                    is the number you say out loud — not a base to do mental
-                    arithmetic on while the agent waits. The breakdown shows
-                    where it came from, and what a 100% line would save: load
-                    1264478 was billed `PERMITS 150.00 100.0%` and kept whole,
-                    while every permitted load with real money in it went
-                    through the 73% split. That gap is worth a phone call. */}
-                {ptAsk > 0 && (
-                  <div className="mt-3 pt-2.5 border-t border-hairline">
-                    <p className="font-condensed text-[12px] text-faint leading-snug">
-                      Each quote = the rung on {score.drivenMiles.toLocaleString("en-US")} driven
-                      mi + {money(ptCost.total)} of permits and escorts
-                      {ptPremium != null && ptPremium > 0 && (
-                        <> grossed up by {money(ptPremium)}, because the deduction is paid
-                        back at your linehaul split, not at 100%</>
-                      )}
-                      .
-                    </p>
-                    {ptPremium != null && ptPremium > 0 && (
-                      <p className="font-condensed text-[12px] mt-1 leading-snug" style={{ color: "var(--color-amber-hi)" }}>
-                        Billed as a 100% line, minimum would ask{" "}
-                        {money(counter.minimum + ptCost.total)} instead of{" "}
-                        {money(counter.minimum + ptAsk)}.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* THE OTHER QUESTION. The rungs above answer "what should the
-                    month average?". When a load already scores SCRAP the agent
-                    will not meet them, and the real choice becomes this load
-                    versus sitting still — a different, much lower line, because
-                    the fixed cost drafts either way and cannot decide a
-                    marginal load. Shown only where it is actually the live
-                    question, so it never reads as a target. */}
-                {score.verdict === "pass" && score.beatsSittingRpm != null && (
-                  <p className="font-condensed text-[12.5px] mt-3 leading-snug text-faint">
-                    {score.beatsSitting ? (
-                      <>
-                        <b style={{ color: "var(--color-amber-hi)" }}>
-                          It still beats sitting.
-                        </b>{" "}
-                        Moving pays for its own fuel and wear above{" "}
-                        <b className="text-dim">{fmtRpm(score.beatsSittingRpm)}</b> a
-                        driven mile, and this clears that. Worth taking to reach
-                        freight you can book properly —{" "}
-                        <span className="text-dim">
-                          a repositioning cost, never a plan
-                        </span>
-                        . Fill a month at this rate and the month is a disaster.
-                      </>
-                    ) : (
-                      <>
-                        <b style={{ color: "var(--color-status-negative-text)" }}>
-                          Worse than parking.
-                        </b>{" "}
-                        Below{" "}
-                        <b className="text-dim">{fmtRpm(score.beatsSittingRpm)}</b> a
-                        driven mile the miles cost more to run than they bring
-                        home, so this loses money faster than standing still.
-                      </>
-                    )}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="ds2-board p-4 flex items-center justify-center text-center">
-                <p className="text-[13.5px] text-dim">
-                  Already clears your target — no counter needed. Book it before it's gone.
-                </p>
-              </div>
             )}
           </div>
         </div>
@@ -1074,7 +1046,7 @@ const ScoreLoadPage = () => {
            column on a phone, load first. */
         <div className="mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3 items-start" style={{ maxWidth: 1040 }}>
           <div className="ds2-board p-4 sm:p-5">
-          <NumField label="Rate" value={rate} onChange={setRate} prefix="$" />
+          <NumField label="Rate offered" value={rate} onChange={setRate} prefix="$" />
 
           <p className="font-condensed uppercase tracking-widest text-[11px] text-faint mt-4 mb-1.5">
             Route <span className="normal-case tracking-normal" style={{ color: "var(--color-faint)" }}>— city autocompletes</span>
@@ -1227,7 +1199,9 @@ const ScoreLoadPage = () => {
               {!canScore && (
                 <p className="text-[12px] text-faint text-center mt-1.5">
                   {entered && !deskAnswered
-                    ? "enter the agency code first — it's how a parked desk gets caught before you book"
+                    ? deskMatches > 0
+                      ? `pick the desk — "${agentQuery.trim()}" matches ${deskMatches}, and a parked one has to be seen before you book`
+                      : "enter the agency code first — it's how a parked desk gets caught before you book"
                     : "enter a rate, loaded miles, and deadhead to score — type 0 deadhead only if the truck is already there"}
                 </p>
               )}
@@ -1242,27 +1216,18 @@ const ScoreLoadPage = () => {
                 Agency code <span style={{ color: "var(--color-status-negative-text)" }}>*</span>
               </Lbl>
               <AgentField agents={agents ?? []} query={agentQuery} onQuery={setAgentQuery} selected={agent} onPick={setAgent} />
-              {/* The parked warning fires HERE, as the code resolves, not after
-                  the score — a banner you read after deciding is decoration. */}
-              {agent && standingOf(agent) === "parked" && (
-                <div
-                  className="mt-1.5 px-2.5 py-1.5 rounded-md text-[12.5px]"
-                  style={{
-                    background: "var(--color-status-negative-bg)",
-                    color: "var(--color-status-negative-text)",
-                  }}
-                >
-                  ⛔ Parked{agent.park_reason?.trim() ? ` — "${agent.park_reason.trim()}"` : ""}
-                </div>
+              {deskMatches > 0 && (
+                <p className="mt-1.5 text-[12px] text-amber-hi">
+                  "{agentQuery.trim()}" matches {deskMatches} desk{deskMatches === 1 ? "" : "s"} — pick one from the list
+                </p>
               )}
-              {isNewAgent && (
-                <div className="mt-1.5 flex items-center gap-2">
-                  <span className="font-condensed font-semibold text-[12px] tracking-[.08em] uppercase" style={{ color: "var(--color-cat2)" }}>
-                    NEW AGENT
-                  </span>
-                  <span className="text-[12px] text-dim">no history yet · not saved until you book</span>
-                </div>
-              )}
+              {/* THE BRIEF FILLS AS THE CODE RESOLVES — the rating, the history,
+                  the phone, the latest dated notes; a parked desk replaces the
+                  whole block with the banner and the reason you wrote. A banner
+                  you read after deciding is decoration. */}
+              <div className="mt-3">
+                <DeskBrief agent={agent} isNew={isNewAgent} card={agentCard} desk={desk} />
+              </div>
             </div>
           </div>
         </div>
