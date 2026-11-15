@@ -3567,6 +3567,19 @@ const GuidePage = () => {
               day, or one that goes backwards — is refused at the door with the
               two readings that disagree named.
             </Why>
+            <Why>
+              Between the plate and the boards sit two panels. <span className="text-light">Open
+              issues</span> is where a defect noticed on the road goes — a warning
+              light, an air leak, a tire wearing — with the day you noticed it and how
+              urgent (watch · soon · now); the service that fixes it closes it from the
+              log sheet's <span className="text-light">Closes</span> chips, dated that
+              visit, or you close it by hand when it went away. <span className="text-light">Paperwork</span>{" "}
+              shows the Landstar 120 and the Maintenance Report dates from Compliance
+              beside the quarter's log so far, with a door to{" "}
+              <span className="text-light">print the report</span> — the quarter's
+              services in the report's own columns, and a CSV of any range from the
+              log tab.
+            </Why>
           </Metric>
 
           <Metric
@@ -4504,6 +4517,15 @@ const GuidePage = () => {
               counts the days the truck went to the shop this year, from the trips
               you log, costed at the ladder's target day — the number that argues
               for doing two jobs in one stop.
+            </Why>
+            <Why>
+              Every log row carries a <span className="text-light">kind</span> — PM,
+              repair, tire, wash, inspection, or a meter reading with nothing done —
+              read from what you typed and the clocks it reset (the same rule that
+              classified the rows already on the book), and tap-to-change on the row.
+              A row can also carry a <span className="text-light">warranty until</span>{" "}
+              date; a clock whose last visit is still under warranty says so on the
+              Schedule, before you pay twice for the same part.
             </Why>
           </Section>
 

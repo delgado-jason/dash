@@ -11,7 +11,9 @@ import {
   SERVICE_UNIT_ERROR,
   reconcileBothReading,
   apuReadingSanity,
+  serviceWordErrors,
 } from "../utils/validation/maintenanceValidation.js";
+import { closeMaintenanceIssue } from "./maintenanceIssueServices.js";
 
 // Resolve the user's single active truck/trailer so maintenance auto-links to
 // the right entity when there's only one — no picker needed. Returns null when
@@ -200,7 +202,7 @@ export async function getMaintenanceServices(user_id) {
   const result = await db.query(
     `SELECT s.service_id, s.unit, s.service_date, s.odometer, s.trailer_hub,
             s.apu_hours, s.vendor, s.location, s.description, s.cost,
-            s.invoice_number, s.receipt_ref, s.notes,
+            s.invoice_number, s.receipt_ref, s.notes, s.kind, s.warranty_until,
             COALESCE(
               array_agg(si.item_id) FILTER (WHERE si.item_id IS NOT NULL), '{}'
             ) AS item_ids
@@ -223,6 +225,8 @@ export async function createMaintenanceService(user_id, data) {
   if (!isServiceUnit(data.unit)) throw new ValidationError(SERVICE_UNIT_ERROR);
   const hoursErrors = apuHoursErrors(data.apu_hours);
   if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
+  const wordErrors = serviceWordErrors(data);
+  if (wordErrors.length) throw new ValidationError(wordErrors[0]);
 
   // GL-07: a "both" service carries ONE reading (the truck's odometer).
   const one = reconcileBothReading(data);
@@ -262,11 +266,11 @@ export async function createMaintenanceService(user_id, data) {
       `INSERT INTO maintenance_services
          (user_id, unit, service_date, odometer, trailer_hub, apu_hours, vendor,
           location, description, cost, invoice_number, receipt_ref, notes,
-          truck_id, trailer_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          truck_id, trailer_id, kind, warranty_until)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING service_id, unit, service_date, odometer, trailer_hub,
                  apu_hours, vendor, location, description, cost, invoice_number,
-                 receipt_ref, notes`,
+                 receipt_ref, notes, kind, warranty_until`,
       [
         user_id,
         data.unit,
@@ -283,9 +287,17 @@ export async function createMaintenanceService(user_id, data) {
         data.notes ?? null,
         link.truck_id,
         link.trailer_id,
+        data.kind ?? null,
+        data.warranty_until ?? null,
       ],
     );
     const service_id = svc.rows[0].service_id;
+
+    // The issues this visit fixed close in the same transaction, dated the
+    // visit, remembering which service closed them (migration 111).
+    const closes = Array.isArray(data.closes_issue_ids) ? data.closes_issue_ids : [];
+    for (const issue_id of closes)
+      await closeMaintenanceIssue(user_id, issue_id, { service_id, closed_on: data.service_date }, client);
 
     for (const item_id of itemIds) {
       // Only reset items that belong to this user; skip unknown ids. The item's
@@ -329,7 +341,7 @@ export async function createMaintenanceService(user_id, data) {
     }
 
     await client.query("COMMIT");
-    return { ...svc.rows[0], item_ids: itemIds };
+    return { ...svc.rows[0], item_ids: itemIds, closed_issue_ids: closes };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -351,6 +363,8 @@ const SERVICE_FIELDS = [
   "invoice_number",
   "receipt_ref",
   "notes",
+  "kind",
+  "warranty_until",
 ];
 
 // Which fields on a patch carry a METER — derived from READING_FIELD so the
@@ -368,6 +382,8 @@ export async function patchMaintenanceService(user_id, service_id, data) {
     throw new ValidationError(SERVICE_UNIT_ERROR);
   const hoursErrors = apuHoursErrors(data.apu_hours);
   if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
+  const wordErrors = serviceWordErrors(data);
+  if (wordErrors.length) throw new ValidationError(wordErrors[0]);
 
   // The same sanity rule as create, on the reading the row will carry AFTER
   // the patch — a moved date can make a once-plausible reading impossible.
@@ -452,7 +468,7 @@ export async function patchMaintenanceService(user_id, service_id, data) {
        WHERE service_id = $${i} AND user_id = $${i + 1}
        RETURNING service_id, unit, service_date, odometer, trailer_hub, apu_hours,
                  vendor, location, description, cost, invoice_number, receipt_ref,
-                 notes`,
+                 notes, kind, warranty_until`,
       values,
     );
     if (result.rowCount === 0) throw new NotFoundError("Service not found");

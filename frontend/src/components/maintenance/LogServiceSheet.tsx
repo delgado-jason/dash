@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { MaintenanceItem, ServiceUnit } from "@/types/maintenance";
+import type { MaintenanceItem, ServiceUnit, MaintenanceIssue, ServiceKind } from "@/types/maintenance";
+import { KINDS, guessKind } from "@/lib/maintenance/serviceKind";
 import type { ServiceInput } from "@/services/maintenanceService";
 import type { Vendor } from "@/types/vendor";
 import { Board } from "@/components/ui/Board";
@@ -57,6 +58,7 @@ export const LogServiceSheet = ({
   items,
   vendors,
   readings,
+  issues = [],
   initial,
   onSave,
   onCancel,
@@ -65,6 +67,7 @@ export const LogServiceSheet = ({
   items: MaintenanceItem[];
   readings: MeterReading[]; // every dated reading of the truck's odometer
   vendors: Vendor[];
+  issues?: MaintenanceIssue[]; // the OPEN issues — the ones this visit may close
   initial?: ServicePrefill;
   onSave: (data: ServiceInput) => void;
   onCancel: () => void;
@@ -83,6 +86,11 @@ export const LogServiceSheet = ({
   const [cost, setCost] = useState("");
   const [invoice, setInvoice] = useState("");
   const [completed, setCompleted] = useState<Set<string>>(new Set(initial?.item_ids ?? []));
+  // The KIND: guessed from what is typed until the owner taps one (the same
+  // rule the migration classified the book with), then fixed.
+  const [kindTouched, setKindTouched] = useState<ServiceKind | null>(null);
+  const [warranty, setWarranty] = useState(""); // 'YYYY-MM-DD', optional
+  const [closes, setCloses] = useState<Set<string>>(new Set()); // the issues this visit fixed
 
   const toggle = (id: string) =>
     setCompleted((prev) => {
@@ -99,6 +107,22 @@ export const LogServiceSheet = ({
 
   const unitItems = completableBy(unit, items);
   const ready = !!date && description.trim().length > 0;
+  const kind: ServiceKind =
+    kindTouched ??
+    guessKind({
+      description,
+      itemCount: completed.size,
+      unit,
+      apuHours: unit === "apu" ? parseReading(apuHours) : null,
+      cost: parseCost(cost),
+    });
+  const toggleCloses = (id: string) =>
+    setCloses((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const submit = () => {
     if (!ready) return;
@@ -123,6 +147,9 @@ export const LogServiceSheet = ({
       cost: parseCost(cost),
       invoice_number: invoice.trim() || null,
       item_ids: [...completed],
+      kind,
+      warranty_until: warranty || null,
+      closes_issue_ids: [...closes],
     });
   };
 
@@ -266,6 +293,31 @@ export const LogServiceSheet = ({
           />
         </div>
 
+        <div>
+          <FieldLabel>Kind</FieldLabel>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Kind">
+            {KINDS.map((k) => (
+              <button
+                key={k.value}
+                type="button"
+                aria-pressed={kind === k.value}
+                title={k.word}
+                onClick={() => setKindTouched(k.value)}
+                className={`inline-flex items-center h-[24px] px-2.5 rounded-[12px] font-condensed font-semibold text-[12.5px] ${
+                  kind === k.value
+                    ? "text-amber-hi border border-amber/40 bg-amber/[.1]"
+                    : "text-faint border border-hairline hover:text-dim"
+                }`}
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
+          <p className="font-condensed text-[12.5px] text-faint mt-1.5">
+            {kindTouched ? "your call" : "read from what you typed — tap to change"} · {KINDS.find((k) => k.value === kind)?.word}
+          </p>
+        </div>
+
         {unitItems.length > 0 && (
           <div>
             <FieldLabel>Completes</FieldLabel>
@@ -299,7 +351,36 @@ export const LogServiceSheet = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        {issues.length > 0 && (
+          <div>
+            <FieldLabel>Closes</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {issues.map((i) => {
+                const on = closes.has(i.issue_id);
+                return (
+                  <button
+                    key={i.issue_id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleCloses(i.issue_id)}
+                    className={`inline-flex items-center h-[24px] px-2.5 rounded-[12px] font-condensed font-semibold text-[12.5px] ${
+                      on
+                        ? "text-amber-hi border border-amber/40 bg-amber/[.1]"
+                        : "text-faint border border-hairline hover:text-dim"
+                    }`}
+                  >
+                    {i.what} · {i.severity}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="font-condensed text-[12.5px] text-faint mt-1.5">
+              the open issues this visit fixed — they close dated this visit, remembering it
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           <div>
             <FieldLabel htmlFor="svc-cost">Cost</FieldLabel>
             <input
@@ -319,6 +400,16 @@ export const LogServiceSheet = ({
               value={invoice}
               onChange={(e) => setInvoice(e.target.value)}
               placeholder="optional"
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="svc-warranty">Warranty until</FieldLabel>
+            <input
+              id="svc-warranty"
+              type="date"
+              className="ds-input"
+              value={warranty}
+              onChange={(e) => setWarranty(e.target.value)}
             />
           </div>
         </div>

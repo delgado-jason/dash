@@ -39,6 +39,8 @@ const svc = (over: Partial<MaintenanceService>): MaintenanceService => ({
   invoice_number: null,
   notes: null,
   item_ids: [],
+  kind: null,
+  warranty_until: null,
   ...over,
 });
 

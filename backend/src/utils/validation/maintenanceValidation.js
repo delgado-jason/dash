@@ -116,3 +116,59 @@ export const apuReadingSanity = (candidate, others = []) => {
   }
   return errors;
 };
+
+// A KIND on every service (migration 111) — one word per row.
+export const SERVICE_KINDS = ["pm", "repair", "tire", "wash", "inspection", "reading"];
+export const isKind = (k) => SERVICE_KINDS.includes(k);
+export const KIND_ERROR = `kind must be one of ${SERVICE_KINDS.join(", ")}`;
+
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+// A real calendar day: V8 parses "2027-02-30" as March 2, so the parts are
+// checked by round-tripping them through UTC.
+export const isDayKey = (v) => {
+  if (typeof v !== "string" || !DAY_KEY.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+};
+
+// The service fields that are optional words, not numbers: a kind in the
+// vocabulary (or null to clear it), a warranty date as a day key (or null).
+export const serviceWordErrors = (data = {}) => {
+  const errors = [];
+  if (data.kind !== undefined && data.kind !== null && !isKind(data.kind)) errors.push(KIND_ERROR);
+  if (data.warranty_until !== undefined && data.warranty_until !== null && !isDayKey(data.warranty_until))
+    errors.push("warranty_until must be a date (YYYY-MM-DD)");
+  return errors;
+};
+
+// OPEN ISSUES (migration 111): what, when noticed, how urgent, which unit.
+export const ISSUE_SEVERITIES = ["watch", "soon", "now"];
+export const ISSUE_FIELDS = ["unit", "what", "noticed_on", "severity", "notes"];
+
+// Returns the trimmed, typed values and the sentences for anything refused.
+// On create, `what` and `noticed_on` are required; on patch, only what is
+// sent is judged.
+export const validateIssue = (data = {}, { create = false } = {}) => {
+  const values = {};
+  const errors = [];
+  if (data.what !== undefined) {
+    const w = typeof data.what === "string" ? data.what.trim() : "";
+    if (!w) errors.push("what is required — say what you noticed");
+    else values.what = w;
+  } else if (create) errors.push("what is required — say what you noticed");
+  if (data.noticed_on !== undefined) {
+    if (!isDayKey(data.noticed_on)) errors.push("noticed_on must be a date (YYYY-MM-DD)");
+    else values.noticed_on = data.noticed_on;
+  } else if (create) errors.push("noticed_on is required — the day you noticed it");
+  if (data.severity !== undefined) {
+    if (!ISSUE_SEVERITIES.includes(data.severity)) errors.push(`severity must be one of ${ISSUE_SEVERITIES.join(", ")}`);
+    else values.severity = data.severity;
+  }
+  if (data.unit !== undefined) {
+    if (!isUnit(data.unit)) errors.push(UNIT_ERROR);
+    else values.unit = data.unit;
+  }
+  if (data.notes !== undefined) values.notes = typeof data.notes === "string" && data.notes.trim() ? data.notes.trim() : null;
+  return { values, errors };
+};

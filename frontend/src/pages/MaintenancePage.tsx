@@ -10,6 +10,10 @@ import {
   getMaintenanceItems,
   getMaintenanceServices,
 } from "@/services/maintenanceService";
+import { getMaintenanceIssues } from "@/services/maintenanceIssuesService";
+import { getComplianceItems } from "@/services/complianceService";
+import type { MaintenanceIssue } from "@/types/maintenance";
+import type { ComplianceItem } from "@/types/compliance";
 import { getFuelEntries } from "@/services/fuelService";
 import { getTrips } from "@/services/tripsService";
 import { getTrucks } from "@/services/trucksService";
@@ -72,6 +76,8 @@ const FEEDS = [
   "the plan",
   "the accounts",
   "the snapshots",
+  "the issues",
+  "the compliance items",
 ] as const;
 
 const MaintenancePage = () => {
@@ -86,10 +92,15 @@ const MaintenancePage = () => {
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [issues, setIssues] = useState<MaintenanceIssue[]>([]);
+  const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
+  const [issueRequested, setIssueRequested] = useState(false);
   const [failed, setFailed] = useState<string[]>([]);
   const [tab, setTab] = useState<"schedule" | "services">("schedule");
-  const [serviceSignal, setServiceSignal] = useState(0);
-  const [addClockSignal, setAddClockSignal] = useState(0);
+  // The three doors in the statusbar, as requests the tabs consume: set by
+  // the button, cleared by the form that opened on it.
+  const [logRequested, setLogRequested] = useState(false);
+  const [addRequested, setAddRequested] = useState(false);
   // The Done door's hand-off: the clock to tick, the unit, the newest reading.
   const [prefill, setPrefill] = useState<ServicePrefill | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -110,6 +121,8 @@ const MaintenancePage = () => {
       getPlans(),
       getAccounts(),
       getSnapshots(),
+      getMaintenanceIssues(),
+      getComplianceItems(),
     ]).then((r) => {
       if (!active) return;
       const ok = <T,>(i: number, fallback: T): T =>
@@ -123,6 +136,8 @@ const MaintenancePage = () => {
       setPlans(ok<PlanRow[]>(6, []));
       setAccounts(ok<AccountRow[]>(7, []));
       setSnapshots(ok<SnapshotRow[]>(8, []));
+      setIssues(ok<MaintenanceIssue[]>(9, []));
+      setCompliance(ok<ComplianceItem[]>(10, []));
       setFailed(FEEDS.filter((_, i) => r[i].status === "rejected"));
       setLoading(false);
     });
@@ -310,7 +325,7 @@ const MaintenancePage = () => {
             onClick={() => {
               setPrefill(null);
               setTab("services");
-              setServiceSignal((n) => n + 1);
+              setLogRequested(true);
             }}
           >
             Log service
@@ -321,10 +336,20 @@ const MaintenancePage = () => {
           <GhostButton
             onClick={() => {
               setTab("schedule");
-              setAddClockSignal((n) => n + 1);
+              setAddRequested(true);
             }}
           >
             + Add clock
+          </GhostButton>
+          {/* The third door: a defect noticed on the road, written down before
+              it is an invoice (the sheet's call 6). */}
+          <GhostButton
+            onClick={() => {
+              setTab("schedule");
+              setIssueRequested(true);
+            }}
+          >
+            Note an issue
           </GhostButton>
         </div>
 
@@ -428,7 +453,15 @@ const MaintenancePage = () => {
             floor={floor}
             inServiceDay={inServiceDay}
             prompt={prompt}
-            addSignal={addClockSignal}
+            issues={issues}
+            compliance={compliance}
+            services={services}
+            today={localDayKey(now)}
+            issueRequested={issueRequested}
+            onIssueOpened={() => setIssueRequested(false)}
+            onIssuesChange={refresh}
+            addRequested={addRequested}
+            onAddOpened={() => setAddRequested(false)}
             onChange={refresh}
             onDone={logDone}
           />
@@ -439,8 +472,11 @@ const MaintenancePage = () => {
             readings={readings}
             books={books}
             shop={shop}
+            issues={issues.filter((i) => i.status === "open")}
+            today={localDayKey(now)}
             onChange={refresh}
-            openSignal={serviceSignal}
+            openRequested={logRequested}
+            onOpened={() => setLogRequested(false)}
             prefill={prefill}
             onPrefillUsed={() => setPrefill(null)}
           />

@@ -3,6 +3,10 @@
 // unit; a service (shop visit) can cover the truck and trailer together.
 export type MaintenanceUnit = "tractor" | "trailer" | "apu";
 export type ServiceUnit = "tractor" | "trailer" | "both" | "apu";
+// One word per log row (migration 111): scheduled service, something broke,
+// tires, a wash, an inspection, or a meter reading with nothing done.
+export type ServiceKind = "pm" | "repair" | "tire" | "wash" | "inspection" | "reading";
+export type IssueSeverity = "watch" | "soon" | "now";
 
 export interface MaintenanceItem {
   item_id: string;
@@ -38,4 +42,20 @@ export interface MaintenanceService {
   invoice_number: string | null;
   notes: string | null;
   item_ids: string[]; // schedule items this service completed
+  kind: ServiceKind | null; // null on a row logged before 111 that the migration could not read
+  warranty_until: string | null; // 'YYYY-MM-DD' — the parts/labour warranty on this visit, when known
+}
+
+// A defect noticed on the road — what, the day, how urgent — closed by the
+// service that fixed it, or by hand (migration 111).
+export interface MaintenanceIssue {
+  issue_id: string;
+  unit: MaintenanceUnit;
+  what: string;
+  noticed_on: string; // 'YYYY-MM-DD'
+  severity: IssueSeverity;
+  status: "open" | "closed";
+  closed_by_service_id: string | null;
+  closed_on: string | null;
+  notes: string | null;
 }

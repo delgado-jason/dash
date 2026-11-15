@@ -26,6 +26,7 @@ export interface LastVisit {
   vendor: string | null;
   cost: number | null; // null = the visit was logged without a price
   clocks: number; // how many clocks that visit reset — the figure is theirs together
+  warrantyUntil: string | null; // 'YYYY-MM-DD' — the visit's parts/labour warranty, when known
 }
 
 // The newest service that completed each clock. The API lists services newest
@@ -42,6 +43,7 @@ export const lastVisitByItem = (services: MaintenanceService[]): Map<string, Las
         vendor: s.vendor,
         cost: s.cost,
         clocks: s.item_ids.length,
+        warrantyUntil: s.warranty_until ?? null,
       });
     }
   }
@@ -276,3 +278,8 @@ export const meterPrompt = (
   if (close && apu.estimated) return "an APU clock is close and its hours are projected — read the meter at the next stop";
   return null;
 };
+
+// A clock whose last visit is still under warranty says so before the owner
+// pays twice (the Maintenance sheet, call 7).
+export const underWarranty = (v: LastVisit | undefined, today: string): boolean =>
+  v?.warrantyUntil != null && v.warrantyUntil >= today;

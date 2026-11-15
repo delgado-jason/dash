@@ -10,7 +10,11 @@ import {
 } from "@/services/maintenanceService";
 import { type CurrentReading, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import type { ApuProjection } from "@/lib/metrics/apuHours";
-import type { LastVisit, NinetyDays, Bucket } from "@/lib/metrics/maintenanceMoney";
+import { underWarranty, type LastVisit, type NinetyDays, type Bucket } from "@/lib/metrics/maintenanceMoney";
+import type { MaintenanceIssue, MaintenanceService } from "@/types/maintenance";
+import type { ComplianceItem } from "@/types/compliance";
+import { IssuesPanel } from "./IssuesPanel";
+import { PaperworkPanel } from "./PaperworkPanel";
 import { MaintenanceItemForm } from "./MaintenanceItemForm";
 import { MaintenanceRow, MaintenanceRowHead, type RowFact } from "./MaintenanceRow";
 import { Panel } from "@/components/ui/Panel";
@@ -37,9 +41,17 @@ interface Props {
   floor: number | null; // the Plan's Maintenance floor
   inServiceDay: string | null; // the truck's in-service date — the assumed baseline
   prompt: string | null; // "read the meter — …", when the APU needs a reading
-  // Bumping it opens the add-a-clock form. "+ Add clock" lives in the
-  // statusbar beside "Log service" — the plate is a readout, not a toolbar.
-  addSignal?: number;
+  issues: MaintenanceIssue[]; // open and closed, the panel sorts them
+  compliance: ComplianceItem[]; // the Landstar paperwork's dates
+  services: MaintenanceService[]; // for the quarter's count on the paperwork panel
+  today: string; // 'YYYY-MM-DD'
+  issueRequested?: boolean; // the statusbar's "Note an issue" — consumed by the panel
+  onIssueOpened?: () => void;
+  onIssuesChange: () => void;
+  // The statusbar's "+ Add clock" — a request the tab consumes on open; the
+  // plate is a readout, not a toolbar.
+  addRequested?: boolean;
+  onAddOpened?: () => void;
   onChange: () => void;
   onDone: (item: MaintenanceItem) => void; // the Done door — log the service that does it
 }
@@ -176,8 +188,10 @@ const chipFor = (due: Due): { tone: PillTone; label: string } | null => {
   return null;
 };
 
-const contextOf = (i: MaintenanceItem, assumed: boolean): string =>
-  `${i.category} · warn ${i.warn_lead_days} days before${assumed ? " · counting from an assumed baseline" : ""}`;
+const contextOf = (i: MaintenanceItem, assumed: boolean, warrantyUntil: string | null): string =>
+  `${i.category} · warn ${i.warn_lead_days} days before${assumed ? " · counting from an assumed baseline" : ""}${
+    warrantyUntil ? ` · under warranty until ${fmtDate(warrantyUntil)}` : ""
+  }`;
 
 // The due-next cell's second line: the unit, then either the interval and how
 // far past, or how much is left and roughly when. Same rule as the right cell —
@@ -380,7 +394,15 @@ export const ScheduleTab = ({
   floor,
   inServiceDay,
   prompt,
-  addSignal = 0,
+  issues,
+  compliance,
+  services,
+  today,
+  issueRequested = false,
+  onIssueOpened,
+  onIssuesChange,
+  addRequested = false,
+  onAddOpened,
   onChange,
   onDone,
 }: Props) => {
@@ -395,12 +417,13 @@ export const ScheduleTab = ({
 
   // The statusbar's "+ Add clock" opens a blank form here.
   useEffect(() => {
-    if (addSignal > 0) {
+    if (addRequested) {
       setEditing(null);
       setFormInitial(null);
       setShowForm(true);
+      onAddOpened?.();
     }
-  }, [addSignal]);
+  }, [addRequested, onAddOpened]);
 
   const now = new Date();
   const ranked = [...rows].sort(byUrgency);
@@ -518,6 +541,13 @@ export const ScheduleTab = ({
         </div>
       </Panel>
 
+      {/* The paperwork the log feeds, and the defects noticed before they are
+          invoices (the sheet's calls 6 and 8). */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        <PaperworkPanel items={compliance} services={services} today={today} />
+        <IssuesPanel issues={issues} today={today} openRequested={issueRequested} onOpened={onIssueOpened} onChange={onIssuesChange} />
+      </div>
+
       {error && <p className="text-destructive text-sm mt-3">{error}</p>}
 
       {showForm && (
@@ -571,7 +601,11 @@ export const ScheduleTab = ({
                   key={item.item_id}
                   name={item.name}
                   chip={chipFor(due)}
-                  context={contextOf(item, assumed)}
+                  context={contextOf(
+                    item,
+                    assumed,
+                    underWarranty(lastVisits.get(item.item_id), today) ? (lastVisits.get(item.item_id)?.warrantyUntil ?? null) : null,
+                  )}
                   interval={intervalFact(item)}
                   lastDone={lastDoneFact(item, assumed)}
                   lastTime={lastTimeFact(lastVisits.get(item.item_id))}

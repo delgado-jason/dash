@@ -22,6 +22,7 @@ import CallsView from "@/pages/relationships/CallsView";
 import TiersView from "@/pages/relationships/TiersView";
 import ReviewView from "@/pages/relationships/ReviewView";
 import MaintenancePage from "@/pages/MaintenancePage";
+import MaintenanceReportPage from "@/pages/MaintenanceReportPage";
 import AgentsPage from "@/pages/AgentsPage";
 import AgentDetailPage from "./pages/AgentDetailPage";
 import VendorsPage from "@/pages/VendorsPage";
@@ -86,6 +87,7 @@ const App = () => {
             }
           />
           <Route path="/maintenance" element={<MaintenancePage />} />
+          <Route path="/maintenance/report" element={<MaintenanceReportPage />} />
           <Route path="/compliance" element={<CompliancePage />} />
           <Route path="/integrity" element={<IntegrityPage />} />
           <Route path="/agents" element={<AgentsPage />} />

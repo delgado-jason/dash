@@ -49,6 +49,8 @@ const service = (over: Partial<MaintenanceService>): MaintenanceService => ({
   invoice_number: null,
   notes: null,
   item_ids: [],
+  kind: null,
+  warranty_until: null,
   ...over,
 });
 
@@ -80,6 +82,16 @@ describe("lastVisitByItem", () => {
     expect(last.get("oil")).toMatchObject({ service_id: "pm", day: "2026-08-21", cost: 840.87, clocks: 6 });
     expect(last.get("brakes")).toMatchObject({ service_id: "rays", clocks: 5 });
     expect(last.get("never")).toBeUndefined();
+  });
+
+  it("carries the visit's warranty, and underWarranty reads it against today", async () => {
+    const { underWarranty } = await import("./maintenanceMoney");
+    const last = lastVisitByItem([service({ service_id: "w", warranty_until: "2027-09-03", item_ids: ["belt"] }), PM]);
+    expect(last.get("belt")?.warrantyUntil).toBe("2027-09-03");
+    expect(underWarranty(last.get("belt"), "2026-11-15")).toBe(true);
+    expect(underWarranty(last.get("belt"), "2027-09-04")).toBe(false);
+    expect(underWarranty(last.get("oil"), "2026-11-15")).toBe(false);
+    expect(underWarranty(undefined, "2026-11-15")).toBe(false);
   });
 
   it("is order-independent: an older visit listed first does not win", () => {
