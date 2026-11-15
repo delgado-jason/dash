@@ -11,6 +11,14 @@ import {
   patchMaintenanceService,
   deleteMaintenanceService,
 } from "../services/maintenanceServices.js";
+import {
+  getMaintenanceIssues,
+  createMaintenanceIssue,
+  patchMaintenanceIssue,
+  closeMaintenanceIssue,
+  reopenMaintenanceIssue,
+  deleteMaintenanceIssue,
+} from "../services/maintenanceIssueServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
@@ -113,6 +121,64 @@ router.delete("/services/:id", async (req, res) => {
       req.user.user_id,
       req.params.id,
     );
+    return res.status(200).json({ deleted });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// ---- open issues (migration 111) ----
+router.get("/issues", async (req, res) => {
+  try {
+    const issues = await getMaintenanceIssues(req.user.user_id);
+    return res.status(200).json({ issues });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+router.post("/issues", async (req, res) => {
+  try {
+    const issue = await createMaintenanceIssue(req.user.user_id, req.body);
+    return res.status(201).json({ issue });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+router.patch("/issues/:id", async (req, res) => {
+  try {
+    const issue = await patchMaintenanceIssue(req.user.user_id, req.params.id, req.body);
+    return res.status(200).json({ issue });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+router.post("/issues/:id/close", async (req, res) => {
+  try {
+    const issue = await closeMaintenanceIssue(req.user.user_id, req.params.id, {
+      service_id: req.body?.service_id ?? null,
+      closed_on: req.body?.closed_on ?? null,
+    });
+    return res.status(200).json({ issue });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+router.post("/issues/:id/reopen", async (req, res) => {
+  try {
+    const issue = await reopenMaintenanceIssue(req.user.user_id, req.params.id);
+    return res.status(200).json({ issue });
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+router.delete("/issues/:id", async (req, res) => {
+  try {
+    const deleted = await deleteMaintenanceIssue(req.user.user_id, req.params.id);
     return res.status(200).json({ deleted });
   } catch (err) {
     return handleError(res, err);

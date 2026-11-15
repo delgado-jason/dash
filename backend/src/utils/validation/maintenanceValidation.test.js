@@ -164,3 +164,40 @@ describe("apuReadingSanity — a reading no meter could produce is refused, and 
     assert.deepEqual(apuReadingSanity(null, onFile), []);
   });
 });
+
+import { serviceWordErrors, validateIssue, SERVICE_KINDS } from "./maintenanceValidation.js";
+
+describe("serviceWordErrors — a kind in the vocabulary, a warranty as a day", () => {
+  test("every kind passes; a made-up one is refused; null clears", () => {
+    for (const k of SERVICE_KINDS) assert.deepEqual(serviceWordErrors({ kind: k }), []);
+    assert.deepEqual(serviceWordErrors({ kind: null }), []);
+    assert.match(serviceWordErrors({ kind: "oilchange" })[0], /kind must be one of/);
+  });
+  test("warranty_until is a day key or null", () => {
+    assert.deepEqual(serviceWordErrors({ warranty_until: "2027-09-03" }), []);
+    assert.deepEqual(serviceWordErrors({ warranty_until: null }), []);
+    assert.match(serviceWordErrors({ warranty_until: "next year" })[0], /warranty_until must be a date/);
+    assert.match(serviceWordErrors({ warranty_until: "2027-02-30" })[0], /warranty_until must be a date/);
+  });
+});
+
+describe("validateIssue — what, when, how urgent", () => {
+  test("create needs what and the day; the rest default", () => {
+    const r = validateIssue({ what: "  warning light on dash ", noticed_on: "2026-10-19" }, { create: true });
+    assert.deepEqual(r.errors, []);
+    assert.deepEqual(r.values, { what: "warning light on dash", noticed_on: "2026-10-19" });
+    assert.match(validateIssue({ noticed_on: "2026-10-19" }, { create: true }).errors[0], /what is required/);
+    assert.match(validateIssue({ what: "x" }, { create: true }).errors[0], /noticed_on is required/);
+  });
+  test("a blank what, a bad day, a made-up severity or unit are refused by name", () => {
+    assert.match(validateIssue({ what: "   " }).errors[0], /what is required/);
+    assert.match(validateIssue({ noticed_on: "10/19/2026" }).errors[0], /noticed_on must be a date/);
+    assert.match(validateIssue({ severity: "urgent" }).errors[0], /severity must be one of/);
+    assert.match(validateIssue({ unit: "both" }).errors[0], /unit must be/);
+  });
+  test("a patch judges only what is sent; notes trim to null", () => {
+    const r = validateIssue({ severity: "now", notes: "  " });
+    assert.deepEqual(r.errors, []);
+    assert.deepEqual(r.values, { severity: "now", notes: null });
+  });
+});

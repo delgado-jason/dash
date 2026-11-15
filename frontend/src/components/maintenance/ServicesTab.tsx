@@ -5,8 +5,13 @@ import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
 import {
   createMaintenanceService,
   deleteMaintenanceService,
+  patchMaintenanceService,
   type ServiceInput,
 } from "@/services/maintenanceService";
+import type { MaintenanceIssue } from "@/types/maintenance";
+import { kindLabel, nextKind } from "@/lib/maintenance/serviceKind";
+import { servicesCsv } from "@/lib/maintenance/serviceCsv";
+import { quarterOf } from "@/lib/maintenance/paperwork";
 import { LogServiceSheet, type ServicePrefill } from "./LogServiceSheet";
 import type { MeterReading } from "@/lib/metrics/trailerMeter";
 import type { BooksVsLog, BooksWord, ShopDays } from "@/lib/metrics/maintenanceMoney";
@@ -22,8 +27,11 @@ interface Props {
   readings: MeterReading[]; // the truck's dated odometer readings (the trailer's meter)
   books: BooksVsLog; // the P&L's repairs line beside the log, month by month
   shop: ShopDays; // the days the truck went to the shop this year, costed
+  issues: MaintenanceIssue[]; // the OPEN issues, for the sheet's Closes chips
+  today: string; // 'YYYY-MM-DD'
   onChange: () => void;
-  openSignal?: number; // bumping it opens the log-service form (statusbar CTA)
+  openRequested?: boolean; // the statusbar's "Log service" — consumed on open
+  onOpened?: () => void;
   // The Done door on a clock: the sheet opens with that clock ticked, the unit
   // set and the newest reading in the box. Consumed once the sheet closes.
   prefill?: ServicePrefill | null;
@@ -227,11 +235,16 @@ export const ServicesTab = ({
   readings,
   books,
   shop,
+  issues,
+  today,
   onChange,
-  openSignal = 0,
+  openRequested = false,
+  onOpened,
   prefill = null,
   onPrefillUsed,
 }: Props) => {
+  // The warranty cell being edited inline, by service id.
+  const [warrantyFor, setWarrantyFor] = useState<string | null>(null);
   // The rolodex, for linking vendor names through the bridge (same name rule
   // the spend readout uses).
   const { vendors: rolodex } = useVendors(0);
@@ -253,9 +266,15 @@ export const ServicesTab = ({
   // Landstar's app). Presets cover the common cases; "Custom" reveals dropdowns.
   const [mode, setMode] = useState<RangeMode>("3m");
 
+  // A request the tab consumes: the statusbar sets it, the sheet opens, the
+  // flag clears — so a remount (every refresh, every tab switch) finds
+  // nothing to answer and never reopens a sheet after a save.
   useEffect(() => {
-    if (openSignal > 0) setShowForm(true);
-  }, [openSignal]);
+    if (openRequested) {
+      setShowForm(true);
+      onOpened?.();
+    }
+  }, [openRequested, onOpened]);
   // The Done door hands a prefill in; the sheet opens on it.
   useEffect(() => {
     if (prefill) setShowForm(true);
@@ -383,6 +402,7 @@ export const ServicesTab = ({
             items={items}
             vendors={rolodex}
             readings={readings}
+            issues={issues}
             initial={prefill ?? undefined}
             onSave={save}
             onCancel={closeSheet}
@@ -433,12 +453,36 @@ export const ServicesTab = ({
             </select>
           </span>
         )}
-        <span className="ml-auto font-condensed text-[14px] text-faint">
-          <b className="font-condensed font-semibold text-[20.5px] text-ink tabular-nums">
-            {filtered.length}
-          </b>{" "}
-          service{filtered.length !== 1 ? "s" : ""} ·{" "}
-          <b className="font-semibold text-ink tabular-nums">{moneyCents(rangeTotal)}</b>
+        <span className="ml-auto font-condensed text-[14px] text-faint flex items-baseline gap-3 flex-wrap">
+          <span>
+            <b className="font-condensed font-semibold text-[20.5px] text-ink tabular-nums">
+              {filtered.length}
+            </b>{" "}
+            service{filtered.length !== 1 ? "s" : ""} ·{" "}
+            <b className="font-semibold text-ink tabular-nums">{moneyCents(rangeTotal)}</b>
+          </span>
+          {/* The quarter as a download and a printed page (the sheet's call 8). */}
+          <button
+            type="button"
+            onClick={() => {
+              const url = URL.createObjectURL(new Blob([servicesCsv(filtered, nameById)], { type: "text/csv;charset=utf-8" }));
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `maintenance-${from || "all"}-${to || "all"}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-amber-hi hover:text-hot"
+            disabled={filtered.length === 0}
+          >
+            Export CSV
+          </button>
+          <Link
+            to={`/maintenance/report?from=${from || quarterOf(today).from}&to=${to || quarterOf(today).to}`}
+            className="text-amber-hi hover:text-hot"
+          >
+            Print the Landstar report ›
+          </Link>
         </span>
       </div>
 
@@ -518,15 +562,15 @@ export const ServicesTab = ({
               The log
             </span>
             <span className="font-condensed text-[13px] text-faint">
-              · chronological · cost here tracks vendor pricing; the books are above
+              · chronological · a kind on every row, tap it to change · cost here tracks vendor pricing; the books are above
             </span>
           </div>
           <div className="overflow-x-auto">
-            <div className="min-w-[760px]">
+            <div className="min-w-[920px]">
               {filtered.map((sv) => (
                 <div
                   key={sv.service_id}
-                  className="grid grid-cols-[92px_1fr_190px_130px_90px_30px] gap-3 items-baseline px-4 py-[11px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
+                  className="grid grid-cols-[92px_1fr_84px_170px_120px_90px_112px_30px] gap-3 items-baseline px-4 py-[11px] border-t ds2-cell-rule first:border-t-0 font-condensed text-[14.5px] text-dim"
                 >
                   <span className="text-faint whitespace-nowrap">
                     {fmtDate(sv.service_date)}
@@ -546,6 +590,25 @@ export const ServicesTab = ({
                       </span>
                     )}
                   </span>
+                  {/* The KIND, one word, tap to cycle (the sheet's call 7). */}
+                  <button
+                    type="button"
+                    title="tap to change the kind"
+                    disabled={busy}
+                    onClick={() => run(() => patchMaintenanceService(sv.service_id, { kind: nextKind(sv.kind) }))}
+                    className={`inline-flex items-center h-[22px] px-2 rounded-[11px] border text-[11.5px] font-semibold uppercase tracking-[.06em] justify-self-start ${
+                      sv.kind === "repair"
+                        ? "border-status-negative-text/40 text-status-negative-text"
+                        : sv.kind === "tire"
+                          ? "border-amber/50 text-amber-hi"
+                          : sv.kind === "pm"
+                            ? "border-status-positive-text/40 text-status-positive-text"
+                            : "border-hairline text-faint"
+                    }`}
+                    data-kind={sv.kind ?? ""}
+                  >
+                    {sv.kind ? kindLabel(sv.kind) : "kind?"}
+                  </button>
                   <VendorCell
                     name={sv.vendor}
                     location={sv.location}
@@ -559,6 +622,42 @@ export const ServicesTab = ({
                   </span>
                   <span className="text-right font-semibold text-ink tabular-nums whitespace-nowrap">
                     {moneyCents(sv.cost)}
+                  </span>
+                  {/* The warranty on this visit — one date, blank until set. */}
+                  <span className="text-right text-[12.5px] whitespace-nowrap">
+                    {warrantyFor === sv.service_id ? (
+                      <input
+                        type="date"
+                        aria-label="Warranty until"
+                        className="ds-input !h-[26px] !py-0 !text-[12.5px]"
+                        defaultValue={sv.warranty_until ?? ""}
+                        autoFocus
+                        onBlur={(e) => {
+                          const v = e.target.value || null;
+                          setWarrantyFor(null);
+                          if (v !== (sv.warranty_until ?? null))
+                            void run(() => patchMaintenanceService(sv.service_id, { warranty_until: v }));
+                        }}
+                      />
+                    ) : sv.warranty_until ? (
+                      <button
+                        type="button"
+                        onClick={() => setWarrantyFor(sv.service_id)}
+                        className={sv.warranty_until >= today ? "text-status-positive-text" : "text-faint line-through"}
+                        title="warranty until · tap to change"
+                      >
+                        to {fmtDate(sv.warranty_until)}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setWarrantyFor(sv.service_id)}
+                        className="text-faint hover:text-amber-hi"
+                        title="set the warranty on this visit"
+                      >
+                        — <span className="text-amber-hi">set ›</span>
+                      </button>
+                    )}
                   </span>
                   <button
                     aria-label="Delete"

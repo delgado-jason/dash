@@ -1,5 +1,5 @@
 import api from "./api";
-import type { MaintenanceItem, MaintenanceService } from "@/types/maintenance";
+import type { MaintenanceItem, MaintenanceService, ServiceKind } from "@/types/maintenance";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const numOrNull = (v: any): number | null =>
@@ -39,6 +39,8 @@ const coerceService = (s: any): MaintenanceService => ({
   invoice_number: s.invoice_number ?? null,
   notes: s.notes ?? null,
   item_ids: Array.isArray(s.item_ids) ? s.item_ids : [],
+  kind: s.kind ?? null,
+  warranty_until: dateOrNull(s.warranty_until),
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -93,6 +95,9 @@ export interface ServiceInput {
   invoice_number?: string | null;
   notes?: string | null;
   item_ids?: string[];
+  kind?: ServiceKind | null;
+  warranty_until?: string | null;
+  closes_issue_ids?: string[]; // the open issues this visit fixed
 }
 
 export const createMaintenanceService = async (
