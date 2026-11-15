@@ -31,7 +31,7 @@
 // lose or gain a day either side of a DST boundary.
 import type { Load } from "@/types/load";
 import { loadGross } from "./rateTargets";
-import { daysBetweenKeys, keyOf } from "@/lib/relationships/dayKeys";
+import { daysBetweenKeys, keyOf } from "@/lib/dates/dayKeys";
 import { money } from "@/lib/format";
 import { isDelivered } from "./status";
 

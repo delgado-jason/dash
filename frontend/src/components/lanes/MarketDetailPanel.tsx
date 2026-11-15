@@ -3,7 +3,7 @@ import type { DeliveryStory, MarketDetail, NextLeg } from "@/lib/metrics/marketL
 import type { MarketGrade } from "@/lib/metrics/marketFactor";
 import { money, rpm } from "@/lib/format";
 import { legCost, type GradeCosts } from "@/lib/metrics/marketFactor";
-import { shortDate } from "@/lib/relationships/dayKeys";
+import { shortDate } from "@/lib/dates/dayKeys";
 import { GradeChip } from "./MarketLedger";
 
 const pct = (n: number | null) => (n == null ? "—" : `${Math.round(n * 100)}%`);

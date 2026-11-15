@@ -23,7 +23,7 @@
 import { DEFAULT_DETENTION_FREE_HOURS } from "../detention";
 import type { Load } from "@/types/load";
 import { getRegion, getStateName, UNKNOWN_REGION } from "@/lib/constants/states";
-import { DAY_MS, keyOf, localDayKey, daysBetweenKeys } from "@/lib/relationships/dayKeys";
+import { DAY_MS, keyOf, localDayKey, daysBetweenKeys } from "@/lib/dates/dayKeys";
 import { median } from "./stats";
 import { loadRevenue } from "./loads";
 import { perDayOver, type PerDayTotals } from "./perDay";

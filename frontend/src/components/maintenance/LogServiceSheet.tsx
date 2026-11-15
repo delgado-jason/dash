@@ -12,7 +12,7 @@ import {
   FieldLabel,
   PrimaryButton,
   GhostButton,
-} from "@/components/relationships/primitives";
+} from "@/components/ui/primitives";
 
 // The log-service SHEET (the shop nod sheet's "Log service · the sheet").
 // One column of fields in the order a man with an invoice in his hand fills

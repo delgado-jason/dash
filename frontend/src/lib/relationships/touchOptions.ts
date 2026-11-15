@@ -4,7 +4,7 @@
 // offer the same words and land on the same dates. Pure; the clock is passed
 // in so the chips can be tested against a frozen day.
 import type { ContactMethod, ContactNextStep, ContactOutcome } from "@/services/agentContactsService";
-import { localDayKey } from "./dayKeys";
+import { localDayKey } from "@/lib/dates/dayKeys";
 
 export const OUTCOME_TABS: { value: ContactOutcome; label: string }[] = [
   { value: "reached", label: "Reached" },

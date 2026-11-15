@@ -7,10 +7,10 @@ import { AlertLamp, StatusPill } from "@/components/ui/StatusPill";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRelationshipsData } from "@/hooks/useRelationshipsData";
 import { useSettlementOnly } from "@/hooks/useSettlementOnly";
-import { SYSTEM_START, inboundShare } from "@/lib/metrics/relationships";
-import { inboundHeadline } from "@/lib/relationships/inboundHeadline";
-import { shortDate, utcDayKey } from "@/lib/relationships/dayKeys";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { SYSTEM_START, inboundShare } from "@/lib/metrics/inbound";
+import { inboundHeadline } from "@/lib/agencies/inboundHeadline";
+import { shortDate, utcDayKey } from "@/lib/dates/dayKeys";
+import { nameOf } from "@/lib/agents/nameOf";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { fmtPerDay, perDayTone, type DailyTargets } from "@/lib/metrics/perDay";
 import { perDayTextClass } from "@/components/lanes/rpmStyle";
@@ -25,7 +25,7 @@ import {
   type AgencyWindow,
   type ShelfRow,
 } from "@/lib/agencies/agencyMetrics";
-import { CodeChip, PrimaryButton, GhostButton } from "@/components/relationships/primitives";
+import { CodeChip, PrimaryButton, GhostButton } from "@/components/ui/primitives";
 import { AgencyRow, AgencyRowHeader, RowCell } from "@/components/agencies/AgencyRow";
 import { AgencyForm } from "@/components/agencies/AgencyForm";
 

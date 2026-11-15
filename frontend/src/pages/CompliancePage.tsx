@@ -24,7 +24,7 @@ import {
 import { getDrivers, patchDriver } from "@/services/driversService";
 import { RenewSheet } from "@/components/compliance/RenewSheet";
 import { cadenceMonths, earlierCount, errText, fmtDay, renewalLine } from "@/lib/compliance/renewal";
-import { PrimaryButton } from "@/components/relationships/primitives";
+import { PrimaryButton } from "@/components/ui/primitives";
 import { getTrucks } from "@/services/trucksService";
 import { getTrailers } from "@/services/trailersService";
 import {

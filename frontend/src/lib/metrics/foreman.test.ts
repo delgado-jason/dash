@@ -225,8 +225,8 @@ describe("buildForemanBoard — ranking", () => {
   });
 });
 
-describe("buildForemanBoard — measured score ranks; class is the tiebreak", () => {
-  it("a higher-scoring spot agent outranks a weaker direct one (evidence beats the label, 2026-09-11)", () => {
+describe("buildForemanBoard — measured score ranks; your rating breaks ties", () => {
+  it("a higher-scoring one-shipper desk outranks a weaker two-load desk three counties away (evidence beats the label, 2026-09-11)", () => {
     seq = 0;
     const agents = [mkAgent("dir", "Direct"), mkAgent("spt", "Spot")];
     const loads: Load[] = [
@@ -239,13 +239,31 @@ describe("buildForemanBoard — measured score ranks; class is the tiebreak", ()
     ];
     const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
     const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
-    // the fixture's whole point: spot scores higher than the far direct
     expect(byId.spt.score).toBeGreaterThan(byId.dir.score);
     const ids = board.rankings.map((r) => r.agentId);
     expect(ids.indexOf("spt")).toBeLessThan(ids.indexOf("dir"));
-    // the class survives as a badge — it informs, it no longer overrules
-    expect(byId.dir.bucket).toBe("direct");
-    expect(byId.spt.bucket).toBe("spot");
+    // no Direct/Spot on a ranking any more — the rating is the only word of yours
+    expect("bucket" in byId.dir).toBe(false);
+    expect(byId.dir.rating).toBeNull();
+  });
+
+  it("two identical desks: the higher rating ranks first, and swapping the ratings swaps the order", () => {
+    const world = (hi: number, lo: number) => {
+      seq = 0;
+      const agents = [mkAgent("anc", "Anchor"), { ...mkAgent("hi", "Hi"), rating: hi }, { ...mkAgent("lo", "Lo"), rating: lo }];
+      const loads: Load[] = [
+        mkLoad({ agent_id: "anc", load_status: "booked", origin_city: "Akron", origin_state: "OH", destination_city: "Macedonia", destination_state: "OH", pickup_date: "2026-08-17", delivery_date: "2026-08-19" }),
+        mkLoad({ agent_id: "hi", origin_city: "Akron", origin_state: "OH", delivery_date: "2026-08-03" }),
+        mkLoad({ agent_id: "lo", origin_city: "Akron", origin_state: "OH", delivery_date: "2026-08-03" }),
+      ];
+      const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+      const hiRow = board.rankings.find((r) => r.agentId === "hi")!;
+      const loRow = board.rankings.find((r) => r.agentId === "lo")!;
+      expect(hiRow.score).toBeCloseTo(loRow.score, 10);
+      return board.rankings.map((r) => r.agentId).filter((id) => id !== "anc");
+    };
+    expect(world(5, 3)).toEqual(["hi", "lo"]);
+    expect(world(3, 5)).toEqual(["lo", "hi"]);
   });
 });
 
@@ -352,19 +370,53 @@ describe("buildForemanBoard — agency code", () => {
   });
 });
 
-describe("buildForemanBoard — rate benchmark (per-type median, loaded basis)", () => {
-  it("benchmarks each agent against your realized median gross/loaded for that type", () => {
+const LADDERS = {
+  standard: { breakEven: 4, minimum: 4.75, target: 5.5, prime: 6.5 },
+  specialized: { breakEven: 4, minimum: 5.6, target: 6.1, prime: 6.51 },
+};
+
+describe("buildForemanBoard — the rate on the file's basis: gross ÷ driven miles against the book's rung", () => {
+  it("a1's $6.00 standard over five loads reads solid against the $4.75 rung; a2's one oversize load has a rung and no verdict", () => {
+    const { agents, loads } = buildWorld();
+    const board = buildForemanBoard(loads, agents, COORDS, { now: NOW, ladders: LADDERS });
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a1.loadType).toBe("standard flatbed");
+    expect(byId.a1.book).toBe("standard");
+    expect(byId.a1.rpm).toBeCloseTo(6.0, 5);
+    expect(byId.a1.rung).toBeCloseTo(4.75, 5);
+    expect(byId.a1.rateDelta).toBeCloseTo(1.25, 5);
+    expect(byId.a1.verdict).toBe("solid");
+    expect(byId.a1.why).toContain("pays above your flatbed rung");
+    expect(byId.a2.loadType).toBe("oversize");
+    expect(byId.a2.book).toBe("specialized");
+    expect(byId.a2.rung).toBeCloseTo(5.6, 5);
+    expect(byId.a2.rpm).toBeCloseTo(8.0, 5);
+    expect(byId.a2.verdict).toBeNull(); // one load is a fact about one load
+    expect(board.rung).toBeNull(); // focus any
+    expect(buildForemanBoard(loads, agents, COORDS, { now: NOW, ladders: LADDERS, focus: "oversize" }).rung).toBeCloseTo(5.6, 5);
+  });
+
+  it("driven miles read the odometer window where it is real, else loaded + deadhead — never loaded alone", () => {
+    seq = 0;
+    const agents = [mkAgent("odo", "Odo"), mkAgent("plan", "Plan")];
+    const loads: Load[] = [
+      mkLoad({ agent_id: "odo", load_status: "booked", origin_city: "Akron", origin_state: "OH", destination_city: "Macedonia", destination_state: "OH", pickup_date: "2026-08-17", delivery_date: "2026-08-19" }),
+      mkLoad({ agent_id: "odo", loaded_miles: 1000, deadhead_miles: 100, odometer_start: 10000, odometer_end: 11200 }), // 6000 / 1200
+      mkLoad({ agent_id: "plan", loaded_miles: 1000, deadhead_miles: 250 }), // 6000 / 1250
+    ];
+    const byId = Object.fromEntries(buildForemanBoard(loads, agents, COORDS, { now: NOW }).rankings.map((r) => [r.agentId, r]));
+    expect(byId.odo.rpm).toBeCloseTo(5.0, 5);
+    expect(byId.plan.rpm).toBeCloseTo(4.8, 5);
+  });
+
+  it("no ladders → no rung, no verdict, nobody marked second call", () => {
     const { agents, loads } = buildWorld();
     const board = buildForemanBoard(loads, agents, COORDS, { now: NOW });
-    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
-    // your standard loads: 5×6.0, 2×5.5, 1×5.0 → median 6.0; a1 pays 6.0 → delta ~0
-    expect(byId.a1.loadType).toBe("standard flatbed");
-    expect(byId.a1.benchmark).toBeCloseTo(6.0, 5);
-    expect(byId.a1.rateDelta).toBeCloseTo(0, 5);
-    // a2 judged on oversize; the only oversize load is its own 8.0 → median 8.0
-    expect(byId.a2.loadType).toBe("oversize");
-    expect(byId.a2.benchmark).toBeCloseTo(8.0, 5);
-    expect(byId.a2.rpm).toBeCloseTo(8.0, 5);
+    for (const r of board.rankings) {
+      expect(r.rung).toBeNull();
+      expect(r.verdict).toBeNull();
+      expect(r.secondCall).toBe(false);
+    }
   });
 });
 
@@ -464,7 +516,7 @@ describe("buildForemanBoard — membership", () => {
   });
 });
 
-describe("buildForemanBoard — parked agents leave the rankings (REL-01 v2.0 §4)", () => {
+describe("buildForemanBoard — parked is the owner's explicit call, and nothing else", () => {
   it("an explicitly parked agent with loads is not ranked, contacts or no contacts", () => {
     const { agents, loads } = buildWorld();
     const parked = agents.map((a) => (a.agent_id === "a3" ? { ...a, work_status: "parked" as const, park_reason: "spot only" } : a));
@@ -476,72 +528,84 @@ describe("buildForemanBoard — parked agents leave the rankings (REL-01 v2.0 §
     expect(withContacts.rankings.find((r) => r.agentId === "a3")).toBeUndefined();
   });
 
-  it("a dormant untiered agent (nothing two-way in 180 days) leaves once the contact log is handed over", () => {
+  it("a quiet desk is NOT parked by derivation: a 200-day-old load and an empty contact log keep it ranked, with its quiet days said", () => {
     const { agents, loads } = buildWorld();
-    // Keystone's one load is old; make the record old too so nothing keeps it live.
     const aged = agents.map((a) => (a.agent_id === "a4" ? { ...a, created_at: "2025-01-01" } : a));
-    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-05", delivery_date: "2026-01-07" } : l));
-    // Legacy callers (no contacts) still see the agent — only explicit parks are judged.
-    expect(buildForemanBoard(old, aged, COORDS, { now: NOW }).rankings.find((r) => r.agentId === "a4")).toBeDefined();
-    // With the contact log, dormancy is judged and the agent leaves the rankings.
+    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-25", delivery_date: "2026-01-25" } : l));
     const board = buildForemanBoard(old, aged, COORDS, { now: NOW, contacts: [] });
-    expect(board.rankings.find((r) => r.agentId === "a4")).toBeUndefined();
-    expect(board.rankings).toHaveLength(3);
-    // A reached call inside 180 days wakes them back into the rankings.
-    const woke = buildForemanBoard(old, aged, COORDS, {
-      now: NOW,
-      contacts: [{ agent_id: "a4", contacted_at: "2026-08-01T10:00:00Z", direction: "outbound", method: "call", outcome: "reached" }],
-    });
-    expect(woke.rankings.find((r) => r.agentId === "a4")).toBeDefined();
-  });
-
-  it("a tiered agent is never dormant-parked — the owner's tier stands", () => {
-    const { agents, loads } = buildWorld();
-    const tiered = agents.map((a) => (a.agent_id === "a4" ? { ...a, relationship_tier: 3, created_at: "2025-01-01" } : a));
-    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-05", delivery_date: "2026-01-07" } : l));
-    expect(buildForemanBoard(old, tiered, COORDS, { now: NOW, contacts: [] }).rankings.find((r) => r.agentId === "a4")).toBeDefined();
+    const a4 = board.rankings.find((r) => r.agentId === "a4");
+    expect(a4).toBeDefined();
+    expect(a4!.daysSinceSpoken).toBeNull();
+    expect(a4!.why).toContain("never called");
+    expect(board.rankings).toHaveLength(4);
   });
 });
 
-// The contact log decides whether dormancy may be judged at all: an in-flight
-// or failed fetch must NOT be handed over as [] — that would park every quiet
-// agent on first paint. `contacts` undefined = explicit parks only.
-describe("buildForemanBoard — no dormancy verdict without the contact log", () => {
-  // Keystone (a4): an untiered agent whose one load is 200 days old and whose
-  // record is older than that — dormant IF the log is in hand.
-  const agedWorld = () => {
+describe("buildForemanBoard — your rating on every row", () => {
+  it("a desk rated 1 is never ranked — it is listed under blacklisted, nearest first, with its why", () => {
     const { agents, loads } = buildWorld();
-    const aged = agents.map((a) => (a.agent_id === "a4" ? { ...a, created_at: "2025-01-01" } : a));
-    const old = loads.map((l) => (l.agent_id === "a4" ? { ...l, pickup_date: "2026-01-25", delivery_date: "2026-01-25" } : l)); // NOW − 200 days
-    return { aged, old };
-  };
-
-  it("contacts undefined → an untiered agent with only a 200-day-old load stays ranked (not parked)", () => {
-    const { aged, old } = agedWorld();
-    const board = buildForemanBoard(old, aged, COORDS, { now: NOW });
-    expect(board.rankings.find((r) => r.agentId === "a4")).toBeDefined();
-    expect(board.rankings).toHaveLength(4);
+    const rated = agents.map((a) => (a.agent_id === "a3" || a.agent_id === "a2" ? { ...a, rating: 1 } : a));
+    const board = buildForemanBoard(loads, rated, COORDS, { now: NOW });
+    expect(board.rankings.map((r) => r.agentId).sort()).toEqual(["a1", "a4"]);
+    expect(board.blacklisted.map((r) => r.agentId)).toEqual(["a3", "a2"]); // Youngstown ~46 mi before Columbus ~122
+    expect(board.blacklisted[0].rating).toBe(1);
+    expect(board.blacklisted[0].standing).toBe(1);
+    expect(board.blacklisted[0].why.length).toBeGreaterThan(0);
+    expect(board.coverage).toEqual({ withCoords: 2, total: 2 });
   });
 
-  it("contacts given, with a reached call 30 days ago → stays ranked", () => {
-    const { aged, old } = agedWorld();
-    const board = buildForemanBoard(old, aged, COORDS, {
+  it("a desk rated 2 is ranked where the score puts it and flagged avoid; the rest are not", () => {
+    const { agents, loads } = buildWorld();
+    const rated = agents.map((a) => (a.agent_id === "a1" ? { ...a, rating: 2 } : { ...a, rating: 4 }));
+    const board = buildForemanBoard(loads, rated, COORDS, { now: NOW });
+    expect(board.rankings[0].agentId).toBe("a1"); // still the deepest tie near the drop
+    expect(board.rankings[0].avoid).toBe(true);
+    expect(board.rankings[0].standing).toBe(2);
+    for (const r of board.rankings.slice(1)) expect(r.avoid).toBe(false);
+  });
+
+  it("parked wins over the stars — a parked desk rated 5 is neither ranked nor blacklisted", () => {
+    const { agents, loads } = buildWorld();
+    const rated = agents.map((a) => (a.agent_id === "a3" ? { ...a, rating: 5, work_status: "parked" as const, park_reason: "left the company" } : a));
+    const board = buildForemanBoard(loads, rated, COORDS, { now: NOW });
+    expect(board.rankings.find((r) => r.agentId === "a3")).toBeUndefined();
+    expect(board.blacklisted).toEqual([]);
+  });
+});
+
+describe("buildForemanBoard — last spoken to, and second call", () => {
+  it("last spoken to reads the newest touch of any kind — an email counts; today clamps to 0; never called is null; no log is undefined", () => {
+    const { agents, loads } = buildWorld();
+    const board = buildForemanBoard(loads, agents, COORDS, {
       now: NOW,
-      contacts: [{ agent_id: "a4", contacted_at: "2026-07-14T10:00:00Z", direction: "outbound", method: "call", outcome: "reached" }], // NOW − 30 days
+      contacts: [
+        { agent_id: "a1", contacted_at: "2026-07-14T10:00:00Z" }, // 30 days
+        { agent_id: "a1", contacted_at: "2026-08-10T10:00:00Z" }, // 3 days — an email
+        { agent_id: "a2", contacted_at: "2026-08-20T10:00:00Z" }, // logged for next week — today, not negative
+      ],
     });
-    expect(board.rankings.find((r) => r.agentId === "a4")).toBeDefined();
-    expect(board.rankings).toHaveLength(4);
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a1.lastSpokenTo).toBe("2026-08-10");
+    expect(byId.a1.daysSinceSpoken).toBe(3);
+    expect(byId.a1.why).toContain("last spoken to 3 days ago");
+    expect(byId.a2.daysSinceSpoken).toBe(0);
+    expect(byId.a3.daysSinceSpoken).toBeNull();
+    expect(byId.a3.lastSpokenTo).toBeNull();
+    const noLog = buildForemanBoard(loads, agents, COORDS, { now: NOW });
+    for (const r of noLog.rankings) {
+      expect(r.daysSinceSpoken).toBeUndefined();
+      expect(r.why).not.toContain("called");
+      expect(r.why).not.toContain("spoken");
+    }
   });
 
-  it("contacts given, nothing two-way in 180 days → parked and out of the rankings; the remaining rows keep the same score and order as the un-parked board", () => {
-    const { aged, old } = agedWorld();
-    const plain = buildForemanBoard(old, aged, COORDS, { now: NOW });
-    const board = buildForemanBoard(old, aged, COORDS, { now: NOW, contacts: [] });
-    expect(board.rankings.find((r) => r.agentId === "a4")).toBeUndefined();
-    expect(board.rankings).toHaveLength(3);
-    expect(board.rankings.map((r) => r.agentId)).toEqual(plain.rankings.map((r) => r.agentId).filter((id) => id !== "a4"));
-    const plainScore = Object.fromEntries(plain.rankings.map((r) => [r.agentId, r.score]));
-    for (const r of board.rankings) expect(r.score).toBeCloseTo(plainScore[r.agentId], 10);
+  it("second call marks a one-load desk that cleared its own book's rung — the list's rule, reused", () => {
+    const { agents, loads } = buildWorld();
+    const board = buildForemanBoard(loads, agents, COORDS, { now: NOW, ladders: LADDERS });
+    const byId = Object.fromEntries(board.rankings.map((r) => [r.agentId, r]));
+    expect(byId.a2.secondCall).toBe(true); // one oversize load at $8.00 against the $5.60 rung
+    expect(byId.a1.secondCall).toBe(false); // five loads — a record, not a second call
+    expect(byId.a2.why).toContain("paid above the rung the once");
   });
 });
 
@@ -726,7 +790,7 @@ describe("buildForemanBoard — proved and claimed footprint points", () => {
     expect(blank.rankings.find((r) => r.agentId === "a1")!.nearestSource).toBe("proved");
   });
 
-  it("the ranked list is ONE list in score order — the class never lifts a row", () => {
+  it("the ranked list is ONE list in score order — nothing lifts a row above its score", () => {
     seq = 0;
     const agents = [mkAgent("dir", "Direct"), mkAgent("spt", "Spot")];
     const loads: Load[] = [
@@ -741,7 +805,7 @@ describe("buildForemanBoard — proved and claimed footprint points", () => {
     for (let i = 1; i < rankings.length; i++) {
       expect(rankings[i - 1].score).toBeGreaterThanOrEqual(rankings[i].score);
     }
-    expect(rankings.map((r) => r.bucket)).toEqual(["spot", "direct"]);
+    expect(rankings.map((r) => r.agentId)).toEqual(["spt", "dir"]);
   });
 
   // The bug decision 6A retired, pinned to the numbers that showed it: the tab
@@ -779,10 +843,7 @@ describe("buildForemanBoard — proved and claimed footprint points", () => {
       delivered("dir", "Columbus", "2026-05-12"),
     ];
     const rankings = buildForemanBoard(loads, agents, COORDS, { now: NOW }).rankings;
-    expect(rankings.map((r) => [r.agentId, r.bucket])).toEqual([
-      ["spt", "spot"],
-      ["dir", "direct"],
-    ]);
+    expect(rankings.map((r) => r.agentId)).toEqual(["spt", "dir"]);
     expect(rankings[0].score).toBeCloseTo(0.81, 1);
     expect(rankings[1].score).toBeCloseTo(0.54, 1);
     expect(rankings[0].score).toBeGreaterThan(rankings[1].score);

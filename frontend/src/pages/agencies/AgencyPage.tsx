@@ -8,10 +8,10 @@ import { Board, BoardCell } from "@/components/ui/Board";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRelationshipsData } from "@/hooks/useRelationshipsData";
 import { isDispatcher } from "@/lib/roles";
-import { SYSTEM_START } from "@/lib/metrics/relationships";
-import { inboundHeadline } from "@/lib/relationships/inboundHeadline";
-import { bucketLabel, bucketOf } from "@/lib/relationships/buckets";
-import { keyOf, shortDate } from "@/lib/relationships/dayKeys";
+import { SYSTEM_START } from "@/lib/metrics/inbound";
+import { inboundHeadline } from "@/lib/agencies/inboundHeadline";
+import { standingLabel, standingOf } from "@/lib/agents/standing";
+import { keyOf, shortDate } from "@/lib/dates/dayKeys";
 import { loadGross } from "@/lib/metrics/rateTargets";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { fmtPerDay, perDayTone, perDayToneWord } from "@/lib/metrics/perDay";
@@ -29,8 +29,8 @@ import {
   type AgencyWindow,
 } from "@/lib/agencies/agencyMetrics";
 import { otherCodes } from "@/lib/agencies/otherCodes";
-import { AgentRow, type RowChip } from "@/components/relationships/AgentRow";
-import { CodeChip, GhostButton, SectionHead } from "@/components/relationships/primitives";
+import { AgentRow, type RowChip } from "@/components/agents/AgentRow";
+import { CodeChip, GhostButton, SectionHead } from "@/components/ui/primitives";
 import { AgencyForm } from "@/components/agencies/AgencyForm";
 import { isDelivered } from "@/lib/metrics/status";
 
@@ -48,7 +48,10 @@ const LOADS_FOLD = 8;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-const TIER_TONE: Record<number, PillTone> = { 1: "good", 2: "info", 3: "neutral" };
+// Your word on each person, the same cell the agents list prints: the rating
+// in the scale's words, or PARKED with the reason. The tier pill came off on
+// 2026-11-15 — a desk is measured by the rating alone.
+const RATING_TONE: Record<number, PillTone> = { 5: "good", 4: "good", 3: "neutral", 2: "amber", 1: "bad" };
 
 // Where an agent's freight sits: the city they run out of most, else the city
 // on their record. Only used for the row's md+ cell.
@@ -150,16 +153,11 @@ const AgencyPage = () => {
   const shown = showAllLoads ? windowed : windowed.slice(0, LOADS_FOLD);
 
   const agentChip = (a: AgencyAgentRow): RowChip => {
-    if (a.tier != null) return { kind: "pill", tone: TIER_TONE[a.tier] ?? "neutral", label: `Tier ${a.tier}` };
-    // No owner-set tier: say which non-tier state they are actually in rather
-    // than leave the row unlabelled — the same derivation the book uses.
-    const bucket = bucketOf(a.agent, {
-      loads: data.loads,
-      contacts: data.contacts,
-      now: data.now,
-      loadsReady: data.loadsReady,
-    });
-    return { kind: "pill", tone: bucket === "parked" ? "bad" : "neutral", label: bucketLabel(bucket) };
+    const st = standingOf(a.agent);
+    if (st === "parked")
+      return { kind: "pill", tone: "bad", label: a.agent.park_reason?.trim() ? `Parked · ${a.agent.park_reason.trim()}` : "Parked" };
+    if (st == null) return { kind: "pill", tone: "neutral", label: "Unrated" };
+    return { kind: "pill", tone: RATING_TONE[st] ?? "neutral", label: standingLabel(st) };
   };
 
   const agentContext = (a: AgencyAgentRow): string =>
@@ -321,7 +319,7 @@ const AgencyPage = () => {
             </Board>
 
             <div className="ds2-board mt-3 overflow-hidden">
-              <SectionHead right="their numbers, their tiers — unchanged">
+              <SectionHead right="their numbers, your word on each">
                 Agents · {row.agents.length}
               </SectionHead>
               {row.agents.length === 0 ? (

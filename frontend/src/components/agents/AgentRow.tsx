@@ -2,8 +2,8 @@ import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight, Phone } from "lucide-react";
 import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
-import { nameOf } from "@/lib/relationships/nameOf";
-import { AgentCodeChip, ParkedChip } from "./primitives";
+import { nameOf } from "@/lib/agents/nameOf";
+import { AgentCodeChip, ParkedChip } from "@/components/ui/primitives";
 
 // The one row for an agent anywhere on the Relationships surface (the nodded
 // mock's .row): name + code + exactly ONE status chip, a context line, the

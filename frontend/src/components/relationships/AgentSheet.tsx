@@ -14,16 +14,16 @@ import {
   type AgentContact,
 } from "@/services/agentContactsService";
 import type { AgentCoverage } from "@/services/agentCoverageService";
-import CoverageEditor from "./CoverageEditor";
+import CoverageEditor from "@/components/agents/CoverageEditor";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { originMarketsByAgent } from "@/lib/metrics/agentTouches";
 import { bucketLabel, bucketOf, isDormant } from "@/lib/relationships/buckets";
-import { agentAllInRpm, deliveredCount } from "@/lib/relationships/agentRpm";
-import { daysSinceMeaningful } from "@/lib/relationships/meaningfulContact";
-import { contactTypeLabel } from "@/lib/relationships/contactTypes";
+import { agentAllInRpm, deliveredCount } from "@/lib/metrics/agentRpm";
+import { daysSinceMeaningful } from "@/lib/agents/meaningfulContact";
+import { contactTypeLabel } from "@/lib/agents/contactTypes";
 import { PREFERRED } from "@/lib/agents/agentEdit";
 import { formatPhone, smsHref, telHref } from "@/lib/phone";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import { RelSheetShell } from "./RelSheetShell";
 import { LogTouchForm, type ClassPin, type FoldPayload, type LogTouchPayload, type TouchPrefill } from "./LogTouchForm";
 import {
@@ -36,7 +36,7 @@ import {
   PrimaryButton,
   PrimaryLink,
   SectionHead,
-} from "./primitives";
+} from "@/components/ui/primitives";
 
 // The agent sheet — everything about one agent Brandie needs on the phone:
 // reach them, log the touch, see their markets, fix their contact details;

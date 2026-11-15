@@ -20,8 +20,8 @@ import { cityKey, haversineMiles, emptyNextAnchor, latestTripEnd, type CityCoord
 import { footprintPoint, type CustomerEndLoadLike } from "@/lib/loads/customerEnd";
 import { bucketOf, type Bucket, type BookAgentLike } from "./buckets";
 import { capStatus, type CapContactLike } from "./contactCap";
-import { keyOf } from "./dayKeys";
-import type { MeaningfulContactLike, MeaningfulLoadLike } from "./meaningfulContact";
+import { keyOf } from "@/lib/dates/dayKeys";
+import type { MeaningfulContactLike, MeaningfulLoadLike } from "@/lib/agents/meaningfulContact";
 import { isDelivered } from "@/lib/metrics/status";
 
 export const CAPACITY_RADIUS_MILES = 150;

@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowsSkeleton } from "@/components/ui/PageSkeletons";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { ErrorLine } from "@/components/relationships/primitives";
+import { ErrorLine } from "@/components/ui/primitives";
 import { VendorPips } from "@/components/vendors/VendorPips";
 import { VendorTrustTag, vendorTrust } from "@/components/vendors/VendorTrustTag";
 import VendorForm from "@/components/vendors/VendorForm";

@@ -14,10 +14,10 @@ import { perDayTextClass, rpmTextClass } from "@/components/lanes/rpmStyle";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
 import { copyText } from "@/lib/clipboard";
 import { SYSTEM_START } from "@/lib/metrics/relationships";
-import { INBOUND_HEADLINE_MIN, inboundHeadline } from "@/lib/relationships/inboundHeadline";
-import { shortDate, weekdayShort } from "@/lib/relationships/dayKeys";
-import { nameOf } from "@/lib/relationships/nameOf";
-import { contactTypeLabel } from "@/lib/relationships/contactTypes";
+import { INBOUND_HEADLINE_MIN, inboundHeadline } from "@/lib/agencies/inboundHeadline";
+import { shortDate, weekdayShort } from "@/lib/dates/dayKeys";
+import { nameOf } from "@/lib/agents/nameOf";
+import { contactTypeLabel } from "@/lib/agents/contactTypes";
 import { methodFor } from "@/lib/relationships/todayQueue";
 import { milestoneMarker } from "@/lib/relationships/milestones";
 import {
@@ -40,7 +40,7 @@ import {
 import { patchAgent } from "@/services/patchAgentService";
 import { holdTier } from "@/services/agentTierHistoryService";
 import { signRelationshipReview } from "@/services/relationshipReviewsService";
-import { AgentRow, AGENT_ROW_GRID_ACTIONS, type RowChip } from "@/components/relationships/AgentRow";
+import { AgentRow, AGENT_ROW_GRID_ACTIONS, type RowChip } from "@/components/agents/AgentRow";
 import { RelSheetShell } from "@/components/relationships/RelSheetShell";
 import {
   ErrorLine,
@@ -48,7 +48,7 @@ import {
   GhostButton,
   PrimaryButton,
   SectionHead,
-} from "@/components/relationships/primitives";
+} from "@/components/ui/primitives";
 import type { TouchPrefill } from "@/components/relationships/LogTouchForm";
 import { useRelationships } from "./context";
 

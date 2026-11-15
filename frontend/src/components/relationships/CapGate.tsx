@@ -1,7 +1,7 @@
 import type { AgentContact } from "@/services/agentContactsService";
-import { contactTypeLabel, type ContactType } from "@/lib/relationships/contactTypes";
-import { weekdayShort } from "@/lib/relationships/dayKeys";
-import { GhostButton, PrimaryButton } from "./primitives";
+import { contactTypeLabel, type ContactType } from "@/lib/agents/contactTypes";
+import { weekdayShort } from "@/lib/dates/dayKeys";
+import { GhostButton, PrimaryButton } from "@/components/ui/primitives";
 
 // THE CAP, on the button row (REL-01 v2.0 §4): one proactive touch per agent
 // per week. When this week's message already went out, the log button gives

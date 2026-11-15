@@ -24,7 +24,7 @@ import {
   localDayKey,
   daysBetweenKeys,
   DAY_MS,
-} from "@/lib/relationships/dayKeys";
+} from "@/lib/dates/dayKeys";
 
 // Until two readings teach us better. A TriPac idling through a 10-hour break
 // plus a couple of hours at the dock.

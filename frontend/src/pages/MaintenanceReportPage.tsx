@@ -9,7 +9,7 @@ import { getTrailers } from "@/services/trailersService";
 import { readingOf, servicesCsv } from "@/lib/maintenance/serviceCsv";
 import { kindLabel } from "@/lib/maintenance/serviceKind";
 import { quarterOf } from "@/lib/maintenance/paperwork";
-import { localDayKey } from "@/lib/relationships/dayKeys";
+import { localDayKey } from "@/lib/dates/dayKeys";
 import { moneyCents } from "@/lib/format";
 
 // THE QUARTER'S LOG, PRINTED (the Maintenance sheet, call 8): the range's

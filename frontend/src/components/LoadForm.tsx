@@ -51,7 +51,7 @@ import { formatPhone } from "@/lib/phone";
 import { numberFieldValue } from "@/lib/loads/numberField";
 import type { Trip } from "@/types/trip";
 import { nextLoadStart, carryWords } from "@/lib/metrics/odometerCarry";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import {
   Select,
   SelectContent,

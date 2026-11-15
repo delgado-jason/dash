@@ -8,7 +8,7 @@ import { agentStops, scoreStops } from "./stopScore";
 import { rangeFor, resolvePeriod, type RecapScope, type RecapRange } from "./recap";
 import { isDelivered, isNeverRevenue } from "./status";
 import { grossPerDrivenMile } from "./drivenRate";
-import { cleanName } from "@/lib/relationships/nameOf";
+import { cleanName } from "@/lib/agents/nameOf";
 
 const isReal = (l: Load) => !isNeverRevenue(l);
 

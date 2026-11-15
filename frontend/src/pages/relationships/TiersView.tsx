@@ -9,13 +9,13 @@ import { rpm as fmtRpm } from "@/lib/format";
 import { originMarketsByAgent } from "@/lib/metrics/agentTouches";
 import type { AgentContact } from "@/services/agentContactsService";
 import { partitionBook, bucketOf, type Bucket, type BookCtx, type BookSort } from "@/lib/relationships/buckets";
-import { agentAllInRpm, deliveredCount, lastLoadKey } from "@/lib/relationships/agentRpm";
-import { daysSinceMeaningful, lastMeaningfulContact } from "@/lib/relationships/meaningfulContact";
+import { agentAllInRpm, deliveredCount, lastLoadKey } from "@/lib/metrics/agentRpm";
+import { daysSinceMeaningful, lastMeaningfulContact } from "@/lib/agents/meaningfulContact";
 import { ESTABLISHED_AT, isEstablished, suggestBucket, suggestionLabel, type BucketSuggestion } from "@/lib/relationships/tierSuggestion";
-import { keyOf, shortDate } from "@/lib/relationships/dayKeys";
-import { AgentRow, type RowChip } from "@/components/relationships/AgentRow";
-import { SectionHead } from "@/components/relationships/primitives";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { keyOf, shortDate } from "@/lib/dates/dayKeys";
+import { AgentRow, type RowChip } from "@/components/agents/AgentRow";
+import { SectionHead } from "@/components/ui/primitives";
+import { nameOf } from "@/lib/agents/nameOf";
 import { useRelationships } from "./context";
 
 // TIERS — the book graded the v2.0 way (the nodded mock): one Board, five

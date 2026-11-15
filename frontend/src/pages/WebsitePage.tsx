@@ -18,7 +18,7 @@ import {
   visitorsByWeek,
   type TrafficWeek,
 } from "@/lib/metrics/siteTraffic";
-import { shortDate } from "@/lib/relationships/dayKeys";
+import { shortDate } from "@/lib/dates/dayKeys";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { SegControl } from "@/components/ui/SegControl";
 import { Skeleton } from "@/components/ui/skeleton";

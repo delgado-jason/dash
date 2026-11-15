@@ -5,7 +5,7 @@ import {
   daysSinceMeaningful,
   type MeaningfulContactLike,
   type MeaningfulLoadLike,
-} from "./meaningfulContact";
+} from "@/lib/agents/meaningfulContact";
 
 const NOW = new Date("2026-09-12T15:00:00Z");
 

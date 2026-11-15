@@ -14,7 +14,7 @@
 // note; "that was our 5th" is not. Optional milestones (miles, new lane) are
 // not built. Pure; clock injected.
 import { onTimeStatus } from "@/lib/detention";
-import { daysBetweenKeys, keyOf, localDayKey, utcDayKey } from "./dayKeys";
+import { daysBetweenKeys, keyOf, localDayKey, utcDayKey } from "@/lib/dates/dayKeys";
 import { hasMarker, type MarkerContactLike, type MarkerNoteLike } from "./markers";
 import { isDelivered } from "@/lib/metrics/status";
 

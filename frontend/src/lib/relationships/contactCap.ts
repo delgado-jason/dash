@@ -2,8 +2,8 @@
 // week, outside operational contact. A second reason in the same week folds
 // into the first message. The week is the SOP's — Monday to Sunday, in local
 // time — so the key is built from the local calendar, never toISOString.
-import { isProactive } from "./contactTypes";
-import { localDayKey } from "./dayKeys";
+import { isProactive } from "@/lib/agents/contactTypes";
+import { localDayKey } from "@/lib/dates/dayKeys";
 
 export interface CapContactLike {
   contact_id?: string;

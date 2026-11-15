@@ -7,9 +7,9 @@ import CityAutocomplete from "@/components/CityAutocomplete";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { PREFERRED } from "@/lib/agents/agentEdit";
 import { formatPhone } from "@/lib/phone";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import { RelSheetShell } from "./RelSheetShell";
-import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, PrimaryButton } from "./primitives";
+import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, PrimaryButton } from "@/components/ui/primitives";
 
 // + Prospect — person first. A name and a way to reach them is enough; the
 // agency code is optional and can be created on the spot; a typed code that

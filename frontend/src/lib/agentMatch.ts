@@ -1,5 +1,5 @@
 import type { Agent } from "@/types/agent";
-import { cleanName } from "@/lib/relationships/nameOf";
+import { cleanName } from "@/lib/agents/nameOf";
 import { codeOf } from "@/lib/agencies/codeOf";
 
 // The 3-letter code an agent wears off the load board — their own posting code

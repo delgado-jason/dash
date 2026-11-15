@@ -11,7 +11,7 @@ import {
   PrimaryButton,
   GhostButton,
   ErrorLine,
-} from "@/components/relationships/primitives";
+} from "@/components/ui/primitives";
 
 type PickerRow = { kind: "create" } | { kind: "vendor"; match: VendorMatch };
 

@@ -12,7 +12,7 @@ import type { TimelineEvent } from "@/types/timelineEvent";
 import type { AgentContact } from "@/services/agentContactsService";
 import { isDelivered } from "@/lib/metrics/status";
 import { standingOf, standingLabel } from "./standing";
-import { contactTypeLabel } from "@/lib/relationships/contactTypes";
+import { contactTypeLabel } from "@/lib/agents/contactTypes";
 
 const day = (iso: string | null | undefined): string | null =>
   iso ? String(iso).slice(0, 10) : null;

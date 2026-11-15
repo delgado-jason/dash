@@ -6,7 +6,7 @@
 // One flag per active agent per holiday-year, tracked by a marker written into
 // the contact's note — `[holiday:thanksgiving-2026]` — so a sent (or skipped)
 // note never comes back. Pure; the clock is injected as a local Date.
-import { localDayKey } from "./dayKeys";
+import { localDayKey } from "@/lib/dates/dayKeys";
 import { hasMarker, type MarkerContactLike, type MarkerNoteLike } from "./markers";
 
 export type HolidayKind = "thanksgiving" | "newyear";

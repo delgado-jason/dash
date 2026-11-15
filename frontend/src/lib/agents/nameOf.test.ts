@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nameOf } from "./nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 
 describe("nameOf", () => {
   it("trims and single-spaces: 'Jane  Doe ' → 'Jane Doe'", () => {

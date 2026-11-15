@@ -1,6 +1,6 @@
 import api from "./api";
 import { AxiosError } from "axios";
-import type { ContactType } from "@/lib/relationships/contactTypes";
+import type { ContactType } from "@/lib/agents/contactTypes";
 
 export type ContactDirection = "outbound" | "inbound";
 export type ContactMethod = "call" | "email" | "text";

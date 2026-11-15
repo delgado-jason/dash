@@ -7,13 +7,13 @@ import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buildAgentScorecards, type AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { money } from "@/lib/format";
-import { localDayKey, shortDate, weekdayShort } from "@/lib/relationships/dayKeys";
+import { localDayKey, shortDate, weekdayShort } from "@/lib/dates/dayKeys";
 import { capStatus } from "@/lib/relationships/contactCap";
 import { bucketLabel } from "@/lib/relationships/buckets";
-import { contactTypeLabel } from "@/lib/relationships/contactTypes";
+import { contactTypeLabel } from "@/lib/agents/contactTypes";
 import { methodFor } from "@/lib/relationships/todayQueue";
 import { capDoors } from "@/lib/relationships/touchOptions";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import { allHandled as everyHandled, nextUnhandled, rotationIds } from "@/lib/relationships/callOrder";
 import {
   FOOTPRINT_QUESTIONS,
@@ -30,10 +30,10 @@ import {
   type ProspectRow,
   type ReactivationRow,
 } from "@/lib/relationships/callList";
-import { AgentRow, type RowChip, type RowRight } from "@/components/relationships/AgentRow";
+import { AgentRow, type RowChip, type RowRight } from "@/components/agents/AgentRow";
 import { CallScreen, type Working } from "@/components/relationships/CallScreen";
 import type { TouchPrefill } from "@/components/relationships/LogTouchForm";
-import { GhostButton, PrimaryButton, SectionHead } from "@/components/relationships/primitives";
+import { GhostButton, PrimaryButton, SectionHead } from "@/components/ui/primitives";
 import { useRelationships } from "./context";
 
 // CALL LIST — /relationships/calls and /relationships/calls/:agentId. Two

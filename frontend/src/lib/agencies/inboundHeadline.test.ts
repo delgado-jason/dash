@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { inboundHeadline } from "./inboundHeadline";
+import { inboundHeadline } from "@/lib/agencies/inboundHeadline";
 
 describe("inboundHeadline — a fraction until ten, then a percent", () => {
   it("nothing attributed yet reads 0 of 0", () => {

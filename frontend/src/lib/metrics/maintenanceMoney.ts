@@ -16,7 +16,7 @@ import type { Trip } from "@/types/trip";
 import type { AccountRow, SnapshotRow } from "@/services/planService";
 import type { Due } from "./maintenance";
 import type { ApuProjection } from "./apuHours";
-import { localDayKey, DAY_MS } from "@/lib/relationships/dayKeys";
+import { localDayKey, DAY_MS } from "@/lib/dates/dayKeys";
 
 // ------------------------------------------------------------- last time
 

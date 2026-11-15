@@ -4,7 +4,7 @@
 //   • the rate is `allInOver` — all-in gross ÷ (loaded + deadhead) — at the
 //     desk altitude through `agencyRollup`, the very rollup the Agencies page
 //     draws; the person's own Tiers rate is the same arithmetic one level down;
-//   • the gate is ESTABLISHED_AT (three delivered loads, lifetime, summed over
+//   • the gate is VERDICT_MIN_LOADS (two delivered loads, lifetime, summed over
 //     the desk's people) from tierSuggestion — one gate, never a second;
 //   • the grade is the booking ladder's bands through `rpmGrade`.
 //
@@ -19,7 +19,7 @@ import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
-import type { MeaningfulContactLike } from "@/lib/relationships/meaningfulContact";
+import type { MeaningfulContactLike } from "@/lib/agents/meaningfulContact";
 import {
   agencyRange,
   agencyRollup,
@@ -31,8 +31,8 @@ import {
 } from "@/lib/agencies/agencyMetrics";
 import { codeOf } from "@/lib/agencies/codeOf";
 import { otherCodes } from "@/lib/agencies/otherCodes";
-import { allInOver } from "@/lib/relationships/agentRpm";
-import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
+import { allInOver } from "@/lib/metrics/agentRpm";
+import { VERDICT_MIN_LOADS } from "./agentByType";
 import { rpmGrade, type Grade } from "@/lib/metrics/playerCard";
 import { isSpecializedLoadType } from "@/lib/dimensions";
 import { detentionCollected, detentionOwed } from "@/lib/detention";
@@ -70,7 +70,7 @@ export interface DeskRow {
   loadedShare: number | null; // loaded ÷ (loaded + deadhead); null = no miles
   detention: { owed: number; paid: number };
   lifetime: number; // Σ the people's lifetime delivered loads
-  graded: boolean; // lifetime ≥ ESTABLISHED_AT
+  graded: boolean; // lifetime ≥ VERDICT_MIN_LOADS
   grade: Grade | null;
   gradeWord: string;
   rating: string | null;
@@ -169,7 +169,7 @@ export const order = (rows: readonly DeskRow[]): DeskRow[] => [
 // -------------------------------------------------- best desk by class
 
 // For each freight class: the GRADED desk with the highest all-in rate over its
-// loads OF THAT CLASS only, and only when it ran at least ESTABLISHED_AT of
+// loads OF THAT CLASS only, and only when it ran at least VERDICT_MIN_LOADS of
 // them in the window. null = nobody qualifies; the UI says so.
 export const bestByClass = (
   rows: readonly DeskRow[],
@@ -180,7 +180,7 @@ export const bestByClass = (
     for (const desk of rows) {
       if (!desk.graded) continue;
       const mine = desk.windowed.filter((l) => classOfLoad(l) === cls);
-      if (mine.length < ESTABLISHED_AT) continue;
+      if (mine.length < VERDICT_MIN_LOADS) continue;
       const { rpm, gross } = allInOver(mine);
       if (rpm == null) continue;
       if (
@@ -286,7 +286,7 @@ export const buildLeaderboard = (input: LeaderboardInput): Leaderboard => {
       if (detentionCollected(l)) paid++;
     }
     const lifetime = r.agents.reduce((s, p) => s + p.delivered, 0);
-    const graded = lifetime >= ESTABLISHED_AT;
+    const graded = lifetime >= VERDICT_MIN_LOADS;
     const grade = graded && usable ? rpmGrade(r.allInRpm, usable) : null;
     const ratings = r.agents
       .map((p) => p.agent.rating)

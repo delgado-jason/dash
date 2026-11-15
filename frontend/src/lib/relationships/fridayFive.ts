@@ -14,7 +14,7 @@
 // plus the record hygiene the Friday afternoon completes. Pure; clock injected.
 import type { Load } from "@/types/load";
 import { loadGross } from "@/lib/metrics/rateTargets";
-import { keyOf, localDayKey } from "./dayKeys";
+import { keyOf, localDayKey } from "@/lib/dates/dayKeys";
 import { footprintPoint } from "@/lib/loads/customerEnd";
 import type { FootprintCoverageLike, FootprintLoadLike } from "./capacityList";
 import { isDelivered } from "@/lib/metrics/status";
