@@ -20,6 +20,8 @@ import {
 import { maxFuelOdometer } from "@/lib/metrics/fuelEconomy";
 import { loadNetRevenue } from "@/lib/metrics/rateTargets";
 import { getObligations } from "@/services/obligationsService";
+import { getExpensePeriods } from "@/services/expensesService";
+import type { ExpensePeriod } from "@/types/expense";
 import { getTrips } from "@/services/tripsService";
 import type { Trip } from "@/types/trip";
 import type { Obligation } from "@/types/obligation";
@@ -60,6 +62,9 @@ const TruckDetailPage = () => {
   const [services, setServices] = useState<MaintenanceService[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [obligations, setObligations] = useState<Obligation[]>([]);
+  // The P&L you filed — the books the truck's maintenance per mile reads
+  // where a month has them (the Maintenance sheet, call 5).
+  const [periods, setPeriods] = useState<ExpensePeriod[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [homeDays, setHomeDays] = useState<string[]>([]);
   const [travelDays, setTravelDays] = useState<string[]>([]);
@@ -83,6 +88,9 @@ const TruckDetailPage = () => {
       .catch(() => {});
     getObligations()
       .then(setObligations)
+      .catch(() => {});
+    getExpensePeriods()
+      .then(setPeriods)
       .catch(() => {});
     getTrips()
       .then(setTrips)
@@ -200,7 +208,7 @@ const TruckDetailPage = () => {
 
   const revenue = earnedLoads.reduce((s, l) => s + loadNetRevenue(l), 0);
   const truckFuel = fuelEntries.filter((f) => f.truck_id === id);
-  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote);
+  const metrics = computeTruckMetrics(truck, truckLoads, truckFuel, services, now, homeDays, travelDays, truckNote, periods);
   const payoff = truckLoan ? computePayoff(truckLoan, now) : null;
   // Every clock on this tractor, most urgent first — the card's service row.
   const clocks = items

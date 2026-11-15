@@ -42,10 +42,22 @@ const completableBy = (unit: ServiceUnit, items: MaintenanceItem[]) =>
     return i.unit === unit;
   });
 
+// What the Done door hands the sheet: the clock already ticked, its unit, the
+// day and the newest reading. An APU clock gets the meter only when it was
+// READ that day — a projection is never pre-filled as a reading.
+export interface ServicePrefill {
+  unit: ServiceUnit;
+  service_date: string; // 'YYYY-MM-DD'
+  odometer: number | null;
+  apu_hours: number | null;
+  item_ids: string[];
+}
+
 export const LogServiceSheet = ({
   items,
   vendors,
   readings,
+  initial,
   onSave,
   onCancel,
   busy,
@@ -53,23 +65,24 @@ export const LogServiceSheet = ({
   items: MaintenanceItem[];
   readings: MeterReading[]; // every dated reading of the truck's odometer
   vendors: Vendor[];
+  initial?: ServicePrefill;
   onSave: (data: ServiceInput) => void;
   onCancel: () => void;
   busy: boolean;
 }) => {
-  const [unit, setUnit] = useState<ServiceUnit>("tractor");
-  const [date, setDate] = useState("");
-  const [odometer, setOdometer] = useState(""); // truck reading
+  const [unit, setUnit] = useState<ServiceUnit>(initial?.unit ?? "tractor");
+  const [date, setDate] = useState(initial?.service_date ?? "");
+  const [odometer, setOdometer] = useState(initial?.odometer != null ? String(initial.odometer) : ""); // truck reading
   // The trailer's reading: null until the owner types in the box, so the
   // pre-fill from the truck's odometer can never overwrite his own number.
   const [trailerTyped, setTrailerTyped] = useState<string | null>(null);
-  const [apuHours, setApuHours] = useState(""); // the APU's hour meter
+  const [apuHours, setApuHours] = useState(initial?.apu_hours != null ? String(initial.apu_hours) : ""); // the APU's hour meter
   const [vendor, setVendor] = useState("");
   const [location, setLocation] = useState(""); // "City, ST"
   const [description, setDescription] = useState("");
   const [cost, setCost] = useState("");
   const [invoice, setInvoice] = useState("");
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [completed, setCompleted] = useState<Set<string>>(new Set(initial?.item_ids ?? []));
 
   const toggle = (id: string) =>
     setCompleted((prev) => {

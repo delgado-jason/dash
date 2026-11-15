@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { maintenanceSpend } from "./truckMetrics";
+import type { ExpensePeriod } from "@/types/expense";
 import { computeTruckMetrics, utilizationWindow, truckServiceSpend, lifetimeSinceLabel } from "./truckMetrics";
 import type { Truck } from "@/types/truck";
 import type { Load } from "@/types/load";
@@ -309,5 +311,36 @@ describe("lifetimeSinceLabel — the Utilization tile's window, from the data (G
     const m = run(t, [load("2026-01-06", "2026-01-08")]);
     expect(m.windowStart).toBe("2026-01-06");
     expect(lifetimeSinceLabel(m.windowStart)).toBe("lifetime since Jan 6, 2026");
+  });
+});
+
+describe("maintenanceSpend — the books where a month is filed, the log where it is not", () => {
+  const svc = (service_date: string, unit: string, cost: number) =>
+    ({ service_date, unit, cost }) as unknown as MaintenanceService;
+  const period = (month: string, repairs: number | null) =>
+    ({ period_id: month, period_month: `${month}-01`, period_label: null, income_total: 1, cogs_total: 1, expense_total: 1, repairs_total: repairs }) as ExpensePeriod;
+  const log = [svc("2026-01-16", "tractor", 825.42), svc("2026-06-20", "both", 400), svc("2026-08-21", "tractor", 840.87)];
+
+  it("with no P&L at all it is the old log-only sum, half of a shared visit", () => {
+    const m = maintenanceSpend(log, [], "2026-01-01", "2026-08-31");
+    expect(m.spend).toBeCloseTo(825.42 + 200 + 840.87, 2);
+    expect(m).toMatchObject({ books: 0, log: 3 });
+  });
+
+  it("a filed month's repairs line replaces the log's figure for that month — June's $4,990 counts though nothing was logged", () => {
+    const m = maintenanceSpend(log, [period("2026-06", 4990.05), period("2026-01", 2495.05)], "2026-01-01", "2026-08-31");
+    expect(m.spend).toBeCloseTo(2495.05 + 4990.05 + 840.87, 2); // Jan and Jun from the books, Aug from the log
+    expect(m).toMatchObject({ books: 2, log: 1 });
+  });
+
+  it("a filed month with no repairs line is $0 in the books, not the log's figure", () => {
+    const m = maintenanceSpend([svc("2026-08-21", "tractor", 840.87)], [period("2026-08", null)], "2026-08-01", "2026-08-31");
+    expect(m.spend).toBe(0);
+    expect(m).toMatchObject({ books: 1, log: 0 });
+  });
+
+  it("starts from the earlier of the window and the first logged visit, and never crashes on an undated row", () => {
+    const m = maintenanceSpend([...log, { unit: "tractor", cost: 100 } as unknown as MaintenanceService], [], "2026-07-01", "2026-08-31");
+    expect(m.spend).toBeCloseTo(825.42 + 200 + 840.87 + 100, 2);
   });
 });

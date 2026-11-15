@@ -7,10 +7,11 @@ import {
   deleteMaintenanceService,
   type ServiceInput,
 } from "@/services/maintenanceService";
-import { LogServiceSheet } from "./LogServiceSheet";
+import { LogServiceSheet, type ServicePrefill } from "./LogServiceSheet";
 import type { MeterReading } from "@/lib/metrics/trailerMeter";
+import type { BooksVsLog, BooksWord, ShopDays } from "@/lib/metrics/maintenanceMoney";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { moneyCents } from "@/lib/format";
+import { money, moneyCents } from "@/lib/format";
 // Flagging two spellings of one shop is all this page does: the MERGE lives on
 // the vendor page.
 import { spellingKey } from "@/lib/maintenance/spellingKey";
@@ -19,8 +20,14 @@ interface Props {
   services: MaintenanceService[];
   items: MaintenanceItem[];
   readings: MeterReading[]; // the truck's dated odometer readings (the trailer's meter)
+  books: BooksVsLog; // the P&L's repairs line beside the log, month by month
+  shop: ShopDays; // the days the truck went to the shop this year, costed
   onChange: () => void;
   openSignal?: number; // bumping it opens the log-service form (statusbar CTA)
+  // The Done door on a clock: the sheet opens with that clock ticked, the unit
+  // set and the newest reading in the box. Consumed once the sheet closes.
+  prefill?: ServicePrefill | null;
+  onPrefillUsed?: () => void;
 }
 
 const num = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
@@ -58,6 +65,13 @@ const fmtDate = (iso: string) =>
     timeZone: "UTC",
   });
 
+const shortDay = (iso: string) =>
+  new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
 // 'YYYY-MM' for a month offset from the current UTC month.
 const monthKey = (offset: number): string => {
   const d = new Date();
@@ -71,6 +85,9 @@ const fmtMonth = (ym: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
+
+const monthWord = (ym: string) =>
+  new Date(ym + "-01T00:00:00Z").toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 
 type RangeMode = "3m" | "6m" | "12m" | "ytd" | "all" | "custom";
 const PRESETS: [RangeMode, string][] = [
@@ -115,7 +132,106 @@ const VendorCell = ({
   );
 };
 
-export const ServicesTab = ({ services, items, readings, onChange, openSignal = 0 }: Props) => {
+// The word a books-vs-log month wears, and its colour — one tone per meaning.
+const WORD_CLASS: Record<BooksWord, string> = {
+  exact: "text-status-positive-text",
+  matches: "text-status-positive-text",
+  "nothing logged": "text-status-negative-text",
+  "something unlogged": "text-status-negative-text",
+  "more logged than filed": "text-dim",
+  "no P&L filed": "text-faint",
+};
+
+const signed = (n: number): string => (n < 0 ? `−${money(Math.abs(n))}` : `+${money(n)}`);
+
+// THE BOOKS AGAINST THE LOG (the Maintenance sheet, call 5): the P&L's
+// repairs & maintenance line beside what the log holds, month by month, the
+// gap in words. A month with no P&L is said so — never "matches".
+const BooksStrip = ({ books }: { books: BooksVsLog }) => {
+  const both = books.filedMonths > 0 && books.logged > 0;
+  const share = both && books.books > 0 ? Math.round((books.logged / books.books) * 100) : null;
+  return (
+    <div className="ds2-board overflow-hidden mt-4" data-testid="books-vs-log">
+      <div className="flex items-baseline gap-2.5 px-4 pt-2 pb-[7px] border-b ds2-cell-rule flex-wrap">
+        <span className="font-condensed font-semibold text-[12.5px] tracking-[.16em] uppercase text-faint">
+          Books vs log · {books.year}
+        </span>
+        <span className="font-condensed text-[13px] text-faint">
+          · the P&amp;L's Repairs &amp; maintenance beside what you logged
+        </span>
+      </div>
+      {books.filedMonths === 0 ? (
+        <p className="font-condensed text-[13.5px] text-faint px-4 py-3">
+          No P&amp;L filed for {books.year} yet — file a month on{" "}
+          <Link to="/expenses" className="text-amber-hi hover:text-hot">
+            Expenses
+          </Link>{" "}
+          and the books appear here beside the log.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] font-condensed text-[13.5px]">
+            <thead>
+              <tr className="text-[10.5px] uppercase tracking-[.12em] text-faint">
+                <th className="text-left font-semibold px-4 py-1.5">month</th>
+                <th className="text-right font-semibold px-2 py-1.5">books</th>
+                <th className="text-right font-semibold px-2 py-1.5">logged</th>
+                <th className="text-right font-semibold px-2 py-1.5">gap</th>
+                <th className="text-left font-semibold px-4 py-1.5">says</th>
+              </tr>
+            </thead>
+            <tbody>
+              {books.rows.map((r) => (
+                <tr key={r.month} className="border-t ds2-cell-rule text-dim" data-month={r.month}>
+                  <td className="px-4 py-[6px] text-ink">{monthWord(r.month)}</td>
+                  <td className="px-2 py-[6px] text-right tabular-nums">{r.books == null ? "—" : money(r.books)}</td>
+                  <td className="px-2 py-[6px] text-right tabular-nums">{r.logged == null ? "—" : money(r.logged)}</td>
+                  <td className="px-2 py-[6px] text-right tabular-nums">{r.gap == null ? "—" : r.gap === 0 ? "$0" : signed(r.gap)}</td>
+                  <td className={`px-4 py-[6px] ${WORD_CLASS[r.says]}`}>{r.says}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-hairline text-ink font-semibold">
+                <td className="px-4 py-[7px]">
+                  {monthWord(books.rows[0].month)}–{monthWord(books.rows[books.rows.length - 1].month)}
+                </td>
+                <td className="px-2 py-[7px] text-right tabular-nums">{money(books.books)}</td>
+                <td className="px-2 py-[7px] text-right tabular-nums">{money(books.logged)}</td>
+                <td className="px-2 py-[7px] text-right tabular-nums">
+                  {both ? signed(books.logged - books.books) : "—"}
+                </td>
+                <td className="px-4 py-[7px] font-normal text-dim">
+                  {share != null
+                    ? share < 100
+                      ? `the log is ${share}% of the books`
+                      : share === 100
+                        ? "the log and the books agree"
+                        : `the log runs ${share - 100}% past the books`
+                    : `${books.filedMonths} month${books.filedMonths === 1 ? "" : "s"} filed`}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="font-condensed text-[12.5px] text-faint px-4 py-2 border-t ds2-cell-rule">
+        the books are the P&amp;L you file on Expenses · a month with no P&amp;L says so, never "matches" · the
+        truck's cost-to-run reads the books where a month is filed and the log where it is not
+      </p>
+    </div>
+  );
+};
+
+export const ServicesTab = ({
+  services,
+  items,
+  readings,
+  books,
+  shop,
+  onChange,
+  openSignal = 0,
+  prefill = null,
+  onPrefillUsed,
+}: Props) => {
   // The rolodex, for linking vendor names through the bridge (same name rule
   // the spend readout uses).
   const { vendors: rolodex } = useVendors(0);
@@ -140,6 +256,10 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
   useEffect(() => {
     if (openSignal > 0) setShowForm(true);
   }, [openSignal]);
+  // The Done door hands a prefill in; the sheet opens on it.
+  useEffect(() => {
+    if (prefill) setShowForm(true);
+  }, [prefill]);
   const [customFrom, setCustomFrom] = useState(() => monthKey(-2));
   const [customTo, setCustomTo] = useState(() => monthKey(0));
 
@@ -228,10 +348,15 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
     }
   };
 
+  const closeSheet = () => {
+    setShowForm(false);
+    onPrefillUsed?.();
+  };
+
   const save = (data: ServiceInput) =>
     run(async () => {
       await createMaintenanceService(data);
-      setShowForm(false);
+      closeSheet();
       setJustLogged(true);
       window.setTimeout(() => setJustLogged(false), 2600);
     });
@@ -254,11 +379,13 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
       {showForm && (
         <div className="mt-4">
           <LogServiceSheet
+            key={prefill ? `${prefill.service_date}:${prefill.item_ids.join(",")}` : "blank"}
             items={items}
             vendors={rolodex}
             readings={readings}
+            initial={prefill ?? undefined}
             onSave={save}
-            onCancel={() => setShowForm(false)}
+            onCancel={closeSheet}
             busy={busy}
           />
         </div>
@@ -315,6 +442,8 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
         </span>
       </div>
 
+      <BooksStrip books={books} />
+
       {/* by vendor — filed names link to their card */}
       {vendors.length > 0 && (
         <div className="ds2-board overflow-hidden mt-4">
@@ -353,6 +482,25 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
               </div>
             );
           })}
+          {/* SHOP DAYS, COSTED (the sheet's feature 7): a day at the shop is a
+              day the truck earned nothing — the number that argues for doing
+              two jobs in one stop. Read from the trips you already log. */}
+          <p className="font-condensed text-[13px] text-dim px-4 py-2.5 border-t ds2-cell-rule" data-testid="shop-days">
+            shop days this year:{" "}
+            <b className="text-ink">{shop.days}</b>
+            {shop.days > 0 && <span className="text-faint"> ({shop.dates.map(shortDay).join(" · ")})</span>}
+            {shop.days > 0 && shop.cost != null ? (
+              <>
+                {" "}
+                — at your target day that is ≈ <b className="text-ink">{money(shop.cost)}</b> of earning that did
+                not happen
+              </>
+            ) : shop.days > 0 ? (
+              <> — no target day yet to price them</>
+            ) : (
+              <> — none logged as trips</>
+            )}
+          </p>
         </div>
       )}
 
@@ -370,7 +518,7 @@ export const ServicesTab = ({ services, items, readings, onChange, openSignal = 
               The log
             </span>
             <span className="font-condensed text-[13px] text-faint">
-              · chronological · cost here tracks vendor pricing, not your P&L
+              · chronological · cost here tracks vendor pricing; the books are above
             </span>
           </div>
           <div className="overflow-x-auto">

@@ -178,6 +178,11 @@ export const projectApuHours = (
   };
 };
 
+// How many road days the projection has carried since the reading it is
+// anchored to — the Maintenance page's "read the meter" prompt reads this.
+export const roadDaysSince = (loads: Load[], readOn: string | null, now: Date): number | null =>
+  readOn ? roadDaysAfter(loads, readOn, localDayKey(now)) : null;
+
 // What share of recent days were road days — how a count of road days converts
 // back into calendar days for an ETA. null when the window holds nothing.
 export const roadDayShare = (loads: Load[], now: Date, windowDays = 90): number | null => {
