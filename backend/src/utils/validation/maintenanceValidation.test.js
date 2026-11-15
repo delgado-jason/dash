@@ -123,3 +123,44 @@ describe("GL-07 — a both service carries one reading", () => {
     assert.deepEqual(reconcileBothReading({ unit: "apu", apu_hours: 3 }).errors, []);
   });
 });
+
+import { apuReadingSanity, MAX_APU_HOURS_PER_DAY } from "./maintenanceValidation.js";
+
+describe("apuReadingSanity — a reading no meter could produce is refused, and the pair is named", () => {
+  // Self-consistent neighbours: 87 hours over six days, 255 over eighteen.
+  const onFile = [
+    { day: "2026-09-13", hours: 13413 },
+    { day: "2026-09-19", hours: 13500 },
+    { day: "2026-10-07", hours: 13755 },
+  ];
+  test("Jason's Sep 14 reading: 127 hours above the day before", () => {
+    const e = apuReadingSanity({ day: "2026-09-14", hours: 13540 }, onFile);
+    assert.ok(e.length >= 1);
+    assert.match(e[0], /13,540 on 2026-09-14 is 127 hours above 13,413 on 2026-09-13/);
+    assert.match(e[0], new RegExp(`more than ${MAX_APU_HOURS_PER_DAY} hours a day`));
+  });
+  test("a plausible reading between its neighbours passes", () => {
+    assert.deepEqual(apuReadingSanity({ day: "2026-09-16", hours: 13450 }, onFile), []);
+  });
+  test("a meter that goes backwards is refused, against either neighbour", () => {
+    assert.match(apuReadingSanity({ day: "2026-09-20", hours: 13490 }, onFile)[0], /below 13,500 on 2026-09-19 — a meter cannot go backwards/);
+    assert.match(apuReadingSanity({ day: "2026-09-10", hours: 13600 }, onFile)[0], /above 13,413 on 2026-09-13 — a meter cannot go backwards/);
+  });
+  test("a jump is judged against the LATER reading too", () => {
+    // 13,600 on Oct 6 would need 155 hours by Oct 7
+    const e = apuReadingSanity({ day: "2026-10-06", hours: 13600 }, onFile);
+    assert.equal(e.length, 1);
+    assert.match(e[0], /155 hours below 13,755 on 2026-10-07/);
+  });
+  test("two readings on one day may differ by a day's hours, not more", () => {
+    assert.deepEqual(apuReadingSanity({ day: "2026-09-19", hours: 13510 }, onFile), []);
+    const e = apuReadingSanity({ day: "2026-09-19", hours: 13530 }, onFile);
+    assert.equal(e.length, 1);
+    assert.match(e[0], /read the same day by 30 hours/);
+  });
+  test("the first reading ever, or a blank one, is never refused", () => {
+    assert.deepEqual(apuReadingSanity({ day: "2026-09-13", hours: 13413 }, []), []);
+    assert.deepEqual(apuReadingSanity({ day: "2026-09-13", hours: null }, onFile), []);
+    assert.deepEqual(apuReadingSanity(null, onFile), []);
+  });
+});

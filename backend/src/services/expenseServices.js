@@ -158,11 +158,15 @@ export async function getExpensePeriods(user_id) {
     `SELECT p.period_id, p.period_month, p.period_label,
             p.income_total, p.cogs_total, p.expense_total,
             p.created_at AS filed_at,
-            t.fixed_total, t.variable_total
+            t.fixed_total, t.variable_total, t.repairs_total
      FROM expense_periods p
      LEFT JOIN LATERAL (
        SELECT SUM(l.amount) FILTER (WHERE COALESCE(d.type, l.type) = 'fixed')    AS fixed_total,
-              SUM(l.amount) FILTER (WHERE COALESCE(d.type, l.type) = 'variable') AS variable_total
+              SUM(l.amount) FILTER (WHERE COALESCE(d.type, l.type) = 'variable') AS variable_total,
+              -- The P&L's repairs & maintenance line(s), for the Maintenance page's
+              -- books-vs-log strip and the truck's cost-to-run. NULL when the month
+              -- carries no such line; the frontend reads a filed month's NULL as $0.
+              SUM(l.amount) FILTER (WHERE l.category ~* '(repair|mainten)') AS repairs_total
          FROM expense_lines l
          LEFT JOIN expense_category_defaults d
                 ON d.user_id = l.user_id AND d.category = l.category

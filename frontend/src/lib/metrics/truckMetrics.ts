@@ -7,6 +7,7 @@ import type { Load } from "@/types/load";
 import type { FuelEntry } from "@/types/fuelEntry";
 import type { MaintenanceService } from "@/types/maintenance";
 import type { Truck } from "@/types/truck";
+import type { ExpensePeriod } from "@/types/expense";
 import { loadNetRevenue } from "./rateTargets";
 import { fuelStats } from "./fuelEconomy";
 import { underLoadDaySet } from "./underLoad";
@@ -28,7 +29,8 @@ export interface TruckMetrics {
   maintPerMile: number | null; // maintenance $ ÷ driven miles (both full-history)
   revPerMile: number | null;
   costToRunPerMile: number | null; // fuel(30d) + maintenance + note — all-in $/mi
-  maintSpend: number; // maintenance $ attributable to the truck
+  maintSpend: number; // maintenance $ attributable to the truck — the books where a month is filed, the log where not
+  maintSource: { books: number; log: number }; // how many months came from each
   notePerMile: number | null; // asset note ÷ miles/month (null when no note passed)
   milesPerMonth: number | null;
   totalMiles: number;
@@ -46,6 +48,59 @@ const loadMiles = (l: Load): number => {
       ? Number(l.odometer_end) - Number(l.odometer_start)
       : 0;
   return odo > 0 ? odo : Number(l.loaded_miles || 0) + Number(l.deadhead_miles || 0);
+};
+
+// THE BOOKS WHERE A MONTH IS FILED, THE LOG WHERE IT IS NOT (the Maintenance
+// sheet, call 5, 2026-11-15). The log held three-quarters of the P&L's
+// repairs line on Jason's book — June's $4,990 was never logged — so a
+// per-mile figure off the log alone understated the truck's cost by a
+// quarter. Month by month from the earlier of the window's start and the
+// first logged visit: a filed month contributes the P&L's repairs line (the
+// rig's; with one truck that is the truck's), an unfiled month the log's
+// truck share. With no P&L at all this is exactly the old log-only sum.
+export const maintenanceSpend = (
+  services: MaintenanceService[],
+  periods: ExpensePeriod[],
+  fromDay: string | null,
+  toDay: string,
+): { spend: number; books: number; log: number } => {
+  const filed = new Map<string, number>();
+  for (const p of periods) filed.set(String(p.period_month).slice(0, 7), p.repairs_total ?? 0);
+  const logBy = new Map<string, MaintenanceService[]>();
+  const undated: MaintenanceService[] = [];
+  for (const s of services) {
+    const m = typeof s.service_date === "string" ? s.service_date.slice(0, 7) : "";
+    if (!m) undated.push(s); // no month to file it under — it is the log's, whole
+    else logBy.set(m, [...(logBy.get(m) ?? []), s]);
+  }
+  const firstLogged = [...logBy.keys()].sort()[0] ?? null;
+  const fromMonth = [fromDay?.slice(0, 7) ?? null, firstLogged].filter((m): m is string => !!m).sort()[0] ?? null;
+  if (!fromMonth) return { spend: truckServiceSpend(undated), books: 0, log: undated.length ? 1 : 0 };
+  const toMonth = toDay.slice(0, 7);
+  let spend = 0;
+  let books = 0;
+  let log = 0;
+  let [y, m] = fromMonth.split("-").map(Number);
+  for (;;) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    if (key > toMonth) break;
+    if (filed.has(key)) {
+      spend += filed.get(key) as number;
+      books++;
+    } else if (logBy.has(key)) {
+      spend += truckServiceSpend(logBy.get(key) as MaintenanceService[]);
+      log++;
+    }
+    if (++m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  if (undated.length) {
+    spend += truckServiceSpend(undated);
+    log++;
+  }
+  return { spend, books, log };
 };
 
 // Shop money attributable to the tractor: its own visits, the APU's (the
@@ -144,6 +199,7 @@ export const computeTruckMetrics = (
   homeDays: string[] = [], // explicit per-diem "home" marks ("YYYY-MM-DD")
   travelDays: string[] = [], // per-diem "full"/"half" (on-the-road) marks
   assetNote = 0, // monthly note for this rig (truck + trailer) — folds into cost-to-run
+  periods: ExpensePeriod[] = [], // the P&L you filed — the books, where a month has them
 ): TruckMetrics => {
   // Earned freight — delivered AND paid — matches the truck's net revenue elsewhere.
   const earned = truckLoads.filter(
@@ -156,7 +212,6 @@ export const computeTruckMetrics = (
   const totalMiles = earned.reduce((s, l) => s + loadMiles(l), 0);
 
   const fs = fuelStats(truckFuel, now);
-  const maintSpend = truckServiceSpend(services);
 
   // Utilization — days the truck was under a load ÷ days in the window. The window
   // starts at the LATER of the in-service date and the first logged load, so weeks
@@ -174,6 +229,9 @@ export const computeTruckMetrics = (
   const windowStart =
     [inServiceDay, firstPickup].filter((d): d is string => !!d).sort().at(-1) ??
     null;
+  const mx = maintenanceSpend(services, periods, windowStart, nowDay);
+  const maintSpend = mx.spend;
+  const maintSource = { books: mx.books, log: mx.log };
   const uw = utilizationWindow(truckLoads, windowStart, nowDay, homeDays, travelDays);
   const { windowDays, underLoadDays, idleDays, utilization } = uw;
   const homeDayCount = uw.homeDays;
@@ -211,6 +269,7 @@ export const computeTruckMetrics = (
     bestTank: fs.bestMpg,
     fuelPerMile: fs.costPerMile30,
     maintPerMile,
+    maintSource,
     revPerMile: totalMiles > 0 ? netRevenue / totalMiles : null,
     costToRunPerMile,
     maintSpend,

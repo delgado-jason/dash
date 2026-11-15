@@ -99,8 +99,8 @@ export const FleetTab = ({
 
   // single owner-operator: all loads are this truck's
   const metrics = useMemo(
-    () => (truck ? computeTruckMetrics(truck, loads, fleet.fuel, fleet.services, now, fleet.homeDays, fleet.travelDays) : null),
-    [truck, loads, fleet.fuel, fleet.services, fleet.homeDays, fleet.travelDays, now],
+    () => (truck ? computeTruckMetrics(truck, loads, fleet.fuel, fleet.services, now, fleet.homeDays, fleet.travelDays, 0, periods) : null),
+    [truck, loads, fleet.fuel, fleet.services, fleet.homeDays, fleet.travelDays, now, periods],
   );
   const shop = useMemo(() => shopSpend(fleet.services, now, 12), [fleet.services, now]);
   const heat = useMemo(() => fleetHeatmap(loads, fleet.homeDays, fleet.travelDays, now, 8), [loads, fleet.homeDays, fleet.travelDays, now]);
@@ -179,7 +179,7 @@ export const FleetTab = ({
   const costParts = (
     [
       { key: "fuel", label: "fuel (30-day)", v: fuelPerMile, color: "var(--color-cat1)" },
-      { key: "maint", label: "maintenance (incl. APU)", v: maintPerMile, color: "var(--color-cat5)" },
+      { key: "maint", label: "maintenance (the books where filed, incl. APU)", v: maintPerMile, color: "var(--color-cat5)" },
       { key: "note", label: "truck + trailer note", v: notePerMile, color: "var(--color-cat3)" },
     ] as { key: string; label: string; v: number | null; color: string }[]
   ).filter((p): p is { key: string; label: string; v: number; color: string } => p.v != null);

@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { MaintenanceItem } from "@/types/maintenance";
 import {
   createMaintenanceItem,
@@ -7,32 +8,40 @@ import {
   seedMaintenanceItems,
   type ItemInput,
 } from "@/services/maintenanceService";
-import {
-  computeDue,
-  type CurrentReading,
-  type Due,
-  type DueLevel,
-} from "@/lib/metrics/maintenance";
+import { type CurrentReading, type Due, type DueLevel } from "@/lib/metrics/maintenance";
 import type { ApuProjection } from "@/lib/metrics/apuHours";
+import type { LastVisit, NinetyDays, Bucket } from "@/lib/metrics/maintenanceMoney";
 import { MaintenanceItemForm } from "./MaintenanceItemForm";
-import { MaintenanceRow, MaintenanceRowHead } from "./MaintenanceRow";
+import { MaintenanceRow, MaintenanceRowHead, type RowFact } from "./MaintenanceRow";
 import { Panel } from "@/components/ui/Panel";
 import { Board } from "@/components/ui/Board";
 import { SectionHead, GhostButton } from "@/components/relationships/primitives";
 import type { PillTone } from "@/components/ui/StatusPill";
+import { money } from "@/lib/format";
+
+export interface ScheduleRow {
+  item: MaintenanceItem;
+  due: Due;
+  estimated: boolean; // its figures came off the APU projection
+  assumed: boolean; // its baseline was set at in-service and no service has replaced it
+}
 
 interface Props {
-  items: MaintenanceItem[];
-  // What each unit's meter reads now: miles for the truck and trailer,
-  // projected hours for the APU.
+  rows: ScheduleRow[]; // every clock, graded once by the page
   currentReading: CurrentReading;
   milesPerMonth: number | null;
   apu: ApuProjection;
-  roadDayShare: number | null;
+  lastVisits: Map<string, LastVisit>; // the visit that last did each clock
+  next: NinetyDays; // the next 90 days, priced from those visits
+  bucket: Bucket | null; // the Maintenance account's latest typed balance
+  floor: number | null; // the Plan's Maintenance floor
+  inServiceDay: string | null; // the truck's in-service date — the assumed baseline
+  prompt: string | null; // "read the meter — …", when the APU needs a reading
   // Bumping it opens the add-a-clock form. "+ Add clock" lives in the
   // statusbar beside "Log service" — the plate is a readout, not a toolbar.
   addSignal?: number;
   onChange: () => void;
+  onDone: (item: MaintenanceItem) => void; // the Done door — log the service that does it
 }
 
 const META: Record<DueLevel, { label: string; color: string }> = {
@@ -110,11 +119,13 @@ const intervalWords = (i: MaintenanceItem): string => {
 
 // The reading under the last-done date. An APU item that was done but never
 // metered says so — "hrs —" — rather than showing a zero it was never given.
-const lastDoneFact = (i: MaintenanceItem): { lead: string; sub: string | null } => {
+// A baseline assumed at in-service says that too.
+const lastDoneFact = (i: MaintenanceItem, assumed: boolean): { lead: string; sub: string | null } => {
   if (!i.last_done_date)
     return { lead: "never", sub: i.unit === "apu" ? "hrs —" : "baseline" };
-  const sub =
-    i.unit === "apu"
+  const sub = assumed
+    ? "~ assumed at in-service"
+    : i.unit === "apu"
       ? i.last_done_hours != null
         ? `${num(i.last_done_hours)} hrs`
         : "hrs —"
@@ -124,10 +135,20 @@ const lastDoneFact = (i: MaintenanceItem): { lead: string; sub: string | null } 
   return { lead: fmtDate(i.last_done_date), sub };
 };
 
+// "$840.87" over "TA Petro · 6 clocks" — the VISIT that last did this clock.
+// A visit logged without a price says so; a clock never done has no cell.
+const lastTimeFact = (v: LastVisit | undefined): RowFact | null => {
+  if (!v) return null;
+  const who = [v.vendor, v.clocks > 1 ? `${v.clocks} clocks` : null].filter(Boolean).join(" · ");
+  return v.cost == null
+    ? { lead: "unpriced", sub: who || fmtDate(v.day) }
+    : { lead: v.clocks > 1 ? `in ${money(v.cost)}` : money(v.cost), sub: who || fmtDate(v.day) };
+};
+
 // What is LEFT — the number the row exists to show. It is the figure from the
 // lens that DECIDED the level, never a friendlier one: an APU item overdue on
 // months must not print 760 healthy hours in red. Hours off a projection wear
-// a "~".
+// a "~"; so does any figure counted from an assumed baseline.
 const leftCell = (
   item: MaintenanceItem,
   due: Due,
@@ -138,9 +159,9 @@ const leftCell = (
   if (due.decidedBy === "hours" && due.hoursRemaining != null)
     return { value: `${tilde}${compact(due.hoursRemaining)}`, caption: "hours", color };
   if (due.decidedBy === "miles" && due.milesRemaining != null)
-    return { value: compact(due.milesRemaining), caption: "miles", color };
+    return { value: `${tilde}${compact(due.milesRemaining)}`, caption: "miles", color };
   if (due.decidedBy === "months" && due.daysRemaining != null)
-    return { value: compact(due.daysRemaining), caption: "days", color };
+    return { value: `${tilde}${compact(due.daysRemaining)}`, caption: "days", color };
   // No lens can count: the meter has given nothing. "—", never a fake 0.
   return { value: "—", caption: item.unit === "apu" ? "hours" : "miles" };
 };
@@ -155,8 +176,8 @@ const chipFor = (due: Due): { tone: PillTone; label: string } | null => {
   return null;
 };
 
-const contextOf = (i: MaintenanceItem): string =>
-  `${i.category} · warn ${i.warn_lead_days} days before`;
+const contextOf = (i: MaintenanceItem, assumed: boolean): string =>
+  `${i.category} · warn ${i.warn_lead_days} days before${assumed ? " · counting from an assumed baseline" : ""}`;
 
 // The due-next cell's second line: the unit, then either the interval and how
 // far past, or how much is left and roughly when. Same rule as the right cell —
@@ -178,7 +199,7 @@ const urgencyLine = (
     due.decidedBy === "hours" && due.hoursRemaining != null
       ? { left: due.hoursRemaining, word: "hrs", mark: tilde }
       : due.decidedBy === "miles" && due.milesRemaining != null
-        ? { left: due.milesRemaining, word: "mi", mark: "" }
+        ? { left: due.milesRemaining, word: "mi", mark: tilde }
         : null;
   if (meter) {
     if (meter.left < 0)
@@ -198,6 +219,18 @@ const urgencyLine = (
   }`;
 };
 
+// "last time $840.87 · TA Petro · Aug 21 · 6 clocks" under a due-next cell.
+const lastTimeLine = (v: LastVisit | undefined): string | null => {
+  if (!v) return null;
+  const parts = [
+    v.cost == null ? "last time unpriced" : `last time ${v.clocks > 1 ? "in " : ""}${money(v.cost)}`,
+    v.vendor,
+    fmtDate(v.day),
+    v.clocks > 1 ? `${v.clocks} clocks` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+};
+
 // Urgency order: overdue, then soon, then how far each has run, then the
 // clocks that cannot be counted at all.
 const LEVEL_RANK: Record<DueLevel, number> = { overdue: 0, soon: 1, ok: 2, unknown: 3 };
@@ -208,20 +241,16 @@ const byUrgency = (a: { due: Due }, b: { due: Due }): number =>
 // A clock earns a full row when it is flagged, or when it HAS been done but
 // cannot be counted (an APU service with no meter reading) — those two are the
 // ones with something to say. Everything else folds behind "n more · fine".
-const isFine = (r: { item: MaintenanceItem; due: Due }): boolean =>
-  r.due.level === "ok" || (r.due.level === "unknown" && !r.item.last_done_date);
+// A clock with NO baseline at all stays out of the fold now: it has a door to
+// tap (the Maintenance sheet, call 3), and a door hidden behind a fold is no
+// door.
+const isFine = (r: ScheduleRow): boolean => r.due.level === "ok";
 
-interface Row {
-  item: MaintenanceItem;
-  due: Due;
-  estimated: boolean; // its figures came off the APU projection
-}
-
-// The plate is the mock's FIXED strip: Overdue, Soon, Then — always those
-// three, always in that order. Each cell holds the most urgent clock at its own
-// level, and an empty cell says so rather than letting the next level slide up
-// into its place. "Overdue · Overdue · Then" would make one bad week look like
-// two.
+// The plate is the mock's FIXED strip: Overdue, Soon, Then, and — the
+// Maintenance sheet's fourth cell — the next 90 days. The first three always
+// hold the most urgent clock at their own level, and an empty cell says so
+// rather than letting the next level slide up into its place. "Overdue ·
+// Overdue · Then" would make one bad week look like two.
 const SLOTS = ["Overdue", "Soon", "Then"] as const;
 type Slot = (typeof SLOTS)[number];
 
@@ -234,7 +263,7 @@ const EMPTY_SLOT: Record<Slot, string> = {
 // `ranked` is already in urgency order, so the first match IS the most urgent.
 // "Then" is everything that is neither overdue nor soon — the next clock to
 // watch, including one that is waiting on a reading.
-const slotRow = (ranked: Row[], slot: Slot): Row | undefined =>
+const slotRow = (ranked: ScheduleRow[], slot: Slot): ScheduleRow | undefined =>
   slot === "Overdue"
     ? ranked.find((r) => r.due.level === "overdue")
     : slot === "Soon"
@@ -245,10 +274,12 @@ const DueNextCell = ({
   slot,
   row,
   now,
+  last,
 }: {
   slot: Slot;
-  row: Row | undefined;
+  row: ScheduleRow | undefined;
   now: Date;
+  last: LastVisit | undefined;
 }) => (
   <div className="px-[18px] py-4">
     <p className="ds2-label">{slot}</p>
@@ -261,8 +292,11 @@ const DueNextCell = ({
           {row.item.name}
         </p>
         <p className="mt-1 text-[12.5px] text-faint truncate">
-          {urgencyLine(row.item, row.due, now, row.estimated)}
+          {urgencyLine(row.item, row.due, now, row.estimated || row.assumed)}
         </p>
+        {lastTimeLine(last) && (
+          <p className="mt-0.5 text-[12.5px] text-dim truncate">{lastTimeLine(last)}</p>
+        )}
       </>
     ) : (
       <p className="font-condensed font-semibold text-[20.5px] leading-[1.15] mt-1.5 text-faint">
@@ -272,18 +306,63 @@ const DueNextCell = ({
   </div>
 );
 
+// The fourth cell: what is coming and whether the bucket covers it. The
+// figure is the visits that last did these clocks, each once — a history,
+// not a guess — and it says when some of them have never been priced.
+const NextNinetyCell = ({ next, bucket, floor }: { next: NinetyDays; bucket: Bucket | null; floor: number | null }) => {
+  const tone =
+    bucket == null || next.visits.length === 0
+      ? "var(--color-ink)"
+      : bucket.balance >= next.total
+        ? "var(--color-status-positive-text)"
+        : "var(--color-status-negative-text)";
+  return (
+    <div className="px-[18px] py-4 bg-well" data-testid="next-90">
+      <p className="ds2-label">Next {next.horizonDays} days</p>
+      <p className="font-condensed font-semibold text-[20.5px] leading-[1.15] mt-1.5 text-ink truncate">
+        {next.clocks === 0
+          ? "nothing due"
+          : next.visits.length === 0
+            ? `${next.clocks} clock${next.clocks === 1 ? "" : "s"} · never priced`
+            : `${next.clocks} clock${next.clocks === 1 ? "" : "s"} · ≈ ${money(next.total)}`}
+      </p>
+      {next.visits.length > 0 && (
+        <p className="mt-1 text-[12.5px] text-faint truncate">
+          last done across {next.visits.length} visit{next.visits.length === 1 ? "" : "s"}, {money(next.total)} together
+          {next.unpriced > 0 ? ` · ${next.unpriced} never priced` : ""}
+        </p>
+      )}
+      <p className="mt-0.5 text-[12.5px] text-dim truncate">
+        {bucket ? (
+          <>
+            the Maintenance bucket holds <b style={{ color: tone }}>{money(bucket.balance)}</b> ({fmtDate(bucket.asOf)})
+          </>
+        ) : (
+          "no Maintenance balance typed yet"
+        )}
+        {floor != null && <> · floor {money(floor)}</>} ·{" "}
+        <Link to="/status" className="text-amber-hi hover:text-hot">
+          Plan ›
+        </Link>
+      </p>
+    </div>
+  );
+};
+
 const Chip = ({
   children,
   tone = "dim",
 }: {
   children: ReactNode;
-  tone?: "job" | "dim";
+  tone?: "job" | "dim" | "warn";
 }) => (
   <span
     className={`inline-flex items-center h-[22px] px-2.5 rounded-[11px] font-condensed font-semibold text-[12px] tracking-[.08em] uppercase ${
       tone === "job"
         ? "text-amber-hi border border-amber/35 bg-amber/[.08]"
-        : "text-faint border border-hairline"
+        : tone === "warn"
+          ? "text-amber-hi border border-amber/60 normal-case tracking-normal"
+          : "text-faint border border-hairline"
     }`}
   >
     {children}
@@ -291,16 +370,25 @@ const Chip = ({
 );
 
 export const ScheduleTab = ({
-  items,
+  rows,
   currentReading,
   milesPerMonth,
   apu,
-  roadDayShare,
+  lastVisits,
+  next,
+  bucket,
+  floor,
+  inServiceDay,
+  prompt,
   addSignal = 0,
   onChange,
+  onDone,
 }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<MaintenanceItem | null>(null);
+  // What the form opens WITH — the clock itself, or the clock with the
+  // in-service date dropped into "last done" for the Set pass (call 3).
+  const [formInitial, setFormInitial] = useState<MaintenanceItem | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState<Record<string, boolean>>({});
@@ -309,29 +397,12 @@ export const ScheduleTab = ({
   useEffect(() => {
     if (addSignal > 0) {
       setEditing(null);
+      setFormInitial(null);
       setShowForm(true);
     }
   }, [addSignal]);
 
   const now = new Date();
-  const rows: Row[] = items.map((item) => ({
-    item,
-    due: computeDue(
-      item,
-      item.unit === "apu" ? null : currentReading[item.unit],
-      now,
-      milesPerMonth,
-      {
-        currentHours: item.unit === "apu" ? currentReading.apu : null,
-        hoursPerRoadDay: apu.rate,
-        roadDayShare,
-      },
-    ),
-    // Only an APU row reads a projected meter, and only then when a road day
-    // has passed since the reading.
-    estimated: item.unit === "apu" && currentReading.apuEstimated,
-  }));
-
   const ranked = [...rows].sort(byUrgency);
   const flagged = rows.filter(
     (r) => r.due.level === "overdue" || r.due.level === "soon",
@@ -356,14 +427,26 @@ export const ScheduleTab = ({
       else await createMaintenanceItem(data);
       setShowForm(false);
       setEditing(null);
+      setFormInitial(null);
     });
 
   const openEdit = (item: MaintenanceItem) => {
     setEditing(item);
+    setFormInitial(item);
     setShowForm(true);
   };
 
-  if (items.length === 0 && !showForm) {
+  // The Set door on a clock with no baseline: the editor opens with the
+  // truck's in-service day already in "last done", the reading left for the
+  // owner to type. The clock then counts from an ASSUMED baseline — marked as
+  // such on the row until a real service replaces it.
+  const openSet = (item: MaintenanceItem) => {
+    setEditing(item);
+    setFormInitial(inServiceDay ? { ...item, last_done_date: inServiceDay } : item);
+    setShowForm(true);
+  };
+
+  if (rows.length === 0 && !showForm) {
     return (
       <div className="ds2-board p-6 text-center mt-4">
         <p className="font-condensed text-[15px] text-dim mb-4">
@@ -380,7 +463,7 @@ export const ScheduleTab = ({
           >
             LOAD STARTER SCHEDULE
           </button>
-          <GhostButton onClick={() => { setEditing(null); setShowForm(true); }}>
+          <GhostButton onClick={() => { setEditing(null); setFormInitial(null); setShowForm(true); }}>
             ADD CLOCK
           </GhostButton>
         </div>
@@ -391,16 +474,16 @@ export const ScheduleTab = ({
   const boardNote = (section: Section): string | null => {
     if (section === "Truck")
       return currentReading.tractor != null
-        ? `odometer ${num(currentReading.tractor)} · from the log and the loads`
+        ? `odometer ${num(currentReading.tractor)} · from the log, the fills and the loads`
         : "odometer — · no reading yet";
     if (section === "Trailer")
       return currentReading.trailer != null
-        ? `hub ${num(currentReading.trailer)}`
-        : "hub — · the hub advances when a service logs a reading";
+        ? `${num(currentReading.trailer)} · the truck's odometer`
+        : "— · the truck's odometer, no reading yet";
     if (section === "APU")
       return apu.hours == null
         ? "hours — · needs a reading"
-        : `hours ${apu.estimated ? "~" : ""}${num(apu.hours)}${apu.estimated ? " · est." : ""}`;
+        : `hours ${apu.estimated ? "~" : ""}${num(apu.hours)}${apu.estimated && apu.readOn ? ` · est. since ${fmtDate(apu.readOn)}` : ""}`;
     return null;
   };
 
@@ -416,11 +499,22 @@ export const ScheduleTab = ({
               ? `pace ${num(milesPerMonth)} mi/mo`
               : "pace — mi/mo"}
           </Chip>
+          {prompt && <Chip tone="warn">⚠ {prompt}</Chip>}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x ds2-cell-rule mt-1">
-          {SLOTS.map((slot) => (
-            <DueNextCell key={slot} slot={slot} row={slotRow(ranked, slot)} now={now} />
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.25fr] divide-y sm:divide-y-0 lg:divide-x ds2-cell-rule mt-1">
+          {SLOTS.map((slot) => {
+            const row = slotRow(ranked, slot);
+            return (
+              <DueNextCell
+                key={slot}
+                slot={slot}
+                row={row}
+                now={now}
+                last={row ? lastVisits.get(row.item.item_id) : undefined}
+              />
+            );
+          })}
+          <NextNinetyCell next={next} bucket={bucket} floor={floor} />
         </div>
       </Panel>
 
@@ -428,12 +522,20 @@ export const ScheduleTab = ({
 
       {showForm && (
         <div className="mt-4">
+          {formInitial && formInitial !== editing && (
+            <p className="font-condensed text-[13px] text-amber-hi mb-2">
+              Setting a baseline: last done is pre-filled with the truck's in-service day
+              {inServiceDay ? ` (${fmtDate(inServiceDay)})` : ""} — type the reading that day, and the
+              clock counts from there, marked as assumed until a service replaces it.
+            </p>
+          )}
           <MaintenanceItemForm
-            initial={editing}
+            initial={formInitial}
             onSave={save}
             onCancel={() => {
               setShowForm(false);
               setEditing(null);
+              setFormInitial(null);
             }}
             onDelete={
               editing
@@ -462,19 +564,25 @@ export const ScheduleTab = ({
               </span>
             </SectionHead>
             {shown.length > 0 && <MaintenanceRowHead />}
-            {shown.map(({ item, due, estimated }) => (
-              <MaintenanceRow
-                key={item.item_id}
-                name={item.name}
-                chip={chipFor(due)}
-                context={contextOf(item)}
-                interval={intervalFact(item)}
-                lastDone={lastDoneFact(item)}
-                left={leftCell(item, due, estimated)}
-                dimmed={due.level === "ok"}
-                onOpen={() => openEdit(item)}
-              />
-            ))}
+            {shown.map(({ item, due, estimated, assumed }) => {
+              const needsBaseline = due.level === "unknown";
+              return (
+                <MaintenanceRow
+                  key={item.item_id}
+                  name={item.name}
+                  chip={chipFor(due)}
+                  context={contextOf(item, assumed)}
+                  interval={intervalFact(item)}
+                  lastDone={lastDoneFact(item, assumed)}
+                  lastTime={lastTimeFact(lastVisits.get(item.item_id))}
+                  left={leftCell(item, due, estimated || assumed)}
+                  dimmed={due.level === "ok"}
+                  onOpen={() => openEdit(item)}
+                  onDone={needsBaseline ? () => openSet(item) : () => onDone(item)}
+                  doneWord={needsBaseline ? "Set" : "Done"}
+                />
+              );
+            })}
             {fine.length > 0 && !opened[section] && (
               <button
                 type="button"

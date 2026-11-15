@@ -99,6 +99,21 @@ export async function getFuelEntry(user_id, fuel_entry_id) {
 }
 
 // ---- CREATE FUEL ENTRY SERVICE ----
+import { apuReadingSanity } from "../utils/validation/maintenanceValidation.js";
+import { apuReadingNeighbours } from "./maintenanceServices.js";
+
+// The APU's hour meter typed at the pump is one of the two sources the
+// Maintenance page projects from, so it is judged the same way a service's
+// reading is: no meter goes backwards or gains more than a day a day.
+async function refuseImpossibleApuReading(user_id, day, hours, excludeFuelId = null) {
+  if (hours == null || !day) return;
+  const sanity = apuReadingSanity(
+    { day: String(day).slice(0, 10), hours: Number(hours) },
+    await apuReadingNeighbours(db, user_id, { excludeFuelId }),
+  );
+  if (sanity.length) throw new ValidationError(sanity[0]);
+}
+
 export async function createFuelEntry(user_id, truck_id, trip_id, data) {
   // Reject missing user_id
   if (!user_id) throw new ValidationError("Missing user_id");
@@ -131,6 +146,8 @@ export async function createFuelEntry(user_id, truck_id, trip_id, data) {
   const errors = validateFuelEntryCreate(data);
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
+
+  await refuseImpossibleApuReading(user_id, data.fuel_date, data.apu_hours);
 
   // Confirm truck exists and belongs to user
   let result = await db.query(
@@ -234,6 +251,18 @@ export async function patchFuelEntry(user_id, fuel_entry_id, data) {
 
   // if errors, reject request
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
+
+  if (data.apu_hours !== undefined || data.fuel_date !== undefined) {
+    const own = await db.query(
+      `SELECT to_char(fuel_date, 'YYYY-MM-DD') AS day, apu_hours
+         FROM fuel_entries WHERE user_id = $1 AND fuel_entry_id = $2`,
+      [user_id, fuel_entry_id],
+    );
+    if (own.rowCount === 0) throw new NotFoundError("Fuel entry not found");
+    const hours = data.apu_hours !== undefined ? data.apu_hours : own.rows[0].apu_hours;
+    const day = data.fuel_date !== undefined ? data.fuel_date : own.rows[0].day;
+    await refuseImpossibleApuReading(user_id, day, hours, fuel_entry_id);
+  }
 
   // ODO-05: judge a moved date or reading against the stored row and the fill
   // before it (a read; nothing is written yet).

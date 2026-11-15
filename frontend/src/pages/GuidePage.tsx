@@ -3539,6 +3539,34 @@ const GuidePage = () => {
               <span className="text-light">+ Add clock</span> at the top of the
               page, beside <span className="text-light">Log service</span>.
             </Why>
+            <Why>
+              Every clock carries <span className="text-light">last time</span> —
+              the visit that last did it: its total, its shop, how many clocks it
+              reset. It is always the whole visit, never a share dash invented: a
+              $840 PM that reset six clocks cannot honestly be split six ways. The
+              plate's fourth cell, <span className="text-light">Next 90 days</span>,
+              adds up those visits for every clock overdue now or projected due
+              inside 90 days at your pace, each visit once, and prints the
+              Maintenance bucket's latest typed balance and the Plan's floor
+              beside it — so the page answers the Thursday question, "what is
+              coming and does the bucket cover it?" A clock whose last visit was
+              never priced says so instead of adding zero.
+            </Why>
+            <Why>
+              A due row's <span className="text-light">Done</span> door opens Log
+              service with that clock already ticked, the unit set and the newest
+              reading in the box; the chevron still edits the clock. A clock with
+              no baseline gets a <span className="text-light">Set</span> door instead:
+              the editor opens with the truck's in-service day in "last done" — you
+              type the reading that day — and the clock counts from there, marked{" "}
+              <span className="text-light">assumed</span> (a ~ on its figure) until a
+              real service replaces it. And when the APU projection has carried for
+              more than thirty road days, or an APU clock is close on projected
+              hours, the plate says <span className="text-light">read the meter</span>;
+              a reading that no meter could produce — more than a day's hours in a
+              day, or one that goes backwards — is refused at the door with the
+              two readings that disagree named.
+            </Why>
           </Metric>
 
           <Metric
@@ -4460,6 +4488,22 @@ const GuidePage = () => {
               Escorts, permits, and the rest just carry
               the rating for now — the spend score grows from the shops, where
               the data already lives.
+            </Why>
+            <Why>
+              The log's second board is <span className="text-light">Books vs log</span>:
+              the P&amp;L's Repairs &amp; maintenance line, month by month, beside
+              what the log holds, and the gap in words — "nothing logged",
+              "matches", "more logged than filed". A month with no P&amp;L says so
+              and is never called a match; a filed month with no repairs line is $0
+              in the books. Matches has a tolerance of $150 or a tenth of the month.
+              The same rule feeds the truck's cost-to-run on the Fleet tab and the
+              truck page: where a month is filed its repairs line is the figure,
+              where it is not the log's truck share is — because the log alone was
+              three-quarters of the books and understated the truck's cost by a
+              quarter. Under By vendor, <span className="text-light">shop days</span>{" "}
+              counts the days the truck went to the shop this year, from the trips
+              you log, costed at the ladder's target day — the number that argues
+              for doing two jobs in one stop.
             </Why>
           </Section>
 

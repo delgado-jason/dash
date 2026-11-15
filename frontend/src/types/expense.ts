@@ -27,6 +27,13 @@ export interface ExpensePeriod {
    */
   fixed_total?: number | null;
   variable_total?: number | null;
+  /**
+   * The month's Repairs & maintenance line(s), summed server-side for the
+   * Maintenance page's books-vs-log strip and the truck's cost-to-run.
+   * `null` on a filed month means no such line — read as $0 of repairs,
+   * which is different from a month with no P&L at all.
+   */
+  repairs_total?: number | null;
   lines?: ExpenseLine[];
 }
 

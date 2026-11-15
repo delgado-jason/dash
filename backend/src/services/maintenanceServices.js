@@ -10,6 +10,7 @@ import {
   UNIT_ERROR,
   SERVICE_UNIT_ERROR,
   reconcileBothReading,
+  apuReadingSanity,
 } from "../utils/validation/maintenanceValidation.js";
 
 // Resolve the user's single active truck/trailer so maintenance auto-links to
@@ -54,6 +55,25 @@ const linkFor = (unit, ids, data) => ({
       ? (data.trailer_id ?? ids.trailerId)
       : null,
 });
+
+// Every APU hour-meter reading on file, from both sources — an APU service
+// and a fuel-up — as { day, hours }, the row being edited left out. The
+// sanity rule judges a new reading against these.
+export async function apuReadingNeighbours(runner, user_id, { excludeServiceId = null, excludeFuelId = null } = {}) {
+  const r = await runner.query(
+    `SELECT to_char(service_date, 'YYYY-MM-DD') AS day, apu_hours AS hours
+       FROM maintenance_services
+      WHERE user_id = $1 AND unit = 'apu' AND apu_hours IS NOT NULL
+        AND ($2::uuid IS NULL OR service_id <> $2)
+     UNION ALL
+     SELECT to_char(fuel_date, 'YYYY-MM-DD') AS day, apu_hours AS hours
+       FROM fuel_entries
+      WHERE user_id = $1 AND apu_hours IS NOT NULL
+        AND ($3::uuid IS NULL OR fuel_entry_id <> $3)`,
+    [user_id, excludeServiceId, excludeFuelId],
+  );
+  return r.rows.map((x) => ({ day: x.day, hours: Number(x.hours) }));
+}
 
 // ---- SCHEDULE ITEMS ----
 
@@ -209,6 +229,16 @@ export async function createMaintenanceService(user_id, data) {
   if (one.errors.length) throw new ValidationError(one.errors[0]);
   data = { ...data, trailer_hub: one.trailer_hub };
 
+  // An APU reading no meter could produce stops here, with the two readings
+  // that disagree named (the Maintenance sheet, call 4).
+  if (data.unit === "apu" && data.apu_hours != null) {
+    const sanity = apuReadingSanity(
+      { day: String(data.service_date).slice(0, 10), hours: Number(data.apu_hours) },
+      await apuReadingNeighbours(db, user_id),
+    );
+    if (sanity.length) throw new ValidationError(sanity[0]);
+  }
+
   const itemIds = Array.isArray(data.item_ids) ? data.item_ids : [];
   // Three meters, one per unit: `odometer` is the truck reading, `trailer_hub`
   // the trailer's hub, `apu_hours` the APU's hour meter. A combined ("both")
@@ -338,6 +368,28 @@ export async function patchMaintenanceService(user_id, service_id, data) {
     throw new ValidationError(SERVICE_UNIT_ERROR);
   const hoursErrors = apuHoursErrors(data.apu_hours);
   if (hoursErrors.length) throw new ValidationError(hoursErrors[0]);
+
+  // The same sanity rule as create, on the reading the row will carry AFTER
+  // the patch — a moved date can make a once-plausible reading impossible.
+  if (data.apu_hours !== undefined || data.service_date !== undefined || data.unit !== undefined) {
+    const cur = await db.query(
+      `SELECT unit, to_char(service_date, 'YYYY-MM-DD') AS day, apu_hours
+         FROM maintenance_services WHERE service_id = $1 AND user_id = $2`,
+      [service_id, user_id],
+    );
+    if (cur.rowCount === 0) throw new NotFoundError("Service not found");
+    const row = cur.rows[0];
+    const unit = data.unit ?? row.unit;
+    const hours = data.apu_hours !== undefined ? data.apu_hours : row.apu_hours;
+    const day = data.service_date !== undefined ? String(data.service_date).slice(0, 10) : row.day;
+    if (unit === "apu" && hours != null) {
+      const sanity = apuReadingSanity(
+        { day, hours: Number(hours) },
+        await apuReadingNeighbours(db, user_id, { excludeServiceId: service_id }),
+      );
+      if (sanity.length) throw new ValidationError(sanity[0]);
+    }
+  }
 
   // GL-07: the unit a patch lands on is the patch's, else the row's own. A
   // "both" service carries one reading, so an odometer typed without a
