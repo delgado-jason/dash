@@ -2,7 +2,7 @@
 // under the row, and the sheet's own validation, all as string→string work on
 // day keys so no Date ever crosses a timezone on the way to a DATE column.
 import type { ComplianceRenewal, LastRenewal } from "@/types/compliance";
-import { keyOf, localDayKey } from "@/lib/relationships/dayKeys";
+import { keyOf, localDayKey } from "@/lib/dates/dayKeys";
 
 // The day the sheet opens on: the OWNER's today, not UTC's. After ~7pm Central
 // toISOString is already tomorrow, and "renewed on" is a calendar fact.

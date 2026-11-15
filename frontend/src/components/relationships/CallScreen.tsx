@@ -29,9 +29,9 @@ import { originMarketsByAgent } from "@/lib/metrics/agentTouches";
 import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { bucketLabel, bucketOf } from "@/lib/relationships/buckets";
 import { alreadyCarries, capStatus } from "@/lib/relationships/contactCap";
-import { contactTypeLabel, type ContactType } from "@/lib/relationships/contactTypes";
-import { daysBetweenKeys, keyOf, utcDayKey, weekdayShort } from "@/lib/relationships/dayKeys";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { contactTypeLabel, type ContactType } from "@/lib/agents/contactTypes";
+import { daysBetweenKeys, keyOf, utcDayKey, weekdayShort } from "@/lib/dates/dayKeys";
+import { nameOf } from "@/lib/agents/nameOf";
 import { CLASS_HELP, CLASS_TABS, NEXT_TABS, OUTCOME_TABS, dateChips, outcomeLabel, type ClassPick } from "@/lib/relationships/touchOptions";
 import {
   FOOTPRINT_MARKERS,
@@ -50,9 +50,9 @@ import {
   reactivationVoicemail,
   type ScriptContext,
 } from "@/lib/relationships/callScripts";
-import CoverageEditor from "./CoverageEditor";
+import CoverageEditor from "@/components/agents/CoverageEditor";
 import { CapGate } from "./CapGate";
-import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, GhostLink, PrimaryButton, PrimaryLink, SectionHead } from "./primitives";
+import { AgentCodeChip, ErrorLine, FieldLabel, GhostButton, GhostLink, PrimaryButton, PrimaryLink, SectionHead } from "@/components/ui/primitives";
 import { isDelivered } from "@/lib/metrics/status";
 
 // THE CALL SCREEN — /relationships/calls/:agentId. One screen, one job:

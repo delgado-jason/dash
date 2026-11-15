@@ -9,8 +9,8 @@
 // The flag prompts the Owner to consider a personal touch and feeds the
 // re-tier suggestion; it never creates a task and never fires an email.
 import { bucketOf, isDormant, type BookAgentLike, type BookCtx } from "./buckets";
-import { daysBetweenKeys, utcDayKey } from "./dayKeys";
-import { lastMeaningfulContact, type MeaningfulContactLike, type MeaningfulLoadLike } from "./meaningfulContact";
+import { daysBetweenKeys, utcDayKey } from "@/lib/dates/dayKeys";
+import { lastMeaningfulContact, type MeaningfulContactLike, type MeaningfulLoadLike } from "@/lib/agents/meaningfulContact";
 
 export const COOLING_THRESHOLD_DAYS: Record<1 | 2 | 3, number> = { 1: 21, 2: 42, 3: 90 };
 

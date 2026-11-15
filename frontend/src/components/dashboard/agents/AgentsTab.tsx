@@ -17,7 +17,7 @@ import {
   type AgencyWindow,
 } from "@/lib/agencies/agencyMetrics";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import { Leaderboard } from "./Leaderboard";
 import { Panel } from "@/components/ui/Panel";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";

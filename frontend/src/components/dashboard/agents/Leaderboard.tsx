@@ -9,13 +9,13 @@ import {
   type Leaderboard as LeaderboardData,
   type SortKey,
 } from "@/lib/metrics/leaderboard";
-import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
+import { VERDICT_MIN_LOADS } from "@/lib/metrics/agentByType";
 import { formatDate, money, rpm } from "@/lib/format";
-import { shortDate, utcDayKey } from "@/lib/relationships/dayKeys";
+import { shortDate, utcDayKey } from "@/lib/dates/dayKeys";
 import { Panel } from "@/components/ui/Panel";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
 import { GRADE_META } from "@/components/agents/gradeMeta";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 
 // THE LEADERBOARD — the book ranked by desk, one rate (the Tiers rate over 12
 // months, at the desk), one gate (three delivered loads), the booking ladder's
@@ -115,7 +115,7 @@ const People = ({ r, contactsFailed, now }: { r: DeskRow; contactsFailed: boolea
       </div>
     ))}
     <p className="text-[11.5px] text-faint">
-      {ESTABLISHED_AT} delivered loads (lifetime, all people) grade a desk · {r.lifetime} so far · as of {formatDate(utcDayKey(now))}
+      {VERDICT_MIN_LOADS} delivered loads (lifetime, all people) grade a desk · {r.lifetime} so far · as of {formatDate(utcDayKey(now))}
     </p>
   </div>
 );
@@ -299,7 +299,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
                 {ungraded.length > 0 && (
                   <tr className="border-t ds2-cell-rule">
                     <td colSpan={12} className="px-2 py-1.5 text-[11.5px] text-faint tracking-wide uppercase">
-                      Not yet graded · under {ESTABLISHED_AT} delivered loads
+                      Not yet graded · under {VERDICT_MIN_LOADS} delivered loads
                     </td>
                   </tr>
                 )}
@@ -317,7 +317,7 @@ export const Leaderboard = ({ board, ladder, now, contactsFailed, failed }: Lead
             ))}
             {ungraded.length > 0 && (
               <p className="border-t ds2-cell-rule pt-1.5 text-[11.5px] text-faint tracking-wide uppercase">
-                Not yet graded · under {ESTABLISHED_AT} delivered loads
+                Not yet graded · under {VERDICT_MIN_LOADS} delivered loads
               </p>
             )}
             {ungraded.map((r) => (

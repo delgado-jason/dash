@@ -20,11 +20,11 @@ import {
 } from "@/services/agentContactsService";
 import { patchAgent } from "@/services/patchAgentService";
 
-import CoverageEditor from "@/components/relationships/CoverageEditor";
+import CoverageEditor from "@/components/agents/CoverageEditor";
 import RatingForm from "@/components/RatingForm";
 import { StopScorecard } from "@/components/StopScorecard";
 import { IdentityFields, ContactFields } from "@/components/agents/AgentInfoFields";
-import { CodeChip } from "@/components/relationships/primitives";
+import { CodeChip } from "@/components/ui/primitives";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BlockSkeleton } from "@/components/ui/PageSkeletons";

@@ -6,7 +6,7 @@ import {
   isProactive,
   pickerTypes,
   defaultTouchType,
-} from "./contactTypes";
+} from "@/lib/agents/contactTypes";
 
 describe("the registry — REL-01 v2.0's words", () => {
   it("carries every enum value the database knows (064 + 068 + 073)", () => {

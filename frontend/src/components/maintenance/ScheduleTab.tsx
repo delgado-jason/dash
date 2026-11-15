@@ -19,7 +19,7 @@ import { MaintenanceItemForm } from "./MaintenanceItemForm";
 import { MaintenanceRow, MaintenanceRowHead, type RowFact } from "./MaintenanceRow";
 import { Panel } from "@/components/ui/Panel";
 import { Board } from "@/components/ui/Board";
-import { SectionHead, GhostButton } from "@/components/relationships/primitives";
+import { SectionHead, GhostButton } from "@/components/ui/primitives";
 import type { PillTone } from "@/components/ui/StatusPill";
 import { money } from "@/lib/format";
 

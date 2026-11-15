@@ -2,7 +2,7 @@ import type { RepeatLanes } from "@/lib/metrics/marketLedger";
 import { fmtPerDay, perDayTone, type DailyTargets } from "@/lib/metrics/perDay";
 import { perDayTextClass } from "./rpmStyle";
 import { rpm as fmtRpm } from "@/lib/format";
-import { shortDate } from "@/lib/relationships/dayKeys";
+import { shortDate } from "@/lib/dates/dayKeys";
 
 // Spot oversize barely repeats a lane, so lanes get one honest board: the ones
 // you've run more than once. Everything else stays a single, counted under it.

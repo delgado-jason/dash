@@ -3,7 +3,7 @@ import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
-import type { MeaningfulContactLike } from "@/lib/relationships/meaningfulContact";
+import type { MeaningfulContactLike } from "@/lib/agents/meaningfulContact";
 import {
   agencyBand,
   agencyRange,

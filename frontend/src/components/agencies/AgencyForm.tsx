@@ -7,7 +7,7 @@ import {
   FieldLabel,
   GhostButton,
   PrimaryButton,
-} from "@/components/relationships/primitives";
+} from "@/components/ui/primitives";
 
 // The agency's own five fields, in one panel, used two ways: `+ Agency` on the
 // list (Dispatch may name a desk the moment a settlement shows one — the same

@@ -1,6 +1,7 @@
 // THE AGENTS LEADERBOARD on the synthetic book (Cockpit PR 1, brief B).
-// Rules locked: the grade words follow the booking ladder; the gate is three
-// delivered loads; shares sum to 1 over attributed loads; the default order is
+// Rules locked: the grade words follow the booking ladder; the gate is two
+// delivered loads (VERDICT_MIN_LOADS — one gate with the agents list and the
+// file; three was the retired tier model's, Rule change 2026-11-15); shares sum to 1 over attributed loads; the default order is
 // graded-by-rate then ungraded-by-rate; no miles means a null rate, never $0.
 // A red test here means a business rule moved: the PR body must say
 // "Rule change: <id> — <why>".
@@ -10,7 +11,7 @@ import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
 import type { Load } from "@/types/load";
 import type { RateLadder } from "@/lib/metrics/rateTargets";
-import { ESTABLISHED_AT } from "@/lib/relationships/tierSuggestion";
+import { VERDICT_MIN_LOADS } from "@/lib/metrics/agentByType";
 import { buildLeaderboard, GRADE_WORD } from "@/lib/metrics/leaderboard";
 
 const now = new Date(`${TODAY}T00:00:00Z`);
@@ -64,9 +65,9 @@ const lbOf = (ladder: RateLadder | null = LADDER, f = field()) =>
 describe("leaderboard · the rules", () => {
   const lb = lbOf();
 
-  it("the gate is three delivered loads (lifetime, over the desk's people)", () => {
-    expect(ESTABLISHED_AT).toBe(3);
-    for (const r of lb.rows) expect(r.graded).toBe(r.lifetime >= 3);
+  it("the gate is two delivered loads (lifetime, over the desk's people) — one gate with the list and the file", () => {
+    expect(VERDICT_MIN_LOADS).toBe(2);
+    for (const r of lb.rows) expect(r.graded).toBe(r.lifetime >= 2);
     expect(lb.rows.some((r) => r.graded)).toBe(true);
   });
 

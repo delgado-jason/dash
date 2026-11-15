@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isDormant, bucketOf, partitionBook, type BookAgentLike, type BookCtx } from "./buckets";
-import type { MeaningfulContactLike, MeaningfulLoadLike } from "./meaningfulContact";
+import type { MeaningfulContactLike, MeaningfulLoadLike } from "@/lib/agents/meaningfulContact";
 
 const NOW = new Date("2026-09-12T15:00:00Z");
 

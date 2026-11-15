@@ -11,9 +11,9 @@ import { createAgentContact, deleteAgentContact, type AgentContact, type Contact
 import { createAgentNote } from "@/services/createAgentNoteService";
 import { copyText } from "@/lib/clipboard";
 import { money } from "@/lib/format";
-import { nameOf } from "@/lib/relationships/nameOf";
-import { shortDate } from "@/lib/relationships/dayKeys";
-import { contactTypeLabel } from "@/lib/relationships/contactTypes";
+import { nameOf } from "@/lib/agents/nameOf";
+import { shortDate } from "@/lib/dates/dayKeys";
+import { contactTypeLabel } from "@/lib/agents/contactTypes";
 import { alreadyCarries } from "@/lib/relationships/contactCap";
 import { capDoors } from "@/lib/relationships/touchOptions";
 import { skippedMarker } from "@/lib/relationships/markers";
@@ -45,8 +45,8 @@ import {
   type Draft,
   type Signer,
 } from "@/lib/relationshipTemplates";
-import { AgentRow, type RowChip } from "@/components/relationships/AgentRow";
-import { AgentCodeChip, ErrorLine, GhostButton, PrimaryButton, PrimaryLink, SectionHead } from "@/components/relationships/primitives";
+import { AgentRow, type RowChip } from "@/components/agents/AgentRow";
+import { AgentCodeChip, ErrorLine, GhostButton, PrimaryButton, PrimaryLink, SectionHead } from "@/components/ui/primitives";
 import type { TouchPrefill } from "@/components/relationships/LogTouchForm";
 import { useRelationships } from "./context";
 import type { TripEndLike } from "@/lib/metrics/foreman";

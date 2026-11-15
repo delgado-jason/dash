@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Load } from "@/types/load";
-import { agentAllInRpm, allInOver, deliveredCount, lastLoadKey } from "./agentRpm";
+import { agentAllInRpm, allInOver, deliveredCount, lastLoadKey } from "@/lib/metrics/agentRpm";
 
 const NOW = new Date("2026-09-12T15:00:00Z");
 

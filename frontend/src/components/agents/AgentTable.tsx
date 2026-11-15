@@ -4,7 +4,7 @@ import type { Agent } from "@/types/agent";
 import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { money, rpm as fmtRpm } from "@/lib/format";
 import { SPECIALTY_META } from "./agentDisplay";
-import { nameOf } from "@/lib/relationships/nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import { standingOf, standingLabel } from "@/lib/agents/standing";
 import type { Book, BookRate, RateVerdict, SecondCall } from "@/lib/metrics/agentByType";
 

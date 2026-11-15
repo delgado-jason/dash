@@ -378,6 +378,7 @@ const NAV: { group: string; items: string[] }[] = [
       "Prospects — from stranger to agent",
       "The call list — reactivation, prospects, the one question",
       "Agent ratings",
+      "The agent's file — the cover, five parts, one door",
     ],
   },
   {
@@ -794,125 +795,25 @@ const GuidePage = () => {
               <span className="text-light">that agent wears</span> as a small plate
               chip — their own posting code, drawn{" "}
               <span className="text-light">dashed</span>, or their agency's shared
-              desk, drawn <span className="text-light">lit</span> — the code you'd
-              key into the load board or say on the phone, so "Linda Janzen · EWT"
-              reads at a glance. No chip shows when neither is on file.
+              desk, drawn <span className="text-light">lit</span>. No chip shows
+              when neither is on file. A name opens the agent's file, where a
+              call is logged, a rating changed, a desk parked or a market added.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
-              One list — Direct or Spot is a chip, not a rank
+              Your rating on every row
             </p>
             <p className="text-sm text-muted-text mb-3">
-              Agents split into two buckets:{" "}
-              <span className="text-light">Direct</span> customers — an agent you've
-              hit the same shipper or receiver 2+ times through (their own account,
-              worth a relationship) — and <span className="text-light">Spot</span>{" "}
-              market agents (load-board one-offs). The bucket does{" "}
-              <span className="text-light">not</span> order the board. The Top Call
-              plate goes to the highest measured score, direct or spot, and every
-              agent below it sits in{" "}
-              <span className="text-light">one list, in score order</span>, wearing a
-              DIRECT or SPOT chip. Direct-over-spot only breaks a tie between two
-              equal scores — so a six-load spot agent loading out of the town you'll
-              be empty in outranks a one-trip direct customer three states away, and
-              the screen says so. (It didn't always: the rows used to be split into a
-              Direct group above a Spot group, which put a 0.54 direct customer over a
-              0.81 spot agent — the label overruling the evidence.) The bucket
-              auto-updates as loads come in; you can pin an agent either way on the
-              Agents page.
-            </p>
-
-            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
-              Two rates per desk, not one
-            </p>
-            <p className="text-sm text-muted-text mb-3">
-              A desk posts standard freight and it posts oversize, those are held
-              to <span className="text-light">different rungs</span>, and the same
-              desk is often good at one and dreadful at the other — one of yours
-              pays $6.05 on standard and $2.46 on oversize; another is the exact
-              reverse. Pooled into a single $/mi both halves vanish into a middling
-              number and the list ranks two opposites the same. So the list and the
-              dossier each carry a rate per book, graded against{" "}
-              <span className="text-light">its own</span> rung in the Load Scorer's
-              words. A book a desk has never sent reads "—", never $0.00. One load
-              shows the rate and the count but no verdict: one load is a fact about
-              one load.
-            </p>
-
-            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
-              Parked, and worth a second call
-            </p>
-            <p className="text-sm text-muted-text mb-3">
-              <span className="text-light">Parked</span> is the bottom of the one
-              rating control, and it is not a bad rating — it means the record is
-              not a working contact. Most of yours are a dead number, someone who
-              left the company, or the wrong person at the desk, and none of that
-              says how they treat you. A parked desk sits behind its own chip, out
-              of the list you scan to decide who to ring, with the reason you wrote
-              printed where its rating would be and the stars it comes back to kept
-              faint beside it. It is the same word on the list, on the file and in
-              the rating form.
-              <br />
-              <br />
-              <span className="text-light">Worth a second call</span> is the other
-              end of the same thought. Most of your desks have given you exactly one
-              load — the header says how many — so there is nothing to rank them on.
-              This marks the ones whose single load{" "}
-              <span className="text-light">cleared the rung for its own freight</span>:
-              people who paid properly once and were never called back. Best first,
-              and deliberately not a ranking. On the list the mark sits beside the
-              name, so the Last-worked column keeps its date.
-            </p>
-
-            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
-              The agent's page is a file, not a dashboard
-            </p>
-            <p className="text-sm text-muted-text mb-3">
-              Open a desk and you read a file, one column, top to bottom. The{" "}
-              <span className="text-light">cover</span> says who this is — the
-              agency and its codes, on file since, first load, last worked, last
-              spoken to and who on your side books with them — then{" "}
-              <span className="text-light">your call</span>: the rating in its
-              own words, the reason you gave and the day you gave it, or PARKED
-              with the reason. <span className="text-light">In short</span> is
-              the standing note, the permanent line about the person. Your
-              rating is the only grade of a person on the page; the money below
-              it is a fact about the money.
-              <br />
-              <br />
-              Five ruled parts follow.{" "}
-              <span className="text-light">01 do they pay</span> — their rate in
-              each book against its own rung, and the lifetime line.{" "}
-              <span className="text-light">02 what they haul</span> — a sentence
-              computed from their loads (the freight, the origins, the shippers,
-              and whether that is one customer or a spot desk), the best load
-              together, and the markets they say they cover.{" "}
-              <span className="text-light">03 what happened</span> — every load
-              as one plain list with its type, driven miles and $/mi, and the
-              dock clock only once three stamped stops exist.{" "}
-              <span className="text-light">04 what was said</span> — one
-              chronology of notes, calls, emails and rating changes, newest
-              first, with one "Add to the file" door at its foot.{" "}
-              <span className="text-light">05 how to reach them</span>, on one
-              line.
-              <br />
-              <br />
-              The file is as long as the evidence. A desk you have worked once
-              gets the cover, one sentence that carries the load, its rate and
-              your rung, the chronology and the contact line — and says that
-              nothing else is known, instead of five parts with stubs in them.
-              Most of your book is that shape, so most files are short ones —
-              that is the page being honest, not the page being broken.
-            </p>
-
-            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
-              Logging a call
-            </p>
-            <p className="text-sm text-muted-text mb-3">
-              The agent's page can record a touch — call, email or text, with the
-              outcome and what was said. It lands in the same contact log The Foreman
-              reads to work out who has gone quiet, so a call logged here is a desk
-              that stops being counted as dormant. Dated the moment you save it.
+              An agent is measured by your rating and nothing else, so the Foreman
+              prints it beside every name and acts on it. A desk rated{" "}
+              <span className="text-light">1 · Blacklist</span> is never ranked: it
+              sits under its own heading at the foot of the board, nearest first,
+              so you can see who is near the drop and why the Foreman is not
+              offering them. A desk rated <span className="text-light">2 · Avoid</span>{" "}
+              is ranked where the evidence puts it and dimmed. Between two desks the
+              score cannot separate, the higher rating goes first. There is no
+              Direct or Spot chip any more — the agent's file says from the loads
+              what kind of desk it is.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
@@ -924,16 +825,13 @@ const GuidePage = () => {
               <span className="text-light">Proved</span> is a market one of their
               loads put on the map. <span className="text-light">Claimed</span> —
               drawn with a dashed underline — is a market they{" "}
-              <span className="text-light">named on a call</span>, captured on the
-              footprint six on the call screen. A claim counts as a real point with
-              the same distance math: a market Brandie wrote down is either a market
-              or it isn't, and discounting it would be a knob nobody asked for. So an
-              agent who has hauled you one load out of nowhere useful can still be 95
-              miles away because they told you where their freight is. The caption
-              flips to proved on its own the first time a load lands from that city. An
-              agent with no load yet but a claimed market is on the list too, wearing
-              New · building — that is how an agent from Brandie's qualification
-              sweep reaches the board before the first load.
+              <span className="text-light">named on a call</span>, written on the
+              footprint line of their file. A claim counts as a real point with the
+              same distance math: a market Brandie wrote down is either a market or
+              it isn't, and discounting it would be a knob nobody asked for. The
+              caption flips to proved on its own the first time a load lands from
+              that city. An agent with no load yet but a claimed market is on the
+              list too, wearing New · building.
             </p>
 
             <p className="text-sm font-condensed mb-1" style={{ color: AMBER_HI }}>
@@ -958,25 +856,21 @@ const GuidePage = () => {
                 <span className="text-light">nearest</span> point on that agent's
                 footprint, proved or claimed (their closest one, not their average —
                 the question is "can they load me near here"). Which end of a load
-                lands on the footprint follows{" "}
-                <span className="text-light">the customer mark</span> on that load,
-                below.
+                lands on the footprint follows the customer mark on that load.
               </li>
               <li>
                 <span className="text-light">Rate</span> — the agent's gross dollars
-                per <span className="text-light">loaded</span> mile for a load type,
-                measured against your own <span className="text-light">realized median
-                rate for that type</span> (your flatbed rate runs far under your
-                oversize rate, so the yardstick has to be per-type). Loaded-mile, the
-                same basis as the Agents page, so an agent is never dinged for a
-                deadhead they didn't cause. The rate cell also carries that
-                agent's <span className="text-light">$/day</span> — what their
-                freight pays per day of the truck, weighted over the same
-                delivered loads of that type, miles or no miles, and coloured
-                against your own daily target from the rate ladder, per
-                calendar day (see{" "}
-                <span className="text-light">Lane rate — typical vs blended</span>
-                ) — though the score itself still runs on the $/mi.
+                per <span className="text-light">driven</span> mile for the freight
+                they are judged on, held to{" "}
+                <span className="text-light">the rung for that freight's book</span>{" "}
+                (standard, or specialized for oversize, hazmat and heavy haul) and
+                said in the Load Scorer's words — the same number and the same word
+                the agent's file prints, so the Foreman and the file never disagree
+                about a desk. A rate gets its word at two delivered loads of that
+                freight; one load shows the figure and the count. The cell also
+                carries the agent's <span className="text-light">$/day</span> —
+                what their freight pays per day of the truck over the same loads,
+                coloured against your daily target.
               </li>
               <li>
                 <span className="text-light">History</span> — loads you've run
@@ -995,7 +889,7 @@ const GuidePage = () => {
               <span className="text-light">Closest</span> sorts by distance alone;{" "}
               <span className="text-light">Best rate</span> by the highest raw $/mi.
               The <span className="text-light">Looking for</span> selector narrows to a
-              load type and benchmarks each agent against your median rate for that type.
+              load type and holds every agent to that freight's rung.
             </p>
             <Formula>
               Balanced score = 0.35 × proximity + 0.30 × rate + 0.35 × relationship
@@ -1004,10 +898,27 @@ const GuidePage = () => {
             <p className="text-sm text-muted-text mt-3">
               An agent you've run once shows as{" "}
               <span style={{ color: "var(--color-cat2)" }}>New · building</span> — not a
-              low-confidence reject, but a relationship worth deepening. Distances are
-              straight-line estimates (shown with a ~) and sharpen to real miles as the
-              app geocodes each city quietly in the background; a city it can't place
-              yet falls back to region-level rather than a fake number.
+              low-confidence reject, but a relationship worth deepening — and{" "}
+              <span style={{ color: "var(--color-cat2)" }}>second call</span> when that
+              one load cleared the rung for its own freight, the same mark the
+              agents list wears. Distances are straight-line estimates (shown with
+              a ~) and sharpen to real miles as the app geocodes each city quietly
+              in the background; a city it can't place yet falls back to
+              region-level rather than a fake number.
+            </p>
+
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Last spoken to
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              Every row and the top call carry the day you last spoke to the desk —
+              the newest touch of any kind in the contact log, a call, an email or
+              a text, either direction — and how many days ago that was. "No call
+              logged" means exactly that. If the log did not load, the column says
+              so instead of reading never. The Foreman used to treat a desk with
+              nothing two-way in 180 days as parked and drop it from the list with
+              no word on its file; silence is now a fact printed on the row, not a
+              verdict that hides it.
             </p>
 
             <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
@@ -1015,7 +926,7 @@ const GuidePage = () => {
             </p>
             <p className="text-sm text-muted-text mb-3">
               An agent has one <span className="text-light">standing</span>: five
-              stars down to one, and then{" "}
+              down to one, and then{" "}
               <span className="text-light">Parked — do not book</span> at the
               bottom. They used to be two fields and they had already drifted —
               four parked desks were still carrying three stars, the same default
@@ -1031,26 +942,18 @@ const GuidePage = () => {
               Parked agents within 75 miles
             </p>
             <p className="text-sm text-muted-text mb-3">
-              Parked agents — one you parked with a written reason, or one gone{" "}
-              <span className="text-light">dormant</span> (no load, no two-way
-              contact, nothing at all for 180 days) — never sit in the ranked rows
-              above and are never owed a message. They surface here only when the
-              truck is close: a dimmed group,{" "}
+              A desk you parked never sits in the ranked rows. It surfaces here
+              only when the truck is close: a dimmed group,{" "}
               <span className="text-light">PARKED · WITHIN 75 MI OF {"{"}your
-              empty-next city{"}"}</span>, lists every parked agent whose footprint —
+              empty-next city{"}"}</span>, lists every parked desk whose footprint —
               a city they've loaded you from, or a market they named on a call —
               sits within 75 straight-line miles of where you'll be empty. Each row
-              carries the PARKED chip and why they're parked ("dormant since Mar
-              27" or your own reason), then the miles, their loads and gross, and
-              how many days they've been quiet. If the contact log didn't load,
-              the group lists only the agents you parked yourself and says so —
-              dash never calls an agent dormant on half the evidence. The point
-              is their <span className="text-light">freight</span>: grab a board
-              load out of their town while you're there — no outreach owed, no
-              touch to log. Tap a row for the agent sheet: Unpark puts them back
-              in the book as a Prospect (or their tier); a dormant agent comes back
-              on its own the day a load or a reached call happens. An agent with
-              no footprint the app can place is left out rather than guessed.
+              carries the reason you wrote, then the miles, their loads and gross,
+              the day you last worked them and the days since you last spoke. The
+              point is their <span className="text-light">freight</span>: grab a
+              board load out of their town while you're there. Tap a row for the
+              file; un-parking is done there. Only your own parks are listed —
+              dash no longer parks a desk on your behalf for being quiet.
             </p>
           </Section>
 
@@ -3781,6 +3684,101 @@ const GuidePage = () => {
               <span className="text-light">PRIME · TARGET · ABOVE MINIMUM ·
               BELOW COST</span>. The grade waits for three delivered loads
               lifetime; until then it reads "not yet graded · 2 of 3 loads".
+            </p>
+          </Section>
+
+          <Section
+            title="The agent's file — the cover, five parts, one door"
+            sources={[{ label: "Agents", to: "/agents" }]}
+          >
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Two rates per desk, not one
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              A desk posts standard freight and it posts oversize, those are held
+              to <span className="text-light">different rungs</span>, and the same
+              desk is often good at one and dreadful at the other — one of yours
+              pays $6.05 on standard and $2.46 on oversize; another is the exact
+              reverse. Pooled into a single $/mi both halves vanish into a middling
+              number and the list ranks two opposites the same. So the list and the
+              dossier each carry a rate per book, graded against{" "}
+              <span className="text-light">its own</span> rung in the Load Scorer's
+              words. A book a desk has never sent reads "—", never $0.00. One load
+              shows the rate and the count but no verdict: one load is a fact about
+              one load.
+            </p>
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Parked, and worth a second call
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              <span className="text-light">Parked</span> is the bottom of the one
+              rating control, and it is not a bad rating — it means the record is
+              not a working contact. Most of yours are a dead number, someone who
+              left the company, or the wrong person at the desk, and none of that
+              says how they treat you. A parked desk sits behind its own chip, out
+              of the list you scan to decide who to ring, with the reason you wrote
+              printed where its rating would be and the stars it comes back to kept
+              faint beside it. It is the same word on the list, on the file and in
+              the rating form.
+              <br />
+              <br />
+              <span className="text-light">Worth a second call</span> is the other
+              end of the same thought. Most of your desks have given you exactly one
+              load — the header says how many — so there is nothing to rank them on.
+              This marks the ones whose single load{" "}
+              <span className="text-light">cleared the rung for its own freight</span>:
+              people who paid properly once and were never called back. Best first,
+              and deliberately not a ranking. On the list the mark sits beside the
+              name, so the Last-worked column keeps its date.
+            </p>
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              The agent's page is a file, not a dashboard
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              Open a desk and you read a file, one column, top to bottom. The{" "}
+              <span className="text-light">cover</span> says who this is — the
+              agency and its codes, on file since, first load, last worked, last
+              spoken to and who on your side books with them — then{" "}
+              <span className="text-light">your call</span>: the rating in its
+              own words, the reason you gave and the day you gave it, or PARKED
+              with the reason. <span className="text-light">In short</span> is
+              the standing note, the permanent line about the person. Your
+              rating is the only grade of a person on the page; the money below
+              it is a fact about the money.
+              <br />
+              <br />
+              Five ruled parts follow.{" "}
+              <span className="text-light">01 do they pay</span> — their rate in
+              each book against its own rung, and the lifetime line.{" "}
+              <span className="text-light">02 what they haul</span> — a sentence
+              computed from their loads (the freight, the origins, the shippers,
+              and whether that is one customer or a spot desk), the best load
+              together, and the markets they say they cover.{" "}
+              <span className="text-light">03 what happened</span> — every load
+              as one plain list with its type, driven miles and $/mi, and the
+              dock clock only once three stamped stops exist.{" "}
+              <span className="text-light">04 what was said</span> — one
+              chronology of notes, calls, emails and rating changes, newest
+              first, with one "Add to the file" door at its foot.{" "}
+              <span className="text-light">05 how to reach them</span>, on one
+              line.
+              <br />
+              <br />
+              The file is as long as the evidence. A desk you have worked once
+              gets the cover, one sentence that carries the load, its rate and
+              your rung, the chronology and the contact line — and says that
+              nothing else is known, instead of five parts with stubs in them.
+              Most of your book is that shape, so most files are short ones —
+              that is the page being honest, not the page being broken.
+            </p>
+            <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
+              Logging a call
+            </p>
+            <p className="text-sm text-muted-text mb-3">
+              The agent's page can record a touch — call, email or text, with the
+              outcome and what was said. It lands in the same contact log The Foreman
+              reads for "last spoken to", so a call logged here is a desk whose
+              quiet days start over on its row. Dated the moment you save it.
             </p>
           </Section>
 

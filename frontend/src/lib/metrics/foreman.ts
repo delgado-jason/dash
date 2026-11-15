@@ -1,45 +1,57 @@
 // The Foreman — "who to call from where you'll be empty next." Ranks the agents
-// you've booked by three axes, all on the SAME basis the Agents page uses:
+// you've booked by three axes:
 //   • Proximity  — straight-line miles from your empty-next point to the agent's
-//                  NEAREST recurring origin (not their average — the question is
-//                  "can they load me near here").
-//   • Rate       — the agent's gross $/LOADED mile FOR A LOAD TYPE, measured
-//                  against your own target/average for that type (loaded basis,
-//                  so an agent is never dinged for a deadhead they didn't cause).
+//                  NEAREST point — a market a load proved or one they claimed
+//                  on a call (not their average — the question is "can they
+//                  load me near here").
+//   • Rate       — the agent's gross $/DRIVEN mile for the freight they are
+//                  judged on, against the rung for that freight's book, in the
+//                  Load Scorer's words — the same number and word the agent's
+//                  file prints (one basis, the retirement sheet's call 6).
 //   • History    — loads together, recency, and dwell (money left sitting).
 //
+// And YOUR RATING on every row, acted on (call 2, Nov 15, 2026 — an agent is
+// graded by the rating and nothing else): a desk rated 1 · Blacklist is never
+// ranked and is listed under its own heading; a 2 · Avoid is ranked where the
+// score puts it and dimmed; the rating breaks score ties. Parked is the
+// owner's explicit call only — the 180-day "dormant" derivation that used to
+// hide a quiet desk is gone; its quiet days are printed instead.
+//
 // It is a call list from who you've booked — and who told you where their
-// freight is — ranked by history + fit — NOT a live load feed. Everything is GROSS (agents are a market-value lens), matching
-// agentScorecard. Distances come from the persisted city_coords cache; a city we
-// can't trust a coordinate for falls back to region-level, never a fake number.
+// freight is — NOT a live load feed. Everything is GROSS (agents are a
+// market-value lens), matching agentScorecard. Distances come from the
+// persisted city_coords cache; a city we can't trust a coordinate for falls
+// back to region-level, never a fake number.
 //
 // An agent's footprint is TWO kinds of point (decision 6A): the loads they have
 // actually given you — PROVED, and read through the load's customer-end mark
 // (decision 5A), so the origin on a normal load and the destination when the
 // agent's customer took delivery — plus the markets they CLAIMED on a call
 // (agent_coverage, still 'stated'). A claim gets the same distance math as a
-// proved point and is captioned "claimed": a market Brandie wrote down on a
-// call is either a market or it isn't, and 70 % of one is a knob nobody asked
-// for. Coverage already confirmed by a load reads as proved.
+// proved point and is captioned "claimed". Coverage already confirmed by a
+// load reads as proved.
 import type { Load } from "@/types/load";
 import type { Agent } from "@/types/agent";
 import { footprintPoint } from "@/lib/loads/customerEnd";
 import { loadRevenue } from "./loads"; // GROSS per load
 import { perDayOver } from "./perDay";
 import { median } from "./stats";
-import {
-  buildAgentScorecards,
-  effectiveAgentClass,
-  MIN_SCORE_LOADS,
-  type AgentScorecard,
-  type AgentClass,
-  type GoToTier,
-} from "./agentScorecard";
+import { buildAgentScorecards, MIN_SCORE_LOADS, type AgentScorecard } from "./agentScorecard";
 import { getRegion, getMacro } from "@/lib/constants/states";
-import { bucketOf } from "@/lib/relationships/buckets";
 import { codeOf, type CodeKind } from "@/lib/agencies/codeOf";
-import type { MeaningfulContactLike } from "@/lib/relationships/meaningfulContact";
 import { isDelivered } from "./status";
+import type { RateLadder } from "./rateTargets";
+import {
+  drivenMiles,
+  verdictFor,
+  worthASecondCall,
+  VERDICT_MIN_LOADS,
+  type Book,
+  type RateVerdict,
+} from "./agentByType";
+import { standingOf, type Standing } from "@/lib/agents/standing";
+import { daysBetweenKeys, utcDayKey } from "@/lib/dates/dayKeys";
+import { lastTouchByAgent, type TouchLike } from "./parkedNearby";
 
 // ---- load types ----
 export const LOAD_TYPES = [
@@ -220,13 +232,18 @@ const agentPoints = (loads: Load[], coverage: CoveragePointLike[]): Map<string, 
   return m;
 };
 
+// ONE BASIS. Gross ÷ driven miles — the odometer window where it is real,
+// else loaded + deadhead — the rule the agents list, the file, the Scorer and
+// the ladder all read. The Foreman used to read gross ÷ LOADED miles against
+// your own median for the type, so the same desk got two numbers and two
+// words one page apart.
 const loadRpm = (l: Load): number | null => {
-  const miles = Number(l.loaded_miles);
+  const miles = drivenMiles(l);
   if (!(miles > 0)) return null;
-  return loadRevenue(l) / miles; // GROSS ÷ loaded mile
+  return loadRevenue(l) / miles;
 };
 
-// An agent's typical gross $/loaded mile for ONE load type (delivered loads only).
+// An agent's typical gross $/driven mile for ONE load type (delivered loads only).
 const agentTypeRpm = (loads: Load[], type: LoadType): number | null => {
   const rpms = loads
     .filter((l) => isDelivered(l) && l.load_type === type)
@@ -244,12 +261,10 @@ const agentTypeCountAll = (loads: Load[]): number =>
 
 // The agent's $/day over the same delivered loads of the judged type — miles
 // or no miles — weighted Σgross ÷ Σdays. Not quite the same SET as
-// `agentTypeRpm`: a load with no loaded miles has no $/mi to take a median of
-// and drops out of that figure, while it still owns days of the truck and
-// still counts here. That is the point of the pair — the $/mi is a median (one
-// fluke can't crown an agent), the $/day is weighted (a five-day haul owns
-// five days), and between them they judge freight that a rate per mile alone
-// would miss.
+// `agentTypeRpm`: a load with no miles has no $/mi to take a median of and
+// drops out of that figure, while it still owns days of the truck and still
+// counts here. The $/mi is a median (one fluke can't crown an agent), the
+// $/day is weighted (a five-day haul owns five days).
 const agentTypePerDay = (loads: Load[], type: LoadType): number | null =>
   perDayOver(loads.filter((l) => l.load_type === type)).perDay;
 
@@ -267,23 +282,18 @@ const dominantType = (loads: Load[]): LoadType => {
   return best;
 };
 
-// ---- rate benchmark ----
-// Your per-type rate yardstick = your OWN realized median gross $/loaded mile for
-// that load type. So an agent reads against what you actually get for oversize vs
-// flatbed vs hazmat — the honest "my average rate per mile with the load type."
-// The real data shows this swings hard by type (flatbed ~$5, oversize ~$8.7), so
-// a per-type yardstick is the whole point; a single blended average would make
-// every flatbed agent look terrible next to your oversize rates. (A tier-markup
-// TARGET was considered, but it hangs off a type-agnostic break-even and would
-// saturate for specialized freight — every oversize agent reads far "over target"
-// — so it can't tell strong oversize agents from weak ones. The median can.)
-const typeBenchmark = (type: LoadType, allLoads: Load[]): number | null => {
-  const mine = allLoads
-    .filter((l) => isDelivered(l) && l.load_type === type)
-    .map(loadRpm)
-    .filter((r): r is number => r != null);
-  return mine.length ? median(mine) : null;
-};
+// ---- the rung ----
+// The two books' ladders, as the agents list and the file hold them. A type's
+// book is standard or specialized (oversize · hazmat · heavy haul), and its
+// rung is that book's minimum. Absent → no rung, no verdict, a neutral rate
+// score: a Foreman with no P&L month does not pretend to grade.
+export interface ForemanLadders {
+  standard: RateLadder;
+  specialized: RateLadder;
+}
+export const bookOfType = (type: LoadType): Book => (isSpecialized(type) ? "specialized" : "standard");
+const ladderFor = (type: LoadType, ladders?: ForemanLadders): RateLadder | null =>
+  ladders ? ladders[bookOfType(type)] : null;
 
 // ---- scoring ----
 // Balanced weights RELATIONSHIP as heavily as proximity (Jason's steer: he's
@@ -314,21 +324,29 @@ export interface AgentRanking {
   regionFallback: boolean; // true → ranked by region, not miles
   // rate (for the judged type)
   loadType: LoadType; // the type this agent is judged on
-  rpm: number | null; // gross ÷ loaded mile for that type
+  book: Book; // the book that type belongs to — whose rung it is held to
+  rpm: number | null; // gross ÷ DRIVEN mile for that type, the median
   // What their freight pays PER DAY of the truck — Σgross ÷ Σdays over the
   // same delivered loads `rpm` reads. null when none of them carry both
   // dates; never 0. Judged against the ladder's daily target by perDayTone.
   perDay: number | null;
-  benchmark: number | null; // your realized median gross/loaded for this type
-  rateDelta: number | null; // rpm − benchmark
+  rung: number | null; // the book's minimum, from the live ladder
+  rateDelta: number | null; // rpm − rung
+  verdict: RateVerdict | null; // the Scorer's word, once VERDICT_MIN_LOADS of the type
   typeLoadCount: number; // delivered loads of the judged type
   // history
   loadCount: number; // total delivered with this agent
-  daysSince: number | null;
+  daysSince: number | null; // days since the last delivered load
   dwellLoads: number; // confirmed-billable detention left unpaid
-  tier: GoToTier;
-  bucket: AgentClass; // direct customer vs spot — breaks score ties only
   isNew: boolean; // < MIN_SCORE_LOADS delivered → "New · building"
+  // your call
+  rating: number | null;
+  standing: Standing | null;
+  avoid: boolean; // rated 2 — ranked, dimmed
+  // the contact log
+  lastSpokenTo: string | null; // the newest touch of any kind, 'YYYY-MM-DD'
+  daysSinceSpoken: number | null | undefined; // undefined = the log did not come through
+  secondCall: boolean; // one load, and it cleared its own book's rung
   // scoring
   score: number;
   why: string;
@@ -339,8 +357,11 @@ export interface ForemanBoard {
   anchorResolved: boolean; // did the anchor city have a trusted coordinate?
   focus: LoadTypeFocus;
   mode: ForemanMode;
-  benchmark: number | null; // the focus type's median (when focus ≠ any)
+  rung: number | null; // the focus book's minimum (when focus ≠ any)
   rankings: AgentRanking[]; // best first
+  // Rated 1 · Blacklist — your call, never ranked. Nearest first, so the
+  // heading can still say who is near the drop.
+  blacklisted: AgentRanking[];
   coverage: { withCoords: number; total: number }; // how many agents got real miles
 }
 
@@ -363,10 +384,12 @@ const proximityScore = (r: AgentRanking, anchorState: string): number => {
   return rank === 0 ? 0.2 : rank === 1 ? 0.12 : 0.05;
 };
 
+// At the rung = 0.5; a rate a rung's worth above it = 1; unknown rate → mild
+// neutral; no rung (no ladder yet) → neutral, never a grade.
 const rateScore = (r: AgentRanking): number => {
-  if (r.rpm == null) return 0.35; // unknown rate → mild neutral
-  if (r.benchmark == null || r.benchmark <= 0) return 0.5;
-  return clamp01(0.5 + (r.rpm - r.benchmark) / r.benchmark); // at benchmark = 0.5
+  if (r.rpm == null) return 0.35;
+  if (r.rung == null || r.rung <= 0) return 0.5;
+  return clamp01(0.5 + (r.rpm - r.rung) / r.rung);
 };
 
 const relationshipScore = (r: AgentRanking): number => {
@@ -403,9 +426,19 @@ const dropBit = (r: AgentRanking): string =>
         : " — a market they claimed, no load yet"
   }`;
 
+// "last spoken to 45 days ago" · "spoken to today" · "never called" — or
+// nothing, when the contact log did not come through.
+export const spokenBit = (r: Pick<AgentRanking, "daysSinceSpoken">): string | null => {
+  if (r.daysSinceSpoken === undefined) return null;
+  if (r.daysSinceSpoken == null) return "never called";
+  if (r.daysSinceSpoken === 0) return "spoken to today";
+  return `last spoken to ${r.daysSinceSpoken} day${r.daysSinceSpoken === 1 ? "" : "s"} ago`;
+};
+
 const whyLine = (r: AgentRanking, anchor: Anchor): string => {
   const bits: string[] = [];
   const where = r.nearestOrigin ? `${r.nearestOrigin.city}, ${r.nearestOrigin.state}` : "";
+  const spoken = spokenBit(r);
   if (r.isNew) {
     bits.push(
       r.loadCount === 0
@@ -414,6 +447,8 @@ const whyLine = (r: AgentRanking, anchor: Anchor): string => {
     );
     if (r.distanceMiles != null) bits.push(dropBit(r));
     else if (where) bits.push(`sources out of ${where}`);
+    if (r.secondCall) bits.push("paid above the rung the once");
+    if (spoken) bits.push(spoken);
     bits.push("a relationship worth building");
     return capitalize(bits.join(", ")) + ".";
   }
@@ -423,9 +458,10 @@ const whyLine = (r: AgentRanking, anchor: Anchor): string => {
   if (r.rateDelta != null)
     bits.push(
       r.rateDelta >= 0
-        ? "pays at or above your usual for the type"
-        : "pays a touch under your usual for the type",
+        ? `pays above your ${TYPE_LABELS[r.loadType].toLowerCase()} rung`
+        : `pays under your ${TYPE_LABELS[r.loadType].toLowerCase()} rung`,
     );
+  if (spoken) bits.push(spoken);
   return bits.join(", ") + ".";
 };
 
@@ -441,13 +477,11 @@ export const buildForemanBoard = (
     focus?: LoadTypeFocus;
     mode?: ForemanMode;
     now?: Date;
-    // The contact log lets the board judge DORMANT (derived-parked) agents,
-    // not only the owner's explicit parks. Without it (undefined) only
-    // explicit parks leave the rankings — the documented "explicit parks
-    // only" mode. Hand it over only once the log has LANDED: an in-flight or
-    // failed fetch passed as [] would read as "no contacts ever" and park
-    // every quiet agent on first paint (WhoToCallTab's useForemanBook).
-    contacts?: MeaningfulContactLike[];
+    // The contact log, for "last spoken to" on every row. Hand it over only
+    // once it has LANDED: an in-flight or failed fetch passed as [] would read
+    // as "never called" on every row. Absent → the days read undefined and
+    // the row says nothing.
+    contacts?: TouchLike[];
     // The markets agents named on calls (agent_coverage). Decision 6A: a
     // stated market is a footprint point measured exactly like a proved one
     // and captioned "claimed"; one a load already confirmed reads as proved.
@@ -456,17 +490,18 @@ export const buildForemanBoard = (
     // The trips (home, shop, repositioning): a trip that rolled after the
     // last delivery is where the truck sits. Absent → loads alone.
     trips?: TripEndLike[];
+    // The two books' ladders — the rungs the rate is held to and the words it
+    // gets. Absent → no rung, no verdict, a neutral rate score.
+    ladders?: ForemanLadders;
   } = {},
 ): ForemanBoard => {
   const focus = opts.focus ?? "any";
   const mode = opts.mode ?? "balanced";
   const now = opts.now ?? new Date();
-  // Parked agents (REL-01 v2.0 §4) — the owner's explicit call, or dormant
-  // by derivation — leave the ranked call list. The Foreman surfaces them in
-  // their own PARKED · WITHIN 75 MI group instead (lib/relationships/
-  // parkedNearby): harvest their freight, no outreach owed.
-  const isParked = (a: Agent): boolean =>
-    a.work_status === "parked" || (opts.contacts != null && bucketOf(a, { loads, contacts: opts.contacts, now }) === "parked");
+  const nowKey = utcDayKey(now);
+  // Parked = the owner's explicit call. A quiet desk stays on the list with
+  // its quiet days printed.
+  const isParked = (a: Agent): boolean => a.work_status === "parked";
 
   const anchor = emptyNextAnchor(loads, opts.trips ?? []);
   const anchorCoord = anchor ? coords.get(cityKey(anchor.city, anchor.state)) ?? null : null;
@@ -475,18 +510,22 @@ export const buildForemanBoard = (
   const points = agentPoints(loads, opts.coverage ?? []);
   const nameById = new Map(agents.map((a) => [a.agent_id, agentName(a)]));
   const agentById = new Map(agents.map((a) => [a.agent_id, a]));
+  const lastTouch = opts.contacts ? lastTouchByAgent(opts.contacts) : null;
 
-  // one benchmark cache per type (identical across agents)
-  const benchCache = new Map<LoadType, number | null>();
-  const benchFor = (t: LoadType): number | null => {
-    if (benchCache.has(t)) return benchCache.get(t) ?? null;
-    const b = typeBenchmark(t, loads);
-    benchCache.set(t, b);
-    return b;
-  };
+  // "Second call": the list's rule, reused — one delivered load that cleared
+  // its own book's rung. Needs the ladders; without them nobody is marked.
+  const loadsByAgent = new Map<string, Load[]>();
+  for (const l of loads) {
+    if (!l.agent_id) continue;
+    (loadsByAgent.get(l.agent_id) ?? loadsByAgent.set(l.agent_id, []).get(l.agent_id)!).push(l);
+  }
+  const secondCall = new Set(
+    opts.ladders ? worthASecondCall(loadsByAgent, opts.ladders).map((s) => s.agentId) : [],
+  );
 
   let withCoords = 0;
   const rankings: AgentRanking[] = [];
+  const blacklisted: AgentRanking[] = [];
 
   for (const [agentId, card] of scorecards) {
     const agent = agentById.get(agentId);
@@ -548,13 +587,17 @@ export const buildForemanBoard = (
       )[0];
     }
     const nearestOrigin: Place | null = nearest ? { city: nearest.city, state: nearest.state } : null;
-    if (distanceMiles != null) withCoords++;
 
-    const bench = benchFor(judgedType);
+    const ladder = ladderFor(judgedType, opts.ladders);
     const rpm = agentTypeRpm(agentLoads, judgedType);
+    const typeLoadCount = agentTypeCount(agentLoads, judgedType);
+    const rung = ladder?.minimum ?? null;
+    const verdict = ladder && typeLoadCount >= VERDICT_MIN_LOADS ? verdictFor(rpm, ladder) : null;
 
     // One read of codeOf, so the code and its kind can never disagree.
     const worn = codeOf(agent);
+    const rating = typeof agent.rating === "number" ? agent.rating : null;
+    const spoken = lastTouch ? (lastTouch.get(agentId) ?? null) : undefined;
 
     const r: AgentRanking = {
       agentId,
@@ -566,21 +609,37 @@ export const buildForemanBoard = (
       distanceMiles,
       regionFallback,
       loadType: judgedType,
+      book: bookOfType(judgedType),
       rpm,
       perDay: agentTypePerDay(agentLoads, judgedType),
-      benchmark: bench,
-      rateDelta: rpm != null && bench != null ? rpm - bench : null,
-      typeLoadCount: agentTypeCount(agentLoads, judgedType),
+      rung,
+      rateDelta: rpm != null && rung != null ? rpm - rung : null,
+      verdict,
+      typeLoadCount,
       loadCount: card.loadCount,
       daysSince: card.daysSince,
       dwellLoads: card.moneyLostLoads,
-      tier: card.tier,
-      bucket: effectiveAgentClass(agent, card).bucket,
       isNew: card.loadCount < MIN_SCORE_LOADS,
+      rating,
+      standing: standingOf(agent),
+      avoid: rating === 2,
+      lastSpokenTo: spoken ?? null,
+      daysSinceSpoken:
+        spoken === undefined ? undefined : spoken == null ? null : Math.max(0, daysBetweenKeys(spoken, nowKey)),
+      secondCall: secondCall.has(agentId),
       score: 0,
       why: "",
     };
-    rankings.push(r);
+    // Rated 1 · Blacklist — your call. Never ranked; listed under its own
+    // heading, nearest first, so you can see who is near the drop and why
+    // you are not calling them.
+    if (rating === 1) {
+      blacklisted.push(r);
+    } else {
+      rankings.push(r);
+      // "how many of the RANKED desks got real miles" — the footer's count.
+      if (distanceMiles != null) withCoords++;
+    }
   }
 
   // score for the active mode
@@ -599,27 +658,30 @@ export const buildForemanBoard = (
     }
   }
 
-  // MEASURED QUALITY ranks the call list; class only breaks ties. Hard-sorting
-  // class above score let a one-round-trip "direct" at 0.54 outrank a
-  // six-load agent at 0.84 from the same origin (2026-09-11) — the label is
-  // context, the score is evidence, and evidence wins. The class badge still
-  // renders on every row.
-  const bucketRank = (b: AgentClass) => (b === "direct" ? 0 : 1);
+  // MEASURED QUALITY ranks the call list; YOUR RATING breaks ties — where
+  // Direct/Spot used to — and distance breaks what is left.
   rankings.sort(
     (a, b) =>
       b.score - a.score ||
-      bucketRank(a.bucket) - bucketRank(b.bucket) ||
+      (b.rating ?? 0) - (a.rating ?? 0) ||
       (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9),
   );
-  if (anchor) for (const r of rankings) r.why = whyLine(r, anchor);
+  blacklisted.sort(
+    (a, b) => (a.distanceMiles ?? 1e9) - (b.distanceMiles ?? 1e9) || a.agentName.localeCompare(b.agentName),
+  );
+  if (anchor) {
+    for (const r of rankings) r.why = whyLine(r, anchor);
+    for (const r of blacklisted) r.why = whyLine(r, anchor);
+  }
 
   return {
     anchor,
     anchorResolved: anchorCoord != null,
     focus,
     mode,
-    benchmark: focus === "any" ? null : benchFor(focus),
+    rung: focus === "any" ? null : (ladderFor(focus, opts.ladders)?.minimum ?? null),
     rankings,
+    blacklisted,
     coverage: { withCoords, total: rankings.length },
   };
 };

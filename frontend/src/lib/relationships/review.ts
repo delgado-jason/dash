@@ -17,7 +17,7 @@ import { perDayOver } from "@/lib/metrics/perDay";
 import { reviewWindow, type ReviewWindow } from "@/lib/metrics/monthlyReview";
 import { MONTHS, rangeFor, resolvePeriod, type RecapRange } from "@/lib/metrics/recap";
 import { currentRange } from "@/lib/metrics/dispatcherSeason";
-import { agentAllInRpm, deliveredCount, lastLoadKey } from "./agentRpm";
+import { agentAllInRpm, deliveredCount, lastLoadKey } from "@/lib/metrics/agentRpm";
 import { bucketOf, partitionBook, type BookAgentLike, type BookCtx, type Bucket } from "./buckets";
 import {
   ESTABLISHED_AT,
@@ -27,15 +27,15 @@ import {
   suggestionLabel,
   type BucketSuggestion,
 } from "./tierSuggestion";
-import { lastMeaningfulContact } from "./meaningfulContact";
+import { lastMeaningfulContact } from "@/lib/agents/meaningfulContact";
 import { codeOf } from "@/lib/agencies/codeOf";
 import { proactiveTouchesThisWeek, weekKey } from "./contactCap";
-import { daysBetweenKeys, keyOf, localDayKey, utcDayKey, weekdayShort } from "./dayKeys";
+import { daysBetweenKeys, keyOf, localDayKey, utcDayKey, weekdayShort } from "@/lib/dates/dayKeys";
 import { milestoneFlags, type MilestoneFlag } from "./milestones";
 import { markersOf } from "./markers";
 import { hygiene, type HygieneItem } from "./fridayFive";
 import { coolingSection, type CoolingSection } from "./cooling";
-import { nameOf } from "./nameOf";
+import { nameOf } from "@/lib/agents/nameOf";
 import { isDelivered } from "@/lib/metrics/status";
 
 // The bucket in words — every board and the report print it the same way.

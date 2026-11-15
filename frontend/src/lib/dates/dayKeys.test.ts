@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { utcDayKey, localDayKey, keyOf, daysBetweenKeys, shortDate, weekdayShort } from "./dayKeys";
+import { utcDayKey, localDayKey, keyOf, daysBetweenKeys, shortDate, weekdayShort } from "@/lib/dates/dayKeys";
 
 describe("weekdayShort — the cap's 'touched Mon', on the local calendar", () => {
   it("names the local weekday of a timestamp, however late in the evening", () => {

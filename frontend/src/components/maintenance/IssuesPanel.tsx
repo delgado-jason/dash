@@ -8,7 +8,7 @@ import {
 } from "@/services/maintenanceIssuesService";
 import { SEVERITIES, sortIssues, daysOpen } from "@/lib/maintenance/issues";
 import { StatusPill, type PillTone } from "@/components/ui/StatusPill";
-import { FieldLabel, PrimaryButton, GhostButton } from "@/components/relationships/primitives";
+import { FieldLabel, PrimaryButton, GhostButton } from "@/components/ui/primitives";
 
 // OPEN ISSUES (the Maintenance sheet, call 6): a defect noticed on the road —
 // a warning light, an air leak, a tire wearing — with the day and how urgent,

@@ -14,7 +14,7 @@
 // toLocaleDateString — in Central it would print the evening before. The
 // relationship, trip-total and compliance-renewal libs keep their own local
 // clocks and are not handed anchored days.
-import { localDayKey } from "@/lib/relationships/dayKeys";
+import { localDayKey } from "@/lib/dates/dayKeys";
 
 export { localDayKey };
 

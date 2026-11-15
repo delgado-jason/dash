@@ -19,12 +19,12 @@ import {
   pickerTypes,
   typeTabs,
   type ContactType,
-} from "@/lib/relationships/contactTypes";
+} from "@/lib/agents/contactTypes";
 import { alreadyCarries, capStatus, foldPatch } from "@/lib/relationships/contactCap";
-import { weekdayShort } from "@/lib/relationships/dayKeys";
+import { weekdayShort } from "@/lib/dates/dayKeys";
 import { CLASS_HELP, CLASS_TABS, NEXT_TABS, OUTCOME_TABS, capDoors, dateChips, type ClassPick } from "@/lib/relationships/touchOptions";
 import { CapGate } from "./CapGate";
-import { FieldLabel, PrimaryButton, ErrorLine } from "./primitives";
+import { FieldLabel, PrimaryButton, ErrorLine } from "@/components/ui/primitives";
 
 // LOG A TOUCH, v2 — one component, used by the agent sheet now and by Today /
 // Call list later. Two taps for the common case: the direction · method ·

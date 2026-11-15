@@ -13,7 +13,7 @@ import {
   FieldLabel,
   GhostButton,
   PrimaryButton,
-} from "@/components/relationships/primitives";
+} from "@/components/ui/primitives";
 
 const inputCls =
   "bg-well border border-hairline rounded-[8px] px-2 py-1.5 text-sm w-full text-ink outline-none";

@@ -9,12 +9,12 @@
 //                    the sub-line says which.
 // partitionBook adds one more shelf the SOP implies: NEEDS A TIER — an
 // established agent (≥3 delivered) the owner has not placed yet.
-import { daysBetweenKeys, keyOf, utcDayKey } from "./dayKeys";
+import { daysBetweenKeys, keyOf, utcDayKey } from "@/lib/dates/dayKeys";
 import {
   lastMeaningfulContact,
   type MeaningfulContactLike,
   type MeaningfulLoadLike,
-} from "./meaningfulContact";
+} from "@/lib/agents/meaningfulContact";
 import { isEstablished } from "./tierSuggestion";
 import { isDelivered } from "@/lib/metrics/status";
 

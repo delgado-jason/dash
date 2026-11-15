@@ -16,7 +16,7 @@
 // GROSS throughout: agents are a market-value lens (the house rule).
 import type { Load } from "@/types/load";
 import { deliveredInWindow, type AgencyRange } from "@/lib/agencies/agencyMetrics";
-import { daysBetweenKeys, keyOf, localDayKey } from "@/lib/relationships/dayKeys";
+import { daysBetweenKeys, keyOf, localDayKey } from "@/lib/dates/dayKeys";
 import { loadRevenue } from "./loads";
 import { median } from "./stats";
 

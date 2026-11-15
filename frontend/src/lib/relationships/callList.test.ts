@@ -16,7 +16,7 @@ import {
   prospectsList,
   reactivationList,
 } from "./callList";
-import { localDayKey } from "./dayKeys";
+import { localDayKey } from "@/lib/dates/dayKeys";
 import { codeOf } from "@/lib/agencies/codeOf";
 
 const NOW = new Date("2026-09-12T15:00:00Z");

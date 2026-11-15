@@ -6,8 +6,8 @@
 // $0.00 — "no miles recorded" is not "a dollar a mile".
 import type { Load } from "@/types/load";
 import { loadGross } from "@/lib/metrics/rateTargets";
-import { DAY_MS, keyOf, utcDayKey } from "./dayKeys";
-import { isDelivered } from "@/lib/metrics/status";
+import { DAY_MS, keyOf, utcDayKey } from "@/lib/dates/dayKeys";
+import { isDelivered, isNeverRevenue } from "@/lib/metrics/status";
 
 export const RPM_WINDOW_DAYS = 365;
 
@@ -66,7 +66,9 @@ export const deliveredCount = (loads: Load[], agentId: string): number => {
 export const lastLoadKey = (loads: Load[], agentId: string): string | null => {
   let max: string | null = null;
   for (const l of loads) {
-    if (l.agent_id !== agentId || l.load_status === "cancelled") continue;
+    // The one definition of "never a load" — cancelled, and a TONU, which is
+  // never a booked load (the Nov 2026 rule); the ratchet forbids a spelled copy.
+  if (l.agent_id !== agentId || isNeverRevenue(l)) continue;
     const raw = l.delivery_date ?? l.pickup_date;
     if (!raw) continue;
     const k = keyOf(raw);

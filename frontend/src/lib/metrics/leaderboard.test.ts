@@ -77,17 +77,18 @@ describe("buildLeaderboard", () => {
   const by = (name: string) => lb.rows.find((r) => r.name === name)!;
 
   it("orders graded desks by rate (null last), then the ungraded", () => {
-    expect(lb.rows.map((r) => r.name)).toEqual(["Alpha", "Bravo", "Delta", "Charlie"]);
+    expect(lb.rows.map((r) => r.name)).toEqual(["Alpha", "Bravo", "Charlie", "Delta"]);
   });
 
-  it("grades only at three delivered loads, in the ladder's words", () => {
+  it("grades at two delivered loads (the one gate), in the ladder's words", () => {
     expect(by("Alpha").graded).toBe(true);
     expect(by("Alpha").gradeWord).toBe("PRIME");
     expect(by("Bravo").gradeWord).toBe("ABOVE MINIMUM");
-    expect(by("Charlie").graded).toBe(false);
-    expect(by("Charlie").grade).toBeNull();
-    expect(by("Charlie").gradeWord).toBe("");
-    expect(by("Charlie").allInRpm).toBeCloseTo(2.0, 5); // a rate, but no verdict yet
+    expect(by("Charlie").graded).toBe(true); // two loads clear the gate now
+    expect(by("Charlie").gradeWord).toBe("BELOW COST");
+    expect(by("Charlie").allInRpm).toBeCloseTo(2.0, 5);
+    expect(by("Delta").graded).toBe(true);
+    expect(by("Delta").grade).toBeNull(); // graded, but no miles — a null rate, never $0
     expect(GRADE_WORD.below).toBe("BELOW COST");
     expect(GRADE_WORD.target).toBe("TARGET");
   });

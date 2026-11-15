@@ -31,10 +31,10 @@ import { bucketOf, type BookCtx, type Bucket } from "./buckets";
 import { capStatus, type CapStatus } from "./contactCap";
 import { activeHoliday, holidayFlags, HOLIDAY_LABEL, type HolidayWindow } from "./holidays";
 import type { MarkerNoteLike } from "./markers";
-import { lastLoadKey } from "./agentRpm";
-import { lastMeaningfulContact } from "./meaningfulContact";
-import { DAY_MS, daysBetweenKeys, keyOf, localDayKey, shortDate, utcDayKey } from "./dayKeys";
-import { nameOf } from "./nameOf";
+import { lastLoadKey } from "@/lib/metrics/agentRpm";
+import { lastMeaningfulContact } from "@/lib/agents/meaningfulContact";
+import { DAY_MS, daysBetweenKeys, keyOf, localDayKey, shortDate, utcDayKey } from "@/lib/dates/dayKeys";
+import { nameOf } from "@/lib/agents/nameOf";
 import { isDelivered } from "@/lib/metrics/status";
 
 // ---- market grades ----
