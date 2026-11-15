@@ -324,14 +324,10 @@ const isKeeper = (a: AgentScorecard | null | undefined): boolean =>
 // bottom-line. The rate verdict leads (it's the money); the destination and agent
 // tip a marginal load or add a caution — they never rescue a money-loser on their
 // own.
-export const theCall = (
+const ladderCall = (
   verdict: Verdict | null,
   dest: DestinationFactor | null,
   agent: AgentScorecard | null | undefined,
-  // Kept in the signature for the Scorer's call site (and so the flag is there
-  // when the copy starts using it); deliberately unread today.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _isNewAgent: boolean,
 ): TheCall | null => {
   if (!verdict) return null;
   const grade = dest?.market?.grade ?? null;
@@ -401,4 +397,75 @@ export const theCall = (
       text: `Only fair on rate, and it strands you where the freight out doesn't cover your day${dist}. Counter up hard, or let it go.`,
     };
   return { tone: "caution", text: "Only fair on rate. Counter up, or let it go." };
+};
+
+const dollars = (n: number): string => `$${Math.round(Math.abs(n)).toLocaleString("en-US")}`;
+
+// What the Score a Load sheet drew onto the call line (C4, nodded 2026-11-12):
+// the counter that reaches target in dollars, the permit-and-escort caveat,
+// and — ticked as a reposition — a ruler of its own.
+export interface CallExtras {
+  /** The quote that reaches target on THIS load, pass-throughs included. */
+  counterAtTarget?: number | null;
+  /** What the grossed-up permits and escorts take out of whatever is agreed. */
+  passThroughAsk?: number | null;
+  /**
+   * Reposition mode. The ladder verdict is NOT the ruler here — a reposition
+   * is competing with a parking brake, not with a good load — so the call
+   * reads the beats-parking line and says so, instead of printing "pass"
+   * under a panel that says BEATS PARKING.
+   */
+  reposition?: { beatsSitting: boolean | null; gain: number | null } | null;
+}
+
+const repositionCall = (
+  r: NonNullable<CallExtras["reposition"]>,
+  dest: DestinationFactor | null,
+): TheCall => {
+  if (r.beatsSitting == null || r.gain == null)
+    return {
+      tone: "caution",
+      text: "No cost basis to grade a reposition against yet — once a P&L is filed this says whether it beats parking.",
+    };
+  if (!r.beatsSitting)
+    return {
+      tone: "bad",
+      text: `Worse than parking by ${dollars(r.gain)} — these miles cost more to run than they bring home. Sit, or find freight that at least covers its own fuel.`,
+    };
+  const grade = dest?.market?.grade ?? null;
+  const dist = dest?.nearestStrong
+    ? ` (nearest strong freight ~${Math.round(dest.nearestStrong.miles)} mi)`
+    : "";
+  const lands =
+    grade === "strong"
+      ? ", and it lands you where a day of freight clears your target"
+      : grade === "soft"
+        ? `, though it lands you where the freight out doesn't cover your day${dist}`
+        : "";
+  return {
+    tone: "good",
+    text: `Take it as a reposition — ${dollars(r.gain)} better than parking${lands}. It does not pay as freight and it is not supposed to; it beats sitting still, if nothing better was coming.`,
+  };
+};
+
+export const theCall = (
+  verdict: Verdict | null,
+  dest: DestinationFactor | null,
+  agent: AgentScorecard | null | undefined,
+  // Kept in the signature for the Scorer's call site (and so the flag is there
+  // when the copy starts using it); deliberately unread today.
+  _isNewAgent: boolean,
+  extras?: CallExtras,
+): TheCall | null => {
+  if (extras?.reposition) return repositionCall(extras.reposition, dest);
+  const base = ladderCall(verdict, dest, agent);
+  if (!base) return null;
+  const tail: string[] = [];
+  if (extras?.counterAtTarget != null && verdict !== "take" && verdict !== "steal")
+    tail.push(`Counter at ${dollars(extras.counterAtTarget)} to reach target.`);
+  if (extras?.passThroughAsk != null && extras.passThroughAsk > 0)
+    tail.push(
+      `Confirm the permit and escort count before you commit — with the gross-up they are ${dollars(extras.passThroughAsk)} of whatever you agree.`,
+    );
+  return tail.length ? { ...base, text: `${base.text} ${tail.join(" ")}` } : base;
 };

@@ -1455,12 +1455,16 @@ const GuidePage = () => {
               freight's own rate (per <span className="text-light">loaded</span>{" "}
               mile) beside the deadhead's share of the run. So a good load you're just
               far from reads as "good freight, bad position," not a flat pass: the
-              deadhead is the knock, not the load. Add the{" "}
-              <span className="text-light">agent</span> (by 3-letter code or name) and
-              it shows your history with them — loads together, their rate, dwell — so
-              a keeper's relationship weighs in at booking time. An agent you haven't
+              deadhead is the knock, not the load. Type the{" "}
+              <span className="text-light">agency code</span> and the desk fills in
+              beside the load as the code resolves — the rating (or Parked, with the
+              reason you wrote), loads together and their typical rate, the phone and
+              best time, the latest dated notes — so the booking call is made with
+              the desk in view, not after. A code that matches two desks asks you to
+              pick one, with the parked one marked in the list. An agent you haven't
               booked flags <span className="text-light">New</span>, and isn't saved
-              until you actually run a load with them.
+              until you actually run a load with them. A desk is measured by its
+              rating alone; there is no tier on it.
             </Why>
             <Why>
               It also scores the <span className="text-light">destination</span> — where
@@ -1496,12 +1500,17 @@ const GuidePage = () => {
             <Why>
               It also shows this route's{" "}
               <span className="text-light">estimated tolls</span> — a reminder to
-              bill them as an accessorial (Landstar pays 100%), not eat them. And
-              when a load comes in under target, it lays out{" "}
-              <span className="text-light">what to ask the agent</span>: every rung
-              priced on that load's own miles — break-even, minimum, target and
-              prime — so you know both the room to bargain and the number that
-              puts you where you meant to be.
+              bill them as an accessorial (Landstar pays 100%), not eat them. And on
+              every result it lays out{" "}
+              <span className="text-light">what to quote</span>: each rung priced on
+              that load's own miles — break-even, minimum, target and prime — with
+              the margin it earns, the rate per driven mile it needs, the quote with
+              permits and escorts folded in, and where the offer fell against it.
+              The sentence under the verdict reads off the same table — "clears your
+              minimum by $145 · ask $170 more to hit target". Four tiles above it
+              say what the load pays you per driven mile, the headline before
+              pass-throughs, your net after Landstar's cut, and the beats-parking
+              line.
             </Why>
             <Why>
               <span className="text-light">Weight is the FREIGHT weight</span> — the
@@ -1538,7 +1547,9 @@ const GuidePage = () => {
               because swapping one ruler for the other is how you end up
               repositioning all year and wondering where the money went. The panel
               says the assumption out loud: "better than parking" is only true if
-              parking was the alternative.
+              parking was the alternative. The call line reads the same ruler — a
+              reposition that beats parking says take it as a reposition and where
+              it lands you; the ladder's BELOW COST does not get a vote.
             </Why>
             <Why>
               <span className="text-light">The agency code is required</span>, and
