@@ -378,7 +378,6 @@ const NAV: { group: string; items: string[] }[] = [
       "Prospects — from stranger to agent",
       "The call list — reactivation, prospects, the one question",
       "Agent ratings",
-      "Reading the roster — the Go-to score",
     ],
   },
   {
@@ -841,15 +840,18 @@ const GuidePage = () => {
             </p>
 
             <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
-              Archived, and worth a second call
+              Parked, and worth a second call
             </p>
             <p className="text-sm text-muted-text mb-3">
-              <span className="text-light">Archived</span> is not a bad rating — it
-              means the record is not a working contact. Most of yours are a dead
-              number, someone who left the company, or the wrong person at the desk,
-              and none of that says how they treat you. They sit behind their own
-              chip, out of the list you scan to decide who to ring, with their rating
-              kept as whatever it was.
+              <span className="text-light">Parked</span> is the bottom of the one
+              rating control, and it is not a bad rating — it means the record is
+              not a working contact. Most of yours are a dead number, someone who
+              left the company, or the wrong person at the desk, and none of that
+              says how they treat you. A parked desk sits behind its own chip, out
+              of the list you scan to decide who to ring, with the reason you wrote
+              printed where its rating would be and the stars it comes back to kept
+              faint beside it. It is the same word on the list, on the file and in
+              the rating form.
               <br />
               <br />
               <span className="text-light">Worth a second call</span> is the other
@@ -858,33 +860,47 @@ const GuidePage = () => {
               This marks the ones whose single load{" "}
               <span className="text-light">cleared the rung for its own freight</span>:
               people who paid properly once and were never called back. Best first,
-              and deliberately not a ranking.
+              and deliberately not a ranking. On the list the mark sits beside the
+              name, so the Last-worked column keeps its date.
             </p>
 
             <p className="text-sm font-condensed mb-1 mt-4" style={{ color: AMBER_HI }}>
               The agent's page is a file, not a dashboard
             </p>
             <p className="text-sm text-muted-text mb-3">
-              Open a desk and you get five numbered parts, meant to be read down
-              the page rather than scanned like a grid of tiles.{" "}
+              Open a desk and you read a file, one column, top to bottom. The{" "}
+              <span className="text-light">cover</span> says who this is — the
+              agency and its codes, on file since, first load, last worked, last
+              spoken to and who on your side books with them — then{" "}
+              <span className="text-light">your call</span>: the rating in its
+              own words, the reason you gave and the day you gave it, or PARKED
+              with the reason. <span className="text-light">In short</span> is
+              the standing note, the permanent line about the person. Your
+              rating is the only grade of a person on the page; the money below
+              it is a fact about the money.
+              <br />
+              <br />
+              Five ruled parts follow.{" "}
               <span className="text-light">01 do they pay</span> — their rate in
-              each book against its own rung.{" "}
-              <span className="text-light">02 what they haul</span> — their best
-              load with you, which clicks through to that load, and the markets
-              they cover. <span className="text-light">03 what happened</span> —
-              time on the dock, and every load together.{" "}
-              <span className="text-light">04 what was said</span> — your notes
-              and the rating history.{" "}
-              <span className="text-light">05 how to reach them</span>, with
-              whatever they prefer.
+              each book against its own rung, and the lifetime line.{" "}
+              <span className="text-light">02 what they haul</span> — a sentence
+              computed from their loads (the freight, the origins, the shippers,
+              and whether that is one customer or a spot desk), the best load
+              together, and the markets they say they cover.{" "}
+              <span className="text-light">03 what happened</span> — every load
+              as one plain list with its type, driven miles and $/mi, and the
+              dock clock only once three stamped stops exist.{" "}
+              <span className="text-light">04 what was said</span> — one
+              chronology of notes, calls, emails and rating changes, newest
+              first, with one "Add to the file" door at its foot.{" "}
+              <span className="text-light">05 how to reach them</span>, on one
+              line.
               <br />
               <br />
               The file is as long as the evidence. A desk you have worked once
-              has no dock history and no pattern to read, so part 03 says so in
-              a sentence instead of showing a clock that needs three stamped
-              stops and a table with one row in it. Part 02 calls their load{" "}
-              <span className="text-light">their one load</span> rather than
-              their best, because with a sample of one there is nothing to beat.
+              gets the cover, one sentence that carries the load, its rate and
+              your rung, the chronology and the contact line — and says that
+              nothing else is known, instead of five parts with stubs in them.
               Most of your book is that shape, so most files are short ones —
               that is the page being honest, not the page being broken.
             </p>
@@ -3765,63 +3781,6 @@ const GuidePage = () => {
               <span className="text-light">PRIME · TARGET · ABOVE MINIMUM ·
               BELOW COST</span>. The grade waits for three delivered loads
               lifetime; until then it reads "not yet graded · 2 of 3 loads".
-            </p>
-          </Section>
-
-          <Section
-            title="Reading the roster — the Go-to score"
-            sources={[{ label: "Agents", to: "/agents" }]}
-          >
-            <p className="text-sm text-muted-text mb-3">
-              Your stars are your gut. The <span className="text-light">Go-to
-              score</span> is the data's read, sitting right next to them —{" "}
-              <span className="text-light">Top pick · Solid · Watch · Cold</span>{" "}
-              — built from three axes:
-            </p>
-            <ul className="text-sm text-muted-text space-y-2 mb-3 list-disc pl-5">
-              <li>
-                <span className="text-light">Rate</span> — the typical $/mi they
-                pay, graded <span className="text-light">within specialty type</span>{" "}
-                (oversize pays more per mile, so an oversize agent is measured
-                against other oversize agents — a strong standard-freight agent
-                isn't buried under them).
-              </li>
-              <li>
-                <span className="text-light">Volume</span> — loads and gross, with
-                an up/down trend vs the prior 90 days.
-              </li>
-              <li>
-                <span className="text-light">Dwell</span> — money lost to sitting.
-                This counts detention you <span className="text-light">confirmed
-                billable but never collected</span> — not raw wait time. Priced-in
-                oversize crane time (which you never confirm billable) stays a
-                candidate and <span className="text-light">never dings the agent</span>.
-              </li>
-            </ul>
-            <p className="text-sm text-muted-text mb-3">
-              The <span className="text-light">specialty label</span> is derived
-              from each agent's load mix — an oversize / heavy-haul majority earns{" "}
-              <span className="text-light">OVERSIZE</span>, other non-standard
-              (hazmat) earns <span className="text-light">SPECIALTY</span> — so you
-              can filter straight to your oversize bench. And a{" "}
-              <span style={{ color: "var(--color-amber-hi)" }}>⚠ flag</span> marks where your
-              stars and the data disagree: a low-rated agent the numbers like, or a
-              high-rated one they don't.
-            </p>
-            <p className="text-sm text-muted-text">
-              An agent stays <span className="text-light">"thin data" (unscored)</span>{" "}
-              until they've run 2+ delivered loads, so one lucky run never crowns
-              anyone — the same restraint the lane and rate metrics use.
-            </p>
-            <p className="text-sm text-muted-text mt-3">
-              <span className="text-light">Concentration</span> is measured over
-              your <span className="text-light">last 90 days</span>, not your
-              lifetime — an agent who's gone cold isn't a dependency you still feel,
-              so they drop out. Each agent's <span className="text-light">% of
-              book</span> is shown in the table; the rule of thumb is no single
-              agent over <span className="text-light">~30%</span> and your top 3
-              under <span className="text-light">~65%</span>, so losing one wouldn't
-              sink you.
             </p>
           </Section>
 
