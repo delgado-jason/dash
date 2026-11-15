@@ -1,18 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TriangleAlert } from "lucide-react";
 import type { Agent } from "@/types/agent";
-import { type AgentScorecard, SINGLE_CAP } from "@/lib/metrics/agentScorecard";
+import type { AgentScorecard } from "@/lib/metrics/agentScorecard";
 import { money, rpm as fmtRpm } from "@/lib/format";
-import {
-  TIER_META,
-  SPECIALTY_META,
-  dwellStatus,
-  DWELL_TONE,
-  TREND_META,
-} from "./agentDisplay";
+import { SPECIALTY_META } from "./agentDisplay";
 import { nameOf } from "@/lib/relationships/nameOf";
-import { standingOf } from "@/lib/agents/standing";
+import { standingOf, standingLabel } from "@/lib/agents/standing";
 import type { Book, BookRate, RateVerdict, SecondCall } from "@/lib/metrics/agentByType";
 
 export interface AgentRow {
@@ -20,32 +13,21 @@ export interface AgentRow {
   card: AgentScorecard;
 }
 
-type SortKey =
-  | "goto"
-  | "standard"
-  | "specialized"
-  | "dwell"
-  | "loads"
-  | "revenue"
-  | "book"
-  | "last"
-  | "rating";
+type SortKey = "rating" | "standard" | "specialized" | "loads" | "revenue" | "last";
 
-// TWO RATE COLUMNS, not one. A desk posts standard freight and it posts
-// oversize, they are held to different rungs, and the same desk can be
-// excellent at one and dreadful at the other — ROR is $6.05 standard and
-// $2.46 oversize. Pooled into a single $/mi both halves disappear into a
-// middling number and the list ranks two opposites the same.
-const COLS: { key: SortKey; label: string; l?: boolean }[] = [
+// THE SEVEN COLUMNS THE SHEET DREW, and no more. Desk · Rating · Standard ·
+// Specialized · Loads · Revenue · Last worked. The build before this one
+// carried ten: a computed Go-to tier that was also the default sort, a Dwell
+// word that read "clean" on every row but one, and a 90-day share that read
+// "—" on most. The list is ordered by Jason's own rating, then by revenue;
+// nothing on it grades a desk but him.
+const COLS: { key: SortKey; label: string }[] = [
   { key: "rating", label: "Rating" },
-  { key: "goto", label: "Go-to" },
   { key: "standard", label: "Standard" },
   { key: "specialized", label: "Specialized" },
-  { key: "dwell", label: "Dwell" },
   { key: "loads", label: "Loads" },
-  { key: "revenue", label: "Rev" },
-  { key: "book", label: "% book" },
-  { key: "last", label: "Last" },
+  { key: "revenue", label: "Revenue" },
+  { key: "last", label: "Last worked" },
 ];
 
 // The Scorer's own words, so a desk's rate reads the same here as a load's
@@ -82,8 +64,37 @@ const RateCell = ({ r }: { r: BookRate | undefined }) => {
   );
 };
 
-const stars = (r: number | null | undefined): string =>
-  r == null ? "—" : "★".repeat(r) + "☆".repeat(5 - r);
+// The rating in the scale's own words ("4 · Good"), toned by what the word
+// means. A parked desk reads PARKED with its reason — the one line that
+// explains why it is behind the chip — and the stars it comes back to, faint.
+const RATING_TONE: Record<number, string> = {
+  5: "text-status-positive-text",
+  4: "text-status-positive-text",
+  3: "text-dim",
+  2: "text-status-aware-text",
+  1: "text-status-negative-text",
+};
+
+const RatingCell = ({ agent }: { agent: Agent }) => {
+  const s = standingOf(agent);
+  if (s === "parked")
+    return (
+      <span className="whitespace-nowrap">
+        <span className="text-[11.5px] font-semibold tracking-[.06em] text-status-negative-text">PARKED</span>
+        <span className="text-[11.5px] text-faint">
+          {" · "}
+          {agent.park_reason?.trim() || "no reason written"}
+          {agent.rating != null ? ` · was ${agent.rating}` : ""}
+        </span>
+      </span>
+    );
+  if (s == null) return <span className="text-faint">Unrated</span>;
+  return (
+    <span className={`whitespace-nowrap font-condensed font-semibold ${RATING_TONE[s] ?? "text-dim"}`}>
+      {standingLabel(s)}
+    </span>
+  );
+};
 
 const shortDate = (d: string | null): string =>
   d
@@ -109,46 +120,34 @@ const compare = (
       return rate(b, "standard") - rate(a, "standard");
     case "specialized":
       return rate(b, "specialized") - rate(a, "specialized");
-    case "dwell":
-      return B.moneyLostLoads - A.moneyLostLoads; // worst (most money lost) first
     case "loads":
       return B.loadCount - A.loadCount;
     case "revenue":
       return B.revenue - A.revenue;
     case "last":
-      return (b.card.lastWorked ?? "").localeCompare(a.card.lastWorked ?? "");
+      return (B.lastWorked ?? "").localeCompare(A.lastWorked ?? "");
     case "rating":
-      return (b.agent.rating ?? -1) - (a.agent.rating ?? -1);
-    case "goto":
     default:
-      return TIER_META[B.tier].rank - TIER_META[A.tier].rank || B.revenue - A.revenue;
+      // Your call orders the list; revenue breaks the tie.
+      return (b.agent.rating ?? -1) - (a.agent.rating ?? -1) || B.revenue - A.revenue;
   }
 };
 
 export const AgentTable = ({
   rows,
-  shareByAgent,
   ratesByAgent,
   secondCall,
 }: {
   rows: AgentRow[];
-  shareByAgent?: Map<string, number>;
   ratesByAgent?: Map<string, Record<Book, BookRate>>;
   secondCall?: Map<string, SecondCall>;
 }) => {
   const navigate = useNavigate();
-  const [sort, setSort] = useState<SortKey>("goto");
-  const shareOf = (id: string) => shareByAgent?.get(id) ?? 0;
+  const [sort, setSort] = useState<SortKey>("rating");
 
   const sorted = useMemo(
-    () =>
-      [...rows].sort((a, b) =>
-        sort === "book"
-          ? (shareByAgent?.get(b.agent.agent_id) ?? 0) -
-            (shareByAgent?.get(a.agent.agent_id) ?? 0)
-          : compare(a, b, sort, ratesByAgent),
-      ),
-    [rows, sort, shareByAgent, ratesByAgent],
+    () => [...rows].sort((a, b) => compare(a, b, sort, ratesByAgent)),
+    [rows, sort, ratesByAgent],
   );
 
   return (
@@ -157,7 +156,7 @@ export const AgentTable = ({
         <thead>
           <tr>
             <th className="text-left font-normal text-[11px] uppercase tracking-wide text-dim py-2 px-2">
-              Agent
+              Desk
             </th>
             {COLS.map((c) => (
               <th
@@ -176,21 +175,13 @@ export const AgentTable = ({
           {sorted.map(({ agent, card }) => {
             const spec =
               card.specialty.tag !== "standard" ? SPECIALTY_META[card.specialty.tag] : null;
-            const tier = TIER_META[card.tier];
-            const dwell = dwellStatus(card);
-            const trend = card.trend ? TREND_META[card.trend] : null;
-            const tint =
-              card.tier === "call-first"
-                ? "linear-gradient(90deg,color-mix(in srgb, var(--color-status-positive-text) 6%, transparent),transparent 45%)"
-                : card.tier === "watch"
-                  ? "linear-gradient(90deg,color-mix(in srgb, var(--color-amber-hi) 5%, transparent),transparent 45%)"
-                  : undefined;
+            const second = secondCall?.get(agent.agent_id);
             return (
               <tr
                 key={agent.agent_id}
                 onClick={() => navigate(`/agents/${agent.agent_id}`)}
                 className="cursor-pointer hover:bg-well/40"
-                style={{ background: tint, borderTop: "0.5px solid color-mix(in srgb, var(--color-ink) 6%, transparent)" }}
+                style={{ borderTop: "0.5px solid color-mix(in srgb, var(--color-ink) 6%, transparent)" }}
               >
                 <td className="py-2 px-2">
                   <div className="flex items-center gap-2 min-w-0">
@@ -205,38 +196,22 @@ export const AgentTable = ({
                         {spec.label}
                       </span>
                     )}
-                    {card.ratingFlag && (
-                      <TriangleAlert size={12} style={{ color: "var(--color-amber-hi)", flexShrink: 0 }} />
+                    {/* A desk worked ONCE that cleared its own book's rung.
+                        Beside the name, so the Last-worked column keeps the
+                        one date you need before you ring them. */}
+                    {second && (
+                      <span
+                        className="text-[11px] font-semibold tracking-[.06em] uppercase whitespace-nowrap"
+                        style={{ color: "var(--color-cat2)" }}
+                        title={`One load at ${fmtRpm(second.rpm)} — above its ${fmtRpm(second.minimum)} rung`}
+                      >
+                        second call
+                      </span>
                     )}
                   </div>
                 </td>
-                {/* ARCHIVED BEATS THE STARS. This table used to print
-                    ★★☆☆☆ for a desk the cards were calling PARKED — the same
-                    row, one toggle apart — because it rolled its own stars()
-                    and never read work_status. One view now, and the standing
-                    is read from one place. */}
-                <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: "var(--color-amber-hi)" }}>
-                  {standingOf(agent) === "parked" ? (
-                    <span
-                      className="text-[11.5px] font-semibold"
-                      style={{ color: "var(--color-status-negative-text)" }}
-                    >
-                      ARCHIVED
-                      {agent.rating != null && (
-                        <span className="text-faint font-normal"> · was {agent.rating}</span>
-                      )}
-                    </span>
-                  ) : (
-                    stars(agent.rating)
-                  )}
-                </td>
                 <td className="text-right py-2 px-2">
-                  <span
-                    className="text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap"
-                    style={{ color: tier.fg, background: tier.bg, border: `1px solid ${tier.border}` }}
-                  >
-                    {tier.label}
-                  </span>
+                  <RatingCell agent={agent} />
                 </td>
                 <td className="text-right py-2 px-2">
                   <RateCell r={ratesByAgent?.get(agent.agent_id)?.standard} />
@@ -244,41 +219,10 @@ export const AgentTable = ({
                 <td className="text-right py-2 px-2">
                   <RateCell r={ratesByAgent?.get(agent.agent_id)?.specialized} />
                 </td>
-                <td className="text-right py-2 px-2 whitespace-nowrap" style={{ color: DWELL_TONE[dwell.tone] }}>
-                  {dwell.label}
-                </td>
                 <td className="text-right py-2 px-2 text-dim tabular-nums">{card.loadCount}</td>
                 <td className="text-right py-2 px-2 tabular-nums">{money(card.revenue)}</td>
-                <td
-                  className="text-right py-2 px-2 tabular-nums"
-                  style={{ color: shareOf(agent.agent_id) > SINGLE_CAP ? "var(--color-amber-hi)" : "var(--color-dim)" }}
-                  title="share of your last-90-day book"
-                >
-                  {shareOf(agent.agent_id) > 0 ? `${Math.round(shareOf(agent.agent_id) * 100)}%` : "—"}
-                </td>
-                <td className="text-right py-2 px-2 whitespace-nowrap">
-                  {/* A desk worked ONCE that cleared its own book's rung.
-                      Forty-five of fifty-six desks have a single load and no
-                      tier can rank them; this marks the ten that already
-                      showed one good number and were never called back. */}
-                  {secondCall?.has(agent.agent_id) ? (
-                    <span
-                      className="text-[11.5px] font-semibold"
-                      style={{ color: "var(--color-cat2)" }}
-                      title={`One load at ${fmtRpm(secondCall.get(agent.agent_id)!.rpm)} — above its ${fmtRpm(secondCall.get(agent.agent_id)!.minimum)} rung`}
-                    >
-                      second call
-                    </span>
-                  ) : (
-                    <>
-                      {trend ? (
-                        <span style={{ color: trend.fg }}>{trend.glyph}</span>
-                      ) : (
-                        <span className="text-dim">·</span>
-                      )}{" "}
-                      <span className="text-dim text-xs">{shortDate(card.lastWorked)}</span>
-                    </>
-                  )}
+                <td className="text-right py-2 px-2 text-dim text-xs whitespace-nowrap">
+                  {shortDate(card.lastWorked)}
                 </td>
               </tr>
             );

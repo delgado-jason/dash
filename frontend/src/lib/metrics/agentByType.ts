@@ -68,7 +68,7 @@ const median = (xs: number[]): number | null => {
 // Driven miles: the odometer window when it is real, else the planning
 // loaded + deadhead. Mirrors the Scorer and the rate ladder so one desk's
 // rate cannot mean a different thing here than it does there.
-const drivenMiles = (l: Load): number => {
+export const drivenMiles = (l: Load): number => {
   const os = Number(l.odometer_start);
   const oe = Number(l.odometer_end);
   if (Number.isFinite(os) && Number.isFinite(oe) && os > 0 && oe > os) return oe - os;

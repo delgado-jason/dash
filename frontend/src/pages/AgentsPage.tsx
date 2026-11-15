@@ -4,13 +4,9 @@ import { useAgents } from "@/hooks/useAgents";
 import { useLoads } from "@/hooks/useLoads";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AgentTable } from "@/components/agents/AgentTable";
-import { TIER_META } from "@/components/agents/agentDisplay";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  buildAgentScorecards,
-  concentrationAnalytics,
-} from "@/lib/metrics/agentScorecard";
+import { buildAgentScorecards } from "@/lib/metrics/agentScorecard";
 import { money } from "@/lib/format";
 import { useRateTargets } from "@/hooks/useRateTargets";
 import {
@@ -22,20 +18,20 @@ import {
 } from "@/lib/metrics/agentByType";
 import { standingOf } from "@/lib/agents/standing";
 
-// ARCHIVED, not parked. A rating says how a desk treats you; archiving says
-// the record is not a working contact — "Bad Number", "No longer with
-// company", "not the freight decision-maker". Seven of Jason's ten parked
-// desks are the second kind, and rating them 1 would be a judgment he never
-// made. The COLUMN is still `work_status = 'parked'` because the Foreman and
-// the Relationships pages read it; only the word changes, at this boundary.
+// PARKED, in one word. A rating says how a desk treats you; parked says the
+// record is not a working contact — "Bad Number", "No longer with company",
+// "not the freight decision-maker". The list used to call it "Archived" while
+// the file and the rating form said Parked: one desk, two words, one click
+// apart. Jason's rule (Nov 15, 2026): the rating system only, 5 to 1 with
+// Parked as one control. The column is `work_status = 'parked'`; the word
+// now matches it everywhere.
 type Filter =
   | "all"
   | "oversize"
   | "specialty"
   | "standard"
-  | "call-first"
   | "second-call"
-  | "archived";
+  | "parked";
 
 const plural = (n: number) => (n !== 1 ? "s" : "");
 
@@ -43,22 +39,16 @@ const AgentsPage = () => {
   const { agents, isLoading, error } = useAgents(0);
   const { loads, isLoading: loadsLoading } = useLoads(0);
 
-
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const now = useMemo(() => new Date(), []);
 
+  // The scorecard engine still runs — it owns the specialty badge, the load
+  // count, the lifetime revenue and the last-worked day. Its Go-to tier and
+  // its gut-vs-data flag are no longer drawn here; the Foreman reads them.
   const scorecards = useMemo(
     () => buildAgentScorecards(agents ?? [], loads ?? [], now),
     [agents, loads, now],
-  );
-
-  // Concentration is WINDOWED (recent 90d) so a cold agent isn't counted as a
-  // current dependency; per-agent shares feed the table's "% book" column.
-  const conc = useMemo(() => concentrationAnalytics(loads ?? [], now), [loads, now]);
-  const shareByAgent = useMemo(
-    () => new Map(conc.shares.map((s) => [s.agentId, s.share])),
-    [conc],
   );
 
   // Each desk's delivered loads, once, for everything below.
@@ -101,22 +91,20 @@ const AgentsPage = () => {
       oversize: 0,
       specialty: 0,
       standard: 0,
-      "call-first": 0,
       "second-call": 0,
-      archived: 0,
+      parked: 0,
     };
     for (const a of agents ?? []) {
       const card = scorecards.get(a.agent_id);
       if (!card) continue;
-      // Archived desks are counted on their own chip and nowhere else — the
+      // Parked desks are counted on their own chip and nowhere else — the
       // headline count should be desks you could actually ring.
       if (standingOf(a) === "parked") {
-        c.archived += 1;
+        c.parked += 1;
         continue;
       }
       c.all += 1;
       c[card.specialty.tag] += 1;
-      if (card.tier === "call-first") c["call-first"] += 1;
       if (secondCall.has(a.agent_id)) c["second-call"] += 1;
     }
     return c;
@@ -135,23 +123,23 @@ const AgentsPage = () => {
             .includes(q)
         )
           return false;
-        // Archived desks are out of every view but their own. They are not
+        // Parked desks are out of every view but their own. They are not
         // bad desks — most are a dead number or the wrong person — they are
         // simply not callable, and a list you scan to decide who to ring
         // should not carry them.
-        const archived = standingOf(agent) === "parked";
-        if (filter === "archived") return archived;
-        if (archived) return false;
+        const parked = standingOf(agent) === "parked";
+        if (filter === "parked") return parked;
+        if (parked) return false;
         if (filter === "oversize" || filter === "specialty" || filter === "standard")
           return card.specialty.tag === filter;
-        if (filter === "call-first") return card.tier === "call-first";
         if (filter === "second-call") return secondCall.has(agent.agent_id);
         return true;
       })
+      // Your rating orders the list; revenue breaks the tie. The table sorts
+      // again when a column is clicked.
       .sort(
         (a, b) =>
-          TIER_META[b.card.tier].rank - TIER_META[a.card.tier].rank ||
-          b.card.revenue - a.card.revenue,
+          (b.agent.rating ?? -1) - (a.agent.rating ?? -1) || b.card.revenue - a.card.revenue,
       );
   }, [agents, scorecards, search, filter, secondCall]);
 
@@ -180,9 +168,8 @@ const AgentsPage = () => {
     ["oversize", "Oversize", counts.oversize],
     ["specialty", "Specialty", counts.specialty],
     ["standard", "Standard", counts.standard],
-    ["call-first", "Top pick", counts["call-first"]],
     ["second-call", "Worth a second call", counts["second-call"]],
-    ["archived", "Archived", counts.archived],
+    ["parked", "Parked", counts.parked],
   ];
 
   // The answering line — whatever the filters show, summed live. The revenue
@@ -267,15 +254,9 @@ const AgentsPage = () => {
           <p className="text-dim text-sm">No agents match.</p>
         )
       ) : (
-        /* ONE VIEW. There were two renderings of the same rows behind a
-           toggle, which meant every fact had to be built twice — and when it
-           is built twice it disagrees: the table called a parked desk
-           ★★☆☆☆ while the cards called her PARKED, one click apart. The
-           table wins because it is the only one that can hold two rate
-           columns; it inherits the standing the cards were carrying. */
+        /* ONE VIEW, seven columns — the mock-up nodded on the C6 sheet. */
         <AgentTable
           rows={rows}
-          shareByAgent={shareByAgent}
           ratesByAgent={ratesByAgent}
           secondCall={secondCall}
         />
