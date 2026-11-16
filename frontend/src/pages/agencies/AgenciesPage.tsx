@@ -452,7 +452,7 @@ const AgenciesPage = () => {
                     })
                   )}
                   <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[13px] text-faint leading-snug">
-                    These rows never enter the ladder, the tiers or the Foreman — no miles, no agent, no footprint.
+                    These rows never enter the ladder or the Foreman — no miles, no agent, no footprint.
                   </p>
                 </>
               )}
@@ -460,7 +460,7 @@ const AgenciesPage = () => {
 
             <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-2xl leading-snug">
               An agency's numbers come off the LOADS booked through it, so a person who moves desks leaves their
-              history behind. The people keep their own tiers and their own RPM — those live on the agent, not here.
+              history behind. The people keep your rating and their own RPM — those live on the agent, not here.
               * = a load with no deadhead logged counted loaded miles only.
             </p>
           </>
