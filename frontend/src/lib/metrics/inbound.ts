@@ -17,9 +17,8 @@ export interface InboundShare {
   share: number | null; // inbound ÷ attributed; null when nothing attributed
 }
 
-// Exported: lib/relationships/review re-cuts the very same numbers by v2
-// bucket and must count them identically — one definition of "attributed",
-// one of the fraction, here.
+// Exported so every caller counts the same way — one definition of
+// "attributed", one of the fraction, here.
 export const shareOf = (loads: Load[]): InboundShare => {
   const attributed = loads.filter((l) => l.booked_via != null);
   const inbound = attributed.filter((l) => l.booked_via === "agent_reached_out").length;

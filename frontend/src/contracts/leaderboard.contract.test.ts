@@ -43,7 +43,6 @@ const peopleOf = (loads: Load[]) => {
         first_name: "Agent",
         last_name: l.agent_id,
         preferred_contact: null,
-        relationship_tier: null,
         created_at: "",
         updated_at: "",
       });

@@ -5,7 +5,7 @@ import { codeOf, type CodedAgentLike, type CodeKind } from "@/lib/agencies/codeO
 // grammar (DispatchDashboard's gradient CTA, WhoToCallTab's code chip,
 // HardwareBoard's section heads). Module-level on purpose — nothing here is
 // ever defined inside a render body. Components only (react-refresh); the
-// name helper lives in lib/relationships/nameOf.
+// name helper lives in lib/agents/nameOf.
 
 type Size = "sm" | "md" | "lg";
 const HEIGHT: Record<Size, string> = {

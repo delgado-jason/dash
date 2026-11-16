@@ -18,7 +18,6 @@ const mk = (
   first_name: first,
   last_name: last,
   preferred_contact: "phone",
-  relationship_tier: null, // v2: no owner-set tier — a Prospect; the matcher never reads it
   created_at: "",
   updated_at: "",
 });

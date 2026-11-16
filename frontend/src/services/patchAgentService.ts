@@ -12,7 +12,7 @@ export const patchAgent = async (
     return response.data.agent;
   } catch (error) {
     // Surface the backend's own sentence AND its details, so "Validation
-    // failed" arrives with the reason ("relationship_tier must be 1, 2, 3, or
+    // failed" arrives with the reason ("rating must be 1 to 5, or
     // null") — same shape as createAgentService.
     if (error instanceof AxiosError && error.response?.data) {
       const body = error.response.data as { error?: string; details?: string[] };

@@ -3,12 +3,10 @@ import {
   normalizeAgentText,
   validateAgentCreate,
   validateAgentPatch,
-  tierChangeGate,
 } from "../utils/validation/agentValidation.js";
 import {
   ValidationError,
   NotFoundError,
-  ForbiddenError,
 } from "../utils/error.js";
 
 // ---- GET AGENTS SERVICE ----
@@ -26,8 +24,6 @@ export async function getAgents(user_id) {
             agents.posting_code AS posting_code,
             first_name,
             last_name,
-            relationship_tier,
-            tier_set_at,
             agent_city,
             agent_state,
             source,
@@ -70,8 +66,6 @@ export async function getAgent(user_id, agent_id) {
             agents.posting_code AS posting_code,
             agents.first_name AS first_name,
             agents.last_name AS last_name,
-            agents.relationship_tier AS relationship_tier,
-            agents.tier_set_at AS tier_set_at,
             agents.agent_city AS agent_city,
             agents.agent_state AS agent_state,
             agents.source AS source,
@@ -215,8 +209,6 @@ export async function createAgent(user_id, data) {
     "agent_state",
     "source",
   ];
-  // relationship_tier is deliberately NOT here: a new agent has no tier, and
-  // the only way to one is the owner's gated PATCH (reason + admin role).
 
   for (const field in data) {
     if (!allowedFields.includes(field)) {
@@ -229,10 +221,6 @@ export async function createAgent(user_id, data) {
   const errors = validateAgentCreate(data);
 
   if (errors.length > 0) throw new ValidationError("Validation failed", errors);
-
-  // A new agent is a Prospect: written as an explicit NULL so the intent holds
-  // even if a column default ever comes back (073 dropped the old DEFAULT 3).
-  data.relationship_tier = null;
 
   let fields = ["user_id"];
   let values = [user_id];
@@ -263,15 +251,15 @@ export async function createAgent(user_id, data) {
 
 // ---- PATCH AGENT SERVICE ----
 // `actor` is req.user — who is making the change (role, self_id). The tier
-// rule (REL-01 v2.0 §4) needs it: only the owner sets tiers, always with a
-// written reason, and every change lands in agent_tier_history in the SAME
-// transaction as the update.
+// rule that read it left with the Relationships feature (v1.294.0); the
+// parameter stays so the route's call does not change.
 export async function patchAgent(user_id, agent_id, data, actor = {}) {
+  void actor;
   if (!user_id) throw new ValidationError("Missing user_id");
   if (!agent_id) throw new ValidationError("Missing agent_id");
 
-  // Pull audit fields off — they aren't agent columns. `reason` serves both
-  // the rating history (with `changed_by` initials) and the tier history.
+  // Pull audit fields off — they aren't agent columns. `reason` and
+  // `changed_by` feed the rating history.
   const { reason, changed_by, ...agentData } = data;
 
   // Reject unknown fields
@@ -290,8 +278,6 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
     "work_status",
     "park_reason",
     "freight_types",
-    "relationship_tier",
-    "tier_set_at", // stamped server-side on a real retier — never client-set
     "agent_city",
     "agent_state",
     "source",
@@ -303,10 +289,6 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
       throw new ValidationError(`${field} not allowed`);
   }
   // ---- VALIDATION LOGIC ----
-
-  // tier_set_at is SERVER truth — a client-sent value is dropped; the retier
-  // (if the tier actually changes) stamps it inside the transaction below.
-  delete agentData.tier_set_at;
 
   // Must pass validation checks before query request
   normalizeAgentText(agentData);
@@ -323,7 +305,6 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
   }
 
   const ratingIsChanging = agentData.rating !== undefined;
-  const tierInPatch = agentData.relationship_tier !== undefined;
 
   // ---- Transaction ----
   const client = await db.pool.connect();
@@ -332,10 +313,10 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
 
     // Anything judged against the STORED value is read first, on this same
     // client, locked for the length of the transaction.
-    let current = { rating: null, relationship_tier: null };
-    if (ratingIsChanging || tierInPatch) {
+    let current = { rating: null };
+    if (ratingIsChanging) {
       const cur = await client.query(
-        `SELECT rating, relationship_tier FROM agents
+        `SELECT rating FROM agents
          WHERE user_id=$1 AND agent_id=$2 FOR UPDATE`,
         [user_id, agent_id],
       );
@@ -343,22 +324,6 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
       current = cur.rows[0];
     }
     const oldRating = current.rating;
-
-    // The tier rule. A patch that repeats the stored tier is not a change and
-    // needs neither role nor reason; a real move needs both.
-    const gate = tierInPatch
-      ? tierChangeGate({
-          from: current.relationship_tier,
-          to: agentData.relationship_tier,
-          reason,
-          role: actor.role,
-        })
-      : { changed: false, error: null };
-    if (gate.error) {
-      throw gate.error.status === 403
-        ? new ForbiddenError(gate.error.message)
-        : new ValidationError(gate.error.message);
-    }
 
     const updates = [];
     const values = [];
@@ -368,8 +333,6 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
       values.push(agentData[field]);
       index++;
     }
-    // Retiering stamps WHEN the call was made — server-side, not client-claimed.
-    if (gate.changed) updates.push(`tier_set_at = NOW()`);
     // Always update timestamp
     updates.push(`updated_at = NOW()`);
 
@@ -384,24 +347,6 @@ export async function patchAgent(user_id, agent_id, data, actor = {}) {
     const updateValues = [...values, user_id, agent_id];
     const result = await client.query(query, updateValues);
     if (result.rowCount === 0) throw new NotFoundError("Agent not found");
-
-    // The tier's paper trail: from → to, why, who, when. source 'owner' —
-    // this path is always a human decision.
-    if (gate.changed) {
-      await client.query(
-        `INSERT INTO agent_tier_history
-           (user_id, agent_id, from_tier, to_tier, reason, source, changed_by)
-         VALUES ($1, $2, $3, $4, $5, 'owner', $6)`,
-        [
-          user_id,
-          agent_id,
-          current.relationship_tier,
-          agentData.relationship_tier,
-          reason.trim(),
-          actor.self_id ?? null,
-        ],
-      );
-    }
 
     // Conditionally insert history — only if rating ACTUALLY changed
     if (ratingIsChanging && agentData.rating !== oldRating) {

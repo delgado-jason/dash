@@ -50,7 +50,6 @@ const mkAgent = (id: string, o: Partial<Agent> = {}): Agent => ({
   first_name: id,
   last_name: "Agent",
   preferred_contact: null,
-  relationship_tier: null,
   work_status: "parked",
   park_reason: "spot agent",
   created_at: "2025-01-01T00:00:00Z",

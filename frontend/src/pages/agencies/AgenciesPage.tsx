@@ -31,8 +31,8 @@ import { AgencyForm } from "@/components/agencies/AgencyForm";
 
 // /agencies — the book rolled up by agency (Agencies Nod Sheet, decision 7A).
 // One row per desk: what it delivered, what it paid per mile against the live
-// ladder, who works there and how many of them the owner has tiered. The
-// people keep their own numbers and tiers on their own pages — this page never
+// ladder, who works there and when it last had freight. The
+// people keep their own numbers and your rating on their own pages — this page never
 // re-grades anybody.
 //
 // It reads the Relationships data hook rather than a second one of its own: the
@@ -44,9 +44,7 @@ const WINDOW_TABS = AGENCY_WINDOWS.map((w) => ({ value: w, label: WINDOW_LABEL[w
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-const tierWord = (tier: number | null): string => (tier == null ? "" : ` T${tier}`);
-
-// Line 2 of a row: who works this desk, each with their tier word, then when
+// Line 2 of a row: who works this desk, then when
 // the agency last had freight. Three names is plenty — the agency page lists
 // them all.
 //
@@ -54,7 +52,7 @@ const tierWord = (tier: number | null): string => (tier == null ? "" : ` T${tier
 // ahead of today is "picks up Sep 14" (the mock's CPL row), never "last load
 // Sep 14" for a load that has not moved yet.
 const agencyContext = (row: AgencyRowModel): string => {
-  const names = row.agents.map((a) => `${nameOf(a.agent)}${tierWord(a.tier)}`);
+  const names = row.agents.map((a) => nameOf(a.agent));
   const facts: string[] = [];
   if (names.length > 3) facts.push(`${names.slice(0, 3).join(" · ")} +${names.length - 3}`);
   else if (names.length > 0) facts.push(names.join(" · "));
@@ -216,11 +214,7 @@ const AgenciesPage = () => {
           key="agents"
           value={<b className="text-ink">{row.agents.length}</b>}
           sub={
-            row.agents.length === 0
-              ? "nobody filed"
-              : row.tieredCount > 0
-                ? `${row.tieredCount} tiered`
-                : "prospect"
+            row.agents.length === 0 ? "nobody filed" : "on file"
           }
         />,
       ]}
@@ -458,7 +452,7 @@ const AgenciesPage = () => {
                     })
                   )}
                   <p className="px-3.5 py-2.5 border-t border-hairline-lo font-condensed text-[13px] text-faint leading-snug">
-                    These rows never enter the ladder, the tiers or the Foreman — no miles, no agent, no footprint.
+                    These rows never enter the ladder or the Foreman — no miles, no agent, no footprint.
                   </p>
                 </>
               )}
@@ -466,7 +460,7 @@ const AgenciesPage = () => {
 
             <p className="mt-3 font-condensed text-[12.5px] text-faint max-w-2xl leading-snug">
               An agency's numbers come off the LOADS booked through it, so a person who moves desks leaves their
-              history behind. The people keep their own tiers and their own RPM — those live on the agent, not here.
+              history behind. The people keep your rating and their own RPM — those live on the agent, not here.
               * = a load with no deadhead logged counted loaded miles only.
             </p>
           </>

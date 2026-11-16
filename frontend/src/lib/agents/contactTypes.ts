@@ -96,16 +96,6 @@ export const pickerTypes = (
     return true;
   });
 
-// The form's default with no context (from the book): a tiered agent gets the
-// primary nurture, a prospect who has hauled gets a reactivation, a stranger
-// gets prospecting. Later PRs pass explicit prefills for Today / Call list.
-export const defaultTouchType = (
-  agent: { relationship_tier: number | null },
-  deliveredCount: number,
-): ContactType => {
-  if (agent.relationship_tier != null) return "capacity";
-  return deliveredCount > 0 ? "reactivation" : "cold";
-};
 
 // The registry as SegmentedTabs-ready options.
 export const typeTabs = (defs: ContactTypeDef[]): { value: ContactType; label: string }[] =>

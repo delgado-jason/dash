@@ -370,13 +370,9 @@ const NAV: { group: string; items: string[] }[] = [
   {
     group: "Agents",
     items: [
-      "Relationships — the book of agents",
       "Agencies and posting codes",
       "Agencies — the book by agency",
       "Editing an agent",
-      "Inbound share — is the system working?",
-      "Prospects — from stranger to agent",
-      "The call list — reactivation, prospects, the one question",
       "Agent ratings",
       "The agent's file — the cover, five parts, one door",
     ],
@@ -3837,222 +3833,6 @@ const GuidePage = () => {
             style={{ borderColor: "var(--color-hairline)" }}
             aria-hidden="true"
           />
-          <Metric
-            title="Relationships — the book of agents"
-            answers="Five buckets — Tier 1, Tier 2, Tier 3, Prospects, Parked — graded by all-in RPM against the live rate ladder. The owner sets every tier; dash only suggests."
-            sources={[{ label: "Relationships", to: "/relationships/tiers" }]}
-          >
-            <Why>
-              Four views under one shell — <span className="text-light">Today
-              · Call list · Tiers · Review</span> — with one agent sheet behind
-              every row and <span className="text-light">+ PROSPECT</span> on
-              every tab. The <span className="text-light">TIERS</span> view is
-              the book graded REL-01 v2.0’s way. <span className="text-light">
-              Tier 1, 2 and 3</span> hold only agents with an established
-              footprint — <span className="text-light">three or more delivered
-              loads</span> — graded by their average all-in RPM (gross dollars
-              over every mile, loaded and deadhead, trailing twelve months)
-              against the same rate ladder the Scorer holds a load to:{" "}
-              <span className="text-light">Tier 1 at or above Target · Tier 2
-              at or above Minimum · Tier 3 at or above Break-even</span>. An
-              established agent under break-even wears a red LOSING MONEY chip —
-              no tier, and a park suggestion. The bands are the ladder’s own
-              steps, so when your costs move the bands move with them; nothing
-              is stored. <span className="text-light">Prospects</span> are
-              everyone still being courted — added by hand, or hauled once or
-              twice — and they graduate at their third delivered load, when the
-              row moves to NEEDS A TIER for you to place.{" "}
-              <span className="text-light">Parked</span> is hidden from the
-              working list: an agent you parked with a written reason, or one
-              gone dormant (no load, no two-way contact, nothing at all for 180
-              days). Search finds them here, and the Foreman surfaces a parked
-              agent’s freight when the truck is within 75 miles — harvest it,
-              no outreach owed. This book is by{" "}
-              <span className="text-light">person</span>; for the same freight
-              rolled up by the desk they work — an agency, its codes and what it
-              has delivered — see{" "}
-              <span className="text-light">Agencies — the book by agency</span>{" "}
-              below.
-              <br />
-              <br />
-              <span className="text-light">The owner sets every tier, always
-              with a written reason</span>, from the agent sheet; the reason
-              lands in the tier history and dash never re-tiers anyone. Where
-              the numbers disagree with a placement the row wears a{" "}
-              <span className="text-light">SUGGEST → TIER 1</span> chip (or
-              SUGGEST → PROSPECT for a tiered agent under three loads), the
-              section head counts how many are suggested in, and the sheet
-              shows the evidence — “$6.94 all-in · above Prime · 3 loads” —
-              with the recommended button pre-lit and the reason prefilled.
-              Dispatch sees the tier with a lock, nothing to press.
-              <br />
-              <br />
-              <span className="text-light">One proactive touch per agent per
-              week.</span> Capacity heads-ups, milestone and holiday notes,
-              reactivation and prospecting calls are proactive and count; a
-              close-out, a load in progress, freight-bill work, anything the
-              agent sent you, and the owner’s own thread are operational or
-              inbound and never count. Log a second proactive reason in the
-              same week and the form refuses with a plain sentence and offers
-              to <span className="text-light">fold</span> it into the message
-              that already went out — or LOG ANYWAY with a note saying why. A
-              reached call or anything inbound is what resets an agent’s
-              cooling clock; a voicemail or a one-way email does not. Every
-              write shows its error by name, and a mis-logged touch undoes from
-              the toast or deletes from the agent’s timeline; the metrics
-              recompute, nothing rots.
-              <br />
-              <br />
-              <span className="text-light">Today is the day’s job.</span> The
-              plate at the top follows ADMIN-02’s week and the queue beneath it
-              does the thinking. <span className="text-light">Monday</span> is
-              the capacity pass: from where the truck goes empty next — the
-              Foreman’s anchor, the same coordinate cache — every active agent
-              whose freight sits within 150 straight-line miles (their
-              delivered-load origins plus the markets they named), nearest
-              first, each with the §7 heads-up drafted in their name and yours,
-              email or text. COPY puts it on the clipboard; LOG SENT records
-              it. One at a time, on purpose — there is no “log all”. Parked
-              agents never get the email; the ones within 75 miles are counted
-              for the Foreman to harvest instead. <span className="text-light">
-              Tuesday and Thursday</span> lead with reactivation — the lapsed
-              prospects who hauled before, most loads first, then the quietest;
-              the first one still clear this week is the plate’s hero and
-              Thursday adds prospecting. <span className="text-light">Wednesday</span> is the
-              nurture flags: a load-count crossing at 5 · 10 · 25 · 50 · 100,
-              an on-time and claim-free streak at 10 · 20 · 50 (untimed loads
-              are neutral; a claim breaks it), the first-load anniversary for
-              two weeks, and in season the Thanksgiving and New Year notes
-              (ten days before Thanksgiving through the day; Dec 22 to Jan 2).
-              Each flag sits until it is logged or skipped — a skip is
-              recorded so the flag doesn’t return; the owner personalizes the
-              Tier 1 holiday versions.{" "}
-              <span className="text-light">Friday</span> is the five — agents
-              contacted, footprints, inbound offers, loads booked above
-              break-even, days empty — with COPY THE FIVE for the owner and a
-              hygiene line naming who still lacks a phone, a preferred channel
-              or a footprint. Weekends carry only close-outs and callbacks, and
-              preview Monday’s pass.
-              <br />
-              <br />
-              Beneath the plate, in a fixed order: <span className="text-light">
-              NOW</span> — every delivery in the last fourteen days with no
-              close-out logged, its draft one tap away (operational, so it
-              never touches the cap); the plate’s own rows; <span className="text-light">
-              CALL BACK</span> — every “call back Thursday” you promised on a
-              log whose day has come, standing until something settles it (they
-              call, you reach them, or any proactive touch — a close-out or
-              freight-bill note does not). A promised call is never refused by
-              the cap: it logs with the override and a note saying why. One
-              reason per agent per day — an agent owed a call back gets that
-              row and no plate or list row. Then the next three of the day’s
-              list and a door to the Call list. A row for an agent who already had this
-              week’s proactive touch is ghosted with a TOUCHED chip and is not
-              offered a second one — when a milestone lands on a Monday
-              capacity agent the plate folds it into{" "}
-              <span className="text-light">one combined message</span> and the
-              contact records both reasons. DONE TODAY lists what was logged,
-              each with an undo. Nothing here is “due” by a clock anymore; the
-              old Tier 1 weekly / Tier 2 monthly list is gone.
-              <br />
-              <br />
-              <span className="text-light">Cooling is the owner’s flag, not
-              Dispatch’s to-do.</span> At the bottom of Today, every tiered
-              agent past their threshold with no two-way contact — Tier 1 at 21
-              days, Tier 2 at 42, Tier 3 at 90 — plus anyone who flags inside
-              the next two weeks (“flags Oct 9 if nothing changes”). A reached
-              call, anything inbound or a load resets the clock; a voicemail
-              or a one-way email does not. Dispatch sees it read-only; the
-              owner taps a row to log their own thread — Owner personal,
-              uncapped. It never creates a task and never sends anything.
-              The <span className="text-light">CALL LIST</span> runs on these
-              buckets too — reactivation and prospects, one row, one call
-              screen (its own section below).
-              <br />
-              <br />
-              <span className="text-light">Review is where the month gets
-              judged and signed.</span> Month or quarter, stepped back as far as
-              you like. The scorecard, the tier-move log and the quarter’s
-              checks rest on the period you are standing on; cooling, the
-              milestones, the cap audit, hygiene and IS IT WORKING always read
-              today. <span className="text-light">IS IT WORKING</span> is the
-              one number — inbound share since system start, a plain fraction
-              until ten attributed loads, then a percent — cut by each agent’s
-              current tier and laid out month by month.{" "}
-              <span className="text-light">RE-TIER SUGGESTIONS</span> lists
-              every agent whose all-in RPM band on the live ladder disagrees
-              with the tier they hold, the evidence on the row (“$6.94 all-in
-              on 3 loads · above Prime”), an established agent still without a
-              tier under NEEDS A TIER, and an established agent under break-even
-              as LOSING MONEY with a park suggestion.{" "}
-              <span className="text-light">APPROVE</span> writes the tier with
-              the reason prefilled from the evidence — editable, never empty —
-              and lands a row in the tier history with who and when;{" "}
-              <span className="text-light">HOLD</span> records your “not now”
-              against that evidence, and the suggestion stays quiet until the
-              numbers behind it change. Nothing re-tiers itself, and Dispatch
-              sees every board read-only — “the owner sets tiers” where the
-              buttons would be.
-              <br />
-              <br />
-              Beneath it: <span className="text-light">COOLING</span>, the
-              same owner’s flag Today carries — monitoring, never a to-do;{" "}
-              <span className="text-light">MILESTONES</span> waiting and sent
-              this month; the <span className="text-light">CONTACT CAP</span>{" "}
-              audit, which should read zero agents over one proactive touch
-              this week and names the two touches when it doesn’t; a{" "}
-              <span className="text-light">HYGIENE</span> line — phones,
-              preferred channels, footprints, best time to call — each name a
-              door into the book; <span className="text-light">TIER MOVES</span>{" "}
-              this month, straight from the history with their reasons;{" "}
-              <span className="text-light">GONE QUIET</span>, every Tier 1 or 2
-              with no two-way contact in thirty days; and the{" "}
-              <span className="text-light">SCORECARD</span> — ninety days per
-              agent: loads, net, gross per driven mile graded on the booking ladder (a load with no odometer window and no known deadhead is left out and counted),{" "}
-              <span className="text-light">$/day</span> — the window's gross
-              over the days their freight owned the truck, weighted and
-              coloured against your own daily target from the rate ladder, per
-              calendar day (see{" "}
-              <span className="text-light">Lane rate — typical vs blended</span>
-              ) — deadhead, inbound, last load, the days you reached out and the
-              times they reached in. Its verdict is the suggestion’s direction —
-              ▲ up, ▼ down, HOLD; under three loads in the window it is THIN, no
-              verdict, never a fake grade; and a ▼ on a Tier 1 or 2 you reached
-              out to on fewer than four days reads HOLD, “never fed — the
-              verdict is on us”.
-              <br />
-              <br />
-              <span className="text-light">MARK … REVIEWED</span> signs the
-              month with one to three targets for the month ahead; the pill
-              then reads REVIEWED with the date and your name, and the targets
-              print under the head — with an EDIT link under them that reopens
-              the sheet on what you wrote, so a signed period can be corrected
-              without a second row. Dispatch sees the targets and “the owner
-              signs the month”.
-              Switch to <span className="text-light">QUARTER</span> for the four
-              checks: TOP 3 SHARE of net against last quarter, STEADY AGENTS
-              (two or more loads), MONTHS SIGNED (three of three, or which one
-              is missing) and <span className="text-light">RISERS</span> — a
-              parked agent, by you or by dormancy, who gave two or more loads
-              this quarter wears a RISER chip: the book says promote, you decide
-              from the sheet. Two lists follow: FED, STAYED QUIET — tiered
-              agents you reached out to on four or more days who gave no load
-              and no inbound, the prune candidates (you park from the sheet
-              with a reason, never automatically) — and NEVER FED, the ones you
-              barely touched, a to-do rather than a prune. GROWTH · MARKETS TO
-              HUNT ranks the origin states by average gross per delivered load,
-              with the load count beside each so one lucky haul is never
-              mistaken for a market, and MARK … AUDITED saves one to five
-              names to pursue as the quarter’s targets; while the quarter is
-              still running the head says when its audit opens. The stepper
-              walks back through finished months and quarters — ‹ and › — and
-              the scorecard, the tier-move log and the quarter’s checks rest on
-              the period you are standing on, while cooling, the milestones,
-              the cap audit, hygiene and IS IT WORKING always read today. COPY
-              REPORT puts the whole page on the clipboard as plain text.
-            </Why>
-          </Metric>
-
           <Section title="Agencies and posting codes">
             <p className="text-sm text-muted-text">
               A Landstar <span className="text-light">agency</span> is a
@@ -4098,8 +3878,7 @@ const GuidePage = () => {
               <span className="text-light">delivered</span> and what it grossed,
               its <span className="text-light">all-in RPM</span> with the rate
               ladder's word under it (above Prime, above Target, above Minimum,
-              under Minimum, losing money), how many agents work there and how
-              many of them you have tiered, and how long since its last load.
+              under Minimum, losing money), how many agents work there, and how long since its last load.
               Beside that RPM sits the desk's{" "}
               <span className="text-light">$/day</span> — the window's gross
               over the days its freight owned the truck, weighted and coloured
@@ -4115,11 +3894,11 @@ const GuidePage = () => {
               agency is stamped on the load, so a person who moves to another
               desk leaves their history behind and the old agency keeps the
               revenue it earned. The people do not get rolled up: an agent's
-              delivered count, all-in RPM and tier on this page are the same
-              figures their own row shows on Relationships, over every load
-              they have ever booked. That is deliberate — a tier is about a
-              relationship with a <span className="text-light">person</span>,
-              and Eric can be a Tier 1 inside an agency running under Minimum.
+              delivered count, all-in RPM and your rating on this page are the
+              same figures their own file shows, over every load they have ever
+              booked. That is deliberate — a rating is about a{" "}
+              <span className="text-light">person</span>, and Eric can be your
+              Call-first desk inside an agency running under Minimum.
               So an agency's delivered count and the sum of its agents' counts
               can disagree; they answer two different questions.
             </p>
@@ -4145,7 +3924,7 @@ const GuidePage = () => {
               agency and a door; a code dash has never seen shows the code
               itself and a <span className="text-light">+</span> that names the
               agency behind it. These rows carry no miles, no agent and no
-              footprint, so they never enter the ladder, the tiers or the
+              footprint, so they never enter the ladder or the
               Foreman — they are history and a prompt to enter the load. The
               shelf shows the <span className="text-light">current year
               only</span>: dash started tracking in 2026, and settlements older
@@ -4183,203 +3962,11 @@ const GuidePage = () => {
               <span className="text-light">person</span> to the new code — the
               loads already booked under them keep the agency they were booked
               through, so past revenue stays where it was earned. Dispatchers
-              can do all of this too; only the star rating, the tier and the
-              standing notes keep their own editors. Phone, email, preferred
-              channel and best time to call also edit in place from the agent
-              sheet on the Relationships page.
+              can do all of this too; only the rating and the standing notes
+              keep their own editors. Phone, email, preferred channel and best
+              time to call edit in place on the agent's file.
             </p>
           </Section>
-
-          <Metric
-            title="Inbound share — is the system working?"
-            answers="The one number: what share of your booked loads came from agents reaching out to YOU."
-            sources={[{ label: "Relationships", to: "/relationships" }]}
-          >
-            <Formula>
-              inbound share = loads the agent brought you ÷ attributed loads
-            </Formula>
-            <Why>
-              Every new load answers one required question at booking: did the
-              agent reach out, or did you? The whole thesis of relationship
-              work is that capacity heads-ups, milestone notes and being the
-              easy, reliable truck compound until agents call{" "}
-              <span className="text-light">you</span> first — so the fleet-wide
-              share should climb from the system-start baseline (Sep ’26), and{" "}
-              <span className="text-light">Tier 1’s share should pull away
-              from Tier 3’s</span>. If it doesn’t within a quarter or two, the
-              method isn’t landing — change the plays, not the goal. Loads
-              from before the system carry no answer and sit outside the math.
-              A load lands in the number on the{" "}
-              <span className="text-light">day it was booked</span>, not the day
-              it picks up: book it today for next week’s pickup and it counts
-              today, and the month-by-month rows are booking months for the same
-              reason. The INBOUND chip in the Relationships statusbar carries
-              the number since system start — a plain fraction (“4 of 9”) until
-              ten attributed loads exist, a percent after that, because a
-              percentage of three loads is noise. Review’s IS IT WORKING plate
-              carries the same number cut by each agent’s current tier and laid
-              out month by month since system start; a chart only appears once
-              three months each hold five attributed loads.
-            </Why>
-          </Metric>
-
-          <Metric
-            title="Prospects — from stranger to agent"
-            answers="Agents you're courting — added by hand, or hauled once or twice — tracked to their third load."
-            sources={[{ label: "Relationships", to: "/relationships/tiers" }]}
-          >
-            <Why>
-              Add one with <span className="text-light">+ PROSPECT</span>,
-              person first: a name and a phone or an email is enough. The
-              agency code is optional — pick one, type a new one and it is
-              created on the spot, or leave it blank and they wear NO CODE
-              until you learn it; a code that already exists is matched, never
-              duplicated. Where they sit, how you found them and a note round
-              it out, and as you type the name dash says “Looks like Gary
-              Robinson · SRY — open instead?” so nobody gets added twice. They
-              land in <span className="text-light">Prospects</span> with no
-              tier. Every stage after that is{" "}
-              <span className="text-light">derived</span> — nothing to update
-              by hand: the row’s chip reads NEVER RAN, then 1 OF 3 LOADS, 2 OF
-              3, and at the third delivered load they graduate to NEEDS A TIER
-              for the owner to place. A prospect who goes 180 days without a
-              load or a two-way contact is treated as dormant and drops to
-              Parked; a reached call or a load brings them straight back. Two
-              touch types belong here — <span className="text-light">
-              Prospecting</span> for an agent who never ran and{" "}
-              <span className="text-light">Reactivation</span> for one who
-              hauled before and went quiet — and each counts as the week’s one
-              proactive touch. Today works them for you: the lapsed ones (a
-              load once, nothing two-way in six weeks) lead Tuesday and
-              Thursday as reactivation, the never-ran ones follow on Thursday
-              as prospecting — three at a time, the rest behind the Call list
-              door.
-            </Why>
-          </Metric>
-
-          <Metric
-            title="The call list — reactivation, prospects, the one question"
-            answers="Two working lists — lapsed prospects who hauled, and prospects who never ran — and one call screen that captures the footprint, the outcome, the one question and the next step in the order that survives a bad signal."
-            sources={[{ label: "Call list", to: "/relationships/calls" }]}
-          >
-            <Why>
-              <span className="text-light">Two lists, one switch.</span>{" "}
-              <span className="text-light">REACTIVATION</span> is the Gameplan’s
-              target list: every Prospect who has hauled for you at least once
-              and has gone quiet — no load and no two-way contact (a reached
-              call, anything inbound, a pickup or a delivery) in 42 days. A
-              tiered agent rides the nurture method instead, a Parked agent is
-              on no list, and an agent you promised to call back stays off the
-              list until that day comes (it shows up on Today). A voicemail
-              does not reset the clock — it sinks the row to the end of its
-              group and counts as an unreached attempt; three unreached calls
-              in two weeks move the row to a{" "}
-              <span className="text-light">RECYCLE — NEXT ROTATION</span> fold,
-              because persistence is a channel problem, not a frequency one:
-              find the number or the time they answer. They re-enter on their
-              own after 42 quiet days.{" "}
-              <span className="text-light">PROSPECTS</span> is everyone with no
-              delivered load yet — the row’s chip reads NEW, TOUCHED ×2 or
-              REPLIED, replied first, then whoever has waited longest — and the
-              head counts how many converted (a first load inside 90 days). In
-              season a third tab joins them,{" "}
-              <span className="text-light">HOLIDAY · NOV 26</span> — the active
-              book, Tier 1 first, minus everyone already wished this
-              holiday-year — and a row there opens the note on the agent’s
-              sheet to copy and send, not a call screen.
-              <br />
-              <br />
-              <span className="text-light">Market grades are generated, not
-              typed.</span> Every origin state with two or more delivered loads
-              in the trailing twelve months is ranked by average gross revenue
-              per delivered load: the top third is A, the middle third B, the
-              rest — and any state with fewer than two loads — C. The caption
-              under the controls spells it out (“A = GA, SC · B = TX, OH · C =
-              everyone else …”), the Market switch filters to a grade, and the
-              reactivation list runs A → B → C, warmest first inside each grade
-              — 60% how many loads they’ve given you, 40% how recently. Every
-              row: the class chip (DIRECT, SPOT, UNCLEAR, or NOT YET ASKED —
-              from the pin or from repeat facilities, never a default), their
-              top market and grade, loads and average, the footprint meter,
-              and days quiet.
-              <br />
-              <br />
-              <span className="text-light">The call screen.</span> Tap a row
-              and it opens as a full-screen card on the phone (back chevron,
-              “3 of 17”) or the right-hand pane on a desktop — its own address,
-              so a refresh mid-call lands you back on the call. The header is
-              who they are and how to reach them (the CALL button dials);
-              beneath it, why they’re on the list, then the{" "}
-              <span className="text-light">SCRIPT</span> — the reactivation or
-              prospecting opener and voicemail from ADMIN-02, filled in from
-              their record, open on your first call of the day and folded
-              after. Then <span className="text-light">THE FOOTPRINT</span>:
-              the six questions every call should capture, as a checklist with
-              the answer captured inline — which shippers out of which cities
-              (pick the city from the dropdown so the Foreman gets a real
-              coordinate; a market they named is a dashed chip, one a load
-              proved is solid, and the{" "}
-              <span className="text-light">hauled from</span> line beside them
-              follows each load’s customer mark — the origin normally, the
-              destination when their own customer took delivery, and nothing at
-              all from a load marked Neither); what moves most (the four freight chips,
-              prefilled and clearable); their typical lane, anything regular,
-              and what’s moving now — three one-liners that fold into the note
-              as [lane] · [regular] · [season] so the next call can read them
-              back; and the best number and time to call. The head counts
-              “4 of 6”, and the{" "}
-              <span className="text-light">FOOTPRINT CAPTURED</span> toggle
-              lights itself once a market, a freight type and a best time are
-              on file — flip it either way; it writes on the call.
-              <br />
-              <br />
-              <span className="text-light">Outcome, the one question, next
-              step.</span> Reached, voicemail, no answer or bad number — anything
-              but Reached clears any class you picked, because nobody was
-              spoken to. A bad number marks the row BAD # until a later call
-              gets through, and question 6 offers the fix. When you reached an
-              untiered agent whose class is blank or unclear, the one question
-              appears —{" "}
-              <span className="text-light">do they have their own customers?
-              Direct, Spot, or Unclear</span>; Spot offers “park them now”. An
-              agent already pinned shows the pin as a chip with a{" "}
-              <span className="text-light">change</span> link, so a wrong pin
-              has an exit. Next step is Nothing owed, Call back (Thu · +1 wk ·
-              +2 wk · +1 mo · pick a date — Today shows it when it’s due), On
-              their list, or Send capacity; the note is one line — what
-              happened, what was promised, what’s owed, load # if any.
-              <br />
-              <br />
-              <span className="text-light">Someone else answered?</span> Say so
-              before you log. Type the name — the search covers every agent in
-              the book by name, any agency code, because the person is the
-              anchor — pick the match, or create them on the code you type (or
-              none). Everything from the call files under them; the dialed
-              record gets one breadcrumb note and nothing else, and you stay
-              on that card to skip or park it. Reactivation and prospecting are
-              proactive touches, so the one-a-week cap applies: an agent who
-              already had a proactive touch this week sits dimmed in the list
-              with a <span className="text-light">TOUCHED MON</span> chip, and
-              the call screen wears the same chip in its header — you see the
-              cap before you dial. A call that happens anyway is logged as it
-              happened — reached, voicemail, no answer or bad number — with a
-              reason in the note; a call is never folded into a message,
-              because the outcome is the record.
-              <br />
-              <br />
-              <span className="text-light">LOG & NEXT</span> writes in a fixed
-              order — the contact first, then the breadcrumb if the call was
-              diverted, and the agent’s record (class, freight, best time,
-              phone, a park) last — so a dropped signal can never leave an
-              agent classed with no record of the call; if a later step fails
-              the error names it and a second tap retries only what’s left.
-              Then the screen moves to the next row you haven’t handled — no
-              counter to lose its place: skipped and logged rows are remembered
-              for the day, dimmed in the list, and the next call is simply the
-              first row that isn’t one of them. When none are left the list
-              says so and points at Prospects.
-            </Why>
-          </Metric>
 
           <GroupHeading>Vendors</GroupHeading>
 

@@ -1,7 +1,7 @@
 // The statusbar's identity chip: INBOUND {headline}. A percentage of three
 // loads is noise, so the headline stays a FRACTION ("0 of 3") until ten
 // attributed loads exist, then turns into a percent ("43%"). Reads the same
-// InboundShare shape inboundShare() produces (lib/metrics/relationships).
+// InboundShare shape inboundShare() produces (lib/metrics/inbound).
 
 export const INBOUND_HEADLINE_MIN = 10;
 

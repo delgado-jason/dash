@@ -5,7 +5,6 @@ import {
   contactKind,
   isProactive,
   pickerTypes,
-  defaultTouchType,
 } from "@/lib/agents/contactTypes";
 
 describe("the registry — REL-01 v2.0's words", () => {
@@ -84,10 +83,3 @@ describe("pickerTypes — what the form offers", () => {
   });
 });
 
-describe("defaultTouchType — the book's no-context default", () => {
-  it("tiered → capacity heads-up; prospect who hauled → reactivation; stranger → prospecting", () => {
-    expect(defaultTouchType({ relationship_tier: 2 }, 6)).toBe("capacity");
-    expect(defaultTouchType({ relationship_tier: null }, 2)).toBe("reactivation");
-    expect(defaultTouchType({ relationship_tier: null }, 0)).toBe("cold");
-  });
-});

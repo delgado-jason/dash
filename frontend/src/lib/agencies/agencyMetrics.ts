@@ -7,9 +7,9 @@
 //     whatever agency its agent belongs to TODAY. Move Drew Hannon from CPL to
 //     Momentum tomorrow and CPL keeps the seven loads he booked there — the
 //     history stays where the money was earned.
-//   • The PEOPLE keep their own numbers and their own tiers. An agent's
+//   • The PEOPLE keep their own numbers and your rating. An agent's
 //     delivered count and all-in RPM on this page are the same figures their
-//     own row shows on Tiers — lifetime loads, trailing-12-month RPM — so the
+//     own file shows — lifetime loads, trailing-12-month RPM — so the
 //     agency window never re-grades a person. That is why an agency's
 //     delivered count and the sum of its agents' counts can disagree: they
 //     answer two different questions.
@@ -17,7 +17,7 @@
 //     other code the agency has posted under is dashed. The code TRAIL checks
 //     what the settlements actually posted against that set.
 //   • The settlement-only rows are history and a door. They carry no miles, no
-//     agent and no footprint, so they never enter the ladder, the tiers or the
+//     agent and no footprint, so they never enter the ladder or the
 //     Foreman — nothing here lets them.
 import type { Agency } from "@/types/agency";
 import type { Agent } from "@/types/agent";
@@ -101,7 +101,7 @@ export const deliveredInWindow = (loads: readonly Load[], range: AgencyRange): L
 // ------------------------------------------------------------------ the band
 
 // Where an agency's all-in RPM sits on the live ladder, in the nod sheet's
-// words. Deliberately NOT lib/relationships/tierSuggestion's `bandLabel`: that
+// words. Deliberately NOT the retired tier code's band label: that
 // one says "above Break-even" / "under Break-even" for the bottom two steps,
 // while the agency row says "under Minimum" and "losing money" (the mock's CPL
 // row reads "$4.66 under Minimum"). Same thresholds, the sheet's vocabulary.
@@ -125,9 +125,6 @@ export const agencyBand = (
 
 export interface AgencyAgentRow {
   agent: Agent;
-  // The OWNER's tier (1 | 2 | 3), or null — a prospect, or nobody's graded
-  // them yet. Never inferred here; the agency page only draws it.
-  tier: number | null;
   // Which chip this person wears: their own posting code (dashed) or the
   // agency's desk code (lit). null when neither is on file.
   postingCode: AgentCode | null;
@@ -171,7 +168,6 @@ export interface AgencyRow {
   // load". null whenever the last load has already been picked up (or there
   // has never been one), which is also the flag for "is it ahead?".
   daysUntilLoad: number | null;
-  tieredCount: number;
 }
 
 const byId = <T>(rows: readonly T[], key: (row: T) => string | null): Map<string, T[]> => {
@@ -231,7 +227,6 @@ export const agencyRollup = (
       const lastContact = lastMeaningfulContact(agent.agent_id, contacts, loads);
       return {
         agent,
-        tier: agent.relationship_tier,
         postingCode: codeOf(agent),
         delivered: deliveredCount(loads, agent.agent_id),
         allInRpm: own.rpm,
@@ -255,7 +250,6 @@ export const agencyRollup = (
       lastLoad: last,
       daysSinceLoad: last == null ? null : Math.max(0, daysBetweenKeys(last, todayKey)),
       daysUntilLoad: last == null || last <= todayKey ? null : daysBetweenKeys(todayKey, last),
-      tieredCount: agentRows.filter((a) => a.tier != null).length,
     };
   });
 
@@ -438,7 +432,7 @@ export const agencyReport = (
         money(r.gross),
         `${rpm(r.allInRpm)}${r.partialRpm ? "*" : ""} all-in`,
         r.band,
-        `${plural(r.agents.length, "agent")}${r.tieredCount > 0 ? ` (${r.tieredCount} tiered)` : ""}`,
+        plural(r.agents.length, "agent"),
       ].filter((f): f is string => f != null && f !== "");
       out.push(facts.join(" · "));
     }
@@ -463,7 +457,7 @@ export const agencyReport = (
           .join(" · "),
       );
     }
-    out.push("These never enter the ladder, the tiers or the Foreman.");
+    out.push("These never enter the ladder or the Foreman.");
   }
 
   if (rows.some((r) => r.partialRpm)) {
