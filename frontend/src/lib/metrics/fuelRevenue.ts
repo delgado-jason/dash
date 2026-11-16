@@ -5,6 +5,7 @@ import type { FscScalePoint } from "@/types/fscScalePoint";
 import { fitScale, scaleCpmAt, type FscScaleFit } from "./fscScale";
 import { loadNetRevenue } from "./rateTargets";
 import { isDelivered } from "./status";
+import { isDef } from "./fuelEconomy";
 import { bandFor, scheduleInForce, type FscPar } from "./fscTable";
 
 // THE FSC STANDARD (Jason, 2026-09-03). A fuel surcharge is NOT designed to
@@ -39,7 +40,11 @@ export const FSC_BASE_MPG = 5.81; // the schedule's assumed MPG
 //                    who keeps 100% of FSC.
 export interface FuelMonth {
   month: string; // "YYYY-MM"
-  fuelSpend: number; // Σ gallons × price/gal that month
+  fuelSpend: number; // Σ gallons × price/gal that month — diesel and DEF, what the pump took
+  defSpend: number; // the DEF part of fuelSpend (0 when none)
+  gallons: number; // diesel gallons that month — DEF is not fuel burned
+  fills: number; // diesel fills that month
+  ppg: number | null; // the month's blended diesel $/gal; null with no diesel
   net: number; // Σ net revenue delivered that month (after the carrier's cut)
   fsc: number; // Σ fuel surcharge delivered that month
   fuelPctNet: number | null; // null when no net that month
@@ -171,16 +176,24 @@ export const fuelVsRevenue = (
 ): FuelVsRevenue => {
   const cur = currentMonthKey(now);
   const scale = fscPar ? fitScale(fscPar.points) : null;
-  // Fuel spend + gallons per month.
+  // Fuel spend per month (every kind — DEF is money the pump took), the DEF
+  // part of it, and the diesel gallons and fills behind the month's price.
   const spend = new Map<string, number>();
+  const defSpend = new Map<string, number>();
   const gallons = new Map<string, number>();
+  const fills = new Map<string, number>();
   for (const e of entries) {
     if (!e.fuel_date) continue;
     const k = monthKey(e.fuel_date);
     const gal = Number(e.gallons) || 0;
     const dollars = gal * (Number(e.price_per_gallon) || 0);
     spend.set(k, (spend.get(k) ?? 0) + dollars);
+    if (isDef(e)) {
+      defSpend.set(k, (defSpend.get(k) ?? 0) + dollars);
+      continue;
+    }
     gallons.set(k, (gallons.get(k) ?? 0) + gal);
+    fills.set(k, (fills.get(k) ?? 0) + 1);
   }
 
   // Net revenue + fuel surcharge per month, from delivered loads. Net is via
@@ -211,10 +224,13 @@ export const fuelVsRevenue = (
     .sort()
     .map((k) => {
       const fuelSpend = spend.get(k) ?? 0;
+      const def = defSpend.get(k) ?? 0;
       const n = net.get(k) ?? 0;
       const f = fsc.get(k) ?? 0;
       const gal = gallons.get(k) ?? 0;
-      const ppg = gal > 0 ? fuelSpend / gal : null;
+      // The diesel price: diesel dollars over diesel gallons — fuelSpend holds
+      // the DEF too, so it is not the numerator here.
+      const ppg = gal > 0 ? (fuelSpend - def) / gal : null;
       const ld = loaded.get(k) ?? 0;
       const dr = driven.get(k) ?? 0;
       const loadedShare = dr > 0 ? ld / dr : null;
@@ -233,6 +249,10 @@ export const fuelVsRevenue = (
       return {
         month: k,
         fuelSpend,
+        defSpend: def,
+        gallons: gal,
+        fills: fills.get(k) ?? 0,
+        ppg,
         net: n,
         fsc: f,
         fuelPctNet: n > 0 ? fuelSpend / n : null,
@@ -247,4 +267,35 @@ export const fuelVsRevenue = (
     latest: months.length ? months[months.length - 1] : null,
     ...pickFscMonths(months, now),
   };
+};
+
+// Coverage graded against the month's EXPECTED coverage — the FSC standard —
+// never against 100%: a surcharge only pays the price above the peg on loaded
+// miles, so demanding 100% shows red forever. On par (≥ expected) is par;
+// within 5 points is close; further short is short (FSC leaking — loads
+// booked light on surcharge or deadhead eating the collected miles). No bar
+// computable → unknown: never graded, never green by default.
+export type CoverGrade = "par" | "close" | "short" | "unknown";
+export const coverGrade = (c: number | null, exp: number | null): CoverGrade => {
+  if (c == null) return "unknown";
+  if (exp == null) return "unknown";
+  if (c >= exp) return "par";
+  if (c >= exp - 0.05) return "close";
+  return "short";
+};
+
+const money0 = (n: number): string => `$${Math.round(n).toLocaleString("en-US")}`;
+
+// The month's read, in words (the Fuel page sheet, call 2): "on par",
+// "near par", "short · $1,250 under par" — the dollars short of what the
+// schedule owed at par, not of 100% of the fuel.
+export const coverageWord = (m: FuelMonth, parUnavailable = false): { grade: CoverGrade; word: string } => {
+  const exp = parUnavailable ? null : m.expectedCoverage;
+  const grade = coverGrade(m.fscCoverage, exp);
+  if (grade === "par") return { grade, word: "on par" };
+  if (grade === "close") return { grade, word: "near par" };
+  if (grade === "short") return { grade, word: `short · ${money0((exp as number) * m.fuelSpend - m.fsc)} under par` };
+  if (parUnavailable) return { grade, word: "par unavailable" };
+  if (m.fscCoverage == null) return { grade, word: "no fuel logged" };
+  return { grade, word: "par unknown" };
 };

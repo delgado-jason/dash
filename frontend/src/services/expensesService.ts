@@ -33,6 +33,7 @@ const coercePeriod = (p: any): ExpensePeriod => ({
   fixed_total: num(p.fixed_total),
   variable_total: num(p.variable_total),
   repairs_total: num(p.repairs_total),
+  fuel_total: num(p.fuel_total),
   lines: p.lines ? p.lines.map(coerceLine) : undefined,
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */

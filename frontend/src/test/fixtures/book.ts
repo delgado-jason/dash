@@ -406,6 +406,7 @@ export const syntheticBook = (): Book => {
       odometer_reading: o,
       apu_hours: null,
       filled_to_top: true, // the book's fills are full tanks (GL-154)
+      kind: "diesel", // every fill on the book is diesel (migration 113)
       company_name: "Fuel Network A",
       fuel_city: city,
       fuel_state: state,

@@ -1,3 +1,5 @@
+export type FuelKind = "diesel" | "def";
+
 export interface FuelEntry {
   fuel_entry_id: string;
   truck_id: string;
@@ -13,6 +15,10 @@ export interface FuelEntry {
   // only a ticked fill closes a tank window. Ticked by default on the form;
   // history was backfilled by the old 120-gallon rule (migration 093).
   filled_to_top: boolean;
+  // diesel | def (migration 113, the Fuel page sheet call 6). A DEF fill
+  // carries gallons and the total, never closes a tank and never enters MPG;
+  // it counts in the thirty-day cost per mile the way it leaves the pocket.
+  kind: FuelKind;
   company_name: string | null;
   fuel_city: string | null;
   fuel_state: string;
@@ -35,6 +41,7 @@ export interface FuelEntryInput {
   odometer_reading: number;
   apu_hours?: number | null;
   filled_to_top?: boolean; // the form always sends it; absent lets the column default (true) stand
+  kind?: FuelKind; // absent lets the column default (diesel) stand
   company_name?: string | null;
   fuel_city?: string | null;
   fuel_state: string;
