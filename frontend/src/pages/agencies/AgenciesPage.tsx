@@ -31,8 +31,8 @@ import { AgencyForm } from "@/components/agencies/AgencyForm";
 
 // /agencies — the book rolled up by agency (Agencies Nod Sheet, decision 7A).
 // One row per desk: what it delivered, what it paid per mile against the live
-// ladder, who works there and how many of them the owner has tiered. The
-// people keep their own numbers and tiers on their own pages — this page never
+// ladder, who works there and when it last had freight. The
+// people keep their own numbers and your rating on their own pages — this page never
 // re-grades anybody.
 //
 // It reads the Relationships data hook rather than a second one of its own: the
@@ -44,7 +44,7 @@ const WINDOW_TABS = AGENCY_WINDOWS.map((w) => ({ value: w, label: WINDOW_LABEL[w
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// Line 2 of a row: who works this desk, each with their tier word, then when
+// Line 2 of a row: who works this desk, then when
 // the agency last had freight. Three names is plenty — the agency page lists
 // them all.
 //
