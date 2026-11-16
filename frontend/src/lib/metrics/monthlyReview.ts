@@ -2,10 +2,9 @@
 // judge on the TRAILING 90 DAYS — at ~8 loads/month a single month is noise
 // and the quarter is evidence. Same ~90-day doctrine as break-even and the
 // QBO margin (fuel dropped to 30 days on 2026-09-16 — diesel moves faster
-// than a book of agents does). The verdicts themselves moved to
-// lib/relationships/review.ts with REL-01 v2.0 (they are the re-tier
-// suggestion's direction now); what stays here is the window every board on
-// the Review judges on.
+// than a book of agents does). The verdicts that once read this window
+// retired with the Relationships feature (v1.294.0); what stays here is the
+// window itself.
 
 const DAY = 86_400_000;
 const keyOf = (d: Date) => d.toISOString().slice(0, 10);

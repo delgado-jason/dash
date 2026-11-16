@@ -44,8 +44,6 @@ const WINDOW_TABS = AGENCY_WINDOWS.map((w) => ({ value: w, label: WINDOW_LABEL[w
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-const tierWord = (tier: number | null): string => (tier == null ? "" : ` T${tier}`);
-
 // Line 2 of a row: who works this desk, each with their tier word, then when
 // the agency last had freight. Three names is plenty — the agency page lists
 // them all.
@@ -54,7 +52,7 @@ const tierWord = (tier: number | null): string => (tier == null ? "" : ` T${tier
 // ahead of today is "picks up Sep 14" (the mock's CPL row), never "last load
 // Sep 14" for a load that has not moved yet.
 const agencyContext = (row: AgencyRowModel): string => {
-  const names = row.agents.map((a) => `${nameOf(a.agent)}${tierWord(a.tier)}`);
+  const names = row.agents.map((a) => nameOf(a.agent));
   const facts: string[] = [];
   if (names.length > 3) facts.push(`${names.slice(0, 3).join(" · ")} +${names.length - 3}`);
   else if (names.length > 0) facts.push(names.join(" · "));
@@ -216,11 +214,7 @@ const AgenciesPage = () => {
           key="agents"
           value={<b className="text-ink">{row.agents.length}</b>}
           sub={
-            row.agents.length === 0
-              ? "nobody filed"
-              : row.tieredCount > 0
-                ? `${row.tieredCount} tiered`
-                : "prospect"
+            row.agents.length === 0 ? "nobody filed" : "on file"
           }
         />,
       ]}

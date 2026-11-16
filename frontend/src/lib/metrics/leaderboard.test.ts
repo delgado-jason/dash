@@ -27,7 +27,6 @@ const agent = (id: string, agency_id: string | null, over: Partial<Agent> = {}):
   first_name: "F",
   last_name: id.toUpperCase(),
   preferred_contact: null,
-  relationship_tier: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
   ...over,

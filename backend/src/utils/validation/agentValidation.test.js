@@ -4,7 +4,6 @@ import {
   normalizeAgentText,
   validateAgentPatch,
   validateAgentCreate,
-  tierChangeGate,
 } from "./agentValidation.js";
 
 describe("agency_id — optional since 073", () => {
@@ -89,35 +88,6 @@ describe("posting_code — the agent's own code on the bill", () => {
   });
 });
 
-describe("relationship_tier — 1, 2, 3 or no tier", () => {
-  test("null clears the tier (a Prospect); 1–3 are the owner's tiers", () => {
-    assert.deepEqual(validateAgentPatch({ relationship_tier: null }), []);
-    for (const t of [1, 2, 3]) assert.deepEqual(validateAgentPatch({ relationship_tier: t }), [], String(t));
-    assert.deepEqual(validateAgentCreate({ first_name: "D", last_name: "R", relationship_tier: null }), []);
-  });
-
-  test("create never takes a tier — even a valid one is the side door around the owner's gate", () => {
-    for (const t of [1, 2, 3, 7]) {
-      assert.deepEqual(
-        validateAgentCreate({ first_name: "D", last_name: "R", relationship_tier: t }),
-        ["a new agent has no tier — the owner sets one from the book"],
-        String(t),
-      );
-    }
-    assert.deepEqual(validateAgentCreate({ first_name: "D", last_name: "R" }), []);
-  });
-
-  test("anything outside 1–3, or not an integer, is refused", () => {
-    for (const bad of [0, 4, 2.5, "2", "one"]) {
-      assert.deepEqual(
-        validateAgentPatch({ relationship_tier: bad }),
-        ["relationship_tier must be 1, 2, 3, or null"],
-        String(bad),
-      );
-    }
-  });
-});
-
 describe("best_time_to_call", () => {
   test("null clears it; a short note passes; blank normalizes to null", () => {
     assert.deepEqual(validateAgentPatch({ best_time_to_call: null }), []);
@@ -135,53 +105,6 @@ describe("best_time_to_call", () => {
     assert.deepEqual(validateAgentPatch({ best_time_to_call: "x".repeat(81) }), [
       "best_time_to_call cannot be more than 80 characters",
     ]);
-  });
-});
-
-describe("tierChangeGate — the owner sets tiers, with a reason", () => {
-  test("no tier in the patch → nothing to gate", () => {
-    assert.deepEqual(tierChangeGate({ from: 2, to: undefined, reason: undefined, role: "dispatcher" }), {
-      changed: false,
-      error: null,
-    });
-  });
-
-  test("the same tier again is not a change — no reason, no role needed", () => {
-    assert.deepEqual(tierChangeGate({ from: 2, to: 2, role: "dispatcher" }), { changed: false, error: null });
-    assert.deepEqual(tierChangeGate({ from: null, to: null, role: "dispatcher" }), { changed: false, error: null });
-    assert.deepEqual(tierChangeGate({ from: undefined, to: null, role: "dispatcher" }), { changed: false, error: null });
-  });
-
-  test("a dispatcher can never move a tier, reason or not", () => {
-    assert.deepEqual(tierChangeGate({ from: 2, to: 1, reason: "top RPM", role: "dispatcher" }), {
-      changed: true,
-      error: { status: 403, message: "Only the owner sets tiers." },
-    });
-  });
-
-  test("the owner needs a written reason — blank is not a reason", () => {
-    for (const reason of [undefined, null, "", "   ", 7]) {
-      assert.deepEqual(
-        tierChangeGate({ from: 2, to: 1, reason, role: "admin" }),
-        { changed: true, error: { status: 400, message: "A tier change needs a reason." } },
-        String(reason),
-      );
-    }
-  });
-
-  test("the owner with a reason passes — including to and from 'no tier'", () => {
-    assert.deepEqual(tierChangeGate({ from: 2, to: 1, reason: "$6.94 all-in · above Strong", role: "admin" }), {
-      changed: true,
-      error: null,
-    });
-    assert.deepEqual(tierChangeGate({ from: null, to: 3, reason: "third load landed", role: "admin" }), {
-      changed: true,
-      error: null,
-    });
-    assert.deepEqual(tierChangeGate({ from: 1, to: null, reason: "under three loads", role: "admin" }), {
-      changed: true,
-      error: null,
-    });
   });
 });
 

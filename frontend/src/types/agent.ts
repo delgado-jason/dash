@@ -36,11 +36,6 @@ export interface Agent {
   park_reason?: string | null;
   // Claimed capability, mirroring the load_type enum.
   freight_types?: string[];
-  // REL-01 v2.0: the tier is the OWNER'S explicit call (1/2/3) or null = no
-  // tier — a Prospect, or dormant → Parked (derived, lib/relationships/buckets).
-  // dash suggests a tier from all-in RPM; it never writes one.
-  relationship_tier: number | null;
-  tier_set_at?: string | null;
   agent_city?: string | null;
   agent_state?: string | null;
   source?: string | null;

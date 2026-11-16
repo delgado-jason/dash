@@ -18,12 +18,8 @@ export interface AgentPatchPayload {
   park_reason?: string | null;
   freight_types?: string[];
   // `reason` rides along with a rating change (with `changed_by` initials) AND
-  // with a tier change (REL-01 v2.0: the owner sets tiers, always with a
-  // written reason — the backend refuses a tier move without one).
   reason?: string;
   changed_by?: string; // only when rating changes
-  // 1 | 2 | 3, or null = no tier (back to Prospect). Owner only.
-  relationship_tier?: number | null;
   agent_city?: string | null;
   agent_state?: string | null;
   source?: string | null;

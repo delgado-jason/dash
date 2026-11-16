@@ -49,7 +49,6 @@ const ALLOWED: Record<string, number> = {
   "foreman.ts": 2,
   "odometer.ts": 1,
   "perDay.ts": 1,
-  "relationships.ts": 1,
 };
 
 describe("one-status-rule ratchet · the money engines", () => {

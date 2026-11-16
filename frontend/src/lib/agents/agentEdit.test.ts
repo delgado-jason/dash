@@ -21,8 +21,6 @@ const agent: Agent = {
   preferred_contact: "phone",
   rating: 4,
   notes: "Runs the yard herself.",
-  relationship_tier: 1,
-  tier_set_at: "2026-09-01T00:00:00.000Z",
   agent_city: "Tulsa",
   agent_state: "OK",
   created_at: "2026-01-01T00:00:00.000Z",
@@ -225,7 +223,7 @@ describe("buildAgentPatch", () => {
     });
   });
 
-  it("never carries rating, tier, tier_set_at or notes, even when the agent has them", () => {
+  it("never carries rating or notes, even when the agent has them", () => {
     const patch = buildAgentPatch(agent, {
       ...draft,
       first_name: "Dani",
@@ -239,8 +237,6 @@ describe("buildAgentPatch", () => {
     });
     expect(patch).not.toBeNull();
     expect(patch).not.toHaveProperty("rating");
-    expect(patch).not.toHaveProperty("relationship_tier");
-    expect(patch).not.toHaveProperty("tier_set_at");
     expect(patch).not.toHaveProperty("notes");
     expect(Object.keys(patch!).sort()).toEqual([
       "agency_id",

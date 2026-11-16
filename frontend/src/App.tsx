@@ -16,11 +16,6 @@ import MarketPage from "@/pages/MarketPage";
 import PerDiemPage from "@/pages/PerDiemPage";
 import StatusPage from "@/pages/StatusPage";
 import CashFlowPage from "@/pages/CashFlowPage";
-import RelationshipsLayout from "@/pages/relationships/RelationshipsLayout";
-import TodayView from "@/pages/relationships/TodayView";
-import CallsView from "@/pages/relationships/CallsView";
-import TiersView from "@/pages/relationships/TiersView";
-import ReviewView from "@/pages/relationships/ReviewView";
 import MaintenancePage from "@/pages/MaintenancePage";
 import MaintenanceReportPage from "@/pages/MaintenanceReportPage";
 import AgentsPage from "@/pages/AgentsPage";
@@ -133,19 +128,6 @@ const App = () => {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/dispatcher/:id" element={<DispatcherPage />} />
           <Route path="/my-recap" element={<DispatcherRecapPage />} />
-          {/* Brandie's workflow — Today · Call list · Tiers · Review under one
-              shell; the owner-only tier controls live inside the agent sheet. */}
-          <Route path="/relationships" element={<RelationshipsLayout />}>
-            <Route index element={<Navigate to="today" replace />} />
-            <Route path="today" element={<TodayView />} />
-            {/* /calls/:agentId is the call screen — a route, so a refresh
-                mid-call lands back on the call; one element so the list's
-                filters survive the push. */}
-            <Route path="calls/:agentId?" element={<CallsView />} />
-            <Route path="tiers" element={<TiersView />} />
-            <Route path="review" element={<ReviewView />} />
-          </Route>
-
           {/* Owner-only — a dispatcher is redirected to /dashboard (see roles.ts) */}
           <Route element={<AdminRoute />}>
             <Route path="/expenses" element={<ExpensesPage />} />

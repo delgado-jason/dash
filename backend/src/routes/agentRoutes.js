@@ -7,7 +7,6 @@ import {
   patchAgent,
   deleteAgent,
 } from "../services/agentServices.js";
-import { holdTier } from "../services/agentTierHistoryServices.js";
 
 const router = express.Router();
 router.use(requireAuth);
@@ -113,7 +112,7 @@ router.patch("/:agent_id", async (req, res) => {
     const agent_id = req.params.agent_id;
     const data = req.body;
 
-    // req.user carries who is acting (role, self_id) — the tier rule needs it.
+    // req.user carries who is acting (role, self_id).
     const agent = await patchAgent(user_id, agent_id, data, req.user);
 
     return res.status(200).json({
@@ -144,26 +143,6 @@ router.patch("/:agent_id", async (req, res) => {
       error: "Internal Server Error",
       message: err.message,
     });
-  }
-});
-
-// ---- HOLD A TIER SUGGESTION ----
-// The owner's "not now" on a re-tier suggestion (REL-01 v2.0 §5G): a history
-// row with from = to = the current tier and the evidence in its reason, so
-// the Review stops asking until the numbers change. Owner only, like the tier
-// itself; the agent row is untouched.
-router.post("/:agent_id/tier-hold", async (req, res) => {
-  try {
-    const history = await holdTier(req.user.user_id, req.params.agent_id, req.body, req.user);
-    return res.status(201).json({ message: "Hold recorded", history });
-  } catch (err) {
-    if (err.type === "not_found" || err.type === "forbidden_error") {
-      return res.status(err.statusCode).json({ error: err.message });
-    }
-    if (err.type === "validation") {
-      return res.status(err.statusCode).json({ error: err.message, details: err.details });
-    }
-    return res.status(500).json({ error: "Internal Server Error", message: err.message });
   }
 });
 

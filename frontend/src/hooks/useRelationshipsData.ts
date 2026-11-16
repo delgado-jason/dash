@@ -11,12 +11,10 @@ import { getAgencies } from "@/services/agenciesService";
 import { getAgentContacts, type AgentContact } from "@/services/agentContactsService";
 import { getAgentCoverage, type AgentCoverage } from "@/services/agentCoverageService";
 import { getAgentNotes } from "@/services/agentNotesService";
-import { getTierHistory, type TierHistoryRow } from "@/services/agentTierHistoryService";
-import { getRelationshipReviews, type RelationshipReview } from "@/services/relationshipReviewsService";
 import { getUser } from "@/services/teamService";
 
-// Everything the Relationships surface reads, fetched once in the layout and
-// handed to the views through the outlet context. Each slice fails on its
+// Everything the agencies pages read (the Relationships views that shared this
+// hook retired in v1.294.0), fetched once and handed down. Each slice fails on its
 // own: a missing coverage list degrades the sheet's Markets, a failed loads
 // fetch shows a warn line and flips `loadsReady` off so the views withhold
 // every loads-derived fact — never confident zeros. Today also reads the
@@ -35,8 +33,6 @@ export interface SliceErrors {
   contacts?: string;
   agencies?: string;
   notes?: string;
-  history?: string;
-  reviews?: string;
 }
 
 export const CLOCK_TICK_MS = 60_000;
@@ -53,8 +49,6 @@ const fetchBook = () =>
     getAgencies(),
     getAgentCoverage(), // never rejects — degrades to []
     getAgentNotes(), // rejects on failure — its own slice error, never a silent []
-    getTierHistory(), // its own slice error — an empty trail would lift every hold
-    getRelationshipReviews(), // its own slice error — an empty list would read "unsigned"
   ]);
 type BookResults = Awaited<ReturnType<typeof fetchBook>>;
 
@@ -87,8 +81,6 @@ export const useRelationshipsData = () => {
   const [contacts, setContacts] = useState<AgentContact[]>([]);
   const [coverage, setCoverage] = useState<AgentCoverage[]>([]);
   const [notes, setNotes] = useState<AgentNote[]>([]);
-  const [history, setHistory] = useState<TierHistoryRow[]>([]);
-  const [reviews, setReviews] = useState<RelationshipReview[]>([]);
   const [signer, setSigner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<SliceErrors>({});
@@ -96,21 +88,17 @@ export const useRelationshipsData = () => {
   // tab left open does not keep yesterday's "days since".
   const [refreshedAt, setRefreshedAt] = useState(() => Date.now());
 
-  const applyBook = useCallback(([a, c, b, cov, n, h, r]: BookResults) => {
+  const applyBook = useCallback(([a, c, b, cov, n]: BookResults) => {
     if (a.status === "fulfilled") setAgents(a.value);
     if (c.status === "fulfilled") setContacts(c.value);
     if (b.status === "fulfilled") setAgencies(b.value);
     if (cov.status === "fulfilled") setCoverage(cov.value);
     if (n.status === "fulfilled") setNotes(n.value);
-    if (h.status === "fulfilled") setHistory(h.value);
-    if (r.status === "fulfilled") setReviews(r.value);
     setErrors({
       agents: messageOf(a, "couldn't load the agents"),
       contacts: messageOf(c, "couldn't load the contact log"),
       agencies: messageOf(b, "couldn't load the agencies"),
       notes: messageOf(n, "couldn't load the agent notes"),
-      history: messageOf(h, "couldn't load the tier history"),
-      reviews: messageOf(r, "couldn't load the sign-offs"),
     });
     setRefreshedAt(Date.now());
     setLoading(false);
@@ -152,8 +140,6 @@ export const useRelationshipsData = () => {
     contacts,
     coverage,
     notes,
-    history,
-    reviews,
     coords,
     signer,
     loads,

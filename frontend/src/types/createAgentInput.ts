@@ -16,7 +16,5 @@ export interface CreateAgentInput {
   agent_state?: string | null;
   source?: string | null;
   best_time_to_call?: string | null;
-  // No relationship_tier here on purpose: a new agent lands with no tier (a
-  // Prospect) and the server refuses one on create — the owner sets tiers
   // later, with a reason, through the gated PATCH.
 }

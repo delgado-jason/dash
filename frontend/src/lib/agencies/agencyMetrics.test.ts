@@ -39,7 +39,6 @@ const agent = (agent_id: string, over: Partial<Agent> = {}): Agent => ({
   first_name: "First",
   last_name: agent_id,
   preferred_contact: null,
-  relationship_tier: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
   ...over,
@@ -172,7 +171,6 @@ describe("agencyRollup", () => {
     expect(rows[0].lastLoad).toBeNull();
     expect(rows[0].daysSinceLoad).toBeNull();
     expect(rows[0].agents).toEqual([]);
-    expect(rows[0].tieredCount).toBe(0);
   });
 
   it("no ladder → band null, even with a real RPM", () => {
@@ -356,8 +354,8 @@ describe("agencyRollup", () => {
     expect(rows[0].lastLoad).toBeNull();
   });
 
-  it("keeps each person's own tier, code and numbers", () => {
-    const eric = agent("eric", { agency_id: "ag1", agency_code: "CPL", posting_code: "MAM", relationship_tier: 1 });
+  it("keeps each person's own code and numbers", () => {
+    const eric = agent("eric", { agency_id: "ag1", agency_code: "CPL", posting_code: "MAM" });
     const rich = agent("rich", { agency_id: "ag1", agency_code: "CPL", posting_code: null });
     const contacts: MeaningfulContactLike[] = [
       { agent_id: "eric", contacted_at: "2026-09-08T14:00:00Z", direction: "outbound", method: "call", outcome: "reached" },
@@ -374,7 +372,6 @@ describe("agencyRollup", () => {
       NOW,
     );
     const [ericRow, richRow] = rows[0].agents;
-    expect(ericRow.tier).toBe(1);
     expect(ericRow.postingCode).toEqual({ code: "MAM", kind: "posting" });
     expect(ericRow.delivered).toBe(1);
     expect(ericRow.allInRpm).toBeCloseTo(6, 5);
@@ -383,10 +380,8 @@ describe("agencyRollup", () => {
     expect(ericRow.lastContact).toBe("2026-09-08");
     expect(ericRow.daysSinceContact).toBe(5);
     expect(richRow.postingCode).toEqual({ code: "CPL", kind: "agency" });
-    expect(richRow.tier).toBeNull();
     expect(richRow.lastContact).toBeNull();
     expect(richRow.daysSinceContact).toBeNull();
-    expect(rows[0].tieredCount).toBe(1);
   });
 
   it("counts inbound since system start, not over the window — and on the BOOKING day, not the pickup", () => {
@@ -599,7 +594,7 @@ describe("agencyReport", () => {
   it("prints the window, a line per agency that ran, then the shelf", () => {
     const rollup = agencyRollup(
       [agency("ag1", "CPL", { name: "Central Pennsylvania Logistics Inc" }), agency("ag2", "ZZZ")],
-      [agent("eric", { agency_id: "ag1", relationship_tier: 1 })],
+      [agent("eric", { agency_id: "ag1" })],
       [load("l1", { agency_id: "ag1", agent_id: "eric" })],
       [],
       LADDER,
@@ -613,13 +608,13 @@ describe("agencyReport", () => {
     const text = agencyReport(rollup, shelf, "12 months", "2026-01-01", NOW);
     expect(text).toContain("AGENCIES · 12 months · as of 2026-09-13");
     expect(text).toContain(
-      "Central Pennsylvania Logistics Inc · CPL · 1 load · $6,000 · $6.00 all-in · above Target · 1 agent (1 tiered)",
+      "Central Pennsylvania Logistics Inc · CPL · 1 load · $6,000 · $6.00 all-in · above Target · 1 agent",
     );
     // The agency that delivered nothing is left out rather than printed as zeros.
     expect(text).not.toContain("ZZZ");
     expect(text).toContain("SETTLEMENT-ONLY · 2026 · 1 code · 1 load");
     expect(text).toContain("DLJ · no agency on file · 1 load · $1,200 · first paid 2026-02-14");
-    expect(text).toContain("These never enter the ladder, the tiers or the Foreman.");
+    expect(text).toContain("These never enter the ladder or the Foreman.");
   });
 
   it("says so plainly when nothing delivered and nothing is owed", () => {
