@@ -314,9 +314,11 @@ const NAV: { group: string; items: string[] }[] = [
       "Per diem — the meal-allowance deduction",
       "Deadhead",
       "Fuel economy (MPG)",
-      "Latest tank — last fill-up scored",
-      "Diesel price — you vs national",
+      "Diesel price — you vs national, and where you buy",
       "Fuel vs revenue — is the surcharge covering your fuel?",
+      "Fuel by state — Landstar's fuel-tax line",
+      "Fuel — the books vs the log",
+      "DEF — a kind, never a tank",
     ],
   },
   {
@@ -2612,15 +2614,15 @@ const GuidePage = () => {
 
           <Metric
             title="Fuel economy (MPG)"
-            answers="Real MPG, measured tank to tank — not the dash estimate."
+            answers="Real MPG, measured tank to tank — not the dash estimate — and how the last tank did, as one sentence."
             sources={[
               { label: "Fuel", to: "/fuel-entries" },
               { label: "Dashboard", to: "/dashboard" },
             ]}
           >
             <Formula>
-              MPG = miles between full fills ÷ every gallon added in that
-              stretch
+              MPG = miles between full fills ÷ every gallon of diesel added in
+              that stretch
             </Formula>
             <Why>
               A fill is a <span className="text-light">full tank</span> when you
@@ -2631,73 +2633,88 @@ const GuidePage = () => {
               2026 "full" was a guess, 120 gallons or more; every older fill was
               marked by that rule, so history reads as it did.) Measuring
               full-to-full is why it's honest — actual pump gallons against
-              actual odometer miles. The fill-up form also takes an optional{" "}
-              <span className="text-light">APU hours</span> reading — nothing to
+              actual odometer miles. A DEF fill never closes a tank and never
+              enters MPG — see{" "}
+              <span className="text-light">DEF — a kind, never a tank</span> below.
+            </Why>
+            <Why>
+              The Fuel page reads in five parts, the money first:{" "}
+              <span className="text-light">01 the money</span> (is the surcharge
+              paying for the fuel), <span className="text-light">02 the tanks</span>,{" "}
+              <span className="text-light">03 where you buy</span>,{" "}
+              <span className="text-light">04 the books vs the log</span> and{" "}
+              <span className="text-light">05 the log</span>. The tanks part
+              draws one point per closed tank with your lifetime MPG as a line
+              across them — the last twelve, every tank behind "all" — and reads
+              the last tank as one sentence: when it closed and where, its miles,
+              gallons and MPG against your lifetime and the tank before it, what
+              it cost, its $/mile against the thirty-day rate, and its $/gal
+              against the EIA's figure for that month. The same figures the old
+              scorecard carried, with no stamp and no streak — a number says more
+              than a badge. A full row in the log prints its MPG in the MPG
+              column; a partial prints a dash.
+            </Why>
+            <Why>
+              The fill-up form opens knowing what the book knows: the date is
+              today unless you change it, the odometer box shows the last
+              reading and the day it was taken before you type (the rule that
+              refuses a reading 1,000 miles back still stands behind it), and
+              the <span className="text-light">APU hours</span> box — nothing to
               do with MPG, but it re-anchors the APU's{" "}
               <a href="#apu-hours-the-projection" className="text-amber-light">
                 hours projection
               </a>{" "}
-              for free while you're standing at the truck.
+              for free while you're standing at the truck — shows its last
+              reading too. Vendor and state remember your last stop.
             </Why>
           </Metric>
 
           <Metric
-            title="Latest tank — last fill-up scored"
-            answers="How your most recent full tank did against your own history."
-            sources={[{ label: "Fuel", to: "/fuel-entries" }]}
-          >
-            <Why>
-              The card at the top of the Fuel page scores your latest full tank:{" "}
-              <span className="text-light">MPG</span> against your lifetime
-              average (with vs-last-tank as a side note),{" "}
-              <span className="text-light">fuel cost per mile</span> — this
-              tank's $/gal ÷ MPG — against your{" "}
-              <span className="text-light">30-day average</span> (it needs at
-              least two tanks inside that month; one tank alone has nothing
-              honest to compare against), and the tank's{" "}
-              <span className="text-light">$/gal versus the national price</span>.
-              Green is better, red is worse. It leans on your{" "}
-              <span className="text-light">average</span> rather than just the
-              last tank on purpose, so one heavy oversize run doesn't read as a
-              slump. Beat your best MPG and it marks a{" "}
-              <span style={{ color: "var(--color-amber-hi)" }}>NEW BEST</span>;
-              string together tanks at or above your average and it tallies the
-              streak.
-            </Why>
-          </Metric>
-
-          <Metric
-            title="Diesel price — you vs national"
-            answers="Are you buying fuel below the national average, month over month?"
+            title="Diesel price — you vs national, and where you buy"
+            answers="Are you buying fuel under the national average, month over month — and which truck stop costs you more on your own receipts?"
             sources={[{ label: "Fuel", to: "/fuel-entries" }]}
           >
             <Formula>
-              your $/gal (month) = Σ (gallons × price paid) ÷ Σ gallons
+              your $/gal (month) = Σ (diesel gallons × price paid) ÷ Σ diesel
+              gallons
               <br />
               national $/gal (month) = average of the EIA weekly retail prices
+              <br />
+              under by = the EIA's month − yours
             </Formula>
             <Why>
-              The Fuel page charts two monthly lines: your{" "}
-              <span style={{ color: "var(--color-amber-hi)" }}>
-                gallon-weighted average $/gal
-              </span>{" "}
-              from the fuel log, against the{" "}
-              <span style={{ color: "var(--color-status-info-text)" }}>
-                national retail diesel price
-              </span>{" "}
-              (the U.S. EIA weekly number, rolled up to monthly). Buying under
-              the national line means you're routing fuel stops well. The card
-              above the chart, <span className="text-light">You vs. national diesel</span>,
-              puts every gallon you bought in the{" "}
-              <span className="text-light">last 30 days</span> against the
-              EIA's latest week — a lifetime average against this week's price
-              would flatter you every time diesel climbs.
+              <span className="text-light">Where you buy</span> puts the numbers
+              beside the chart. The table reads each month since the log began:
+              your gallon-weighted $/gal, the EIA's U.S. retail average for the
+              month, and the dollar you bought under it — or over it, in red —
+              with one sentence on how the priced months went ("under the
+              national every month since the log began"). The chart beside it
+              draws the same two lines:{" "}
+              <span style={{ color: "var(--color-amber-hi)" }}>yours</span> and the{" "}
+              <span style={{ color: "var(--color-status-info-text)" }}>national</span>.
+              The answering line at the top of the page carries this month's gap
+              — your last thirty days against the EIA's figure for the month —
+              so one national price sits on the screen, not two.
+            </Why>
+            <Why>
+              <span className="text-light">By vendor</span> groups every diesel
+              fill by truck stop: fills, gallons and your $/gal at each, most
+              gallons first, and the one sentence they earn — the dearest chain
+              against the cheapest, both with at least three fills, and what the
+              gap came to across the dearest one's gallons. One truck stop is one
+              vendor: TA, Petro and TA·Petro fold to{" "}
+              <span className="text-light">TA·Petro</span>, Loves to{" "}
+              <span className="text-light">Love's</span>, Pilot and Flying J to{" "}
+              <span className="text-light">Pilot Flying J</span> — at the form's
+              boundary when you type one, and across the book when the line is
+              drawn. A fill with no vendor rides a "no vendor" row: a fact, not a
+              chain.
             </Why>
           </Metric>
 
           <Metric
             title="Fuel vs revenue — is the surcharge covering your fuel?"
-            answers="Two reads on your fuel each month: what slice of your net it eats, and whether the fuel surcharge you collect still pays for it."
+            answers="Two reads on your fuel each month: what slice of your net it eats, and whether the fuel surcharge you collect still pays for it. The money part leads the Fuel page."
             sources={[{ label: "Fuel", to: "/fuel-entries" }]}
           >
             <Formula>
@@ -2724,21 +2741,31 @@ const GuidePage = () => {
               fuel</span>. The schedule pays only the price ABOVE a contract peg
               (~$1.29/gal — fitted from Landstar's own weekly report in Nov 2026), on <span className="text-light">loaded miles
               only</span>: you eat the first peg-dollars of every gallon and
-              every deadhead mile by design. So the card grades you against{" "}
+              every deadhead mile by design. So the money part grades you against{" "}
               <span className="text-light">par</span> — what the schedule
-              actually owes at this month’s diesel price and your deadhead —
-              green at or above par, amber within 5 points, red beyond (FSC
-              leaking: loads booked light on surcharge, or deadhead eating the
-              collected miles). Par moves with diesel: pricier fuel raises it,
-              cheap fuel lowers it. Your MPG above the schedule’s 5.81 base is a
-              real bonus you keep. Only months with logged fuel are counted, so
-              a month you haven't entered fills for never shows a false 0%. The
-              card headlines the{" "}
+              actually owes at this month's diesel price and your deadhead —{" "}
+              <span className="text-light">on par</span> at or above it,{" "}
+              <span className="text-light">near par</span> within 5 points,{" "}
+              <span className="text-light">short · $X under par</span> beyond,
+              the dollars being what the schedule owed at par less what came in
+              (FSC leaking: loads booked light on surcharge, or deadhead eating
+              the collected miles). Par moves with diesel: pricier fuel raises
+              it, cheap fuel lowers it. Your MPG above the schedule's 5.81 base
+              is a real bonus you keep. Only months with logged fuel are counted,
+              so a month you haven't entered fills for never shows a false 0%.
+            </Why>
+            <Why>
+              The money part leads the page. Its first cell is the{" "}
               <span className="text-light">last complete month</span> — a month
               still running has fuel it hasn't bought yet and surcharge it hasn't
-              collected, so grading it would swing with the calendar. The running
-              month shows under the tiles as "so far", with its figures and no
-              grade.
+              collected, so grading it would swing with the calendar: covered
+              against par, the FSC against the fuel, the read in words, and
+              where par came from. The second cell is that month's fuel —
+              dollars, diesel gallons, $/gal, fills, and its DEF if any — with
+              fuel as a share of net. The third is the running month "so far",
+              with its figures and no grade. Under them a line chart draws
+              covered against par by month, and a table reads the last six
+              complete months: fuel, FSC, covered, par, and the word.
             </Why>
             <Why>
               <span className="text-light">Par from Landstar's own scale.</span>{" "}
@@ -2752,18 +2779,103 @@ const GuidePage = () => {
               cent). A month then reads the scale at its national average diesel
               price (this week's price for the month still running): expected
               surcharge = loaded miles × the rate, and par is that against the
-              fuel spend. The card says which it used —{" "}
+              fuel spend. The money part says which it used —{" "}
               <span className="text-light">
                 par on Landstar's scale at this week's $6.292: 86¢ a loaded mile
                 · the week's printed rate
               </span>
               . A pasted band table, if you ever have one, wins over the scale
-              while it is in force; with neither the card says{" "}
+              while it is in force; with neither it says{" "}
               <span className="text-light">par · estimate</span> and uses the peg
               formula above; with a scale but no national price for the month it
               says <span className="text-light">par unknown</span> and grades
               nothing, rather than hiding the estimate behind Landstar's name.
             </Why>
+          </Metric>
+
+          <Metric
+            title="Fuel by state — Landstar's fuel-tax line"
+            answers="The gallons by state are the check against the FUEL TAX Landstar takes on a settlement each month — not a tax you file."
+            sources={[{ label: "Fuel", to: "/fuel-entries" }]}
+          >
+            <Why>
+              A BCO does not file IFTA — Landstar does, and deducts{" "}
+              <span className="text-light">"SEP FUEL TAX"</span> and its kin on a
+              settlement each month, the month named in the line. The Fuel page
+              reads those lines from the settlements you already import and
+              prints them over the state strip — the months since your log
+              began, newest first. Your diesel gallons by state, below, are what
+              that tax is figured from: the strip is a ten-second check, not a
+              form to re-enter. DEF is not taxed by the mile and stays out.
+            </Why>
+            <Why>
+              The top five states draw as bars; the rest fold into a list you can
+              open. Fills with no state — the old import carried none — are named
+              on one line with their span, gallons and dollars: tap a row in the
+              log to give it a state, and the line burns down as you do. The
+              fill-up form has always required a state, so only the import can
+              sit there.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="Fuel — the books vs the log"
+            answers="Does the P&L's Fuel line agree with the receipts you logged, month by month?"
+            sources={[
+              { label: "Fuel", to: "/fuel-entries" },
+              { label: "Expenses", to: "/expenses" },
+            ]}
+          >
+            <Formula>
+              logged = Σ gallons × price on the fuel log that month, every kind
+              <br />
+              the books = the P&amp;L's Fuel line for the month
+            </Formula>
+            <Why>
+              The same strip the Maintenance page got for its repairs line. Each
+              month since the log began reads{" "}
+              <span className="text-light">exact</span>,{" "}
+              <span className="text-light">matches</span> (inside $100 or 5%),{" "}
+              <span className="text-light">$X more logged than filed</span> or{" "}
+              <span className="text-light">$X more in the books</span>. A month
+              with no P&amp;L says{" "}
+              <span className="text-light">no P&amp;L filed yet</span> — never
+              "matches"; the month the log began is a partial month and is not
+              read. A filed month with no Fuel line reads $0 of fuel, which is a
+              fact about the books, not a missing month. Unlike maintenance
+              nothing re-bases on the books: the thirty-day rate keeps reading
+              the pump, because fuel is priced by the receipt. A gap is the
+              question — receipts the accountant did not see, or card
+              settlements landing a month late.
+            </Why>
+          </Metric>
+
+          <Metric
+            title="DEF — a kind, never a tank"
+            answers="A DEF fill is logged as its own kind: gallons and a total, never a tank window, never MPG, always cost per mile."
+            sources={[{ label: "Fuel", to: "/fuel-entries" }]}
+          >
+            <Why>
+              The fill-up form has a kind:{" "}
+              <span className="text-light">Diesel</span> or{" "}
+              <span className="text-light">DEF</span>. A DEF row takes gallons and
+              the total paid like any fill and still carries the odometer, but
+              it never closes a tank (the tick is hidden, and the database
+              refuses the pair), never enters MPG or any $/gal — the vendor
+              line, the you-vs-national table and the monthly price are diesel
+              only — and <span className="text-light">does</span> count in the
+              thirty-day cost per mile the truck's cost-to-run and the cash
+              board read, because it left your pocket. The log's Kind column
+              reads <span className="text-light">DEF</span> on the row; the money
+              part names the month's DEF dollars beside the fuel. Logged as
+              diesel it would skew a tank; unlogged it is cost that vanishes.
+            </Why>
+            <Caveat title="The load page and DEF">
+              The load page prices a load's fuel from the diesel factors — your
+              thirty-day MPG and $/gal — so its estimate leaves out the DEF
+              share of cost per mile. Nothing on the book today; a follow-up
+              once DEF rows exist.
+            </Caveat>
           </Metric>
 
           <GroupHeading>

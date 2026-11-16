@@ -34,6 +34,8 @@ export interface ExpensePeriod {
    * which is different from a month with no P&L at all.
    */
   repairs_total?: number | null;
+  /** The month's Fuel line, summed server-side for the Fuel page's books-vs-log strip. */
+  fuel_total?: number | null;
   lines?: ExpenseLine[];
 }
 

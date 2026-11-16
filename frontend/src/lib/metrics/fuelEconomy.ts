@@ -14,23 +14,36 @@ interface FuelLike {
   odometer_reading: number;
   fuel_date: string; // 'YYYY-MM-DD'
   filled_to_top: boolean; // his word — the only thing that closes a window
+  // diesel | def (migration 113; the Fuel page sheet, call 6, nodded
+  // 2026-11-15). Absent on older callers and fixtures = diesel. A DEF fill
+  // carries gallons and a total and never a tank window: it is out of MPG and
+  // out of every $/gal, and in the cost per mile the way it leaves the pocket.
+  kind?: string | null;
 }
 
 const gal = (e: FuelLike) => Number(e.gallons);
 const ppg = (e: FuelLike) => Number(e.price_per_gallon);
 export const entryCost = (e: FuelLike): number => gal(e) * ppg(e);
-export const isFull = (e: FuelLike): boolean => e.filled_to_top === true;
+export const isDef = (e: { kind?: string | null }): boolean => e.kind === "def";
+// A DEF fill never closes a tank, whatever its tick says — the database
+// refuses the pair (fuel_entries_def_never_full); this is the belt.
+export const isFull = (e: FuelLike): boolean => e.filled_to_top === true && !isDef(e);
 
 export interface MpgWindow {
   toOdometer: number;
   date: string; // the closing full's date
   miles: number;
-  gallons: number;
-  cost: number;
+  gallons: number; // diesel — the gallons the miles were driven on
+  cost: number; // the diesel dollars
+  // DEF bought inside the window. It rides the pocket's cost per mile and
+  // never the MPG or the price per gallon.
+  defCost: number;
   mpg: number;
 }
 
 // One window per full tank: gallons = partials since the last full + this full.
+// A DEF fill between two fulls adds its dollars to the window and nothing else;
+// one after the last full waits for the next window, as a partial does.
 export const mpgWindows = (entries: FuelLike[]): MpgWindow[] => {
   const sorted = [...entries].sort(
     (a, b) => a.odometer_reading - b.odometer_reading,
@@ -39,6 +52,7 @@ export const mpgWindows = (entries: FuelLike[]): MpgWindow[] => {
   let open: FuelLike | null = null;
   let gallons = 0;
   let cost = 0;
+  let defCost = 0;
   for (const e of sorted) {
     if (!open) {
       // Nothing counts until the first full tank establishes a baseline.
@@ -46,7 +60,12 @@ export const mpgWindows = (entries: FuelLike[]): MpgWindow[] => {
         open = e;
         gallons = 0;
         cost = 0;
+        defCost = 0;
       }
+      continue;
+    }
+    if (isDef(e)) {
+      defCost += entryCost(e);
       continue;
     }
     gallons += gal(e);
@@ -60,12 +79,14 @@ export const mpgWindows = (entries: FuelLike[]): MpgWindow[] => {
           miles,
           gallons,
           cost,
+          defCost,
           mpg: miles / gallons,
         });
       }
       open = e;
       gallons = 0;
       cost = 0;
+      defCost = 0;
     }
   }
   return windows;
@@ -93,10 +114,14 @@ const windowStartKey = (now: Date): string => {
 };
 
 export interface FuelStats {
-  entryCount: number;
-  totalGallons: number;
-  totalSpend: number;
-  avgCostPerGallon: number | null; // lifetime, every gallon ever logged
+  entryCount: number; // every row on the log, DEF included
+  defCount: number;
+  totalGallons: number; // diesel — DEF is not fuel burned
+  totalSpend: number; // every dollar at the pump, diesel and DEF
+  dieselSpend: number;
+  defGallons: number;
+  defSpend: number;
+  avgCostPerGallon: number | null; // lifetime diesel $/gal, every diesel gallon ever logged
   totalMiles: number;
   avgMpg: number | null; // lifetime tank-window MPG — mechanical, not priced
   // THE canonical fuel $/mile, app-wide (Jason, 2026-08-18): tank-window
@@ -104,19 +129,24 @@ export interface FuelStats {
   // FUEL_WINDOW_DAYS days. Fuel prices are volatile — an all-time average
   // drifts from what diesel costs today. Every surface that quotes fuel cost
   // per mile must read this one number; null = no full-to-full window closed
-  // recently.
+  // recently. Since 2026-11-15 the spend is diesel AND the DEF bought inside
+  // those windows — what the miles cost the pocket.
   costPerMile30: number | null;
-  // The 30-day set split into its factors, so estimate surfaces can show
-  // "X mpg · $Y/gal" whose quotient IS costPerMile30 — never a second rate.
+  // The DEF share of costPerMile30: a true 0 when no DEF was bought in the
+  // recent windows, null when there is no recent window to read.
+  defPerMile30: number | null;
+  // The 30-day set split into its DIESEL factors, so estimate surfaces can
+  // show "X mpg · $Y/gal". Their quotient is the diesel cost per mile —
+  // costPerMile30 less defPerMile30 — never a second rate.
   mpg30: number | null;
   avgCostPerGallon30: number | null;
   windows30: number; // tank windows closed in the last FUEL_WINDOW_DAYS days
-  // What a gallon cost him lately: every fill dated inside the window, partials
-  // and all, tank windows or not. This is the PRICE question (the you-vs-
-  // national card, the answering line); the RATE question above stays on
-  // closed windows so its factors divide back to costPerMile30. The two can
-  // differ by a few cents — a partial after the last full is money spent but
-  // not yet miles measured.
+  // What a gallon of diesel cost him lately: every diesel fill dated inside
+  // the window, partials and all, tank windows or not. This is the PRICE
+  // question (the you-vs-national table, the answering line); the RATE
+  // question above stays on closed windows so its factors divide back. The
+  // two can differ by a few cents — a partial after the last full is money
+  // spent but not yet miles measured.
   paidPerGallon30: number | null;
   bestMpg: number | null;
   worstMpg: number | null;
@@ -125,8 +155,12 @@ export interface FuelStats {
 
 export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
   const windows = mpgWindows(entries);
-  const totalGallons = entries.reduce((s, e) => s + gal(e), 0);
-  const totalSpend = entries.reduce((s, e) => s + entryCost(e), 0);
+  const diesel = entries.filter((e) => !isDef(e));
+  const defs = entries.filter(isDef);
+  const totalGallons = diesel.reduce((s, e) => s + gal(e), 0);
+  const dieselSpend = diesel.reduce((s, e) => s + entryCost(e), 0);
+  const defGallons = defs.reduce((s, e) => s + gal(e), 0);
+  const defSpend = defs.reduce((s, e) => s + entryCost(e), 0);
   const totalMiles = windows.reduce((s, w) => s + w.miles, 0);
   const windowGallons = windows.reduce((s, w) => s + w.gallons, 0);
   const mpgs = windows.map((w) => w.mpg);
@@ -138,21 +172,27 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
   const recent = windows.filter((w) => String(w.date).slice(0, 10) >= startKey);
   const recentMiles = recent.reduce((s, w) => s + w.miles, 0);
   const recentSpend = recent.reduce((s, w) => s + w.cost, 0);
+  const recentDef = recent.reduce((s, w) => s + w.defCost, 0);
   const recentGallons = recent.reduce((s, w) => s + w.gallons, 0);
 
-  // The price question: every gallon bought inside the same window.
-  const recentFills = entries.filter((e) => String(e.fuel_date).slice(0, 10) >= startKey);
+  // The price question: every diesel gallon bought inside the same window.
+  const recentFills = diesel.filter((e) => String(e.fuel_date).slice(0, 10) >= startKey);
   const recentFillGallons = recentFills.reduce((s, e) => s + gal(e), 0);
   const recentFillSpend = recentFills.reduce((s, e) => s + entryCost(e), 0);
 
   return {
     entryCount: entries.length,
+    defCount: defs.length,
     totalGallons,
-    totalSpend,
-    avgCostPerGallon: totalGallons > 0 ? totalSpend / totalGallons : null,
+    totalSpend: dieselSpend + defSpend,
+    dieselSpend,
+    defGallons,
+    defSpend,
+    avgCostPerGallon: totalGallons > 0 ? dieselSpend / totalGallons : null,
     totalMiles,
     avgMpg: windowGallons > 0 ? totalMiles / windowGallons : null,
-    costPerMile30: recentMiles > 0 ? recentSpend / recentMiles : null,
+    costPerMile30: recentMiles > 0 ? (recentSpend + recentDef) / recentMiles : null,
+    defPerMile30: recentMiles > 0 ? recentDef / recentMiles : null,
     mpg30: recentGallons > 0 ? recentMiles / recentGallons : null,
     avgCostPerGallon30: recentGallons > 0 ? recentSpend / recentGallons : null,
     windows30: recent.length,
@@ -164,13 +204,13 @@ export const fuelStats = (entries: FuelLike[], now: Date): FuelStats => {
 };
 
 // A recap of the most recently COMPLETED tank (the latest full-to-full window),
-// scored against his own history — the "how did my last fill-up do?" card. All
-// deltas are signed so the UI colors them: MPG up is good, cost/mile and price
-// under national are good. Returns null until at least one full tank has closed.
+// read against his own history — the Fuel page's last-tank sentence. All
+// deltas are signed: MPG up is good, cost/mile and price under national are
+// good. Returns null until at least one full tank has closed.
 export interface TankRecap {
   tank: MpgWindow; // the latest completed tank
-  costPerMile: number; // this tank's fuel $/mile
-  pricePerGallon: number; // this tank's blended $/gal
+  costPerMile: number; // this tank's $/mile — its diesel and the DEF bought inside it
+  pricePerGallon: number; // this tank's blended diesel $/gal
   mpgVsAvg: number | null; // tank MPG − overall avg MPG (+ = better)
   mpgVsLast: number | null; // tank MPG − previous tank's MPG (+ = better)
   cpmVsAvg: number | null; // tank $/mile − 30-day $/mile (− = better/cheaper)
@@ -188,14 +228,14 @@ export const latestTankRecap = (
 
   const tank = w[w.length - 1];
   const prior = w.length >= 2 ? w[w.length - 2] : null;
-  const costPerMile = tank.cost / tank.miles;
+  const costPerMile = (tank.cost + tank.defCost) / tank.miles;
   const pricePerGallon = tank.cost / tank.gallons;
 
   const mpgVsAvg = stats.avgMpg != null ? tank.mpg - stats.avgMpg : null;
   const mpgVsLast = prior ? tank.mpg - prior.mpg : null;
   // The latest tank is itself IN the 30-day set — when it's the only member,
   // the "average" is just this tank and the delta is a vacuous $0.00. Null it
-  // so the card says "no average yet" instead of a green on-par stamp.
+  // so the sentence says "no average yet" instead of a vacuous on-par.
   const cpmVsAvg =
     stats.costPerMile30 != null && stats.windows30 > 1
       ? costPerMile - stats.costPerMile30
@@ -235,8 +275,8 @@ export const latestTankRecap = (
   };
 };
 
-// Gallon-weighted average price/gallon per calendar month, ascending — his own
-// line on the you-vs-national diesel chart.
+// Gallon-weighted average DIESEL price per calendar month, ascending — his own
+// line on the you-vs-national diesel chart. DEF is not diesel and is left out.
 export interface MonthPrice {
   month: string; // 'YYYY-MM'
   avgPrice: number;
@@ -244,6 +284,7 @@ export interface MonthPrice {
 export const monthlyFuelPrice = (entries: FuelLike[]): MonthPrice[] => {
   const byMonth = new Map<string, { cost: number; gallons: number }>();
   for (const e of entries) {
+    if (isDef(e)) continue;
     const month = String(e.fuel_date).slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(month)) continue;
     const g = byMonth.get(month) ?? { cost: 0, gallons: 0 };
@@ -284,6 +325,70 @@ export const dieselChartData = (
     you: avgPrice,
     national: nat.get(month) ?? null,
   }));
+};
+
+// You vs the national as numbers, newest month first — the table beside the
+// chart (the Fuel page sheet, call 3). `under` is the EIA's monthly average
+// less what you paid: positive = you bought under the national; null = the
+// EIA has no figure for the month.
+export interface PriceVsNationalRow extends DieselMonth {
+  under: number | null;
+}
+export const priceVsNational = (
+  entries: FuelLike[],
+  national: { month: string; value: number }[],
+): PriceVsNationalRow[] =>
+  dieselChartData(entries, national)
+    .map((r) => ({ ...r, under: r.national == null ? null : r.national - r.you }))
+    .reverse();
+
+// The one sentence the table earns: how the months the EIA has priced went.
+export const nationalVerdict = (rows: PriceVsNationalRow[]): string | null => {
+  const priced = rows.filter((r) => r.under != null);
+  if (priced.length === 0) return null;
+  const over = priced.filter((r) => (r.under as number) < 0).length;
+  if (priced.length === 1)
+    return over ? "over the national in the one month the EIA has priced" : "under the national in the one month the EIA has priced";
+  if (over === 0) return "under the national every month since the log began";
+  if (over === priced.length) return "over the national every month since the log began";
+  return `over the national in ${over} of ${priced.length} months`;
+};
+
+// The newest reading on the log — what the fill-up form says in its odometer
+// box before you type ("last 614,438 on Nov 14"). Newest by day, then the
+// higher reading on a day with two stops.
+export interface LastReading {
+  odometer: number;
+  date: string;
+}
+export const lastReading = (
+  entries: { odometer_reading: number; fuel_date: string }[],
+): LastReading | null => {
+  let best: LastReading | null = null;
+  for (const e of entries) {
+    const date = String(e.fuel_date).slice(0, 10);
+    if (
+      best == null ||
+      date > best.date ||
+      (date === best.date && e.odometer_reading > best.odometer)
+    )
+      best = { odometer: e.odometer_reading, date };
+  }
+  return best;
+};
+
+// The newest APU meter reading taken at a pump, for the form's APU box.
+export const lastApuReading = (
+  entries: { apu_hours?: number | null; fuel_date: string }[],
+): { hours: number; date: string } | null => {
+  let best: { hours: number; date: string } | null = null;
+  for (const e of entries) {
+    if (e.apu_hours == null) continue;
+    const date = String(e.fuel_date).slice(0, 10);
+    if (best == null || date > best.date || (date === best.date && e.apu_hours > best.hours))
+      best = { hours: e.apu_hours, date };
+  }
+  return best;
 };
 
 // Highest odometer reading across fill-ups (or null if none) — the fuel log is

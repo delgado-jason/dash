@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { validateFuelEntryCreate, validateFuelEntryPatch, validateFuelSequence, BACKWARDS_TOLERANCE_MI } from "./fuelValidation.js";
+import { validateFuelEntryCreate, validateFuelEntryPatch, validateFuelSequence, defNeverFull, BACKWARDS_TOLERANCE_MI } from "./fuelValidation.js";
 
 const NOW = new Date("2026-11-04T20:00:00Z");
 const fill = (over = {}) => ({ fuel_date: "2026-11-03", gallons: 100, price_per_gallon: 3.5, odometer_reading: 600000, fuel_state: "TX", ...over });
@@ -51,5 +51,24 @@ describe("filled_to_top — GL-154", () => {
   test("a patch checks it too", () => {
     assert.deepEqual(validateFuelEntryPatch({ filled_to_top: false }, { now: NOW }), []);
     assert.deepEqual(validateFuelEntryPatch({ filled_to_top: "no" }, { now: NOW }), ["filled_to_top must be true or false"]);
+  });
+});
+
+describe("kind — diesel or DEF (migration 113)", () => {
+  test("absent, diesel and def pass", () => {
+    for (const o of [{}, { kind: "diesel" }, { kind: "def", filled_to_top: false }])
+      assert.deepEqual(validateFuelEntryCreate(fill(o), { now: NOW }), []);
+  });
+  test("any other word is refused", () => {
+    for (const bad of ["gas", "DEF", "", null, 1])
+      assert.deepEqual(validateFuelEntryCreate(fill({ kind: bad }), { now: NOW }), ["kind must be 'diesel' or 'def'"]);
+  });
+  test("a DEF fill never closes a tank — the contradiction is refused on create and patch", () => {
+    assert.deepEqual(defNeverFull({ kind: "def", filled_to_top: true }), ["a DEF fill never closes a tank — untick filled to the top"]);
+    assert.deepEqual(defNeverFull({ kind: "def" }), []);
+    assert.deepEqual(defNeverFull({ kind: "diesel", filled_to_top: true }), []);
+    assert.deepEqual(validateFuelEntryCreate(fill({ kind: "def", filled_to_top: true }), { now: NOW }), ["a DEF fill never closes a tank — untick filled to the top"]);
+    assert.deepEqual(validateFuelEntryPatch({ kind: "def", filled_to_top: true }, { now: NOW }), ["a DEF fill never closes a tank — untick filled to the top"]);
+    assert.deepEqual(validateFuelEntryPatch({ kind: "def" }, { now: NOW }), []);
   });
 });

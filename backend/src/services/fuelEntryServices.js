@@ -36,6 +36,7 @@ export async function getFuelEntries(user_id, truck_id) {
       odometer_reading,
       apu_hours,
       filled_to_top,
+      kind,
       company_name,
       fuel_city,
       fuel_state,
@@ -81,6 +82,7 @@ export async function getFuelEntry(user_id, fuel_entry_id) {
       odometer_reading,
       apu_hours,
       filled_to_top,
+      kind,
       company_name,
       fuel_city,
       fuel_state,
@@ -134,6 +136,10 @@ export async function createFuelEntry(user_id, truck_id, trip_id, data) {
     // GL-154 · ticked = the tank was filled to the top; only a ticked fill
     // closes a tank window. Left out, the column default (TRUE) stands.
     "filled_to_top",
+    // diesel | def (migration 113). A DEF fill never closes a tank: left
+    // unsaid, it is written as not filled to the top rather than letting the
+    // column default (TRUE) stand on a kind it cannot apply to.
+    "kind",
   ];
 
   for (const field in data) {
@@ -141,6 +147,7 @@ export async function createFuelEntry(user_id, truck_id, trip_id, data) {
       throw new ValidationError(`${field} not allowed`);
     }
   }
+  if (data.kind === "def" && data.filled_to_top === undefined) data.filled_to_top = false;
 
   // Run validateFuelEntryCreate
   const errors = validateFuelEntryCreate(data);
@@ -237,6 +244,7 @@ export async function patchFuelEntry(user_id, fuel_entry_id, data) {
     "fuel_city",
     "fuel_state",
     "filled_to_top",
+    "kind",
   ];
 
   // Throw error if data contains invalid field(s)
@@ -244,6 +252,7 @@ export async function patchFuelEntry(user_id, fuel_entry_id, data) {
     if (!allowedFields.includes(field))
       throw new ValidationError(`${field} not allowed`);
   }
+  if (data.kind === "def" && data.filled_to_top === undefined) data.filled_to_top = false;
   // ---- VALIDATION LOGIC ----
 
   // Must pass validation checks before query request

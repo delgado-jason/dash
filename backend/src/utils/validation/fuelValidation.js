@@ -122,6 +122,13 @@ const rules = {
     if (value === undefined) return;
     if (value !== true && value !== false) errors.push("filled_to_top must be true or false");
   },
+  // The Fuel page sheet (call 6, 2026-11-15): a fill is diesel or DEF. A DEF
+  // row carries gallons and the total, never closes a tank and never enters
+  // MPG. Absent leaves the column default ('diesel').
+  kind: (value, errors) => {
+    if (value === undefined) return;
+    if (value !== "diesel" && value !== "def") errors.push("kind must be 'diesel' or 'def'");
+  },
   company_name: (value, errors) => {
     if (value === undefined) return;
 
@@ -168,6 +175,10 @@ const rules = {
   },
 };
 
+// A DEF fill never closes a tank: the two words cannot be said together.
+export const defNeverFull = (data) =>
+  data.kind === "def" && data.filled_to_top === true ? ["a DEF fill never closes a tank — untick filled to the top"] : [];
+
 // ---- CREATE FUEL ENTRY VALIDATION ----
 export const validateFuelEntryCreate = (data, { previous = null, now = new Date() } = {}) => {
   const errors = [];
@@ -186,6 +197,7 @@ export const validateFuelEntryCreate = (data, { previous = null, now = new Date(
       rules[field](data[field], errors);
     }
   }
+  errors.push(...defNeverFull(data));
 
   if (errors.length === 0)
     errors.push(...validateFuelSequence({ ...data, previous }, now));
@@ -204,6 +216,7 @@ export const validateFuelEntryPatch = (data, { previous = null, existing = null,
       rules[field](data[field], errors);
     }
   }
+  errors.push(...defNeverFull(data));
 
   if (
     errors.length === 0 &&

@@ -16,6 +16,9 @@ const coerce = (f: any): FuelEntry => ({
   // Number(null) of 0 would be a meter reading nobody took.
   apu_hours: f.apu_hours == null ? null : Number(f.apu_hours),
   filled_to_top: f.filled_to_top === true,
+  // diesel | def (migration 113). Anything but "def" is diesel — the column
+  // defaults to it and every row before Nov 2026 is.
+  kind: f.kind === "def" ? "def" : "diesel",
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

@@ -51,6 +51,7 @@ const fuel = (over: Partial<FuelEntry>): FuelEntry => ({
   fuel_date: "2026-09-10",
   gallons: 130,
   filled_to_top: true,
+  kind: "diesel",
   price_per_gallon: 4,
   odometer_reading: 568737,
   apu_hours: null,
