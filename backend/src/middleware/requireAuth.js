@@ -1,4 +1,31 @@
+import crypto from "crypto";
 import { verifyToken, signToken } from "../utils/jwt.js";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The methods the watch token may use: it reads, it never writes.
+export const READ_METHODS = new Set(["GET", "HEAD"]);
+
+// The watch token in constant time. Unset means there is no such door.
+export function watchTokenMatches(given, expected) {
+  if (!expected || !given) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// What the watch token acts as: the owner, for reading — every GET the pages
+// read answers as it would to Jason — with `watch` set so a route can tell.
+export function watchUser(account) {
+  return {
+    user_id: account,
+    self_id: account,
+    account_id: account,
+    role: "admin",
+    watch: true,
+  };
+}
 
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -7,6 +34,23 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const token = header.split(" ")[1];
+
+  // The watch token: a read-only machine identity for the watcher on the DTS
+  // server and the morning integrity run. It reads as the owner of the account
+  // in DASH_SERVICE_ACCOUNT (the account the vault's token acts for too) and
+  // is refused on anything but a read. Checked before the JWT so a watcher
+  // never needs a password or a signed token that could slide into a session.
+  if (watchTokenMatches(token, process.env.DASH_WATCH_TOKEN)) {
+    const account = process.env.DASH_SERVICE_ACCOUNT;
+    if (!account || !UUID_RE.test(account)) {
+      return res.status(401).json({ message: "Watch access not configured" });
+    }
+    if (!READ_METHODS.has(req.method)) {
+      return res.status(403).json({ error: "The watch token reads only." });
+    }
+    req.user = watchUser(account);
+    return next();
+  }
 
   try {
     const payload = verifyToken(token);

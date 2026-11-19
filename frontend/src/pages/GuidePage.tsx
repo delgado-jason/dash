@@ -308,6 +308,7 @@ const NAV: { group: string; items: string[] }[] = [
       "ASSUMPTIONS — the planning inputs behind the board",
       "What dash refuses — a blank is never zero",
       "The Integrity page — what dash is working around",
+      "The app itself — opened, errors, the watcher",
       "The settlements — Landstar's actuals",
       "Six-month road — the rolling forecast",
       "Pretax margin — the real one",
@@ -2179,6 +2180,41 @@ const GuidePage = () => {
               line says what passed, so an empty list means every input was
               checked and present, not that nothing was looked at.
             </Why>
+          </Metric>
+
+          <Metric
+            title="The app itself — opened, errors, the watcher"
+            answers="dash records its own use and speaks when something is wrong, without waiting to be opened."
+            sources={[{ label: "Integrity", to: "/integrity" }]}
+          >
+            <Why>
+              Under the report, the owner's Integrity page carries{" "}
+              <span className="text-light">The app itself</span>: which pages
+              were opened in the last thirty days, by whom and how often (every
+              load page counts as one page, /loads/·, whatever the load), and
+              the errors the browser caught — a thrown error, an unhandled
+              promise, or a page that crashed while drawing, where you now get
+              a sentence and a Reload instead of a white screen. Both come from
+              dash's own beacons; a beacon that fails is never felt on the
+              page, and a loop reports a minute's worth, not forever.{" "}
+              <span className="text-light">The watcher</span> lives on the DTS
+              server: every five minutes it reads the API's pulse and posts to
+              your phone over ntfy when dash is down two checks in a row, when
+              it comes back, and when a new version lands; every morning it
+              posts when nobody has opened dash for three days or an error was
+              caught yesterday.{" "}
+              <span className="text-light">The morning run</span> on GitHub
+              runs these very integrity checks at 6:30 ET with a read-only
+              token and posts what is open; Mondays it says all clear. The
+              report on the phone and the report on this page come from one
+              loader and one set of checks.
+            </Why>
+            <Caveat title="What it does not do">
+              The watcher reads; it fixes nothing. The beacons record no
+              keystrokes and no figures — a path, a person, a time, and an
+              error's message and stack. The read-only token behind both is
+              refused on anything but a read.
+            </Caveat>
           </Metric>
 
           <Metric

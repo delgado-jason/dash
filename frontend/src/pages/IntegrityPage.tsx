@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { FetchFailed } from "@/components/integrity/FetchFailed";
+import { AppSelfPart } from "@/components/integrity/AppSelfPart";
 import { useIntegrity } from "@/hooks/useIntegrity";
 import { cleanLines, countWords, groupIssues, sinceWords } from "@/lib/integrity/present";
 import { isDispatcher } from "@/lib/roles";
@@ -112,6 +113,8 @@ const IntegrityPage = () => {
             </>
           )}
         </div>
+
+        {!dispatcher && <AppSelfPart />}
       </div>
     </div>
   );
