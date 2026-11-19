@@ -1,13 +1,42 @@
 import { Router } from "express";
-import { createUser, validateUser } from "../services/userServices.js";
+import {
+  createUser,
+  validateUser,
+  countUsers,
+} from "../services/userServices.js";
 import { signToken } from "../utils/jwt.js";
+import { signupOpen, SIGNUP_CLOSED } from "../utils/signupGate.js";
+import { loginThrottle } from "../middleware/loginThrottle.js";
 
 const router = Router();
 
-// ---- CREATE USER THEN RETURN TOKEN ----
+// Is the front door open? Only on an empty dash, or with ALLOW_SIGNUP=true on
+// the server (utils/signupGate). A running dash with an owner says no.
+const isOpen = async () =>
+  signupOpen({
+    allowSignup: process.env.ALLOW_SIGNUP,
+    userCount: await countUsers(),
+  });
 
+// The signup page asks before it draws a form, so a closed door is a sentence,
+// not a form that fails on submit.
+router.get("/signup/open", async (req, res) => {
+  try {
+    return res.status(200).json({ open: await isOpen() });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", message: err.message });
+  }
+});
+
+// ---- CREATE THE OWNER THEN RETURN TOKEN ---- through an open door only.
 router.post("/signup", async (req, res) => {
   try {
+    if (!(await isOpen())) {
+      return res.status(403).json({ error: SIGNUP_CLOSED });
+    }
+
     const { email, password } = req.body;
 
     const user = await createUser(email, password);
@@ -25,6 +54,11 @@ router.post("/signup", async (req, res) => {
       token: accessToken,
     });
   } catch (err) {
+    // The password rule (a sentence, 400) and the older string errors.
+    if (err.type === "validation") {
+      return res.status(400).json({ error: err.message });
+    }
+
     if (err.message === "Missing fields") {
       return res.status(400).json({ error: err.message });
     }
@@ -41,7 +75,9 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+// The throttle runs first: past ten failures on an email (or fifty from one
+// address) in fifteen minutes it answers 429 and this handler never runs.
+router.post("/login", loginThrottle.middleware, async (req, res) => {
   try {
     const { email, password } = req.body;
 

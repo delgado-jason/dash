@@ -392,6 +392,7 @@ const NAV: { group: string; items: string[] }[] = [
     group: "Team &amp; roles",
     items: [
       "Adding a dispatcher",
+      "Logins — the front door",
       "What a dispatcher sees",
       "The Dispatch board",
       "Agents and lanes are graded on gross",
@@ -4252,7 +4253,46 @@ const GuidePage = () => {
               </Link>
               . They sign in with their own email and password, but everything
               they see is your account's data — same loads, agents, and trucks.
-              It's one shared operation, with a login of their own.
+              It's one shared operation, with a login of their own. You set
+              their first password — at least 10 characters — and share it;
+              when one is forgotten,{" "}
+              <span className="text-light">New password</span> on their row
+              sets another.
+            </p>
+          </Section>
+
+          <Section title="Logins — the front door">
+            <p className="text-sm text-muted-text">
+              <span className="text-light">Signup is closed.</span> A running
+              dash has an owner, and the owner makes every login under{" "}
+              <Link
+                to="/settings"
+                className="text-status-info-text hover:underline"
+              >
+                Settings → Team
+              </Link>
+              ; the signup page says so instead of drawing a form. The door
+              opens in two cases only: a dash with no users yet (a fresh
+              install, or a restore into an empty database, has to make its
+              first owner), or ALLOW_SIGNUP=true set on the server on purpose.{" "}
+              <span className="text-light">Passwords</span> are at least 10
+              characters — length only, no symbol rules — and dash refuses a
+              shorter one with that sentence wherever one is set.{" "}
+              <span className="text-light">Forgotten?</span> There is no email
+              reset. A dispatcher asks the owner, who sets a new one from{" "}
+              <span className="text-light">New password</span> on their row
+              under Team. The owner's own reset is the set-password script in
+              the repo, run from the laptop against the database with the
+              password typed at a hidden prompt. You change your own with the
+              current one — the owner under{" "}
+              <span className="text-light">Settings → Your password</span>, a
+              dispatcher on their own page, from the card on their dashboard.{" "}
+              <span className="text-light">The brake:</span> after ten failed
+              sign-ins on an email, or fifty from one address, in fifteen
+              minutes, the door answers "Too many failed sign-ins" and names
+              the wait; a correct sign-in clears the count. A password change
+              does not sign out other devices — their sessions end when they
+              expire.
             </p>
           </Section>
 

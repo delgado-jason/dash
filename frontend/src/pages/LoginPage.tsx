@@ -5,7 +5,6 @@ import useAuth from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -15,9 +14,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+// What "Forgot your password?" says. There is no email reset by design (no
+// mail infrastructure — epic #277), so the link tells the truth about the two
+// doors that exist instead of pretending to be a third.
+const FORGOT_WORDS =
+  "There is no email reset. A dispatcher asks the owner, who sets a new " +
+  "password under Settings → Team. The owner's own reset is the set-password " +
+  "script in the repo.";
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState("");
+  const [forgot, setForgot] = useState(false);
 
   // Loading state
   const [submitting, setSubmitting] = useState(false);
@@ -51,9 +59,6 @@ const LoginPage = () => {
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>
-          <CardAction>
-            <Button variant="link">Sign Up</Button>
-          </CardAction>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -65,20 +70,37 @@ const LoginPage = () => {
                   type="email"
                   name="email"
                   placeholder="m@example.com"
+                  autoComplete="username"
                   required
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
+                  <button
+                    type="button"
+                    onClick={() => setForgot((v) => !v)}
+                    aria-expanded={forgot}
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?
-                  </a>
+                  </button>
                 </div>
-                <Input id="password" type="password" name="password" required />
+                <Input
+                  id="password"
+                  type="password"
+                  name="password"
+                  autoComplete="current-password"
+                  required
+                />
+                {forgot && (
+                  <p
+                    className="text-xs text-muted-text leading-relaxed"
+                    data-testid="forgot-words"
+                  >
+                    {FORGOT_WORDS}
+                  </p>
+                )}
               </div>
               <Button
                 type="submit"
@@ -90,7 +112,13 @@ const LoginPage = () => {
             </div>
           </form>
         </CardContent>
-        <CardFooter>{errorMessage}</CardFooter>
+        {errorMessage && (
+          <CardFooter>
+            <p className="text-sm text-status-negative-text" role="alert">
+              {errorMessage}
+            </p>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

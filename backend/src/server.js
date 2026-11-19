@@ -47,6 +47,12 @@ import siteSubscriberRouter from "./routes/siteSubscriberRoutes.js";
 
 const app = express();
 
+// Railway terminates TLS at its edge and hands us X-Forwarded-For; trust that
+// one hop so req.ip is the visitor, not the proxy. The login throttle keys on
+// it — without this every visitor would share one address, and one guesser's
+// fifty failures would lock the door for the two people who live here.
+app.set("trust proxy", 1);
+
 // ---- MIDDLEWARE ----
 // Expose the sliding-session header so the browser can read the refreshed token.
 app.use(cors({ exposedHeaders: ["X-Refreshed-Token"] }));

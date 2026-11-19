@@ -8,6 +8,7 @@ import { getSettlementSchedule } from "@/services/settlementScheduleService";
 import { getDispatcherCard } from "@/lib/metrics/dispatcherCard";
 import { DispatcherKpis } from "@/components/dispatch/DispatcherKpis";
 import { DispatcherSeasonCard } from "@/components/dispatch/DispatcherSeasonCard";
+import { PasswordCard } from "@/components/settings/PasswordCard";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { EntityAvatar } from "@/components/fleet/EntityAvatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -125,6 +126,9 @@ const DispatcherPage = () => {
             freeHours={freeHours}
           />
         </div>
+
+        {/* Your own password lives on your own page: Settings is the owner's. */}
+        {id === localStorage.getItem("user_id") && <PasswordCard />}
       </div>
     </div>
   );

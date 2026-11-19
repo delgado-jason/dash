@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "migrate": "node scripts/migrate.js",
+    "set-password": "node scripts/set-password.js",
     "migrate:dev": "dotenv -e .env.development -- node scripts/migrate.js",
     "seed:dev": "dotenv -e .env.development -- node scripts/seed.js",
     "debug": "node src/utils/debug.js",

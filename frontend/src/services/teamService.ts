@@ -36,3 +36,22 @@ export const createDispatcher = async (data: {
   const res = await api.post("/users", data);
   return res.data.user;
 };
+
+// Change your OWN password, with the current one. Any member. The server
+// refuses with a sentence (a wrong current password, a short new one) as a 400.
+export const changeMyPassword = async (data: {
+  current_password: string;
+  new_password: string;
+}): Promise<void> => {
+  await api.patch("/users/me/password", data);
+};
+
+// The owner sets a dispatcher's password — the reset for a forgotten one. Admin
+// only, and only for a dispatcher of this account; no current password.
+export const setMemberPassword = async (
+  id: string,
+  new_password: string,
+): Promise<TeamMember> => {
+  const res = await api.patch(`/users/${id}/password`, { new_password });
+  return res.data.user;
+};

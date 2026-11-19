@@ -18,9 +18,9 @@ const useAuth = () => {
           return { success: true, error: "" };
         } else {
           setIsAuthenticated(false);
-          return { success: false, error: "Failed to authenticate" };
+          return { success: false, error: result.error || "Failed to authenticate" };
         }
-      } catch (er) {
+      } catch {
         setIsAuthenticated(false);
         return { success: false, error: "Submission failed" };
       }
@@ -35,7 +35,7 @@ const useAuth = () => {
           setIsAuthenticated(false);
           return { success: false, error: result.error };
         }
-      } catch (er) {
+      } catch {
         setIsAuthenticated(false);
         return { success: false, error: "Submission failed" };
       }

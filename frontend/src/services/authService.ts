@@ -5,6 +5,18 @@ interface Credentials {
   password: string;
 }
 
+// The sentence off a failed auth call: the server's own ("Invalid credentials",
+// the throttle's "Too many failed sign-ins…", the closed door's) or, with no
+// response at all, a plain one.
+const errorWord = (err: unknown): string => {
+  const word = (err as { response?: { data?: { error?: unknown } } } | null)
+    ?.response?.data?.error;
+  if (typeof word === "string" && word.trim()) return word;
+  return (err as { response?: unknown } | null)?.response
+    ? "Sign-in failed"
+    : "No response from server";
+};
+
 export const userLogin = async (credentials: Credentials) => {
   const { email, password } = credentials;
 
@@ -26,20 +38,19 @@ export const userLogin = async (credentials: Credentials) => {
     };
     return data;
   } catch (err) {
-    let errorMsg = "";
-
-    if ((err as any).response) {
-      errorMsg = (err as any).response.data.error;
-    } else {
-      errorMsg = "No response from server";
-    }
-
     const data = {
       success: false,
-      error: errorMsg,
+      error: errorWord(err),
     };
     return data;
   }
+};
+
+// Is the front door open? True only on an empty dash (no owner yet) or with
+// ALLOW_SIGNUP=true on the server. The signup page asks before it draws a form.
+export const signupOpen = async (): Promise<boolean> => {
+  const res = await api.get("/auth/signup/open");
+  return res.data?.open === true;
 };
 
 export const userSignup = async (credentials: Credentials) => {
@@ -63,17 +74,9 @@ export const userSignup = async (credentials: Credentials) => {
     };
     return data;
   } catch (err) {
-    let errorMsg = "";
-
-    if ((err as any).response) {
-      errorMsg = (err as any).response.data.error;
-    } else {
-      errorMsg = "No response from server";
-    }
-
     const data = {
       success: false,
-      error: errorMsg,
+      error: errorWord(err),
     };
     return data;
   }
