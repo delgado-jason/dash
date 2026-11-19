@@ -1,11 +1,20 @@
 import { db } from "../../db/pool.js";
 import bcrypt from "bcrypt";
+import {
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+} from "../utils/error.js";
+import { assertPassword } from "../utils/validation/passwordValidation.js";
 
 /** These functions
  * Talk to the database
  * Return data
  * Throw errors
  */
+
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function createUser(email, password) {
   if (!email || !password) {
@@ -15,6 +24,8 @@ export async function createUser(email, password) {
   if (!email.includes("@")) {
     throw new Error("Invalid email");
   }
+
+  assertPassword(password);
 
   const passwordHash = await bcrypt.hash(password, 10);
   try {
@@ -36,6 +47,13 @@ export async function createUser(email, password) {
 
     throw err;
   }
+}
+
+// ---- HOW MANY LOGINS EXIST ---- the signup gate's question: zero means a
+// fresh dash that still needs its owner; anything else means the door is shut.
+export async function countUsers() {
+  const result = await db.query(`SELECT count(*)::int AS n FROM users`);
+  return result.rows[0]?.n ?? 0;
 }
 
 // ---- VALIDATE USER ----
@@ -85,6 +103,7 @@ export async function createDispatcher(accountId, { email, password, display_nam
   if (!accountId) throw new Error("Missing account");
   if (!email || !password) throw new Error("Missing fields");
   if (!email.includes("@")) throw new Error("Invalid email");
+  assertPassword(password);
 
   const passwordHash = await bcrypt.hash(password, 10);
   try {
@@ -141,4 +160,100 @@ export async function getTeamMember(accountId, targetId) {
     [targetId, accountId],
   );
   return result.rows[0] ?? null;
+}
+
+// ---- WHOSE PASSWORD the owner may set ---- a dispatcher of THIS account. The
+// owner's own row is refused with a pointer (their change needs the current
+// password, below); any other row — another account's, or none — is "not
+// found", one sentence for both, so the answer never confirms that an id
+// exists somewhere else. Pure, so it is tested without a database.
+export function resettableByOwner(target, accountId) {
+  if (target && target.user_id === accountId) {
+    throw new ForbiddenError(
+      "Your own password is changed under Settings → Your password, with the current one.",
+    );
+  }
+  if (!target || target.parent_user_id !== accountId) {
+    throw new NotFoundError("No dispatcher with that id on your account.");
+  }
+  if (target.role !== "dispatcher") {
+    throw new ForbiddenError("Only a dispatcher's password is set here.");
+  }
+  return target;
+}
+
+// ---- SET a dispatcher's password ---- the owner's reset for a forgotten one.
+// No current password is asked: the owner is the one typing, as with the first
+// password, and hands the new one over.
+export async function setPasswordForTeamMember(accountId, targetId, newPassword) {
+  assertPassword(newPassword);
+  if (typeof targetId !== "string" || !UUID.test(targetId)) {
+    throw new NotFoundError("No dispatcher with that id on your account.");
+  }
+
+  const found = await db.query(
+    `SELECT user_id, email, role, parent_user_id, display_name
+       FROM users
+      WHERE user_id = $1`,
+    [targetId],
+  );
+  const target = resettableByOwner(found.rows[0] ?? null, accountId);
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.query(`UPDATE users SET password_hash = $1 WHERE user_id = $2`, [
+    passwordHash,
+    target.user_id,
+  ]);
+
+  return {
+    user_id: target.user_id,
+    email: target.email,
+    role: target.role,
+    display_name: target.display_name,
+  };
+}
+
+// ---- THE SHAPE CHECK for changing your own password ---- everything that can
+// be refused before the database is asked, each as the sentence the form shows.
+export function assertOwnPasswordChange(currentPassword, newPassword) {
+  if (typeof currentPassword !== "string" || currentPassword.length === 0) {
+    throw new ValidationError("Type your current password.");
+  }
+  assertPassword(newPassword);
+  if (currentPassword === newPassword) {
+    throw new ValidationError("The new password is the same as the current one.");
+  }
+}
+
+// ---- CHANGE my own password ---- any member, owner or dispatcher, with the
+// current one. A wrong current password is a 400 (a validation of the body),
+// deliberately not a 401: the browser treats a 401 off any non-login route as
+// a dead session and would sign the person out for a typo.
+export async function changeOwnPassword(selfId, currentPassword, newPassword) {
+  assertOwnPasswordChange(currentPassword, newPassword);
+
+  const found = await db.query(
+    `SELECT user_id, email, role, display_name, password_hash
+       FROM users
+      WHERE user_id = $1`,
+    [selfId],
+  );
+  const me = found.rows[0];
+  if (!me) throw new NotFoundError("No such user.");
+
+  const ok = await bcrypt.compare(currentPassword, me.password_hash);
+  if (!ok) throw new ValidationError("The current password is wrong.");
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.query(`UPDATE users SET password_hash = $1 WHERE user_id = $2`, [
+    passwordHash,
+    selfId,
+  ]);
+
+  return {
+    user_id: me.user_id,
+    email: me.email,
+    role: me.role,
+    display_name: me.display_name,
+  };
 }

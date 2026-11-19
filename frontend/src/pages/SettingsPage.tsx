@@ -14,6 +14,7 @@ import { SettlementSplitsTable } from "@/components/settings/SettlementSplitsTab
 import { PerDiemRatesTable } from "@/components/settings/PerDiemRatesTable";
 import { FscScheduleBox } from "@/components/settings/FscScheduleBox";
 import { TeamCard } from "@/components/settings/TeamCard";
+import { PasswordCard } from "@/components/settings/PasswordCard";
 import { useTheme } from "@/hooks/useTheme";
 import { Panel } from "@/components/ui/Panel";
 import { freightCeilingLb } from "@/lib/dimensions";
@@ -216,6 +217,8 @@ const SettingsPage = () => {
           />
         </label>
       </Panel>
+
+      <PasswordCard />
 
       <Panel className="mt-6 max-w-[680px] p-5">
         <h2 className="text-lg font-medium text-light">Settlement schedule</h2>
