@@ -2,8 +2,14 @@ import axios from "axios";
 import { clearSession, adoptRefreshedToken } from "@/lib/auth";
 
 // Create a centralized axios instance
+// Vite fills import.meta.env in the browser; the morning integrity run (tsx on
+// Node, scripts/integrityReport) has no import.meta.env and reads the same name
+// off the process environment instead.
+const nodeEnv = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+const baseURL = import.meta.env?.VITE_API_URL || nodeEnv?.VITE_API_URL || "http://localhost:3000";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },

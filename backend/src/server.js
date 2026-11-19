@@ -44,6 +44,7 @@ import cityCoordsRouter from "./routes/cityCoordsRoutes.js";
 import siteTrafficRouter from "./routes/siteTrafficRoutes.js";
 import siteHitRouter from "./routes/siteHitRoutes.js";
 import siteSubscriberRouter from "./routes/siteSubscriberRoutes.js";
+import appTelemetryRouter from "./routes/appTelemetryRoutes.js";
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use((req, res, next) => {
 app.use("/auth", authRouter);
 app.use("/", meRouter);
 app.use("/users", userRouter);
+app.use("/app", appTelemetryRouter); // dash about itself: pages opened, errors caught
 app.use("/profiles", profileRouter);
 app.use("/trucks", truckRouter);
 app.use("/drivers", driverRouter);

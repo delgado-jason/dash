@@ -1,0 +1,77 @@
+# The morning run: dash's own integrity checks (frontend/src/lib/integrity),
+# run here on a clock with the read-only watch token, posted to the phone
+# over ntfy. Nothing on this runner can write to dash — the watch token is
+# refused on anything but a read (backend/src/middleware/requireAuth.js).
+#
+# Needs: the repository variable DASH_API_URL (the API's origin), the secrets
+# DASH_WATCH_TOKEN (the same value Railway holds) and NTFY_TOPIC, and
+# optionally the variables NTFY_SERVER (default https://ntfy.sh) and
+# DASH_APP_URL (makes the notification open the Integrity page).
+name: integrity-digest
+
+on:
+  schedule:
+    - cron: "30 11 * * *" # 06:30 ET in winter, 07:30 in summer
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+
+      - name: Run the checks against dash
+        id: run
+        env:
+          VITE_API_URL: ${{ vars.DASH_API_URL }}
+          DASH_WATCH_TOKEN: ${{ secrets.DASH_WATCH_TOKEN }}
+        run: |
+          code=0
+          npm run --silent integrity:report > /tmp/report.json 2> /tmp/report.err || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "exit $code"
+          head -c 3000 /tmp/report.json; echo
+          head -c 1000 /tmp/report.err; echo
+
+      - name: Post to the phone
+        if: always()
+        env:
+          NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          DASH_APP_URL: ${{ vars.DASH_APP_URL }}
+          CODE: ${{ steps.run.outputs.code }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          if [ -z "$NTFY_TOPIC" ]; then echo "NTFY_TOPIC is not set — nothing posted"; exit 0; fi
+          post() { # $1 title (ASCII) · $2 tags · $3 priority · $4 body
+            if [ -n "$DASH_APP_URL" ]; then click=(-H "Click: ${DASH_APP_URL}/integrity"); else click=(); fi
+            curl -fsS -m 15 -H "Title: $1" -H "Tags: $2" -H "Priority: $3" "${click[@]}" \
+              -d "$4" "${NTFY_SERVER}/${NTFY_TOPIC}" > /dev/null
+          }
+          f=/tmp/report.json
+          if [ "$CODE" = "1" ] || ! jq -e '.open' "$f" > /dev/null 2>&1; then
+            post "dash integrity run FAILED" "rotating_light" "high" \
+              "The morning run could not read dash. $(head -c 300 /tmp/report.err) $(head -c 300 "$f")"
+            exit 0
+          fi
+          open=$(jq -r '.open' "$f"); money=$(jq -r '.money' "$f"); data=$(jq -r '.data' "$f")
+          failed=$(jq -r '.failed | join(", ")' "$f")
+          body=$(jq -r '.issues[:8][] | "- " + .title + " (" + .fixAt + ")"' "$f")
+          more=$(( open > 8 ? open - 8 : 0 ))
+          if [ "$more" -gt 0 ]; then body=$(printf '%s\n... and %s more' "$body" "$more"); fi
+          if [ -n "$failed" ]; then body=$(printf '%s\nCould not read: %s' "$body" "$failed"); fi
+          if [ "$open" = "0" ] && [ -z "$failed" ]; then
+            if [ "$(date +%u)" = "1" ] || [ "$MANUAL" = "true" ]; then
+              post "dash integrity: all clear" "white_check_mark" "low" "Every input dash reads is present."
+            else
+              echo "all clear — nothing posted (Mondays and manual runs say so)"
+            fi
+            exit 0
+          fi
+          post "dash integrity: $open open ($money money, $data data)" "warning" "default" "$body"

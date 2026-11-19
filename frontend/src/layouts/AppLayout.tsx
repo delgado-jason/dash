@@ -1,6 +1,8 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSidebar";
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
+import { sendHit } from "@/lib/telemetry";
 import { isDispatcher } from "@/lib/roles";
 
 // Design System v2 pages are full-bleed — they carry the sidebar trigger in
@@ -44,6 +46,11 @@ const isFullBleed = (pathname: string) =>
 
 const AppLayout = () => {
   const { pathname } = useLocation();
+
+  // The route-change beacon: dash records which of its own pages get opened.
+  useEffect(() => {
+    sendHit(pathname);
+  }, [pathname]);
   return (
     <>
       <SidebarProvider>
